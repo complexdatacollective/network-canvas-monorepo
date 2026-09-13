@@ -4,8 +4,8 @@ export function successfulRun(source, overrides = {}) {
     run_number: 9,
     run_attempt: 1,
     head_sha: source,
-    head_branch: 'main',
-    event: 'push',
+    head_branch: `gh-readonly-queue/main/pr-1243-${'b'.repeat(40)}`,
+    event: 'merge_group',
     path: '.github/workflows/ci-and-release.yml',
     repository: { full_name: 'complexdatacollective/network-canvas-monorepo' },
     head_repository: {

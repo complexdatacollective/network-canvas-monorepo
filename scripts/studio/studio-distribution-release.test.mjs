@@ -9,8 +9,10 @@ import { test } from 'vitest';
 import { runStudioDistributionRelease } from './studio-distribution-release.mjs';
 
 const source = 'a'.repeat(40);
-const workflow =
+const calledWorkflow =
   'complexdatacollective/network-canvas-monorepo/.github/workflows/studio-release.yml@refs/heads/main';
+const callerWorkflow =
+  'complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main';
 
 function fixture(t, overrides = {}) {
   const root = mkdtempSync(join(tmpdir(), 'studio-release-caller-'));
@@ -20,7 +22,7 @@ function fixture(t, overrides = {}) {
     GITHUB_EVENT_NAME: 'workflow_dispatch',
     GITHUB_REPOSITORY: 'complexdatacollective/network-canvas-monorepo',
     GITHUB_REF: 'refs/heads/main',
-    GITHUB_WORKFLOW_REF: workflow,
+    GITHUB_WORKFLOW_REF: calledWorkflow,
     GITHUB_SHA: source,
     RUNNER_OS: 'Linux',
     RUNNER_ARCH: 'X64',
@@ -90,10 +92,19 @@ test('passes only workflow-bound source, tagger and absolute pinned tools', asyn
 });
 
 test('accepts the trusted reusable workflow on the Studio release-lane push', async (t) => {
-  const f = fixture(t, { GITHUB_EVENT_NAME: 'push' });
+  const f = fixture(t, {
+    GITHUB_EVENT_NAME: 'push',
+    GITHUB_WORKFLOW_REF: callerWorkflow,
+  });
   await f.run();
   assert.equal(f.calls.length, 1);
   assert.equal(f.calls[0].source, source);
+});
+
+test('refuses the called workflow identity when a push came through an untrusted caller', async (t) => {
+  const f = fixture(t, { GITHUB_EVENT_NAME: 'push' });
+  await assert.rejects(f.run, /workflow identity is invalid/);
+  assert.equal(f.tools, undefined);
 });
 
 for (const [name, value] of [

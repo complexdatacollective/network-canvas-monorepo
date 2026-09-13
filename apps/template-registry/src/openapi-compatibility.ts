@@ -28,6 +28,29 @@ export function toOpenApi30(document: OpenAPIDocument): OpenApi30Document {
   const components = optionalRecord(compatible.components);
   const schemas = optionalRecord(components?.schemas);
   if (schemas) delete schemas.UndefinedError;
+  const publisher = optionalRecord(schemas?.Publisher);
+  const accountPublisher = optionalRecord(
+    optionalRecord(
+      optionalRecord(
+        optionalRecord(
+          optionalRecord(optionalRecord(compatible.paths)?.['/account'])?.get,
+        )?.responses,
+      )?.['200'],
+    )?.content,
+  )?.['application/json'];
+  const accountPublisherProperty = optionalRecord(
+    optionalRecord(optionalRecord(accountPublisher)?.schema)?.properties,
+  )?.publisher;
+  if (publisher && isRecord(accountPublisherProperty)) {
+    // OpenAPI 3.0's nullable keyword does not modify a bare $ref/allOf wrapper.
+    // Inline this one public object schema so strict tooling and generated
+    // clients both admit the normal pre-claim account response's null value.
+    for (const key of Object.keys(accountPublisherProperty))
+      delete accountPublisherProperty[key];
+    Object.assign(accountPublisherProperty, structuredClone(publisher), {
+      nullable: true,
+    });
+  }
   return { ...compatible, openapi: '3.0.3', info };
 }
 
@@ -66,6 +89,11 @@ function convert(value: unknown): unknown {
       converted.anyOf = types.map((type) => ({ type }));
       converted.nullable = true;
     }
+  }
+  if (converted.type === 'null') {
+    converted.type = 'string';
+    converted.nullable = true;
+    converted.enum = [null];
   }
 
   const alternatives = converted.anyOf;

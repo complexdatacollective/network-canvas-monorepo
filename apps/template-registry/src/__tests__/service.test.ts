@@ -280,6 +280,121 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     }
   });
 
+  it.each([
+    {
+      name: 'curation',
+      method: 'PUT',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/curation`,
+      body: { curated: true },
+      action: 'entry.curated',
+    },
+    {
+      name: 'takedown',
+      method: 'POST',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/takedown`,
+      body: undefined,
+      action: 'artifact.taken_down',
+    },
+    {
+      name: 'suspension',
+      method: 'PUT',
+      path: (_entryId: string, publisherId: string) =>
+        `/moderation/publishers/${publisherId}/suspension`,
+      body: { suspended: true },
+      action: 'publisher.suspended',
+    },
+  ])(
+    'preserves reports submitted after completed $name transitions',
+    async (item) => {
+      const operator = await fixture.account(
+        `operator-${item.name}-report-retry@example.test`,
+        true,
+      );
+      const account = await fixture.account(
+        `${item.name}-report-retry@example.test`,
+      );
+      const created = await fixture.published(account.token);
+      const path = item.path(created.entry.id, account.publisher.id);
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      const details = `Report submitted after ${item.action}`;
+      const reported = z
+        .strictObject({ id: z.uuid() })
+        .parse(
+          await (
+            await fixture.request(
+              'POST',
+              `/entries/${created.entry.id}/reports`,
+              { category: 'privacy', details },
+            )
+          ).json(),
+        );
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT details FROM registry_reports WHERE id = $1',
+            [reported.id],
+          )
+        ).rows,
+      ).toEqual([{ details }]);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_audit WHERE action = $1 AND subject_id = $2',
+            [
+              item.action,
+              item.action === 'artifact.taken_down'
+                ? created.entry.root
+                : item.action === 'publisher.suspended'
+                  ? account.publisher.id
+                  : created.entry.id,
+            ],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    },
+  );
+
+  it('distinguishes the initial publisher claim from profile updates', async () => {
+    const account = await fixture.account('publisher-audit@example.test');
+    const updated = await fixture.request(
+      'POST',
+      '/account/publisher',
+      { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+      account.headers,
+    );
+    expect(updated.status).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          '/account/publisher',
+          { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+          account.headers,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.owner.query(
+          "SELECT action, count(*)::int AS count FROM registry_audit WHERE subject_id = $1 AND action LIKE 'publisher.%' GROUP BY action ORDER BY action",
+          [account.publisher.id],
+        )
+      ).rows,
+    ).toEqual([
+      { action: 'publisher.claimed', count: 1 },
+      { action: 'publisher.updated', count: 1 },
+    ]);
+  });
+
   it('keeps person-owned locators separate from content identity across registry accounts', async () => {
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');
@@ -519,6 +634,29 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
       has_more: false,
     });
     expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/entries/${created.entry.id}/curation`,
+          { curated: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await (
+        await fixture.request(
+          'GET',
+          '/moderation/reports',
+          undefined,
+          operator.bearer,
+        )
+      ).json(),
+    ).toMatchObject({ data: [], next_cursor: null, has_more: false });
+    expect(
+      (await fixture.owner.query('SELECT details FROM registry_reports')).rows,
+    ).toEqual([{ details: null }]);
+    expect(
       JSON.stringify(
         (await fixture.owner.query('SELECT * FROM registry_audit')).rows,
       ),
@@ -739,6 +877,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
         )
       ).rows,
     ).toEqual([{ count: 1 }]);
+  });
+
+  it('selects only bounded summary columns for public list results', async () => {
+    const account = await fixture.account();
+    await fixture.published(account.token);
+    const query = vi.spyOn(fixture.pool, 'query');
+    const response = await fixture.request('GET', '/entries');
+    expect(response.status).toBe(200);
+    expect(list.parse(await response.json()).data).toHaveLength(1);
+    const listSql = query.mock.calls
+      .map(([statement]) => statement)
+      .find(
+        (statement): statement is string =>
+          typeof statement === 'string' &&
+          statement.includes('ORDER BY e.sequence DESC'),
+      );
+    expect(listSql).toBeDefined();
+    expect(listSql).not.toContain('c.metadata');
   });
 
   it('applies takedown and operator erasure across every locator without allowing publisher deletion', async () => {
@@ -1241,26 +1397,95 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).toBe(200);
   });
 
-  it('prevents an operator from suspending their own publisher', async () => {
-    const operator = await fixture.account('operator-self@example.test', true);
-    await problem(
-      await fixture.request(
-        'PUT',
-        `/moderation/publishers/${operator.publisher.id}/suspension`,
-        { suspended: true },
-        operator.bearer,
-      ),
-      409,
-      'CONFLICT',
+  it.each(['canonical', 'uppercase'])(
+    'prevents an operator from suspending their own publisher (%s)',
+    async (spelling) => {
+      const operator = await fixture.account(
+        'operator-self@example.test',
+        true,
+      );
+      await problem(
+        await fixture.request(
+          'PUT',
+          `/moderation/publishers/${spelling === 'uppercase' ? operator.publisher.id.toUpperCase() : operator.publisher.id}/suspension`,
+          { suspended: true },
+          operator.bearer,
+        ),
+        409,
+        'CONFLICT',
+      );
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT suspended_at FROM registry_publishers WHERE id = $1',
+            [operator.publisher.id],
+          )
+        ).rows,
+      ).toEqual([{ suspended_at: null }]);
+    },
+  );
+
+  it('records canonical database UUIDs for uppercase command locators', async () => {
+    const author = await fixture.account('uppercase-audit@example.test');
+    const operator = await fixture.account(
+      'uppercase-audit-operator@example.test',
+      true,
     );
+    const created = await fixture.published(author.token, 'Uppercase audit');
+    expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/entries/${created.entry.id.toUpperCase()}/curation`,
+          { curated: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/entries/${created.entry.id.toUpperCase()}/yank`,
+          undefined,
+          author.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'DELETE',
+          `/account/tokens/${author.credential.id.toUpperCase()}`,
+          undefined,
+          author.headers,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/publishers/${author.publisher.id.toUpperCase()}/suspension`,
+          { suspended: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
     expect(
       (
         await fixture.owner.query(
-          'SELECT suspended_at FROM registry_publishers WHERE id = $1',
-          [operator.publisher.id],
+          `SELECT action, subject_id FROM registry_audit
+           WHERE action IN ('credential.revoked', 'entry.yanked', 'entry.curated', 'publisher.suspended')
+           ORDER BY action`,
         )
       ).rows,
-    ).toEqual([{ suspended_at: null }]);
+    ).toEqual([
+      { action: 'credential.revoked', subject_id: author.credential.id },
+      { action: 'entry.curated', subject_id: created.entry.id },
+      { action: 'entry.yanked', subject_id: created.entry.id },
+      { action: 'publisher.suspended', subject_id: author.publisher.id },
+    ]);
   });
 
   it('caps auth bodies before calling the mail provider even when Content-Length is omitted', async () => {

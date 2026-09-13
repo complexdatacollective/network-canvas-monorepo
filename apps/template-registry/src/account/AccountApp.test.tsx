@@ -243,6 +243,35 @@ it('discards an old account refresh after sign-out and clears an already visible
   expect(screen.queryByText(account.email)).not.toBeInTheDocument();
 });
 
+it('distinguishes equally named credentials by their authoritative permissions', async () => {
+  const client = clientFixture();
+  client.account.mockResolvedValue({ ...account, operator: true });
+  client.tokens.mockResolvedValue({
+    data: [
+      credential,
+      {
+        ...credential,
+        id: 'b3df9e8e-2cbc-4985-96f1-f5b2e83df921',
+        scopes: ['moderate'],
+      },
+    ],
+  });
+  mount(client);
+  await screen.findAllByRole('button', { name: 'Revoke' });
+  const entries = screen
+    .getAllByRole('listitem')
+    .filter((item) => within(item).queryByRole('button', { name: 'Revoke' }));
+  expect(entries).toHaveLength(2);
+  expect(within(entries[0]!).getByText('Publish templates')).toBeVisible();
+  expect(
+    within(entries[0]!).queryByText('Moderate the registry'),
+  ).not.toBeInTheDocument();
+  expect(within(entries[1]!).getByText('Moderate the registry')).toBeVisible();
+  expect(
+    within(entries[1]!).queryByText('Publish templates'),
+  ).not.toBeInTheDocument();
+});
+
 it('requires explicit revoke confirmation and removes the credential after the command succeeds', async () => {
   const client = clientFixture();
   client.tokens.mockResolvedValue({ data: [credential] });

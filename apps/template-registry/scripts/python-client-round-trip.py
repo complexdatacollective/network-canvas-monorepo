@@ -8,9 +8,13 @@ sys.path.insert(0, str(generated_parent))
 
 from registry_client.api.default import list_entries  # noqa: E402
 from registry_client.api.default import artifact  # noqa: E402
+from registry_client.api.default import account  # noqa: E402
 from registry_client.client import Client  # noqa: E402
-from registry_client.models.list_entries_response_200 import (  # noqa: E402
-    ListEntriesResponse200,
+from registry_client.models.list_entries_response_200_type_0 import (  # noqa: E402
+    ListEntriesResponse200Type0,
+)
+from registry_client.models.list_entries_response_200_type_1 import (  # noqa: E402
+    ListEntriesResponse200Type1,
 )
 
 
@@ -20,7 +24,9 @@ with Client(base_url=f"{base_url}/api/v1", raise_on_unexpected_status=True) as c
     )
 
     assert response.status_code == 200
-    assert isinstance(response.parsed, ListEntriesResponse200)
+    assert isinstance(
+        response.parsed, (ListEntriesResponse200Type0, ListEntriesResponse200Type1)
+    )
     assert response.parsed.data == []
     assert response.parsed.next_cursor is None
     assert response.parsed.has_more is False
@@ -30,3 +36,7 @@ with Client(base_url=f"{base_url}/api/v1", raise_on_unexpected_status=True) as c
         'application/vnd.networkcanvas.template+zip'
     )
     assert artifact_response.content == bytes([80, 75, 3, 4, 17, 34])
+    account_response = account.sync_detailed(client=client)
+    assert account_response.status_code == 200
+    assert account_response.parsed is not None
+    assert account_response.parsed.publisher is None

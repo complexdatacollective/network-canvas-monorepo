@@ -1,3 +1,8 @@
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Script } from 'node:vm';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -20,6 +25,7 @@ import {
   assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorPositive,
   parseConntrackFlow,
+  telemetryKernelComposeServices,
   TELEMETRY_EGRESS_MARKER,
   TELEMETRY_KERNEL_CONTROL_MARKER,
   TELEMETRY_KERNEL_EGRESS_MARKER,
@@ -100,6 +106,152 @@ describe('local distribution recovery boundary', () => {
 
   it('ships a syntactically valid kernel observer', () => {
     expect(() => new Script(TELEMETRY_KERNEL_OBSERVER_SOURCE)).not.toThrow();
+  });
+
+  it('uses the candidate only for targets and the privileged observer image only for sensors', () => {
+    const services = telemetryKernelComposeServices(
+      'candidate-image',
+      'observer-image',
+    );
+    expect(services).toContain(
+      'telemetry-namespace-studio:\n    image: candidate-image',
+    );
+    expect(services).toContain(
+      'telemetry-kernel-studio:\n    image: observer-image',
+    );
+    expect(services).toContain('cap_drop: [ALL]\n    cap_add: [NET_ADMIN]');
+    expect(services).not.toContain('cap_add: [SETUID, SETGID]');
+  });
+
+  it('runs the shipped observer through bounded conntrack when proc is absent', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'studio-kernel-observer-'));
+    const executable = join(root, 'conntrack');
+    const calls = join(root, 'calls');
+    const ready = join(root, 'ready');
+    await writeFile(
+      executable,
+      `#!/bin/sh
+printf '%s\\n' "$*" >> "$FAKE_CONNTRACK_CALLS"
+printf '%s\\n' \\
+  'ipv4 2 tcp 6 30 ESTABLISHED src=127.0.0.1 dst=127.0.0.1 sport=41001 dport=8443 src=127.0.0.1 dst=127.0.0.1 sport=8443 dport=41001 [ASSURED] mark=0 use=1' \\
+  'ipv4 2 udp 17 29 src=127.0.0.1 dst=127.0.0.1 sport=41002 dport=9443 src=127.0.0.1 dst=127.0.0.1 sport=9443 dport=41002 mark=0 use=1'
+`,
+      { mode: 0o700 },
+    );
+    await chmod(executable, 0o700);
+    const child = spawn(
+      process.execPath,
+      ['-e', TELEMETRY_KERNEL_OBSERVER_SOURCE],
+      {
+        env: {
+          ...process.env,
+          PATH: `${root}:${process.env.PATH ?? '/usr/bin:/bin'}`,
+          FAKE_CONNTRACK_CALLS: calls,
+          STUDIO_QUALIFICATION_CONNTRACK_PROC: join(root, 'missing-proc'),
+          STUDIO_QUALIFICATION_KERNEL_READY_FILE: ready,
+          STUDIO_QUALIFICATION_NETWORK_NAMESPACE: 'qualification-test',
+          STUDIO_QUALIFICATION_KERNEL_ENDPOINTS: JSON.stringify({
+            allowed: [],
+            controls: [
+              { protocol: 'tcp', host: '127.0.0.1', port: 8443 },
+              { protocol: 'udp', host: '127.0.0.1', port: 9443 },
+            ],
+          }),
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+    let output = '';
+    let errors = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => {
+      output += chunk;
+    });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => {
+      errors += chunk;
+    });
+    try {
+      await vi
+        .waitUntil(
+          () =>
+            output
+              .split('\n')
+              .filter((line) =>
+                line.startsWith(`${TELEMETRY_KERNEL_LIVENESS_MARKER} `),
+              ).length >= 2,
+          { timeout: 3_000, interval: 25 },
+        )
+        .catch((error) => {
+          throw new Error(
+            `Observer output: ${output}\nObserver errors: ${errors}`,
+            {
+              cause: error,
+            },
+          );
+        });
+      expect(errors).toBe('');
+      expect(output).toContain(TELEMETRY_KERNEL_READY_MARKER);
+      expect(output).toContain(
+        `${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"tcp"`,
+      );
+      expect(output).toContain(
+        `${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"udp"`,
+      );
+      expect((await readFile(calls, 'utf8')).trim().split('\n')).toEqual(
+        expect.arrayContaining(['-L -o extended']),
+      );
+    } finally {
+      child.kill('SIGKILL');
+      if (child.exitCode === null && child.signalCode === null)
+        await once(child, 'exit');
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed when both proc and the netlink observer backend fail', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'studio-kernel-observer-fail-'));
+    const executable = join(root, 'conntrack');
+    await writeFile(executable, '#!/bin/sh\nexit 42\n', { mode: 0o700 });
+    const child = spawn(
+      process.execPath,
+      ['-e', TELEMETRY_KERNEL_OBSERVER_SOURCE],
+      {
+        env: {
+          ...process.env,
+          PATH: `${root}:${process.env.PATH ?? '/usr/bin:/bin'}`,
+          STUDIO_QUALIFICATION_CONNTRACK_PROC: join(root, 'missing-proc'),
+          STUDIO_QUALIFICATION_KERNEL_READY_FILE: join(root, 'ready'),
+          STUDIO_QUALIFICATION_NETWORK_NAMESPACE: 'qualification-test',
+          STUDIO_QUALIFICATION_KERNEL_ENDPOINTS: JSON.stringify({
+            allowed: [],
+            controls: [],
+          }),
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+    let output = '';
+    let errors = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => {
+      output += chunk;
+    });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => {
+      errors += chunk;
+    });
+    try {
+      await vi.waitUntil(() => child.exitCode !== null, {
+        timeout: 3_000,
+        interval: 25,
+      });
+      expect(child.exitCode).toBe(1);
+      expect(output).not.toContain(TELEMETRY_KERNEL_READY_MARKER);
+      expect(errors).toContain('Kernel qualification observer failed');
+    } finally {
+      if (child.exitCode === null) {
+        child.kill('SIGKILL');
+        await once(child, 'exit');
+      }
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('requires a new kernel flow for the uninstrumented native child', () => {

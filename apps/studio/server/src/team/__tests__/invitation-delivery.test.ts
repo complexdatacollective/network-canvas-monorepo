@@ -452,25 +452,39 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     const first = dispatcher(
       scratch.maintenance,
       { sendTeamInvitation },
-      { leaseMs: 150 },
+      { leaseMs: 6_000 },
     );
     const second = dispatcher(
       scratch.maintenance,
       { sendTeamInvitation },
-      { leaseMs: 150 },
+      { leaseMs: 6_000 },
     );
 
     const firstRun = first.runOnce();
     await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
-    // PostgreSQL's clock advances past the original lease while Node remains
-    // free to run the ownership-checked heartbeat.
-    await scratch.maintenance.query(`SELECT pg_sleep(0.45)`);
-    const secondResult = await second.runOnce();
-    slowSend.resolve();
-    const firstResult = await firstRun;
-
-    expect(secondResult.claimed).toBe(0);
-    expect(firstResult).toMatchObject({ claimed: 1, sent: 1 });
+    const initial = await scratch.pool.query<{ expiry: string }>(
+      'SELECT lease_expires_at::text AS expiry FROM team_invitation_deliveries WHERE invitation_id=$1',
+      [invitation.invitationId],
+    );
+    try {
+      // Observe a real ownership-checked database extension. A sub-second lease
+      // tests runner scheduling contention rather than heartbeat behavior.
+      await vi.waitFor(
+        async () => {
+          const renewed = await scratch.pool.query<{ renewed: boolean }>(
+            'SELECT lease_expires_at > $2 AS renewed FROM team_invitation_deliveries WHERE invitation_id=$1',
+            [invitation.invitationId, initial.rows[0]!.expiry],
+          );
+          expect(renewed.rows[0]?.renewed).toBe(true);
+        },
+        { timeout: 10_000, interval: 50 },
+      );
+      expect((await second.runOnce()).claimed).toBe(0);
+    } finally {
+      slowSend.resolve();
+      await firstRun;
+    }
+    expect(await firstRun).toMatchObject({ claimed: 1, sent: 1 });
     expect(sendTeamInvitation).toHaveBeenCalledOnce();
   });
 

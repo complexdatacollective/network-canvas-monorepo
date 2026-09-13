@@ -1,16 +1,46 @@
+import { dirname, resolve } from 'node:path';
+
 import { loadEnv, type Plugin } from 'vite';
 
 import { POSTHOG_HOST } from '../../../packages/shared-consts/src/posthog.ts';
+import { processPostHogSourceMapsOffline } from '../../../scripts/build/posthog-source-maps-offline.ts';
 import { createPostHogSourceMapsPlugin } from '../../../scripts/build/posthog-source-maps-plugin.ts';
 
-/** Same credential-gated, hidden-map upload/delete lane as the other apps. */
+/** Compiled identities are local; upload remains credential-gated. */
 export function studioSourceMaps(
   mode: string,
   directory: string,
   version: string,
 ): Plugin[] {
   const env = loadEnv(mode, directory, 'POSTHOG_');
-  if (!env.POSTHOG_PERSONAL_API_KEY || !env.POSTHOG_PROJECT_ID) return [];
+  if (!env.POSTHOG_PERSONAL_API_KEY || !env.POSTHOG_PROJECT_ID) {
+    return [
+      {
+        name: 'studio-offline-source-maps',
+        apply: 'build',
+        config: () => ({ build: { sourcemap: 'hidden' } }),
+        outputOptions: {
+          order: 'post',
+          handler: (options) => ({ ...options, sourcemap: 'hidden' }),
+        },
+        writeBundle: {
+          sequential: true,
+          handler: (options) => {
+            const output = options.dir
+              ? resolve(options.dir)
+              : options.file
+                ? dirname(resolve(options.file))
+                : undefined;
+            if (!output)
+              throw new Error(
+                'Studio source maps require an output directory.',
+              );
+            processPostHogSourceMapsOffline(output);
+          },
+        },
+      },
+    ];
+  }
   return [
     createPostHogSourceMapsPlugin({
       personalApiKey: env.POSTHOG_PERSONAL_API_KEY,

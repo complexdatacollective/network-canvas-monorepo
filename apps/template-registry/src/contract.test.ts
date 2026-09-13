@@ -8,10 +8,20 @@ import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
+import { StrictUuidSchema } from '@codaco/studio-sync/template-metadata';
 
+import {
+  ClaimPublisherSchema,
+  CreateTokenSchema,
+  ReportSchema,
+  RegistrySequenceSchema,
+  ReportsPageSchema,
+  TokenDescriptionSchema,
+} from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
+  ListEntriesSchema,
   registryContract,
 } from './contract.ts';
 import { toOpenApi30 } from './openapi-compatibility.ts';
@@ -25,6 +35,118 @@ const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const ROOT = 'a'.repeat(64);
 const OTHER_ROOT = 'b'.repeat(64);
+const EMOJI_150 = '😀'.repeat(150);
+
+it('counts search limits in Unicode code points', () => {
+  expect(
+    ListEntriesSchema.parse({ query: EMOJI_150, author: EMOJI_150 }),
+  ).toMatchObject({ query: EMOJI_150, author: EMOJI_150 });
+  expect(() =>
+    ListEntriesSchema.parse({ query: `${EMOJI_150}${'😀'.repeat(51)}` }),
+  ).toThrow();
+});
+
+it('counts account text limits in Unicode code points and rejects unsafe names', () => {
+  expect(ClaimPublisherSchema.parse({ name: EMOJI_150 }).name).toBe(EMOJI_150);
+  expect(
+    CreateTokenSchema.parse({ name: '😀'.repeat(100), scopes: ['publish'] }),
+  ).toMatchObject({ name: '😀'.repeat(100) });
+  expect(
+    ReportSchema.parse({ category: 'other', details: '😀'.repeat(2000) }),
+  ).toMatchObject({ details: '😀'.repeat(2000) });
+  for (const name of ['   ', 'unsafe\0name', 'unsafe\ud800name']) {
+    expect(
+      CreateTokenSchema.safeParse({ name, scopes: ['publish'] }).success,
+    ).toBe(false);
+  }
+  expect(() => ClaimPublisherSchema.parse({ name: '   ' })).toThrow();
+  expect(() =>
+    CreateTokenSchema.parse({ name: '😀'.repeat(101), scopes: ['publish'] }),
+  ).toThrow();
+  expect(() =>
+    ReportSchema.parse({ category: 'other', details: '😀'.repeat(2001) }),
+  ).toThrow();
+});
+
+it('rejects contradictory page states and revoked active-token descriptions', () => {
+  expect(
+    ReportsPageSchema.safeParse({ data: [], next_cursor: '1', has_more: false })
+      .success,
+  ).toBe(false);
+  expect(
+    ReportsPageSchema.safeParse({ data: [], next_cursor: null, has_more: true })
+      .success,
+  ).toBe(false);
+  expect(
+    TokenDescriptionSchema.safeParse({
+      id: ID,
+      name: 'Active',
+      scopes: ['publish'],
+      created_at: '2026-09-05T00:00:00.000Z',
+      expires_at: '2026-09-06T00:00:00.000Z',
+      revoked_at: '2026-09-05T12:00:00.000Z',
+    }).success,
+  ).toBe(false);
+});
+
+function expectSequenceRange(schema: Record<string, unknown>) {
+  expect(schema.type).toBe('string');
+  if (typeof schema.pattern !== 'string')
+    throw new Error('Missing sequence pattern');
+  const pattern = new RegExp(schema.pattern);
+  const values = [
+    '0',
+    '1',
+    '01',
+    '-1',
+    '1e3',
+    '1\n',
+    '\n1',
+    '9223372036854775806',
+    '9223372036854775807',
+    '9223372036854775808',
+    '9999999999999999999',
+  ];
+  let sample = 17n;
+  for (let index = 0; index < 256; index++) {
+    sample =
+      (sample * 6364136223846793005n + 1442695040888963407n) &
+      ((1n << 64n) - 1n);
+    values.push(sample.toString());
+  }
+  for (const value of values) {
+    const expected =
+      value.length > 0 &&
+      value[0] !== '0' &&
+      !/[^0-9]/.test(value) &&
+      BigInt(value) <= 9223372036854775807n;
+    expect(
+      pattern.test(value),
+      `OpenAPI sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+    expect(
+      RegistrySequenceSchema.safeParse(value).success,
+      `runtime sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+  }
+}
+
+function pageBranches(schema: Record<string, unknown>) {
+  const branches = Array.isArray(schema.oneOf) ? schema.oneOf.map(record) : [];
+  expect(branches).toHaveLength(2);
+  const branch = (hasMore: boolean) =>
+    branches.find((candidate) => {
+      const value = record(record(candidate.properties).has_more);
+      return (
+        value.const === hasMore ||
+        (Array.isArray(value.enum) && value.enum[0] === hasMore)
+      );
+    });
+  const more = branch(true);
+  const done = branch(false);
+  if (!more || !done) throw new Error('Missing correlated page branches');
+  return { more, done };
+}
 const ARTIFACT_BYTES = new Uint8Array([80, 75, 3, 4]);
 const entry = EntrySchema.parse({
   id: ID,
@@ -571,7 +693,7 @@ const operationCases = [
 describe('generated registry OpenAPI', () => {
   let document: Awaited<ReturnType<typeof generateRegistryOpenApi>>;
   beforeAll(async () => {
-    document = await generateRegistryOpenApi();
+    document = await generateRegistryOpenApi({ secureSessionCookie: true });
   });
 
   it('keeps the published specification equal to the runtime Zod contract', async () => {
@@ -614,6 +736,24 @@ describe('generated registry OpenAPI', () => {
     expect(record(record(compatible.info).license)).toEqual({
       name: 'CC0-1.0',
       url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    });
+    const compatibleAccountPublisher = record(
+      record(
+        record(
+          record(record(record(compatible.paths)['/account']).get).responses,
+        )['200'],
+      ).content,
+    );
+    const compatibleAccountSchema = record(
+      record(compatibleAccountPublisher['application/json']).schema,
+    );
+    expect(
+      record(record(compatibleAccountSchema.properties).publisher),
+    ).toMatchObject({
+      type: 'object',
+      nullable: true,
+      additionalProperties: false,
+      required: ['id', 'name', 'orcid'],
     });
     const entrySummary = record(
       record(record(document.components).schemas).EntrySummary,
@@ -712,10 +852,239 @@ describe('generated registry OpenAPI', () => {
       const metadata = record(
         record(record(record(candidate.components).schemas).Entry).properties,
       );
+      const entryIdSchema = record(
+        record(record(candidate.components).schemas).EntrySummary,
+      ).properties;
+      expect(record(record(entryIdSchema).id).pattern).toBe(
+        '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])',
+      );
       expect(
         record(record(metadata.metadata).properties).schema_version,
       ).toMatchObject({ type: 'integer', enum: [1] });
+      const relatedLink = record(
+        record(
+          record(record(record(metadata.metadata).properties).related_links)
+            .items,
+        ).properties,
+      );
+      expect(relatedLink.url).toMatchObject({
+        format: 'uri',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]:\\/\\/',
+      });
+      const publisher = record(
+        record(record(candidate.components).schemas).Publisher,
+      );
+      expect(record(record(publisher.properties).name)).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+        pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+      });
+      const listResponse = record(
+        record(
+          record(
+            record(record(record(candidate.paths)['/entries']).get).responses,
+          )['200'],
+        ).content,
+      );
+      const listSchema = record(
+        record(listResponse['application/json']).schema,
+      );
+      const listBranches = pageBranches(listSchema);
+      expect(
+        record(record(listBranches.done.properties).next_cursor),
+      ).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      expect(
+        record(record(listBranches.more.properties).next_cursor),
+      ).toMatchObject({
+        minLength: 1,
+        maxLength: 1024,
+        pattern: '^[A-Za-z0-9_-]+$(?![\\s\\S])',
+      });
+
+      for (const [path, method, transport] of [
+        ['/moderation/reports', 'get', 'query'],
+        ['/account/moderation/reports', 'post', 'body'],
+      ] as const) {
+        const reports = record(record(record(candidate.paths)[path])[method]);
+        let after: Record<string, unknown>;
+        if (transport === 'query') {
+          const reportParameters = Array.isArray(reports.parameters)
+            ? reports.parameters.map(record)
+            : [];
+          after = record(
+            reportParameters.find(
+              (parameter) =>
+                parameter.in === 'query' && parameter.name === 'after',
+            )?.schema,
+          );
+        } else {
+          after = record(
+            record(
+              record(
+                record(
+                  record(record(reports.requestBody).content)[
+                    'application/json'
+                  ],
+                ).schema,
+              ).properties,
+            ).after,
+          );
+        }
+        expectSequenceRange(after);
+        const responseSchema = record(
+          record(
+            record(record(record(reports.responses)['200']).content)[
+              'application/json'
+            ],
+          ).schema,
+        );
+        const reportBranches = pageBranches(responseSchema);
+        expectSequenceRange(
+          record(record(reportBranches.more.properties).next_cursor),
+        );
+      }
+
+      for (const [path, method, scope] of [
+        ['/entries', 'post', 'publish'],
+        ['/entries/{id}/yank', 'post', 'publish'],
+        ['/publisher', 'get', 'publish'],
+        ['/moderation/entries/{id}/takedown', 'post', 'moderate'],
+        ['/moderation/entries/{id}/restore', 'post', 'moderate'],
+        ['/moderation/artifacts/{root}', 'delete', 'moderate'],
+        ['/moderation/publishers/{id}/suspension', 'put', 'moderate'],
+        ['/moderation/entries/{id}/curation', 'put', 'moderate'],
+        ['/moderation/reports', 'get', 'moderate'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-token-scopes']).toEqual([scope]);
+        expect(operation.security).toEqual([{ registryToken: [] }]);
+        if (scope === 'moderate')
+          expect(operation['x-registry-operator-required']).toBe(true);
+      }
+      const issuance = record(
+        record(record(candidate.paths)['/account/tokens']).post,
+      );
+      expect(issuance['x-registry-operator-required-for-scopes']).toEqual([
+        'moderate',
+      ]);
+      expect(issuance.description).toContain('current operator');
+      const credentialSchema = record(
+        record(
+          record(
+            record(record(record(issuance.responses)['201']).content)[
+              'application/json'
+            ],
+          ).schema,
+        ).properties,
+      ).credential;
+      const credentialProperties = record(record(credentialSchema).properties);
+      expect(credentialProperties.name).toMatchObject({
+        minLength: 1,
+        maxLength: 100,
+        pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+      });
+      expect(credentialProperties.scopes).toMatchObject({
+        minItems: 1,
+        maxItems: 2,
+      });
+      expect(credentialProperties.revoked_at).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      const listTokens = record(
+        record(record(candidate.paths)['/account/tokens']).get,
+      );
+      const listedTokens = record(
+        record(record(record(listTokens.responses)['200']).content)[
+          'application/json'
+        ],
+      );
+      const listedCredential = record(
+        record(record(record(listedTokens.schema).properties).data).items,
+      );
+      expect(
+        record(record(listedCredential.properties).revoked_at),
+      ).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      const issuanceBody = record(
+        record(record(record(issuance.responses)['201']).content)[
+          'application/json'
+        ],
+      );
+      expect(
+        record(record(record(issuanceBody.schema).properties).token),
+      ).toMatchObject({
+        pattern: '^ncr1_[A-Za-z0-9_-]{43}$(?![\\s\\S])',
+      });
+      for (const path of ['/entries/{id}', '/artifacts/{root}']) {
+        expect(
+          record(record(record(candidate.paths)[path]).get).requestBody,
+        ).toBeUndefined();
+      }
+      for (const path of [
+        '/moderation/reports',
+        '/account/moderation/reports',
+      ]) {
+        const method = path.startsWith('/account/') ? 'post' : 'get';
+        const reportOperation = record(
+          record(record(candidate.paths)[path])[method],
+        );
+        const reportResponse = record(
+          record(record(record(reportOperation.responses)['200']).content)[
+            'application/json'
+          ],
+        );
+        const reportPage = pageBranches(record(reportResponse.schema));
+        for (const branch of [reportPage.more, reportPage.done]) {
+          const item = record(record(record(branch.properties).data).items);
+          const details = record(record(item.properties).details);
+          const text = Array.isArray(details.anyOf)
+            ? details.anyOf.map(record).find((value) => value.type === 'string')
+            : details;
+          expect(text).toMatchObject({ minLength: 1, maxLength: 2000 });
+        }
+      }
+      const yank = record(
+        record(record(candidate.paths)['/entries/{id}/yank']).post,
+      );
+      expect(yank.description).toContain('publisher owns the targeted entry');
+      for (const [path, method] of [
+        ['/account/moderation/entries/{id}/takedown', 'post'],
+        ['/account/moderation/entries/{id}/restore', 'post'],
+        ['/account/moderation/artifacts/{root}', 'delete'],
+        ['/account/moderation/publishers/{id}/suspension', 'put'],
+        ['/account/moderation/entries/{id}/curation', 'put'],
+        ['/account/moderation/reports', 'post'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-operator-required']).toBe(true);
+        expect(operation['x-registry-token-scopes']).toBeUndefined();
+        expect(operation.security).toEqual([{ registrySession: [] }]);
+      }
     }
+  });
+
+  it('rejects a UUID with a final newline in the runtime contract', () => {
+    expect(StrictUuidSchema.safeParse(`${ID}\n`).success).toBe(false);
+    expect(StrictUuidSchema.safeParse(ID).success).toBe(true);
+  });
+
+  it('advertises the cookie name used by supported HTTP localhost mode', async () => {
+    const local = await generateRegistryOpenApi({ secureSessionCookie: false });
+    const schemes = record(record(local.components).securitySchemes);
+    expect(schemes.registrySession).toMatchObject({
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'registry.session_token',
+    });
   });
 
   it('covers every operation, path target and public problem code', () => {
@@ -762,7 +1131,26 @@ describe('generated registry OpenAPI', () => {
         const content = record(record(responses[status]).content);
         expect(Object.keys(content)).toEqual(['application/problem+json']);
         expect(record(content['application/problem+json']).schema).toEqual({
-          $ref: '#/components/schemas/RegistryProblem',
+          $ref: `#/components/schemas/RegistryProblem${status}`,
+        });
+        expect(
+          record(
+            record(record(document.components).schemas)[
+              `RegistryProblem${status}`
+            ],
+          ),
+        ).toMatchObject({
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            status: { type: 'integer', enum: [Number(status)] },
+            code: {
+              type: 'string',
+              enum: errorCases
+                .filter((candidate) => String(candidate.status) === status)
+                .map((candidate) => candidate.code),
+            },
+          },
         });
       }
     },
@@ -821,7 +1209,7 @@ describe('generated registry OpenAPI', () => {
     });
     expect(headers['x-template-root']).toMatchObject({
       required: true,
-      schema: { pattern: '^[0-9a-f]{64}$' },
+      schema: { pattern: '^[0-9a-f]{64}$(?![\\s\\S])' },
     });
     expect(headers['x-registry-yanked']).toMatchObject({
       required: true,

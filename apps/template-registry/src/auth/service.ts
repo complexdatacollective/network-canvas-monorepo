@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto';
+
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink } from 'better-auth/plugins';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
+import { z } from 'zod';
 
 import { REGISTRY_AUTH_TABLES } from './schema.ts';
 
@@ -37,6 +40,17 @@ const AUTH_METHODS = new Map([
   ['/api/auth/get-session', 'GET'],
   ['/api/auth/sign-out', 'POST'],
 ]);
+
+const SignInBody = z.strictObject({
+  email: z.email().max(254),
+  callbackURL: z.string().max(2048).optional(),
+  newUserCallbackURL: z.string().max(2048).optional(),
+  errorCallbackURL: z.string().max(2048).optional(),
+});
+
+function hashMagicLinkToken(token: string): string {
+  return createHash('sha256').update(token, 'utf8').digest('base64url');
+}
 
 function authResponse(code: string, status: number): Response {
   return Response.json(
@@ -115,8 +129,23 @@ export function createRegistryAuth({
     plugins: [
       magicLink({
         expiresIn: 300,
-        storeToken: 'hashed',
-        sendMagicLink: ({ email, url }) => sendMagicLink({ email, url }),
+        // Retain Better Auth's existing SHA-256/base64url representation and
+        // share its exact identifier with failed-delivery cleanup.
+        storeToken: {
+          type: 'custom-hasher',
+          hash: async (token) => hashMagicLinkToken(token),
+        },
+        sendMagicLink: async ({ email, url, token }) => {
+          try {
+            await sendMagicLink({ email, url });
+          } catch {
+            await pool.query(
+              'DELETE FROM registry_auth_verification WHERE identifier = $1',
+              [hashMagicLinkToken(token)],
+            );
+            throw new Error('REGISTRY_AUTH_MAIL_UNAVAILABLE');
+          }
+        },
       }),
     ],
   });
@@ -136,6 +165,17 @@ export function createRegistryAuth({
       }
       let response: Response;
       try {
+        if (path === '/api/auth/sign-in/magic-link') {
+          let body: unknown;
+          try {
+            body = await request.clone().json();
+          } catch {
+            return authResponse('REGISTRY_AUTH_INVALID_REQUEST', 400);
+          }
+          if (!SignInBody.safeParse(body).success) {
+            return authResponse('REGISTRY_AUTH_INVALID_REQUEST', 400);
+          }
+        }
         response = await auth.handler(request);
       } catch {
         response = authResponse('REGISTRY_AUTH_UNAVAILABLE', 503);

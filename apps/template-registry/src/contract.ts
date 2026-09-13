@@ -11,8 +11,10 @@ import {
 import {
   TemplateKindSchema,
   TemplateLicenseSchema,
+  StrictUuidSchema,
 } from '@codaco/studio-sync/template-metadata';
 import {
+  RegistryCredentialSchema,
   RegistryEntrySchema,
   RegistryEntrySummarySchema,
 } from '@codaco/studio-sync/template-registry-contract';
@@ -23,9 +25,11 @@ import {
   CreateTokenSchema,
   PublisherSchema,
   ReportSchema,
+  ReportCursorSchema,
   ReportsPageSchema,
   TokenDescriptionSchema,
 } from './account-contract.ts';
+import { paginatedPageSchema, PaginationCursorSchema } from './pagination.ts';
 import {
   REGISTRY_PROBLEMS,
   RegistryProblemSchema,
@@ -37,25 +41,28 @@ export const EntrySummarySchema = RegistryEntrySummarySchema;
 export const EntrySchema = RegistryEntrySchema;
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
+const codePointLimitedText = (maxLength: number) =>
+  z
+    .string()
+    .min(1)
+    .refine((value) => Array.from(value).length <= maxLength, {
+      message: `Must contain at most ${maxLength} Unicode code points`,
+    });
+
 export const ListEntriesSchema = z
   .strictObject({
-    cursor: z
-      .string()
-      .min(1)
-      .max(1024)
-      .regex(/^[A-Za-z0-9_-]+$/)
-      .optional(),
+    cursor: PaginationCursorSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
-    query: z.string().min(1).max(200).optional(),
+    query: codePointLimitedText(200).optional(),
     kind: TemplateKindSchema.optional(),
     license: TemplateLicenseSchema.optional(),
-    keyword: z.string().min(1).max(100).optional(),
-    author: z.string().min(1).max(200).optional(),
+    keyword: codePointLimitedText(100).optional(),
+    author: codePointLimitedText(200).optional(),
     curated: z.enum(['true', 'false']).optional(),
     root: TemplateContentHashSchema.describe(
       'Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content.',
     ).optional(),
-    publisher_id: z.uuid().optional(),
+    publisher_id: StrictUuidSchema.optional(),
   })
   .meta({ id: 'ListEntries' });
 export type ListEntries = z.infer<typeof ListEntriesSchema>;
@@ -73,7 +80,8 @@ const route = oc.errors({
 });
 const bearer = [{ registryToken: [] }];
 const cookie = [{ registrySession: [] }];
-const entryId = z.strictObject({ id: z.uuid() });
+type TokenScope = 'publish' | 'moderate';
+const entryId = z.strictObject({ id: StrictUuidSchema });
 const artifactRoot = z.strictObject({ root: TemplateContentHashSchema });
 const empty = z.strictObject({});
 // Keep transport namespaces separate. Compact decoding merges body/query fields
@@ -84,11 +92,13 @@ const entryTarget = z.object({
   query: empty,
   body: empty.optional(),
 });
+const readEntryTarget = z.object({ params: entryId, query: empty });
 const artifactTarget = z.object({
   params: artifactRoot,
   query: empty,
   body: empty.optional(),
 });
+const readArtifactTarget = z.object({ params: artifactRoot, query: empty });
 const success = z.strictObject({ ok: z.literal(true) });
 
 const requiredRegistryOrigin = {
@@ -116,10 +126,34 @@ function securedOperation<T extends { parameters?: readonly unknown[] }>(
     : secured;
 }
 
+function tokenOperation<T>(operation: T, scope: TokenScope) {
+  return {
+    ...operation,
+    'security': bearer,
+    'x-registry-token-scopes': [scope],
+    ...(scope === 'moderate' ? { 'x-registry-operator-required': true } : {}),
+  };
+}
+
+function operatorSessionOperation<
+  T extends { parameters?: readonly unknown[] },
+>(operation: T) {
+  return {
+    ...securedOperation(operation, cookie),
+    'x-registry-operator-required': true,
+  };
+}
+
 function moderationRoutes(
   prefix: '/moderation' | '/account/moderation',
   security: typeof bearer | typeof cookie,
 ) {
+  const secure = <T extends { parameters?: readonly unknown[] }>(
+    operation: T,
+  ) =>
+    security === bearer
+      ? tokenOperation(operation, 'moderate')
+      : operatorSessionOperation(operation);
   return {
     takedown: route
       .meta(
@@ -128,7 +162,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/takedown`,
           summary: 'Remove access to an entry’s artifact across all locators',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(entryTarget)
@@ -140,7 +174,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/restore`,
           summary: 'Restore access after a takedown',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(entryTarget)
@@ -153,7 +187,7 @@ function moderationRoutes(
           summary: 'Permanently remove content and queue object cleanup',
           successStatus: 202,
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(artifactTarget)
@@ -165,7 +199,7 @@ function moderationRoutes(
           path: `${prefix}/publishers/{id}/suspension`,
           summary: 'Suspend or reinstate a publisher',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
@@ -183,7 +217,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/curation`,
           summary: 'Grant or revoke the curated badge',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
@@ -200,15 +234,12 @@ function moderationRoutes(
           method: security === cookie ? 'POST' : 'GET',
           path: `${prefix}/reports`,
           summary: 'Read pending reports',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
         z.strictObject({
-          after: z
-            .string()
-            .regex(/^[1-9][0-9]{0,18}$/)
-            .optional(),
+          after: ReportCursorSchema.optional(),
           limit: z.coerce.number().int().min(1).max(100).default(20),
         }),
       )
@@ -228,13 +259,7 @@ export const registryContract = {
       }),
     )
     .input(ListEntriesSchema)
-    .output(
-      z.strictObject({
-        data: z.array(EntrySummarySchema),
-        next_cursor: z.string().nullable(),
-        has_more: z.boolean(),
-      }),
-    ),
+    .output(paginatedPageSchema(EntrySummarySchema, PaginationCursorSchema)),
   entry: route
     .meta(
       openapi({
@@ -244,7 +269,7 @@ export const registryContract = {
         inputStructure: 'detailed',
       }),
     )
-    .input(entryTarget)
+    .input(readEntryTarget)
     .output(EntrySchema),
   artifact: route
     .meta(
@@ -256,7 +281,7 @@ export const registryContract = {
         outputStructure: 'detailed',
       }),
     )
-    .input(artifactTarget)
+    .input(readArtifactTarget)
     .output(
       z.strictObject({
         headers: z.strictObject({
@@ -284,7 +309,7 @@ export const registryContract = {
         path: '/entries',
         summary: 'Publish a verified template artifact',
         successStatus: 201,
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .input(
@@ -299,8 +324,10 @@ export const registryContract = {
         method: 'POST',
         path: '/entries/{id}/yank',
         summary: 'Withdraw an entry from browsing',
+        description:
+          'Requires a publish-scoped credential whose publisher owns the targeted entry.',
         inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .input(entryTarget)
@@ -316,14 +343,14 @@ export const registryContract = {
       }),
     )
     .input(z.object({ params: entryId, query: empty, body: ReportSchema }))
-    .output(z.strictObject({ id: z.uuid() })),
+    .output(z.strictObject({ id: StrictUuidSchema })),
   me: route
     .meta(
       openapi({
         method: 'GET',
         path: '/publisher',
         summary: 'Verify the registry credential and publisher',
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .output(PublisherSchema),
@@ -356,12 +383,20 @@ export const registryContract = {
         path: '/account/tokens',
         summary: 'Issue a registry credential',
         successStatus: 201,
-        spec: (operation) => securedOperation(operation, cookie),
+        spec: (operation) => ({
+          ...securedOperation(operation, cookie),
+          'description':
+            'Requires a verified registry session with a claimed publisher. If requested scopes contain moderate, the account must be a current operator; otherwise the request returns 403. A moderate credential also requires its owner to remain a current operator when it is used.',
+          'x-registry-operator-required-for-scopes': ['moderate'],
+        }),
       }),
     )
     .input(CreateTokenSchema)
     .output(
-      z.strictObject({ token: z.string(), credential: TokenDescriptionSchema }),
+      z.strictObject({
+        token: RegistryCredentialSchema,
+        credential: TokenDescriptionSchema,
+      }),
     ),
   listTokens: route
     .meta(
@@ -394,7 +429,9 @@ export const registryContract = {
   accountReports: accountModeration.reports,
 };
 
-export async function generateRegistryOpenApi() {
+export async function generateRegistryOpenApi(options: {
+  secureSessionCookie: boolean;
+}) {
   const converter = new ZodToJsonSchemaConverter();
   const generator = new OpenAPIGenerator({ converters: [converter] });
   const doc = await generator.generate(registryContract, {
@@ -414,14 +451,16 @@ export async function generateRegistryOpenApi() {
             scheme: 'bearer',
             bearerFormat: 'ncr1_<256-bit secret>',
             description:
-              'Registry-issued credentials. Studio instance API tokens do not authenticate here.',
+              'Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. x-registry-operator-required requires the credential owner to be a current operator. Studio instance API tokens do not authenticate here.',
           },
           registrySession: {
             type: 'apiKey',
             in: 'cookie',
-            name: '__Secure-registry.session_token',
+            name: options.secureSessionCookie
+              ? '__Secure-registry.session_token'
+              : 'registry.session_token',
             description:
-              'Verified email session issued by this registry. Account writes also require the registry Origin header.',
+              'Verified email session issued by this registry. Account writes also require the registry Origin header; moderation operations separately declare x-registry-operator-required.',
           },
         },
       },
@@ -429,6 +468,11 @@ export async function generateRegistryOpenApi() {
     customErrorResponseBodySchema: () =>
       converter.convert(RegistryProblemSchema, 'output')[0],
   });
+  const problemSchemas = doc.components?.schemas;
+  if (!problemSchemas) throw new Error('REGISTRY_PROBLEM_SCHEMAS_MISSING');
+  const baseProblemSchema = problemSchemas.RegistryProblem;
+  if (!isRecord(baseProblemSchema) || !isRecord(baseProblemSchema.properties))
+    throw new Error('REGISTRY_PROBLEM_SCHEMA_INVALID');
   for (const path of Object.values(doc.paths ?? {})) {
     if (!path) continue;
     for (const method of ['get', 'post', 'put', 'delete'] as const) {
@@ -449,6 +493,22 @@ export async function generateRegistryOpenApi() {
         response.content['application/problem+json'] =
           response.content['application/json'];
         delete response.content['application/json'];
+        const problem = response.content['application/problem+json'];
+        if (isRecord(problem) && isRecord(problem.schema)) {
+          const codes = Object.entries(REGISTRY_PROBLEMS)
+            .filter(([, value]) => value.status === Number(status))
+            .map(([code]) => code);
+          const schemaName = `RegistryProblem${status}`;
+          problemSchemas[schemaName] = {
+            ...structuredClone(baseProblemSchema),
+            properties: {
+              ...structuredClone(baseProblemSchema.properties),
+              status: { type: 'integer', enum: [Number(status)] },
+              code: { type: 'string', enum: codes },
+            },
+          };
+          problem.schema = { $ref: `#/components/schemas/${schemaName}` };
+        }
       }
     }
   }
@@ -468,6 +528,11 @@ export async function generateRegistryOpenApi() {
   // by clients so that `/`, `?`, `#`, `&`, and `=` remain part of the value
   // instead of changing the request's query structure.
   const freeTextQueryNames = new Set(['query', 'keyword', 'author']);
+  const freeTextQueryMaxLengths = new Map([
+    ['query', 200],
+    ['keyword', 100],
+    ['author', 200],
+  ]);
   for (const path of Object.values(doc.paths ?? {})) {
     if (!path) continue;
     for (const method of ['get', 'post', 'put', 'delete'] as const) {
@@ -480,9 +545,66 @@ export async function generateRegistryOpenApi() {
           freeTextQueryNames.has(parameter.name)
         ) {
           parameter.allowReserved = false;
+          const schema = parameter.schema;
+          const maxLength = freeTextQueryMaxLengths.get(parameter.name);
+          if (isRecord(schema) && maxLength !== undefined)
+            schema.maxLength = maxLength;
         }
       }
     }
+  }
+  const strictUuidPattern =
+    '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])';
+  const hardenUuidPatterns = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(hardenUuidPatterns);
+      return;
+    }
+    if (!isRecord(value)) return;
+    if (value.format === 'uuid') value.pattern = strictUuidPattern;
+    Object.values(value).forEach(hardenUuidPatterns);
+  };
+  hardenUuidPatterns(doc);
+  for (const [path, method] of [
+    ['/entries', 'get'],
+    ['/moderation/reports', 'get'],
+    ['/account/moderation/reports', 'post'],
+  ] as const) {
+    const operation = doc.paths?.[path]?.[method];
+    const response = operation?.responses?.['200'];
+    const content = isRecord(response) ? response.content : undefined;
+    const media = isRecord(content) ? content['application/json'] : undefined;
+    const schema = isRecord(media) ? media.schema : undefined;
+    if (!isRecord(media) || !isRecord(schema) || !isRecord(schema.properties))
+      throw new Error('REGISTRY_PAGE_SCHEMA_INVALID');
+    const cursor = schema.properties.next_cursor;
+    if (!isRecord(cursor) || !Array.isArray(cursor.anyOf))
+      throw new Error('REGISTRY_PAGE_CURSOR_SCHEMA_INVALID');
+    const present = cursor.anyOf.find(
+      (candidate) => isRecord(candidate) && candidate.type !== 'null',
+    );
+    if (!isRecord(present)) throw new Error('REGISTRY_PAGE_CURSOR_MISSING');
+    const properties = schema.properties;
+    media.schema = {
+      oneOf: [
+        {
+          ...schema,
+          properties: {
+            ...properties,
+            next_cursor: present,
+            has_more: { type: 'boolean', const: true },
+          },
+        },
+        {
+          ...schema,
+          properties: {
+            ...properties,
+            next_cursor: { type: 'null' },
+            has_more: { type: 'boolean', const: false },
+          },
+        },
+      ],
+    };
   }
   return doc;
 }

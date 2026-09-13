@@ -4,8 +4,8 @@ import { expect, userEvent, within } from 'storybook/test';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
+import EdgeTypeSection from '../editors/dyad-census/sections/EdgeTypeSection.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import CreateEdgeField from './CreateEdgeField.tsx';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
 /** The question the fixture's Dyad Census asks, as the protocol holds it. */
@@ -52,7 +52,7 @@ function TheQuestion({ item }: Readonly<{ item: Record<string, unknown> }>) {
       title="Prompt configuration"
       description="Write the participant prompt and select the edge type created by an affirmative response."
     >
-      <CreateEdgeField
+      <EdgeTypeSection
         label="Created edge type"
         requiredMessage="Choose the type of connection an affirmative answer creates."
       />

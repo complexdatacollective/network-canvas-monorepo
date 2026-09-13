@@ -7,10 +7,11 @@ documents and conformance fixtures. It does not change the license of the
 implementation elsewhere in this repository or of templates exchanged through
 the registry.
 
-Version 1 defines the [portable template container](v1/template-format.md) and
-an [independent hash fixture](v1/hash-vector.json). The HTTP API specification
-will be generated from the registry's executable endpoint contracts in the
-service slice. These are reviewable publication sources; publication to the
+The sole normative version 1 specification is the
+[portable template exchange](../../apps/template-registry/spec/template-exchange-v1.md)
+in the Registry service's `spec/` directory, alongside its generated OpenAPI
+contracts. This directory retains a redirect from the former format document
+and an [independent hash fixture](v1/hash-vector.json). Publication to the
 separate public specification repository remains a release requirement.
 
 The registry is an independent service. A registry account identifies a

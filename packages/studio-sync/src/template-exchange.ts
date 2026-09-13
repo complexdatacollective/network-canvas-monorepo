@@ -32,13 +32,16 @@ import {
 } from './template-metadata.ts';
 
 export {
+  parseBoundedJson,
   TEMPLATE_ARTIFACT_LIMITS,
   TemplateArtifactError,
 } from './template-archive.ts';
 
 export const TEMPLATE_ARTIFACT_MEDIA_TYPE =
   'application/vnd.networkcanvas.template+zip';
-export const TemplateContentHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+export const TemplateContentHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$(?![\s\S])/);
 const filename = z
   .string()
   .min(1)
@@ -365,6 +368,64 @@ function validGeoJson(value: unknown): boolean {
   return geometryDimensions(value) !== null;
 }
 
+/** Validate the v1 CSV grammar in one pass without retaining decoded records. */
+function validCsv(value: string): boolean {
+  type State = 'field-start' | 'unquoted' | 'quoted' | 'after-quote';
+  let state: State = 'field-start';
+  let fields = 1;
+  let expectedFields: number | undefined;
+  let endedWithRecord = false;
+  const finishRecord = () => {
+    if (expectedFields === undefined) expectedFields = fields;
+    else if (fields !== expectedFields) return false;
+    fields = 1;
+    state = 'field-start';
+    endedWithRecord = true;
+    return true;
+  };
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (state === 'quoted') {
+      if (character === '"') {
+        if (value[index + 1] === '"') index += 1;
+        else state = 'after-quote';
+      } else if (character === '\r') {
+        if (value[index + 1] !== '\n') return false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === ',') {
+      fields += 1;
+      state = 'field-start';
+      endedWithRecord = false;
+      continue;
+    }
+    if (character === '\n' || character === '\r') {
+      if (character === '\r') {
+        if (value[index + 1] !== '\n') return false;
+        index += 1;
+      }
+      if (!finishRecord()) return false;
+      continue;
+    }
+    if (character === '"') {
+      if (state !== 'field-start') return false;
+      state = 'quoted';
+      endedWithRecord = false;
+      continue;
+    }
+    if (state === 'after-quote') return false;
+    state = 'unquoted';
+    endedWithRecord = false;
+  }
+
+  if (state === 'quoted') return false;
+  return endedWithRecord || finishRecord();
+}
+
 async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
   if (asset.bytes.byteLength !== asset.byte_size) invalid();
   requireHash(asset.bytes, asset.hash);
@@ -376,15 +437,21 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
     )
   ) {
     try {
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(
-        asset.bytes,
-      );
-      // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
-      if (!text.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text))
+      // Consume exactly one initial UTF-8 BOM for parsing; asset hashes and
+      // archive bytes above retain the original sequence unchanged.
+      const text = new TextDecoder('utf-8', {
+        fatal: true,
+        ignoreBOM: false,
+      }).decode(asset.bytes);
+      if (
+        text.length === 0 ||
+        // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)
+      )
         invalid();
       if (asset.media_type === 'text/csv') {
         // CSV is inert dataset text, never an inline browser document.
-        admitted = !/^\s*<(?:!doctype|html|svg|script)\b/i.test(text);
+        admitted = !/^\s*</.test(text) && validCsv(text);
       } else {
         const value = parseBoundedJson(text);
         admitted = value !== null && typeof value === 'object';
@@ -411,13 +478,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Presence only: destination reference mapping remains the insertion contract. */
+/** Exactly one reusable subject keeps import identity independent of importer choice. */
 function requireKindContent(
   kind: TemplateArtifactManifest['template']['kind'],
   sections: ReadonlyMap<string, SectionDoc>,
 ): void {
   if (kind === 'protocol') return;
-  const present = Array.from(sections).some(([id, doc]) => {
+  const subjects = Array.from(sections).filter(([id, doc]) => {
     const reference = parseSectionId(id);
     if (kind === 'stage') return reference.kind === 'stage';
     if (kind === 'entity_definition' || kind === 'variable_set') {
@@ -448,7 +515,8 @@ function requireKindContent(
         ('edges' in prompt && Boolean(prompt.edges?.create)),
     );
   });
-  if (!present) throw new TemplateArtifactError('TEMPLATE_SECTIONS_INVALID');
+  if (subjects.length !== 1)
+    throw new TemplateArtifactError('TEMPLATE_SECTIONS_INVALID');
 }
 
 async function verifyFiles(

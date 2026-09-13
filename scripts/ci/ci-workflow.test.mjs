@@ -965,9 +965,17 @@ test('Studio browser telemetry failures fail the actual quality-support gate', (
     telemetry.env.STUDIO_TELEMETRY_KERNEL_IMAGE,
     'studio-telemetry-qualification:${{ github.sha }}',
   );
+  assert.equal(
+    telemetry.env.STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE,
+    'studio-telemetry-observer:${{ github.sha }}',
+  );
   assert.match(
     telemetry.run,
     /docker build -f apps\/studio\/Dockerfile -t "\$STUDIO_TELEMETRY_KERNEL_IMAGE" \./,
+  );
+  assert.match(
+    telemetry.run,
+    /docker build -f apps\/studio\/telemetry-observer\.Dockerfile --build-arg "STUDIO_CANDIDATE_IMAGE=\$STUDIO_TELEMETRY_KERNEL_IMAGE" -t "\$STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE" \./,
   );
   assert.match(telemetry.run, /playwright install --with-deps chromium/);
   assert.match(

@@ -26,7 +26,7 @@ function fixture({
   };
 }
 
-test('binds the source to the fixed main push workflow and rereads its latest attempt', async () => {
+test('binds the source to the completed merge-queue workflow and rereads its latest attempt', async () => {
   const f = fixture();
   assert.deepEqual(await f.verify(), { source, runId: 12, attempt: 1 });
   assert.deepEqual(f.calls, [
@@ -34,8 +34,7 @@ test('binds the source to the fixed main push workflow and rereads its latest at
       path: 'repos/complexdatacollective/network-canvas-monorepo/actions/workflows/ci-and-release.yml/runs',
       query: {
         head_sha: source,
-        event: 'push',
-        branch: 'main',
+        event: 'merge_group',
         per_page: 100,
         page: 1,
       },
@@ -47,8 +46,7 @@ test('binds the source to the fixed main push workflow and rereads its latest at
       path: 'repos/complexdatacollective/network-canvas-monorepo/actions/workflows/ci-and-release.yml/runs',
       query: {
         head_sha: source,
-        event: 'push',
-        branch: 'main',
+        event: 'merge_group',
         per_page: 100,
         page: 1,
       },
@@ -61,8 +59,8 @@ test('binds the source to the fixed main push workflow and rereads its latest at
 
 for (const [label, overrides] of [
   ['wrong-source', { head_sha: 'b'.repeat(40) }],
-  ['wrong-branch', { head_branch: 'feature' }],
-  ['PR-run', { event: 'pull_request' }],
+  ['wrong-branch', { head_branch: 'main' }],
+  ['push-run', { event: 'push' }],
   ['another-workflow', { path: '.github/workflows/other.yml' }],
   ['another-repository', { repository: { full_name: 'other/repo' } }],
   ['fork-source', { head_repository: { full_name: 'fork/repo' } }],
