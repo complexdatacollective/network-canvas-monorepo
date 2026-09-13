@@ -193,7 +193,11 @@ const main = async () => {
     }
   }
 };
-main().catch(() => { process.stderr.write('Kernel qualification observer failed.\\n'); process.exit(1); });
+main().catch((error) => {
+  const code = typeof error?.code === 'string' && /^[A-Z_]{1,40}$/.test(error.code) ? error.code : 'UNKNOWN';
+  process.stderr.write('Kernel qualification observer failed: ' + code + '\\n');
+  process.exit(1);
+});
 `;
 
 export function telemetryKernelComposeServices(image: string) {

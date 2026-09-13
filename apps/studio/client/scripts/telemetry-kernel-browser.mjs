@@ -20,14 +20,14 @@ import {
 const execute = promisify(execFile);
 const DEADLINE = 30_000;
 
-async function docker(args, options = {}) {
+async function docker(args, { includeStderr = false, ...options } = {}) {
   const result = await execute('docker', args, {
     encoding: 'utf8',
     maxBuffer: 4 * 1024 * 1024,
     timeout: DEADLINE,
     ...options,
   });
-  return result.stdout.trim();
+  return (result.stdout + (includeStderr ? result.stderr : '')).trim();
 }
 
 async function assertObserverRunning(name) {
@@ -39,18 +39,24 @@ async function assertObserverRunning(name) {
 }
 
 async function waitForObserver(name) {
+  let lastError;
+  let logs = '';
   for (let attempt = 0; attempt < 100; attempt++) {
-    const logs = await docker(['logs', name]);
+    logs = await docker(['logs', name], { includeStderr: true });
     try {
       await assertObserverRunning(name);
       assertKernelTelemetryReady(logs);
       assertKernelTelemetryControls(logs);
       return logs;
-    } catch {
+    } catch (error) {
+      lastError = error;
       await delay(100);
     }
   }
-  throw new Error('Browser kernel observer did not become live.');
+  throw new Error(
+    `Browser kernel observer did not become live. Recent qualification output: ${logs.slice(-4096)}`,
+    { cause: lastError },
+  );
 }
 
 export async function launchKernelObservedChromium({
