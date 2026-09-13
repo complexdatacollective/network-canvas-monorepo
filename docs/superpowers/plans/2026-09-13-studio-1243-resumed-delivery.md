@@ -42,9 +42,17 @@ Active assignments now: lead integration/review/PR delivery; Sol installer gaps;
 - Observability checkpoint `d51a83b10519bd9e7ff723c2f4ebc8ceb9f6fa7e` identified dropped worker/recovery diagnostics. Integration now targets one canonical severity map shared by logger and sanitizer, including main's protocol-lease diagnostic and recovery codes. Existing invitations/audit-alert dispatchers are already instrumented. Full future export/message/webhook/rollup consumer adoption additionally depends on #1520/#1305/#1291/#1268; do not fabricate placeholder workers or mark those gates complete.
 - Netlify readback confirms production `networkcanvas.studio` assigned and responding HTTPS 200. Staging `studio.networkcanvas.dev` is assigned in Netlify but does not resolve in DNS. No live backend/backup/alert qualification was inferred from the production HTML response. Provider account access remains pending.
 
+## Current delivery checkpoint, September 13
+
+- Registry PR #1745 now targets main at `fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196`. The immutable-archive production image passed all five entrypoint imports; its network-disabled recovery CLI rejects invalid input. Local arm64 manifest digest `sha256:04b0af3280c269bc201de6cabbaaf97b006ba4c25e7c859e341518524e7d24db`. Fresh review requested; CI selection is being checked because the first snapshot only lists release computation and changeset validation.
+- Recovery PR #1746 is pushed at `61a1bf1b99d75435a8b6c853581e478295c24519`, with final Registry/main parent ancestry. Canonical 0011 checkpoint is `3cdcfe39f89589f011729bb110091ea3ab064e0e`; 321 real PostgreSQL tests, types, lint and Knip passed. Fresh review requested.
+- Studio Registry UI integration generated `0012_registry_template_exchange`, fingerprint `2d0360442ca4ce6bc4fce303d313f1e19864122123773ede1cd1030c7cb072a2`. All 44 parent artifacts are byte-identical and new SQL equals the preserved earlier Registry migration intent. Both app typechecks, nine UI tests, full Knip and 308 combined migration/Registry/recovery tests pass. A dedicated populated-template preservation test is being verified before the merge checkpoint is committed.
+- Observability `1204139c75feea5a4f5dc01e21d6eb3158da48e1` is pushed and clean: one 33-code severity catalog, relocated active managed scripts, preserved 0011. Its focused suites, both types and Knip pass; lead review continues.
+- Telemetry `11bffda2859400e5501c542b49f1ba6fb391437f` is preserved remotely. Lead review found that moving observers before readiness still leaves application startup unobserved, and aggregated heartbeats can mask a dead sibling. These remain actionable fixes before Linux qualification. No telemetry release pass is claimed.
+
 ## Remaining sequence
 
-1. Finish, review and land shared migration fixes; complete inventory's current-head review and checks.
+1. Shared migration and inventory foundation are landed; preserve their published artifacts and parent ancestry.
 2. Integrate Registry corrections and the corrected parent, refresh immutable-image evidence and complete #1745 review rounds.
 3. Integrate recovery with main while regenerating its additive migration, then the Studio Registry flow; complete focused PostgreSQL, UI and production-entrypoint evidence and ship the dependent PRs.
 4. Finish installer, observability and telemetry integration from their saved checkpoints. Complete Linux Chromium isolation, signed image/SBOM publication, checkout-free install, predecessor upgrade and recovery/restart qualification.
