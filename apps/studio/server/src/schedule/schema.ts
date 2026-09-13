@@ -388,9 +388,11 @@ const messageDeliveries = pgTable(
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
-    renderedCiphertext: bytea('rendered_ciphertext').notNull(),
-    renderedKeyId: text('rendered_key_id').notNull(),
-    renderedAlgorithm: text('rendered_algorithm').notNull(),
+    // Null only on terminal rows retained from before encrypted rendered
+    // payloads existed. The insert trigger below requires all new rows.
+    renderedCiphertext: bytea('rendered_ciphertext'),
+    renderedKeyId: text('rendered_key_id'),
+    renderedAlgorithm: text('rendered_algorithm'),
     provider: text('provider'),
     providerMessageId: text('provider_message_id'),
     sendStartedAt: timestamp('send_started_at', { withTimezone: true }),
@@ -504,6 +506,7 @@ const messageDeliveries = pgTable(
       sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
           AND octet_length(${table.recipientBlindIndex}) = 32
           AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64
+          AND num_nonnulls(${table.renderedCiphertext}, ${table.renderedKeyId}, ${table.renderedAlgorithm}) IN (0, 3)
           AND octet_length(${table.renderedCiphertext}) BETWEEN 30 AND 16384
           AND char_length(${table.renderedKeyId}) BETWEEN 1 AND 64
           AND ${table.renderedAlgorithm} = 'aes-256-gcm.v1'`,
@@ -765,9 +768,40 @@ CREATE OR REPLACE TRIGGER message_templates_publication_immutable
 -- dispatch state moves. Same shape as invitation_delivery_payload_immutable.
 CREATE OR REPLACE FUNCTION message_delivery_payload_is_immutable() RETURNS trigger AS $$
 BEGIN
+  IF TG_TABLE_NAME = 'message_deliveries'
+     AND current_user = '${TENANT_ROLES.maintenance}'
+     AND current_setting('app.encryption_rotation', true) = 'v1'
+     AND NEW.id IS NOT DISTINCT FROM OLD.id
+     AND NEW.team_id IS NOT DISTINCT FROM OLD.team_id
+     AND NEW.study_id IS NOT DISTINCT FROM OLD.study_id
+     AND NEW.participant_id IS NOT DISTINCT FROM OLD.participant_id
+     AND NEW.occurrence_id IS NOT DISTINCT FROM OLD.occurrence_id
+     AND NEW.interview_link_id IS NOT DISTINCT FROM OLD.interview_link_id
+     AND NEW.template_id IS NOT DISTINCT FROM OLD.template_id
+     AND NEW.kind IS NOT DISTINCT FROM OLD.kind
+     AND NEW.channel IS NOT DISTINCT FROM OLD.channel
+     AND NEW.recipient_blind_index IS NOT DISTINCT FROM OLD.recipient_blind_index
+     AND NEW.blind_index_key_id IS NOT DISTINCT FROM OLD.blind_index_key_id
+     AND NEW.rendered_body_hash IS NOT DISTINCT FROM OLD.rendered_body_hash
+     AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at THEN
+    RETURN NEW;
+  END IF;
   RAISE EXCEPTION 'message delivery payload is immutable';
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION message_delivery_requires_rendered_payload() RETURNS trigger AS $$
+BEGIN
+  IF num_nonnulls(NEW.rendered_ciphertext, NEW.rendered_key_id, NEW.rendered_algorithm) <> 3 THEN
+    RAISE EXCEPTION 'new message deliveries require an encrypted rendered payload';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_deliveries_require_rendered_payload
+  BEFORE INSERT ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_requires_rendered_payload();
 
 CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
   BEFORE UPDATE ON message_deliveries
@@ -792,9 +826,15 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
   )
   EXECUTE FUNCTION message_delivery_payload_is_immutable();
 
+CREATE OR REPLACE FUNCTION message_delivery_event_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'message delivery payload is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE TRIGGER message_delivery_events_immutable
   BEFORE UPDATE ON message_delivery_events
-  FOR EACH ROW EXECUTE FUNCTION message_delivery_payload_is_immutable();
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_event_is_immutable();
 
 -- A delivery copies its template's kind and channel, and may cite a study
 -- override only of its own study. The composite key cannot say "the

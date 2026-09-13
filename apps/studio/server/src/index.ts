@@ -44,6 +44,7 @@ import {
 } from './pii/serving-admission.ts';
 import { acquireWebLease } from './runtime/web-lease.ts';
 import {
+  scheduledEmailDeliveryEnabled,
   startMessageDeliveryWorker,
   type MessageDeliveryWorker,
 } from './schedule/message-delivery.ts';
@@ -137,9 +138,20 @@ function startDatabaseWorkers(): void {
       reportError: (error) => telemetry?.capture('server_worker', error),
     });
     const mailerConfig = env.auth?.mailer;
-    if (!messageEmailSender && mailerConfig?.kind === 'smtp')
+    if (
+      !messageEmailSender &&
+      mailerConfig?.kind === 'smtp' &&
+      scheduledEmailDeliveryEnabled('smtp', undefined)
+    )
       messageEmailSender = createSmtpEmailSender({ url: mailerConfig.url });
-    if (!messageEmailSender && mailerConfig?.kind === 'postmark')
+    if (
+      !messageEmailSender &&
+      mailerConfig?.kind === 'postmark' &&
+      scheduledEmailDeliveryEnabled(
+        'postmark',
+        env.messageDelivery?.postmarkWebhookToken,
+      )
+    )
       messageEmailSender = createPostmarkEmailSender({
         serverToken: mailerConfig.serverToken,
         messageStream: mailerConfig.messageStream,
@@ -331,6 +343,7 @@ const app = servesWeb
         ? {
             messageStatus: {
               maintenancePool,
+              ...(env.auth ? { publicBaseUrl: env.auth.baseUrl } : {}),
               ...(env.messageDelivery?.postmarkWebhookToken
                 ? { postmarkToken: env.messageDelivery.postmarkWebhookToken }
                 : {}),

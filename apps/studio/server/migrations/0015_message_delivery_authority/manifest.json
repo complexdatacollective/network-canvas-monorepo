@@ -2,8 +2,8 @@
   "format": 1,
   "id": "0015_message_delivery_authority",
   "previous": "0014_webhook_dispatch_runtime",
-  "fingerprint": "10c99f74fd4ebaef91ff2ee155c65ef769382532abf836d0f00d2a67c4c4de9d",
-  "snapshotHash": "7e02183cc797d9f2d5a58427f3fc5b09af6afec3537ad42a7a3f7f62d2b06278",
-  "sqlHash": "216d26c61a251cc0e33a9ad34f3a826c743e947850b041ee6aaa94d2245806d0",
-  "sidecarsHash": "d553eff2dd06c779cb2f70a189340395a3616bc20e606eb0b4f4f4d24d8180d2"
+  "fingerprint": "6247a584c0624edb2e9a6b98cc3a038859a185c9188f4ad7263759036e4b94da",
+  "snapshotHash": "8907d26a4f879b55b72f8bb67aa932f955a3f82dca6b3d303312d2454d89df2f",
+  "sqlHash": "debebbf31defbe2b3e9ead991d4153f9fe76f21b74b926a8ab056e7c76fb3240",
+  "sidecarsHash": "cd49da144f43e65f17e5a6004ac2997b1c19e017f5e8b4d3ce7f09a241812606"
 }

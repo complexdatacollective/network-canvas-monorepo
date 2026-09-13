@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "8c6997bd-ce62-4c1e-9206-f5139ee01419",
+  "id": "14b90d82-9007-4ec6-8e54-912aa56efe32",
   "prevIds": ["7b405bd3-5aa2-463b-9848-ad5131aca5c5"],
   "version": "8",
   "ddl": [
@@ -5619,7 +5619,7 @@
     {
       "type": "bytea",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -5632,7 +5632,7 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -5645,7 +5645,7 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -16004,7 +16004,7 @@
       "table": "message_deliveries"
     },
     {
-      "value": "\"rendered_body_hash\" ~ '^[0-9a-f]{64}$'\n          AND octet_length(\"recipient_blind_index\") = 32\n          AND char_length(\"blind_index_key_id\") BETWEEN 1 AND 64\n          AND octet_length(\"rendered_ciphertext\") BETWEEN 30 AND 16384\n          AND char_length(\"rendered_key_id\") BETWEEN 1 AND 64\n          AND \"rendered_algorithm\" = 'aes-256-gcm.v1'",
+      "value": "\"rendered_body_hash\" ~ '^[0-9a-f]{64}$'\n          AND octet_length(\"recipient_blind_index\") = 32\n          AND char_length(\"blind_index_key_id\") BETWEEN 1 AND 64\n          AND num_nonnulls(\"rendered_ciphertext\", \"rendered_key_id\", \"rendered_algorithm\") IN (0, 3)\n          AND octet_length(\"rendered_ciphertext\") BETWEEN 30 AND 16384\n          AND char_length(\"rendered_key_id\") BETWEEN 1 AND 64\n          AND \"rendered_algorithm\" = 'aes-256-gcm.v1'",
       "name": "message_deliveries_hash_check",
       "entityType": "checks",
       "schema": "public",

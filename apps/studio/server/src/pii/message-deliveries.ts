@@ -23,7 +23,7 @@ export const RenderedMessageSchema = z.strictObject({
 });
 export type RenderedMessage = z.infer<typeof RenderedMessageSchema>;
 
-type DeliveryCiphertext = {
+export type DeliveryCiphertext = {
   id: string;
   team_id: string;
   study_id: string;
@@ -36,6 +36,18 @@ type DeliveryCiphertext = {
   rendered_key_id: string;
   rendered_algorithm: string;
 };
+
+function sameRenderedCiphertext(
+  current: DeliveryCiphertext | undefined,
+  expected: DeliveryCiphertext,
+): boolean {
+  return Boolean(
+    current &&
+    current.rendered_key_id === expected.rendered_key_id &&
+    current.rendered_algorithm === expected.rendered_algorithm &&
+    current.rendered_ciphertext.equals(expected.rendered_ciphertext),
+  );
+}
 
 function event(
   context: SystemAuditEventContext<'Message delivery'>,
@@ -155,6 +167,78 @@ export async function readRenderedMessage(
       kind: 'message',
       teamId: input.teamId,
       deliveryId: input.deliveryId,
+      column: 'rendered_ciphertext',
+    },
+    {
+      keyId: row.rendered_key_id,
+      algorithm: row.rendered_algorithm,
+      envelope: row.rendered_ciphertext,
+    },
+  );
+  try {
+    return RenderedMessageSchema.parse(JSON.parse(plaintext.toString('utf8')));
+  } catch {
+    throw new ProtectedDataError();
+  } finally {
+    plaintext.fill(0);
+  }
+}
+
+/** Reads a retained rendered payload solely for integration-key rotation. */
+export async function readRenderedMessageForRotation(
+  keys: EncryptionKeys,
+  pool: pg.Pool,
+  row: DeliveryCiphertext,
+): Promise<RenderedMessage> {
+  const protection = createDataProtection(keys, {
+    participant: async () => {
+      throw new ProtectedDataError();
+    },
+    integration: async (_target, read) => {
+      await runAuditedSystemMutation(
+        {
+          tenantDb: createTenantDb(pool, row.team_id),
+          actorLabel: 'Encryption maintenance',
+          requestId: randomUUID(),
+        },
+        async (client, context) => {
+          const current = await selectDelivery(
+            client,
+            row.id,
+            row.team_id,
+            true,
+          );
+          if (!sameRenderedCiphertext(current, row))
+            throw new ProtectedDataError();
+          read();
+          return {
+            result: undefined,
+            events: [
+              {
+                ...context,
+                eventVersion: 1,
+                eventType: 'message.payload.rotation_read',
+                category: 'participant_data',
+                outcome: 'succeeded',
+                subjectType: null,
+                subjectId: null,
+                subjectLabel: null,
+                resourceType: 'message_delivery',
+                resourceId: row.id,
+                resourceLabel: null,
+                details: { channel: row.channel, purpose: 'rotation' },
+              } satisfies AuditEventInput,
+            ],
+          };
+        },
+      );
+    },
+  });
+  const plaintext = await protection.readIntegration(
+    {
+      kind: 'message',
+      teamId: row.team_id,
+      deliveryId: row.id,
       column: 'rendered_ciphertext',
     },
     {

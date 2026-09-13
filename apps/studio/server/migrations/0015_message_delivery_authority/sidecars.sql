@@ -1445,9 +1445,40 @@ CREATE OR REPLACE TRIGGER message_templates_publication_immutable
 -- dispatch state moves. Same shape as invitation_delivery_payload_immutable.
 CREATE OR REPLACE FUNCTION message_delivery_payload_is_immutable() RETURNS trigger AS $$
 BEGIN
+  IF TG_TABLE_NAME = 'message_deliveries'
+     AND current_user = 'studio_maintenance'
+     AND current_setting('app.encryption_rotation', true) = 'v1'
+     AND NEW.id IS NOT DISTINCT FROM OLD.id
+     AND NEW.team_id IS NOT DISTINCT FROM OLD.team_id
+     AND NEW.study_id IS NOT DISTINCT FROM OLD.study_id
+     AND NEW.participant_id IS NOT DISTINCT FROM OLD.participant_id
+     AND NEW.occurrence_id IS NOT DISTINCT FROM OLD.occurrence_id
+     AND NEW.interview_link_id IS NOT DISTINCT FROM OLD.interview_link_id
+     AND NEW.template_id IS NOT DISTINCT FROM OLD.template_id
+     AND NEW.kind IS NOT DISTINCT FROM OLD.kind
+     AND NEW.channel IS NOT DISTINCT FROM OLD.channel
+     AND NEW.recipient_blind_index IS NOT DISTINCT FROM OLD.recipient_blind_index
+     AND NEW.blind_index_key_id IS NOT DISTINCT FROM OLD.blind_index_key_id
+     AND NEW.rendered_body_hash IS NOT DISTINCT FROM OLD.rendered_body_hash
+     AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at THEN
+    RETURN NEW;
+  END IF;
   RAISE EXCEPTION 'message delivery payload is immutable';
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION message_delivery_requires_rendered_payload() RETURNS trigger AS $$
+BEGIN
+  IF num_nonnulls(NEW.rendered_ciphertext, NEW.rendered_key_id, NEW.rendered_algorithm) <> 3 THEN
+    RAISE EXCEPTION 'new message deliveries require an encrypted rendered payload';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_deliveries_require_rendered_payload
+  BEFORE INSERT ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_requires_rendered_payload();
 
 CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
   BEFORE UPDATE ON message_deliveries
@@ -1472,9 +1503,15 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
   )
   EXECUTE FUNCTION message_delivery_payload_is_immutable();
 
+CREATE OR REPLACE FUNCTION message_delivery_event_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'message delivery payload is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE TRIGGER message_delivery_events_immutable
   BEFORE UPDATE ON message_delivery_events
-  FOR EACH ROW EXECUTE FUNCTION message_delivery_payload_is_immutable();
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_event_is_immutable();
 
 -- A delivery copies its template's kind and channel, and may cite a study
 -- override only of its own study. The composite key cannot say "the
@@ -2200,6 +2237,9 @@ CREATE OR REPLACE TRIGGER message_deliveries_verified_key_reference_guard
 CREATE OR REPLACE TRIGGER message_deliveries_verified_rendered_key_reference_guard
   BEFORE INSERT OR UPDATE OF rendered_key_id ON message_deliveries
   FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('integration-enc', 'rendered_key_id');
+CREATE OR REPLACE TRIGGER interview_links_verified_token_key_reference_guard
+  BEFORE INSERT OR UPDATE OF token_key_id ON interview_links
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('integration-enc', 'token_key_id');
 CREATE OR REPLACE TRIGGER participant_contact_optouts_verified_key_reference_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id ON participant_contact_optouts
   FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');

@@ -467,7 +467,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
     });
   });
 
-  it('upgrades a populated predecessor without rewriting existing audit-alert evidence', async () => {
+  it('upgrades populated legacy deliveries without rewriting existing audit evidence', async () => {
     await withDatabase(async ({ pool }) => {
       const previous = shipped.slice(0, -1);
       const previousFingerprint = previous.at(-1)?.manifest.fingerprint;
@@ -483,6 +483,40 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
            VALUES ('migration-alert-user', 'Existing user', 'existing@example.test', true, now(), now());
          INSERT INTO team_members (id, team_id, user_id, role)
            VALUES ('migration-alert-member', 'migration-alert-team', 'migration-alert-user', 'owner')`,
+      );
+      const studyId = randomUUID();
+      const participantId = randomUUID();
+      const templateId = randomUUID();
+      const deliveryId = randomUUID();
+      await seedTestEncryptionKeyVerifications(pool, [
+        { purpose: 'pii-index', keyId: 'index-v1' },
+      ]);
+      await pool.query(
+        `INSERT INTO studies (id,team_id,name) VALUES ($1,'migration-alert-team','Existing study')`,
+        [studyId],
+      );
+      await pool.query(
+        `INSERT INTO participants (id,team_id,study_id,participant_code)
+         VALUES ($1,'migration-alert-team',$2,'LEGACY-1')`,
+        [participantId, studyId],
+      );
+      await pool.query(
+        `INSERT INTO message_templates (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+         VALUES ($1,'migration-alert-team',$2,'prompt','email','en',1,'published','Legacy subject','Use {{interviewLink}}')`,
+        [templateId, studyId],
+      );
+      await pool.query(
+        `INSERT INTO message_deliveries
+           (id,team_id,study_id,participant_id,template_id,kind,channel,recipient_blind_index,blind_index_key_id,rendered_body_hash)
+         VALUES ($1,'migration-alert-team',$2,$3,$4,'prompt','email',decode($5,'hex'),'index-v1',$6)`,
+        [
+          deliveryId,
+          studyId,
+          participantId,
+          templateId,
+          '01'.repeat(32),
+          'a'.repeat(64),
+        ],
       );
       await pool.query(
         `INSERT INTO audit_events (
@@ -530,6 +564,27 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           )
         ).rows,
       ).toEqual(evidence);
+      expect(
+        (
+          await pool.query(
+            `SELECT failed_at IS NOT NULL AS failed,lease_owner,lease_expires_at,
+                    rendered_ciphertext,rendered_key_id,rendered_algorithm,last_error
+             FROM message_deliveries WHERE id=$1`,
+            [deliveryId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          failed: true,
+          lease_owner: null,
+          lease_expires_at: null,
+          rendered_ciphertext: null,
+          rendered_key_id: null,
+          rendered_algorithm: null,
+          last_error:
+            'legacy rendered payload unavailable after encrypted delivery upgrade',
+        },
+      ]);
       expect(
         (
           await pool.query(

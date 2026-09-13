@@ -61,6 +61,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'study.created':
     case 'study.creation_denied':
     case 'interview.link.issued':
+    case 'interview.link.rotation_read':
     case 'interview.link.rotated':
     case 'team.created':
     case 'team.invitation.acceptance_denied':
@@ -88,6 +89,8 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'message.occurrence.blocked':
     case 'message.occurrence.expired':
     case 'message.payload.read':
+    case 'message.payload.rotation_read':
+    case 'message.payload.rotated':
     case 'message.link.read':
     case 'message.delivery.delivered':
     case 'message.delivery.failed':

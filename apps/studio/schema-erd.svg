@@ -2946,7 +2946,7 @@
 <!-- interview_links -->
 <g id="interview_links" class="node">
 <title>interview_links</title>
-<g id="a_interview_links"><a xlink:title="interview_links&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger interview_links_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_links_are_writable()">
+<g id="a_interview_links"><a xlink:title="interview_links&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger interview_links_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_links_are_writable(); sidecar trigger interview_links_verified_token_key_reference_guard: BEFORE INSERT OR UPDATE OF token_key_id calls encryption_key_reference_is_verified()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5489.73" cy="-13655.52" rx="422.7" ry="893.57"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5192.73,-14225.52 5192.73,-14285.52 5786.73,-14285.52 5786.73,-14225.52 5192.73,-14225.52"/>
 <polygon fill="none" stroke="#29235c" points="5192.73,-14225.52 5192.73,-14285.52 5786.73,-14285.52 5786.73,-14225.52 5192.73,-14225.52"/>
@@ -3569,7 +3569,7 @@
 <!-- message_deliveries -->
 <g id="message_deliveries" class="node">
 <title>message_deliveries</title>
-<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable(); sidecar trigger message_deliveries_verified_key_reference_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id calls encryption_key_reference_is_verified(); sidecar trigger message_deliveries_verified_rendered_key_reference_guard: BEFORE INSERT OR UPDATE OF rendered_key_id calls encryption_key_reference_is_verified(); sidecar trigger message_deliveries_legacy_blind_index_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel calls legacy_blind_index_writes_are_guarded()">
+<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_deliveries_require_rendered_payload: BEFORE INSERT calls message_delivery_requires_rendered_payload(); sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable(); sidecar trigger message_deliveries_verified_key_reference_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id calls encryption_key_reference_is_verified(); sidecar trigger message_deliveries_verified_rendered_key_reference_guard: BEFORE INSERT OR UPDATE OF rendered_key_id calls encryption_key_reference_is_verified(); sidecar trigger message_deliveries_legacy_blind_index_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel calls legacy_blind_index_writes_are_guarded()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7401.62" cy="-16273.52" rx="571.18" ry="1445.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6999.62,-17233.52 6999.62,-17293.52 7803.62,-17293.52 7803.62,-17233.52 6999.62,-17233.52"/>
 <polygon fill="none" stroke="#29235c" points="6999.62,-17233.52 6999.62,-17293.52 7803.62,-17293.52 7803.62,-17233.52 6999.62,-17233.52"/>
@@ -3644,21 +3644,15 @@
 <polygon fill="#e7e2dd" stroke="transparent" points="6999.62,-16453.52 6999.62,-16513.52 7803.62,-16513.52 7803.62,-16453.52 6999.62,-16453.52"/>
 <polygon fill="none" stroke="#29235c" points="6999.62,-16453.52 6999.62,-16513.52 7803.62,-16513.52 7803.62,-16453.52 6999.62,-16453.52"/>
 <text text-anchor="start" x="7010.62" y="-16473.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">rendered_ciphertext &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7675.27" y="-16474.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">bytea</text>
-<text text-anchor="start" x="7753.53" y="-16474.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7762.42" y="-16474.72" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<text text-anchor="start" x="7714.36" y="-16474.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">bytea</text>
 <polygon fill="#e7e2dd" stroke="transparent" points="6999.62,-16393.52 6999.62,-16453.52 7803.62,-16453.52 7803.62,-16393.52 6999.62,-16393.52"/>
 <polygon fill="none" stroke="#29235c" points="6999.62,-16393.52 6999.62,-16453.52 7803.62,-16453.52 7803.62,-16393.52 6999.62,-16393.52"/>
 <text text-anchor="start" x="7010.62" y="-16413.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">rendered_key_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7701.95" y="-16414.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7753.53" y="-16414.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7762.42" y="-16414.72" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<text text-anchor="start" x="7741.04" y="-16414.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
 <polygon fill="#e7e2dd" stroke="transparent" points="6999.62,-16333.52 6999.62,-16393.52 7803.62,-16393.52 7803.62,-16333.52 6999.62,-16333.52"/>
 <polygon fill="none" stroke="#29235c" points="6999.62,-16333.52 6999.62,-16393.52 7803.62,-16393.52 7803.62,-16333.52 6999.62,-16333.52"/>
 <text text-anchor="start" x="7010.62" y="-16353.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">rendered_algorithm &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7701.95" y="-16354.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7753.53" y="-16354.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7762.42" y="-16354.72" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<text text-anchor="start" x="7741.04" y="-16354.72" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
 <polygon fill="#e7e2dd" stroke="transparent" points="6999.62,-16273.52 6999.62,-16333.52 7803.62,-16333.52 7803.62,-16273.52 6999.62,-16273.52"/>
 <polygon fill="none" stroke="#29235c" points="6999.62,-16273.52 6999.62,-16333.52 7803.62,-16333.52 7803.62,-16273.52 6999.62,-16273.52"/>
 <text text-anchor="start" x="7010.62" y="-16293.72" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">provider &#160;&#160;&#160;</text>
@@ -4178,7 +4172,7 @@
 <!-- message_delivery_events -->
 <g id="message_delivery_events" class="node">
 <title>message_delivery_events</title>
-<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_delivery_events_provider_sent_it: AFTER INSERT calls message_delivery_event_provider_sent_it(); sidecar trigger message_delivery_events_deletable: BEFORE DELETE calls message_delivery_events_are_deletable()">
+<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_event_is_immutable(); sidecar trigger message_delivery_events_provider_sent_it: AFTER INSERT calls message_delivery_event_provider_sent_it(); sidecar trigger message_delivery_events_deletable: BEFORE DELETE calls message_delivery_events_are_deletable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="8672.23" cy="-16963.52" rx="367.89" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="8414.23,-17233.52 8414.23,-17293.52 8930.23,-17293.52 8930.23,-17233.52 8414.23,-17233.52"/>
 <polygon fill="none" stroke="#29235c" points="8414.23,-17233.52 8414.23,-17293.52 8930.23,-17293.52 8930.23,-17233.52 8414.23,-17233.52"/>

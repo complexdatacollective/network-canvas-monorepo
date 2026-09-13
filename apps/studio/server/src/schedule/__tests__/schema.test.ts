@@ -1048,6 +1048,19 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toThrow('encrypted data may reference only a verified key');
     });
 
+    it('refuses an unverified interview-link encryption key', async () => {
+      await expect(
+        insert(
+          'interview_links',
+          interviewLinkRow(waveOf[TEAM_A]!, {
+            token_ciphertext: Buffer.alloc(30, 7),
+            token_key_id: 'unverified',
+            token_algorithm: 'aes-256-gcm.v1',
+          }),
+        ),
+      ).rejects.toThrow('encrypted data may reference only a verified key');
+    });
+
     it('applies the lease and attempt defaults', async () => {
       const deliveryId = await newDelivery();
 

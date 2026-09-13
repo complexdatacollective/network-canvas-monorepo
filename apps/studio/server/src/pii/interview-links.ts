@@ -62,7 +62,10 @@ export async function readInterviewLinkCapability(
   pool: pg.Pool,
   teamId: string,
   linkId: string,
-  options: { allowInactive?: boolean } = {},
+  options: {
+    allowInactive?: boolean;
+    authority?: 'message-delivery' | 'rotation';
+  } = {},
 ): Promise<{ secret: Buffer; snapshot: InterviewLinkCiphertext }> {
   const snapshot = await selectLink(
     pool,
@@ -72,6 +75,7 @@ export async function readInterviewLinkCapability(
     options.allowInactive,
   );
   if (!snapshot) throw new ProtectedDataError();
+  const rotation = options.authority === 'rotation';
   const protection = createDataProtection(keys, {
     participant: async () => {
       throw new ProtectedDataError();
@@ -80,7 +84,7 @@ export async function readInterviewLinkCapability(
       await runAuditedSystemMutation(
         {
           tenantDb: createTenantDb(pool, teamId),
-          actorLabel: 'Message delivery',
+          actorLabel: rotation ? 'Encryption maintenance' : 'Message delivery',
           requestId: randomUUID(),
         },
         async (client, context) => {
@@ -93,11 +97,25 @@ export async function readInterviewLinkCapability(
           );
           if (!sameLink(current, snapshot)) throw new ProtectedDataError();
           read();
-          return {
-            result: undefined,
-            events: [
-              {
+          const event: AuditEventInput = rotation
+            ? {
                 ...context,
+                actorLabel: 'Encryption maintenance',
+                eventType: 'interview.link.rotation_read',
+                eventVersion: 1,
+                category: 'participant_data',
+                outcome: 'succeeded',
+                subjectType: null,
+                subjectId: null,
+                subjectLabel: null,
+                resourceType: 'interview_link',
+                resourceId: linkId,
+                resourceLabel: null,
+                details: { purpose: 'rotation' },
+              }
+            : {
+                ...context,
+                actorLabel: 'Message delivery',
                 eventType: 'message.link.read',
                 eventVersion: 1,
                 category: 'participant_data',
@@ -109,8 +127,10 @@ export async function readInterviewLinkCapability(
                 resourceId: linkId,
                 resourceLabel: null,
                 details: { channel: null },
-              } satisfies AuditEventInput,
-            ],
+              };
+          return {
+            result: undefined,
+            events: [event],
           };
         },
       );

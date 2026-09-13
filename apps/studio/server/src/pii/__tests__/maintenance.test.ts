@@ -24,6 +24,7 @@ import {
   rotateEncryptionBatch,
   type RotationCursor,
 } from '../maintenance.ts';
+import { sealRenderedMessage } from '../message-deliveries.ts';
 import {
   readParticipantPiiField,
   updateParticipantPii,
@@ -236,6 +237,41 @@ describe('bounded encryption maintenance and retained suppression', () => {
         kind: 'email',
         value: contacts.email,
       });
+      const templateId = randomUUID();
+      const deliveryId = randomUUID();
+      const rendered = sealRenderedMessage(
+        keys,
+        context.tenantDb.teamId,
+        deliveryId,
+        { subject: 'Rotation', body: 'Retained body' },
+      );
+      await scratch.pool.query(
+        `INSERT INTO message_templates
+           (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+         VALUES($1,$2,$3,'prompt','email','en',1,'published','Rotation','Use {{interviewLink}}')`,
+        [templateId, context.tenantDb.teamId, target.studyId],
+      );
+      await scratch.pool.query(
+        `INSERT INTO message_deliveries
+           (id,team_id,study_id,participant_id,template_id,kind,channel,
+            recipient_blind_index,blind_index_key_id,rendered_body_hash,
+            rendered_ciphertext,rendered_key_id,rendered_algorithm)
+         VALUES($1,$2,$3,$4,$5,'prompt','email',$6,$7,$8,$9,$10,$11)`,
+        [
+          deliveryId,
+          context.tenantDb.teamId,
+          target.studyId,
+          target.participantId,
+          templateId,
+          index.value,
+          index.keyId,
+          'a'.repeat(64),
+          rendered.envelope,
+          rendered.keyId,
+          rendered.algorithm,
+        ],
+      );
+      const renderedBefore = rendered.envelope;
       await scratch.maintenance.query(
         `INSERT INTO participant_contact_optouts (channel, recipient_blind_index, blind_index_key_id, source) VALUES ('email', $1, $2, 'provider')`,
         [index.value, index.keyId],
@@ -272,7 +308,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         if (counts.length > 6)
           throw new Error('Rotation did not make bounded progress.');
       } while (cursor);
-      expect(counts).toEqual([1, 1, 1, 1, 0]);
+      expect(counts).toEqual([1, 1, 1, 1, 1, 0]);
       const after = await scratch.pool.query(
         'SELECT email_index, phone_index, blind_index_key_id, email_ciphertext, pii_key_id FROM participants WHERE id = $1',
         [target.participantId],
@@ -286,6 +322,22 @@ describe('bounded encryption maintenance and retained suppression', () => {
       expect(after.rows[0].email_ciphertext).not.toEqual(
         before.rows[0].email_ciphertext,
       );
+      expect(
+        (
+          await scratch.pool.query(
+            'SELECT rendered_key_id,rendered_ciphertext FROM message_deliveries WHERE id=$1',
+            [deliveryId],
+          )
+        ).rows[0],
+      ).toMatchObject({ rendered_key_id: 'v2' });
+      expect(
+        (
+          await scratch.pool.query<{ rendered_ciphertext: Buffer }>(
+            'SELECT rendered_ciphertext FROM message_deliveries WHERE id=$1',
+            [deliveryId],
+          )
+        ).rows[0]?.rendered_ciphertext,
+      ).not.toEqual(renderedBefore);
       expect(
         (
           await readParticipantPiiField(rotatedKeys, context, {
@@ -340,12 +392,37 @@ describe('bounded encryption maintenance and retained suppression', () => {
         (await scratch.pool.query('SELECT * FROM encryption_key_verifications'))
           .rowCount,
       ).toBe(8);
-      const events = await scratch.pool.query<{ event_type: string }>(
-        "SELECT event_type FROM audit_events WHERE event_type IN ('participant.pii.rotated', 'webhook.secret.rotated') ORDER BY sequence",
+      const events = await scratch.pool.query<{
+        event_type: string;
+        actor_label: string;
+      }>(
+        "SELECT event_type,actor_label FROM audit_events WHERE event_type IN ('participant.pii.rotated', 'webhook.secret.rotated', 'interview.link.rotation_read', 'interview.link.rotated', 'message.payload.rotation_read', 'message.payload.rotated') ORDER BY sequence",
       );
-      expect(events.rows.map((event) => event.event_type)).toEqual([
-        'participant.pii.rotated',
-        'webhook.secret.rotated',
+      expect(events.rows).toEqual([
+        {
+          event_type: 'participant.pii.rotated',
+          actor_label: 'Encryption maintenance',
+        },
+        {
+          event_type: 'webhook.secret.rotated',
+          actor_label: 'Encryption maintenance',
+        },
+        {
+          event_type: 'interview.link.rotation_read',
+          actor_label: 'Encryption maintenance',
+        },
+        {
+          event_type: 'interview.link.rotated',
+          actor_label: 'Encryption maintenance',
+        },
+        {
+          event_type: 'message.payload.rotation_read',
+          actor_label: 'Encryption maintenance',
+        },
+        {
+          event_type: 'message.payload.rotated',
+          actor_label: 'Encryption maintenance',
+        },
       ]);
       const oauthAudit = await scratch.pool.query(
         "SELECT action FROM credential_audit_events WHERE action = 'rotate' AND account_id = $1",
@@ -356,7 +433,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         rotateEncryptionBatch(scratch.maintenance, rotatedKeys, { limit: 100 }),
       ).resolves.toMatchObject({
         processed: 0,
-        scanned: 4,
+        scanned: 5,
         passComplete: true,
         cursor: null,
       });

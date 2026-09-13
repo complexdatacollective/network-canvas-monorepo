@@ -10,7 +10,10 @@ import {
   type SystemAuditEventContext,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
-import { lockParticipantMessageAuthority } from './participant-authority.ts';
+import {
+  lockMessageRecipientAuthority,
+  lockParticipantMessageAuthority,
+} from './participant-authority.ts';
 
 const postmark = z.object({
   MessageID: z.uuid(),
@@ -19,6 +22,7 @@ const postmark = z.object({
   BouncedAt: z.string().max(64).optional(),
   ReceivedAt: z.string().max(64).optional(),
   TypeCode: z.number().int().optional(),
+  Inactive: z.boolean().optional(),
   Metadata: z.strictObject({ deliveryId: z.uuid() }).optional(),
 });
 const twilio = z.object({
@@ -75,7 +79,8 @@ async function store(
     providerEventId: string;
     kind: 'queued' | 'delivered' | 'bounced' | 'complained' | 'failed';
     occurredAt: Date;
-    detail: Record<string, string | number>;
+    detail: Record<string, string | number | boolean>;
+    suppressRecipient: boolean;
   },
 ) {
   const located = await pool.query<{ team_id: string }>(
@@ -127,6 +132,12 @@ async function store(
           row.team_id,
           row.participant_id,
         );
+        await lockMessageRecipientAuthority(
+          client,
+          row.channel,
+          row.blind_index_key_id,
+          row.recipient_blind_index,
+        );
         await client.query(
           `UPDATE message_deliveries SET provider_message_id=coalesce(provider_message_id,$2)
            WHERE id=$1`,
@@ -147,7 +158,7 @@ async function store(
           ],
         );
         if (inserted.rowCount !== 1) throw new DuplicateStatus();
-        if (input.kind === 'bounced' || input.kind === 'complained') {
+        if (input.suppressRecipient) {
           await client.query(
             `INSERT INTO participant_contact_optouts(channel,recipient_blind_index,blind_index_key_id,source)
          VALUES($1,$2,$3,'provider') ON CONFLICT(channel,blind_index_key_id,recipient_blind_index) DO NOTHING`,
@@ -198,6 +209,8 @@ export async function receivePostmarkStatus(
   if (!Number.isFinite(occurredAt.getTime()))
     throw new Error('MESSAGE_STATUS_INVALID');
   const providerEventId = `${parsed.MessageID}:${parsed.RecordType}:${occurredAt.toISOString()}`;
+  if (parsed.RecordType === 'Bounce' && parsed.Inactive === undefined)
+    throw new Error('MESSAGE_STATUS_INVALID');
   return store(pool, {
     provider: 'postmark',
     deliveryId: parsed.Metadata?.deliveryId,
@@ -205,7 +218,12 @@ export async function receivePostmarkStatus(
     providerEventId,
     kind,
     occurredAt,
-    detail: parsed.TypeCode === undefined ? {} : { typeCode: parsed.TypeCode },
+    detail: {
+      ...(parsed.TypeCode === undefined ? {} : { typeCode: parsed.TypeCode }),
+      ...(parsed.RecordType === 'Bounce' ? { inactive: parsed.Inactive! } : {}),
+    },
+    suppressRecipient:
+      parsed.RecordType === 'SpamComplaint' || parsed.Inactive === true,
   });
 }
 
@@ -252,5 +270,6 @@ export async function receiveTwilioStatus(
     kind,
     occurredAt: new Date(),
     detail: parsed.data.ErrorCode ? { errorCode: parsed.data.ErrorCode } : {},
+    suppressRecipient: parsed.data.ErrorCode === '21610',
   });
 }

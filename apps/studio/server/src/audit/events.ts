@@ -482,6 +482,28 @@ const InterviewLinkRotatedV1EventSchema = z
   })
   .strict();
 
+const InterviewLinkRotationReadV1EventSchema = z
+  .object({
+    teamId: IdentifierSchema,
+    teamLabel: LabelSchema,
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Encryption maintenance'),
+    requestId: z.uuid(),
+    eventVersion: z.literal(1),
+    eventType: z.literal('interview.link.rotation_read'),
+    category: z.literal('participant_data'),
+    outcome: z.literal('succeeded'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    resourceType: z.literal('interview_link'),
+    resourceId: z.uuid(),
+    resourceLabel: z.null(),
+    details: z.strictObject({ purpose: z.literal('rotation') }),
+  })
+  .strict();
+
 const PiiColumnSchema = z.enum([
   'email_ciphertext',
   'phone_ciphertext',
@@ -687,6 +709,34 @@ const AuditAlertSettingsUpdatedSchema = CommonUserEventSchema.extend({
     recipients: AuditAlertRecipientsSchema,
   }),
 });
+
+const MessagePayloadRotationV1EventSchema = z
+  .strictObject({
+    teamId: IdentifierSchema,
+    teamLabel: LabelSchema,
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Encryption maintenance'),
+    requestId: z.uuid(),
+    eventVersion: z.literal(1),
+    category: z.literal('participant_data'),
+    outcome: z.literal('succeeded'),
+    eventType: z.enum([
+      'message.payload.rotation_read',
+      'message.payload.rotated',
+    ]),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    resourceType: z.literal('message_delivery'),
+    resourceId: z.uuid(),
+    resourceLabel: z.null(),
+    details: z.strictObject({
+      channel: z.enum(['email', 'sms']),
+      purpose: z.literal('rotation'),
+    }),
+  })
+  .strict();
 const AuditAlertAcknowledgedSchema = CommonUserEventSchema.extend({
   eventVersion: z.literal(1),
   eventType: z.literal('audit.alert_delivery.acknowledged'),
@@ -812,6 +862,7 @@ export const AuditEventInputSchema = z.union([
   StudyCreationDeniedV1EventSchema,
   InterviewLinkIssuedV1EventSchema,
   InterviewLinkRotatedV1EventSchema,
+  InterviewLinkRotationReadV1EventSchema,
   ParticipantPiiReadV1EventSchema,
   ParticipantPiiUpdatedV1EventSchema,
   ParticipantPiiLookupV1EventSchema,
@@ -822,6 +873,7 @@ export const AuditEventInputSchema = z.union([
   WebhookSubscriptionDisabledV1EventSchema,
   WebhookDeliveryV1EventSchema,
   MessageDeliveryV1EventSchema,
+  MessagePayloadRotationV1EventSchema,
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
@@ -1381,6 +1433,58 @@ export const AUDIT_EVENT_REGISTRY = {
     fixture: {
       ...FIXTURE_MESSAGE_DELIVERY_COMMON,
       eventType: 'message.payload.read',
+    },
+  },
+  'message.payload.rotation_read@1': {
+    inputSchema: MessagePayloadRotationV1EventSchema,
+    title: 'Rendered message payload read for encryption rotation',
+    detailFields: ['channel', 'purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      teamId: 'fixture-team',
+      teamLabel: 'Fixture team',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Encryption maintenance',
+      requestId: '00000000-0000-4000-8000-000000000029',
+      eventVersion: 1,
+      eventType: 'message.payload.rotation_read',
+      category: 'participant_data',
+      outcome: 'succeeded',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: 'message_delivery',
+      resourceId: '00000000-0000-4000-8000-000000000030',
+      resourceLabel: null,
+      details: { channel: 'email', purpose: 'rotation' },
+    },
+  },
+  'message.payload.rotated@1': {
+    inputSchema: MessagePayloadRotationV1EventSchema,
+    title: 'Rendered message encryption rotated',
+    detailFields: ['channel', 'purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      teamId: 'fixture-team',
+      teamLabel: 'Fixture team',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Encryption maintenance',
+      requestId: '00000000-0000-4000-8000-000000000031',
+      eventVersion: 1,
+      eventType: 'message.payload.rotated',
+      category: 'participant_data',
+      outcome: 'succeeded',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: 'message_delivery',
+      resourceId: '00000000-0000-4000-8000-000000000032',
+      resourceLabel: null,
+      details: { channel: 'email', purpose: 'rotation' },
     },
   },
   'message.link.read@1': {
@@ -1989,6 +2093,32 @@ export const AUDIT_EVENT_REGISTRY = {
       subjectLabel: null,
       resourceType: 'interview_link',
       resourceId: '00000000-0000-4000-8000-000000000026',
+      resourceLabel: null,
+      details: { purpose: 'rotation' },
+    },
+  },
+  'interview.link.rotation_read@1': {
+    inputSchema: InterviewLinkRotationReadV1EventSchema,
+    title: 'Interview link read for encryption rotation',
+    detailFields: ['purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      teamId: 'fixture-team',
+      teamLabel: 'Fixture team',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Encryption maintenance',
+      requestId: '00000000-0000-4000-8000-000000000027',
+      eventVersion: 1,
+      eventType: 'interview.link.rotation_read',
+      category: 'participant_data',
+      outcome: 'succeeded',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: 'interview_link',
+      resourceId: '00000000-0000-4000-8000-000000000028',
       resourceLabel: null,
       details: { purpose: 'rotation' },
     },

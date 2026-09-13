@@ -379,7 +379,7 @@ const PROBLEM_HEADERS = { 'Content-Type': 'application/problem+json' };
  * must bound server memory, so an oversized (or unlength'd chunked) body is
  * abandoned the moment it crosses the limit, never buffered first.
  */
-async function readBodyCapped(
+export async function readBodyCapped(
   body: ReadableStream<Uint8Array> | null,
   maxBytes: number,
 ): Promise<Uint8Array | 'too-large'> {

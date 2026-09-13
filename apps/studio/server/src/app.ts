@@ -19,6 +19,7 @@ import { createApiV1 } from './api.ts';
 import {
   createAssetRoutes,
   createAssetStore,
+  readBodyCapped,
   type AssetStore,
   type AuditExportArtifactStore,
 } from './assets.ts';
@@ -87,9 +88,20 @@ type CreateAppDeps = {
     maintenancePool: pg.Pool;
     postmarkToken?: string;
     twilioAuthToken?: string;
+    publicBaseUrl?: string;
   };
   maintenancePool?: pg.Pool;
 };
+
+const MESSAGE_STATUS_BODY_LIMIT = 16 * 1024;
+
+async function readMessageStatusBody(c: Context): Promise<string | null> {
+  const declared = Number(c.req.header('content-length'));
+  if (Number.isFinite(declared) && declared > MESSAGE_STATUS_BODY_LIMIT)
+    return null;
+  const bytes = await readBodyCapped(c.req.raw.body, MESSAGE_STATUS_BODY_LIMIT);
+  return bytes === 'too-large' ? null : new TextDecoder().decode(bytes);
+}
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   if (
@@ -160,11 +172,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     const status = deps.messageStatus;
     if (!status?.postmarkToken)
       return c.json({ title: 'Not Found', status: 404 }, 404);
+    const body = await readMessageStatusBody(c);
+    if (body === null)
+      return c.json({ title: 'Content Too Large', status: 413 }, 413);
     try {
       await receivePostmarkStatus(status.maintenancePool, {
         token: status.postmarkToken,
         authorization: c.req.header('authorization'),
-        body: await c.req.text(),
+        body,
       });
       return c.body(null, 204);
     } catch (error) {
@@ -188,17 +203,20 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   });
   app.post('/api/v1/message-status/twilio/:deliveryId', async (c) => {
     const status = deps.messageStatus;
-    if (!status?.twilioAuthToken)
+    if (!status?.twilioAuthToken || !status.publicBaseUrl)
       return c.json({ title: 'Not Found', status: 404 }, 404);
     const deliveryId = c.req.param('deliveryId');
     if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(deliveryId))
       return c.json({ title: 'Bad Request', status: 400 }, 400);
+    const body = await readMessageStatusBody(c);
+    if (body === null)
+      return c.json({ title: 'Content Too Large', status: 413 }, 413);
     try {
       await receiveTwilioStatus(status.maintenancePool, {
         authToken: status.twilioAuthToken,
         signature: c.req.header('x-twilio-signature'),
-        url: c.req.url,
-        body: await c.req.text(),
+        url: new URL(c.req.path, status.publicBaseUrl).toString(),
+        body,
         deliveryId,
       });
       return c.body(null, 204);

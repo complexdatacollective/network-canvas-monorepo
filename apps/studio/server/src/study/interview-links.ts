@@ -68,6 +68,12 @@ async function lockIssueTarget(
      WHERE s.id=$1 AND s.team_id=$2 AND w.id=$4
        AND s.participation_mode='managed' AND s.state IN ('live','paused')
        AND p.enrolled_at IS NOT NULL
+       AND (w.closes_at IS NULL OR w.closes_at > statement_timestamp())
+       AND NOT EXISTS (
+         SELECT 1 FROM participant_consents c
+         WHERE c.team_id=s.team_id AND c.study_id=s.id
+           AND c.participant_id=p.id AND c.withdrawn_at IS NOT NULL
+       )
      FOR UPDATE OF s,w,p`,
     [input.studyId, teamId, input.participantId, input.waveId],
   );

@@ -36,6 +36,7 @@ import {
 } from '../pii/message-deliveries.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
 import {
+  lockMessageRecipientAuthority,
   lockParticipantMessageAuthority,
   tryLockParticipantMessageAuthority,
 } from './participant-authority.ts';
@@ -44,6 +45,16 @@ const QUEUE = 'message_deliveries';
 const PENDING =
   'sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL';
 const OWNED = `id = $1 AND lease_owner = $2 AND ${PENDING}`;
+
+/** Postmark scheduled sends require their suppression callback to be configured. */
+export function scheduledEmailDeliveryEnabled(
+  kind: 'smtp' | 'postmark' | undefined,
+  postmarkWebhookToken: string | undefined,
+): boolean {
+  return (
+    kind === 'smtp' || (kind === 'postmark' && Boolean(postmarkWebhookToken))
+  );
+}
 
 type Channel = 'email' | 'sms';
 export type OccurrenceMessage = RenderedMessage & {
@@ -136,18 +147,7 @@ async function transitionScheduledOccurrence(
         const updated = await client.query(
           `UPDATE schedule_occurrences SET state=$3
            WHERE id=$1 AND team_id=$2 AND state='scheduled'
-             AND ($3<>'expired' OR expires_at<=statement_timestamp())
-             AND ($3<>'blocked' OR EXISTS (
-               SELECT 1 FROM study_schedules sc
-               CROSS JOIN LATERAL unnest(sc.channels) requested(channel)
-               WHERE sc.id=schedule_occurrences.schedule_id
-                 AND sc.study_id=schedule_occurrences.study_id
-                 AND sc.team_id=schedule_occurrences.team_id
-                 AND NOT EXISTS (
-                   SELECT 1 FROM message_templates mt
-                   WHERE mt.team_id=sc.team_id AND mt.kind='prompt' AND mt.locale='en'
-                     AND mt.state='published' AND mt.channel=requested.channel
-                     AND (mt.study_id=sc.study_id OR mt.study_id IS NULL))))`,
+             AND ($3<>'expired' OR expires_at<=statement_timestamp())`,
           [row.occurrenceId, row.teamId, state],
         );
         if (updated.rowCount !== 1) throw new NoOccurrenceChange();
@@ -287,8 +287,31 @@ export async function enqueueOccurrenceMessages(
           row.channels.some((channel) => !channels.has(channel))
         )
           throw new Error('MESSAGE_OCCURRENCE_CHANNELS_MISMATCH');
-        if (!row.blind_index_key_id)
-          throw new Error('MESSAGE_CONTACT_UNAVAILABLE');
+        if (
+          !row.blind_index_key_id ||
+          messages.some(
+            ({ channel }) =>
+              (channel === 'email' ? row.email_index : row.phone_index) ===
+              null,
+          )
+        ) {
+          await client.query(
+            "UPDATE schedule_occurrences SET state = 'blocked' WHERE id = $1",
+            [occurrenceId],
+          );
+          return {
+            result: true,
+            events: [
+              messageEvent(
+                context,
+                occurrenceId,
+                'schedule_occurrence',
+                'message.occurrence.blocked',
+                null,
+              ),
+            ],
+          };
+        }
         if (options.linkSnapshot) {
           const currentLink = await client.query<InterviewLinkCiphertext>(
             `SELECT id,team_id,study_id,wave_id,participant_id,token_hash,
@@ -451,8 +474,34 @@ export async function produceDueOccurrenceMessage(options: {
   try {
     const origin = new URL(options.publicBaseUrl);
     const token = `${row.team_id}.${capability.secret.toString('utf8')}`;
-    const link = new URL(`/interview/${encodeURIComponent(token)}`, origin);
+    const link = new URL(`/enter/${encodeURIComponent(token)}`, origin);
     link.searchParams.set('occurrence', row.occurrence_id);
+    const messages = source.rows.map((template) => ({
+      channel: template.channel,
+      templateId: template.template_id,
+      kind: 'prompt' as const,
+      subject:
+        template.subject?.replaceAll('{{studyName}}', template.study_name) ??
+        null,
+      body: template.body
+        .replaceAll('{{studyName}}', template.study_name)
+        .replaceAll('{{interviewLink}}', link.toString()),
+    }));
+    if (
+      source.rows.some(
+        (template) => !template.body.includes('{{interviewLink}}'),
+      ) ||
+      messages.some(
+        (message) => message.channel === 'sms' && message.body.length > 1600,
+      )
+    ) {
+      await transitionScheduledOccurrence(
+        options.pool,
+        { occurrenceId: row.occurrence_id, teamId: row.team_id },
+        'blocked',
+      );
+      return false;
+    }
     return enqueueOccurrenceMessages(
       {
         pool: options.pool,
@@ -460,17 +509,7 @@ export async function produceDueOccurrenceMessage(options: {
         linkSnapshot: capability.snapshot,
       },
       row.occurrence_id,
-      source.rows.map((template) => ({
-        channel: template.channel,
-        templateId: template.template_id,
-        kind: 'prompt',
-        subject:
-          template.subject?.replaceAll('{{studyName}}', template.study_name) ??
-          null,
-        body: template.body
-          .replaceAll('{{studyName}}', template.study_name)
-          .replaceAll('{{interviewLink}}', link.toString()),
-      })),
+      messages,
     );
   } finally {
     capability.secret.fill(0);
@@ -621,6 +660,12 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
         client,
         claim.teamId,
         claim.participantId,
+      );
+      await lockMessageRecipientAuthority(
+        client,
+        claim.channel,
+        claim.blindIndexKeyId,
+        claim.recipientBlindIndex,
       );
       const participant = await client.query(
         `SELECT 1 FROM participants WHERE id=$1 AND study_id=$2 AND team_id=$3

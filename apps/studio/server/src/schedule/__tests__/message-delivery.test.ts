@@ -23,11 +23,16 @@ import {
   expireScheduledOccurrences,
   MessageDeliveryAdapter,
   produceDueOccurrenceMessage,
+  scheduledEmailDeliveryEnabled,
 } from '../message-delivery.ts';
 import {
   receivePostmarkStatus,
   receiveTwilioStatus,
 } from '../message-status.ts';
+import {
+  lockMessageRecipientAuthority,
+  tryLockMessageRecipientAuthority,
+} from '../participant-authority.ts';
 
 let templateVersion = 0;
 async function occurrence(
@@ -101,6 +106,14 @@ async function waitForAudit(
 }
 
 describe('message delivery runtime', () => {
+  it('enables Postmark scheduled delivery only with its callback credential', () => {
+    expect(scheduledEmailDeliveryEnabled('postmark', undefined)).toBe(false);
+    expect(scheduledEmailDeliveryEnabled('postmark', 'callback-secret')).toBe(
+      true,
+    );
+    expect(scheduledEmailDeliveryEnabled('smtp', undefined)).toBe(true);
+  });
+
   it('issues one encrypted wave capability and reuses it across due occurrence delivery', async () => {
     await participantFixture(async (fixture) => {
       await updateParticipantPii(
@@ -202,6 +215,8 @@ describe('message delivery runtime', () => {
       await expect(dispatcher.runOnce()).resolves.toMatchObject({ claimed: 1 });
       expect(bodies).toHaveLength(2);
       expect(bodies[0]).toContain(encodeURIComponent(issued.token));
+      expect(bodies[0]).toContain('/enter/');
+      expect(bodies[0]).not.toContain('/interview/');
       expect(bodies[0]).toContain(`occurrence=${first.occurrenceId}`);
       expect(bodies[1]).toContain(encodeURIComponent(issued.token));
       expect(bodies[1]).toContain(`occurrence=${second.occurrenceId}`);
@@ -294,6 +309,54 @@ describe('message delivery runtime', () => {
           ).rows,
         ),
       ).not.toContain(encodedSecret);
+      await fixture.scratch.pool.query(
+        "UPDATE study_waves SET closes_at=statement_timestamp()-interval '1 second' WHERE id=$1",
+        [waveId],
+      );
+      await expect(
+        issueParticipantInterviewLink(fixture.keys, fixture.context, {
+          ...fixture.target,
+          waveId,
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      await fixture.scratch.pool.query(
+        'UPDATE study_waves SET closes_at=NULL WHERE id=$1',
+        [waveId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO consent_documents
+          (id,study_id,team_id,version,title,body,content_hash,state,published_at)
+         VALUES($1,$2,$3,1,'Consent','{}'::jsonb,$4,'published',statement_timestamp())`,
+        [
+          randomUUID(),
+          fixture.target.studyId,
+          fixture.context.tenantDb.teamId,
+          createHash('sha256').update('Body').digest('hex'),
+        ],
+      );
+      const document = await fixture.scratch.pool.query<{ id: string }>(
+        'SELECT id FROM consent_documents WHERE study_id=$1',
+        [fixture.target.studyId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO participant_consents
+          (id,participant_id,consent_document_id,study_id,team_id,method,granted_at,consent_content_hash,withdrawn_at,withdrawn_by)
+         VALUES($1,$2,$3,$4,$5,'affirmation',statement_timestamp(),$6,statement_timestamp(),'participant')`,
+        [
+          randomUUID(),
+          fixture.target.participantId,
+          document.rows[0]!.id,
+          fixture.target.studyId,
+          fixture.context.tenantDb.teamId,
+          createHash('sha256').update('Body').digest('hex'),
+        ],
+      );
+      await expect(
+        issueParticipantInterviewLink(fixture.keys, fixture.context, {
+          ...fixture.target,
+          waveId,
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 
@@ -473,6 +536,136 @@ describe('message delivery runtime', () => {
         { event_type: 'message.occurrence.blocked' },
         { event_type: 'message.occurrence.expired' },
       ]);
+    });
+  });
+
+  it('blocks unusable contacts and invalid rendered prompts without starving later work', async () => {
+    await participantFixture(async (fixture) => {
+      await fixture.scratch.pool.query(
+        "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+        [fixture.target.studyId],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+        [fixture.target.participantId],
+      );
+      const waveId = randomUUID();
+      await fixture.scratch.pool.query(
+        'INSERT INTO study_waves(id,study_id,team_id,wave_number) VALUES($1,$2,$3,1)',
+        [waveId, fixture.target.studyId, fixture.context.tenantDb.teamId],
+      );
+      await issueParticipantInterviewLink(fixture.keys, fixture.context, {
+        ...fixture.target,
+        waveId,
+      });
+
+      const contactless = await occurrence(fixture, false, 'sms', waveId);
+      const eligible = await occurrence(fixture, false, 'email', waveId);
+      await fixture.scratch.pool.query(
+        "UPDATE schedule_occurrences SET scheduled_for=clock_timestamp()-interval '2 minutes' WHERE id=$1",
+        [contactless.occurrenceId],
+      );
+      await updateParticipantPii(
+        fixture.keys,
+        fixture.context,
+        fixture.target,
+        {
+          email: contacts.email,
+          phone: null,
+          name: null,
+          attributes: null,
+        },
+      );
+      const produce = () =>
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        });
+      await expect(produce()).resolves.toBe(true);
+      await expect(produce()).resolves.toBe(true);
+
+      const noLink = await occurrence(fixture, false, 'email', waveId);
+      await fixture.scratch.pool.query(
+        'DELETE FROM message_templates WHERE id=$1',
+        [noLink.templateId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO message_templates (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+         VALUES($1,$2,$3,'prompt','email','en',$4,'published','A prompt','A prompt without a capability')`,
+        [
+          noLink.templateId,
+          fixture.context.tenantDb.teamId,
+          fixture.target.studyId,
+          ++templateVersion,
+        ],
+      );
+      await expect(produce()).resolves.toBe(false);
+
+      const oversized = await occurrence(fixture, false, 'sms', waveId);
+      await fixture.scratch.pool.query(
+        'DELETE FROM message_templates WHERE id=$1',
+        [oversized.templateId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO message_templates (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+         VALUES($1,$2,$3,'prompt','sms','en',$4,'published',NULL,'{{interviewLink}}' || repeat('x',1600))`,
+        [
+          oversized.templateId,
+          fixture.context.tenantDb.teamId,
+          fixture.target.studyId,
+          ++templateVersion,
+        ],
+      );
+      await expect(produce()).resolves.toBe(false);
+
+      const rows = await fixture.scratch.pool.query<{
+        id: string;
+        state: string;
+      }>(
+        'SELECT id,state FROM schedule_occurrences WHERE id=ANY($1::uuid[]) ORDER BY id',
+        [
+          [
+            contactless.occurrenceId,
+            eligible.occurrenceId,
+            noLink.occurrenceId,
+            oversized.occurrenceId,
+          ],
+        ],
+      );
+      expect(rows.rows).toEqual(
+        [
+          { id: contactless.occurrenceId, state: 'blocked' },
+          { id: eligible.occurrenceId, state: 'dispatched' },
+          { id: noLink.occurrenceId, state: 'blocked' },
+          { id: oversized.occurrenceId, state: 'blocked' },
+        ].toSorted((left, right) => left.id.localeCompare(right.id)),
+      );
+    });
+  });
+
+  it('serializes global opt-out authority by recipient across participants', async () => {
+    await participantFixture(async (fixture) => {
+      const index = createHash('sha256').update('shared-recipient').digest();
+      const other = createHash('sha256').update('other-recipient').digest();
+      const first = await fixture.scratch.maintenance.connect();
+      const second = await fixture.scratch.maintenance.connect();
+      try {
+        await first.query('BEGIN');
+        await second.query('BEGIN');
+        await lockMessageRecipientAuthority(first, 'email', 'index-v1', index);
+        await expect(
+          tryLockMessageRecipientAuthority(second, 'email', 'index-v1', index),
+        ).resolves.toBe(false);
+        await expect(
+          tryLockMessageRecipientAuthority(second, 'email', 'index-v1', other),
+        ).resolves.toBe(true);
+      } finally {
+        await first.query('ROLLBACK');
+        await second.query('ROLLBACK');
+        first.release();
+        second.release();
+      }
     });
   });
 
@@ -814,6 +1007,7 @@ describe('message delivery runtime', () => {
         RecordType: 'Bounce',
         BouncedAt: '2026-09-13T12:00:00.000Z',
         TypeCode: 1,
+        Inactive: true,
         Metadata: { deliveryId: emailDelivery.rows[0]!.id },
       });
       const app = createHttpTestApp(readEnv(), {
@@ -822,6 +1016,8 @@ describe('message delivery runtime', () => {
         messageStatus: {
           maintenancePool: fixture.scratch.maintenance,
           postmarkToken: 'x'.repeat(32),
+          twilioAuthToken: 'twilio-secret',
+          publicBaseUrl: 'https://studio.example',
         },
       });
       expect(
@@ -851,6 +1047,35 @@ describe('message delivery runtime', () => {
         (
           await app.request('/api/v1/message-status/postmark', {
             method: 'POST',
+            headers: {
+              'authorization': `Bearer ${'x'.repeat(32)}`,
+              'content-length': String(16 * 1024 + 1),
+            },
+            body: '{}',
+          })
+        ).status,
+      ).toBe(413);
+      const oversizedStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('x'.repeat(16 * 1024)));
+          controller.enqueue(new TextEncoder().encode('x'));
+          controller.close();
+        },
+      });
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: oversizedStream,
+            duplex: 'half',
+          } as RequestInit & { duplex: 'half' })
+        ).status,
+      ).toBe(413);
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
             headers: { authorization: `Bearer ${'x'.repeat(32)}` },
             body: postmarkBody,
           })
@@ -874,6 +1099,30 @@ describe('message delivery runtime', () => {
           }),
         }),
       ).rejects.toThrow('MESSAGE_STATUS_INVALID');
+      await fixture.scratch.maintenance.query(
+        'DELETE FROM participant_contact_optouts',
+      );
+      await expect(
+        receivePostmarkStatus(fixture.scratch.maintenance, {
+          token: 'x'.repeat(32),
+          authorization: `Bearer ${'x'.repeat(32)}`,
+          body: JSON.stringify({
+            MessageID: postmarkId,
+            RecordType: 'Bounce',
+            BouncedAt: '2026-09-13T12:01:00.000Z',
+            TypeCode: 16,
+            Inactive: false,
+            Metadata: { deliveryId: emailDelivery.rows[0]!.id },
+          }),
+        }),
+      ).resolves.toBe(true);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS n FROM participant_contact_optouts',
+          )
+        ).rows[0],
+      ).toEqual({ n: 0 });
 
       const sms = await occurrence(fixture, false, 'sms');
       await enqueueOccurrenceMessages(
@@ -914,6 +1163,18 @@ describe('message delivery runtime', () => {
           deliveryId,
         }),
       ).rejects.toThrow('MESSAGE_STATUS_UNAUTHORIZED');
+      expect(
+        (
+          await app.request(`/api/v1/message-status/twilio/${deliveryId}`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/x-www-form-urlencoded',
+              'x-twilio-signature': signature,
+            },
+            body,
+          })
+        ).status,
+      ).toBe(204);
       await expect(
         receiveTwilioStatus(fixture.scratch.maintenance, {
           authToken: 'twilio-secret',
@@ -922,21 +1183,21 @@ describe('message delivery runtime', () => {
           body,
           deliveryId,
         }),
-      ).resolves.toBe(true);
+      ).resolves.toBe(false);
       expect(
         (
           await fixture.scratch.pool.query(
             'SELECT count(*)::int AS n FROM message_delivery_events',
           )
         ).rows[0],
-      ).toEqual({ n: 2 });
+      ).toEqual({ n: 3 });
       expect(
         (
           await fixture.scratch.pool.query(
             'SELECT count(*)::int AS n FROM participant_contact_optouts',
           )
         ).rows[0],
-      ).toEqual({ n: 1 });
+      ).toEqual({ n: 0 });
 
       const optoutBody =
         'MessageSid=SM00000000000000000000000000000000&MessageStatus=failed&ErrorCode=21610';
@@ -963,7 +1224,7 @@ describe('message delivery runtime', () => {
             'SELECT count(*)::int AS n FROM participant_contact_optouts',
           )
         ).rows[0],
-      ).toEqual({ n: 2 });
+      ).toEqual({ n: 1 });
       expect(
         (
           await fixture.scratch.pool.query(

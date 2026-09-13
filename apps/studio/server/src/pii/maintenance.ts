@@ -33,6 +33,11 @@ import {
   RAW_LEGACY_PARTICIPANT_INDEX_ID,
 } from './legacy-indexes.ts';
 import {
+  type DeliveryCiphertext,
+  readRenderedMessageForRotation,
+  sealRenderedMessage,
+} from './message-deliveries.ts';
+import {
   appendCredentialAudit,
   credentialTransaction,
   OAUTH_FIELDS,
@@ -60,6 +65,7 @@ const PHASES = [
   'participants',
   'webhooks',
   'interview-links',
+  'message-deliveries',
   'oauth',
 ] as const;
 const cursorSchema = z.strictObject({
@@ -897,7 +903,7 @@ async function rotateInterviewLink(
     pool,
     row.team_id,
     row.id,
-    { allowInactive: true },
+    { allowInactive: true, authority: 'rotation' },
   );
   try {
     const sealed = createDataProtection(keys, {
@@ -966,6 +972,67 @@ async function rotateInterviewLink(
   } finally {
     capability.secret.fill(0);
   }
+}
+
+async function rotateRenderedMessage(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  row: DeliveryCiphertext,
+): Promise<void> {
+  const rendered = await readRenderedMessageForRotation(keys, pool, row);
+  const sealed = sealRenderedMessage(keys, row.team_id, row.id, rendered);
+  await runAuditedSystemMutation(
+    {
+      tenantDb: createTenantDb(pool, row.team_id),
+      actorLabel: 'Encryption maintenance',
+      requestId: randomUUID(),
+    },
+    async (client, context) => {
+      const current = await client.query<DeliveryCiphertext>(
+        `SELECT id,team_id,study_id,participant_id,channel,lease_owner,lease_expires_at,
+                lease_expires_at > statement_timestamp() AS lease_active,
+                rendered_ciphertext,rendered_key_id,rendered_algorithm
+         FROM message_deliveries WHERE id=$1 AND team_id=$2 FOR UPDATE`,
+        [row.id, row.team_id],
+      );
+      const selected = current.rows[0];
+      if (
+        !selected ||
+        selected.rendered_key_id !== row.rendered_key_id ||
+        selected.rendered_algorithm !== row.rendered_algorithm ||
+        !selected.rendered_ciphertext.equals(row.rendered_ciphertext)
+      )
+        throw new ProtectedDataError();
+      await client.query(
+        "SELECT set_config('app.encryption_rotation', 'v1', true)",
+      );
+      await client.query(
+        `UPDATE message_deliveries
+         SET rendered_ciphertext=$3,rendered_key_id=$4,rendered_algorithm=$5
+         WHERE id=$1 AND team_id=$2`,
+        [row.id, row.team_id, sealed.envelope, sealed.keyId, sealed.algorithm],
+      );
+      return {
+        result: undefined,
+        events: [
+          {
+            ...context,
+            eventType: 'message.payload.rotated',
+            eventVersion: 1,
+            category: 'participant_data',
+            outcome: 'succeeded',
+            subjectType: null,
+            subjectId: null,
+            subjectLabel: null,
+            resourceType: 'message_delivery',
+            resourceId: row.id,
+            resourceLabel: null,
+            details: { channel: row.channel, purpose: 'rotation' },
+          } satisfies AuditEventInput,
+        ],
+      };
+    },
+  );
 }
 
 const OAUTH_SELECT = `id, "userId", ${OAUTH_FIELDS.map((spec) => `${spec.ciphertext} AS "${spec.field}", ${spec.keyColumn} AS "${spec.keyId}", ${spec.algorithmColumn} AS "${spec.algorithm}"`).join(', ')}`;
@@ -1194,6 +1261,23 @@ export async function rotateEncryptionBatch(
       for (const row of selected.rows) {
         if (row.token_key_id !== cursor.integrationKeyId) {
           await rotateInterviewLink(pool, keys, row);
+          processed += 1;
+        }
+      }
+    } else if (cursor.phase === 'message-deliveries') {
+      const selected = await readMaintenancePage<DeliveryCiphertext>(
+        pool,
+        `SELECT id,team_id,study_id,participant_id,channel,lease_owner,lease_expires_at,
+                lease_expires_at > statement_timestamp() AS lease_active,
+                rendered_ciphertext,rendered_key_id,rendered_algorithm
+         FROM message_deliveries WHERE rendered_ciphertext IS NOT NULL
+         ${cursor.afterId === null ? '' : 'AND id > $2'} ORDER BY id LIMIT $1`,
+        values,
+      );
+      ids = selected.rows.map((row) => row.id);
+      for (const row of selected.rows) {
+        if (row.rendered_key_id !== cursor.integrationKeyId) {
+          await rotateRenderedMessage(pool, keys, row);
           processed += 1;
         }
       }
