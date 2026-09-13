@@ -1,5 +1,6 @@
 import {
   type ComponentType,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -78,15 +79,16 @@ const EntityTypePicker = EntityTypePickerField as ComponentType<
  * mutually exclusive: a prompt that both creates edges and toggles an
  * attribute is refused by the stage schema, and the interview would silently
  * let edge creation win.
+ *
+ * "Tapping does nothing" is not a third choice. It is the section being
+ * switched off — released Architect's own shape, and the truthful one: the
+ * prompt then holds neither `edges.create` nor `highlight`, which is not a
+ * setting the researcher picked but a question they did not answer.
  */
-const TAP_NOTHING = 'nothing';
 const TAP_CREATE_EDGE = 'create-edge';
 const TAP_HIGHLIGHT = 'highlight';
 
-type TapBehaviour =
-  | typeof TAP_NOTHING
-  | typeof TAP_CREATE_EDGE
-  | typeof TAP_HIGHLIGHT;
+type TapBehaviour = typeof TAP_CREATE_EDGE | typeof TAP_HIGHLIGHT;
 
 /**
  * `allowHighlighting`, not `variable`, is what says a tap marks the node.
@@ -100,12 +102,14 @@ type TapBehaviour =
  * cannot change it — a reading of an attribute a form may well validate
  * elsewhere.
  */
-const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
+const tapBehaviourOf = (
+  item: Record<string, unknown>,
+): TapBehaviour | undefined => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
   if (asNestedBoolean(item.highlight, 'allowHighlighting') === true) {
     return TAP_HIGHLIGHT;
   }
-  return TAP_NOTHING;
+  return undefined;
 };
 
 /**
@@ -184,8 +188,8 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   );
   const committedAllowHighlighting = committedAllowHighlightingValue === true;
 
-  const [tapBehaviour, setTapBehaviour] = useState<TapBehaviour>(() =>
-    tapBehaviourOf(item),
+  const [tapBehaviour, setTapBehaviour] = useState<TapBehaviour | undefined>(
+    () => tapBehaviourOf(item),
   );
 
   // Both name an attribute the interview writes around the codebook's rules —
@@ -295,35 +299,67 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     setRowValue(DISPLAY_EDGES_FIELD, [...displayedEdges, createdEdge]);
   }, [createdEdge, displayedEdges, drawChosenHere, setRowValue]);
 
-  const chooseTapBehaviour = (next: TapBehaviour) => {
+  /**
+   * What the researcher is moving AWAY from, when the move is the section
+   * being switched off.
+   *
+   * Closing the section unmounts the controls inside it, and the section's own
+   * unmount policy discards the values they were holding — so a write-back
+   * made in the open-state handler would be thrown away a moment later. The
+   * side being left is parked here instead and written in the effect below,
+   * which React runs after the children have gone.
+   */
+  const leavingTap = useRef<TapBehaviour | undefined>(undefined);
+
+  const writeBackLeaving = useCallback(
+    (left: TapBehaviour | undefined) => {
+      // The side being LEFT is written rather than left to unmount: a value
+      // the researcher entered and then moved away from is parked by the
+      // store, and parked values are replayed into the saved prompt.
+      //
+      // Only that side, and only what the side OWNS. A connection type is a
+      // tap target and nothing else — a prompt that draws nothing has no use
+      // for one — so leaving takes it. The attribute is not:
+      // `highlight.variable` with the flag off is a prompt that HIGHLIGHTS its
+      // nodes by an attribute the participant cannot toggle, which is a
+      // configuration of its own, and the marking picker mounts already
+      // showing that very attribute. Cleared on the way out, visiting "mark
+      // the node" and changing your mind deleted the highlighting — with the
+      // picker unmounted by then and nothing on screen to say it had gone. So
+      // the pick goes back to what the row opened with, and a visit that
+      // changed nothing changes nothing.
+      if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
+      if (left === TAP_HIGHLIGHT) {
+        // Unless the prompt arrived MARKING, where the attribute is the tap's
+        // own target rather than something the prompt was told to highlight
+        // by: switching the tap off takes it, which is what turning marking
+        // off has always saved.
+        setRowValue(
+          HIGHLIGHT_VARIABLE_FIELD,
+          committedAllowHighlighting ? undefined : committedHighlight,
+        );
+      }
+    },
+    [committedAllowHighlighting, committedHighlight, setRowValue],
+  );
+
+  useEffect(() => {
+    if (tapBehaviour !== undefined) return;
+    const left = leavingTap.current;
+    if (left === undefined) return;
+    leavingTap.current = undefined;
+    writeBackLeaving(left);
+  }, [tapBehaviour, writeBackLeaving]);
+
+  const chooseTapBehaviour = (next: TapBehaviour | undefined) => {
     if (next === tapBehaviour) return;
     const left = tapBehaviour;
     setTapBehaviour(next);
-    // The side being LEFT is written rather than left to unmount: a value the
-    // researcher entered and then moved away from is parked by the store, and
-    // parked values are replayed into the saved prompt.
-    //
-    // Only that side, and only what the side OWNS. A connection type is a tap
-    // target and nothing else — a prompt that draws nothing has no use for
-    // one — so leaving takes it. The attribute is not: `highlight.variable`
-    // with the flag off is a prompt that HIGHLIGHTS its nodes by an attribute
-    // the participant cannot toggle, which is a configuration of its own, and
-    // the marking picker mounts already showing that very attribute. Cleared
-    // on the way out, visiting "mark the node" and changing your mind deleted
-    // the highlighting — with the picker unmounted by then and nothing on
-    // screen to say it had gone. So the pick goes back to what the row opened
-    // with, and a visit that changed nothing changes nothing.
-    if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
-    if (left === TAP_HIGHLIGHT) {
-      // Unless the prompt arrived MARKING, where the attribute is the tap's
-      // own target rather than something the prompt was told to highlight by:
-      // switching the tap off takes it, which is what turning marking off has
-      // always saved.
-      setRowValue(
-        HIGHLIGHT_VARIABLE_FIELD,
-        committedAllowHighlighting ? undefined : committedHighlight,
-      );
+    if (next === undefined) {
+      leavingTap.current = left;
+      return;
     }
+    writeBackLeaving(left);
   };
 
   /**
@@ -364,11 +400,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // re-registers it.
   const tapOptions = useMemo<RichSelectOption[]>(
     () => [
-      {
-        value: TAP_NOTHING,
-        label: intl.formatMessage(messages.tapNothingLabel),
-        description: intl.formatMessage(messages.tapNothingDescription),
-      },
       {
         value: TAP_CREATE_EDGE,
         label: intl.formatMessage(messages.tapCreateEdgeLabel),
@@ -444,6 +475,15 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       <Section
         title={intl.formatMessage(messages.tapTitle)}
         description={intl.formatMessage(messages.tapDescription)}
+        toggleable
+        defaultOpen={tapBehaviourOf(item) !== undefined}
+        onOpenChange={(open) => {
+          // Switching the section off is what saying "tapping does nothing"
+          // has always done: the side being LEFT is written back, exactly as
+          // it was when this was a third card.
+          if (!open) chooseTapBehaviour(undefined);
+          return true;
+        }}
       >
         <UnconnectedField
           name="tap-behaviour"
@@ -451,11 +491,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           component={RichSelectGroupField}
           value={tapBehaviour}
           onChange={(next) =>
-            chooseTapBehaviour(
-              next === TAP_CREATE_EDGE || next === TAP_HIGHLIGHT
-                ? next
-                : TAP_NOTHING,
-            )
+            chooseTapBehaviour(next === TAP_HIGHLIGHT ? next : TAP_CREATE_EDGE)
           }
           options={tapOptions}
         />

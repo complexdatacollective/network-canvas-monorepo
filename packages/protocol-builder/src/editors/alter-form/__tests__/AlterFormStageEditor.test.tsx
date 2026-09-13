@@ -205,7 +205,7 @@ describe('the editor for a form about each person', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText(/Add at least one field/),
+      await screen.findByText('You must create at least one item.'),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(

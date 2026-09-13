@@ -81,8 +81,18 @@ const spanish = (catalog: Record<string, unknown> | undefined, id: string) => {
  */
 const translatableEnglish = (): ReadonlyMap<string, string> => {
   const index = new Map<string, string>();
+  const sameInBoth = new Set<string>();
   const add = (id: string, english: string, translated?: string) => {
-    if (translated === undefined || translated === english) return;
+    if (translated === undefined) return;
+    if (translated === english) {
+      // Indexed BY THE SENTENCE, so a sentence some message writes the same
+      // way in both languages is not evidence of English wherever it appears
+      // — `contentBlock.kindVideo` says "Video" in Spanish too, which would
+      // otherwise be reported against `resourceKinds.videoLabel`, whose
+      // Spanish is "Vídeo". Recorded, and dropped from the index below.
+      sameInBoth.add(collapse(english));
+      return;
+    }
     // Only literal messages compare: a pattern is not what is rendered.
     if (/[{}]/.test(english)) return;
     if (english.replaceAll(/[^A-Za-z]/gu, '').length < 4) return;
@@ -103,6 +113,7 @@ const translatableEnglish = (): ReadonlyMap<string, string> => {
   )) {
     add(id, entry.defaultMessage, spanish(protocolBuilderCatalogs.es, id));
   }
+  for (const english of sameInBoth) index.delete(english);
   return index;
 };
 

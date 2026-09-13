@@ -48,7 +48,10 @@ const fixtureEntries = Object.entries(fixture) as [
   Readonly<{ en: string; es: string; from: string }>,
 ][];
 
-const removedIds = Object.keys(removed);
+// The manifest is a JSON array of ids: read it as one. `Object.keys` on an
+// array yields "0"…"38", which no catalog and no source file ever names, so
+// both sweeps below would pass having checked nothing.
+const removedIds = removed as string[];
 
 describe('the generator, census and bin copy matches released Architect', () => {
   it('carries every id the fixture names', () => {
@@ -142,9 +145,14 @@ const SENTENCES_THAT_NAME_A_CONTROL = [
     names: ['protocolBuilder.cardDisplay.title'],
   },
   {
-    sentence:
-      'protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription',
-    names: ['protocolBuilder.networkCanvas.repositioningLabel'],
+    // Architect's notice quotes two of the accuracy scale's own settings by
+    // name, so it is only advice while the scale still offers them under
+    // those names.
+    sentence: 'protocolBuilder.searchOptions.toleranceNotice',
+    names: [
+      'protocolBuilder.searchOptions.toleranceExact',
+      'protocolBuilder.searchOptions.toleranceClose',
+    ],
   },
 ] as const;
 

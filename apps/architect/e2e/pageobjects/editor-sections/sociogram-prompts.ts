@@ -4,19 +4,20 @@ import { chooseOrCreateAttribute } from './variables.js';
 
 // One sociogram prompt, as `@codaco/protocol-builder`'s `SociogramPromptFields`
 // renders it inside the shared prompt row dialog ("Create prompt", submitted
-// with "Add"). Four always-open groups, none of them a capability with a
-// switch — a prompt says what the canvas does while it is on screen, and every
-// part of that is a question the researcher answers rather than one they turn
+// with "Add"). Four groups; only "Node interaction" carries a switch, because
+// a prompt that does nothing when a node is tapped is how a sociogram says so
+// — the rest are questions the researcher answers rather than ones they turn
 // on:
 // - "Participant prompt" holds the rich-text field "Prompt text" (`text`).
 // - "Node layout" holds the picker "Layout attribute"
 //   (`layout.layoutVariable`). There is no create control beside it: the slot
 //   binds a `layout` attribute, which a name finishes, so the picker's own
 //   create row writes it straight to the codebook and no editor opens.
-// - "Node interaction" holds one choice, "Interaction type", between "Nothing",
-//   "Edge creation" and "Attribute toggling" — mutually exclusive, because
-//   the stage schema refuses a prompt that both draws edges and toggles an
-//   attribute. Choosing "Edge creation" reveals the edge-type
+// - "Node interaction" is toggleable, and switched off is how a prompt says
+//   tapping does nothing. Switched on it holds one choice, "Interaction type",
+//   between "Edge creation" and "Attribute toggling" — mutually exclusive,
+//   because the stage schema refuses a prompt that both draws edges and
+//   toggles an attribute. Choosing "Edge creation" reveals the edge-type
 //   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
 //   toggling" reveals the picker "Boolean attribute" (`highlight.variable`),
 //   whose create row writes a `boolean` attribute the same way, and writes
@@ -49,6 +50,12 @@ export async function addSociogramPrompt(
 
     const interaction = spec.interaction;
     if (interaction) {
+      const tapping = editor.section('Node interaction');
+      // Switched off is "tapping does nothing", so the choice is only on
+      // screen once the section is on.
+      await tapping
+        .getByRole('switch', { name: 'Node interaction', exact: true })
+        .click();
       const behaviour = editor
         .field('tap-behaviour')
         .getByRole('listbox', { name: 'Interaction type', exact: true });

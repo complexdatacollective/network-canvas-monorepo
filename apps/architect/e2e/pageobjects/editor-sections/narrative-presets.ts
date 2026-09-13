@@ -27,14 +27,14 @@ import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 //   Both name codebook entries, and both drop the key entirely when nothing is
 //   ticked.
 //
-// The behaviours are no longer one section: what the participant may DO is
-// `CanvasPermissionsSection` ("Narrative behaviors" — "Free-draw" at
-// `behaviours.freeDraw`, "Allow repositioning" at
-// `behaviours.allowRepositioning`), while how the stage arranges nodes when it
-// opens is the shared `NodeLayoutSection` ("Node layout"), which is not a
-// switch at all but a choice of "Layout mode" between "Manual mode" and
-// "Automatic mode" written to `behaviours.automaticLayout`. The Narrative
-// template seeds automaticLayout and allowRepositioning true.
+// The behaviours are one section again, as released Architect had them:
+// `CanvasPermissionsSection` ("Narrative behaviors") holds three switches, in
+// Architect's order — "Automatic layout" at `behaviours.automaticLayout`,
+// "Free-draw" at `behaviours.freeDraw` and "Allow repositioning" at
+// `behaviours.allowRepositioning`. There is no "Layout mode" list on a
+// narrative stage: the shared `NodeLayoutSection` is the sociogram's. The
+// Narrative template seeds automaticLayout and allowRepositioning true, so the
+// automatic-layout switch opens ON and turning it off is a click.
 
 export async function addNarrativePreset(
   editor: StageEditor,
@@ -96,8 +96,7 @@ export async function setNarrativeBehaviours(
   if (opts.automaticLayout === false) {
     await editor
       .field('behaviours.automaticLayout')
-      .getByRole('listbox', { name: 'Layout mode', exact: true })
-      .getByRole('option', { name: /^Manual mode/ })
+      .getByRole('switch', { name: 'Automatic layout', exact: true })
       .click();
   }
 }

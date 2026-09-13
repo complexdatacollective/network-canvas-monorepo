@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import Section from '@codaco/fresco-ui/Section';
 
 import { EntitySubjectPickerField } from '../../../fields/EntityTypePickerField.tsx';
 import {
@@ -168,43 +169,51 @@ export default function ComposerConnectionsSection() {
       title={intl.formatMessage(messages.connectionsTitle)}
       description={intl.formatMessage(messages.connectionsDescription)}
     >
-      <RowList config={rowList}>
-        <Field<typeof ArrayField<RowValues>>
-          name={EDGES_FIELD}
-          component={ArrayField}
-          label={intl.formatMessage(messages.connectionsLabel)}
-          hint={intl.formatMessage(messages.connectionsHint)}
-          getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
-          itemLabel={messages.connectionNoun}
-          emptyStateMessage={intl.formatMessage(messages.connectionsEmptyState)}
-          itemComponent={RowListItem}
-          editorComponent={RowDialog}
-          itemTemplate={rowTemplate()}
-          sortable
-        />
-      </RowList>
-      {/* Always mounted, so a screen reader is watching this region before the
-          notice appears: a live region added to the page at the same moment as
-          its own content is not reliably announced. The `Alert` inside it is
-          presentational because its `info` variant is a `role="status"` of its
-          own, and a second polite region inside this one is announced twice. */}
-      <div role="status" aria-live="polite">
-        {dropped.questions > 0 && (
-          <Alert
-            key={dropped.act}
-            variant="info"
-            role="presentation"
-            className="mb-8"
-          >
-            <AlertDescription>
-              {intl.formatMessage(messages.connectionQuestionsDropped, {
-                questionCount: dropped.questions,
-              })}
-            </AlertDescription>
-          </Alert>
+      <Section
+        title={intl.formatMessage(messages.connectionTypesSectionTitle)}
+        description={intl.formatMessage(
+          messages.connectionTypesSectionDescription,
         )}
-      </div>
+      >
+        <RowList config={rowList}>
+          <Field<typeof ArrayField<RowValues>>
+            name={EDGES_FIELD}
+            component={ArrayField}
+            label={intl.formatMessage(messages.connectionsLabel)}
+            getId={rowId}
+            addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
+            itemLabel={messages.connectionNoun}
+            emptyStateMessage={intl.formatMessage(
+              messages.connectionsEmptyState,
+            )}
+            itemComponent={RowListItem}
+            editorComponent={RowDialog}
+            itemTemplate={rowTemplate()}
+            sortable
+          />
+        </RowList>
+        {/* Always mounted, so a screen reader is watching this region before the
+            notice appears: a live region added to the page at the same moment as
+            its own content is not reliably announced. The `Alert` inside it is
+            presentational because its `info` variant is a `role="status"` of its
+            own, and a second polite region inside this one is announced twice. */}
+        <div role="status" aria-live="polite">
+          {dropped.questions > 0 && (
+            <Alert
+              key={dropped.act}
+              variant="info"
+              role="presentation"
+              className="mb-8"
+            >
+              <AlertDescription>
+                {intl.formatMessage(messages.connectionQuestionsDropped, {
+                  questionCount: dropped.questions,
+                })}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </Section>
       <ConnectionForms entries={entries} />
     </BuilderSection>
   );

@@ -9,18 +9,18 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useResourceClient } from '../../resources/client.tsx';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
-import MapCenterField from './MapCenterField.tsx';
 import MapPreviewDialog from './MapPreviewDialog.tsx';
+import MapViewField from './MapViewField.tsx';
 
 /** The fixture's stored Mapbox key, which this host will not resolve a map for. */
 const KEY_ASSET = 'mapbox_token';
 
 /**
- * The dialog, mounted the way `MapCenterField` mounts it, with a way back in.
+ * The dialog, mounted the way `MapViewField` mounts it, with a way back in.
  *
  * It is not a field, so it arrives through the host's `children` slot rather
  * than through `Field`, and it is rendered open because that is the only state
- * it has — `MapCenterField` mounts it on the click and unmounts it on the
+ * it has — `MapViewField` mounts it on the click and unmounts it on the
  * close. The button is there so a reader who has closed it can open it again.
  *
  * What was accepted is written into a named status line: a dialog that
@@ -213,7 +213,7 @@ export const NoStartingViewYet: Story = {
  * The map opens on the middle of the world because the stage names no centre,
  * and the replacement SDK never moves — it reports the view it was built at, so
  * what is accepted here is the view the map opened on. That the pair reaches
- * the caller at all is the whole of what this dialog is for: `MapCenterField`
+ * the caller at all is the whole of what this dialog is for: `MapViewField`
  * writes the centre into its own field and the zoom into the one beside it.
  */
 export const TakingTheView: Story = {
@@ -304,7 +304,7 @@ export const TheHostWillNotResolveOne: Story = {
  * What a spectator sees of this dialog, which is nothing.
  *
  * The dialog has no read-only state of its own: it takes no such prop, and the
- * only thing that opens it is the button `MapCenterField` renders, which an
+ * only thing that opens it is the button `MapViewField` renders, which an
  * editor held by somebody else disables. So the read-only state is shown where
  * it exists — at the door — with the field that owns it mounted here rather
  * than the dialog.
@@ -313,13 +313,13 @@ export const NoWayInForASpectator: Story = {
   args: {
     readOnly: true,
     children: (
-      <Field<typeof MapCenterField>
+      <Field<typeof MapViewField>
         name="mapOptions.center"
-        component={MapCenterField}
+        component={MapViewField}
         zoomFieldName="mapOptions.initialZoom"
         tokenAssetId={KEY_ASSET}
-        label="Starting center"
-        hint="Enter the coordinates, or set them by panning a map."
+        label="Initial map view"
+        hint="Configure the initial map view to adjust where it will be centered and zoomed to."
         required={REQUIRED}
       />
     ),

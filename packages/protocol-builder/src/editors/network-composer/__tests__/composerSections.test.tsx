@@ -1710,6 +1710,59 @@ describe('what a composer field’s control accepts', () => {
 });
 
 /**
+ * The live preview beside a composer field's own controls.
+ *
+ * The same pane as the shared form family's, in the other of its two modes: a
+ * composer field labels one box of a form the participant is filling in rather
+ * than asking a question, and the control it renders with is the STAGE's
+ * rather than the attribute's.
+ */
+describe('the live preview beside a composer form field', () => {
+  const fieldOnAge = () =>
+    composerHolding({
+      nodeForm: {
+        fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+      },
+    });
+
+  it('offers the controls and the preview as two named regions', async () => {
+    const harness = renderStageEditor(fieldOnAge());
+
+    await openRow(harness, 'Edit form field');
+    const dialog = within(
+      screen.getByRole('dialog', { name: 'Edit form field' }),
+    );
+
+    expect(dialog.getByRole('form', { name: 'Configuration' })).toBeVisible();
+    expect(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    ).toBeVisible();
+  });
+
+  it('names the previewed box by the label being typed, and follows the control', async () => {
+    const harness = renderStageEditor(fieldOnAge());
+
+    const dialog = await openRow(harness, 'Edit form field');
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+    // No label authored yet, so the attribute's own name stands in — the
+    // composer's rule, and never the form family's placeholder question.
+    expect(preview.getByRole('spinbutton', { name: 'age' })).toBeVisible();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question' }),
+      'How old are they?',
+    );
+    await waitFor(() =>
+      expect(
+        preview.getByRole('spinbutton', { name: 'How old are they?' }),
+      ).toBeVisible(),
+    );
+  });
+});
+
+/**
  * The save-time half of the two rules the stage's own pickers apply.
  *
  * A picker keeps the value it arrived holding whatever the filters say — one
@@ -1793,6 +1846,53 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
         readMessage(unvalidatedElsewhereMessage('composerName')),
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * Architect mounts the same nested validation section under the composer's own
+ * quick-add picker as it does under the quick-add name generator's
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx:481-488`), and seeds the
+ * attribute it creates there with the one rule the role itself needs.
+ */
+describe('the rules the composer’s quick-add attribute has to satisfy', () => {
+  it('edits them under the picker, and writes them to the codebook', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.composerName,
+      ).toMatchObject({ validation: { required: true } }),
+    );
+  });
+
+  it('creates an attribute that has to be answered', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await inventAttribute(
+      harness.user,
+      picker('Create or select an attribute for the quick-add form'),
+      'nickname',
+    );
+
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.values(variables).find(
+        (variable) => variable.name === 'nickname',
+      );
+      if (entry === undefined) throw new Error('nothing was created yet');
+      return entry;
+    });
+    // A participant adding a node through the quick-add box gives one thing,
+    // so the attribute behind it is born requiring an answer.
+    expect(created).toMatchObject({ validation: { required: true } });
   });
 });
 
@@ -2395,101 +2495,138 @@ describe('the rules a composer field authors', () => {
 });
 
 /**
- * Architect mounts the same nested validation section under the composer's own
- * quick-add picker as it does under the quick-add name generator's
- * (`sections/NodeConfiguration/NodeConfiguration.tsx:481-488`), and seeds the
- * attribute it creates there with the one rule the role itself needs.
- */
-describe('the rules the composer’s quick-add attribute has to satisfy', () => {
-  it('edits them under the picker, and writes them to the codebook', async () => {
-    const harness = renderStageEditor(composerHolding({}));
-
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Validation' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        harness.hostCodebook().node?.person?.variables?.composerName,
-      ).toMatchObject({ validation: { required: true } }),
-    );
-  });
-
-  it('creates an attribute that has to be answered', async () => {
-    const harness = renderStageEditor(composerHolding({}));
-
-    await inventAttribute(
-      harness.user,
-      picker('Create or select an attribute for the quick-add form'),
-      'nickname',
-    );
-
-    const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
-      const entry = Object.values(variables).find(
-        (variable) => variable.name === 'nickname',
-      );
-      if (entry === undefined) throw new Error('nothing was created yet');
-      return entry;
-    });
-    // A participant adding a node through the quick-add box gives one thing,
-    // so the attribute behind it is born requiring an answer.
-    expect(created).toMatchObject({ validation: { required: true } });
-  });
-});
-
-/**
- * The live preview beside a composer field's own controls.
+ * The titled groups inside the two sections, as released Architect had them
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx:453-561`,
+ * `sections/EdgeConfiguration/EdgeConfiguration.tsx:241-261`).
  *
- * The same pane as the shared form family's, in the other of its two modes: a
- * composer field labels one box of a form the participant is filling in rather
- * than asking a question, and the control it renders with is the STAGE's
- * rather than the attribute's.
+ * Each group's sentence is what the researcher is given to decide on. Folded
+ * into a hint under one control, as the rebuild had them, a sentence describes
+ * the box rather than the decision — and the decision about automatic layout
+ * had no sentence at all here, because it was a section of its own.
  */
-describe('the live preview beside a composer form field', () => {
-  const fieldOnAge = () =>
-    composerHolding({
-      nodeForm: {
-        fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
-      },
-    });
+describe('the groups a network composer divides its decisions into', () => {
+  it('divides the node configuration into Architect’s four groups, in order', async () => {
+    renderStageEditor(composerHolding({}));
 
-  it('offers the controls and the preview as two named regions', async () => {
-    const harness = renderStageEditor(fieldOnAge());
-
-    await openRow(harness, 'Edit form field');
-    const dialog = within(
-      screen.getByRole('dialog', { name: 'Edit form field' }),
+    const nodes = within(
+      await screen.findByRole('region', { name: 'Node configuration' }),
     );
-
-    expect(dialog.getByRole('form', { name: 'Configuration' })).toBeVisible();
+    // The whole list, in order, so a group added or reordered fails here.
     expect(
-      dialog.getByRole('region', { name: 'Interactive preview' }),
-    ).toBeVisible();
+      nodes
+        .getAllByRole('region')
+        .map(
+          (region) => within(region).getAllByRole('heading')[0]?.textContent,
+        ),
+    ).toEqual([
+      'Quick add attribute',
+      // Architect's own nesting: the attribute's rules are edited under the
+      // picker that binds it (`NodeConfiguration.tsx:481-488`).
+      'Validation',
+      'Node positions',
+      'Automatic layout',
+      'Group hulls',
+      'Editable attributes',
+    ]);
   });
 
-  it('names the previewed box by the label being typed, and follows the control', async () => {
-    const harness = renderStageEditor(fieldOnAge());
+  it('gives each group Architect’s own sentence', async () => {
+    renderStageEditor(composerHolding({}));
 
-    const dialog = await openRow(harness, 'Edit form field');
-    const preview = within(
-      dialog.getByRole('region', { name: 'Interactive preview' }),
+    expect(
+      await screen.findByRole('region', { name: 'Quick add attribute' }),
+    ).toHaveAccessibleDescription(
+      'The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.',
     );
-    // No label authored yet, so the attribute's own name stands in — the
-    // composer's rule, and never the form family's placeholder question.
-    expect(preview.getByRole('spinbutton', { name: 'age' })).toBeVisible();
+    expect(
+      screen.getByRole('region', { name: 'Node positions' }),
+    ).toHaveAccessibleDescription(
+      "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    );
+    expect(
+      screen.getByRole('region', { name: 'Automatic layout' }),
+    ).toHaveAccessibleDescription(
+      'When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.',
+    );
+    expect(
+      screen.getByRole('region', { name: 'Group hulls' }),
+    ).toHaveAccessibleDescription(
+      'Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.',
+    );
+  });
 
-    await harness.user.type(
-      dialog.getByRole('textbox', { name: 'Question' }),
-      'How old are they?',
+  /**
+   * Each control inside the group whose sentence explains it — the point of
+   * the groups, and what a flat section could not say.
+   */
+  it('puts each control inside the group that describes it', async () => {
+    renderStageEditor(composerHolding({}));
+
+    const quickAdd = within(
+      await screen.findByRole('region', { name: 'Quick add attribute' }),
     );
-    await waitFor(() =>
-      expect(
-        preview.getByRole('spinbutton', { name: 'How old are they?' }),
-      ).toBeVisible(),
+    expect(
+      quickAdd.getByRole('group', {
+        name: 'Create or select an attribute for the quick-add form',
+      }),
+    ).toBeInTheDocument();
+    // And no hint of its own: the group's sentence is where the words are now,
+    // so all the control still says about itself is that it must be answered.
+    expect(
+      quickAdd.getByRole('group', {
+        name: 'Create or select an attribute for the quick-add form',
+      }),
+    ).toHaveAccessibleDescription(/^Required\s*$/);
+
+    expect(
+      within(screen.getByRole('region', { name: 'Node positions' })).getByRole(
+        'group',
+        {
+          name: 'Create or select an attribute to store node coordinates',
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Group hulls' })).getByRole(
+        'group',
+        { name: 'Create or select a categorical attribute for grouping' },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A group is a group and not a section: nothing here reaches the host's list
+   * of the stage's sections, which is what a researcher navigates by.
+   */
+  it('registers none of them as a section of the stage', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline().map((section) => section.title)).toEqual([
+      'Node configuration',
+      'Editable attributes',
+      'Edge configuration',
+    ]);
+  });
+
+  /** The edge half: one group around the list of types the participant draws. */
+  it('wraps the edge types in Architect’s connection-types group', async () => {
+    renderStageEditor(composerHolding({}));
+
+    const edges = within(
+      await screen.findByRole('region', { name: 'Edge configuration' }),
     );
+    const connectionTypes = edges.getByRole('region', {
+      name: 'Connection types',
+    });
+    expect(connectionTypes).toHaveAccessibleDescription(
+      'Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.',
+    );
+    // Architect's own label for the list, with no hint under it: the sentence
+    // above is the group's.
+    const list = within(connectionTypes).getByRole('list', {
+      name: 'Edge types',
+    });
+    expect(list).toHaveAccessibleDescription('');
   });
 });

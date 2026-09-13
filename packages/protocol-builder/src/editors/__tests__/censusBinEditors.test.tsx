@@ -1003,6 +1003,9 @@ const PROMPT_GROUPS = [
   edgeLabel: string | undefined;
 }[];
 
+/** The two interfaces whose prompt box Architect left unannotated. */
+const BINS: readonly string[] = ['ordinal-bin-1', 'categorical-bin-1'];
+
 describe('the group a census or bin prompt is written in', () => {
   it.each(PROMPT_GROUPS)(
     'heads a $interfaceName prompt the way Architect does',
@@ -1028,6 +1031,19 @@ describe('the group a census or bin prompt is written in', () => {
             { name: edgeLabel },
           ),
         ).toBeInTheDocument();
+      }
+      // The outer group is the tie-strength dialog's alone: the two dyad
+      // censuses share the connection control and are not wrapped in it.
+      expect(
+        dialog.queryByRole('region', { name: 'Tie-strength response' }),
+      ).toEqual(stageId === 'tie-strength-census-1' ? expect.anything() : null);
+      // The two bins raise nothing above the prompt box. Released Architect
+      // rendered the shared `PromptText` section there with no alert and no
+      // hint, and the notices the rebuild put there were its own invention —
+      // the same class of copy as the hints the first parity PR removed.
+      if (BINS.includes(stageId)) {
+        expect(promptGroup.queryByRole('status')).toBeNull();
+        expect(promptGroup.queryByRole('alert')).toBeNull();
       }
     },
   );

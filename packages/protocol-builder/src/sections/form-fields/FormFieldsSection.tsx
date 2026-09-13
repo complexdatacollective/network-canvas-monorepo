@@ -137,8 +137,7 @@ const renderInputControlsLink = (chunks: ReactNode) => (
 const messages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.formFields.atLeastOne',
-    defaultMessage:
-      'Add at least one field. A form with no fields collects nothing.',
+    defaultMessage: 'You must create at least one item.',
     description:
       'Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member.',
   },
@@ -384,7 +383,7 @@ const messages = defineMessages({
   attributeTaken: {
     id: 'protocolBuilder.formFields.attributeTaken',
     defaultMessage:
-      'Another field in this form already collects this attribute. Choose a different one, or edit that field instead.',
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     description:
       'Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen.',
   },

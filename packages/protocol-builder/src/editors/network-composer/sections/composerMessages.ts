@@ -29,18 +29,24 @@ export const composerMessages = defineMessages({
     description:
       'Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview.',
   },
+  quickAddSectionTitle: {
+    id: 'protocolBuilder.networkCanvas.quickAddSectionTitle',
+    defaultMessage: 'Quick add attribute',
+    description:
+      'Heading of the sub-section of a network composer holding the attribute the participant fills in as they add a member to the network. Also names the group to assistive technology.',
+  },
+  quickAddSectionDescription: {
+    id: 'protocolBuilder.networkCanvas.quickAddSectionDescription',
+    defaultMessage:
+      'The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.',
+    description:
+      'Description of the quick-add sub-section of a network composer. The quick-add field is the box the participant types into on the canvas toolbar to add a member to the network.',
+  },
   quickAddLabel: {
     id: 'protocolBuilder.networkCanvas.quickAddLabel',
     defaultMessage: 'Create or select an attribute for the quick-add form',
     description:
       'Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name.',
-  },
-  quickAddHint: {
-    id: 'protocolBuilder.networkCanvas.quickAddHint',
-    defaultMessage:
-      'The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against that attribute’s own rules.',
-    description:
-      'Guidance under the quick-add attribute control of a network composer. The rules are the validation the codebook records for the attribute.',
   },
   quickAddEmpty: {
     id: 'protocolBuilder.networkCanvas.quickAddEmpty',
@@ -55,18 +61,24 @@ export const composerMessages = defineMessages({
     description:
       'Button that creates a text attribute in the codebook and uses it as the one filled in when a node is added.',
   },
+  nodePositionsSectionTitle: {
+    id: 'protocolBuilder.networkCanvas.nodePositionsSectionTitle',
+    defaultMessage: 'Node positions',
+    description:
+      'Heading of the sub-section of a network composer holding the attribute that stores where each member of the network sits on the canvas. Also names the group to assistive technology.',
+  },
+  nodePositionsSectionDescription: {
+    id: 'protocolBuilder.networkCanvas.nodePositionsSectionDescription',
+    defaultMessage:
+      "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    description:
+      'Description of the node-positions sub-section of a network composer. A stage is one step of an interview, so reusing one attribute carries the participant’s placements from one step to the next.',
+  },
   layoutLabel: {
     id: 'protocolBuilder.networkCanvas.composerLayoutLabel',
     defaultMessage: 'Create or select an attribute to store node coordinates',
     description:
       'Label of the control choosing which codebook attribute stores where each node sits on a composer canvas.',
-  },
-  layoutHint: {
-    id: 'protocolBuilder.networkCanvas.composerLayoutHint',
-    defaultMessage:
-      'The attribute that stores each node’s position. Stages sharing an attribute carry the participant’s placements between them.',
-    description:
-      'Guidance under the position-attribute control of a network composer. A stage is one step of an interview.',
   },
   layoutEmpty: {
     id: 'protocolBuilder.networkCanvas.composerLayoutEmpty',
@@ -81,18 +93,43 @@ export const composerMessages = defineMessages({
     description:
       'Button that creates an attribute holding a position in the codebook and uses it for this stage.',
   },
+  automaticLayoutSectionTitle: {
+    id: 'protocolBuilder.networkCanvas.automaticLayoutSectionTitle',
+    defaultMessage: 'Automatic layout',
+    description:
+      'Heading of the sub-section of a network composer deciding whether the canvas arranges members of the network by itself when the stage opens. Also names the group to assistive technology.',
+  },
+  automaticLayoutSectionDescription: {
+    id: 'protocolBuilder.networkCanvas.automaticLayoutSectionDescription',
+    defaultMessage:
+      'When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.',
+    description:
+      'Description of the automatic-layout sub-section of a network composer. A force-directed layout is a simulation that spreads members of the network out on the canvas.',
+  },
+  automaticLayoutToggleLabel: {
+    id: 'protocolBuilder.networkCanvas.automaticLayoutToggleLabel',
+    defaultMessage: 'Start with automatic layout switched on',
+    description:
+      'Label of the switch deciding whether a network composer opens with its automatic layout running. The participant can switch it the other way during the interview.',
+  },
+  groupHullsSectionTitle: {
+    id: 'protocolBuilder.networkCanvas.groupHullsSectionTitle',
+    defaultMessage: 'Group hulls',
+    description:
+      'Heading of the sub-section of a network composer holding the attribute the participant groups members of the network by. Also names the group to assistive technology.',
+  },
+  groupHullsSectionDescription: {
+    id: 'protocolBuilder.networkCanvas.groupHullsSectionDescription',
+    defaultMessage:
+      'Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.',
+    description:
+      'Description of the group-hulls sub-section of a network composer. The Groups tool and the lasso are the two ways the participant puts members of the network into a group on the canvas.',
+  },
   hullLabel: {
     id: 'protocolBuilder.networkCanvas.hullLabel',
     defaultMessage: 'Create or select a categorical attribute for grouping',
     description:
       'Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas.',
-  },
-  hullHint: {
-    id: 'protocolBuilder.networkCanvas.hullHint',
-    defaultMessage:
-      'Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so they are written without being checked against the attribute’s rules.',
-    description:
-      'Guidance under the grouping-attribute control of a network composer. The shaded outline is drawn around every node that shares a value; the participant assigns those values by lassoing or tapping nodes, which does not run the codebook’s validation.',
   },
   hullEmpty: {
     id: 'protocolBuilder.networkCanvas.hullEmpty',
@@ -172,18 +209,24 @@ export const composerMessages = defineMessages({
     description:
       'Description of the connections section of a network composer. A connection is a relationship between two members of the network.',
   },
-  connectionsLabel: {
-    id: 'protocolBuilder.networkCanvas.composerEdgeFieldLabel',
+  connectionTypesSectionTitle: {
+    id: 'protocolBuilder.networkCanvas.connectionTypesSectionTitle',
     defaultMessage: 'Connection types',
     description:
-      'Label of the list holding the kinds of connection a network composer lets the participant draw.',
+      'Heading of the sub-section of a network composer holding the kinds of connection the participant may draw. Also names the group to assistive technology.',
   },
-  connectionsHint: {
-    id: 'protocolBuilder.networkCanvas.composerEdgeFieldHint',
+  connectionTypesSectionDescription: {
+    id: 'protocolBuilder.networkCanvas.connectionTypesSectionDescription',
     defaultMessage:
-      'The participant can draw a connection of any kind listed here. Leave the list empty to build a network of nodes alone.',
+      'Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.',
     description:
-      'Guidance under the list of connection types a network composer lets the participant draw.',
+      'Description of the connection-types sub-section of a network composer. The editable attributes for each chosen kind are asked for in the sections below this one.',
+  },
+  connectionsLabel: {
+    id: 'protocolBuilder.networkCanvas.composerEdgeFieldLabel',
+    defaultMessage: 'Edge types',
+    description:
+      'Label of the list holding the kinds of connection a network composer lets the participant draw.',
   },
   connectionsAddLabel: {
     id: 'protocolBuilder.networkCanvas.composerEdgeAddLabel',

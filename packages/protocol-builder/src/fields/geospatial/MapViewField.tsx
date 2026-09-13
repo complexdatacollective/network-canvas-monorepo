@@ -2,23 +2,27 @@ import { useId, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { geospatialMessages } from './geospatialMessages.ts';
 import MapPreviewDialog from './MapPreviewDialog.tsx';
-import { type MapCenter, resolveZoom } from './mapView.ts';
+import { type MapCenter, resolveZoom, zoomIssue } from './mapView.ts';
+import MapZoomField from './MapZoomField.tsx';
 
-export type MapCenterFieldProps = CreateFormFieldProps<
+export type MapViewFieldProps = CreateFormFieldProps<
   number[],
   'fieldset',
   {
     /**
-     * The stage path holding the zoom this view is half of. One gesture —
-     * panning a map — sets both, and the map writes the zoom through the stage
-     * form so the field owning `initialZoom` stays its only writer.
+     * The stage path the zoom is stored at. The protocol keeps it beside the
+     * centre rather than inside it, and this field is registered on the centre
+     * alone, so the zoom is read and written through the stage form.
      */
     zoomFieldName: string;
     /** The stored key the map is drawn with. Never the key itself. */
@@ -31,6 +35,12 @@ export type MapCenterFieldProps = CreateFormFieldProps<
     style?: string;
   }
 >;
+
+/**
+ * Said under the control rather than left to the schema, which reports the
+ * same range against a path once the save has already been refused.
+ */
+const zoomValidation = messageRuleValidation([zoomIssue]);
 
 /** Which half of the pair a control holds. */
 type CoordinateIndex = 0 | 1;
@@ -73,12 +83,17 @@ const standsFor = (drafted: number[] | undefined, held: unknown): boolean => {
 };
 
 /**
- * Where the map is centred when the stage opens.
+ * The view the map opens on: where it is centred, and how far in.
  *
- * Two numbers, editable as two numbers — and settable by panning a map, for a
- * researcher who knows the place rather than its coordinates. The typed
- * controls are the only way to set an exact centre, and they keep working when
- * the host cannot draw a map at all.
+ * One decision and therefore one field, as released Architect asked it —
+ * three numbers and a map, inside one group. Architect offered the map alone;
+ * the typed controls are the only way to set an exact view, and they keep
+ * working when the host cannot draw a map at all, so they stay.
+ *
+ * The zoom is stored beside the centre rather than inside it, so it is read
+ * and written through the stage form: this field is registered on
+ * `mapOptions.center`, and a second registration over the same object is
+ * something the form store cannot hold.
  *
  * ## Why the researcher's text is kept
  *
@@ -100,7 +115,7 @@ const standsFor = (drafted: number[] | undefined, held: unknown): boolean => {
  * coordinate just entered. A half-entered pair is reported by the field's own
  * `required`.
  */
-export default function MapCenterField({
+export default function MapViewField({
   id,
   name,
   value,
@@ -115,7 +130,7 @@ export default function MapCenterField({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
-}: MapCenterFieldProps) {
+}: MapViewFieldProps) {
   const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const controlId = useId();
@@ -210,6 +225,23 @@ export default function MapCenterField({
               increase: intl.formatMessage(geospatialMessages.latitudeIncrease),
               decrease: intl.formatMessage(geospatialMessages.latitudeDecrease),
             }}
+          />
+        </div>
+        <div className="flex min-w-40 flex-1 flex-col">
+          {/*
+            A registered field of its own, inside the group rather than beside
+            it. The protocol stores the zoom next to the centre rather than
+            within it, and the form store holds one field per path — so this is
+            what keeps a zoom readable, writable and refusable where the
+            researcher sets it, while the researcher still meets one decision
+            with one name, as released Architect asked it.
+          */}
+          <Field<typeof MapZoomField>
+            name={zoomFieldName}
+            component={MapZoomField}
+            label={intl.formatMessage(geospatialMessages.zoomLabel)}
+            required={REQUIRED}
+            custom={zoomValidation}
           />
         </div>
       </div>

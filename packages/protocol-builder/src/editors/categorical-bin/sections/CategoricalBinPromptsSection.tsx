@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
@@ -50,13 +49,6 @@ const BIN_LIMIT = 8;
 
 /** What only a Categorical Bin says; the words both bins use are in `binMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.categoricalBinGuidance',
-    defaultMessage:
-      'The participant drags each person into one of the bins below, so write a question the bins are the answers to — “what kind of contact do you have with this person?” rather than a yes or no question.',
-    description:
-      'Guidance shown above the box where a researcher writes a Categorical Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question whose answers are the bins.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinPlaceholder',
     defaultMessage: 'Enter your prompt...',
@@ -230,21 +222,6 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * What the participant is doing while they answer, said before the researcher
- * writes the question rather than after it.
- */
-function CategoricalBinGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
-/**
  * One Categorical Bin question: what to ask, which attribute's values become
  * the bins, what happens to an answer none of them covers, and the two orders
  * the people are met in.
@@ -275,7 +252,6 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<CategoricalBinGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(censusMessages.promptTextDescription)}

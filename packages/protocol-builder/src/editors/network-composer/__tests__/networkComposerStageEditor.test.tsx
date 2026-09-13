@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
@@ -72,36 +72,54 @@ describe('the network composer stage editor', () => {
       await screen.findByRole('textbox', { name: 'Stage name' }),
     ).toHaveValue('');
     expect(
-      screen.getByRole('option', { name: /Automatic mode/ }),
-    ).toHaveAttribute('aria-selected', 'true');
+      screen.getByRole('switch', {
+        name: 'Start with automatic layout switched on',
+      }),
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   /**
-   * Both sentences under the layout control are this interface's own, and the
-   * shared pair they replace is not on screen.
+   * Automatic layout is a switch inside the node configuration, as released
+   * Architect had it — not the shared two-card layout-mode picker.
    *
-   * The shared wording is written for a stage that is GIVEN its nodes: manual
+   * The shared cards are written for a stage that is GIVEN its nodes: manual
    * mode leaves every one of them in a bucket at the foot of the canvas, and
    * automatic mode is how the stage arranges them. A composer's nodes arrive
    * one at a time as the participant adds them, and the participant has a
    * layout switch of their own — so the setting decides only how the stage
-   * opens.
+   * opens, which is what the switch's own words say.
    */
-  it('describes both layout modes as a composer performs them', async () => {
+  it('offers automatic layout as a switch inside the node configuration', async () => {
     openFixture();
 
+    const group = within(
+      await screen.findByRole('region', { name: 'Automatic layout' }),
+    );
     expect(
-      await screen.findByText(
-        /Places each node where there is room for it as the participant adds it/,
-      ),
+      group.getByRole('switch', {
+        name: 'Start with automatic layout switched on',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Starts the stage with the simulation running/),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/bucket/)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/simulating physical forces/),
+      screen.queryByRole('listbox', { name: 'Layout mode' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/bucket/)).not.toBeInTheDocument();
+  });
+
+  /** The switch reaches the same key the shared picker wrote. */
+  it('writes the automatic-layout switch to the stage', async () => {
+    const harness = openFixture();
+
+    await harness.user.click(
+      await screen.findByRole('switch', {
+        name: 'Start with automatic layout switched on',
+      }),
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.behaviours).toMatchObject({
+      automaticLayout: true,
+    });
   });
 
   /**
@@ -265,8 +283,10 @@ describe('the network composer stage editor', () => {
 
     // Every section registers its fields on mount, and the outline is built
     // from what is registered — so a mount that has not filled the outline has
-    // not finished registering. The connection forms add a tenth.
-    await waitFor(() => expect(harness.outline()).toHaveLength(10));
+    // not finished registering. The connection forms add a ninth; automatic
+    // layout is a group inside the node configuration rather than a section of
+    // its own, as released Architect had it, so it adds none.
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
 
     const saved = await harness.roundTrip({ unowned: [] });
     // Read back as well as compared, so a round trip that agreed about an

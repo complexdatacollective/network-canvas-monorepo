@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import Section from '@codaco/fresco-ui/Section';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
@@ -111,56 +112,67 @@ export default function PedigreeEdgeConfigurationSection() {
 
       {subject !== null && (
         <>
-          <SlotVariableField
-            name={RELATIONSHIP_TYPE_SLOT.path}
-            label={pedigreeMessages.edgeRelationshipTypeLabel}
-            hint={pedigreeMessages.edgeRelationshipTypeHint}
-            subject={subject}
-            options={categoricalVariables}
-            writerClass="unvalidated"
-            ownSlot={RELATIONSHIP_TYPE_SLOT.slot}
-            variableType="categorical"
-            lockedOptions={INTERFACE_OWNED_OPTION_SETS.relationshipType.options}
-            createLabel={pedigreeMessages.edgeRelationshipTypeCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
-          <SlotVariableField
-            name={IS_ACTIVE_SLOT.path}
-            label={pedigreeMessages.edgeIsActiveLabel}
-            hint={pedigreeMessages.edgeIsActiveHint}
-            subject={subject}
-            options={booleanVariables}
-            writerClass="unvalidated"
-            ownSlot={IS_ACTIVE_SLOT.slot}
-            variableType="boolean"
-            createLabel={pedigreeMessages.edgeIsActiveCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
-          <SlotVariableField
-            name={GESTATIONAL_CARRIER_SLOT.path}
-            label={pedigreeMessages.edgeGestationalCarrierLabel}
-            hint={pedigreeMessages.edgeGestationalCarrierHint}
-            subject={subject}
-            options={booleanVariables}
-            writerClass="unvalidated"
-            ownSlot={GESTATIONAL_CARRIER_SLOT.slot}
-            variableType="boolean"
-            createLabel={pedigreeMessages.edgeGestationalCarrierCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
-          <SlotVariableField
-            name={GAMETE_ROLE_SLOT.path}
-            label={pedigreeMessages.edgeGameteRoleLabel}
-            hint={pedigreeMessages.edgeGameteRoleHint}
-            subject={subject}
-            options={categoricalVariables}
-            writerClass="unvalidated"
-            ownSlot={GAMETE_ROLE_SLOT.slot}
-            variableType="categorical"
-            lockedOptions={INTERFACE_OWNED_OPTION_SETS.gameteRole.options}
-            createLabel={pedigreeMessages.edgeGameteRoleCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
+          <Section
+            title={intl.formatMessage(
+              pedigreeMessages.relationshipAttributesTitle,
+            )}
+            description={intl.formatMessage(
+              pedigreeMessages.relationshipAttributesDescription,
+            )}
+          >
+            <SlotVariableField
+              name={RELATIONSHIP_TYPE_SLOT.path}
+              label={pedigreeMessages.edgeRelationshipTypeLabel}
+              hint={pedigreeMessages.edgeRelationshipTypeHint}
+              subject={subject}
+              options={categoricalVariables}
+              writerClass="unvalidated"
+              ownSlot={RELATIONSHIP_TYPE_SLOT.slot}
+              variableType="categorical"
+              lockedOptions={
+                INTERFACE_OWNED_OPTION_SETS.relationshipType.options
+              }
+              createLabel={pedigreeMessages.edgeRelationshipTypeCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+            <SlotVariableField
+              name={IS_ACTIVE_SLOT.path}
+              label={pedigreeMessages.edgeIsActiveLabel}
+              hint={pedigreeMessages.edgeIsActiveHint}
+              subject={subject}
+              options={booleanVariables}
+              writerClass="unvalidated"
+              ownSlot={IS_ACTIVE_SLOT.slot}
+              variableType="boolean"
+              createLabel={pedigreeMessages.edgeIsActiveCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+            <SlotVariableField
+              name={GESTATIONAL_CARRIER_SLOT.path}
+              label={pedigreeMessages.edgeGestationalCarrierLabel}
+              hint={pedigreeMessages.edgeGestationalCarrierHint}
+              subject={subject}
+              options={booleanVariables}
+              writerClass="unvalidated"
+              ownSlot={GESTATIONAL_CARRIER_SLOT.slot}
+              variableType="boolean"
+              createLabel={pedigreeMessages.edgeGestationalCarrierCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+            <SlotVariableField
+              name={GAMETE_ROLE_SLOT.path}
+              label={pedigreeMessages.edgeGameteRoleLabel}
+              hint={pedigreeMessages.edgeGameteRoleHint}
+              subject={subject}
+              options={categoricalVariables}
+              writerClass="unvalidated"
+              ownSlot={GAMETE_ROLE_SLOT.slot}
+              variableType="categorical"
+              lockedOptions={INTERFACE_OWNED_OPTION_SETS.gameteRole.options}
+              createLabel={pedigreeMessages.edgeGameteRoleCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+          </Section>
         </>
       )}
     </BuilderSection>

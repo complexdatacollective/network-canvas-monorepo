@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -135,6 +135,27 @@ describe('the pedigree a narrative pedigree reads', () => {
     expect(
       [...select.querySelectorAll('option')].map((option) => option.label),
     ).toContain('Stage 16 — Family Pedigree');
+  });
+
+  /**
+   * The dialog's four fields sit in the titled group Architect gave them
+   * (`NarrativePedigree/DiseaseFields.tsx:157-224`): four decisions about one
+   * condition, under one sentence saying what they add up to.
+   */
+  it('groups a disease’s fields under Architect’s heading', async () => {
+    const harness = openFixture();
+
+    const dialog = await openDisease(harness);
+    const group = dialog.getByRole('region', { name: 'Disease details' });
+    expect(group).toHaveAccessibleDescription(
+      "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    );
+    expect(
+      within(group).getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
   });
 
   it('saves an edit to every key it owns', async () => {

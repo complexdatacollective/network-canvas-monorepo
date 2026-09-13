@@ -618,5 +618,20 @@
     "en": "Use a network data file",
     "es": "Usar un archivo de datos de red",
     "from": "74a07e626 architect.form.fields.dataSource.useANetworkDataFile"
+  },
+  "protocolBuilder.formFields.atLeastOne": {
+    "en": "You must create at least one item.",
+    "es": "Debes crear al menos un elemento.",
+    "from": "74a07e626 architect.arrayValidation.required"
+  },
+  "protocolBuilder.formFields.attributeTaken": {
+    "en": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
+    "es": "Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.",
+    "from": "74a07e626 architect.arrayValidation.duplicateField"
+  },
+  "protocolBuilder.contentBlock.kindVideo": {
+    "en": "Video",
+    "es": "Video",
+    "from": "74a07e626 architect.sections.contentGrid.options.config.video"
   }
 }

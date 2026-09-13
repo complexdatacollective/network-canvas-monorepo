@@ -5,6 +5,7 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 
 import BuilderSection from '../../../../sections/BuilderSection.tsx';
 
+const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
 const FREE_DRAW_FIELD = 'behaviours.freeDraw';
 const ALLOW_REPOSITIONING_FIELD = 'behaviours.allowRepositioning';
 
@@ -21,6 +22,19 @@ const messages = defineMessages({
       'Control automatic layout, drawing, and node repositioning on the narrative canvas.',
     description:
       'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it.',
+  },
+  automaticLayoutLabel: {
+    id: 'protocolBuilder.networkCanvas.narrativeAutomaticLayoutLabel',
+    defaultMessage: 'Automatic layout',
+    description:
+      'Label of the switch deciding whether a narrative canvas arranges the network it shows by itself.',
+  },
+  automaticLayoutHint: {
+    id: 'protocolBuilder.networkCanvas.narrativeAutomaticLayoutHint',
+    defaultMessage:
+      'Position nodes automatically using a force-directed layout',
+    description:
+      'Guidance under the automatic-layout switch on a narrative stage. A force-directed layout is a simulation that spreads members of the network out on the canvas.',
   },
   freeDrawLabel: {
     id: 'protocolBuilder.networkCanvas.freeDrawLabel',
@@ -48,18 +62,16 @@ const messages = defineMessages({
 });
 
 /**
- * What the participant may do to the canvas while they talk over it.
+ * How the canvas behaves while the participant talks over it.
  *
- * Two independent permissions, held at `behaviours.freeDraw` and
- * `behaviours.allowRepositioning`. Deliberately not the same section as the
- * layout mode, which is not a permission at all: that decides how the stage
- * arranges nodes before the participant touches anything, and it is offered by
- * interfaces that grant neither of these.
+ * Three switches, held at `behaviours.automaticLayout`, `behaviours.freeDraw`
+ * and `behaviours.allowRepositioning`, in that order — the section's own
+ * description names all three, and this is the order Architect listed them in.
  *
- * The narrative interface is the only one of the nineteen that honours either,
- * so this section lives with it. `Sociogram.tsx` reads no drawing flag and
- * repositions unconditionally, and the network composer's `behaviours` holds
- * `automaticLayout` alone.
+ * The narrative interface is the only one of the nineteen that honours the
+ * last two, so this section lives with it. `Sociogram.tsx` reads no drawing
+ * flag and repositions unconditionally, and offers automatic layout through
+ * the shared layout-mode section instead.
  */
 export default function CanvasPermissionsSection() {
   const intl = useAppIntl();
@@ -69,6 +81,13 @@ export default function CanvasPermissionsSection() {
       title={intl.formatMessage(messages.canvasInteractionTitle)}
       description={intl.formatMessage(messages.canvasInteractionDescription)}
     >
+      <Field<typeof ToggleField>
+        name={AUTOMATIC_LAYOUT_FIELD}
+        component={ToggleField}
+        label={intl.formatMessage(messages.automaticLayoutLabel)}
+        hint={intl.formatMessage(messages.automaticLayoutHint)}
+        inline
+      />
       <Field<typeof ToggleField>
         name={FREE_DRAW_FIELD}
         component={ToggleField}

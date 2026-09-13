@@ -39,6 +39,33 @@ const sortPropertyOptions = (prompt: ReturnType<typeof within>): string[] =>
     .map((option) => option.value)
     .filter((value) => value !== '');
 
+/**
+ * Switches the tap section on, if it is not already, and chooses a behaviour.
+ *
+ * "Tapping does nothing" is the section being OFF — released Architect's own
+ * shape — so reaching either card means switching it on first, and every test
+ * that chooses one goes through here.
+ */
+const chooseTapBehaviour = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  prompt: ReturnType<typeof within>,
+  name: RegExp,
+): Promise<void> => {
+  await switchTapping(harness, prompt, true);
+  await harness.user.click(await prompt.findByRole('option', { name }));
+};
+
+/** The section's own switch, which is where "tapping does nothing" lives. */
+const switchTapping = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  prompt: ReturnType<typeof within>,
+  on: boolean,
+): Promise<void> => {
+  const toggle = prompt.getByRole('switch', { name: 'Node interaction' });
+  if (toggle.getAttribute('aria-checked') === String(on)) return;
+  await harness.user.click(toggle);
+};
+
 const openEditor = () => ({
   stageId: 'sociogram-1' as const,
   sections: sociogramSections,
@@ -76,7 +103,7 @@ describe('the tasks a sociogram sets', () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(prompt.getByRole('option', { name: /Nothing/ }));
+    await switchTapping(harness, prompt, false);
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -92,13 +119,99 @@ describe('the tasks a sociogram sets', () => {
     });
   });
 
+  /**
+   * Tapping a node does one of TWO things, as released Architect offered it
+   * (`sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx:114-130`).
+   * "Tapping does nothing" was never a third setting: it is the section
+   * switched off, which is the truthful shape — the prompt then holds neither
+   * `edges.create` nor `highlight`, and an unanswered question saved as an
+   * answer is content the researcher did not write.
+   */
+  it('offers two tap behaviours, inside a section that can be switched off', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const prompt = await openPrompt(harness);
+    await switchTapping(harness, prompt, true);
+    // The whole list, so a third card reappearing fails here.
+    expect(
+      prompt
+        .getByRole('listbox', { name: 'Interaction type' })
+        .querySelectorAll('[role="option"]').length,
+    ).toBe(2);
+    expect(prompt.queryByRole('option', { name: /Nothing/ })).toBeNull();
+    expect(
+      prompt.getByRole('option', { name: /Edge creation/ }),
+    ).toBeInTheDocument();
+    expect(
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
+    ).toBeInTheDocument();
+  });
+
+  /** A prompt that says nothing about tapping opens with the section off. */
+  it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
+    const SILENT_PROMPT = {
+      id: 'sociogram-prompt-1',
+      text: 'Place the people who know each other close together',
+      layout: { layoutVariable: 'layout' },
+    };
+    const harness = renderStageEditor(sociogramHolding(SILENT_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    expect(
+      prompt.getByRole('switch', { name: 'Node interaction' }),
+    ).toHaveAttribute('aria-checked', 'false');
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(SILENT_PROMPT);
+  });
+
+  /**
+   * And switching it off after choosing marking does not leave the flag on: a
+   * prompt saying `allowHighlighting: true` is one whose participants can
+   * toggle the attribute, which is exactly what switching the section off
+   * withdraws.
+   */
+  it('does not leave the marking flag on when the section is switched off', async () => {
+    // A prompt that has never said anything about tapping, so what the save
+    // holds is this edit alone.
+    const harness = renderStageEditor(
+      sociogramHolding({
+        id: 'sociogram-prompt-1',
+        text: 'Place the people who know each other close together',
+        layout: { layoutVariable: 'layout' },
+      }),
+    );
+
+    const prompt = await openPrompt(harness);
+    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
+      'highlighted',
+    );
+    await switchTapping(harness, prompt, false);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
+    // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
+    // the question still has not. The prompt itself is asserted first, so a
+    // stage that did not save at all says so rather than throwing.
+    expect(saved).toMatchObject({ id: 'sociogram-prompt-1' });
+    expect(saved).not.toHaveProperty('highlight');
+  });
+
   it('marks nodes with the attribute the researcher chose', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('option', { name: /Attribute toggling/ }),
-    );
+    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
@@ -126,9 +239,7 @@ describe('the tasks a sociogram sets', () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness, 1);
-    await harness.user.click(
-      prompt.getByRole('option', { name: /Edge creation/ }),
-    );
+    await chooseTapBehaviour(harness, prompt, /Edge creation/);
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
     );
@@ -160,9 +271,7 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('option', { name: /Attribute toggling/ }),
-    );
+    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
@@ -364,10 +473,10 @@ describe('a prompt that only highlights its nodes', () => {
     const prompt = await openPrompt(harness);
     // Tapping does nothing, which is exactly what this prompt says: the
     // highlighting is drawn from an attribute the participant cannot toggle.
-    expect(prompt.getByRole('option', { name: /Nothing/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // Said by the section being switched off, as released Architect said it.
+    expect(
+      prompt.getByRole('switch', { name: 'Node interaction' }),
+    ).toHaveAttribute('aria-checked', 'false');
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -392,9 +501,7 @@ describe('a prompt that only highlights its nodes', () => {
     const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('option', { name: /Edge creation/ }),
-    );
+    await chooseTapBehaviour(harness, prompt, /Edge creation/);
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
     );
@@ -523,7 +630,8 @@ describe('what tapping a node does, against what the prompt already said', () =>
     ...(highlight === undefined ? {} : { highlight }),
   });
 
-  const NOTHING = /Nothing/;
+  /** The section switched off, which is how a prompt says tapping does nothing. */
+  const NOTHING = 'off';
   const CREATE_EDGE = /Edge creation/;
   const MARK = /Attribute toggling/;
 
@@ -533,7 +641,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
     /** Whether a form elsewhere collects the attribute, making it validated. */
     collected?: boolean;
     /** The tap choices the researcher makes, in order. */
-    taps: readonly RegExp[];
+    taps: readonly (RegExp | typeof NOTHING)[];
     /** An attribute chosen while "mark the node" is the current choice. */
     marks?: string;
     /** An edge type chosen while "create a connection" is the current choice. */
@@ -645,7 +753,11 @@ describe('what tapping a node does, against what the prompt already said', () =>
 
     const prompt = await openPrompt(harness);
     for (const tap of scenario.taps) {
-      await harness.user.click(prompt.getByRole('option', { name: tap }));
+      if (tap === NOTHING) {
+        await switchTapping(harness, prompt, false);
+        continue;
+      }
+      await chooseTapBehaviour(harness, prompt, tap);
       if (tap === MARK && scenario.marks !== undefined) {
         await chooseAttributeById(
           harness.user,

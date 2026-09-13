@@ -9,8 +9,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
-import MapCenterField from './MapCenterField.tsx';
 import { centerIssue } from './mapView.ts';
+import MapViewField from './MapViewField.tsx';
 
 const GEOSPATIAL = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
 
@@ -29,24 +29,23 @@ const withMapOptions =
   };
 
 /**
- * The centre, mounted as `MapAppearanceSection` mounts it.
+ * The starting view, mounted as `MapAppearanceSection` mounts it.
  *
  * `centerIssue` travels with the control rather than being restated: the same
  * rule decides what the section refuses, and a story that left it off would be
  * showing a control that accepts coordinates the researcher's stage cannot
- * save. The zoom it names is a real path in the stage document even though no
- * zoom control is mounted here — a view the researcher sets on a map writes
- * both halves, and the form holds the whole stage, not only what is on screen.
+ * save. The zoom's own rule travels inside the control, with the registration
+ * it belongs to.
  */
-function StartingCenter() {
+function InitialMapView() {
   return (
-    <Field<typeof MapCenterField>
+    <Field<typeof MapViewField>
       name="mapOptions.center"
-      component={MapCenterField}
+      component={MapViewField}
       zoomFieldName="mapOptions.initialZoom"
       tokenAssetId="mapbox_token"
-      label="Starting center"
-      hint="Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90."
+      label="Initial map view"
+      hint="Configure the initial map view to adjust where it will be centered and zoomed to."
       required={REQUIRED}
       custom={messageRuleValidation([centerIssue])}
     />
@@ -54,21 +53,21 @@ function StartingCenter() {
 }
 
 const meta = {
-  title: 'Protocol Builder/Fields/Geospatial/Starting center',
+  title: 'Protocol Builder/Fields/Geospatial/Initial map view',
   component: FieldStoryHost,
   parameters: {
     layout: 'fullscreen',
     docs: {
       description: {
         component:
-          'Where the map is centred when the stage opens: two numbers, editable as two numbers, and settable by panning a map for a researcher who knows the place but not its coordinates. The typed boxes are the control and the map is the convenience — they are the only way to set an exact centre, and they keep working where no map can be drawn at all. What is shown is the researcher’s own text and what is stored is the pair of numbers it reads as, because a number input reports nothing for a reading it cannot parse: rendered from the stored number, the minus sign of a western longitude would vanish under the cursor as soon as the first digit landed on it.',
+          'The view the map opens on: where it is centred, and how far in. One decision and therefore one control, as released Architect asked it — three numbers and a map, inside one group. Architect offered the map alone; the typed boxes are the only way to set an exact view, and they keep working where no map can be drawn at all, so they stay. What is shown is the researcher’s own text and what is stored is the numbers it reads as, because a number input reports nothing for a reading it cannot parse: rendered from the stored number, the minus sign of a western longitude would vanish under the cursor as soon as the first digit landed on it.',
       },
     },
   },
   args: {
     stageId: 'geospatial-1',
     sectionTitle: 'Starting map view',
-    children: <StartingCenter />,
+    children: <InitialMapView />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -78,6 +77,40 @@ type Story = StoryObj<typeof meta>;
 
 /** The stage as the protocol holds it: the map opens on New York. */
 export const Centred: Story = {};
+
+/** All three numbers, in one group, with the map beside them. */
+export const TheWholeView: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The stage arrives from the host over a promise, so the editor — and
+    // every control in it — is drawn a turn after the story mounts. Every play
+    // in this file awaits its FIRST query for that reason.
+    await awaitPassiveEffects();
+
+    await expect(await canvas.findByLabelText('Longitude')).toHaveValue(-74);
+    await expect(canvas.getByLabelText('Latitude')).toHaveValue(40.7);
+    await expect(
+      canvas.getByRole('spinbutton', { name: 'Starting zoom' }),
+    ).toHaveValue(10);
+  },
+};
+
+/** A zoom the schema refuses, reported against the group that holds it. */
+export const AZoomOutOfRange: Story = {
+  args: { seedEdit: withMapOptions({ initialZoom: 30 }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Save stage' }),
+    );
+
+    await expect(
+      await canvas.findByText('Starting zoom must be between 0 and 22.'),
+    ).toBeInTheDocument();
+  },
+};
 
 /** A stage with no starting view yet, so the map opens where the interface does. */
 export const NoCentreChosen: Story = {
@@ -93,9 +126,6 @@ export const NoCentreChosen: Story = {
 export const TypingACoordinate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The stage arrives from the host over a promise, so the editor — and
-    // every control in it — is drawn a turn after the story mounts. Every play
-    // in this file awaits its FIRST query for that reason.
     await awaitPassiveEffects();
 
     const longitude = await canvas.findByLabelText('Longitude');

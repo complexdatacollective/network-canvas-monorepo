@@ -946,9 +946,7 @@ describe('a form a Spanish researcher cannot save', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(
-        'Añade al menos un campo. Un formulario sin campos no recoge nada.',
-      ),
+      screen.getByText('Debes crear al menos un elemento.'),
     ).toBeInTheDocument();
   });
 
@@ -993,7 +991,7 @@ describe('a form a Spanish researcher cannot save', () => {
 
     expect(
       await dialog.findByText(
-        'Otro campo de este formulario ya recoge este atributo. Elige otro, o edita ese campo.',
+        'Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.',
       ),
     ).toBeInTheDocument();
   });

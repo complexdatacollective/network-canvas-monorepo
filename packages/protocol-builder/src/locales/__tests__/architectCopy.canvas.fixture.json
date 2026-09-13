@@ -79,6 +79,36 @@
     "es": "Activar el cifrado de atributos pertenecientes a este tipo de nodo.",
     "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.enableEncryptionForAttributesBelongingTo"
   },
+  "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
+    "en": "Map the node attributes used to label family members and store pedigree relationships.",
+    "es": "Asigna los atributos de nodo utilizados para etiquetar a los familiares y guardar las relaciones genealógicas.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.mapTheNodeAttributesUsedTo"
+  },
+  "protocolBuilder.familyPedigree.familyMemberAttributesTitle": {
+    "en": "Family member attributes",
+    "es": "Atributos de familiares",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.familyMemberAttributes"
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsDescription": {
+    "en": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
+    "es": "Escribe la pregunta que responderán los participantes y elige el atributo booleano que registra a quién nominan.",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.writeTheQuestionParticipantsWillAnswer"
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
+    "en": "Nomination details",
+    "es": "Detalles de la nominación",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.nominationDetails"
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
+    "en": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
+    "es": "Asigna los atributos de vínculo utilizados para describir las relaciones familiares y seguir la herencia.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.mapTheEdgeAttributesUsedTo"
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
+    "en": "Relationship attributes",
+    "es": "Atributos de la relación",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipAttributes"
+  },
   "protocolBuilder.geospatial.accessDescription": {
     "en": "Provide the Mapbox API key required to display the map.",
     "es": "Proporciona la clave de API de Mapbox necesaria para mostrar el mapa.",
@@ -109,6 +139,16 @@
     "es": "Color del contorno y la selección del mapa",
     "from": "74a07e626 architect.sections.mapOptions.mapOutlineAndSelectionColor"
   },
+  "protocolBuilder.geospatial.initialMapViewHint": {
+    "en": "Configure the initial map view to adjust where it will be centered and zoomed to.",
+    "es": "Configura la vista inicial del mapa para ajustar su centro y nivel de zoom.",
+    "from": "74a07e626 architect.sections.mapOptions.configureTheInitialMapViewTo"
+  },
+  "protocolBuilder.geospatial.initialMapViewLabel": {
+    "en": "Initial map view",
+    "es": "Vista inicial del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.initialMapView"
+  },
   "protocolBuilder.geospatial.layerDescription": {
     "en": "Select the GeoJSON source that provides selectable areas for prompts.",
     "es": "Selecciona la fuente GeoJSON que proporciona las áreas seleccionables para las preguntas.",
@@ -128,6 +168,16 @@
     "en": "Map layers",
     "es": "Capas del mapa",
     "from": "74a07e626 architect.sections.mapOptions.mapLayers"
+  },
+  "protocolBuilder.geospatial.locationResponseDescription": {
+    "en": "Choose the location attribute that stores the participant's selection.",
+    "es": "Elige el atributo de ubicación que guarda la selección del participante.",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.chooseTheLocationAttributeThatStores"
+  },
+  "protocolBuilder.geospatial.locationResponseTitle": {
+    "en": "Location response",
+    "es": "Respuesta de ubicación",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.locationResponse"
   },
   "protocolBuilder.geospatial.promptVariableLabel": {
     "en": "Location attribute",
@@ -234,6 +284,16 @@
     "es": "Color",
     "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.color"
   },
+  "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
+    "en": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    "es": "Define cómo aparece esta enfermedad, asígnala al atributo de estado afectado de la genealogía de origen y elige cómo se interpreta su herencia.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.defineHowThisDiseaseAppearsMap"
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
+    "en": "Disease details",
+    "es": "Detalles de la enfermedad",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.diseaseDetails"
+  },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "en": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
     "es": "Elige cómo se hereda esta enfermedad. Los patrones mendelianos se utilizan junto con las relaciones biológicas y el sexo registrado para inferir estados de portador y posibles estados de riesgo. Los patrones multifactorial y desconocido solo muestran el estado afectado y no infieren estados de portador ni de riesgo.",
@@ -319,6 +379,21 @@
     "es": "Origen de la genealogía",
     "from": "74a07e626 architect.sections.narrativePedigree.sourceStage.pedigreeSource"
   },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
+    "en": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
+    "es": "Al activar esta opción, los nodos se organizan mediante una disposición dirigida por fuerzas. Los participantes pueden cambiarla durante la entrevista; esta opción establece el estado inicial.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.whenOnNodesAreArrangedBy"
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionTitle": {
+    "en": "Automatic layout",
+    "es": "Disposición automática",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.automaticLayout"
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutToggleLabel": {
+    "en": "Start with automatic layout switched on",
+    "es": "Iniciar con la disposición automática activada",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.startWithAutomaticLayoutSwitchedOn"
+  },
   "protocolBuilder.networkCanvas.canvasInteractionDescription": {
     "en": "Control automatic layout, drawing, and node repositioning on the narrative canvas.",
     "es": "Controle la disposición automática, el dibujo y el movimiento de nodos en el lienzo narrativo.",
@@ -333,6 +408,11 @@
     "en": "Define the connection types participants can draw and the attributes collected for each type.",
     "es": "Define los tipos de conexiones que los participantes pueden dibujar y los atributos recogidos para cada tipo.",
     "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan"
+  },
+  "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
+    "en": "Edge types",
+    "es": "Tipos de vínculos",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeTypes"
   },
   "protocolBuilder.networkCanvas.composerEdgeTitle": {
     "en": "Edge configuration",
@@ -353,6 +433,16 @@
     "en": "Node configuration",
     "es": "Configuración de nodos",
     "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.nodeConfiguration"
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
+    "en": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
+    "es": "Selecciona los tipos de vínculos que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan"
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionTitle": {
+    "en": "Connection types",
+    "es": "Tipos de conexiones",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.connectionTypes"
   },
   "protocolBuilder.networkCanvas.edgeFormAddLabel": {
     "en": "Create new attribute for {typeName}",
@@ -389,6 +479,16 @@
     "es": "Dibujo libre",
     "from": "74a07e626 architect.sections.narrativeBehaviours.freeDraw"
   },
+  "protocolBuilder.networkCanvas.groupHullsSectionDescription": {
+    "en": "Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.",
+    "es": "Dibuja contornos sombreados alrededor de grupos de nodos que compartan un valor de un atributo categórico. Elige o crea el atributo cuyos valores usarán los participantes para agrupar nodos, pulsándolos con la herramienta Grupos o seleccionando varios a la vez con el lazo.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.drawShadedOutlinesAroundGroupsOf"
+  },
+  "protocolBuilder.networkCanvas.groupHullsSectionTitle": {
+    "en": "Group hulls",
+    "es": "Envolventes de grupos",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.groupHulls"
+  },
   "protocolBuilder.networkCanvas.hullLabel": {
     "en": "Create or select a categorical attribute for grouping",
     "es": "Crear o seleccionar un atributo categórico para agrupar",
@@ -414,6 +514,16 @@
     "es": "Modo manual",
     "from": "74a07e626 architect.sections.automaticLayout.config.manualMode"
   },
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutHint": {
+    "en": "Position nodes automatically using a force-directed layout",
+    "es": "Colocar los nodos automáticamente mediante una disposición dirigida por fuerzas",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.positionNodesAutomaticallyUsingAForceDirected"
+  },
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutLabel": {
+    "en": "Automatic layout",
+    "es": "Disposición automática",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.automaticLayout"
+  },
   "protocolBuilder.networkCanvas.nodeFormAddLabel": {
     "en": "Create new node attribute",
     "es": "Crear nuevo atributo de nodo",
@@ -428,6 +538,16 @@
     "en": "Editable attributes",
     "es": "Atributos editables",
     "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.editableAttributes"
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionDescription": {
+    "en": "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    "es": "Guarda la posición de cada nodo en el lienzo. Reutilizar el mismo atributo en varias etapas conserva las posiciones cuando el participante pasa de una tarea a otra.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.storesEachNodeSPositionOnThe"
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionTitle": {
+    "en": "Node positions",
+    "es": "Posiciones de nodos",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.nodePositions"
   },
   "protocolBuilder.networkCanvas.presetConnectionsDescription": {
     "en": "Select the edge types shown in this visualization preset.",
@@ -643,6 +763,16 @@
     "en": "Create or select an attribute for the quick-add form",
     "es": "Crear o seleccionar un atributo para el formulario de adición rápida",
     "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectAnAttributeFor"
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionDescription": {
+    "en": "The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.",
+    "es": "El atributo que completa el campo de adición rápida al añadir un nodo desde la barra de herramientas, normalmente un nombre o una etiqueta.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.theAttributePopulatedByTheInline"
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionTitle": {
+    "en": "Quick add attribute",
+    "es": "Atributo de adición rápida",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.quickAddAttribute"
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "en": "Allow nodes to be repositioned",

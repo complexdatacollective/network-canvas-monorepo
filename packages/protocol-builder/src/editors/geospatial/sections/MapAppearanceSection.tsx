@@ -9,14 +9,8 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
 import { mapStyleOptions } from '../../../fields/geospatial/mapboxStyles.ts';
-import MapCenterField from '../../../fields/geospatial/MapCenterField.tsx';
-import {
-  centerIssue,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  zoomIssue,
-} from '../../../fields/geospatial/mapView.ts';
-import MapZoomField from '../../../fields/geospatial/MapZoomField.tsx';
+import { centerIssue } from '../../../fields/geospatial/mapView.ts';
+import MapViewField from '../../../fields/geospatial/MapViewField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -33,14 +27,6 @@ import {
 
 const centerValidation = {
   custom: messageRuleValidation([centerIssue]),
-};
-
-/**
- * Said under the control rather than left to the schema, which reports the
- * same range against a path once the save has already been refused.
- */
-const zoomValidation = {
-  custom: messageRuleValidation([zoomIssue]),
 };
 
 /**
@@ -117,29 +103,18 @@ export default function MapAppearanceSection() {
         title={intl.formatMessage(geospatialMessages.viewTitle)}
         description={intl.formatMessage(geospatialMessages.viewDescription)}
       >
-        <Field<typeof MapCenterField>
+        <Field<typeof MapViewField>
           name={CENTER_FIELD}
-          component={MapCenterField}
+          component={MapViewField}
           zoomFieldName={ZOOM_FIELD}
           tokenAssetId={
             typeof tokenAssetId === 'string' ? tokenAssetId : undefined
           }
           style={typeof chosenStyle === 'string' ? chosenStyle : undefined}
-          label={intl.formatMessage(geospatialMessages.centerLabel)}
-          hint={intl.formatMessage(geospatialMessages.centerHint)}
+          label={intl.formatMessage(geospatialMessages.initialMapViewLabel)}
+          hint={intl.formatMessage(geospatialMessages.initialMapViewHint)}
           required={REQUIRED}
           {...centerValidation}
-        />
-        <Field<typeof MapZoomField>
-          name={ZOOM_FIELD}
-          component={MapZoomField}
-          label={intl.formatMessage(geospatialMessages.zoomLabel)}
-          hint={intl.formatMessage(geospatialMessages.zoomHint, {
-            min: MIN_ZOOM,
-            max: MAX_ZOOM,
-          })}
-          required={REQUIRED}
-          {...zoomValidation}
         />
       </BuilderSection>
     </>

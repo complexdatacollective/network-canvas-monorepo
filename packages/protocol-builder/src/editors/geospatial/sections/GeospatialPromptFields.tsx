@@ -4,6 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
@@ -131,20 +132,29 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
         initialValue={asText(item[TEXT_FIELD]) ?? ''}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}
       />
-      <Field<typeof VariablePicker>
-        name={VARIABLE_FIELD}
-        label={intl.formatMessage(geospatialMessages.promptVariableLabel)}
-        hint={intl.formatMessage(geospatialMessages.promptVariableHint)}
-        component={VariablePicker}
-        options={options}
-        emptyMessage={intl.formatMessage(
-          geospatialMessages.promptVariableEmptyState,
+      <Section
+        title={intl.formatMessage(geospatialMessages.locationResponseTitle)}
+        description={intl.formatMessage(
+          geospatialMessages.locationResponseDescription,
         )}
-        initialValue={committedVariable}
-        required={intl.formatMessage(geospatialMessages.promptVariableRequired)}
-        {...createProps}
-      />
-      {editor}
+      >
+        <Field<typeof VariablePicker>
+          name={VARIABLE_FIELD}
+          label={intl.formatMessage(geospatialMessages.promptVariableLabel)}
+          hint={intl.formatMessage(geospatialMessages.promptVariableHint)}
+          component={VariablePicker}
+          options={options}
+          emptyMessage={intl.formatMessage(
+            geospatialMessages.promptVariableEmptyState,
+          )}
+          initialValue={committedVariable}
+          required={intl.formatMessage(
+            geospatialMessages.promptVariableRequired,
+          )}
+          {...createProps}
+        />
+        {editor}
+      </Section>
     </>
   );
 }

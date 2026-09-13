@@ -451,10 +451,6 @@
     "defaultMessage": "Categorical response",
     "description": "Heading of the group that picks the attribute whose values are the bins the participant drags people into."
   },
-  "protocolBuilder.censusPrompts.categoricalBinGuidance": {
-    "defaultMessage": "The participant drags each person into one of the bins below, so write a question the bins are the answers to — “what kind of contact do you have with this person?” rather than a yes or no question.",
-    "description": "Guidance shown above the box where a researcher writes a Categorical Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question whose answers are the bins."
-  },
   "protocolBuilder.censusPrompts.categoricalBinLimitDescription": {
     "defaultMessage": "This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.",
     "description": "Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover."
@@ -587,10 +583,6 @@
     "defaultMessage": "Color gradient",
     "description": "Heading of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along."
   },
-  "protocolBuilder.censusPrompts.ordinalBinGuidance": {
-    "defaultMessage": "The participant drags each person into one of a row of bins running from least to most, so write a question those bins are the scale of — “how often do you see this person?” rather than a yes or no question.",
-    "description": "Guidance shown above the box where a researcher writes an Ordinal Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question a scale can answer."
-  },
   "protocolBuilder.censusPrompts.ordinalBinLimitDescription": {
     "defaultMessage": "This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
     "description": "Body of the warning shown when an Ordinal Bin prompt would draw more bins than its interview screen is designed for."
@@ -702,6 +694,14 @@
   "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
     "defaultMessage": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
     "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthResponseDescription": {
+    "defaultMessage": "Configure the edge and ordinal value created by an affirmative response.",
+    "description": "Description of the tie-strength response group. An ordinal value is one point of a scale the participant answers on."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthResponseTitle": {
+    "defaultMessage": "Tie-strength response",
+    "description": "Heading of the group in a tie-strength prompt’s dialog holding everything an affirmative answer creates. Also names the group to assistive technology."
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel": {
     "defaultMessage": "Create a new attribute",
@@ -1487,6 +1487,30 @@
     "defaultMessage": "This data file could not be read",
     "description": "Warning heading shown when the chosen data file could not be opened. The reason underneath comes from the application hosting this editor."
   },
+  "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
+    "defaultMessage": "Map the node attributes used to label family members and store pedigree relationships.",
+    "description": "Description of the family-member attributes group. Mapping means choosing which codebook attribute each thing the interface records is kept in."
+  },
+  "protocolBuilder.familyPedigree.familyMemberAttributesTitle": {
+    "defaultMessage": "Family member attributes",
+    "description": "Heading of the group holding the attributes a family pedigree writes onto each family member. Also names the group to assistive technology."
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsDescription": {
+    "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
+    "description": "Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
+    "defaultMessage": "Nomination details",
+    "description": "Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology."
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
+    "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
+    "description": "Description of the relationship-attributes group. Inheritance tracing is how the interface follows a condition down the family tree."
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
+    "defaultMessage": "Relationship attributes",
+    "description": "Heading of the group holding the attributes a family pedigree writes onto each relationship it draws. Also names the group to assistive technology."
+  },
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
@@ -1528,7 +1552,7 @@
     "description": "Title of the dialog a researcher fills in to add one more question to a form."
   },
   "protocolBuilder.formFields.atLeastOne": {
-    "defaultMessage": "Add at least one field. A form with no fields collects nothing.",
+    "defaultMessage": "You must create at least one item.",
     "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
   },
   "protocolBuilder.formFields.attributeControlBadge": {
@@ -1556,7 +1580,7 @@
     "description": "Heading of the half of the field dialog that says which attribute this question’s answer is recorded under."
   },
   "protocolBuilder.formFields.attributeTaken": {
-    "defaultMessage": "Another field in this form already collects this attribute. Choose a different one, or edit that field instead.",
+    "defaultMessage": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
     "description": "Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen."
   },
   "protocolBuilder.formFields.componentHint": {
@@ -1779,17 +1803,9 @@
     "defaultMessage": "Map appearance",
     "description": "Heading of the section holding how the map looks: which basemap is drawn, what colour selectable areas are, and what else is shown on it."
   },
-  "protocolBuilder.geospatial.centerHint": {
-    "defaultMessage": "Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90.",
-    "description": "Guidance under the starting-centre controls. The ranges are degrees and are the same in every language."
-  },
   "protocolBuilder.geospatial.centerIncomplete": {
     "defaultMessage": "Enter both a longitude and a latitude for the starting view.",
     "description": "Refusal shown under the starting-centre controls when only one of the two coordinates reads as a number. A centre is one value, so half of it is not a centre."
-  },
-  "protocolBuilder.geospatial.centerLabel": {
-    "defaultMessage": "Starting center",
-    "description": "Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens."
   },
   "protocolBuilder.geospatial.colorHint": {
     "defaultMessage": "Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style.",
@@ -1802,6 +1818,14 @@
   "protocolBuilder.geospatial.createAttributeLabel": {
     "defaultMessage": "Create a new location attribute",
     "description": "Button inside the geospatial prompt dialog that adds an attribute holding a place to the codebook without leaving the stage, and the title of the dialog it opens. Whole rather than a generic \"Create\", because the dialog around it already has several buttons."
+  },
+  "protocolBuilder.geospatial.initialMapViewHint": {
+    "defaultMessage": "Configure the initial map view to adjust where it will be centered and zoomed to.",
+    "description": "Guidance under the initial-map-view group. Centred and zoomed describe where the map sits and how close it is when the participant first sees it."
+  },
+  "protocolBuilder.geospatial.initialMapViewLabel": {
+    "defaultMessage": "Initial map view",
+    "description": "Label of the group of controls deciding where a geospatial stage’s map is centred and how far it is zoomed in when the stage opens."
   },
   "protocolBuilder.geospatial.latitudeDecrease": {
     "defaultMessage": "Decrease latitude",
@@ -1834,6 +1858,14 @@
   "protocolBuilder.geospatial.layerTitle": {
     "defaultMessage": "Map layers",
     "description": "Heading of the section where a researcher chooses the GeoJSON file whose areas a participant can select on the map."
+  },
+  "protocolBuilder.geospatial.locationResponseDescription": {
+    "defaultMessage": "Choose the location attribute that stores the participant's selection.",
+    "description": "Description of the location-response group of a geospatial prompt. A location attribute holds a place on a map."
+  },
+  "protocolBuilder.geospatial.locationResponseTitle": {
+    "defaultMessage": "Location response",
+    "description": "Heading of the group in a geospatial prompt’s dialog holding the attribute the participant’s chosen place is stored in. Also names the group to assistive technology."
   },
   "protocolBuilder.geospatial.longitudeDecrease": {
     "defaultMessage": "Decrease longitude",
@@ -2062,10 +2094,6 @@
   "protocolBuilder.geospatial.zoomDecrease": {
     "defaultMessage": "Decrease zoom",
     "description": "Accessible name of the button that steps the starting zoom down by one."
-  },
-  "protocolBuilder.geospatial.zoomHint": {
-    "defaultMessage": "{min, number} shows the whole world; {max, number} is street level.",
-    "description": "Guidance under the starting-zoom control. min and max are the two ends of Mapbox’s own zoom scale, 0 and 22, which the protocol schema also enforces."
   },
   "protocolBuilder.geospatial.zoomIncrease": {
     "defaultMessage": "Increase zoom",
@@ -2307,6 +2335,14 @@
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
   },
+  "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
+    "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    "description": "Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
+    "defaultMessage": "Disease details",
+    "description": "Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology."
+  },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
     "description": "Guidance under the inheritance-pattern control. \"Mendelian\" describes the classical single-gene patterns; a carrier holds a condition without developing it; \"Multifactorial\" and \"Unknown\" are two of the choices in the list and are named here exactly as they are written there."
@@ -2527,6 +2563,18 @@
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
+    "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
+    "description": "Description of the automatic-layout sub-section of a network composer. A force-directed layout is a simulation that spreads members of the network out on the canvas."
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionTitle": {
+    "defaultMessage": "Automatic layout",
+    "description": "Heading of the sub-section of a network composer deciding whether the canvas arranges members of the network by itself when the stage opens. Also names the group to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutToggleLabel": {
+    "defaultMessage": "Start with automatic layout switched on",
+    "description": "Label of the switch deciding whether a network composer opens with its automatic layout running. The participant can switch it the other way during the interview."
+  },
   "protocolBuilder.networkCanvas.backgroundCirclesLabel": {
     "defaultMessage": "Number of concentric circles",
     "description": "Label of the box holding how many rings are drawn behind the nodes."
@@ -2619,12 +2667,8 @@
     "defaultMessage": "The participant cannot draw connections on this canvas yet. Add a connection type to let them.",
     "description": "Shown in place of the list of connection types while a network composer allows none."
   },
-  "protocolBuilder.networkCanvas.composerEdgeFieldHint": {
-    "defaultMessage": "The participant can draw a connection of any kind listed here. Leave the list empty to build a network of nodes alone.",
-    "description": "Guidance under the list of connection types a network composer lets the participant draw."
-  },
   "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
-    "defaultMessage": "Connection types",
+    "defaultMessage": "Edge types",
     "description": "Label of the list holding the kinds of connection a network composer lets the participant draw."
   },
   "protocolBuilder.networkCanvas.composerEdgeNoun": {
@@ -2659,10 +2703,6 @@
     "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
     "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
   },
-  "protocolBuilder.networkCanvas.composerLayoutHint": {
-    "defaultMessage": "The attribute that stores each node’s position. Stages sharing an attribute carry the participant’s placements between them.",
-    "description": "Guidance under the position-attribute control of a network composer. A stage is one step of an interview."
-  },
   "protocolBuilder.networkCanvas.composerLayoutLabel": {
     "defaultMessage": "Create or select an attribute to store node coordinates",
     "description": "Label of the control choosing which codebook attribute stores where each node sits on a composer canvas."
@@ -2678,6 +2718,14 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
+    "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
+    "description": "Description of the connection-types sub-section of a network composer. The editable attributes for each chosen kind are asked for in the sections below this one."
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionTitle": {
+    "defaultMessage": "Connection types",
+    "description": "Heading of the sub-section of a network composer holding the kinds of connection the participant may draw. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.createHullLabel": {
     "defaultMessage": "Create a new grouping attribute",
@@ -2819,21 +2867,21 @@
     "defaultMessage": "Free-draw",
     "description": "Label of the switch letting the participant draw on the canvas."
   },
+  "protocolBuilder.networkCanvas.groupHullsSectionDescription": {
+    "defaultMessage": "Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.",
+    "description": "Description of the group-hulls sub-section of a network composer. The Groups tool and the lasso are the two ways the participant puts members of the network into a group on the canvas."
+  },
+  "protocolBuilder.networkCanvas.groupHullsSectionTitle": {
+    "defaultMessage": "Group hulls",
+    "description": "Heading of the sub-section of a network composer holding the attribute the participant groups members of the network by. Also names the group to assistive technology."
+  },
   "protocolBuilder.networkCanvas.hullEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group nodes by.",
     "description": "Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take."
   },
-  "protocolBuilder.networkCanvas.hullHint": {
-    "defaultMessage": "Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so they are written without being checked against the attribute’s rules.",
-    "description": "Guidance under the grouping-attribute control of a network composer. The shaded outline is drawn around every node that shares a value; the participant assigns those values by lassoing or tapping nodes, which does not run the codebook’s validation."
-  },
   "protocolBuilder.networkCanvas.hullLabel": {
     "defaultMessage": "Create or select a categorical attribute for grouping",
     "description": "Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas."
-  },
-  "protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription": {
-    "defaultMessage": "Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.",
-    "description": "Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together."
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
     "defaultMessage": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
@@ -2843,10 +2891,6 @@
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
-  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
-    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow repositioning” is switched on.",
-    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow repositioning” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
-  },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
     "description": "Guidance under the layout-mode control."
@@ -2854,10 +2898,6 @@
   "protocolBuilder.networkCanvas.layoutModeLabel": {
     "defaultMessage": "Layout mode",
     "description": "Label of the control choosing between manual and automatic node layout."
-  },
-  "protocolBuilder.networkCanvas.layoutModeManualComposerDescription": {
-    "defaultMessage": "Places each node where there is room for it as the participant adds it, leaving them to drag it wherever they want.",
-    "description": "Says what the participant sees in manual layout mode on a network composer stage, where they add the nodes themselves rather than being given a set of them to place. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the wordings of one control together."
   },
   "protocolBuilder.networkCanvas.layoutModeManualDescription": {
     "defaultMessage": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
@@ -2867,9 +2907,13 @@
     "defaultMessage": "Manual mode",
     "description": "Name of the choice where the stage does not arrange nodes at all and the participant places every one of them by hand. Offered as one of two cards; the sentence under it is layoutModeManualDescription."
   },
-  "protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription": {
-    "defaultMessage": "Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.",
-    "description": "Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together."
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutHint": {
+    "defaultMessage": "Position nodes automatically using a force-directed layout",
+    "description": "Guidance under the automatic-layout switch on a narrative stage. A force-directed layout is a simulation that spreads members of the network out on the canvas."
+  },
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutLabel": {
+    "defaultMessage": "Automatic layout",
+    "description": "Label of the switch deciding whether a narrative canvas arranges the network it shows by itself."
   },
   "protocolBuilder.networkCanvas.nodeFormAddLabel": {
     "defaultMessage": "Create new node attribute",
@@ -2910,6 +2954,14 @@
   "protocolBuilder.networkCanvas.nodeLayoutTitle": {
     "defaultMessage": "Node layout",
     "description": "Heading of the section deciding how a canvas arranges its nodes when the stage opens. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionDescription": {
+    "defaultMessage": "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    "description": "Description of the node-positions sub-section of a network composer. A stage is one step of an interview, so reusing one attribute carries the participant’s placements from one step to the next."
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionTitle": {
+    "defaultMessage": "Node positions",
+    "description": "Heading of the sub-section of a network composer holding the attribute that stores where each member of the network sits on the canvas. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.presetConnectionsDescription": {
     "defaultMessage": "Select the edge types shown in this visualization preset.",
@@ -3179,13 +3231,17 @@
     "defaultMessage": "This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.",
     "description": "Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take."
   },
-  "protocolBuilder.networkCanvas.quickAddHint": {
-    "defaultMessage": "The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against that attribute’s own rules.",
-    "description": "Guidance under the quick-add attribute control of a network composer. The rules are the validation the codebook records for the attribute."
-  },
   "protocolBuilder.networkCanvas.quickAddLabel": {
     "defaultMessage": "Create or select an attribute for the quick-add form",
     "description": "Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name."
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionDescription": {
+    "defaultMessage": "The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.",
+    "description": "Description of the quick-add sub-section of a network composer. The quick-add field is the box the participant types into on the canvas toolbar to add a member to the network."
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionTitle": {
+    "defaultMessage": "Quick add attribute",
+    "description": "Heading of the sub-section of a network composer holding the attribute the participant fills in as they add a member to the network. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "Allow nodes to be repositioned",
@@ -3213,7 +3269,7 @@
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Interaction type",
-    "description": "Label of the control choosing between the three things tapping a node can do."
+    "description": "Label of the control choosing between the two things tapping a node can do."
   },
   "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
     "defaultMessage": "Clicking or tapping a node allows the participant to create an edge.",
@@ -3234,14 +3290,6 @@
   "protocolBuilder.networkCanvas.tapHighlightLabel": {
     "defaultMessage": "Attribute toggling",
     "description": "Name of the choice where tapping a node turns a true-or-false attribute on and off. Offered as one of three cards; the sentence under it is tapHighlightDescription."
-  },
-  "protocolBuilder.networkCanvas.tapNothingDescription": {
-    "defaultMessage": "Tapping a node does nothing on this prompt. The participant only moves nodes around.",
-    "description": "Says what the participant can do when tapping does nothing."
-  },
-  "protocolBuilder.networkCanvas.tapNothingLabel": {
-    "defaultMessage": "Nothing",
-    "description": "Name of the choice where tapping a node does nothing. Offered as one of three cards; the sentence under it is tapNothingDescription."
   },
   "protocolBuilder.networkCanvas.tapTitle": {
     "defaultMessage": "Node interaction",
@@ -5423,13 +5471,29 @@
     "defaultMessage": "Choose at least one attribute for a search to match against.",
     "description": "Refusal shown against the checkboxes when roster search is switched on and nothing is checked, which would find nobody whatever the participant types."
   },
+  "protocolBuilder.searchOptions.matchToleranceDescription": {
+    "defaultMessage": "Choose how closely a participant's search must match roster text.",
+    "description": "Description of the match-tolerance group. Roster text is what the imported data file holds for each person."
+  },
+  "protocolBuilder.searchOptions.matchToleranceTitle": {
+    "defaultMessage": "Match tolerance",
+    "description": "Heading of the group holding how close a participant’s typing has to be to count as a match. Also names the group to assistive technology."
+  },
+  "protocolBuilder.searchOptions.searchMatchingDescription": {
+    "defaultMessage": "Choose the roster attributes considered when matching a participant's search.",
+    "description": "Description of the search-matching group. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.searchOptions.searchMatchingTitle": {
+    "defaultMessage": "Search matching",
+    "description": "Heading of the group holding which attributes of the data file a participant’s typing is compared against. Also names the group to assistive technology."
+  },
   "protocolBuilder.searchOptions.title": {
     "defaultMessage": "Roster search",
     "description": "Heading of the section letting a participant find someone in a roster by typing. A roster is a list of people imported from a data file."
   },
   "protocolBuilder.searchOptions.toleranceClose": {
-    "defaultMessage": "Close matches only",
-    "description": "The second of four search tolerances, between \"Exact\" and \"Allow small differences\"."
+    "defaultMessage": "High accuracy",
+    "description": "The second of four search tolerances, between \"Exact\" and \"Medium accuracy\". Accuracy here is how closely the participant’s typing has to match."
   },
   "protocolBuilder.searchOptions.toleranceExact": {
     "defaultMessage": "Exact",
@@ -5443,6 +5507,10 @@
     "defaultMessage": "Search accuracy",
     "description": "Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match."
   },
+  "protocolBuilder.searchOptions.toleranceNotice": {
+    "defaultMessage": "If the roster contains many similar nodes, selecting \"Exact\" or \"High accuracy\" will help narrow down searches. In contrast, a low accuracy search will allow for typos and spelling mistakes.",
+    "description": "Notice above the accuracy scale, saying which end of it suits a roster full of similar people. “Exact” and “High accuracy” are two of the scale’s own choices."
+  },
   "protocolBuilder.searchOptions.toleranceRequired": {
     "defaultMessage": "Choose how closely a search must match.",
     "description": "Refusal shown against the tolerance scale when roster search is switched on and no tolerance has been chosen."
@@ -5452,11 +5520,11 @@
     "description": "Label of the extra position the tolerance scale offers when the stage was saved with a tolerance that is not one of the four named ones — an older protocol, or one authored elsewhere. value is the number the stage holds, which is what the researcher has to be able to see and keep. Kept short: it is read as one tick label beside the four named ones."
   },
   "protocolBuilder.searchOptions.toleranceSmallDifferences": {
-    "defaultMessage": "Allow small differences",
-    "description": "The third of four search tolerances, between \"Close matches only\" and \"Allow typos and misspellings\"."
+    "defaultMessage": "Medium accuracy",
+    "description": "The third of four search tolerances, between \"High accuracy\" and \"Low accuracy\"."
   },
   "protocolBuilder.searchOptions.toleranceTypos": {
-    "defaultMessage": "Allow typos and misspellings",
+    "defaultMessage": "Low accuracy",
     "description": "The loosest of four search tolerances: a word the participant spelled wrongly still finds the person."
   },
   "protocolBuilder.searchOptions.waitingDescription": {

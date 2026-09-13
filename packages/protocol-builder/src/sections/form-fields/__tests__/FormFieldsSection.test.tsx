@@ -382,9 +382,7 @@ describe('the fields a form collects', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(
-        'Add at least one field. A form with no fields collects nothing.',
-      ),
+      screen.getByText('You must create at least one item.'),
     ).toBeInTheDocument();
   });
 
@@ -1405,9 +1403,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     // so "add at least one field" must not be applied to it.
     expect(pedigreeForm(await harness.submit())).toEqual([]);
     expect(
-      screen.queryByText(
-        'Add at least one field. A form with no fields collects nothing.',
-      ),
+      screen.queryByText('You must create at least one item.'),
     ).not.toBeInTheDocument();
   });
 
@@ -3115,9 +3111,7 @@ describe('a form whose list is not a list', () => {
     // holds has to come out first — so the sentence that asks for one would
     // send the researcher somewhere that cannot help.
     expect(
-      screen.queryByText(
-        'Add at least one field. A form with no fields collects nothing.',
-      ),
+      screen.queryByText('You must create at least one item.'),
     ).not.toBeInTheDocument();
   });
 

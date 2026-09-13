@@ -25,9 +25,9 @@ import { type StageEditor } from '../stage-editor.js';
 //   attributes") whose value fills in click order; names need `exact: true`
 //   ('name' substring-matches 'first_name').
 // - `searchOptions.fuzziness` is the "Search accuracy" Likert scale. Its four
-//   settings are tolerances, ascending: 'Exact' (0), 'Close matches only'
-//   (0.25), 'Allow small differences' (0.5), 'Allow typos and misspellings'
-//   (0.75) — the scale reads the chosen one back through `aria-valuetext`.
+//   settings are tolerances, ascending: 'Exact' (0), 'High accuracy' (0.25),
+//   'Medium accuracy' (0.5), 'Low accuracy' (0.75) — the scale reads the
+//   chosen one back through `aria-valuetext`.
 export async function addCardDisplayProperties(
   editor: StageEditor,
   rows: { variable: string; label: string }[],
@@ -92,11 +92,7 @@ export async function configureSearchOptions(
   opts: {
     // Click order becomes the saved array order.
     matchProperties: string[];
-    tolerance:
-      | 'Exact'
-      | 'Close matches only'
-      | 'Allow small differences'
-      | 'Allow typos and misspellings';
+    tolerance: 'Exact' | 'High accuracy' | 'Medium accuracy' | 'Low accuracy';
   },
 ): Promise<void> {
   await editor
@@ -110,14 +106,9 @@ export async function configureSearchOptions(
       .check();
   }
   const slider = page.getByRole('slider', { name: 'Search accuracy' });
-  // Deterministic keyboard path: End commits the last stop ('Allow typos and
-  // misspellings'), then ArrowLeft steps back one committed stop at a time.
-  const stops = [
-    'Exact',
-    'Close matches only',
-    'Allow small differences',
-    'Allow typos and misspellings',
-  ];
+  // Deterministic keyboard path: End commits the last stop ('Low accuracy'),
+  // then ArrowLeft steps back one committed stop at a time.
+  const stops = ['Exact', 'High accuracy', 'Medium accuracy', 'Low accuracy'];
   const target = stops.indexOf(opts.tolerance);
   await slider.press('End');
   for (let step = stops.length - 1; step > target; step -= 1) {

@@ -677,7 +677,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       matchProperties: ['website', 'country', 'name'],
       // The canonical stage holds `fuzziness: 0.25`, which the scale offers as
       // its second setting.
-      tolerance: 'Close matches only',
+      tolerance: 'High accuracy',
     });
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
