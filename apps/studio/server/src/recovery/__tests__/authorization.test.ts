@@ -268,6 +268,34 @@ async function seedRestoredState() {
         VALUES ('00000000-0000-4000-8000-000000000001', 'restored-invitation',
           'current-team', 'invitee@example.com', 'member', 'Current', 'Current',
           now() + interval '1 day', 0);
+      INSERT INTO templates (id, team_id, kind, name, state)
+        VALUES ('00000000-0000-4000-8000-000000000021', 'current-team',
+          'protocol', 'Restored template', 'published');
+      INSERT INTO template_versions
+        (id, team_id, template_id, version_number, manifest, manifest_hash,
+          schema_version)
+        VALUES ('00000000-0000-4000-8000-000000000022', 'current-team',
+          '00000000-0000-4000-8000-000000000021', 1, '{}', repeat('b', 64), 1);
+      INSERT INTO template_registry_publication_intents
+        (id, team_id, template_version_id, registry_url, registry_root,
+          publisher_id, publisher_name, initiating_actor_id,
+          initiating_actor_label, initiating_request_id)
+        VALUES ('00000000-0000-4000-8000-000000000023', 'current-team',
+          '00000000-0000-4000-8000-000000000022', 'https://registry.example',
+          repeat('c', 64), '00000000-0000-4000-8000-000000000024',
+          'Restored publisher', 'current-user', 'Current',
+          '00000000-0000-4000-8000-000000000025');
+      INSERT INTO template_registry_import_intents
+        (id, team_id, registry_url, registry_entry_id, registry_root,
+          entry_snapshot, asset_manifest, target_template_id, target_version_id,
+          initiating_actor_id, initiating_actor_label, initiating_request_id)
+        VALUES ('00000000-0000-4000-8000-000000000026', 'current-team',
+          'https://registry.example', '00000000-0000-4000-8000-000000000027',
+          repeat('d', 64), '{}', '[]',
+          '00000000-0000-4000-8000-000000000028',
+          '00000000-0000-4000-8000-000000000029',
+          'current-user', 'Current',
+          '00000000-0000-4000-8000-000000000030');
       INSERT INTO api_tokens
         (id, team_id, name, custodian_user_id, token_prefix, token_hash,
           scope_kind, access_level, includes_pii, created_by_user_id)
@@ -294,12 +322,6 @@ async function seedRestoredState() {
             WHERE team_id = 'current-team'), 'security.fixture', 1,
           'security', 'succeeded', 'system', 'Studio', gen_random_uuid(),
           '{}'::jsonb);
-      INSERT INTO audit_alert_settings (team_id, revision)
-        VALUES ('current-team', gen_random_uuid());
-      INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true);
       INSERT INTO audit_alert_outbox
         (id, team_id, audit_event_id, audit_event_sequence, event_type,
           event_version, alert_policy_key)
@@ -397,8 +419,6 @@ beforeEach(async () => {
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
-      DELETE FROM audit_alert_recipients;
-      DELETE FROM audit_alert_settings;
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
       DELETE FROM webhook_deliveries;
@@ -798,8 +818,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: number;
         uncertain_audit_outbox: number;
         uncertain_audit_deliveries: number;
-        alert_recipients: number;
-        alert_settings: number;
+        quarantined_registry_intents: number;
         deletion_audit: boolean;
       }>(`SELECT
         (SELECT count(*)::int FROM "user" WHERE NOT recovery_disabled) enabled_users,
@@ -813,8 +832,8 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         (SELECT count(*)::int FROM webhook_deliveries WHERE uncertain_at IS NOT NULL) uncertain_webhooks,
         (SELECT count(*)::int FROM audit_alert_outbox WHERE uncertain_at IS NOT NULL) uncertain_audit_outbox,
         (SELECT count(*)::int FROM audit_alert_deliveries WHERE uncertain_at IS NOT NULL) uncertain_audit_deliveries,
-        (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
-        (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
+        ((SELECT count(*) FROM template_registry_publication_intents WHERE quarantined_at IS NOT NULL)
+          + (SELECT count(*) FROM template_registry_import_intents WHERE quarantined_at IS NOT NULL))::int quarantined_registry_intents,
         EXISTS (SELECT 1 FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audit`);
       expect(state.rows[0]).toEqual({
         enabled_users: 0,
@@ -828,34 +847,12 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: 1,
         uncertain_audit_outbox: 1,
         uncertain_audit_deliveries: 1,
-        alert_recipients: 0,
-        alert_settings: 0,
+        quarantined_registry_intents: 2,
         deletion_audit: true,
       });
     });
     await expect(run(evidence)).resolves.toMatchObject({
       reconciliationSha256: 'a'.repeat(64),
-    });
-  });
-
-  it('refuses reopening if restored alert recipients are reintroduced after reconciliation', async () => {
-    const evidence = await currentEvidence();
-    await run(evidence);
-    await withTargetAdministrator(async (pool) => {
-      await pool.query(`INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true)`);
-    });
-    await expect(authorize(evidence)).rejects.toThrow();
-    await withTargetAdministrator(async (pool) => {
-      expect(
-        (
-          await pool.query(
-            'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
-          )
-        ).rows[0]?.count,
-      ).toBe(0);
     });
   });
 

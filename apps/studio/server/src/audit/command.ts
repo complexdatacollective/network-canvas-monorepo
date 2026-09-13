@@ -273,7 +273,8 @@ export async function runAuditedMutation<T>(
 type SystemAuditActor =
   | 'Audit export'
   | 'Encryption maintenance'
-  | 'Webhook delivery';
+  | 'Webhook delivery'
+  | 'Template Registry reconciliation';
 
 export type SystemAuditEventContext<
   Actor extends SystemAuditActor = SystemAuditActor,

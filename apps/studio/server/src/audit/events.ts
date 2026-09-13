@@ -308,6 +308,26 @@ const CommonTemplateRegistryV1EventSchema = CommonUserEventSchema.extend({
   resourceLabel: LabelSchema,
 }).strict();
 
+const TemplateRegistryPublishRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_publish_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      versionId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const TemplateRegistryImportRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_import_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
 const TemplateRegistryPublishedV1EventSchema =
   CommonTemplateRegistryV1EventSchema.extend({
     eventType: z.literal('template.registry_published'),
@@ -325,6 +345,42 @@ const TemplateRegistryImportedV1EventSchema =
       versionId: z.uuid(),
       registryEntryId: z.uuid(),
       registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const CommonTemplateRegistryReconciledV2EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Template Registry reconciliation'),
+    eventVersion: z.literal(2),
+  }).strict();
+
+const TemplateRegistryPublishedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_published'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
+    }),
+  }).strict();
+
+const TemplateRegistryImportedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_imported'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
     }),
   }).strict();
 
@@ -563,8 +619,12 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
+  TemplateRegistryPublishRequestedV1EventSchema,
+  TemplateRegistryImportRequestedV1EventSchema,
   TemplateRegistryPublishedV1EventSchema,
   TemplateRegistryImportedV1EventSchema,
+  TemplateRegistryPublishedV2EventSchema,
+  TemplateRegistryImportedV2EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
   ParticipantPiiReadV1EventSchema,
@@ -1237,6 +1297,38 @@ export const AUDIT_EVENT_REGISTRY = {
       },
     },
   },
+  'template.registry_publish_requested@1': {
+    inputSchema: TemplateRegistryPublishRequestedV1EventSchema,
+    title: 'Template publication requested',
+    detailFields: ['intentId', 'versionId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_publish_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_import_requested@1': {
+    inputSchema: TemplateRegistryImportRequestedV1EventSchema,
+    title: 'Template import requested',
+    detailFields: ['intentId', 'registryEntryId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_import_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
   'template.registry_published@1': {
     inputSchema: TemplateRegistryPublishedV1EventSchema,
     title: 'Template published to Registry',
@@ -1266,6 +1358,70 @@ export const AUDIT_EVENT_REGISTRY = {
         versionId: '00000000-0000-4000-8000-000000000011',
         registryEntryId: '00000000-0000-4000-8000-000000000012',
         registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_published@2': {
+    inputSchema: TemplateRegistryPublishedV2EventSchema,
+    title: 'Template publication reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_published',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
+      },
+    },
+  },
+  'template.registry_imported@2': {
+    inputSchema: TemplateRegistryImportedV2EventSchema,
+    title: 'Template import reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_imported',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
       },
     },
   },
@@ -1310,7 +1466,11 @@ export const AUDIT_EVENT_REGISTRY = {
 
 export function auditEventKey(event: AuditEventInput): AuditEventKey {
   if (event.eventVersion === 2) {
-    return 'team.invitation.cancelled@2';
+    if (event.eventType === 'team.invitation.cancelled')
+      return 'team.invitation.cancelled@2';
+    if (event.eventType === 'template.registry_published')
+      return 'template.registry_published@2';
+    return 'template.registry_imported@2';
   }
   return `${event.eventType}@1`;
 }

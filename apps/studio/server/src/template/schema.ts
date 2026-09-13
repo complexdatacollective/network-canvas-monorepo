@@ -205,7 +205,10 @@ const templateRegistryPublications = pgTable(
       foreignColumns: [templateVersions.id, templateVersions.teamId],
     }),
     unique().on(table.teamId, table.templateVersionId, table.registryUrl),
-    unique().on(table.registryUrl, table.registryEntryId),
+    index('template_registry_publications_registry_entry_idx').on(
+      table.registryUrl,
+      table.registryEntryId,
+    ),
     index('template_registry_publications_team_version_idx').on(
       table.teamId,
       table.templateVersionId,
@@ -225,6 +228,162 @@ const templateRegistryPublications = pgTable(
     check(
       'template_registry_publications_orcid_check',
       sql`${table.publisherOrcid} IS NULL OR ${table.publisherOrcid} ~ '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$'`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
+
+// An authorized user freezes the complete publication identity before Studio
+// hands bytes to the Registry. The bearer credential is deliberately absent:
+// an ambiguous handoff is reconciled through the Registry's public
+// root-and-publisher lookup, including after the initiating user loses access.
+const templateRegistryPublicationIntents = pgTable(
+  'template_registry_publication_intents',
+  {
+    id: uuid('id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    templateVersionId: uuid('template_version_id').notNull(),
+    registryUrl: text('registry_url').notNull(),
+    registryRoot: text('registry_root').notNull(),
+    publisherId: uuid('publisher_id').notNull(),
+    publisherName: text('publisher_name').notNull(),
+    publisherOrcid: text('publisher_orcid'),
+    initiatingActorId: text('initiating_actor_id').notNull(),
+    initiatingActorLabel: text('initiating_actor_label').notNull(),
+    initiatingRequestId: uuid('initiating_request_id').notNull(),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    availableAt: timestamp('available_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseOwner: uuid('lease_owner'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    registryEntryId: uuid('registry_entry_id'),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    quarantinedAt: timestamp('quarantined_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'template_registry_publication_intents_version_fk',
+      columns: [table.templateVersionId, table.teamId],
+      foreignColumns: [templateVersions.id, templateVersions.teamId],
+    }),
+    uniqueIndex('template_registry_publication_intents_target_unique')
+      .on(table.teamId, table.templateVersionId, table.registryUrl)
+      .where(sql`quarantined_at IS NULL`),
+    index('template_registry_publication_intents_dispatch_idx')
+      .on(table.availableAt, table.leaseExpiresAt)
+      .where(sql`completed_at IS NULL AND quarantined_at IS NULL`),
+    check(
+      'template_registry_publication_intents_url_check',
+      sql`${table.registryUrl} ~ '^https://[^@/?#]+$'`,
+    ),
+    check(
+      'template_registry_publication_intents_root_check',
+      sql`${table.registryRoot} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'template_registry_publication_intents_lengths_check',
+      sql`char_length(${table.teamId}) BETWEEN 1 AND 255
+          AND char_length(${table.publisherName}) BETWEEN 1 AND 200
+          AND ${table.publisherName} ~ '[^[:space:]]'
+          AND char_length(${table.initiatingActorId}) BETWEEN 1 AND 255
+          AND char_length(${table.initiatingActorLabel}) BETWEEN 1 AND 320
+          AND ${table.attemptCount} >= 0`,
+    ),
+    check(
+      'template_registry_publication_intents_orcid_check',
+      sql`${table.publisherOrcid} IS NULL OR ${table.publisherOrcid} ~ '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$'`,
+    ),
+    check(
+      'template_registry_publication_intents_lease_check',
+      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)
+          AND (${table.completedAt} IS NULL AND ${table.quarantinedAt} IS NULL
+            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL))`,
+    ),
+    check(
+      'template_registry_publication_intents_terminal_check',
+      sql`num_nonnulls(${table.completedAt}, ${table.quarantinedAt}) <= 1
+          AND (${table.completedAt} IS NULL) = (${table.registryEntryId} IS NULL)`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
+
+// Import intent metadata is sufficient to prove that every resumed object put
+// belongs to the same verified Registry artifact. Content-addressed objects
+// may already be shared, so retries overwrite idempotently and never delete.
+const templateRegistryImportIntents = pgTable(
+  'template_registry_import_intents',
+  {
+    id: uuid('id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    registryUrl: text('registry_url').notNull(),
+    registryEntryId: uuid('registry_entry_id').notNull(),
+    registryRoot: text('registry_root').notNull(),
+    entrySnapshot: jsonb('entry_snapshot').notNull(),
+    assetManifest: jsonb('asset_manifest').notNull(),
+    targetTemplateId: uuid('target_template_id').notNull(),
+    targetVersionId: uuid('target_version_id').notNull(),
+    initiatingActorId: text('initiating_actor_id').notNull(),
+    initiatingActorLabel: text('initiating_actor_label').notNull(),
+    initiatingRequestId: uuid('initiating_request_id').notNull(),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    availableAt: timestamp('available_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseOwner: uuid('lease_owner'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    quarantinedAt: timestamp('quarantined_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('template_registry_import_intents_source_unique')
+      .on(table.teamId, table.registryUrl, table.registryEntryId)
+      .where(sql`quarantined_at IS NULL`),
+    uniqueIndex('template_registry_import_intents_template_idx').on(
+      table.targetTemplateId,
+    ),
+    uniqueIndex('template_registry_import_intents_version_idx').on(
+      table.targetVersionId,
+    ),
+    index('template_registry_import_intents_dispatch_idx')
+      .on(table.availableAt, table.leaseExpiresAt)
+      .where(sql`completed_at IS NULL AND quarantined_at IS NULL`),
+    check(
+      'template_registry_import_intents_url_check',
+      sql`${table.registryUrl} ~ '^https://[^@/?#]+$'`,
+    ),
+    check(
+      'template_registry_import_intents_root_check',
+      sql`${table.registryRoot} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'template_registry_import_intents_json_check',
+      sql`jsonb_typeof(${table.entrySnapshot}) = 'object'
+          AND jsonb_typeof(${table.assetManifest}) = 'array'`,
+    ),
+    check(
+      'template_registry_import_intents_lengths_check',
+      sql`char_length(${table.teamId}) BETWEEN 1 AND 255
+          AND char_length(${table.initiatingActorId}) BETWEEN 1 AND 255
+          AND char_length(${table.initiatingActorLabel}) BETWEEN 1 AND 320
+          AND ${table.attemptCount} >= 0`,
+    ),
+    check(
+      'template_registry_import_intents_lease_check',
+      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)
+          AND (${table.completedAt} IS NULL AND ${table.quarantinedAt} IS NULL
+            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL))`,
+    ),
+    check(
+      'template_registry_import_intents_terminal_check',
+      sql`num_nonnulls(${table.completedAt}, ${table.quarantinedAt}) <= 1`,
     ),
     ...teamIsolationPolicies(),
   ],
@@ -266,6 +425,8 @@ export const TEMPLATE_TABLES = {
   templateVersionSections,
   templateRegistryAccounts,
   templateRegistryPublications,
+  templateRegistryPublicationIntents,
+  templateRegistryImportIntents,
 };
 
 // Hashed into the schema fingerprint — whitespace counts. CREATE OR REPLACE
@@ -312,5 +473,7 @@ ${tenantTablesSql([
   'template_versions',
   'template_version_sections',
   'template_registry_publications',
+  'template_registry_publication_intents',
+  'template_registry_import_intents',
 ])}
 `;

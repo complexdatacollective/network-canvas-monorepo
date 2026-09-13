@@ -52,6 +52,8 @@ export const ListEntriesSchema = z
     keyword: z.string().min(1).max(100).optional(),
     author: z.string().min(1).max(200).optional(),
     curated: z.enum(['true', 'false']).optional(),
+    root: TemplateContentHashSchema.optional(),
+    publisher_id: z.uuid().optional(),
   })
   .meta({ id: 'ListEntries' });
 export type ListEntries = z.infer<typeof ListEntriesSchema>;

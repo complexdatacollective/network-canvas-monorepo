@@ -1,8 +1,8 @@
 {
   "dialect": "postgres",
-  "id": "0f07fc89-772b-4e04-af9b-d60ade3bd131",
+  "id": "315d808e-f54f-41b5-b547-a276582f53fc",
   "prevIds": [
-    "62ea2d1a-c914-43cc-bce1-73e509eec0cb"
+    "3b55c83b-3d20-4e2f-a6d8-51e52c1d3ec1"
   ],
   "version": "8",
   "ddl": [
@@ -291,6 +291,18 @@
     {
       "isRlsEnabled": true,
       "name": "template_registry_publications",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "template_registry_publication_intents",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "template_registry_import_intents",
       "entityType": "tables",
       "schema": "public"
     },
@@ -6638,6 +6650,500 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "template_version_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_root",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "publisher_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "publisher_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "publisher_orcid",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_actor_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_actor_label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_request_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "attempt_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "available_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_entry_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "completed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quarantined_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_entry_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "registry_root",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entry_snapshot",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "asset_manifest",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "target_template_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "target_version_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_actor_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_actor_label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initiating_request_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "attempt_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "available_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "completed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quarantined_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "webhook_subscriptions"
     },
     {
@@ -11447,6 +11953,34 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_entry_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_publications_registry_entry_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_publications"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "team_id",
           "isExpression": false,
           "asc": true,
@@ -11470,6 +12004,174 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "template_registry_publications"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "template_version_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_publication_intents_target_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "available_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "lease_expires_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "completed_at IS NULL AND quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_publication_intents_dispatch_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_entry_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_import_intents_source_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "target_template_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_import_intents_template_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "target_version_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_import_intents_version_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "available_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "lease_expires_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "completed_at IS NULL AND quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_import_intents_dispatch_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_import_intents"
     },
     {
       "nameExplicit": true,
@@ -13337,6 +14039,25 @@
     {
       "nameExplicit": true,
       "columns": [
+        "template_version_id",
+        "team_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "template_versions",
+      "columnsTo": [
+        "id",
+        "team_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "template_registry_publication_intents_version_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
         "study_id",
         "team_id"
       ],
@@ -14108,6 +14829,26 @@
         "id"
       ],
       "nameExplicit": false,
+      "name": "template_registry_publication_intents_pkey",
+      "schema": "public",
+      "table": "template_registry_publication_intents",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "template_registry_import_intents_pkey",
+      "schema": "public",
+      "table": "template_registry_import_intents",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
       "name": "webhook_subscriptions_pkey",
       "schema": "public",
       "table": "webhook_subscriptions",
@@ -14818,18 +15559,6 @@
       ],
       "nullsNotDistinct": false,
       "name": "template_registry_publications_team_id_template_version_id_registry_url_unique",
-      "entityType": "uniques",
-      "schema": "public",
-      "table": "template_registry_publications"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "registry_url",
-        "registry_entry_id"
-      ],
-      "nullsNotDistinct": false,
-      "name": "template_registry_publications_registry_url_registry_entry_id_unique",
       "entityType": "uniques",
       "schema": "public",
       "table": "template_registry_publications"
@@ -15976,6 +16705,90 @@
       "entityType": "checks",
       "schema": "public",
       "table": "template_registry_publications"
+    },
+    {
+      "value": "\"registry_url\" ~ '^https://[^@/?#]+$'",
+      "name": "template_registry_publication_intents_url_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "\"registry_root\" ~ '^[0-9a-f]{64}$'",
+      "name": "template_registry_publication_intents_root_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"publisher_name\") BETWEEN 1 AND 200\n          AND \"publisher_name\" ~ '[^[:space:]]'\n          AND char_length(\"initiating_actor_id\") BETWEEN 1 AND 255\n          AND char_length(\"initiating_actor_label\") BETWEEN 1 AND 320\n          AND \"attempt_count\" >= 0",
+      "name": "template_registry_publication_intents_lengths_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "\"publisher_orcid\" IS NULL OR \"publisher_orcid\" ~ '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$'",
+      "name": "template_registry_publication_intents_orcid_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "(\"lease_owner\" IS NULL) = (\"lease_expires_at\" IS NULL)\n          AND (\"completed_at\" IS NULL AND \"quarantined_at\" IS NULL\n            OR (\"lease_owner\" IS NULL AND \"lease_expires_at\" IS NULL))",
+      "name": "template_registry_publication_intents_lease_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "num_nonnulls(\"completed_at\", \"quarantined_at\") <= 1\n          AND (\"completed_at\" IS NULL) = (\"registry_entry_id\" IS NULL)",
+      "name": "template_registry_publication_intents_terminal_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "value": "\"registry_url\" ~ '^https://[^@/?#]+$'",
+      "name": "template_registry_import_intents_url_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "value": "\"registry_root\" ~ '^[0-9a-f]{64}$'",
+      "name": "template_registry_import_intents_root_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "value": "jsonb_typeof(\"entry_snapshot\") = 'object'\n          AND jsonb_typeof(\"asset_manifest\") = 'array'",
+      "name": "template_registry_import_intents_json_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"initiating_actor_id\") BETWEEN 1 AND 255\n          AND char_length(\"initiating_actor_label\") BETWEEN 1 AND 320\n          AND \"attempt_count\" >= 0",
+      "name": "template_registry_import_intents_lengths_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "value": "(\"lease_owner\" IS NULL) = (\"lease_expires_at\" IS NULL)\n          AND (\"completed_at\" IS NULL AND \"quarantined_at\" IS NULL\n            OR (\"lease_owner\" IS NULL AND \"lease_expires_at\" IS NULL))",
+      "name": "template_registry_import_intents_lease_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "value": "num_nonnulls(\"completed_at\", \"quarantined_at\") <= 1",
+      "name": "template_registry_import_intents_terminal_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "template_registry_import_intents"
     },
     {
       "value": "\"state\" IN ('active', 'disabled')\n          AND (\"state\" = 'disabled') = (\"disabled_at\" IS NOT NULL)",
@@ -17468,6 +18281,58 @@
       "entityType": "policies",
       "schema": "public",
       "table": "template_registry_publications"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": [
+        "public"
+      ],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": [
+        "public"
+      ],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": [
+        "public"
+      ],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_registry_import_intents"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": [
+        "public"
+      ],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_registry_import_intents"
     },
     {
       "as": "PERMISSIVE",

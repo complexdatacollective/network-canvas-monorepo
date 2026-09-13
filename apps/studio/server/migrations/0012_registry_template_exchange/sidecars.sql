@@ -1665,7 +1665,9 @@ ALTER TABLE templates FORCE ROW LEVEL SECURITY;
 ALTER TABLE template_versions FORCE ROW LEVEL SECURITY;
 ALTER TABLE template_version_sections FORCE ROW LEVEL SECURITY;
 ALTER TABLE template_registry_publications FORCE ROW LEVEL SECURITY;
-GRANT SELECT, INSERT, UPDATE, DELETE ON templates, template_versions, template_version_sections, template_registry_publications TO studio_app, studio_maintenance;
+ALTER TABLE template_registry_publication_intents FORCE ROW LEVEL SECURITY;
+ALTER TABLE template_registry_import_intents FORCE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON templates, template_versions, template_version_sections, template_registry_publications, template_registry_publication_intents, template_registry_import_intents TO studio_app, studio_maintenance;
 
 
 CREATE OR REPLACE FUNCTION webhook_delivery_payload_is_immutable() RETURNS trigger AS $$

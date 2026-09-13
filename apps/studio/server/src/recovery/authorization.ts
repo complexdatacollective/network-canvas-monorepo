@@ -212,9 +212,8 @@ async function reconcileInventories(
   const expectedAccounts = new Map(
     evidence.accounts.map((row) => [row.id, row]),
   );
-  const actualAccounts = new Map(accounts.rows.map((row) => [row.id, row]));
   for (const expected of evidence.accounts) {
-    const actual = actualAccounts.get(expected.id);
+    const actual = accounts.rows.find((row) => row.id === expected.id);
     if (!actual) throw new Error(MISMATCH);
     assertRows(
       {
@@ -248,11 +247,8 @@ async function reconcileInventories(
     const expectedMemberships = new Map(
       evidence.memberships.map((row) => [row.id, row]),
     );
-    const actualMemberships = new Map(
-      memberships.rows.map((row) => [row.id, row]),
-    );
     for (const expected of evidence.memberships) {
-      const actual = actualMemberships.get(expected.id);
+      const actual = memberships.rows.find(({ id }) => id === expected.id);
       const roles = actual ? tryParseRoles(actual.role) : null;
       if (!actual || !roles) throw new Error(MISMATCH);
       assertRows(
@@ -288,9 +284,8 @@ async function reconcileInventories(
     const expectedGrants = new Map(
       evidence.studyGrants.map((row) => [row.id, row]),
     );
-    const actualGrants = new Map(grants.rows.map((row) => [row.id, row]));
     for (const expected of evidence.studyGrants) {
-      const actual = actualGrants.get(expected.id);
+      const actual = grants.rows.find(({ id }) => id === expected.id);
       assertRows(
         actual && {
           id: actual.id,
@@ -321,9 +316,8 @@ async function reconcileInventories(
     const expectedWebhooks = new Map(
       evidence.activeWebhookSubscriptions.map((row) => [row.id, row]),
     );
-    const actualWebhooks = new Map(webhooks.rows.map((row) => [row.id, row]));
     for (const expected of evidence.activeWebhookSubscriptions) {
-      const actual = actualWebhooks.get(expected.id);
+      const actual = webhooks.rows.find(({ id }) => id === expected.id);
       if (!actual) throw new Error(MISMATCH);
       assertRows(
         {
@@ -353,9 +347,8 @@ async function reconcileInventories(
         "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    const activeScheduleIds = new Set(activeSchedules);
     for (const id of evidence.activeScheduleIds)
-      if (!activeScheduleIds.has(id)) throw new Error(MISMATCH);
+      if (!activeSchedules.includes(id)) throw new Error(MISMATCH);
     if (
       mode === 'require-exact' &&
       activeSchedules.length !== evidence.activeScheduleIds.length
@@ -372,9 +365,8 @@ async function reconcileInventories(
         "SELECT id FROM message_templates WHERE state = 'published' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    const publishedTemplateIds = new Set(publishedTemplates);
     for (const id of evidence.publishedMessageTemplateIds)
-      if (!publishedTemplateIds.has(id)) throw new Error(MISMATCH);
+      if (!publishedTemplates.includes(id)) throw new Error(MISMATCH);
     if (
       mode === 'require-exact' &&
       publishedTemplates.length !== evidence.publishedMessageTemplateIds.length
@@ -396,10 +388,6 @@ async function invalidateRestoredAdmission(client: pg.PoolClient) {
     "UPDATE team_invitations SET status = 'canceled' WHERE status = 'pending'",
   );
   await asMaintenance(client, async () => {
-    // Restored alert preferences are not in the signed authority inventory.
-    // Clear them before reopening; retain the historical delivery evidence.
-    await client.query('DELETE FROM audit_alert_recipients');
-    await client.query('DELETE FROM audit_alert_settings');
     await client.query(
       `UPDATE api_tokens SET revoked_at = statement_timestamp(),
          revoked_by_user_id = $1 WHERE revoked_at IS NULL`,
@@ -441,6 +429,14 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
       lease_owner = NULL, lease_expires_at = NULL
     WHERE delivered_at IS NULL AND failed_at IS NULL
       AND suppressed_at IS NULL AND uncertain_at IS NULL`);
+    await client.query(`UPDATE template_registry_publication_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
+    await client.query(`UPDATE template_registry_import_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
   });
 }
 
@@ -450,9 +446,9 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     team_members, team_invitations, team_invitation_deliveries,
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
     webhook_deliveries, study_schedules, message_templates, message_deliveries,
-    audit_events, credential_audit_events, audit_alert_settings,
-    audit_alert_recipients, audit_alert_outbox,
-    audit_alert_deliveries, leases IN SHARE ROW EXCLUSIVE MODE`);
+    audit_events, credential_audit_events, audit_alert_outbox,
+    audit_alert_deliveries, template_registry_publication_intents,
+    template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
 
 async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
@@ -476,11 +472,8 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       links: number;
       live_leases: number;
       deliveries: number;
-      alert_recipients: number;
-      alert_settings: number;
+      registry_intents: number;
     }>(`SELECT
-    (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
-    (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
     (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
@@ -488,15 +481,16 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM team_invitation_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM webhook_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
-     + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries`),
+     + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
+    ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
+     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents`),
   );
   assertRows(remainingTenantState.rows[0], {
-    alert_recipients: 0,
-    alert_settings: 0,
     tokens: 0,
     links: 0,
     live_leases: 0,
     deliveries: 0,
+    registry_intents: 0,
   });
 }
 

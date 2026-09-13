@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { canonicalJsonBytes } from './template-archive.ts';
 import {
   readTemplateArtifact,
@@ -13,6 +15,7 @@ import {
   RegistryEntryIdSchema,
   RegistryEntrySchema,
   type RegistryEntry,
+  RegistryEntrySummarySchema,
   RegistryPublisherSchema,
   type RegistryPublisher,
 } from './template-registry-contract.ts';
@@ -268,6 +271,13 @@ async function parsePublisher(
   }
 }
 
+const ExactEntryPageSchema = z.strictObject({
+  data: z.array(RegistryEntrySummarySchema).max(2),
+  next_cursor: z.string().nullable(),
+  has_more: z.boolean(),
+});
+type RegistryEntrySummary = z.infer<typeof RegistryEntrySummarySchema>;
+
 export type FetchedRegistryArtifact = {
   root: string;
   rawHash: string;
@@ -352,6 +362,62 @@ export class TemplateRegistryClient {
           failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
         complete = true;
         return entry;
+      } finally {
+        if (!complete)
+          cancelWithoutWaiting(async () => await response.body?.cancel());
+        context.setCancellation(undefined);
+      }
+    });
+  }
+
+  async findEntry(
+    root: string,
+    publisherId: string,
+    signal?: AbortSignal,
+  ): Promise<RegistryEntrySummary | null> {
+    const parsedRoot = TemplateContentHashSchema.safeParse(root);
+    const parsedPublisher =
+      RegistryPublisherSchema.shape.id.safeParse(publisherId);
+    if (!parsedRoot.success || !parsedPublisher.success)
+      failure('TEMPLATE_REGISTRY_REQUEST_FAILED');
+    return await boundedOperation(this.#deadlineMs, signal, async (context) => {
+      const url = new URL('/api/v1/entries', `${this.#origin}/`);
+      url.searchParams.set('root', parsedRoot.data);
+      url.searchParams.set('publisher_id', parsedPublisher.data);
+      url.searchParams.set('limit', '2');
+      const response = await context.race(
+        this.#fetch(url, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          redirect: 'manual',
+          signal: context.signal,
+        }),
+      );
+      context.setCancellation(async () => await response.body?.cancel());
+      let complete = false;
+      try {
+        if (
+          response.status !== 200 ||
+          mediaType(response) !== 'application/json'
+        )
+          failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+        const bytes = await readBody(response, JSON_RESPONSE_BYTES, context);
+        const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        const page = ExactEntryPageSchema.parse(JSON.parse(text));
+        if (page.has_more || page.next_cursor !== null || page.data.length > 1)
+          failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+        const entry = page.data[0] ?? null;
+        if (
+          entry &&
+          (entry.root !== parsedRoot.data ||
+            entry.publisher.id !== parsedPublisher.data)
+        )
+          failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+        complete = true;
+        return entry;
+      } catch (error) {
+        if (error instanceof TemplateRegistryClientError) throw error;
+        return failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
       } finally {
         if (!complete)
           cancelWithoutWaiting(async () => await response.body?.cancel());

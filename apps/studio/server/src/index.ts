@@ -38,6 +38,8 @@ import {
   startInvitationDeliveryWorker,
 } from './team/invitation-delivery-dispatcher.ts';
 import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
+import { startTemplateRegistryIntentWorker } from './template/registry-intent-worker.ts';
+import { reconcileClaimedTemplateRegistryIntent } from './template/registry.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // Process policy is installed before configuration or SDK loading can fail.
@@ -99,6 +101,9 @@ const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 let auditAlertWorker: AuditAlertWorker | undefined;
 let auditExportWorker: OutboxWorker | undefined;
+let templateRegistryIntentWorker:
+  | ReturnType<typeof startTemplateRegistryIntentWorker>
+  | undefined;
 
 function startDatabaseWorkers(): void {
   if (env.role === 'web' || !maintenancePool) return;
@@ -113,6 +118,23 @@ function startDatabaseWorkers(): void {
   }
   if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
+  const registryOrigin = env.templateRegistryOrigin;
+  if (!templateRegistryIntentWorker && registryOrigin && assetStore) {
+    templateRegistryIntentWorker = startTemplateRegistryIntentWorker({
+      pool: maintenancePool,
+      process: (claim) =>
+        reconcileClaimedTemplateRegistryIntent(
+          {
+            origin: registryOrigin,
+            assetStore,
+            maintenancePool,
+          },
+          claim,
+        ),
+      onError: (error) => telemetry?.capture('server_worker', error),
+      observer: observability.metrics.observer,
+    });
+  }
   auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
@@ -234,6 +256,7 @@ const app = servesWeb
         env.auth && env.auth.mailer.kind !== 'refuse',
       ),
       pool,
+      maintenancePool,
     })
   : createOperationalApp(env, observability, undefined, (error) =>
       telemetry?.capture('server_request', error),
@@ -269,6 +292,7 @@ stopServing = () => {
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
   void auditExportWorker?.stop();
+  void templateRegistryIntentWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -291,6 +315,7 @@ function shutdown() {
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
     auditExportWorker?.stop(),
+    templateRegistryIntentWorker?.stop(),
   ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {

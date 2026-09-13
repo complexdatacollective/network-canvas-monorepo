@@ -493,6 +493,9 @@ export class RegistryStore {
       where.push(
         `(e.curated_at IS NOT NULL) = ${bind(filters.curated === 'true')}`,
       );
+    if (filters.root) where.push(`e.artifact_root = ${bind(filters.root)}`);
+    if (filters.publisher_id)
+      where.push(`e.publisher_id = ${bind(filters.publisher_id)}`);
     if (filters.keyword)
       where.push(
         `EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(c.metadata->'keywords', '[]'::jsonb)) keyword WHERE lower(keyword) = lower(${bind(filters.keyword)}))`,

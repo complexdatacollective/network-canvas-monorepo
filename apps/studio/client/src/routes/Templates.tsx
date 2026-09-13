@@ -129,10 +129,20 @@ const messages = defineMessages({
     defaultMessage: 'This Studio instance has no Template Registry configured.',
     description: 'Registry unavailable message.',
   },
+  importPending: {
+    id: 'studio.templates.importPending',
+    defaultMessage: 'Import is pending Registry reconciliation.',
+    description: 'Durable Registry import pending announcement.',
+  },
   imported: {
     id: 'studio.templates.imported',
     defaultMessage: 'The Registry template was imported.',
     description: 'Registry import success announcement.',
+  },
+  publicationPending: {
+    id: 'studio.templates.publicationPending',
+    defaultMessage: 'Publication is pending Registry reconciliation.',
+    description: 'Durable Registry publication pending announcement.',
   },
   published: {
     id: 'studio.templates.published',
@@ -176,12 +186,13 @@ function TeamTemplates({
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
-  const templates = useQuery(
-    orpc.templates.list.queryOptions({ input: { teamId } }),
-  );
+  const templatesQuery = orpc.templates.list.queryOptions({
+    input: { teamId },
+  });
+  const templates = useQuery(templatesQuery);
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: orpc.templates.list.key({ input: { teamId } }),
+      queryKey: templatesQuery.queryKey,
     });
   return (
     <>
@@ -199,14 +210,18 @@ function TeamTemplates({
                 return { success: false };
               setNotice(null);
               try {
-                await rpcClient.templates.import({ teamId, entryId });
-                try {
-                  await refresh();
-                } catch {
-                  // The import already succeeded. The template query renders
-                  // its own bounded read error if the refresh cannot complete.
-                }
-                setNotice(intl.formatMessage(messages.imported));
+                const result = await rpcClient.templates.import({
+                  teamId,
+                  entryId,
+                });
+                setNotice(
+                  intl.formatMessage(
+                    result.status === 'pending'
+                      ? messages.importPending
+                      : messages.imported,
+                  ),
+                );
+                void refresh().catch(() => undefined);
                 return { success: true };
               } catch (error) {
                 return {
@@ -305,13 +320,35 @@ function TeamTemplates({
                           versionId: template.versionId,
                           credential,
                         });
-                        try {
-                          await refresh();
-                        } catch {
-                          // The publication already succeeded. The template
-                          // query renders its own bounded read error if the
-                          // refresh cannot complete.
+                        if (result.status === 'pending') {
+                          setNotice(
+                            intl.formatMessage(messages.publicationPending),
+                          );
+                          void refresh().catch(() => undefined);
+                          return { success: true };
                         }
+                        queryClient.setQueryData<
+                          Awaited<ReturnType<typeof rpcClient.templates.list>>
+                        >(templatesQuery.queryKey, (current) =>
+                          current?.map((candidate) =>
+                            candidate.versionId === template.versionId &&
+                            !candidate.publications.some(
+                              (publication) =>
+                                publication.registryUrl ===
+                                  result.publication.registryUrl &&
+                                publication.entryId ===
+                                  result.publication.entryId,
+                            )
+                              ? {
+                                  ...candidate,
+                                  publications: [
+                                    ...candidate.publications,
+                                    result.publication,
+                                  ],
+                                }
+                              : candidate,
+                          ),
+                        );
                         setNotice(
                           intl.formatMessage(
                             result.replayed
@@ -319,6 +356,7 @@ function TeamTemplates({
                               : messages.published,
                           ),
                         );
+                        void refresh().catch(() => undefined);
                         return { success: true };
                       } catch {
                         return {
