@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.4.6
+
+### Patch Changes
+
+- The hero video now plays immediately when you arrive on the homepage from another page on the site, instead of showing its still image for a moment first.
+
 ## 0.4.5
 
 ### Patch Changes
