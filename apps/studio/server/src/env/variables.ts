@@ -112,7 +112,27 @@ export const serverSchemas = {
   SMTP_URL: z.string().min(1).optional(),
   POSTMARK_SERVER_TOKEN: postmarkConfiguration.shape.serverToken.optional(),
   POSTMARK_MESSAGE_STREAM: postmarkConfiguration.shape.messageStream,
+  POSTMARK_WEBHOOK_TOKEN: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
   EMAIL_FROM: z.string().min(1).optional(),
+  TWILIO_ACCOUNT_SID: z
+    .string()
+    .regex(/^AC[0-9a-f]{32}$/)
+    .optional(),
+  TWILIO_AUTH_TOKEN: z
+    .string()
+    .min(1)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
+  TWILIO_FROM_NUMBER: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional(),
 
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),

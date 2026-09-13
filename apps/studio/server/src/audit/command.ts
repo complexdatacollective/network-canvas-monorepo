@@ -251,7 +251,10 @@ export async function runAuditedMutation<T>(
   });
 }
 
-type SystemAuditActor = 'Encryption maintenance' | 'Webhook delivery';
+type SystemAuditActor =
+  | 'Encryption maintenance'
+  | 'Webhook delivery'
+  | 'Message delivery';
 
 export type SystemAuditEventContext<
   Actor extends SystemAuditActor = SystemAuditActor,

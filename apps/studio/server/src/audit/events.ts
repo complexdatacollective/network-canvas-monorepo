@@ -513,6 +513,36 @@ const WebhookDeliveryV1EventSchema = z
     }),
   })
   .strict();
+const MessageDeliveryV1EventSchema = z
+  .strictObject({
+    teamId: IdentifierSchema,
+    teamLabel: LabelSchema,
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Message delivery'),
+    requestId: z.uuid(),
+    eventVersion: z.literal(1),
+    category: z.literal('participant_data'),
+    outcome: z.literal('succeeded'),
+    eventType: z.enum([
+      'message.occurrence.dispatched',
+      'message.occurrence.expired',
+      'message.payload.read',
+      'message.contact.read',
+      'message.delivery.delivered',
+      'message.delivery.failed',
+      'message.delivery.uncertain',
+      'message.delivery.suppressed',
+    ]),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    resourceType: z.enum(['schedule_occurrence', 'message_delivery']),
+    resourceId: IdentifierSchema,
+    resourceLabel: z.null(),
+    details: z.strictObject({ channel: z.enum(['email', 'sms']).nullable() }),
+  })
+  .strict();
 
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
@@ -580,6 +610,7 @@ export const AuditEventInputSchema = z.union([
   WebhookSubscriptionCreatedV1EventSchema,
   WebhookSubscriptionDisabledV1EventSchema,
   WebhookDeliveryV1EventSchema,
+  MessageDeliveryV1EventSchema,
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
@@ -707,6 +738,22 @@ const FIXTURE_WEBHOOK_DELIVERY_COMMON = {
     eventType: 'study.created',
     statusCode: 204,
   },
+} as const;
+const FIXTURE_MESSAGE_DELIVERY_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  actorKind: 'system',
+  actorId: null,
+  actorLabel: 'Message delivery',
+  eventVersion: 1,
+  category: 'participant_data',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'message_delivery',
+  resourceId: 'fixture-delivery',
+  resourceLabel: null,
+  details: { channel: 'email' },
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
@@ -944,6 +991,98 @@ export const AUDIT_EVENT_REGISTRY = {
       ...FIXTURE_WEBHOOK_DELIVERY_COMMON,
       eventType: 'webhook.delivery.suppressed',
       details: { ...FIXTURE_WEBHOOK_DELIVERY_COMMON.details, statusCode: null },
+    },
+  },
+  'message.occurrence.dispatched@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Scheduled message occurrence dispatched',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.occurrence.dispatched',
+      resourceType: 'schedule_occurrence',
+      details: { channel: null },
+    },
+  },
+  'message.occurrence.expired@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Scheduled message occurrence expired',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.occurrence.expired',
+      resourceType: 'schedule_occurrence',
+      details: { channel: null },
+    },
+  },
+  'message.payload.read@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Rendered message payload used',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.payload.read',
+    },
+  },
+  'message.contact.read@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant contact used for delivery',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: true,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.contact.read',
+    },
+  },
+  'message.delivery.delivered@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message delivered',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.delivered',
+    },
+  },
+  'message.delivery.failed@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message failed',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.failed',
+    },
+  },
+  'message.delivery.uncertain@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message delivery uncertain',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.uncertain',
+    },
+  },
+  'message.delivery.suppressed@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message suppressed',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.suppressed',
     },
   },
   'team.created@1': {

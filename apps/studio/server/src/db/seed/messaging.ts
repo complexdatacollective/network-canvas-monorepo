@@ -13,6 +13,7 @@ import type pg from 'pg';
 
 import { createContactBlindIndex } from '../../pii/contacts.ts';
 import type { EncryptionKeys } from '../../pii/keys.ts';
+import { sealRenderedMessage } from '../../pii/message-deliveries.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import {
   seedHex,
@@ -565,6 +566,11 @@ async function seedDeliveries(
           ? 'postmark'
           : 'twilio';
     const template = templateFor(input.kind, input.channel);
+    const renderedBody = render(template, input.participant);
+    const sealed = sealRenderedMessage(encryptionKeys, team.id, id, {
+      subject: input.channel === 'email' ? template.subject : null,
+      body: renderedBody,
+    });
 
     deliveryRows.push([
       id,
@@ -577,7 +583,10 @@ async function seedDeliveries(
       input.channel,
       blindIndex.value,
       blindIndex.keyId,
-      sha256Hex(render(template, input.participant)),
+      sha256Hex(renderedBody),
+      sealed.envelope,
+      sealed.keyId,
+      sealed.algorithm,
       provider,
       outcome === 'sent' ? `msg_${seedHex(8)}` : null,
       outcome === 'pending' ? 0 : faker.number.int({ min: 1, max: 3 }),
@@ -672,6 +681,9 @@ async function seedDeliveries(
       'recipient_blind_index',
       'blind_index_key_id',
       'rendered_body_hash',
+      'rendered_ciphertext',
+      'rendered_key_id',
+      'rendered_algorithm',
       'provider',
       'provider_message_id',
       'attempt_count',

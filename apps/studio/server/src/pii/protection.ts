@@ -42,6 +42,12 @@ export type IntegrationField =
       /** Globally unique account.id primary key, never the provider accountId. */
       accountRowId: string;
       column: 'accessToken' | 'refreshToken' | 'idToken';
+    }
+  | {
+      kind: 'message';
+      teamId: string;
+      deliveryId: string;
+      column: 'rendered_ciphertext';
     };
 
 /**
@@ -107,13 +113,30 @@ function participantAad(target: ParticipantField): Buffer {
 }
 
 function integrationAad(target: IntegrationField): Buffer {
-  return target.kind === 'webhook'
-    ? tuple([target.kind, target.teamId, target.subscriptionId, target.column])
-    : tuple([target.kind, target.userId, target.accountRowId, target.column]);
+  if (target.kind === 'webhook')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.subscriptionId,
+      target.column,
+    ]);
+  if (target.kind === 'message')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.deliveryId,
+      target.column,
+    ]);
+  return tuple([
+    target.kind,
+    target.userId,
+    target.accountRowId,
+    target.column,
+  ]);
 }
 
 function integrationScope(target: IntegrationField): readonly string[] {
-  return target.kind === 'webhook'
+  return target.kind === 'webhook' || target.kind === 'message'
     ? ['team', target.teamId]
     : ['account', target.userId, target.accountRowId];
 }

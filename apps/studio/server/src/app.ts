@@ -42,6 +42,10 @@ import { createObservability } from './observability/runtime.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
+import {
+  receivePostmarkStatus,
+  receiveTwilioStatus,
+} from './schedule/message-status.ts';
 import type { ServerTelemetry } from './telemetry.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -74,6 +78,11 @@ type CreateAppDeps = {
   /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
+  messageStatus?: {
+    maintenancePool: pg.Pool;
+    postmarkToken?: string;
+    twilioAuthToken?: string;
+  };
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
@@ -136,6 +145,59 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : undefined,
   );
   const enabled = Boolean(env.db && env.auth);
+  app.post('/api/v1/message-status/postmark', async (c) => {
+    const status = deps.messageStatus;
+    if (!status?.postmarkToken)
+      return c.json({ title: 'Not Found', status: 404 }, 404);
+    try {
+      await receivePostmarkStatus(status.maintenancePool, {
+        token: status.postmarkToken,
+        authorization: c.req.header('authorization'),
+        body: await c.req.text(),
+      });
+      return c.body(null, 204);
+    } catch (error) {
+      const unauthorized =
+        error instanceof Error &&
+        error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      return c.json(
+        {
+          title: unauthorized ? 'Unauthorized' : 'Bad Request',
+          status: unauthorized ? 401 : 400,
+        },
+        unauthorized ? 401 : 400,
+      );
+    }
+  });
+  app.post('/api/v1/message-status/twilio/:deliveryId', async (c) => {
+    const status = deps.messageStatus;
+    if (!status?.twilioAuthToken)
+      return c.json({ title: 'Not Found', status: 404 }, 404);
+    const deliveryId = c.req.param('deliveryId');
+    if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(deliveryId))
+      return c.json({ title: 'Bad Request', status: 400 }, 400);
+    try {
+      await receiveTwilioStatus(status.maintenancePool, {
+        authToken: status.twilioAuthToken,
+        signature: c.req.header('x-twilio-signature'),
+        url: c.req.url,
+        body: await c.req.text(),
+        deliveryId,
+      });
+      return c.body(null, 204);
+    } catch (error) {
+      const unauthorized =
+        error instanceof Error &&
+        error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      return c.json(
+        {
+          title: unauthorized ? 'Unauthorized' : 'Bad Request',
+          status: unauthorized ? 401 : 400,
+        },
+        unauthorized ? 401 : 400,
+      );
+    }
+  });
   const authCaps: AuthCapabilities = {
     enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),

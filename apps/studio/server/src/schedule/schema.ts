@@ -387,8 +387,12 @@ const messageDeliveries = pgTable(
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
+    renderedCiphertext: bytea('rendered_ciphertext').notNull(),
+    renderedKeyId: text('rendered_key_id').notNull(),
+    renderedAlgorithm: text('rendered_algorithm').notNull(),
     provider: text('provider'),
     providerMessageId: text('provider_message_id'),
+    sendStartedAt: timestamp('send_started_at', { withTimezone: true }),
     attemptCount: integer('attempt_count').notNull().default(0),
     availableAt: timestamp('available_at', { withTimezone: true })
       .notNull()
@@ -483,7 +487,10 @@ const messageDeliveries = pgTable(
       'message_deliveries_hash_check',
       sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
           AND octet_length(${table.recipientBlindIndex}) = 32
-          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
+          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64
+          AND octet_length(${table.renderedCiphertext}) BETWEEN 30 AND 16384
+          AND char_length(${table.renderedKeyId}) BETWEEN 1 AND 64
+          AND ${table.renderedAlgorithm} = 'aes-256-gcm.v1'`,
     ),
     check(
       'message_deliveries_lease_check',
@@ -761,6 +768,9 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
     OR NEW.recipient_blind_index IS DISTINCT FROM OLD.recipient_blind_index
     OR NEW.blind_index_key_id IS DISTINCT FROM OLD.blind_index_key_id
     OR NEW.rendered_body_hash IS DISTINCT FROM OLD.rendered_body_hash
+    OR NEW.rendered_ciphertext IS DISTINCT FROM OLD.rendered_ciphertext
+    OR NEW.rendered_key_id IS DISTINCT FROM OLD.rendered_key_id
+    OR NEW.rendered_algorithm IS DISTINCT FROM OLD.rendered_algorithm
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
   )
   EXECUTE FUNCTION message_delivery_payload_is_immutable();

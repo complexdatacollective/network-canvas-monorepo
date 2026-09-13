@@ -299,6 +299,13 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Optional with `POSTMARK_SERVER_TOKEN`; defaults to `outbound`. Provision a transactional stream. IDs start with an ASCII letter and contain at most 30 letters, digits, underscores or hyphens. A stream without a server token is refused.',
     example: 'outbound',
   },
+  POSTMARK_WEBHOOK_TOKEN: {
+    group: 'Authentication',
+    summary: 'Bearer token authenticating Postmark message status callbacks.',
+    deployment:
+      'Optional unless scheduled Postmark delivery is enabled. Configure the same random token in the Postmark webhook Authorization header; callback bodies and recipient addresses are never logged.',
+    example: 'replace-with-a-random-callback-token',
+  },
   EMAIL_FROM: {
     group: 'Authentication',
     summary: 'From address on sign-in and team-invitation email.',
@@ -306,6 +313,27 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Required alongside `SMTP_URL` or `POSTMARK_SERVER_TOKEN`, and refused without either outside development. Postmark requires the sender address or domain to be verified in the selected server account.',
     devDefault: DEV.emailFrom,
     example: 'studio@studio.example.org',
+  },
+  TWILIO_ACCOUNT_SID: {
+    group: 'Authentication',
+    summary: 'Twilio account SID for scheduled SMS delivery.',
+    deployment:
+      'Required with TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER. Unset disables SMS delivery.',
+    example: 'AC00000000000000000000000000000000',
+  },
+  TWILIO_AUTH_TOKEN: {
+    group: 'Authentication',
+    summary: 'Twilio credential for SMS requests and callback signatures.',
+    deployment:
+      'Required with the other TWILIO variables. Store only in the backend; it signs authenticated status callbacks.',
+    example: 'replace-with-twilio-auth-token',
+  },
+  TWILIO_FROM_NUMBER: {
+    group: 'Authentication',
+    summary: 'E.164 Twilio sender number for scheduled SMS.',
+    deployment:
+      'Required with the other TWILIO variables. Twilio delivery also requires an HTTPS PUBLIC_URL for callbacks.',
+    example: '+13125550100',
   },
   GOOGLE_CLIENT_ID: {
     group: 'Authentication',

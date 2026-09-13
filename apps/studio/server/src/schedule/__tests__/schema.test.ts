@@ -132,6 +132,9 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     recipient_blind_index: Buffer.from(hex(`recipient-${randomUUID()}`), 'hex'),
     blind_index_key_id: 'index-v1',
     rendered_body_hash: hex(`body-${randomUUID()}`),
+    rendered_ciphertext: Buffer.alloc(30, 7),
+    rendered_key_id: 'integration-v1',
+    rendered_algorithm: 'aes-256-gcm.v1',
     ...overrides,
   });
 
@@ -210,6 +213,8 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     await seedTestEncryptionKeyVerifications(pool, [
       { purpose: 'pii-index', keyId: 'index-v1' },
       { purpose: 'pii-index', keyId: 'index-v2' },
+      { purpose: 'integration-enc', keyId: 'integration-v1' },
+      { purpose: 'integration-enc', keyId: 'integration-v2' },
     ]);
 
     for (const teamId of [TEAM_A, TEAM_B]) {
@@ -1023,6 +1028,15 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   });
 
   describe('message_deliveries', () => {
+    it('refuses an unverified rendered-message encryption key', async () => {
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(await newTemplate(), { rendered_key_id: 'unverified' }),
+        ),
+      ).rejects.toThrow('encrypted data may reference only a verified key');
+    });
+
     it('applies the lease and attempt defaults', async () => {
       const deliveryId = await newDelivery();
 
@@ -1256,6 +1270,9 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         `channel = 'sms'`,
         `recipient_blind_index = decode('${hex('someone-else')}', 'hex')`,
         `rendered_body_hash = '${hex('a different body')}'`,
+        `rendered_ciphertext = decode('${'08'.repeat(30)}', 'hex')`,
+        `rendered_key_id = 'integration-v2'`,
+        `rendered_algorithm = 'aes-256-gcm.v2'`,
         `occurrence_id = '${occurrenceId}'`,
         `participant_id = '${otherParticipantId}'`,
       ]) {

@@ -1,0 +1,267 @@
+import { randomUUID } from 'node:crypto';
+
+import type pg from 'pg';
+import { z } from 'zod';
+
+import { createTenantDb } from '@codaco/studio-sync/tenant';
+
+import {
+  runAuditedSystemMutation,
+  type SystemAuditEventContext,
+} from '../audit/command.ts';
+import type { AuditEventInput } from '../audit/events.ts';
+import type { EncryptionKeys } from './keys.ts';
+import { createDataProtection, ProtectedDataError } from './protection.ts';
+
+export const RenderedMessageSchema = z.strictObject({
+  subject: z.string().min(1).max(200).nullable(),
+  body: z
+    .string()
+    .min(1)
+    .max(8000)
+    .refine((value) => value.isWellFormed() && !value.includes('\0')),
+});
+export type RenderedMessage = z.infer<typeof RenderedMessageSchema>;
+
+type DeliveryCiphertext = {
+  id: string;
+  team_id: string;
+  study_id: string;
+  participant_id: string;
+  channel: 'email' | 'sms';
+  lease_owner: string | null;
+  lease_expires_at: Date | null;
+  lease_active: boolean;
+  rendered_ciphertext: Buffer;
+  rendered_key_id: string;
+  rendered_algorithm: string;
+};
+
+function event(
+  context: SystemAuditEventContext<'Message delivery'>,
+  row: DeliveryCiphertext,
+  type: 'message.payload.read' | 'message.contact.read',
+): AuditEventInput {
+  return {
+    ...context,
+    eventVersion: 1,
+    eventType: type,
+    category: 'participant_data',
+    outcome: 'succeeded',
+    subjectType: null,
+    subjectId: null,
+    subjectLabel: null,
+    resourceType: 'message_delivery',
+    resourceId: row.id,
+    resourceLabel: null,
+    details: { channel: row.channel },
+  };
+}
+
+async function selectDelivery(
+  client: pg.PoolClient,
+  id: string,
+  teamId: string,
+  lock = false,
+) {
+  const result = await client.query<DeliveryCiphertext>(
+    `SELECT id, team_id, study_id, participant_id, channel, lease_owner, lease_expires_at,
+            lease_expires_at > statement_timestamp() AS lease_active,
+            rendered_ciphertext, rendered_key_id, rendered_algorithm
+     FROM message_deliveries WHERE id = $1 AND team_id = $2 ${lock ? 'FOR UPDATE' : ''}`,
+    [id, teamId],
+  );
+  return result.rows[0];
+}
+
+function proveLease(
+  row: DeliveryCiphertext | undefined,
+  expected: DeliveryCiphertext,
+  owner: string,
+) {
+  if (
+    !row ||
+    row.lease_owner !== owner ||
+    !row.lease_expires_at ||
+    !row.lease_active ||
+    row.rendered_key_id !== expected.rendered_key_id ||
+    row.rendered_algorithm !== expected.rendered_algorithm ||
+    !row.rendered_ciphertext.equals(expected.rendered_ciphertext)
+  )
+    throw new ProtectedDataError();
+}
+
+export function sealRenderedMessage(
+  keys: EncryptionKeys,
+  teamId: string,
+  deliveryId: string,
+  input: RenderedMessage,
+) {
+  const rendered = RenderedMessageSchema.parse(input);
+  const bytes = Buffer.from(JSON.stringify(rendered));
+  try {
+    return createDataProtection(keys, {
+      participant: async () => {
+        throw new ProtectedDataError();
+      },
+      integration: async () => {
+        throw new ProtectedDataError();
+      },
+    }).encryptIntegration(
+      { kind: 'message', teamId, deliveryId, column: 'rendered_ciphertext' },
+      bytes,
+    );
+  } finally {
+    bytes.fill(0);
+  }
+}
+
+export async function readRenderedMessage(
+  keys: EncryptionKeys,
+  pool: pg.Pool,
+  input: { teamId: string; deliveryId: string; leaseOwner: string },
+): Promise<RenderedMessage> {
+  const tenant = createTenantDb(pool, input.teamId);
+  const row = await tenant.transaction((client) =>
+    selectDelivery(client, input.deliveryId, input.teamId),
+  );
+  if (!row) throw new ProtectedDataError();
+  const protection = createDataProtection(keys, {
+    participant: async () => {
+      throw new ProtectedDataError();
+    },
+    integration: async (_target, read) => {
+      await runAuditedSystemMutation(
+        {
+          tenantDb: tenant,
+          actorLabel: 'Message delivery',
+          requestId: randomUUID(),
+        },
+        async (client, context) => {
+          proveLease(
+            await selectDelivery(client, input.deliveryId, input.teamId, true),
+            row,
+            input.leaseOwner,
+          );
+          read();
+          return {
+            result: undefined,
+            events: [event(context, row, 'message.payload.read')],
+          };
+        },
+      );
+    },
+  });
+  const plaintext = await protection.readIntegration(
+    {
+      kind: 'message',
+      teamId: input.teamId,
+      deliveryId: input.deliveryId,
+      column: 'rendered_ciphertext',
+    },
+    {
+      keyId: row.rendered_key_id,
+      algorithm: row.rendered_algorithm,
+      envelope: row.rendered_ciphertext,
+    },
+  );
+  try {
+    return RenderedMessageSchema.parse(JSON.parse(plaintext.toString('utf8')));
+  } catch {
+    throw new ProtectedDataError();
+  } finally {
+    plaintext.fill(0);
+  }
+}
+
+export async function readDeliveryContact(
+  keys: EncryptionKeys,
+  pool: pg.Pool,
+  input: { teamId: string; deliveryId: string; leaseOwner: string },
+): Promise<Buffer> {
+  const tenant = createTenantDb(pool, input.teamId);
+  const snapshot = await tenant.transaction(async (client) => {
+    const delivery = await selectDelivery(
+      client,
+      input.deliveryId,
+      input.teamId,
+    );
+    if (!delivery) throw new ProtectedDataError();
+    const column: 'email_ciphertext' | 'phone_ciphertext' =
+      delivery.channel === 'email' ? 'email_ciphertext' : 'phone_ciphertext';
+    const participant = await client.query<{
+      pii_key_id: string | null;
+      pii_algorithm: string | null;
+      ciphertext: Buffer | null;
+    }>(
+      `SELECT pii_key_id, pii_algorithm, ${column} AS ciphertext FROM participants
+       WHERE id = $1 AND study_id = $2 AND team_id = $3`,
+      [delivery.participant_id, delivery.study_id, input.teamId],
+    );
+    return { delivery, column, participant: participant.rows[0] };
+  });
+  const stored = snapshot.participant;
+  if (!stored?.ciphertext || !stored.pii_key_id || !stored.pii_algorithm)
+    throw new ProtectedDataError();
+  const ciphertext = stored.ciphertext;
+  const protection = createDataProtection(keys, {
+    integration: async () => {
+      throw new ProtectedDataError();
+    },
+    participant: async (_target, read) => {
+      await runAuditedSystemMutation(
+        {
+          tenantDb: tenant,
+          actorLabel: 'Message delivery',
+          requestId: randomUUID(),
+        },
+        async (client, context) => {
+          proveLease(
+            await selectDelivery(client, input.deliveryId, input.teamId, true),
+            snapshot.delivery,
+            input.leaseOwner,
+          );
+          const current = await client.query<{
+            pii_key_id: string | null;
+            pii_algorithm: string | null;
+            ciphertext: Buffer | null;
+          }>(
+            `SELECT pii_key_id, pii_algorithm, ${snapshot.column} AS ciphertext FROM participants
+           WHERE id = $1 AND study_id = $2 AND team_id = $3 FOR UPDATE`,
+            [
+              snapshot.delivery.participant_id,
+              snapshot.delivery.study_id,
+              input.teamId,
+            ],
+          );
+          const row = current.rows[0];
+          if (
+            !row?.ciphertext ||
+            row.pii_key_id !== stored.pii_key_id ||
+            row.pii_algorithm !== stored.pii_algorithm ||
+            !row.ciphertext.equals(ciphertext)
+          )
+            throw new ProtectedDataError();
+          read();
+          return {
+            result: undefined,
+            events: [event(context, snapshot.delivery, 'message.contact.read')],
+          };
+        },
+      );
+    },
+  });
+  return protection.readParticipant(
+    {
+      teamId: input.teamId,
+      studyId: snapshot.delivery.study_id,
+      participantId: snapshot.delivery.participant_id,
+      column: snapshot.column,
+    },
+    {
+      keyId: stored.pii_key_id,
+      algorithm: stored.pii_algorithm,
+      envelope: ciphertext,
+    },
+  );
+}

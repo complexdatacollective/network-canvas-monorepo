@@ -33,6 +33,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
   if (event.eventVersion !== 1) return null;
   switch (event.eventType) {
     case 'participant.pii.read':
+    case 'message.contact.read':
       return 'contact_access';
     case 'participant.pii.lookup':
       return event.details.resultCount > 0 ? 'contact_access' : null;
@@ -77,6 +78,13 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'webhook.delivery.failed':
     case 'webhook.delivery.uncertain':
     case 'webhook.delivery.suppressed':
+    case 'message.occurrence.dispatched':
+    case 'message.occurrence.expired':
+    case 'message.payload.read':
+    case 'message.delivery.delivered':
+    case 'message.delivery.failed':
+    case 'message.delivery.uncertain':
+    case 'message.delivery.suppressed':
       return null;
   }
   return null;

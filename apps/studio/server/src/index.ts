@@ -3,6 +3,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import {
+  createSmtpEmailSender,
+  type EmailSender,
+} from '@codaco/studio-sync/email-sender';
+import { createPostmarkEmailSender } from '@codaco/studio-sync/postmark-email-sender';
+import {
+  createTwilioSmsSender,
+  type SmsSender,
+} from '@codaco/studio-sync/sms-sender';
+
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import {
@@ -31,6 +41,10 @@ import {
   initializeServingEncryption,
 } from './pii/serving-admission.ts';
 import { acquireWebLease } from './runtime/web-lease.ts';
+import {
+  startMessageDeliveryWorker,
+  type MessageDeliveryWorker,
+} from './schedule/message-delivery.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
@@ -101,6 +115,9 @@ const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 let auditAlertWorker: AuditAlertWorker | undefined;
 let webhookDeliveryWorker: WebhookDeliveryWorker | undefined;
+let messageDeliveryWorker: MessageDeliveryWorker | undefined;
+let messageEmailSender: EmailSender | undefined;
+let messageSmsSender: SmsSender | undefined;
 
 function startDatabaseWorkers(): void {
   if (env.role === 'web' || !maintenancePool) return;
@@ -111,6 +128,42 @@ function startDatabaseWorkers(): void {
       observer: observability.metrics.observer,
       reportError: (error) => telemetry?.capture('server_worker', error),
     });
+    const mailerConfig = env.auth?.mailer;
+    if (!messageEmailSender && mailerConfig?.kind === 'smtp')
+      messageEmailSender = createSmtpEmailSender({ url: mailerConfig.url });
+    if (!messageEmailSender && mailerConfig?.kind === 'postmark')
+      messageEmailSender = createPostmarkEmailSender({
+        serverToken: mailerConfig.serverToken,
+        messageStream: mailerConfig.messageStream,
+      });
+    const twilio = env.messageDelivery?.twilio;
+    if (!messageSmsSender && twilio && env.auth)
+      messageSmsSender = createTwilioSmsSender({
+        ...twilio,
+        callbackBaseUrl: env.auth.baseUrl,
+      });
+    if (!messageDeliveryWorker && (messageEmailSender || messageSmsSender)) {
+      messageDeliveryWorker = startMessageDeliveryWorker({
+        pool: maintenancePool,
+        encryptionKeys,
+        observer: observability.metrics.observer,
+        reportError: (error) => telemetry?.capture('server_worker', error),
+        ...(messageEmailSender &&
+        mailerConfig &&
+        (mailerConfig.kind === 'smtp' || mailerConfig.kind === 'postmark')
+          ? {
+              email: {
+                sender: messageEmailSender,
+                from: mailerConfig.from,
+                provider: mailerConfig.kind,
+              },
+            }
+          : {}),
+        ...(messageSmsSender
+          ? { sms: { sender: messageSmsSender, provider: 'twilio' as const } }
+          : {}),
+      });
+    }
   }
   if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
@@ -235,6 +288,19 @@ const app = servesWeb
         env.auth && env.auth.mailer.kind !== 'refuse',
       ),
       pool,
+      ...(maintenancePool
+        ? {
+            messageStatus: {
+              maintenancePool,
+              ...(env.messageDelivery?.postmarkWebhookToken
+                ? { postmarkToken: env.messageDelivery.postmarkWebhookToken }
+                : {}),
+              ...(env.messageDelivery?.twilio
+                ? { twilioAuthToken: env.messageDelivery.twilio.authToken }
+                : {}),
+            },
+          }
+        : {}),
     })
   : createOperationalApp(env, observability, undefined, (error) =>
       telemetry?.capture('server_request', error),
@@ -270,6 +336,9 @@ stopServing = () => {
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
   void webhookDeliveryWorker?.stop();
+  void messageDeliveryWorker?.stop();
+  messageEmailSender?.close();
+  messageSmsSender?.close();
   mailer?.close();
   observability.stop();
 };
@@ -292,7 +361,10 @@ function shutdown() {
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
     webhookDeliveryWorker?.stop(),
+    messageDeliveryWorker?.stop(),
   ]);
+  messageEmailSender?.close();
+  messageSmsSender?.close();
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
