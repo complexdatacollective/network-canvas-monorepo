@@ -97,6 +97,11 @@ ALTER TABLE protocol_drafts FORCE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON protocols, protocol_versions, version_sections, protocol_drafts TO studio_app, studio_maintenance;
 
 
+ALTER TABLE protocol_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE protocol_write_receipts FORCE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON protocol_events, protocol_write_receipts TO studio_app, studio_maintenance;
+
+
 -- Pins belonging to an immutable published artifact are immutable too:
 -- retracting one would change what a frozen version resolves to while its
 -- manifest and hash stayed unchanged (the version_sections argument). A

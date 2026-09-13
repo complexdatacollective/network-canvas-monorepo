@@ -53,10 +53,12 @@ const shapes = {
     suppressed: 'suppressed_at',
   },
   webhook_deliveries: {
-    pending: 'delivered_at IS NULL AND failed_at IS NULL',
+    pending:
+      'delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL',
     available: 'available_at',
     lease: 'lease_expires_at',
     failed: 'failed_at',
+    uncertain: 'uncertain_at',
   },
   study_wave_rollups: {
     pending: 'stale_at IS NOT NULL',

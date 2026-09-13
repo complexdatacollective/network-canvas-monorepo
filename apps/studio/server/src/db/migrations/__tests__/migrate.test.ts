@@ -25,6 +25,7 @@ import { applySchema } from '../../../../scripts/apply.ts';
 import {
   createScratchDatabase,
   reachableDb,
+  seedTestEncryptionKeyVerifications,
 } from '../../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
 import { checkSchema, SCHEMA, SIDECARS } from '../../schema.ts';
@@ -315,7 +316,97 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
     });
   });
 
-  it('upgrades a populated 0005 database to audit-alert delivery without rewriting existing evidence', async () => {
+  it('upgrades populated 0010 users and webhook deliveries into recovery authorization', async () => {
+    await withDatabase(async ({ pool }) => {
+      const index = shipped.findIndex(
+        ({ manifest }) => manifest.id === '0011_recovery_authorization',
+      );
+      const previous = shipped.slice(0, index);
+      const recoveryPredecessor = previous.at(-1);
+      const recovery = shipped[index];
+      if (!recoveryPredecessor || !recovery)
+        throw new Error('Recovery migration fixtures are incomplete.');
+      expect(recoveryPredecessor.manifest.id).toBe(
+        '0010_protocol_builder_write_receipts',
+      );
+      await migrateTestDatabase(
+        pool,
+        previous,
+        recoveryPredecessor.manifest.fingerprint,
+      );
+      const subscriptionId = randomUUID();
+      const deliveryId = randomUUID();
+      await seedTestEncryptionKeyVerifications(pool, [
+        { purpose: 'integration-enc', keyId: 'integration-key-1' },
+      ]);
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ('recovery-upgrade-user', 'Existing user', 'upgrade@example.test', true);
+         INSERT INTO teams (id, name, slug)
+           VALUES ('recovery-upgrade-team', 'Existing team', 'recovery-upgrade-team')`,
+      );
+      await pool.query(
+        `INSERT INTO webhook_subscriptions
+           (id, team_id, url, event_types, secret_ciphertext, secret_key_id, secret_algorithm, created_by_user_id)
+         VALUES ($1, 'recovery-upgrade-team', 'https://hooks.example.test/events',
+           ARRAY['interview.completed'], $2, 'integration-key-1', 'aes-256-gcm.v1', 'recovery-upgrade-user')`,
+        [subscriptionId, Buffer.alloc(32, 1)],
+      );
+      await pool.query(
+        `INSERT INTO webhook_deliveries
+           (id, team_id, subscription_id, webhook_id, event_type, payload)
+         VALUES ($1, 'recovery-upgrade-team', $2, 'existing-webhook', 'interview.completed', '{"resource":"existing"}')`,
+        [deliveryId, subscriptionId],
+      );
+      const before = (
+        await pool.query('SELECT * FROM webhook_deliveries WHERE id = $1', [
+          deliveryId,
+        ])
+      ).rows[0];
+      expect(
+        await migrateTestDatabase(
+          pool,
+          shipped.slice(0, index + 1),
+          recovery.manifest.fingerprint,
+        ),
+      ).toEqual(['0011_recovery_authorization']);
+      expect(
+        (
+          await pool.query('SELECT * FROM webhook_deliveries WHERE id = $1', [
+            deliveryId,
+          ])
+        ).rows[0],
+      ).toEqual({ ...before, uncertain_at: null });
+      expect(
+        (
+          await pool.query(
+            'SELECT name, "emailVerified", recovery_disabled FROM "user" WHERE id = $1',
+            ['recovery-upgrade-user'],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          name: 'Existing user',
+          emailVerified: true,
+          recovery_disabled: false,
+        },
+      ]);
+      await pool.query(
+        'UPDATE webhook_deliveries SET uncertain_at = now() WHERE id = $1',
+        [deliveryId],
+      );
+      await expect(
+        pool.query(
+          'UPDATE webhook_deliveries SET delivered_at = now() WHERE id = $1',
+          [deliveryId],
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'webhook_deliveries_terminal_state_check',
+      });
+    });
+  });
+
+  it('upgrades a populated predecessor without rewriting existing audit-alert evidence', async () => {
     await withDatabase(async ({ pool }) => {
       const previous = shipped.slice(0, -1);
       const previousFingerprint = previous.at(-1)?.manifest.fingerprint;

@@ -1,7 +1,7 @@
 {
   "dialect": "postgres",
-  "id": "3cf01286-4ea1-4c6f-9d59-6bd56a69b87f",
-  "prevIds": ["628b77c2-9d8c-4d5f-87bc-2531dd3da0e2"],
+  "id": "3b8eddc9-acf2-4c96-8e40-884135ce541c",
+  "prevIds": ["d00920f2-80fa-43ca-ac0c-ecafe5a8b031"],
   "version": "8",
   "ddl": [
     {
@@ -103,6 +103,18 @@
     {
       "isRlsEnabled": true,
       "name": "protocol_drafts",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "protocol_events",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "protocol_write_receipts",
       "entityType": "tables",
       "schema": "public"
     },
@@ -2063,6 +2075,266 @@
       "entityType": "columns",
       "schema": "public",
       "table": "protocol_drafts"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "draft_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "cursor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "section_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "manifest_seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "content_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "doc",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "holder",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "clock_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "draft_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "request_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "operation",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "revision_seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "revision_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_section_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "promoted",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "clock_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "protocol_write_receipts"
     },
     {
       "type": "text",
@@ -9403,6 +9675,41 @@
           "opclass": null
         },
         {
+          "value": "draft_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "cursor",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "protocol_events_team_id_draft_id_cursor_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
           "value": "unreferenced_at",
           "isExpression": false,
           "asc": true,
@@ -11680,6 +11987,32 @@
       "table": "protocol_drafts"
     },
     {
+      "nameExplicit": false,
+      "columns": ["draft_id", "team_id"],
+      "schemaTo": "public",
+      "tableTo": "drafts",
+      "columnsTo": ["id", "team_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "protocol_events_draft_id_team_id_drafts_id_team_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["draft_id", "team_id"],
+      "schemaTo": "public",
+      "tableTo": "drafts",
+      "columnsTo": ["id", "team_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "protocol_write_receipts_draft_id_team_id_drafts_id_team_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
       "nameExplicit": true,
       "columns": ["team_id", "asset_hash"],
       "schemaTo": "public",
@@ -12436,6 +12769,22 @@
       "entityType": "pks",
       "schema": "public",
       "table": "version_sections"
+    },
+    {
+      "columns": ["draft_id", "cursor"],
+      "nameExplicit": false,
+      "name": "protocol_events_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "columns": ["draft_id", "request_id", "operation"],
+      "nameExplicit": false,
+      "name": "protocol_write_receipts_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
     },
     {
       "columns": ["team_id", "hash"],
@@ -13507,6 +13856,69 @@
       "entityType": "checks",
       "schema": "public",
       "table": "teams"
+    },
+    {
+      "value": "\"kind\" IN ('revision', 'lock')",
+      "name": "protocol_events_kind_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "value": "\"cursor\" > 0",
+      "name": "protocol_events_cursor_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "value": "char_length(\"section_id\") BETWEEN 1 AND 512",
+      "name": "protocol_events_section_id_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "value": "CASE WHEN \"kind\" = 'revision'\n            THEN \"manifest_seq\" IS NOT NULL\n                 AND \"content_hash\" IS NOT NULL\n                 AND \"owner\" IS NULL\n                 AND \"holder\" IS NULL\n            ELSE \"manifest_seq\" IS NULL\n                 AND \"content_hash\" IS NULL\n                 AND \"doc\" IS NULL\n          END",
+      "name": "protocol_events_shape_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "value": "(\"owner\" IS NULL) = (\"holder\" IS NULL)",
+      "name": "protocol_events_holder_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "value": "\"operation\" IN ('submit', 'create')",
+      "name": "protocol_write_receipts_operation_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "value": "char_length(\"request_id\") BETWEEN 1 AND 512",
+      "name": "protocol_write_receipts_request_id_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "value": "\"revision_seq\" >= 0",
+      "name": "protocol_write_receipts_revision_seq_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "value": "CASE WHEN \"operation\" = 'create'\n            THEN \"created_section_id\" IS NOT NULL\n            ELSE \"created_section_id\" IS NULL\n          END",
+      "name": "protocol_write_receipts_created_section_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "protocol_write_receipts"
     },
     {
       "value": "\"hash\" ~ '^[0-9a-f]{64}$'",
@@ -14972,6 +15384,50 @@
       "entityType": "policies",
       "schema": "public",
       "table": "protocol_drafts"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_events"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_write_receipts"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_write_receipts"
     },
     {
       "as": "PERMISSIVE",

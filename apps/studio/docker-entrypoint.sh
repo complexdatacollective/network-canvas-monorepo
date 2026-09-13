@@ -1,15 +1,17 @@
 #!/bin/sh
 set -eu
 
+usage='Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics | recovery:reconcile-authorization | recovery:authorize-current'
+
 case "${1:-serve}" in
   serve)
     [ "$#" -eq 0 ] || shift
-    [ "$#" -eq 0 ] || { echo 'Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics' >&2; exit 2; }
+    [ "$#" -eq 0 ] || { echo "$usage" >&2; exit 2; }
     exec node dist/index.js
     ;;
   migrate)
     shift
-    [ "$#" -eq 0 ] || { echo 'Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics' >&2; exit 2; }
+    [ "$#" -eq 0 ] || { echo "$usage" >&2; exit 2; }
     exec node dist/migrate.js
     ;;
   encryption)
@@ -24,5 +26,15 @@ case "${1:-serve}" in
     shift
     exec node dist/configure.js "$@"
     ;;
-  *) echo 'Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics' >&2; exit 2 ;;
+  recovery:reconcile-authorization)
+    shift
+    [ "$#" -eq 0 ] || { echo "$usage" >&2; exit 2; }
+    exec node dist/recovery-authorization.js
+    ;;
+  recovery:authorize-current)
+    shift
+    [ "$#" -eq 0 ] || { echo "$usage" >&2; exit 2; }
+    exec node dist/recovery-authorize-current.js
+    ;;
+  *) echo "$usage" >&2; exit 2 ;;
 esac

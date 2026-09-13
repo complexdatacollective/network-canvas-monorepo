@@ -33,6 +33,10 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       `INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
        VALUES ('restored-one-time', 'restored@example.test', 'one-time', statement_timestamp() + interval '5 minutes')`,
     );
+    await fixture.owner.query(
+      `INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
+       VALUES ('inactive-unverified', 'Inactive', 'inactive@EXAMPLE.TEST', false, statement_timestamp())`,
+    );
     await installation.closeRuntimePools();
     await installation.withAdministrator(async (administrator) => {
       await administrator.query(
@@ -40,7 +44,6 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
          ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
       );
     });
-
     await reconcileRegistryRecovery({
       pool: fixture.owner,
       backupPool: installation.backupPool,
@@ -52,12 +55,30 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         users: [
           {
             id: account.session.userId,
+            email: 'restored@example.test',
+            emailVerified: true,
             publisher: 'active',
+            operator: false,
+          },
+          {
+            id: 'inactive-unverified',
+            email: 'inactive@example.test',
+            emailVerified: false,
+            publisher: 'none',
             operator: false,
           },
         ],
       },
     });
+
+    expect(fixture.blobs.ready).toHaveBeenCalledOnce();
+    expect(
+      (
+        await fixture.owner.query(
+          "SELECT email, email_verified FROM registry_auth_user WHERE id = 'inactive-unverified'",
+        )
+      ).rows,
+    ).toEqual([{ email: 'inactive@EXAMPLE.TEST', email_verified: false }]);
 
     expect(
       (
@@ -81,6 +102,118 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
     await fixture.dispose();
   }
 });
+
+it('requires object-store readiness even when the restored registry has no artifacts', async () => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+         ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
+    );
+    vi.mocked(fixture.blobs.ready).mockRejectedValueOnce(
+      new Error('object store unavailable'),
+    );
+
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation: {
+          format: 'template-registry-recovery-reconciliation',
+          version: 1,
+          users: [],
+        },
+      }),
+    ).rejects.toThrow('object store unavailable');
+    expect(fixture.blobs.get).not.toHaveBeenCalled();
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+it.each(['email', 'verification'] as const)(
+  'refuses restored user %s drift before restoring publisher authority',
+  async (kind) => {
+    const installation = await createRegistryInstallation();
+    const fixture = await createRegistryFixture({}, installation);
+    try {
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../migrations', import.meta.url)),
+        'Template Registry',
+      );
+      await registryMigrator.migrate(
+        fixture.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        installation.allowedLogins,
+      );
+      const account = await fixture.account('approved@example.test');
+      await fixture.published(account.token, 'Authority binding');
+      await fixture.owner.query(
+        kind === 'email'
+          ? 'UPDATE registry_auth_user SET email = $2 WHERE id = $1'
+          : 'UPDATE registry_auth_user SET email_verified = false WHERE id = $1',
+        kind === 'email'
+          ? [account.session.userId, 'restored-attacker@example.test']
+          : [account.session.userId],
+      );
+      await installation.closeRuntimePools();
+      await installation.withAdministrator((administrator) =>
+        administrator.query(
+          `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+           ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+        ),
+      );
+
+      await expect(
+        reconcileRegistryRecovery({
+          pool: fixture.owner,
+          backupPool: installation.backupPool,
+          blobs: fixture.blobs,
+          admission: { allowedLogins: installation.allowedLogins },
+          reconciliation: {
+            format: 'template-registry-recovery-reconciliation',
+            version: 1,
+            users: [
+              {
+                id: account.session.userId,
+                email: 'approved@EXAMPLE.TEST',
+                emailVerified: true,
+                publisher: 'active',
+                operator: false,
+              },
+            ],
+          },
+        }),
+      ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await fixture.dispose();
+    }
+  },
+);
 
 it.each([
   'surviving-session',
@@ -141,6 +274,8 @@ it.each([
           users: [
             {
               id: account.session.userId,
+              email: 'quarantine@example.test',
+              emailVerified: true,
               publisher: 'active',
               operator: false,
             },
@@ -208,6 +343,8 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
           users: [
             {
               id: account.session.userId,
+              email: 'tampered@example.test',
+              emailVerified: true,
               publisher: 'active',
               operator: false,
             },
@@ -255,6 +392,8 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
           users: [
             {
               id: account.session.userId,
+              email: 'still-serving@example.test',
+              emailVerified: true,
               publisher: 'active',
               operator: false,
             },
