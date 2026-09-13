@@ -159,6 +159,7 @@ async function reconcileInventories(
   client: pg.PoolClient,
   evidence: StudioRecoveryAuthorizationReconciliation,
   mode: 'revoke-stale' | 'require-exact',
+  scheduling: 'initial' | 'post-reconciliation' = 'initial',
 ) {
   await assertEvidenceFreshness(client, evidence);
   const instance = await client.query<{
@@ -353,21 +354,38 @@ async function reconcileInventories(
         "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    const activeScheduleIds = new Set(activeSchedules);
-    for (const id of evidence.activeScheduleIds)
-      if (!activeScheduleIds.has(id)) throw new Error(MISMATCH);
-    if (
-      mode === 'require-exact' &&
-      activeSchedules.length !== evidence.activeScheduleIds.length
-    )
-      throw new Error(MISMATCH);
-    // The schedule IDs in signed evidence prove the inventory that the
-    // operator reviewed; they do not prove that recurrence, channels,
-    // participant time zones, settings, or pending occurrences are safe to
-    // resume after a restore. Keep every restored schedule paused until a
-    // separate operator review produces fresh current evidence, and cancel
-    // every occurrence that could otherwise be picked up by the dispatcher.
-    await pauseRestoredScheduleActivity(client);
+    if (scheduling === 'post-reconciliation') {
+      const expectedScheduleIds = await client.query<{ id: string }>(
+        `SELECT id FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedScheduleIds.rows.length !== evidence.activeScheduleIds.length ||
+        activeSchedules.length !== 0
+      )
+        throw new Error(MISMATCH);
+      const pendingOccurrences = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM schedule_occurrences WHERE state = 'scheduled'",
+      );
+      if (pendingOccurrences.rows[0]?.count !== 0) throw new Error(MISMATCH);
+    } else {
+      const activeScheduleIds = new Set(activeSchedules);
+      for (const id of evidence.activeScheduleIds)
+        if (!activeScheduleIds.has(id)) throw new Error(MISMATCH);
+      if (
+        mode === 'require-exact' &&
+        activeSchedules.length !== evidence.activeScheduleIds.length
+      )
+        throw new Error(MISMATCH);
+      // The schedule IDs in signed evidence prove the inventory that the
+      // operator reviewed; they do not prove that recurrence, channels,
+      // participant time zones, settings, or pending occurrences are safe to
+      // resume after a restore. Keep every restored schedule paused until a
+      // separate operator review produces fresh current evidence, and cancel
+      // every occurrence that could otherwise be picked up by the dispatcher.
+      await pauseRestoredScheduleActivity(client);
+    }
 
     const publishedTemplates = (
       await client.query<{ id: string }>(
@@ -588,7 +606,12 @@ export async function reconcileStudioRecoveryAuthorization(options: {
       'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
     );
     assertRows(enabled.rows, [{ count: 0 }]);
-    await reconcileInventories(client, evidence, 'revoke-stale');
+    await reconcileInventories(
+      client,
+      evidence,
+      'revoke-stale',
+      'post-reconciliation',
+    );
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
       expectedTransaction: { isolation: 'serializable', readOnly: false },
@@ -712,7 +735,12 @@ export async function authorizeCurrentStudioRecovery(options: {
       )
     ).rows.map(({ id }) => id);
     assertRows(finalEnabled, eligibleUserIds);
-    await reconcileInventories(client, evidence, 'require-exact');
+    await reconcileInventories(
+      client,
+      evidence,
+      'require-exact',
+      'post-reconciliation',
+    );
     await assertRestoredAdmissionInvalidated(client);
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
