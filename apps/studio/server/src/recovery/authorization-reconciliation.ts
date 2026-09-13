@@ -10,6 +10,7 @@ import { TextDecoder } from 'node:util';
 import { z } from 'zod';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
+import { parseBoundedJson } from '@codaco/studio-sync/template-archive';
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 const FAILURE = 'STUDIO_RECOVERY_RECONCILIATION_INVALID';
@@ -25,7 +26,7 @@ const boundedId = z
 const sha256 = z.string().regex(/^[0-9a-f]{64}$/);
 const nullableId = boundedId.nullable();
 
-const reconciliationSchema = z
+export const studioRecoveryReconciliationSchema = z
   .strictObject({
     format: z.literal('studio-recovery-authorization-reconciliation'),
     version: z.literal(1),
@@ -101,6 +102,9 @@ const reconciliationSchema = z
         }),
       )
       .max(MAX_IDENTITIES),
+    // Inventory only. Authorization always pauses restored schedules and
+    // cancels pending occurrences; an operator must review the complete
+    // recurrence/channel/time-zone/settings state before re-enabling them.
     activeScheduleIds: z.array(z.uuid()).max(MAX_IDENTITIES),
     publishedMessageTemplateIds: z.array(z.uuid()).max(MAX_IDENTITIES),
   })
@@ -243,7 +247,7 @@ const reconciliationSchema = z
   });
 
 export type StudioRecoveryAuthorizationReconciliation = z.infer<
-  typeof reconciliationSchema
+  typeof studioRecoveryReconciliationSchema
 >;
 
 export type StudioRecoveryReconciliationEvidence = {
@@ -408,19 +412,15 @@ export function copyStudioRecoveryAuthorizationReconciliation(
   value: unknown,
 ): StudioRecoveryAuthorizationReconciliation {
   try {
-    return reconciliationSchema.parse(structuredClone(value));
+    return studioRecoveryReconciliationSchema.parse(structuredClone(value));
   } catch {
     throw new Error(FAILURE);
   }
 }
 
 /** Read bounded private artifact bytes without interpreting unverified content. */
-export async function readStudioRecoveryAuthorizationReconciliationBytes(
-  path: string,
-  expectedSha256: string,
-): Promise<StudioRecoveryReconciliationBytes> {
+export async function readPrivateRecoveryFile(path: string): Promise<Buffer> {
   try {
-    if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error();
     const info = await lstat(path);
     if (
       !info.isFile() ||
@@ -455,8 +455,32 @@ export async function readStudioRecoveryAuthorizationReconciliationBytes(
       await handle.close();
     }
     if (bytes.byteLength !== info.size) throw new Error();
-    if (templateBytesHash(bytes) !== expectedSha256) throw new Error();
-    return { sha256: expectedSha256, bytes };
+    return bytes;
+  } catch {
+    throw new Error(FAILURE);
+  }
+}
+
+/** Keep the independently pinned digest mandatory for restored-state readers. */
+export async function readStudioRecoveryAuthorizationReconciliationBytes(
+  path: string,
+  expectedSha256: string,
+): Promise<StudioRecoveryReconciliationBytes> {
+  if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error(FAILURE);
+  const bytes = await readPrivateRecoveryFile(path);
+  if (templateBytesHash(bytes) !== expectedSha256) throw new Error(FAILURE);
+  return { sha256: expectedSha256, bytes };
+}
+
+/** Bound input before schema recursion; preparation accepts ordinary JSON. */
+export function parseStudioRecoveryReconciliationInput(bytes: Uint8Array) {
+  try {
+    if (!bytes.byteLength || bytes.byteLength > MAX_EVIDENCE_BYTES)
+      throw new Error();
+    assertBoundedJsonDepth(bytes);
+    return copyStudioRecoveryAuthorizationReconciliation(
+      parseBoundedJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
+    );
   } catch {
     throw new Error(FAILURE);
   }

@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+{"level":30,"time":"2026-09-13T13:31:39.972Z","event":"http_request","request_id":"e6906973-793c-4582-af49-db46a65dc75c","route":"client","method":"GET","status":200,"duration_ms":4.092}
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > commits producer, streams below high-water, finalizes, and consumes once 85ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases its lease and retains a retryable job after storage failure 30ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > rejects an invalid handle before opening an object stream 44ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > rechecks administrator authority after opening and releases a refused stream 45ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > cancels an opened body when the consumption transaction throws 43ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases a size-mismatched body without consuming the handle 44ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases the source reader after EOF and consumer cancellation 85ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > cancels a stream that exceeds its recorded size while downloading 42ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > uses per-attempt keys and a stale owner cleans only its own artifact 56ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > fences expired-owner renewal and completion while cleanup owns the row 46ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > recovers a persisted attempt key after a crash immediately after upload 54ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > fences cleanup before a delayed multipart create can begin 33ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > recovers a multipart create accepted before its upload id was recorded 31ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > cleans an uploaded artifact when handle sealing fails 39ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > persists a failed cleanup key and resumes deletion after restart 42ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > neutralizes whitespace-prefixed spreadsheet formulas 4ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > deletes consumed artifacts in a bounded audited cleanup pass 82ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  15:31:37
+   Duration  3.42s (transform 685ms, setup 0ms, import 1.27s, tests 2.07s, environment 0ms)
+

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  bytea,
   check,
   foreignKey,
   index,
@@ -154,6 +155,51 @@ const auditEvents = pgTable(
   ],
 );
 
+// Exact private keys which might receive a late S3-compatible write remain
+// durably sweepable independently of mutable jobs and teams. These rows contain
+// no tenant or actor data, and intentionally have no foreign key to a job.
+const auditExportArtifactAttempts = pgTable(
+  'audit_export_artifact_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    jobId: uuid('job_id').notNull(),
+    artifactKey: text('artifact_key').notNull(),
+    uploadId: text('upload_id'),
+    state: text('state').notNull().default('active'),
+    nextSweepAt: timestamp('next_sweep_at', { withTimezone: true }),
+    sweepCount: integer('sweep_count').notNull().default(0),
+    sweepOwner: uuid('sweep_owner'),
+    sweepExpiresAt: timestamp('sweep_expires_at', { withTimezone: true }),
+    lastSweepAt: timestamp('last_sweep_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    retiredAt: timestamp('retired_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('audit_export_artifact_attempts_key_idx').on(table.artifactKey),
+    index('audit_export_artifact_attempts_sweep_idx')
+      .on(table.nextSweepAt, table.sweepExpiresAt)
+      .where(sql`state = 'retired'`),
+    check(
+      'audit_export_artifact_attempts_state_check',
+      sql`${table.state} IN ('active', 'retired')
+          AND (${table.state} = 'retired') = (${table.retiredAt} IS NOT NULL)
+          AND (${table.state} = 'retired') = (${table.nextSweepAt} IS NOT NULL)`,
+    ),
+    check(
+      'audit_export_artifact_attempts_lease_check',
+      sql`(${table.sweepOwner} IS NULL) = (${table.sweepExpiresAt} IS NULL)`,
+    ),
+    check(
+      'audit_export_artifact_attempts_values_check',
+      sql`${table.sweepCount} >= 0
+          AND char_length(${table.artifactKey}) BETWEEN 1 AND 1024
+          AND (${table.uploadId} IS NULL OR char_length(${table.uploadId}) BETWEEN 1 AND 1024)`,
+    ),
+  ],
+);
+
 // The staged CSV export (#1520). The row and its outbox task are created in the
 // short locked transaction that also commits
 // `audit.export.started (deliveryMode = 'staged')`; a maintenance worker
@@ -195,12 +241,16 @@ const auditExportJobs = pgTable(
       .defaultNow(),
     leaseOwner: uuid('lease_owner'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    artifactAttemptId: uuid('artifact_attempt_id'),
     artifactKey: text('artifact_key'),
     artifactRowCount: integer('artifact_row_count'),
     artifactByteCount: bigint('artifact_byte_count', { mode: 'number' }),
     // sha256 hex of a 256-bit CSPRNG handle. The handle itself is returned
     // once, in the response that announces readiness, and never stored.
     handleHash: text('handle_hash'),
+    handleCiphertext: bytea('handle_ciphertext'),
+    handleKeyId: text('handle_key_id'),
+    handleAlgorithm: text('handle_algorithm'),
     handleExpiresAt: timestamp('handle_expires_at', { withTimezone: true }),
     handleConsumedAt: timestamp('handle_consumed_at', { withTimezone: true }),
     completionEventId: uuid('completion_event_id'),
@@ -249,6 +299,14 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_handle_hash_format_check',
       sql`${table.handleHash} IS NULL OR ${table.handleHash} ~ '^[0-9a-f]{64}$'`,
     ),
+    check(
+      'audit_export_jobs_handle_envelope_check',
+      sql`(${table.handleCiphertext} IS NULL) = (${table.handleKeyId} IS NULL)
+          AND (${table.handleCiphertext} IS NULL) = (${table.handleAlgorithm} IS NULL)
+          AND (${table.handleCiphertext} IS NULL OR octet_length(${table.handleCiphertext}) BETWEEN 30 AND 512)
+          AND (${table.handleKeyId} IS NULL OR char_length(${table.handleKeyId}) BETWEEN 1 AND 64)
+          AND (${table.handleAlgorithm} IS NULL OR char_length(${table.handleAlgorithm}) BETWEEN 1 AND 64)`,
+    ),
     // Readiness is all-or-nothing: no handle, no artifact coordinates, and
     // no completion event may exist unless the job is ready, and a ready job
     // must carry every one of them. This is the database half of "no handle
@@ -257,7 +315,11 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_ready_state_check',
       sql`(${table.status} = 'ready') = (
             ${table.handleHash} IS NOT NULL
+            AND ${table.handleCiphertext} IS NOT NULL
+            AND ${table.handleKeyId} IS NOT NULL
+            AND ${table.handleAlgorithm} IS NOT NULL
             AND ${table.handleExpiresAt} IS NOT NULL
+            AND ${table.artifactAttemptId} IS NOT NULL
             AND ${table.artifactKey} IS NOT NULL
             AND ${table.artifactRowCount} IS NOT NULL
             AND ${table.artifactByteCount} IS NOT NULL
@@ -269,8 +331,7 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_failed_state_check',
       sql`(${table.status} = 'failed') = (
             ${table.failedAt} IS NOT NULL AND ${table.failureEventId} IS NOT NULL
-          )
-          AND (${table.status} <> 'failed' OR ${table.artifactKey} IS NULL)`,
+          )`,
     ),
     check(
       'audit_export_jobs_consumed_check',
@@ -279,6 +340,10 @@ const auditExportJobs = pgTable(
     check(
       'audit_export_jobs_lease_check',
       sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+    ),
+    check(
+      'audit_export_jobs_artifact_attempt_check',
+      sql`(${table.artifactAttemptId} IS NULL) = (${table.artifactKey} IS NULL)`,
     ),
     // A terminal job holds no lease.
     check(
@@ -400,7 +465,12 @@ const auditAlertOutbox = pgTable(
   ],
 );
 
-export const AUDIT_TABLES = { auditEvents, auditExportJobs, auditAlertOutbox };
+export const AUDIT_TABLES = {
+  auditEvents,
+  auditExportArtifactAttempts,
+  auditExportJobs,
+  auditAlertOutbox,
+};
 
 // This sidecar must run after the general access grant. `audit_events` receives
 // the ordinary tenant grants first, then permanently loses every mutating
@@ -459,6 +529,61 @@ CREATE OR REPLACE TRIGGER audit_export_request_immutable
   )
   EXECUTE FUNCTION audit_export_request_is_immutable();
 
+CREATE OR REPLACE FUNCTION audit_export_artifact_attempt_identity_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'audit export artifact attempt identity is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_artifact_attempt_identity_immutable
+  BEFORE UPDATE ON audit_export_artifact_attempts
+  FOR EACH ROW
+  WHEN (
+    NEW.id IS DISTINCT FROM OLD.id
+    OR NEW.job_id IS DISTINCT FROM OLD.job_id
+    OR NEW.artifact_key IS DISTINCT FROM OLD.artifact_key
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at
+  )
+  EXECUTE FUNCTION audit_export_artifact_attempt_identity_is_immutable();
+
+-- Clearing or deleting a job's attempt pointer is the durable retirement
+-- fence. The independent row remains after the mutable job (or its team) is
+-- deleted, so a provider-side effect acknowledged after client cancellation
+-- is still discovered and removed by later sweeps.
+CREATE OR REPLACE FUNCTION audit_export_retire_detached_attempt() RETURNS trigger AS $$
+BEGIN
+  IF OLD.artifact_attempt_id IS NOT NULL
+     AND (TG_OP = 'DELETE' OR NEW.artifact_attempt_id IS DISTINCT FROM OLD.artifact_attempt_id) THEN
+    UPDATE audit_export_artifact_attempts SET
+      state = 'retired',
+      retired_at = COALESCE(retired_at, statement_timestamp()),
+      next_sweep_at = COALESCE(next_sweep_at, statement_timestamp()),
+      sweep_owner = NULL,
+      sweep_expires_at = NULL
+    WHERE id = OLD.artifact_attempt_id AND state = 'active';
+  END IF;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_detached_attempt_retired
+  BEFORE UPDATE OR DELETE ON audit_export_jobs
+  FOR EACH ROW EXECUTE FUNCTION audit_export_retire_detached_attempt();
+
+-- Export jobs deliberately do not foreign-key mutable tenant rows to retained
+-- audit provenance. Remove their operational state when a team is erased; the
+-- job trigger above retires every attached private object attempt first.
+CREATE OR REPLACE FUNCTION audit_export_delete_team_jobs() RETURNS trigger AS $$
+BEGIN
+  DELETE FROM audit_export_jobs WHERE team_id = OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_team_jobs_deleted
+  BEFORE DELETE ON teams
+  FOR EACH ROW EXECUTE FUNCTION audit_export_delete_team_jobs();
+
 -- A handle is single-use: once consumed it can never be un-consumed, and a
 -- consumed or expired handle can never be re-issued on the same row.
 CREATE OR REPLACE FUNCTION audit_export_handle_is_single_use() RETURNS trigger AS $$
@@ -473,6 +598,9 @@ CREATE OR REPLACE TRIGGER audit_export_handle_single_use
   WHEN (
     (OLD.handle_consumed_at IS NOT NULL AND NEW.handle_consumed_at IS DISTINCT FROM OLD.handle_consumed_at)
     OR (OLD.handle_hash IS NOT NULL AND NEW.handle_hash IS DISTINCT FROM OLD.handle_hash)
+    OR (OLD.handle_ciphertext IS NOT NULL AND NEW.handle_ciphertext IS DISTINCT FROM OLD.handle_ciphertext)
+    OR (OLD.handle_key_id IS NOT NULL AND NEW.handle_key_id IS DISTINCT FROM OLD.handle_key_id)
+    OR (OLD.handle_algorithm IS NOT NULL AND NEW.handle_algorithm IS DISTINCT FROM OLD.handle_algorithm)
   )
   EXECUTE FUNCTION audit_export_handle_is_single_use();
 
@@ -510,6 +638,9 @@ ${tenantTablesSql(['audit_events', 'audit_export_jobs', 'audit_alert_outbox'])}
 -- table-level UPDATE. One statement per table so both are documented.
 REVOKE UPDATE, DELETE ON audit_export_jobs FROM ${TENANT_ROLES.app};
 REVOKE UPDATE, DELETE ON audit_alert_outbox FROM ${TENANT_ROLES.app};
+REVOKE ALL ON audit_export_artifact_attempts FROM ${TENANT_ROLES.app};
+REVOKE DELETE, TRUNCATE ON audit_export_artifact_attempts FROM ${TENANT_ROLES.maintenance};
+GRANT SELECT, INSERT, UPDATE ON audit_export_artifact_attempts TO ${TENANT_ROLES.maintenance};
 GRANT UPDATE (handle_consumed_at) ON audit_export_jobs TO ${TENANT_ROLES.app};
 
 REVOKE UPDATE, DELETE, TRUNCATE ON audit_events

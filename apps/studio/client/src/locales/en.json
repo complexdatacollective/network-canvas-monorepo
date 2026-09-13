@@ -1995,13 +1995,13 @@
     "defaultMessage": "Open the protocol editor",
     "description": "Link on a study card into the study's protocol editor."
   },
-  "studio.templates.credential": {
-    "defaultMessage": "Registry publishing credential",
-    "description": "Publish credential label."
-  },
   "studio.templates.alreadyPublished": {
     "defaultMessage": "This template version was already published.",
     "description": "Registry publication replay announcement."
+  },
+  "studio.templates.credential": {
+    "defaultMessage": "Registry publishing credential",
+    "description": "Publish credential label."
   },
   "studio.templates.empty": {
     "defaultMessage": "This team has no local template versions.",
@@ -2026,6 +2026,10 @@
   "studio.templates.importOrigin": {
     "defaultMessage": "Imported from {registry} on {date}.",
     "description": "Imported template provenance."
+  },
+  "studio.templates.importPending": {
+    "defaultMessage": "Import is pending Registry reconciliation.",
+    "description": "Durable Registry import pending announcement."
   },
   "studio.templates.imported": {
     "defaultMessage": "The Registry template was imported.",
@@ -2058,6 +2062,10 @@
   "studio.templates.publication": {
     "defaultMessage": "Published by {publisher} on {date} to {registry}.",
     "description": "Immutable Registry publication receipt."
+  },
+  "studio.templates.publicationPending": {
+    "defaultMessage": "Publication is pending Registry reconciliation.",
+    "description": "Durable Registry publication pending announcement."
   },
   "studio.templates.publish": {
     "defaultMessage": "Publish version",

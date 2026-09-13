@@ -68,6 +68,10 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'team.invitation.cancelled':
     case 'team.invitation.created':
     case 'team.invitation.creation_denied':
+    case 'template.registry_import_requested':
+    case 'template.registry_imported':
+    case 'template.registry_publish_requested':
+    case 'template.registry_published':
     case 'team.member.role_change_failed':
     case 'team.member.role_changed':
     case 'webhook.secret.rotated':

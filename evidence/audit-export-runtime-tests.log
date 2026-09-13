@@ -1,0 +1,20 @@
+2026-09-13 Node 24.18.0, PostgreSQL 18, max_prepared_transactions=16
+
+Red-before proof:
+- The real producer-to-worker test initially exported 936 of 1001 rows.
+- The failure exposed lexical pagination caused by ORDER BY resolving the
+  `sequence::text` output alias. Qualifying audit_events.sequence restored
+  numeric order and prevented skipped ranges at page boundaries.
+
+Passing focused verification:
+- @codaco/studio-server typecheck: pass
+- export, outbox schema, event registry, encryption, audit policy, migration
+  artifact, populated upgrade, and shared dispatcher tests: 8 files, 211 tests
+  passed
+- package-scoped Knip for Studio server and Studio RPC: pass
+- focused oxlint and full-tree oxfmt: pass
+- the combined root lint command remains nonzero on the unchanged Fresco
+  `queries/interviews.ts` array-sort comparator error
+- The real PostgreSQL flow proves staged enqueue, immutable high water,
+  paged generation, audited completion, encrypted actor-bound handle,
+  single-use retrieval, and retry with lease release after storage failure.

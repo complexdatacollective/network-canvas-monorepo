@@ -13,6 +13,7 @@ const execFileAsync = promisify(execFile);
 describe('production recovery entrypoints', () => {
   it.each([
     ['recovery:reconcile-authorization', 'dist/recovery-authorization.js'],
+    ['recovery:evidence', 'dist/recovery-evidence.js'],
     ['recovery:authorize-current', 'dist/recovery-authorize-current.js'],
   ])('dispatches %s to the bundled command', async (command, bundledEntry) => {
     const directory = await mkdtemp(join(tmpdir(), 'studio-entrypoint-'));

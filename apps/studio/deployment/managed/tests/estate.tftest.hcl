@@ -78,6 +78,11 @@ run "candidate_contract" {
   }
 
   assert {
+    condition     = length(cloudflare_r2_bucket_lifecycle.audit_export_backstop) == 2 && alltrue([for lifecycle in values(cloudflare_r2_bucket_lifecycle.audit_export_backstop) : lifecycle.rules[0].enabled && lifecycle.rules[0].conditions.prefix == "audit-exports/" && lifecycle.rules[0].abort_multipart_uploads_transition.condition.max_age == 604800 && lifecycle.rules[0].delete_objects_transition.condition.max_age == 604800])
+    error_message = "Studio R2 buckets must retain the seven-day private export object and multipart cleanup backstop."
+  }
+
+  assert {
     condition     = crunchybridge_cluster.postgres.provider_id == "aws" && crunchybridge_cluster.postgres.region_id == "us-east-1" && crunchybridge_cluster.postgres.is_ha == false
     error_message = "The database candidate must remain the single AWS us-east-1 cluster."
   }

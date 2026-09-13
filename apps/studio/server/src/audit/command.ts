@@ -6,7 +6,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 import type { Principal } from '../auth/service.ts';
 import { logOperational } from '../observability/logger.ts';
 import type { AuditEventInput } from './events.ts';
-import { AuditStore, lockAuditTeam } from './store.ts';
+import { AuditStore, lockAuditTeam, type AuditEvent } from './store.ts';
 
 export type AuditedCommandContext = {
   tenantDb: TenantDb;
@@ -28,6 +28,11 @@ export class AuditCommandTeamNotFoundError extends Error {
 export type AuditedMutationResult<T> = {
   result: T;
   events: readonly [AuditEventInput, ...AuditEventInput[]];
+  /** Runs after required events are stored, but before their transaction commits. */
+  afterEventsStored?: (
+    client: pg.PoolClient,
+    events: readonly [AuditEvent, ...AuditEvent[]],
+  ) => Promise<void>;
 };
 
 export type AuditedCommandDecision<T> =
@@ -224,10 +229,24 @@ export async function runAuditedCommand<T>(
       if (result.events.length === 0) {
         throw new Error('an audited command must produce at least one event');
       }
+      const storedEvents: AuditEvent[] = [];
       for (const event of result.events) {
         assertEventContext(auditContext, event, result.status);
-        await appendRequiredAuditEvent(client, event);
+        try {
+          storedEvents.push(await auditStore.append(client, event));
+        } catch (error) {
+          logOperational('STUDIO_AUDIT_APPEND_FAILED', {
+            teamId: event.teamId,
+            requestId: event.requestId ?? undefined,
+          });
+          throw error;
+        }
       }
+      if ('afterEventsStored' in result)
+        await result.afterEventsStored?.(
+          client,
+          storedEvents as [AuditEvent, ...AuditEvent[]],
+        );
       return result;
     },
   );
@@ -251,7 +270,11 @@ export async function runAuditedMutation<T>(
   });
 }
 
-type SystemAuditActor = 'Encryption maintenance' | 'Webhook delivery';
+type SystemAuditActor =
+  | 'Audit export'
+  | 'Encryption maintenance'
+  | 'Webhook delivery'
+  | 'Template Registry reconciliation';
 
 export type SystemAuditEventContext<
   Actor extends SystemAuditActor = SystemAuditActor,
@@ -305,6 +328,7 @@ export function runAuditedSystemMutation<T, Actor extends SystemAuditActor>(
     const mutation = await work(client, auditContext);
     if (mutation.events.length === 0)
       throw new Error('an audited system mutation must produce an event');
+    const storedEvents: AuditEvent[] = [];
     for (const event of mutation.events) {
       if (
         event.teamId !== auditContext.teamId ||
@@ -318,8 +342,20 @@ export function runAuditedSystemMutation<T, Actor extends SystemAuditActor>(
         throw new Error(
           'audit event context does not match its system mutation',
         );
-      await appendRequiredAuditEvent(client, event);
+      try {
+        storedEvents.push(await auditStore.append(client, event));
+      } catch (error) {
+        logOperational('STUDIO_AUDIT_APPEND_FAILED', {
+          teamId: event.teamId,
+          requestId: event.requestId ?? undefined,
+        });
+        throw error;
+      }
     }
+    await mutation.afterEventsStored?.(
+      client,
+      storedEvents as [AuditEvent, ...AuditEvent[]],
+    );
     return mutation.result;
   });
 }

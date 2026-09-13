@@ -171,6 +171,7 @@ const supportedBlocks = {
     'aws_kms_key.studio_root',
     'b2_bucket.independent_recovery',
     'cloudflare_r2_bucket.primary',
+    'cloudflare_r2_bucket_lifecycle.audit_export_backstop',
     'crunchybridge_cluster.postgres',
   ],
   data: [

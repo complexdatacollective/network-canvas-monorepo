@@ -31,6 +31,13 @@ export type ParticipantField = {
 
 export type IntegrationField =
   | {
+      kind: 'audit_export';
+      teamId: string;
+      actorId: string;
+      jobId: string;
+      column: 'handle_ciphertext';
+    }
+  | {
       kind: 'webhook';
       teamId: string;
       subscriptionId: string;
@@ -107,12 +114,22 @@ function participantAad(target: ParticipantField): Buffer {
 }
 
 function integrationAad(target: IntegrationField): Buffer {
+  if (target.kind === 'audit_export')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.actorId,
+      target.jobId,
+      target.column,
+    ]);
   return target.kind === 'webhook'
     ? tuple([target.kind, target.teamId, target.subscriptionId, target.column])
     : tuple([target.kind, target.userId, target.accountRowId, target.column]);
 }
 
 function integrationScope(target: IntegrationField): readonly string[] {
+  if (target.kind === 'audit_export')
+    return ['audit-export', target.teamId, target.actorId, target.jobId];
   return target.kind === 'webhook'
     ? ['team', target.teamId]
     : ['account', target.userId, target.accountRowId];
@@ -273,5 +290,46 @@ export function createDataProtection(
     readParticipant,
     encryptIntegration,
     readIntegration,
+  };
+}
+
+/** Recoverable export handles; callers must authorize the exact actor/job row. */
+export function createAuditExportHandleProtection(keys: EncryptionKeys) {
+  return {
+    seal(
+      target: Extract<IntegrationField, { kind: 'audit_export' }>,
+      value: Uint8Array,
+    ) {
+      const id = keys.currentId('integration-enc');
+      const context = integrationContext(target);
+      return {
+        algorithm: ALGORITHM,
+        keyId: id,
+        envelope: encrypt(
+          keys.derive('integration-enc', id, integrationScope(context)),
+          integrationAad(context),
+          value,
+        ),
+      };
+    },
+    open(
+      target: Extract<IntegrationField, { kind: 'audit_export' }>,
+      value: ProtectedValue,
+    ) {
+      const context = integrationContext(target);
+      try {
+        return decrypt(
+          keys.derive(
+            'integration-enc',
+            value.keyId,
+            integrationScope(context),
+          ),
+          integrationAad(context),
+          { ...value, envelope: Buffer.from(value.envelope) },
+        );
+      } catch {
+        throw new ProtectedDataError();
+      }
+    },
   };
 }

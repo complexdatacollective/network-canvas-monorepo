@@ -13,7 +13,10 @@ import { expect, it } from 'vitest';
 
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
-import { readRegistryRecoveryReconciliation } from './recovery-reconciliation.ts';
+import {
+  copyRegistryRecoveryReconciliation,
+  readRegistryRecoveryReconciliation,
+} from './recovery-reconciliation.ts';
 
 const evidence = {
   format: 'template-registry-recovery-reconciliation',
@@ -21,6 +24,51 @@ const evidence = {
   users: [],
 };
 const bytes = Buffer.from(JSON.stringify(evidence) + '\n');
+
+it('requires a unique stable publisher UUID for every publishing account', () => {
+  const publisher = {
+    id: 'first',
+    email: 'first@example.test',
+    emailVerified: true,
+    publisher: 'active' as const,
+    publisherId: '00000000-0000-4000-8000-00000000000A',
+    operator: false,
+  };
+  const input = {
+    format: 'template-registry-recovery-reconciliation' as const,
+    version: 1 as const,
+    users: [publisher],
+  };
+  expect(copyRegistryRecoveryReconciliation(input).users[0]?.publisherId).toBe(
+    publisher.publisherId.toLowerCase(),
+  );
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...input,
+      users: [{ ...publisher, publisherId: null }],
+    }),
+  ).toThrow();
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...input,
+      users: [{ ...publisher, publisher: 'none' }],
+    }),
+  ).toThrow();
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...input,
+      users: [
+        publisher,
+        {
+          ...publisher,
+          id: 'second',
+          email: 'second@example.test',
+          publisherId: publisher.publisherId.toLowerCase(),
+        },
+      ],
+    }),
+  ).toThrow();
+});
 
 it('verifies the exact private evidence bytes before parsing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-'));
@@ -53,6 +101,7 @@ it('normalizes evidence email domains and requires verified authority', async ()
           email: 'Researcher@EXAMPLE.TEST',
           emailVerified: true,
           publisher: 'active',
+          publisherId: '00000000-0000-4000-8000-000000000001',
           operator: true,
         },
       ],
@@ -85,6 +134,7 @@ it('normalizes evidence email domains and requires verified authority', async ()
             ...input.users[0],
             emailVerified: false,
             publisher: 'none',
+            publisherId: null,
             operator: false,
           },
         ],

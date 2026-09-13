@@ -160,10 +160,11 @@ describe('webhook runtime', () => {
         false,
       );
 
-      await fixture.scratch.pool.query(
-        "UPDATE team_members SET role = 'member' WHERE user_id = $1",
+      const demoted = await fixture.scratch.pool.query<{ role: string }>(
+        "UPDATE team_members SET role = 'member' WHERE user_id = $1 RETURNING role",
         [fixture.context.principal.userId],
       );
+      expect(demoted.rows).toEqual([{ role: 'member' }]);
       const denied = await safe(
         rpc.webhooks.create({
           teamId: fixture.context.tenantDb.teamId,

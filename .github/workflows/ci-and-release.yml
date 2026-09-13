@@ -822,6 +822,7 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+          pnpm --filter=@codaco/template-registry build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above

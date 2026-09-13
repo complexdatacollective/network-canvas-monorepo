@@ -1,0 +1,35 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+{"level":30,"time":"2026-09-13T13:35:19.570Z","event":"http_request","request_id":"e355c11b-a169-4ac9-88f9-ee9b89835740","route":"client","method":"GET","status":200,"duration_ms":4.085}
+ ✓ src/audit/__tests__/export.test.ts (17 tests) 2129ms
+ ✓ src/recovery/__tests__/authorization.test.ts (11 tests) 3355ms
+     ✓ enables only signed current identities and is idempotent under quarantine  325ms
+     ✓ refuses expired, wrong-instance and extra-enabled evidence atomically  375ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts (83 tests) 1604ms
+ ✓ src/db/migrations/__tests__/artifact.test.ts (6 tests) 340ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts (29 tests) 11ms
+{"level":30,"time":"2026-09-13T13:35:23.737Z","event":"http_request","request_id":"dd4cface-3371-498a-9080-2dd5d803fabe","route":"/storage","method":"POST","status":401,"duration_ms":0.674}
+{"level":30,"time":"2026-09-13T13:35:23.740Z","event":"http_request","request_id":"5a135cd2-fa6d-4a96-ad71-ae677606e289","route":"/storage","method":"POST","status":403,"duration_ms":0.164}
+{"level":30,"time":"2026-09-13T13:35:23.743Z","event":"http_request","request_id":"d72e0395-40b4-4969-a297-aa5fc39b20d0","route":"/storage","method":"POST","status":503,"duration_ms":0.093}
+ ✓ src/__tests__/assets.test.ts (17 tests | 8 skipped) 12ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts (21 tests) 13330ms
+     ✓ migrates as a non-superuser database owner (CREATEROLE=true)  1402ms
+     ✓ migrates as a non-superuser database owner (CREATEROLE=false)  985ms
+     ✓ provisions actual tables, roles, RLS and ordered sidecar privileges on a fresh database  1194ms
+     ✓ upgrades populated 0010 users and webhook deliveries into recovery authorization  825ms
+     ✓ upgrades populated 0011 templates without inventing Registry provenance  769ms
+     ✓ upgrades a populated predecessor without rewriting existing audit-alert evidence  850ms
+     ✓ applies a generated schema upgrade without changing existing users  514ms
+     ✓ is idempotent without rewriting history or fingerprint timestamps  856ms
+     ✓ serializes separate migration command processes  1520ms
+     ✓ refuses developer reconciliation of a versioned database without changing its evidence  873ms
+     ✓ rejects changed applied history and a newer database before applying anything  327ms
+     ✓ refuses a fingerprint inconsistent with otherwise correct history  893ms
+     ✓ contains authored 'COMMIT' in 'sidecars' so it cannot escape the migration transaction  311ms
+
+ Test Files  7 passed (7)
+      Tests  176 passed | 8 skipped (184)
+   Start at  15:35:16
+   Duration  15.19s (transform 1.02s, setup 0ms, import 7.38s, tests 20.78s, environment 0ms)
+

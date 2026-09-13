@@ -123,6 +123,9 @@ describe.skipIf(!db)('row-level security', () => {
       'study_wave_rollups',
       'study_waves',
       'team_invitation_deliveries',
+      'template_registry_import_intents',
+      'template_registry_publication_intents',
+      'template_registry_publications',
       'template_version_sections',
       'template_versions',
       'templates',
@@ -182,6 +185,7 @@ describe.skipIf(!db)('row-level security', () => {
         'credential_audit_events',
         'participant_contact_optouts',
         'studio_instance',
+        'template_registry_accounts',
       ].toSorted(),
     );
     for (const row of others) {

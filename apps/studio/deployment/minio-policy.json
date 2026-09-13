@@ -3,13 +3,27 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads"
+      ],
       "Resource": ["arn:aws:s3:::studio"]
     },
     {
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject"],
       "Resource": ["arn:aws:s3:::studio/assets/*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:AbortMultipartUpload",
+        "s3:DeleteObject",
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": ["arn:aws:s3:::studio/audit-exports/*"]
     }
   ]
 }

@@ -36,6 +36,35 @@ test('enables enough prepared transactions for Registry migration coordination',
   );
 });
 
+test('grants the self-host object principal bounded audit-export cleanup', () => {
+  const policy = JSON.parse(
+    readFileSync('apps/studio/deployment/minio-policy.json', 'utf8'),
+  );
+  const bucket = policy.Statement.find((entry) =>
+    entry.Resource.includes('arn:aws:s3:::studio'),
+  );
+  const exports = policy.Statement.find((entry) =>
+    entry.Resource.includes('arn:aws:s3:::studio/audit-exports/*'),
+  );
+  assert.deepEqual(
+    bucket.Action.toSorted(),
+    [
+      's3:GetBucketLocation',
+      's3:ListBucket',
+      's3:ListBucketMultipartUploads',
+    ].toSorted(),
+  );
+  assert.deepEqual(
+    exports.Action.toSorted(),
+    [
+      's3:AbortMultipartUpload',
+      's3:DeleteObject',
+      's3:GetObject',
+      's3:PutObject',
+    ].toSorted(),
+  );
+});
+
 test('renders the offline Registry recovery entrypoint with explicit private database transport', () => {
   const base = parse(
     readFileSync('apps/template-registry/deployment/compose.yml', 'utf8'),

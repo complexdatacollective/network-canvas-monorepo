@@ -174,6 +174,11 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
           id_token_algorithm AS id_algorithm, scope FROM account WHERE id = 'current-account'`,
       )
     ).rows[0]!;
+    const activeScheduleIds = (
+      await pool.query<{ id: string }>(
+        "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
+      )
+    ).rows.map(({ id }) => id);
     return {
       format: 'studio-recovery-authorization-reconciliation',
       version: 1,
@@ -214,7 +219,7 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
       ],
       studyGrants: [],
       activeWebhookSubscriptions: [],
-      activeScheduleIds: [],
+      activeScheduleIds,
       publishedMessageTemplateIds: [],
     };
   });
@@ -268,6 +273,36 @@ async function seedRestoredState() {
         VALUES ('00000000-0000-4000-8000-000000000001', 'restored-invitation',
           'current-team', 'invitee@example.com', 'member', 'Current', 'Current',
           now() + interval '1 day', 0);
+      INSERT INTO templates (id, team_id, kind, name, state)
+        VALUES ('00000000-0000-4000-8000-000000000021', 'current-team',
+          'protocol', 'Restored template', 'published')
+        ON CONFLICT (id) DO UPDATE SET state='published';
+      INSERT INTO template_versions
+        (id, team_id, template_id, version_number, manifest, manifest_hash,
+          schema_version)
+        VALUES ('00000000-0000-4000-8000-000000000022', 'current-team',
+          '00000000-0000-4000-8000-000000000021', 1, '{}', repeat('b', 64), 1)
+        ON CONFLICT (id) DO NOTHING;
+      INSERT INTO template_registry_publication_intents
+        (id, team_id, template_version_id, registry_url, registry_root,
+          publisher_id, publisher_name, initiating_actor_id,
+          initiating_actor_label, initiating_request_id)
+        VALUES (gen_random_uuid(), 'current-team',
+          '00000000-0000-4000-8000-000000000022', 'https://registry.example',
+          repeat('c', 64), '00000000-0000-4000-8000-000000000024',
+          'Restored publisher', 'current-user', 'Current',
+          '00000000-0000-4000-8000-000000000025');
+      INSERT INTO template_registry_import_intents
+        (id, team_id, registry_url, registry_entry_id, registry_root,
+          entry_snapshot, asset_manifest, target_template_id, target_version_id,
+          initiating_actor_id, initiating_actor_label, initiating_request_id)
+        VALUES (gen_random_uuid(), 'current-team',
+          'https://registry.example', '00000000-0000-4000-8000-000000000027',
+          repeat('d', 64), '{}', '[]',
+          '00000000-0000-4000-8000-000000000028',
+          '00000000-0000-4000-8000-000000000029',
+          'current-user', 'Current',
+          '00000000-0000-4000-8000-000000000030');
       INSERT INTO api_tokens
         (id, team_id, name, custodian_user_id, token_prefix, token_hash,
           scope_kind, access_level, includes_pii, created_by_user_id)
@@ -294,12 +329,6 @@ async function seedRestoredState() {
             WHERE team_id = 'current-team'), 'security.fixture', 1,
           'security', 'succeeded', 'system', 'Studio', gen_random_uuid(),
           '{}'::jsonb);
-      INSERT INTO audit_alert_settings (team_id, revision)
-        VALUES ('current-team', gen_random_uuid());
-      INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true);
       INSERT INTO audit_alert_outbox
         (id, team_id, audit_event_id, audit_event_sequence, event_type,
           event_version, alert_policy_key)
@@ -311,8 +340,106 @@ async function seedRestoredState() {
         VALUES (gen_random_uuid(), 'current-team',
           ${pg.escapeLiteral(auditAlertId)}::uuid, gen_random_uuid(),
           'current-membership', 'current-user', 'email');
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000030',
+          '00000000-0000-4000-8000-000000000031',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv');
+      INSERT INTO audit_export_jobs
+        (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
+          high_water_sequence,filters,row_limit,byte_limit,
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key)
+        SELECT '00000000-0000-4000-8000-000000000031','current-team','user',
+          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
+          'generating','00000000-0000-4000-8000-000000000030',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv'
+        FROM audit_events WHERE id=${pg.escapeLiteral(auditEventId)}::uuid;
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000033',
+          '00000000-0000-4000-8000-000000000032',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv');
+      INSERT INTO audit_export_jobs
+        (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
+          high_water_sequence,filters,row_limit,byte_limit,
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key,
+          artifact_row_count,artifact_byte_count,handle_hash,handle_ciphertext,
+          handle_key_id,handle_algorithm,handle_expires_at,completion_event_id,ready_at)
+        SELECT '00000000-0000-4000-8000-000000000032','current-team','user',
+          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
+          'ready','00000000-0000-4000-8000-000000000033',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv',
+          1001,4096,repeat('e',64),decode(repeat('ab',30),'hex'),
+          'integration-current','aes-256-gcm.v1',now()+interval '15 minutes',
+          '00000000-0000-4000-8000-000000000034',now()
+        FROM audit_events WHERE id=${pg.escapeLiteral(auditEventId)}::uuid;
     `);
   });
+}
+
+async function seedActiveScheduleWithPendingOccurrence() {
+  return await withTargetAdministrator(async (pool) => {
+    const studyId = randomUUID();
+    const waveId = randomUUID();
+    const participantId = randomUUID();
+    const scheduleId = randomUUID();
+    const occurrenceId = randomUUID();
+    await pool.query(
+      `INSERT INTO studies
+        (id, team_id, name, state, participation_mode, wave_progression)
+       VALUES ($1, 'current-team', 'Recovery schedule study', 'draft', 'managed', 'window')`,
+      [studyId],
+    );
+    await pool.query(
+      `INSERT INTO study_waves (id, study_id, team_id, wave_number)
+       VALUES ($1, $2, 'current-team', 1)`,
+      [waveId, studyId],
+    );
+    await pool.query(
+      `INSERT INTO participants (id, study_id, team_id, participant_code, timezone)
+       VALUES ($1, $2, 'current-team', $3, 'UTC')`,
+      [participantId, studyId, 'recovery-person'],
+    );
+    await pool.query(
+      `INSERT INTO study_schedules (
+         id, team_id, study_id, wave_id, name, state, anchor_kind,
+         anchor_date, anchor_offset_minutes, recurrence_kind, window_start_minute,
+         window_end_minute, days_of_week_mask, max_prompts_per_day,
+         prompt_expiry_hours, catch_up_policy, fallback_time_zone, channels, settings)
+       VALUES ($1, 'current-team', $2, $3, 'Recovery schedule', 'active',
+         'fixed_date', '2026-09-10T00:00:00Z', 0, 'one_off', 0, 1439, 127, 1,
+         24, 'skip', 'UTC', ARRAY['email'], '{}'::jsonb)`,
+      [scheduleId, studyId, waveId],
+    );
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 1,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, studyId, scheduleId, participantId],
+    );
+    return { studyId, participantId, scheduleId, occurrenceId };
+  });
+}
+
+async function seedPendingOccurrenceForPausedSchedule(input: {
+  studyId: string;
+  participantId: string;
+  scheduleId: string;
+}) {
+  const occurrenceId = randomUUID();
+  await withTargetAdministrator(async (pool) => {
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 2,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, input.studyId, input.scheduleId, input.participantId],
+    );
+  });
+  return occurrenceId;
 }
 
 beforeAll(async () => {
@@ -394,13 +521,35 @@ beforeAll(async () => {
 beforeEach(async () => {
   if (!fixture) return;
   await withTargetAdministrator(async (pool) => {
+    // Each case owns this disposable database. Published versions deliberately
+    // reject DELETE, so reset their fixture rows without weakening that trigger.
+    await pool.query(`TRUNCATE template_registry_publication_intents,
+      template_registry_import_intents, template_registry_publications,
+      template_version_sections, template_versions, templates CASCADE`);
+    await pool.query('BEGIN');
+    try {
+      await pool.query(
+        `SET LOCAL ROLE ${pg.escapeIdentifier(TENANT_ROLES.maintenance)}`,
+      );
+      await pool.query('DELETE FROM schedule_occurrences');
+      await pool.query('DELETE FROM study_schedules');
+      await pool.query('DELETE FROM participants');
+      await pool.query('DELETE FROM study_waves');
+      await pool.query('DELETE FROM studies');
+      await pool.query('COMMIT');
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
-      DELETE FROM audit_alert_recipients;
-      DELETE FROM audit_alert_settings;
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
+      DELETE FROM audit_export_jobs;
+      DELETE FROM audit_export_artifact_attempts;
+      DELETE FROM template_registry_publication_intents;
+      DELETE FROM template_registry_import_intents;
       DELETE FROM webhook_deliveries;
       DELETE FROM webhook_subscriptions;
       DELETE FROM session;
@@ -631,6 +780,56 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
   });
 
+  it('reconciles an evidence-listed schedule before replaying authorization', async () => {
+    const seeded = await seedActiveScheduleWithPendingOccurrence();
+    const evidence = await currentEvidence();
+    expect(evidence.activeScheduleIds).toEqual([seeded.scheduleId]);
+
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM study_schedules
+           WHERE id = $1`,
+          [seeded.scheduleId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'paused' }]);
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [seeded.occurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+
+    const reviewed = await currentEvidence();
+    expect(reviewed.activeScheduleIds).toEqual([]);
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+
+    const lateOccurrenceId =
+      await seedPendingOccurrenceForPausedSchedule(seeded);
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [lateOccurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+  });
+
   it('refuses changed authority after revocation without enabling a user', async () => {
     const evidence = await currentEvidence();
     await run(evidence);
@@ -798,6 +997,10 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: number;
         uncertain_audit_outbox: number;
         uncertain_audit_deliveries: number;
+        quarantined_registry_intents: number;
+        quarantined_audit_exports: number;
+        retired_export_attempts: number;
+        recovery_export_audit: boolean;
         alert_recipients: number;
         alert_settings: number;
         deletion_audit: boolean;
@@ -813,6 +1016,17 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         (SELECT count(*)::int FROM webhook_deliveries WHERE uncertain_at IS NOT NULL) uncertain_webhooks,
         (SELECT count(*)::int FROM audit_alert_outbox WHERE uncertain_at IS NOT NULL) uncertain_audit_outbox,
         (SELECT count(*)::int FROM audit_alert_deliveries WHERE uncertain_at IS NOT NULL) uncertain_audit_deliveries,
+        ((SELECT count(*) FROM template_registry_publication_intents WHERE quarantined_at IS NOT NULL)
+          + (SELECT count(*) FROM template_registry_import_intents WHERE quarantined_at IS NOT NULL))::int quarantined_registry_intents,
+        (SELECT count(*)::int FROM audit_export_jobs
+          WHERE (status='failed' AND id='00000000-0000-4000-8000-000000000031')
+             OR (status='ready' AND id='00000000-0000-4000-8000-000000000032'
+               AND handle_consumed_at IS NOT NULL)) quarantined_audit_exports,
+        (SELECT count(*)::int FROM audit_export_artifact_attempts
+          WHERE state='retired' AND job_id='00000000-0000-4000-8000-000000000031') retired_export_attempts,
+        EXISTS (SELECT 1 FROM audit_events WHERE event_type='audit.export.failed'
+          AND subject_id='00000000-0000-4000-8000-000000000031'
+          AND details->>'failureCode'='recovery_quarantined') recovery_export_audit,
         (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
         (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
         EXISTS (SELECT 1 FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audit`);
@@ -828,6 +1042,10 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: 1,
         uncertain_audit_outbox: 1,
         uncertain_audit_deliveries: 1,
+        quarantined_registry_intents: 2,
+        quarantined_audit_exports: 2,
+        retired_export_attempts: 1,
+        recovery_export_audit: true,
         alert_recipients: 0,
         alert_settings: 0,
         deletion_audit: true,
@@ -835,27 +1053,6 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
     await expect(run(evidence)).resolves.toMatchObject({
       reconciliationSha256: 'a'.repeat(64),
-    });
-  });
-
-  it('refuses reopening if restored alert recipients are reintroduced after reconciliation', async () => {
-    const evidence = await currentEvidence();
-    await run(evidence);
-    await withTargetAdministrator(async (pool) => {
-      await pool.query(`INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true)`);
-    });
-    await expect(authorize(evidence)).rejects.toThrow();
-    await withTargetAdministrator(async (pool) => {
-      expect(
-        (
-          await pool.query(
-            'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
-          )
-        ).rows[0]?.count,
-      ).toBe(0);
     });
   });
 

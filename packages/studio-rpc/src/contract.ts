@@ -33,6 +33,10 @@ import {
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
   AuditGetInputSchema,
+  AuditExportInputSchema,
+  AuditExportOutputSchema,
+  AuditExportStatusInputSchema,
+  AuditExportStatusSchema,
   AuditListInputSchema,
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
@@ -164,6 +168,36 @@ export const contract = {
       .output(UpdateAccountLocaleResultSchema),
   },
   templates: {
+    registryIntents: oc
+      .input(
+        TeamScopedSchema.extend({
+          intents: z
+            .array(
+              z.strictObject({
+                id: z.uuid(),
+                kind: z.enum(['publication', 'import']),
+              }),
+            )
+            .min(1)
+            .max(100),
+        }),
+      )
+      .output(
+        z
+          .array(
+            z.strictObject({
+              id: z.uuid(),
+              kind: z.enum(['publication', 'import']),
+              status: z.enum([
+                'pending',
+                'completed',
+                'quarantined',
+                'unavailable',
+              ]),
+            }),
+          )
+          .max(100),
+      ),
     list: oc
       .input(TeamScopedSchema)
       .output(z.array(TemplateVersionSummarySchema)),
@@ -272,6 +306,10 @@ export const contract = {
     },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
+    export: oc.input(AuditExportInputSchema).output(AuditExportOutputSchema),
+    exportStatus: oc
+      .input(AuditExportStatusInputSchema)
+      .output(AuditExportStatusSchema),
     /**
      * The values the list filters can take, over the team's whole history.
      * A separate procedure, not a field on the list response: the option set

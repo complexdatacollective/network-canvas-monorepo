@@ -7,6 +7,8 @@ const CONNECTION_TIMEOUT_MS = 10_000;
 
 export type PostgresPoolOptions = {
   connectionString: string;
+  /** Parse an owner/operator URL into fixed client fields without pinning a role. */
+  parseConnectionString?: boolean;
   /** An unquoted lowercase PostgreSQL identifier, at most 63 ASCII bytes. */
   role?: string;
   /** Maximum concurrent connections, from 1 through 32; defaults to pg's 10. */
@@ -24,6 +26,7 @@ export type PostgresPoolOptions = {
  */
 export function createPostgresPool({
   connectionString,
+  parseConnectionString = false,
   role,
   max,
   onIdleError,
@@ -49,7 +52,9 @@ export function createPostgresPool({
   // pg gives URL fields precedence over an options object. Parse once before
   // pinning the role, retaining host/TLS settings and other startup options.
   const parsed =
-    role === undefined ? undefined : parseIntoClientConfig(connectionString);
+    role === undefined && !parseConnectionString
+      ? undefined
+      : parseIntoClientConfig(connectionString);
   const onConnect =
     role === undefined
       ? undefined
@@ -63,14 +68,14 @@ export function createPostgresPool({
     ...parsed,
     // A URL can itself carry a connectionString query parameter. Never let
     // the driver parse that nested value and override the pinned fields.
-    connectionString: role === undefined ? connectionString : undefined,
+    connectionString: parsed === undefined ? connectionString : undefined,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     // Parsed URL parameters can include pool configuration too. Always write
     // a bounded max so a URL's max/poolSize cannot override the default.
     max: max ?? 10,
     options:
       role === undefined
-        ? undefined
+        ? parsed?.options
         : `${parsed?.options ? `${parsed.options} ` : ''}-c role=${role}`,
     // pg-pool awaits this hook before handing out a client; its connect event
     // does not await async listeners. Fail closed if startup parsing changes.

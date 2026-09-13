@@ -66,7 +66,8 @@ const messages = defineMessages({
 export default function AccountRegistry() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
-  const status = useQuery(orpc.account.registry.queryOptions());
+  const registryQuery = orpc.account.registry.queryOptions();
+  const status = useQuery(registryQuery);
   const [linkedNotice, setLinkedNotice] = useState(false);
   return (
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
@@ -108,16 +109,16 @@ export default function AccountRegistry() {
             onSubmit={async (credential) => {
               setLinkedNotice(false);
               try {
-                await rpcClient.account.linkRegistry({ credential });
-                try {
-                  await queryClient.invalidateQueries({
-                    queryKey: orpc.account.registry.key(),
-                  });
-                } catch {
-                  // The link already succeeded. The account query renders its
-                  // own bounded read error if the refresh cannot complete.
-                }
+                const linked = await rpcClient.account.linkRegistry({
+                  credential,
+                });
+                queryClient.setQueryData(registryQuery.queryKey, linked);
                 setLinkedNotice(true);
+                void queryClient
+                  .invalidateQueries({
+                    queryKey: registryQuery.queryKey,
+                  })
+                  .catch(() => undefined);
                 return { success: true };
               } catch {
                 return {

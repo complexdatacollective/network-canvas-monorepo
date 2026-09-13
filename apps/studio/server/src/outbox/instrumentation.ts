@@ -6,7 +6,8 @@ export type OutboxQueue =
   | 'message_deliveries'
   | 'webhook_deliveries'
   | 'study_wave_rollups'
-  | 'study_stage_rollups';
+  | 'study_stage_rollups'
+  | 'template_registry_intents';
 
 export type OutboxDispatchResult = {
   claimed: number;

@@ -224,6 +224,8 @@ const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
       'audit.list',
       'audit.get',
       'audit.filterOptions',
+      'audit.export',
+      'audit.exportStatus',
       'audit.alerts.settings',
       'audit.alerts.updateSettings',
       'audit.alerts.list',
@@ -305,6 +307,45 @@ const CommonTemplateRegistryV1EventSchema = CommonUserEventSchema.extend({
   resourceLabel: LabelSchema,
 }).strict();
 
+const TemplateRegistryIntentQuarantinedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Template Registry reconciliation'),
+    resourceType: z.literal('template_registry_intent'),
+    resourceLabel: z.null(),
+    eventType: z.literal('template.registry_intent_quarantined'),
+    details: z.strictObject({
+      kind: z.enum(['publication', 'import']),
+      reason: z.enum([
+        'publication_rejected',
+        'registry_changed',
+        'resource_unavailable',
+        'schema_unsupported',
+      ]),
+    }),
+  }).strict();
+
+const TemplateRegistryPublishRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_publish_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      versionId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const TemplateRegistryImportRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_import_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
 const TemplateRegistryPublishedV1EventSchema =
   CommonTemplateRegistryV1EventSchema.extend({
     eventType: z.literal('template.registry_published'),
@@ -322,6 +363,42 @@ const TemplateRegistryImportedV1EventSchema =
       versionId: z.uuid(),
       registryEntryId: z.uuid(),
       registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const CommonTemplateRegistryReconciledV2EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Template Registry reconciliation'),
+    eventVersion: z.literal(2),
+  }).strict();
+
+const TemplateRegistryPublishedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_published'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
+    }),
+  }).strict();
+
+const TemplateRegistryImportedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_imported'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
     }),
   }).strict();
 
@@ -547,9 +624,88 @@ const AuditAlertAcknowledgedSchema = CommonUserEventSchema.extend({
     disposition: z.literal('uncertainty_acknowledged_no_resend'),
   }),
 });
+const AuditExportUserEventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('audit'),
+  subjectType: z.literal('audit_export'),
+  subjectId: z.uuid(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+});
+const AuditExportStartedSchema = AuditExportUserEventSchema.extend({
+  eventType: z.literal('audit.export.started'),
+  outcome: z.literal('succeeded'),
+  details: z.discriminatedUnion('deliveryMode', [
+    z.strictObject({
+      deliveryMode: z.literal('direct'),
+      highWaterSequence: DecimalSequenceSchema,
+      filters: z.record(z.string(), z.unknown()),
+      rowLimit: z.number().int().positive(),
+      byteLimit: z.number().int().positive(),
+      rowCount: z.number().int().nonnegative(),
+      byteCount: z.number().int().nonnegative(),
+    }),
+    z.strictObject({
+      deliveryMode: z.literal('staged'),
+      highWaterSequence: DecimalSequenceSchema,
+      filters: z.record(z.string(), z.unknown()),
+      rowLimit: z.number().int().positive(),
+      byteLimit: z.number().int().positive(),
+      preflightRowCount: z.number().int().nonnegative(),
+      preflightByteCount: z.number().int().nonnegative(),
+    }),
+  ]),
+}).strict();
+const AuditExportSystemEventSchema = AuditExportUserEventSchema.omit({
+  actorKind: true,
+  actorId: true,
+  actorLabel: true,
+}).extend({
+  actorKind: z.literal('system'),
+  actorId: z.null(),
+  actorLabel: z.literal('Audit export'),
+});
+const AuditExportCompletedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.completed'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    rowCount: z.number().int().nonnegative(),
+    byteCount: z.number().int().nonnegative(),
+  }),
+}).strict();
+const AuditExportFailedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.failed'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    failureCode: z.enum([
+      'artifact_generation_failed',
+      'limit_exceeded',
+      'recovery_quarantined',
+    ]),
+  }),
+}).strict();
+const AuditExportCleanedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.cleaned'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    reason: z.enum(['consumed', 'expired']),
+  }),
+}).strict();
 export const AuditEventInputSchema = z.union([
   AuditAlertSettingsUpdatedSchema,
   AuditAlertAcknowledgedSchema,
+  AuditExportStartedSchema,
+  AuditExportCompletedSchema,
+  AuditExportFailedSchema,
+  AuditExportCleanedSchema,
   AuditReadDeniedV1EventSchema,
   TeamCreatedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
@@ -567,8 +723,13 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
+  TemplateRegistryPublishRequestedV1EventSchema,
+  TemplateRegistryIntentQuarantinedV1EventSchema,
+  TemplateRegistryImportRequestedV1EventSchema,
   TemplateRegistryPublishedV1EventSchema,
   TemplateRegistryImportedV1EventSchema,
+  TemplateRegistryPublishedV2EventSchema,
+  TemplateRegistryImportedV2EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
   ParticipantPiiReadV1EventSchema,
@@ -710,6 +871,135 @@ const FIXTURE_WEBHOOK_DELIVERY_COMMON = {
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
+  'audit.export.started@1': {
+    inputSchema: AuditExportStartedSchema,
+    title: 'Activity export started',
+    detailFields: [
+      'deliveryMode',
+      'highWaterSequence',
+      'filters',
+      'rowLimit',
+      'byteLimit',
+      'rowCount',
+      'byteCount',
+      'preflightRowCount',
+      'preflightByteCount',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.export.started',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        deliveryMode: 'staged',
+        highWaterSequence: '41',
+        rowLimit: 100_000,
+        byteLimit: 104_857_600,
+        filters: {},
+        preflightRowCount: 1_001,
+        preflightByteCount: 1_048_577,
+      },
+    },
+  },
+  'audit.export.completed@1': {
+    inputSchema: AuditExportCompletedSchema,
+    title: 'Activity export completed',
+    detailFields: [
+      'startEventId',
+      'requestedByActorId',
+      'rowCount',
+      'byteCount',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.completed',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        rowCount: 41,
+        byteCount: 4096,
+      },
+    },
+  },
+  'audit.export.failed@1': {
+    inputSchema: AuditExportFailedSchema,
+    title: 'Activity export failed',
+    detailFields: ['startEventId', 'requestedByActorId', 'failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.failed',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        failureCode: 'artifact_generation_failed',
+      },
+    },
+  },
+  'audit.export.cleaned@1': {
+    inputSchema: AuditExportCleanedSchema,
+    title: 'Activity export cleaned up',
+    detailFields: ['startEventId', 'requestedByActorId', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.cleaned',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        reason: 'expired',
+      },
+    },
+  },
   'audit.alert_settings.updated@1': {
     inputSchema: AuditAlertSettingsUpdatedSchema,
     title: 'Activity alert recipients updated',
@@ -1242,6 +1532,55 @@ export const AUDIT_EVENT_REGISTRY = {
       },
     },
   },
+  'template.registry_intent_quarantined@1': {
+    inputSchema: TemplateRegistryIntentQuarantinedV1EventSchema,
+    title: 'Template Registry operation quarantined',
+    detailFields: ['kind', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      resourceType: 'template_registry_intent',
+      resourceLabel: null,
+      eventType: 'template.registry_intent_quarantined',
+      details: { kind: 'publication', reason: 'publication_rejected' },
+    },
+  },
+  'template.registry_publish_requested@1': {
+    inputSchema: TemplateRegistryPublishRequestedV1EventSchema,
+    title: 'Template publication requested',
+    detailFields: ['intentId', 'versionId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_publish_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_import_requested@1': {
+    inputSchema: TemplateRegistryImportRequestedV1EventSchema,
+    title: 'Template import requested',
+    detailFields: ['intentId', 'registryEntryId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_import_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
   'template.registry_published@1': {
     inputSchema: TemplateRegistryPublishedV1EventSchema,
     title: 'Template published to Registry',
@@ -1271,6 +1610,70 @@ export const AUDIT_EVENT_REGISTRY = {
         versionId: '00000000-0000-4000-8000-000000000011',
         registryEntryId: '00000000-0000-4000-8000-000000000012',
         registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_published@2': {
+    inputSchema: TemplateRegistryPublishedV2EventSchema,
+    title: 'Template publication reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_published',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
+      },
+    },
+  },
+  'template.registry_imported@2': {
+    inputSchema: TemplateRegistryImportedV2EventSchema,
+    title: 'Template import reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_imported',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
       },
     },
   },
@@ -1315,7 +1718,11 @@ export const AUDIT_EVENT_REGISTRY = {
 
 export function auditEventKey(event: AuditEventInput): AuditEventKey {
   if (event.eventVersion === 2) {
-    return 'team.invitation.cancelled@2';
+    if (event.eventType === 'team.invitation.cancelled')
+      return 'team.invitation.cancelled@2';
+    if (event.eventType === 'template.registry_published')
+      return 'template.registry_published@2';
+    return 'template.registry_imported@2';
   }
   return `${event.eventType}@1`;
 }

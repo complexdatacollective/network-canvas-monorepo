@@ -282,9 +282,11 @@ describe('audit mutation policy', () => {
       'studies.list',
       'templates.list',
       'webhooks.list',
+      'templates.registryIntents',
       'audit.list',
       'audit.get',
       'audit.filterOptions',
+      'audit.exportStatus',
       'audit.alerts.list',
       'audit.alerts.settings',
       // The protocol-builder host's reads. `watchProtocol` is a subscription
@@ -434,6 +436,7 @@ describe('audit mutation policy', () => {
     // committed membership in the audit transaction. The writable store stays
     // confined to these reviewed services and the existing command producers.
     expect(importers.map((file) => relative(REPO_ROOT, file))).toEqual([
+      'apps/studio/server/src/audit/export.ts',
       'apps/studio/server/src/audit/read-authorization.ts',
       'apps/studio/server/src/pii/participants.ts',
       'apps/studio/server/src/pii/webhooks.ts',
