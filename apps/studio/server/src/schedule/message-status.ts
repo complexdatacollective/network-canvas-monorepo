@@ -10,6 +10,7 @@ import {
   type SystemAuditEventContext,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
+import { lockParticipantMessageAuthority } from './participant-authority.ts';
 
 const postmark = z.object({
   MessageID: z.uuid(),
@@ -100,14 +101,15 @@ async function store(
           id: string;
           team_id: string;
           channel: 'email' | 'sms';
+          participant_id: string;
           recipient_blind_index: Buffer;
           blind_index_key_id: string;
         }>(
           input.deliveryId
-            ? `SELECT id,team_id,channel,recipient_blind_index,blind_index_key_id FROM message_deliveries
+            ? `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id FROM message_deliveries
                WHERE id=$1 AND team_id=$2 AND provider=$3 AND send_started_at IS NOT NULL
                  AND (provider_message_id IS NULL OR provider_message_id=$4) FOR UPDATE`
-            : `SELECT id,team_id,channel,recipient_blind_index,blind_index_key_id FROM message_deliveries
+            : `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id FROM message_deliveries
                WHERE team_id=$1 AND provider=$2 AND provider_message_id=$3 FOR UPDATE`,
           input.deliveryId
             ? [
@@ -120,6 +122,11 @@ async function store(
         );
         const row = delivery.rows[0];
         if (!row) throw new Error('MESSAGE_STATUS_NOT_READY');
+        await lockParticipantMessageAuthority(
+          client,
+          row.team_id,
+          row.participant_id,
+        );
         await client.query(
           `UPDATE message_deliveries SET provider_message_id=coalesce(provider_message_id,$2)
            WHERE id=$1`,

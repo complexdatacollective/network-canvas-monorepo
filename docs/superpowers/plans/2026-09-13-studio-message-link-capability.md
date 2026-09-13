@@ -36,7 +36,11 @@ default, renders the configured message with the study name and the same wave
 link plus `?occurrence=<uuid>`, then seals the rendered bytes and inserts the
 delivery through the existing audited enqueue path. The occurrence identity is
 the durable idempotency key; concurrent workers cannot create two original
-deliveries for one occurrence and channel.
+deliveries for one occurrence and channel. An occurrence that lacks one of its
+required published channel templates moves to the durable `blocked` state and
+writes an audit event, so it cannot monopolize the global oldest-due scan.
+Every worker pass also expires a bounded page of stale scheduled occurrences
+with the existing expiry audit event before resolving new work.
 
 Capability decryption follows the protected-data two-phase pattern: snapshot
 the envelope, authorize and audit the read while locking the current live link,
@@ -46,6 +50,16 @@ creates no delivery with stale authority. Before provider handoff, the delivery
 must still cite that same unrevoked, unexpired link. Reissue suppresses any
 unsent delivery citing the revoked link; already handed-off deliveries retain
 their factual outcome.
+
+The final handoff runs in its own database transaction and commits before the
+network call. It locks the delivery, the schema-scoped participant authority,
+the participant, study, schedule, occurrence and link in that order, then reads
+withdrawal and channel opt-out state and compares the active lease against the
+database clock. Link issuance and provider callback opt-outs use the same
+participant lock; a consent trigger makes every grant or withdrawal use it as
+well. A writer that commits first is visible to the handoff recheck. A handoff
+that commits first has crossed the documented irreversible boundary before a
+later cancellation.
 
 ## Schema and recovery contract
 

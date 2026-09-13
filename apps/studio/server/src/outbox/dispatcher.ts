@@ -39,7 +39,7 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   suppressClaim(claim: Claim, lease: OutboxLease): Promise<boolean>;
   renewLease(claim: Claim, lease: OutboxLease): Promise<boolean>;
   // A final authorization check may suppress work after its initial claim.
-  deliver(claim: Claim): Promise<void | 'suppressed'>;
+  deliver(claim: Claim): Promise<void | 'suppressed' | 'lease-lost'>;
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
   /**
    * Override only when a successful deliver() made no external or otherwise
@@ -217,6 +217,11 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
         if (await this.adapter.suppressClaim(claim, this.lease))
           result.suppressed += 1;
         else result.leaseLost = 1;
+        return result;
+      }
+      if (outcome === 'lease-lost') {
+        await heartbeat.stop();
+        result.leaseLost = 1;
         return result;
       }
     } catch (error) {

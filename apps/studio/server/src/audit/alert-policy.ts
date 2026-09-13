@@ -81,6 +81,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'webhook.delivery.uncertain':
     case 'webhook.delivery.suppressed':
     case 'message.occurrence.dispatched':
+    case 'message.occurrence.blocked':
     case 'message.occurrence.expired':
     case 'message.payload.read':
     case 'message.link.read':

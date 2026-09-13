@@ -35,6 +35,10 @@ import {
   type RenderedMessage,
 } from '../pii/message-deliveries.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
+import {
+  lockParticipantMessageAuthority,
+  tryLockParticipantMessageAuthority,
+} from './participant-authority.ts';
 
 const QUEUE = 'message_deliveries';
 const PENDING =
@@ -60,6 +64,7 @@ type ClaimedMessageDelivery = {
   studyId: string;
   participantId: string;
   occurrenceId: string | null;
+  interviewLinkId: string | null;
   channel: Channel;
   kind: string;
   recipientBlindIndex: Buffer;
@@ -91,6 +96,7 @@ function messageEvent(
   resourceType: 'schedule_occurrence' | 'message_delivery',
   eventType:
     | 'message.occurrence.dispatched'
+    | 'message.occurrence.blocked'
     | 'message.occurrence.expired'
     | 'message.delivery.delivered'
     | 'message.delivery.failed'
@@ -112,6 +118,85 @@ function messageEvent(
     resourceLabel: null,
     details: { channel },
   };
+}
+
+async function transitionScheduledOccurrence(
+  pool: pg.Pool,
+  row: { occurrenceId: string; teamId: string },
+  state: 'blocked' | 'expired',
+): Promise<boolean> {
+  try {
+    return await runAuditedSystemMutation(
+      {
+        tenantDb: createTenantDb(pool, row.teamId),
+        actorLabel: 'Message delivery',
+        requestId: randomUUID(),
+      },
+      async (client, context) => {
+        const updated = await client.query(
+          `UPDATE schedule_occurrences SET state=$3
+           WHERE id=$1 AND team_id=$2 AND state='scheduled'
+             AND ($3<>'expired' OR expires_at<=statement_timestamp())
+             AND ($3<>'blocked' OR EXISTS (
+               SELECT 1 FROM study_schedules sc
+               CROSS JOIN LATERAL unnest(sc.channels) requested(channel)
+               WHERE sc.id=schedule_occurrences.schedule_id
+                 AND sc.study_id=schedule_occurrences.study_id
+                 AND sc.team_id=schedule_occurrences.team_id
+                 AND NOT EXISTS (
+                   SELECT 1 FROM message_templates mt
+                   WHERE mt.team_id=sc.team_id AND mt.kind='prompt' AND mt.locale='en'
+                     AND mt.state='published' AND mt.channel=requested.channel
+                     AND (mt.study_id=sc.study_id OR mt.study_id IS NULL))))`,
+          [row.occurrenceId, row.teamId, state],
+        );
+        if (updated.rowCount !== 1) throw new NoOccurrenceChange();
+        return {
+          result: true,
+          events: [
+            messageEvent(
+              context,
+              row.occurrenceId,
+              'schedule_occurrence',
+              `message.occurrence.${state}`,
+              null,
+            ),
+          ],
+        };
+      },
+    );
+  } catch (error) {
+    if (error instanceof NoOccurrenceChange) return false;
+    throw error;
+  }
+}
+
+/** Bounded expiry sweep for stale scheduled work that can no longer enqueue. */
+export async function expireScheduledOccurrences(
+  pool: pg.Pool,
+  limit = 100,
+): Promise<number> {
+  const candidates = await pool.query<{
+    occurrence_id: string;
+    team_id: string;
+  }>(
+    `SELECT id AS occurrence_id,team_id FROM schedule_occurrences
+     WHERE state='scheduled' AND expires_at<=statement_timestamp()
+     ORDER BY expires_at,id LIMIT $1`,
+    [limit],
+  );
+  let expired = 0;
+  for (const row of candidates.rows) {
+    if (
+      await transitionScheduledOccurrence(
+        pool,
+        { occurrenceId: row.occurrence_id, teamId: row.team_id },
+        'expired',
+      )
+    )
+      expired += 1;
+  }
+  return expired;
 }
 
 /** Atomically turns one due occurrence and #1306's already-rendered messages into durable encrypted work. */
@@ -346,8 +431,17 @@ export async function produceDueOccurrenceMessage(options: {
      ORDER BY t.channel`,
     [row.occurrence_id, row.team_id],
   );
-  if (!source.rows[0] || source.rows.length !== source.rows[0].channels.length)
+  if (
+    !source.rows[0] ||
+    source.rows.length !== source.rows[0].channels.length
+  ) {
+    await transitionScheduledOccurrence(
+      options.pool,
+      { occurrenceId: row.occurrence_id, teamId: row.team_id },
+      'blocked',
+    );
     return false;
+  }
   const capability = await readInterviewLinkCapability(
     options.encryptionKeys,
     options.pool,
@@ -401,6 +495,8 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
     const rows = await this.options.pool.query<ClaimedMessageDelivery>(
       `${this.select()} WHERE ${PENDING} AND d.send_started_at IS NULL AND (
          EXISTS (SELECT 1 FROM participant_contact_optouts o WHERE o.channel = d.channel AND o.blind_index_key_id = d.blind_index_key_id AND o.recipient_blind_index = d.recipient_blind_index)
+         OR EXISTS (SELECT 1 FROM participant_consents c WHERE c.team_id=d.team_id
+           AND c.study_id=d.study_id AND c.participant_id=d.participant_id AND c.withdrawn_at IS NOT NULL)
          OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id = d.occurrence_id AND so.expires_at <= clock_timestamp())
          OR EXISTS (SELECT 1 FROM interview_links l WHERE l.id=d.interview_link_id
            AND (l.revoked_at IS NOT NULL OR (l.expires_at IS NOT NULL AND l.expires_at<=clock_timestamp()))))
@@ -451,11 +547,14 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
       );
       const row = candidate.rows[0];
       if (!row) return null;
-      const locked = await client.query<{ locked: boolean }>(
-        'SELECT pg_try_advisory_xact_lock(hashtext($1), hashtext($2)) AS locked',
-        [row.teamId, row.participantId],
-      );
-      if (!locked.rows[0]?.locked) return null;
+      if (
+        !(await tryLockParticipantMessageAuthority(
+          client,
+          row.teamId,
+          row.participantId,
+        ))
+      )
+        return null;
       const updated = await client.query(
         `UPDATE message_deliveries d SET lease_owner=$2, lease_expires_at=clock_timestamp()+make_interval(secs=>$3::float/1000), attempt_count=attempt_count+1
          WHERE d.id=$1 AND ${PENDING} AND NOT EXISTS (SELECT 1 FROM message_deliveries active
@@ -504,7 +603,142 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
     );
     return result.rowCount === 1;
   }
-  async deliver(claim: ClaimedMessageDelivery): Promise<void | 'suppressed'> {
+  private async beginProviderHandoff(
+    claim: ClaimedMessageDelivery,
+    provider: 'postmark' | 'smtp' | 'twilio',
+  ): Promise<'authorized' | 'suppressed' | 'lease-lost'> {
+    const client = await this.options.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const owned = await client.query(
+        `SELECT 1 FROM message_deliveries WHERE ${OWNED}
+           AND lease_expires_at>statement_timestamp() AND send_started_at IS NULL
+         FOR UPDATE`,
+        [claim.id, claim.leaseOwner],
+      );
+      if (owned.rowCount !== 1) return 'lease-lost';
+      await lockParticipantMessageAuthority(
+        client,
+        claim.teamId,
+        claim.participantId,
+      );
+      const participant = await client.query(
+        `SELECT 1 FROM participants WHERE id=$1 AND study_id=$2 AND team_id=$3
+           AND blind_index_key_id=$4
+           AND CASE WHEN $5='email' THEN email_index ELSE phone_index END=$6
+         FOR UPDATE`,
+        [
+          claim.participantId,
+          claim.studyId,
+          claim.teamId,
+          claim.blindIndexKeyId,
+          claim.channel,
+          claim.recipientBlindIndex,
+        ],
+      );
+      if (participant.rowCount !== 1) return 'suppressed';
+
+      if (claim.interviewLinkId) {
+        const study = await client.query(
+          `SELECT 1 FROM studies WHERE id=$1 AND team_id=$2 AND state='live' FOR UPDATE`,
+          [claim.studyId, claim.teamId],
+        );
+        if (study.rowCount !== 1) return 'suppressed';
+      }
+      let scheduleWaveId: string | null = null;
+      if (claim.occurrenceId) {
+        const identity = await client.query<{ schedule_id: string }>(
+          `SELECT schedule_id FROM schedule_occurrences
+           WHERE id=$1 AND participant_id=$2 AND study_id=$3 AND team_id=$4`,
+          [
+            claim.occurrenceId,
+            claim.participantId,
+            claim.studyId,
+            claim.teamId,
+          ],
+        );
+        const scheduleId = identity.rows[0]?.schedule_id;
+        if (!scheduleId) return 'suppressed';
+        const schedule = await client.query<{
+          wave_id: string | null;
+          state: string;
+        }>(
+          `SELECT wave_id,state FROM study_schedules
+           WHERE id=$1 AND study_id=$2 AND team_id=$3 FOR UPDATE`,
+          [scheduleId, claim.studyId, claim.teamId],
+        );
+        const scheduleRow = schedule.rows[0];
+        if (!scheduleRow || scheduleRow.state !== 'active') return 'suppressed';
+        scheduleWaveId = scheduleRow.wave_id;
+        const occurrence = await client.query(
+          `SELECT 1 FROM schedule_occurrences
+           WHERE id=$1 AND schedule_id=$2 AND participant_id=$3 AND study_id=$4 AND team_id=$5
+             AND state='dispatched' AND expires_at>statement_timestamp()
+           FOR UPDATE`,
+          [
+            claim.occurrenceId,
+            scheduleId,
+            claim.participantId,
+            claim.studyId,
+            claim.teamId,
+          ],
+        );
+        if (occurrence.rowCount !== 1) return 'suppressed';
+      }
+      if (claim.interviewLinkId) {
+        const link = await client.query(
+          `SELECT 1 FROM interview_links
+           WHERE id=$1 AND participant_id=$2 AND study_id=$3 AND team_id=$4
+             AND kind='participant' AND revoked_at IS NULL
+             AND (expires_at IS NULL OR expires_at>statement_timestamp())
+             AND ($5::uuid IS NULL OR wave_id=$5)
+           FOR UPDATE`,
+          [
+            claim.interviewLinkId,
+            claim.participantId,
+            claim.studyId,
+            claim.teamId,
+            scheduleWaveId,
+          ],
+        );
+        if (link.rowCount !== 1) return 'suppressed';
+      }
+      const denied = await client.query<{
+        withdrawn: boolean;
+        opted_out: boolean;
+      }>(
+        `SELECT
+           EXISTS (SELECT 1 FROM participant_consents
+             WHERE team_id=$1 AND study_id=$2 AND participant_id=$3 AND withdrawn_at IS NOT NULL) AS withdrawn,
+           EXISTS (SELECT 1 FROM participant_contact_optouts
+             WHERE channel=$4 AND blind_index_key_id=$5 AND recipient_blind_index=$6) AS opted_out`,
+        [
+          claim.teamId,
+          claim.studyId,
+          claim.participantId,
+          claim.channel,
+          claim.blindIndexKeyId,
+          claim.recipientBlindIndex,
+        ],
+      );
+      if (denied.rows[0]?.withdrawn || denied.rows[0]?.opted_out)
+        return 'suppressed';
+      const handoff = await client.query(
+        `UPDATE message_deliveries SET send_started_at=clock_timestamp(),provider=$3
+         WHERE ${OWNED} AND lease_expires_at>statement_timestamp() AND send_started_at IS NULL`,
+        [claim.id, claim.leaseOwner, provider],
+      );
+      if (handoff.rowCount !== 1) return 'lease-lost';
+      await client.query('COMMIT');
+      return 'authorized';
+    } finally {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
+  }
+  async deliver(
+    claim: ClaimedMessageDelivery,
+  ): Promise<void | 'suppressed' | 'lease-lost'> {
     let contact: Buffer | undefined;
     try {
       const provider =
@@ -545,31 +779,8 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
       );
       if (!currentIndex.value.equals(claim.recipientBlindIndex))
         throw new ProtectedDataError();
-      const handoff = await this.options.pool.query(
-        `UPDATE message_deliveries d SET send_started_at=clock_timestamp(), provider=$3
-         WHERE ${OWNED} AND d.lease_expires_at>statement_timestamp()
-         AND send_started_at IS NULL AND NOT EXISTS
-         (SELECT 1 FROM participant_contact_optouts o WHERE o.channel=d.channel AND o.blind_index_key_id=d.blind_index_key_id AND o.recipient_blind_index=d.recipient_blind_index)
-         AND EXISTS (SELECT 1 FROM participants p WHERE p.id=d.participant_id AND p.study_id=d.study_id AND p.team_id=d.team_id
-           AND p.blind_index_key_id=d.blind_index_key_id
-           AND CASE WHEN d.channel='email' THEN p.email_index ELSE p.phone_index END=d.recipient_blind_index)
-         AND (d.interview_link_id IS NULL OR EXISTS (
-           SELECT 1 FROM interview_links l JOIN studies linked_study
-             ON linked_study.id=l.study_id AND linked_study.team_id=l.team_id
-           WHERE l.id=d.interview_link_id
-             AND l.participant_id=d.participant_id AND l.study_id=d.study_id AND l.team_id=d.team_id
-             AND l.kind='participant' AND l.revoked_at IS NULL
-             AND linked_study.state='live'
-             AND (l.expires_at IS NULL OR l.expires_at>statement_timestamp())))
-         AND (d.occurrence_id IS NULL OR EXISTS (
-           SELECT 1 FROM schedule_occurrences o JOIN study_schedules s
-             ON s.id=o.schedule_id AND s.study_id=o.study_id AND s.team_id=o.team_id
-           WHERE o.id=d.occurrence_id AND o.participant_id=d.participant_id
-             AND o.study_id=d.study_id AND o.team_id=d.team_id
-             AND o.state='dispatched' AND o.expires_at>statement_timestamp() AND s.state='active'))`,
-        [claim.id, claim.leaseOwner, provider.provider],
-      );
-      if (handoff.rowCount !== 1) return 'suppressed';
+      const handoff = await this.beginProviderHandoff(claim, provider.provider);
+      if (handoff !== 'authorized') return handoff;
       if (claim.channel === 'email') {
         if (!rendered.subject || !this.options.email)
           throw new EmailDeliveryError('permanent');
@@ -623,7 +834,7 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
     return this.finish(claim, 'uncertain', 'owned', lease.owner);
   }
   private select() {
-    return `SELECT d.id,d.team_id AS "teamId",d.study_id AS "studyId",d.participant_id AS "participantId",d.occurrence_id AS "occurrenceId",d.channel,d.kind,d.recipient_blind_index AS "recipientBlindIndex",d.blind_index_key_id AS "blindIndexKeyId",d.rendered_body_hash AS "renderedBodyHash",d.attempt_count AS "attemptCount",d.lease_owner AS "leaseOwner",d.send_started_at AS "sendStartedAt" FROM message_deliveries d`;
+    return `SELECT d.id,d.team_id AS "teamId",d.study_id AS "studyId",d.participant_id AS "participantId",d.occurrence_id AS "occurrenceId",d.interview_link_id AS "interviewLinkId",d.channel,d.kind,d.recipient_blind_index AS "recipientBlindIndex",d.blind_index_key_id AS "blindIndexKeyId",d.rendered_body_hash AS "renderedBodyHash",d.attempt_count AS "attemptCount",d.lease_owner AS "leaseOwner",d.send_started_at AS "sendStartedAt" FROM message_deliveries d`;
   }
   private async finish(
     claim: ClaimedMessageDelivery,
@@ -646,6 +857,8 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
                 ? `id=$1 AND lease_owner=$2 AND lease_expires_at<=clock_timestamp() AND ${PENDING}`
                 : `id=$1 AND send_started_at IS NULL AND ${PENDING} AND (
                     EXISTS (SELECT 1 FROM participant_contact_optouts o WHERE o.channel=message_deliveries.channel AND o.blind_index_key_id=message_deliveries.blind_index_key_id AND o.recipient_blind_index=message_deliveries.recipient_blind_index)
+                    OR EXISTS (SELECT 1 FROM participant_consents c WHERE c.team_id=message_deliveries.team_id
+                      AND c.study_id=message_deliveries.study_id AND c.participant_id=message_deliveries.participant_id AND c.withdrawn_at IS NOT NULL)
                     OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id=message_deliveries.occurrence_id AND so.expires_at<=clock_timestamp())
                     OR EXISTS (SELECT 1 FROM interview_links l WHERE l.id=message_deliveries.interview_link_id
                       AND (l.revoked_at IS NOT NULL OR (l.expires_at IS NOT NULL AND l.expires_at<=clock_timestamp()))))`;
@@ -708,6 +921,7 @@ export function startMessageDeliveryWorker(
     drainLimit: options.drainLimit,
     onError: options.reportError,
     runOnce: async () => {
+      await expireScheduledOccurrences(options.pool);
       await produceDueOccurrenceMessage(options);
       return dispatcher.runOnce();
     },

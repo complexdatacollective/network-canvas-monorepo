@@ -263,7 +263,7 @@ const scheduleOccurrences = pgTable(
     ),
     check(
       'schedule_occurrences_state_check',
-      sql`${table.state} IN ('scheduled', 'dispatched', 'expired', 'cancelled', 'superseded')`,
+      sql`${table.state} IN ('scheduled', 'dispatched', 'blocked', 'expired', 'cancelled', 'superseded')`,
     ),
     check(
       'schedule_occurrences_bounds_check',

@@ -20,6 +20,7 @@ import { issueParticipantInterviewLink } from '../../study/interview-links.ts';
 import {
   createMessageDeliveryDispatcher,
   enqueueOccurrenceMessages,
+  expireScheduledOccurrences,
   MessageDeliveryAdapter,
   produceDueOccurrenceMessage,
 } from '../message-delivery.ts';
@@ -82,6 +83,21 @@ async function occurrence(
     ],
   );
   return { occurrenceId, templateId };
+}
+
+async function waitForAudit(
+  fixture: Parameters<Parameters<typeof participantFixture>[0]>[0],
+  eventType: string,
+) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const found = await fixture.scratch.pool.query(
+      'SELECT 1 FROM audit_events WHERE event_type=$1 LIMIT 1',
+      [eventType],
+    );
+    if (found.rowCount === 1) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`timed out waiting for ${eventType}`);
 }
 
 describe('message delivery runtime', () => {
@@ -374,6 +390,245 @@ describe('message delivery runtime', () => {
         'message.contact.read',
         'message.delivery.delivered',
       ]);
+    });
+  });
+
+  it('quarantines a missing-template occurrence so another tenant can progress, and sweeps expiry', async () => {
+    await participantFixture(async (fixture) => {
+      await fixture.scratch.pool.query(
+        "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+        [fixture.target.studyId],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+        [fixture.target.participantId],
+      );
+      const waveId = randomUUID();
+      await fixture.scratch.pool.query(
+        `INSERT INTO study_waves(id,study_id,team_id,wave_number) VALUES($1,$2,$3,1)`,
+        [waveId, fixture.target.studyId, fixture.context.tenantDb.teamId],
+      );
+      await issueParticipantInterviewLink(fixture.keys, fixture.context, {
+        ...fixture.target,
+        waveId,
+      });
+      const blocked = await occurrence(fixture, false, 'sms', waveId);
+      await fixture.scratch.pool.query(
+        'DELETE FROM message_templates WHERE id=$1',
+        [blocked.templateId],
+      );
+      const eligible = await occurrence(fixture, false, 'email', waveId);
+
+      await expect(
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        }),
+      ).resolves.toBe(false);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT state FROM schedule_occurrences WHERE id=$1',
+            [blocked.occurrenceId],
+          )
+        ).rows[0],
+      ).toEqual({ state: 'blocked' });
+      await expect(
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        }),
+      ).resolves.toBe(true);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS n FROM message_deliveries WHERE occurrence_id=$1',
+            [eligible.occurrenceId],
+          )
+        ).rows[0],
+      ).toEqual({ n: 1 });
+
+      const expired = await occurrence(fixture, true, 'email', waveId);
+      await expect(
+        expireScheduledOccurrences(fixture.scratch.maintenance),
+      ).resolves.toBe(1);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT state FROM schedule_occurrences WHERE id=$1',
+            [expired.occurrenceId],
+          )
+        ).rows[0],
+      ).toEqual({ state: 'expired' });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            "SELECT event_type FROM audit_events WHERE resource_id IN ($1,$2) AND event_type IN ('message.occurrence.blocked','message.occurrence.expired') ORDER BY event_type",
+            [blocked.occurrenceId, expired.occurrenceId],
+          )
+        ).rows,
+      ).toEqual([
+        { event_type: 'message.occurrence.blocked' },
+        { event_type: 'message.occurrence.expired' },
+      ]);
+    });
+  });
+
+  it.each(['pause', 'revoke'] as const)(
+    'waits for an uncommitted %s and rechecks it before provider handoff',
+    async (mutation) => {
+      await participantFixture(async (fixture) => {
+        await fixture.scratch.pool.query(
+          "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+          [fixture.target.studyId],
+        );
+        await fixture.scratch.pool.query(
+          'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+          [fixture.target.participantId],
+        );
+        const waveId = randomUUID();
+        await fixture.scratch.pool.query(
+          `INSERT INTO study_waves(id,study_id,team_id,wave_number) VALUES($1,$2,$3,1)`,
+          [waveId, fixture.target.studyId, fixture.context.tenantDb.teamId],
+        );
+        const issued = await issueParticipantInterviewLink(
+          fixture.keys,
+          fixture.context,
+          { ...fixture.target, waveId },
+        );
+        const due = await occurrence(fixture, false, 'email', waveId);
+        await produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        });
+        await fixture.scratch.pool.query(
+          'UPDATE message_deliveries SET available_at=clock_timestamp()',
+        );
+        const writer = await fixture.scratch.pool.connect();
+        await writer.query('BEGIN');
+        if (mutation === 'pause') {
+          await writer.query(
+            `UPDATE study_schedules SET state='paused'
+             WHERE id=(SELECT schedule_id FROM schedule_occurrences WHERE id=$1)`,
+            [due.occurrenceId],
+          );
+        } else {
+          await writer.query(
+            'UPDATE interview_links SET revoked_at=clock_timestamp() WHERE id=$1',
+            [issued.linkId],
+          );
+        }
+        let sends = 0;
+        const dispatcher = createMessageDeliveryDispatcher({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          email: {
+            provider: 'smtp',
+            from: 'studio@example.org',
+            sender: {
+              async send() {
+                sends += 1;
+                return { status: 'accepted' as const, messageId: 'sent' };
+              },
+              close() {},
+            },
+          },
+        });
+        const run = dispatcher.runOnce();
+        try {
+          await waitForAudit(fixture, 'message.contact.read');
+          await writer.query('COMMIT');
+          await expect(run).resolves.toMatchObject({ suppressed: 1 });
+          expect(sends).toBe(0);
+        } finally {
+          await writer.query('ROLLBACK').catch(() => undefined);
+          writer.release();
+          await run.catch(() => undefined);
+        }
+      });
+    },
+  );
+
+  it('rechecks withdrawal after enqueue and before provider handoff', async () => {
+    await participantFixture(async (fixture) => {
+      const due = await occurrence(fixture);
+      await enqueueOccurrenceMessages(
+        { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
+        due.occurrenceId,
+        [
+          {
+            channel: 'email',
+            templateId: due.templateId,
+            kind: 'prompt',
+            subject: 'Withdrawn',
+            body: 'Never sent',
+          },
+        ],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO consent_documents(id,study_id,team_id,version,state,title,body,content_hash,published_at)
+         VALUES($1,$2,$3,1,'published','Consent','{}'::jsonb,$4,clock_timestamp())`,
+        [
+          randomUUID(),
+          fixture.target.studyId,
+          fixture.context.tenantDb.teamId,
+          createHash('sha256').update('Body').digest('hex'),
+        ],
+      );
+      const document = await fixture.scratch.pool.query<{ id: string }>(
+        'SELECT id FROM consent_documents WHERE study_id=$1',
+        [fixture.target.studyId],
+      );
+      const withdrawal = await fixture.scratch.pool.connect();
+      await withdrawal.query('BEGIN');
+      await withdrawal.query(
+        `INSERT INTO participant_consents
+          (id,participant_id,consent_document_id,study_id,team_id,method,granted_at,consent_content_hash,withdrawn_at,withdrawn_by)
+         VALUES($1,$2,$3,$4,$5,'affirmation',clock_timestamp()-interval '1 minute',$6,clock_timestamp(),'participant')`,
+        [
+          randomUUID(),
+          fixture.target.participantId,
+          document.rows[0]!.id,
+          fixture.target.studyId,
+          fixture.context.tenantDb.teamId,
+          createHash('sha256').update('Body').digest('hex'),
+        ],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      let sends = 0;
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender: {
+            async send() {
+              sends += 1;
+              return { status: 'accepted' as const, messageId: 'sent' };
+            },
+            close() {},
+          },
+        },
+      });
+      try {
+        await expect(dispatcher.runOnce()).resolves.toMatchObject({
+          claimed: 0,
+        });
+        await withdrawal.query('COMMIT');
+        await expect(dispatcher.runOnce()).resolves.toMatchObject({
+          suppressed: 1,
+        });
+        expect(sends).toBe(0);
+      } finally {
+        await withdrawal.query('ROLLBACK').catch(() => undefined);
+        withdrawal.release();
+      }
     });
   });
 
@@ -913,6 +1168,67 @@ describe('message delivery runtime', () => {
         suppressed: 1,
       });
       expect(sends).toBe(0);
+    });
+  });
+
+  it('rechecks the database lease clock after waiting on authority locks', async () => {
+    await participantFixture(async (fixture) => {
+      const due = await occurrence(fixture);
+      await enqueueOccurrenceMessages(
+        { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
+        due.occurrenceId,
+        [
+          {
+            channel: 'email',
+            templateId: due.templateId,
+            kind: 'prompt',
+            subject: 'Lease boundary',
+            body: 'Never handed off',
+          },
+        ],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      const writer = await fixture.scratch.pool.connect();
+      await writer.query('BEGIN');
+      await writer.query(
+        `SELECT 1 FROM study_schedules
+         WHERE id=(SELECT schedule_id FROM schedule_occurrences WHERE id=$1)
+         FOR UPDATE`,
+        [due.occurrenceId],
+      );
+      let sends = 0;
+      const adapter = new MessageDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender: {
+            async send() {
+              sends += 1;
+              return { status: 'accepted' as const, messageId: 'sent' };
+            },
+            close() {},
+          },
+        },
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 250 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const delivery = adapter.deliver(claim);
+      try {
+        await waitForAudit(fixture, 'message.contact.read');
+        await fixture.scratch.pool.query('SELECT pg_sleep(0.3)');
+        await writer.query('COMMIT');
+        await expect(delivery).resolves.toBe('lease-lost');
+        expect(sends).toBe(0);
+      } finally {
+        await writer.query('ROLLBACK').catch(() => undefined);
+        writer.release();
+        await delivery.catch(() => undefined);
+      }
     });
   });
 });

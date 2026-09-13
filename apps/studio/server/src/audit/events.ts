@@ -567,6 +567,7 @@ const MessageDeliveryV1EventSchema = z
     outcome: z.literal('succeeded'),
     eventType: z.enum([
       'message.occurrence.dispatched',
+      'message.occurrence.blocked',
       'message.occurrence.expired',
       'message.payload.read',
       'message.link.read',
@@ -1051,6 +1052,19 @@ export const AUDIT_EVENT_REGISTRY = {
     fixture: {
       ...FIXTURE_MESSAGE_DELIVERY_COMMON,
       eventType: 'message.occurrence.dispatched',
+      resourceType: 'schedule_occurrence',
+      details: { channel: null },
+    },
+  },
+  'message.occurrence.blocked@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Scheduled message occurrence blocked by configuration',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.occurrence.blocked',
       resourceType: 'schedule_occurrence',
       details: { channel: null },
     },

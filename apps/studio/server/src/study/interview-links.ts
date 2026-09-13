@@ -11,6 +11,7 @@ import type { AuditEventInput } from '../audit/events.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import { authorizeParticipantPiiAccess } from '../pii/participants.ts';
 import { createDataProtection } from '../pii/protection.ts';
+import { lockParticipantMessageAuthority } from '../schedule/participant-authority.ts';
 
 export class InterviewLinkError extends Error {
   readonly code: 'FORBIDDEN' | 'CONFLICT';
@@ -90,6 +91,11 @@ export async function issueParticipantInterviewLink(
     ) {
       throw new InterviewLinkError('FORBIDDEN');
     }
+    await lockParticipantMessageAuthority(
+      client,
+      context.tenantDb.teamId,
+      input.participantId,
+    );
     const target = await lockIssueTarget(
       client,
       context.tenantDb.teamId,

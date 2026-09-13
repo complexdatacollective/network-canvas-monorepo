@@ -31,6 +31,7 @@ describe('audit event registry', () => {
       'message.delivery.suppressed@1',
       'message.delivery.uncertain@1',
       'message.link.read@1',
+      'message.occurrence.blocked@1',
       'message.occurrence.dispatched@1',
       'message.occurrence.expired@1',
       'message.payload.read@1',

@@ -333,6 +333,23 @@ export const CONSENT_TABLES = {
 // because DROP TABLE CASCADE leaves functions behind, and an `already exists`
 // error reads as transient to the boot retry loop.
 export const CONSENT_SIDECAR_SQL = `
+-- Consent grant and withdrawal share the participant's messaging-authority
+-- lock with provider handoff. Whichever transaction obtains it first defines
+-- whether the send was authorized before the irreversible network boundary.
+CREATE OR REPLACE FUNCTION lock_participant_message_authority() RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(
+    hashtext(current_schema() || '/' || NEW.team_id),
+    hashtext(NEW.participant_id::text)
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consents_message_authority
+  BEFORE INSERT OR UPDATE ON participant_consents
+  FOR EACH ROW EXECUTE FUNCTION lock_participant_message_authority();
+
 -- A published consent document is what participants agreed to. Its words,
 -- its items, and its version number may never move afterwards; only
 -- retirement may.

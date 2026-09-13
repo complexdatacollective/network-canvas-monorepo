@@ -266,6 +266,24 @@ describe('shared outbox execution', () => {
     expect(work.deliver).not.toHaveBeenCalled();
   });
 
+  it('does not suppress or finalize when the final handoff reports a lost lease', async () => {
+    const work = adapter();
+    work.deliver.mockResolvedValue('lease-lost');
+
+    await expect(
+      new OutboxDispatcher({ pool, adapter: work }).runOnce(),
+    ).resolves.toMatchObject({
+      claimed: 1,
+      completed: 0,
+      suppressed: 0,
+      leaseLost: 1,
+    });
+    expect(work.suppressClaim).not.toHaveBeenCalled();
+    expect(work.recordComplete).not.toHaveBeenCalled();
+    expect(work.recordFailure).not.toHaveBeenCalled();
+    expect(work.recordUncertain).not.toHaveBeenCalled();
+  });
+
   it.each(['throws', 'loses ownership'] as const)(
     'never schedules a retry after provider acceptance when finalization %s',
     async (failureMode) => {
