@@ -360,7 +360,7 @@ describe('a block whose active slot the researcher emptied', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'This stage is not finished, so it was not saved. The sections below say what is missing.',
+        'Page content: Items has no value, and this stage needs one.',
       ),
     ).toBeInTheDocument();
   });

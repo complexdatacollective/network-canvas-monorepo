@@ -5440,8 +5440,8 @@
     "description": "Shown at the top of a stage editor opened while somebody the host would not name holds it. A stage is one step of an interview."
   },
   "protocolBuilder.shell.invalidStageRefusal": {
-    "defaultMessage": "This stage is not finished, so it was not saved. The sections below say what is missing.",
-    "description": "Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted. A stage is one step of an interview."
+    "defaultMessage": "This stage is not finished, so it was not saved.",
+    "description": "Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted, and every fault is already stated beside the control that holds it. A stage is one step of an interview."
   },
   "protocolBuilder.shell.readOnlyRefusal": {
     "defaultMessage": "This stage is read-only, so your change was not made. Somebody else is editing it.",
@@ -5450,6 +5450,10 @@
   "protocolBuilder.shell.saveStage": {
     "defaultMessage": "Save stage",
     "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
+  },
+  "protocolBuilder.shell.sectionProblem": {
+    "defaultMessage": "{sectionTitle}: {problem}",
+    "description": "Shown above a stage editor’s fields, once for each thing the protocol refused about the stage, when the save was not attempted. sectionTitle is the name of the section of the editor that holds the value; problem is a whole sentence saying what is wrong with it, already in the reader’s language. Both are given, so this is only the punctuation that joins them."
   },
   "protocolBuilder.shell.stageUnavailable": {
     "defaultMessage": "This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.",
