@@ -1,5 +1,257 @@
 # @codaco/architect
 
+## 8.3.0
+
+### Minor Changes
+
+- a749731: Every stage editor is now the shared protocol-builder editor, and Architect has
+  one implementation of every stage-editing control rather than two. Each
+  interface keeps the same sections, fields and saved protocol, and gains a
+  section outline that says which parts of the stage still need attention. Undo
+  and redo now cover saved changes to the protocol rather than unsaved typing
+  inside an editor, and changes made to the codebook while a stage is open are
+  kept when the stage edit is cancelled — an attribute belongs to the codebook
+  every stage collecting it shares, not to the one stage being edited.
+
+  Rules that contradict each other are now reported in the words that say what to
+  do about them, rather than the technical diagnostic written for a validation
+  report. A protocol that has recorded nothing about the participant yet can now
+  gain its first list-of-answers or scale attribute from a form field, and a new
+  node or edge type takes the next colour in its palette rather than always the
+  first.
+
+  The app's own copies of the field, rule, validation and parameter editors have
+  been removed, along with the editing state they needed. The printable protocol
+  summary now reads a rule back in the same words the rule list does. One sentence
+  changes: a rule asking whether the participant has answered one of their own
+  attributes at all printed as "Ego where Age", a clause with nothing after it,
+  and now prints as "Ego has Age". Every other rule reads as it did, and nothing
+  about a saved protocol changes.
+
+- 86aecd1: Choose English, British English, or Spanish for Architect. Language settings are saved on this device and apply to editor controls, guidance, dialogs, reports, and built-in preview controls. Preview menus can select their own interface language, while protocol-authored questions, labels, options, and data stay unchanged.
+- 29b11be: Built-in interview controls, help, validation, dialogs and accessibility messages
+  are available in English, British English and Spanish. The interview menu now
+  includes an interface language chooser, with all messages available offline.
+
+  Hosts can pass a preference or an already negotiated language through
+  `Shell.requestedLocale`; the interview package finds the best match among its
+  own supported languages. `onLocaleChange` lets hosts persist menu choices, and
+  `InterviewI18nProvider` gives inline field previews the same negotiation and
+  catalogs. Language changes preserve entered answers, open forms and the current
+  interview position. Protocol-authored content and research values keep their
+  existing language and meaning.
+
+### Patch Changes
+
+- 486ad48: Choosing an attribute is a searchable window again. Every control that asks
+  which codebook attribute something records — a form field, a prompt, a rule, a
+  pedigree slot, quick add — now opens a window with a search box and a keyboard
+  navigable list, instead of a dropdown you had to scroll. Each attribute is
+  shown with the kind of answer it holds, so a type carrying dozens of them can
+  be read at a glance, and the arrow keys and Enter take a row without reaching
+  for the mouse.
+
+  Where a control lets you invent an attribute, you do it from the same window:
+  type a name nothing matches and the first row offers to create it. A name the
+  type already has, or one holding characters the export formats cannot carry,
+  says so on the row before anything is written.
+
+- a75437b: The Sociogram, Narrative, Network Composer, Geospatial, Family Pedigree,
+  Narrative Pedigree and Anonymisation stage editors say what Architect 8.2.5
+  said again. 110 section titles, descriptions, field labels, hints and
+  placeholders go back to the released wording in English and Spanish, and the
+  hints, placeholders and empty states the rebuild invented — which Architect
+  never showed — are gone. The Mapbox API key hint carries its documentation link
+  again, a canvas tick list with nothing to offer says so inside the list
+  itself, instead of rendering an empty box, every disease and map-highlight
+  colour is announced by its name ("Neon Coral", "Sea Green") rather than by its
+  position, and the at-risk explanation cites Bennett et al. (2022) as it did
+  before.
+- 91a25de: The stage editor's shared sections and its form-family editors say what
+  Architect has always said. Section titles, descriptions, field labels, hints,
+  placeholders and empty states across the subject picker, stage filter, skip
+  logic, task introduction, page content, prompts, sort order, background, side
+  panels, quick add, the form-fields section and the attribute editor now match
+  the released wording word for word, in English and Spanish, and around sixty
+  invented hints and placeholders that Architect never showed are gone.
+
+  The stage filter's description now says what that section does: "Create rules
+  that filter which nodes or edges are displayed on this stage."
+
+  Three explanations come back with it. The background image picker and the
+  input-control picker link to their documentation pages again; choosing an
+  attribute that already exists explains why the list of input controls is short
+  ("Attribute type is locked") and choosing a control for an attribute being
+  invented says which type it will create; and a form field's collapsed row
+  names its attribute type and input control in the reader's own language,
+  outlined and washed in that type's colour, instead of showing a raw schema
+  token. Outlined rather than filled: white on the filled colour is below the
+  contrast a reader is owed for text that size on four of the nine attribute
+  types.
+
+  A validation rule is now called the same thing everywhere: the names come from
+  `@codaco/protocol-validation`, which is what a protocol's own validation errors
+  already use.
+
+  Colour swatches announce the colour they are rather than their position in the
+  palette — "Sea Serpent" rather than "Node color 2" — for everyone choosing one
+  with a screen reader. Architect's own colour picker in the codebook reads its
+  swatch names from the same list, so the two announce a swatch identically.
+
+  For anyone building on `@codaco/fresco-ui`: a field's hint is now given to
+  `Hint` as its `hint` prop, with a field's validation summary as a separate
+  `validationSummary` prop, so a field carrying both keeps them as two
+  paragraphs. Passing the hint as children still works and renders as before.
+  A `Badge` given both a `color` and `variant="outline"` now reads in the surface's
+  own text colour instead of the theme colour, which most of the palette does not
+  reach 4.5:1 against a wash of itself; the colour is still the badge's border
+  and background.
+
+- 39e178b: Editing a form field is a two-pane dialog again. The field's settings stay on
+  the left; on the right is the question as the participant will meet it, in the
+  interview's own theme, and it can be answered — "Check response" runs the rules
+  the attribute carries, so a researcher can see what a participant would be
+  told without leaving the dialog. The preview follows what is being typed or
+  chosen, including the values and rules authored in the codebook editors beside
+  it, and answering it changes nothing about the protocol. Below the dialog's
+  breakpoint the two panes stack into one column. It appears wherever a form
+  field is authored: ego, alter and relationship forms, a name generator's form,
+  a family pedigree's family-member form, and the network composer's node and
+  connection forms.
+- 50afa35: The name generator, census and bin stage editors say what they said before the
+  protocol-builder rewrite. Every section heading and description, every field
+  label, hint, placeholder and empty state across the three name generators, the
+  Dyad, One-to-Many Dyad and Tie-Strength censuses and the Ordinal and
+  Categorical bins is Architect 8.2.5's wording again, in English and in Spanish
+  — so "Prompts" is "Prompt collection", "Card details" is "Card display",
+  "Roster order" is "Roster sorting", "The bins" is "Categorical response", and
+  the ~30 hints and empty states the rewrite invented are gone. A side panel's
+  data source is once more labelled by the panel's number, and the censuses name
+  their prompt group and their connection control the way each of them used to.
+  A Tie-Strength Census prompt no longer raises a notice above its prompt box
+  telling the researcher to write a question every point of the scale can
+  answer, which disagreed with the hint under the box asking for one answered
+  yes or no; Architect's hint is the only guidance there, as it was.
+- c632e51: Architect's in-process protocol-builder router now reads the authoring contract
+  from `@codaco/protocol-builder-core`, the host-neutral half of the
+  protocol-builder package. Nothing a researcher sees or does changes.
+- 2e4621d: Stop the rule builder marking its container with `aria-required`. The rule
+  builders behind a stage's Skip Logic and Filter sections are regions of controls
+  rather than a single input, so the form's identity lands on a `role="group"`
+  element — and `group` is not a role that supports `aria-required`, so axe
+  reported a critical `aria-allowed-attr` failure on every editor that mounted a
+  required rule set. ARIA 1.2 made `aria-invalid` global, so the group keeps that.
+  The requirement still reaches assistive technology the way it already did: the
+  visible marker on the "Rules" label and the visually hidden "Required" element
+  the group's `aria-describedby` names.
+- 333bb75: The list of a stage's sections beside the stage editor is now drawn by
+  Architect itself rather than by the shared editor inside it. It sits in the
+  same place, at the same width, lists the same sections with the same states,
+  and still moves you to a section when you choose it — nothing about editing a
+  stage changes.
+
+  A save the protocol refuses now says what it refused above the form as well,
+  one sentence per problem, each naming the section that holds it, instead of
+  the general "this stage is not finished" line on its own.
+
+- 90b08cd: A removed row of an `ArrayField` stays mounted while it animates away, and for
+  that moment it was still a row: in the accessibility tree, in the tab ring, and
+  answering to every query for one of its controls. It is `aria-hidden` and
+  `inert` for the rest of its life now, so nothing that asks the list what it
+  contains can reach a row that has gone.
+
+  That window was long enough to send focus to a control that no longer exists.
+  Architect's list field decides where focus goes after a removal by asking the
+  list which Remove controls it holds — the row that took the removed one's place
+  — and asked inside the window it counted the dying row and answered with its
+  own Remove button. Focus landed on a node destroyed a fraction of a second
+  later and fell back to the page header, which is the outcome naming a target
+  exists to prevent.
+
+- 1dac91b: The interview runtime's optional analytics no longer use the interview session id as the per-event `distinct_id`. In Fresco that id is the participant's unauthenticated access link, so it must not leave the deployment. Events are now grouped under a random per-session pseudonym generated in the browser, held in memory for the life of the session alongside the existing entity-id pseudonyms. Analytics still group one session's events together; a page reload starts a new pseudonym. Errors the Name Generator raises for a malformed encrypted attribute no longer embed the node's id in their message, since error reports can be captured by analytics and a node id is a participant-network identifier the runtime otherwise pseudonymises. The same is true of a duplicate-relationship error the Family Pedigree interface throws, which no longer names the two node ids it connects.
+- 23dcf99: Analytics now reports a session-scoped pseudonym for every entity id, rather
+  than the interview's own `_uid`.
+
+  The event taxonomy admits `node_id` and `edge_id` on the premise that they are
+  random values minted at creation time, derived from nothing a participant
+  supplied. Roster nodes break that premise: an external-data row is keyed as
+  `${subjectType}_${hash({ node, index })}`, a deterministic, unkeyed digest of
+  the row's own content, and the node is added to the network under exactly that
+  key. Anyone holding the roster could recompute the digest and so recognise
+  which roster row an event was about, and because the digest does not vary the
+  same person carried the same identifier in every interview — so events from
+  separate sessions about one person could be joined together.
+
+  Each session now mints a random pseudonym per entity, held in memory and never
+  persisted or transmitted. Events within a session still join on the entity,
+  which is all these properties are for; nothing joins across sessions or back to
+  a roster row. The substitution happens at the tracker, the single boundary every
+  event passes through, so no emitter can reintroduce a raw identifier. When
+  events fire, and which events fire, is unchanged.
+
+- a13f261: Every module that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import this runtime from a Server Component.
+
+  Seventy-four modules were missing the directive: the navigation, node list, node
+  drawer and panel components, the canvas layers and their layout hooks, the
+  protocol form, and the Anonymisation, CategoricalBin, DyadCensus, EgoForm,
+  FamilyPedigree, Geospatial, NameGenerator, NameGeneratorRoster, Narrative,
+  NarrativePedigree, NetworkComposer, OneToManyDyadCensus, OrdinalBin, SlidesForm
+  and Sociogram interfaces. An unmarked module is treated as server code, so
+  reaching one from a Server Component's import graph failed the build rather than
+  rendering.
+
+  The published bundles now carry the directive too. Bundling had been erasing it,
+  so even the modules that already declared it arrived at npm consumers unmarked.
+  `dist/index.js` and the lazily loaded Geospatial chunks are now marked;
+  `dist/contract.js` and `dist/protocol-schema-version.js` are unmarked, as their
+  server safety intends, and stay that way only for as long as no module carrying
+  the directive is reachable from them.
+
+  Architect, Interviewer and Fresco are released alongside because each bundles
+  this runtime. Nothing about how an interview looks or behaves changes.
+
+- c5758a4: Fix text in the Information interface being unselectable. It carried an `allow-text-selection` marker class meant to override the host app's global `user-select: none`, but the shared-theme migration dropped the CSS utility that implemented it (as an apparent "zero consumers" cleanup) without noticing this interface still relied on it, so the override silently stopped doing anything. Participants and researchers previewing an Information stage could not select or copy its text. Now uses Tailwind's built-in `select-text`, which restores the original behaviour by inheritance since nothing inside the interface sets its own `user-select`.
+- a78b7c2: A video on an interview screen now announces itself with the description the
+  researcher wrote for it, and falls back to the asset's file name only when
+  nobody has written one. An image has always read that description as its alt
+  text and an audio player as its own name; the video player was the one place
+  that ignored it, so a participant listening to the screen heard a filename
+  where every other medium said what the thing was.
+
+  A description a researcher left blank now counts as no description at all, for
+  pictures and audio as well as video. A protocol written by hand or brought in
+  from elsewhere can carry a description of nothing but spaces, and every medium
+  used to pass it straight through — so a participant using a screen reader was
+  told a run of whitespace instead of what the file was called.
+
+- 9806169: Asset previews, the codebook variable list, the timeline and the issues panel now update in the same step as the change that caused them, rather than one frame later.
+
+  Switching a stage's roster or network asset while its variables are still being read no longer leaves the attribute options stuck on an empty list, and a slow read that finishes after you have already moved on can no longer overwrite the current asset's answer.
+
+- f6565fe: Interview screens now settle in one step where they previously took two. Moving to the next pair in Dyad Census or Tie Strength Census, changing prompt in Categorical Bin, Sociogram or Geospatial, and opening a name generator's edit form no longer render a frame that still carries the previous item's state.
+
+  Place search is more accurate about what it tells a screen reader: a status that has been superseded is no longer read back when a query starts matching again, and a search still in flight when the participant moves on can no longer repopulate the next person's suggestions.
+
+  An encrypted name that could not be decrypted after the passphrase changed now shows the locked indicator instead of the name read earlier under the old passphrase.
+
+- 01aaed2: Use `libro de códigos` for the codebook throughout the Spanish catalogs.
+- e47d985: The printable protocol summary now lists a Family Pedigree stage's nomination prompts, with the attribute each one records. Previously the section was printed only for a legacy key no current protocol carries, so a pedigree's nomination prompts were missing from the summary.
+- e4a0e7f: Stage editors now use Architect's own button styles and colours throughout: creating a node type, an edge type, an attribute or a variable is a filled primary button with a plus, cancelling a codebook editor is the plain button, and removing or discarding a resource is coloured as the destructive act it is. The hollow and dashed buttons that had appeared in the rebuilt editors are gone.
+
+  The stage title gets its breathing room back — the same gap Architect has always had between the title and the first section of an editor — and the interface's own picture is shown beside the title again, so which of the nineteen interfaces is open is visible at a glance.
+
+  A canvas background image is now previewed as the canvas a participant will see it on, in the interview's own colours and at its shape, rather than as a thumbnail of a file.
+
+- Updated dependencies ([486ad48](https://github.com/complexdatacollective/network-canvas-monorepo/commit/486ad489e5d6387d418f621a168b0f941021353e), [91a25de](https://github.com/complexdatacollective/network-canvas-monorepo/commit/91a25ded87f6348e9fc14b5d5b84303f658a0792), [5a19894](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5a19894e03e1aa5bd176b012a342d20c50398c86), [ca83424](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ca8342421dda342d1722ad838bbbe58837212022), [e4dad7e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e4dad7ef5a96a1f09257483c4f99fccffc0dcaa5), [90b08cd](https://github.com/complexdatacollective/network-canvas-monorepo/commit/90b08cd133b8555408329acdfe1ea00e0a7fff37), [1376c6a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1376c6a817e093ce220c9397492290a0f7d6a57f), [b0fa87a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b0fa87ac6614959484cdb1e4d6457513e9898a56), [ab25ed6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ab25ed6be06f2e4f983f2a5c5915e962caed5970), [15c8259](https://github.com/complexdatacollective/network-canvas-monorepo/commit/15c825972e5097cd8d8559d47e5ba4584398edee), [484c9e0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/484c9e0efeac6e55506d56504a79c37e00f9f687), [1abd707](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1abd707d0894dfad3eaf0eb5a79e76ffc3e7932c), [154d2ab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/154d2ab5ad89ce4a5d370d1fb818135ab7fbb62d), [c100092](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c100092b303b1b02afe2876d8dbbc84af06865b2), [65d2583](https://github.com/complexdatacollective/network-canvas-monorepo/commit/65d2583c12a2af634080b466f95793f3cc8032d4), [4749625](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4749625620599802f85560ec1ba54fc7873a2ecc), [57c74ae](https://github.com/complexdatacollective/network-canvas-monorepo/commit/57c74ae5a36b8e5c1d8efd3863cbfeaf412ba1b4), [c358132](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c3581329466d44b3733a09bb459d07a1787486ef), [df21eec](https://github.com/complexdatacollective/network-canvas-monorepo/commit/df21eece0b9a9e6393f694c07374e7d10d66dabc), [c563d9f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c563d9f0815df12f618c06548e1281fec95bb656), [208fcea](https://github.com/complexdatacollective/network-canvas-monorepo/commit/208fceaf736d8354d16046b6e9953b1d598f65a1), [3abf9e4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3abf9e4442b6086c5c5937d16212a9bdc8425cab), [45a30fa](https://github.com/complexdatacollective/network-canvas-monorepo/commit/45a30fae119ebf52d31738fa98e61b707d1d4c54), [1dac91b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1dac91b131db3740117aaf7977c9ff9bd697241e), [23dcf99](https://github.com/complexdatacollective/network-canvas-monorepo/commit/23dcf99e80d3e95b9e71543afb2e40842d1527e1), [a13f261](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a13f2610b7834e2fe27ae4e1e8423612b990c304), [c5758a4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c5758a447125e840b91d81e9b2e9ed6acdf1583e), [29b11be](https://github.com/complexdatacollective/network-canvas-monorepo/commit/29b11be8da6cfb65b8c9cce5d6f1d8711889d4f1), [a78b7c2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a78b7c20034648fffcee4202a143481178f8637b), [aa4693a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/aa4693a1e221515381058229d7fbf61d7807dfe3), [bb8e755](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bb8e7550160683d76d359b0d0c7093e6d128b9e2), [693655f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/693655f3d388e7ef91cb0e2324a10bb201a5f96c), [ed91f97](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ed91f9759c0d12bc6940d61800b816a2f482d4dc), [f6565fe](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f6565fe3f11ddfa004d1ea5d37a7b97401a53db4), [4ea797d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4ea797d7159622173f7a605cf2ce6cac1884e854), [d7e93c5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d7e93c571df1fea1a8fc71d8c9d4f6692e2dbe7c), [55f5549](https://github.com/complexdatacollective/network-canvas-monorepo/commit/55f554975bc6731a7f5bc94dde0a7000b64ce2da), [2bea7ee](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2bea7eed99b1f0f5056144a1d6ac30855c36513e), [eea0b5a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eea0b5acf7c4b852a57c6b57c5a504a34a7d11c0), [eee19fb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eee19fb93d4cb57d3c4d256971da78df15730a88), [a5626f5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a5626f51040d092c56417694296bcde8d51faad9), [b2ca402](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b2ca402a852b5527e0455c7ff2949da3be50dccd), [3ae3a94](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3ae3a9438da400fc357a0c71721d45cd32f3a7ac), [01aaed2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01aaed2d0bcd7ce203f50952ddd3e4ddeaed143a), [3f54d21](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3f54d2102e9489ae65cb164466fe71de05901ddd), [553d580](https://github.com/complexdatacollective/network-canvas-monorepo/commit/553d580c548e86730faecd95a18b6bf29868807f))
+  - @codaco/fresco-ui@6.5.0
+  - @codaco/tailwind-config@1.5.0
+  - @codaco/interview@9.1.0
+  - @codaco/art@0.1.5
+  - @codaco/protocol-validation@13.1.0
+  - @codaco/shared-consts@6.1.0
+  - @codaco/protocol-utilities@4.1.0
+
 ## 8.2.5
 
 ### Patch Changes

@@ -1,5 +1,116 @@
 # fresco
 
+## 4.2.0
+
+### Minor Changes
+
+- 4326572: Stop reporting the running Fresco version and process uptime from the unauthenticated `/api/health` endpoint. It still answers liveness probes with the service status, so container healthchecks and load balancers keep working, but an anonymous caller can no longer learn which release an instance runs. Signed-in researchers continue to see the version on the dashboard.
+- 3c6cba3: Passkeys now have to verify who you are. Fresco asks every passkey to confirm your identity with a PIN, fingerprint, or face when it is registered and each time you sign in, and refuses a response in which the authenticator skipped that check. A passkey sign-in therefore always proves both that you hold the device and that you are its user, which is the assurance the Accounts & Security documentation describes.
+
+  Previously Fresco requested this verification but accepted responses without it, so a hardware security key with no PIN could sign in on possession of the key alone.
+
+  Deployments that set `REQUIRE_TWO_FACTOR` exempt passkey-mode accounts from that requirement because a passkey already replaces the password; that exemption relied on the passkey proving the user's identity, which was not previously guaranteed. It now is.
+
+  A passkey registered on a security key that cannot verify you no longer signs in, and Fresco tells you what to check rather than reporting a generic failure or, when the browser closes the passkey prompt on its own, saying nothing at all. Sign in with another of your passkeys, or ask another administrator to use **Reset Auth** on your account. If you are already signed in, add a passkey that verifies you from **Settings → User Management** before you sign out. Registering a new passkey on such a key is refused with the same explanation.
+
+- b51743b: Add a `REQUIRE_TWO_FACTOR` environment variable. When it is set to `true`, every account that signs in with a password must set up two-factor authentication immediately after signing in — or, for the first administrator of a new deployment, immediately after the setup wizard — before any dashboard page or signed-in request is served, and cannot turn it off afterwards. An administrator can still reset a locked-out colleague's authentication; that account sets two-factor authentication up again at its next sign-in. It is an environment variable rather than a dashboard setting because every Fresco account is an equal administrator, so anything switchable from the dashboard could be switched off by any of them; the User Management card reports whether it is in force. Accounts that sign in with a passkey are not affected.
+- 0587866: Add English, British English, and Spanish throughout Fresco’s researcher interface, with an account language preference that applies immediately and persists across devices. Localize server-rendered pages, validation, dialogs, notifications, and structured activity details while preserving existing audit records and research data.
+
+  The selected language also initializes built-in interview controls. Temporary interview-menu choices leave the account preference, protocol-authored text, and stored answers unchanged.
+
+- 29b11be: Built-in interview controls, help, validation, dialogs and accessibility messages
+  are available in English, British English and Spanish. The interview menu now
+  includes an interface language chooser, with all messages available offline.
+
+  Hosts can pass a preference or an already negotiated language through
+  `Shell.requestedLocale`; the interview package finds the best match among its
+  own supported languages. `onLocaleChange` lets hosts persist menu choices, and
+  `InterviewI18nProvider` gives inline field previews the same negotiation and
+  catalogs. Language changes preserve entered answers, open forms and the current
+  interview position. Protocol-authored content and research values keep their
+  existing language and meaning.
+
+### Patch Changes
+
+- afef196: The unexported-interview warning in the delete dialogs now stays on screen while the dialog animates away, instead of disappearing a moment before it. Dashboard tables no longer rebuild their action menus on every render.
+- d6cb713: Session replay and heatmap capture are now off on every page, not only participant ones. Enabling either on the dashboard could send data neither optional analytics feature was meant to include: heatmaps key their captured data by the full page URL, and the participants and interviews tables put the researcher's search text there as a query parameter; session replay can capture whatever the current page renders, including the TOTP secret on the two-factor setup screen and recovery codes or freshly created API tokens on the settings screen, and the recorder's default masking does not cover plain text or images. Fresco reports only the usage events it emits explicitly.
+- c6f88e9: Optional analytics no longer carry interview identifiers. Error reports from the interview sync and finish endpoints, and the "Interview Opened" usage event, previously included the interview id (and, for researchers, the username) in what was sent to the analytics relay. An interview id is the participant's access link, so those properties are replaced with non-identifying context, matching the redaction the browser-side analytics already applied. In the browser, PostHog autocapture, rageclick and dead-click capture are now switched off throughout Fresco, as they already were in Interviewer and Architect, and any element data (such as the text of a clicked button) reaching the send path is dropped: a clicked node's name is a participant's answer, and the dashboard's tables show participant identifiers and labels. Heatmap capture, which records element selectors rather than text, stays on for the dashboard and off on participant pages. Fresco reports only the usage events it emits explicitly. `$$heatmap` flushes — which carry element selectors, not text — are dropped only on participant pages, matching `capture_heatmaps` at init, so dashboard heatmaps still reach PostHog as intended. The security policy is also corrected: TOTP secrets are stored as-is because they must remain readable to verify codes; recovery codes and API tokens are the values stored hashed.
+- 1dac91b: The interview runtime's optional analytics no longer use the interview session id as the per-event `distinct_id`. In Fresco that id is the participant's unauthenticated access link, so it must not leave the deployment. Events are now grouped under a random per-session pseudonym generated in the browser, held in memory for the life of the session alongside the existing entity-id pseudonyms. Analytics still group one session's events together; a page reload starts a new pseudonym. Errors the Name Generator raises for a malformed encrypted attribute no longer embed the node's id in their message, since error reports can be captured by analytics and a node id is a participant-network identifier the runtime otherwise pseudonymises. The same is true of a duplicate-relationship error the Family Pedigree interface throws, which no longer names the two node ids it connects.
+- 23dcf99: Analytics now reports a session-scoped pseudonym for every entity id, rather
+  than the interview's own `_uid`.
+
+  The event taxonomy admits `node_id` and `edge_id` on the premise that they are
+  random values minted at creation time, derived from nothing a participant
+  supplied. Roster nodes break that premise: an external-data row is keyed as
+  `${subjectType}_${hash({ node, index })}`, a deterministic, unkeyed digest of
+  the row's own content, and the node is added to the network under exactly that
+  key. Anyone holding the roster could recompute the digest and so recognise
+  which roster row an event was about, and because the digest does not vary the
+  same person carried the same identifier in every interview — so events from
+  separate sessions about one person could be joined together.
+
+  Each session now mints a random pseudonym per entity, held in memory and never
+  persisted or transmitted. Events within a session still join on the entity,
+  which is all these properties are for; nothing joins across sessions or back to
+  a roster row. The substitution happens at the tracker, the single boundary every
+  event passes through, so no emitter can reintroduce a raw identifier. When
+  events fire, and which events fire, is unchanged.
+
+- a13f261: Every module that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import this runtime from a Server Component.
+
+  Seventy-four modules were missing the directive: the navigation, node list, node
+  drawer and panel components, the canvas layers and their layout hooks, the
+  protocol form, and the Anonymisation, CategoricalBin, DyadCensus, EgoForm,
+  FamilyPedigree, Geospatial, NameGenerator, NameGeneratorRoster, Narrative,
+  NarrativePedigree, NetworkComposer, OneToManyDyadCensus, OrdinalBin, SlidesForm
+  and Sociogram interfaces. An unmarked module is treated as server code, so
+  reaching one from a Server Component's import graph failed the build rather than
+  rendering.
+
+  The published bundles now carry the directive too. Bundling had been erasing it,
+  so even the modules that already declared it arrived at npm consumers unmarked.
+  `dist/index.js` and the lazily loaded Geospatial chunks are now marked;
+  `dist/contract.js` and `dist/protocol-schema-version.js` are unmarked, as their
+  server safety intends, and stay that way only for as long as no module carrying
+  the directive is reachable from them.
+
+  Architect, Interviewer and Fresco are released alongside because each bundles
+  this runtime. Nothing about how an interview looks or behaves changes.
+
+- c5758a4: Fix text in the Information interface being unselectable. It carried an `allow-text-selection` marker class meant to override the host app's global `user-select: none`, but the shared-theme migration dropped the CSS utility that implemented it (as an apparent "zero consumers" cleanup) without noticing this interface still relied on it, so the override silently stopped doing anything. Participants and researchers previewing an Information stage could not select or copy its text. Now uses Tailwind's built-in `select-text`, which restores the original behaviour by inheritance since nothing inside the interface sets its own `user-select`.
+- a78b7c2: A video on an interview screen now announces itself with the description the
+  researcher wrote for it, and falls back to the asset's file name only when
+  nobody has written one. An image has always read that description as its alt
+  text and an audio player as its own name; the video player was the one place
+  that ignored it, so a participant listening to the screen heard a filename
+  where every other medium said what the thing was.
+
+  A description a researcher left blank now counts as no description at all, for
+  pictures and audio as well as video. A protocol written by hand or brought in
+  from elsewhere can carry a description of nothing but spaces, and every medium
+  used to pass it straight through — so a participant using a screen reader was
+  told a run of whitespace instead of what the file was called.
+
+- f6565fe: Interview screens now settle in one step where they previously took two. Moving to the next pair in Dyad Census or Tie Strength Census, changing prompt in Categorical Bin, Sociogram or Geospatial, and opening a name generator's edit form no longer render a frame that still carries the previous item's state.
+
+  Place search is more accurate about what it tells a screen reader: a status that has been superseded is no longer read back when a query starts matching again, and a search still in flight when the participant moves on can no longer repopulate the next person's suggestions.
+
+  An encrypted name that could not be decrypted after the passphrase changed now shows the locked indicator instead of the name read earlier under the old passphrase.
+
+- 553d580: Added `@codaco/fresco-ui/hooks/useHasHydrated`, the one implementation of "is this tree past hydration" for the handful of things only a browser can answer. It replaces eight hand-rolled copies across the design system and the apps.
+
+  In Fresco, the anonymous recruitment URL and the passkey option on the sign-in and sign-up forms now appear as soon as the page is interactive, without the extra render pass they used to wait for.
+
+- Updated dependencies ([486ad48](https://github.com/complexdatacollective/network-canvas-monorepo/commit/486ad489e5d6387d418f621a168b0f941021353e), [91a25de](https://github.com/complexdatacollective/network-canvas-monorepo/commit/91a25ded87f6348e9fc14b5d5b84303f658a0792), [5a19894](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5a19894e03e1aa5bd176b012a342d20c50398c86), [ca83424](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ca8342421dda342d1722ad838bbbe58837212022), [e4dad7e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e4dad7ef5a96a1f09257483c4f99fccffc0dcaa5), [90b08cd](https://github.com/complexdatacollective/network-canvas-monorepo/commit/90b08cd133b8555408329acdfe1ea00e0a7fff37), [1376c6a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1376c6a817e093ce220c9397492290a0f7d6a57f), [b0fa87a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b0fa87ac6614959484cdb1e4d6457513e9898a56), [ab25ed6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ab25ed6be06f2e4f983f2a5c5915e962caed5970), [15c8259](https://github.com/complexdatacollective/network-canvas-monorepo/commit/15c825972e5097cd8d8559d47e5ba4584398edee), [484c9e0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/484c9e0efeac6e55506d56504a79c37e00f9f687), [1abd707](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1abd707d0894dfad3eaf0eb5a79e76ffc3e7932c), [154d2ab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/154d2ab5ad89ce4a5d370d1fb818135ab7fbb62d), [c100092](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c100092b303b1b02afe2876d8dbbc84af06865b2), [65d2583](https://github.com/complexdatacollective/network-canvas-monorepo/commit/65d2583c12a2af634080b466f95793f3cc8032d4), [4749625](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4749625620599802f85560ec1ba54fc7873a2ecc), [57c74ae](https://github.com/complexdatacollective/network-canvas-monorepo/commit/57c74ae5a36b8e5c1d8efd3863cbfeaf412ba1b4), [c358132](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c3581329466d44b3733a09bb459d07a1787486ef), [df21eec](https://github.com/complexdatacollective/network-canvas-monorepo/commit/df21eece0b9a9e6393f694c07374e7d10d66dabc), [c563d9f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c563d9f0815df12f618c06548e1281fec95bb656), [208fcea](https://github.com/complexdatacollective/network-canvas-monorepo/commit/208fceaf736d8354d16046b6e9953b1d598f65a1), [3abf9e4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3abf9e4442b6086c5c5937d16212a9bdc8425cab), [45a30fa](https://github.com/complexdatacollective/network-canvas-monorepo/commit/45a30fae119ebf52d31738fa98e61b707d1d4c54), [1dac91b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1dac91b131db3740117aaf7977c9ff9bd697241e), [23dcf99](https://github.com/complexdatacollective/network-canvas-monorepo/commit/23dcf99e80d3e95b9e71543afb2e40842d1527e1), [a13f261](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a13f2610b7834e2fe27ae4e1e8423612b990c304), [c5758a4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c5758a447125e840b91d81e9b2e9ed6acdf1583e), [29b11be](https://github.com/complexdatacollective/network-canvas-monorepo/commit/29b11be8da6cfb65b8c9cce5d6f1d8711889d4f1), [a78b7c2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a78b7c20034648fffcee4202a143481178f8637b), [aa4693a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/aa4693a1e221515381058229d7fbf61d7807dfe3), [bb8e755](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bb8e7550160683d76d359b0d0c7093e6d128b9e2), [693655f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/693655f3d388e7ef91cb0e2324a10bb201a5f96c), [5de44c1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5de44c15c99bc4e778d08c1be23bfd590e877005), [ed91f97](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ed91f9759c0d12bc6940d61800b816a2f482d4dc), [f6565fe](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f6565fe3f11ddfa004d1ea5d37a7b97401a53db4), [4ea797d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4ea797d7159622173f7a605cf2ce6cac1884e854), [d7e93c5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d7e93c571df1fea1a8fc71d8c9d4f6692e2dbe7c), [55f5549](https://github.com/complexdatacollective/network-canvas-monorepo/commit/55f554975bc6731a7f5bc94dde0a7000b64ce2da), [2bea7ee](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2bea7eed99b1f0f5056144a1d6ac30855c36513e), [eea0b5a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eea0b5acf7c4b852a57c6b57c5a504a34a7d11c0), [eee19fb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eee19fb93d4cb57d3c4d256971da78df15730a88), [a5626f5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a5626f51040d092c56417694296bcde8d51faad9), [b2ca402](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b2ca402a852b5527e0455c7ff2949da3be50dccd), [3ae3a94](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3ae3a9438da400fc357a0c71721d45cd32f3a7ac), [01aaed2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01aaed2d0bcd7ce203f50952ddd3e4ddeaed143a), [3f54d21](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3f54d2102e9489ae65cb164466fe71de05901ddd), [553d580](https://github.com/complexdatacollective/network-canvas-monorepo/commit/553d580c548e86730faecd95a18b6bf29868807f))
+  - @codaco/fresco-ui@6.5.0
+  - @codaco/tailwind-config@1.5.0
+  - @codaco/interview@9.1.0
+  - @codaco/network-exporters@2.1.0
+  - @codaco/protocol-validation@13.1.0
+  - @codaco/shared-consts@6.1.0
+  - @codaco/protocol-utilities@4.1.0
+
 ## 4.1.6
 
 ### Patch Changes
