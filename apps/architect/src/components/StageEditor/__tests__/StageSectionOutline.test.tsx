@@ -1,5 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -72,6 +74,20 @@ const EVERY_STATUS: readonly StageSection[] = [
   section('s-5', 'Sort order', 'unavailable'),
 ];
 
+/**
+ * The icon each state is drawn with, as this component's own table declares
+ * it. Named here so the test says what it expects rather than only that the
+ * five drawings differ: a state given the wrong one of the five is as
+ * misleading as a state given no drawing at all.
+ */
+const EXPECTED_ICONS: Record<StageSectionStatus, ComponentType> = {
+  complete: Check,
+  incomplete: Circle,
+  error: AlertCircle,
+  switchedOff: MinusCircle,
+  unavailable: Lock,
+};
+
 const STATE_WORDS: Record<StageSectionStatus, string> = {
   complete: 'Finished',
   incomplete: 'Not finished',
@@ -95,22 +111,49 @@ describe('the list of a stage’s sections', () => {
     );
   });
 
-  it('draws each state as well as saying it, so none of them is only a colour', () => {
+  it('draws each state as its own glyph, so none of them is only a colour', () => {
     render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+    // The drawing each state is expected to be given, rendered here so the
+    // question can be asked of the glyph itself rather than of the class the
+    // icon is painted with — a class carries the status colour, so five
+    // different classes are five colours and say nothing about whether five
+    // different things were drawn.
+    const reference = render(
+      <>
+        {Object.entries(EXPECTED_ICONS).map(([status, Icon]) => (
+          <span key={status} data-icon={status}>
+            <Icon />
+          </span>
+        ))}
+      </>,
+    );
+    const expected = (status: StageSectionStatus): string => {
+      const drawing = reference.container.querySelector(
+        `[data-icon="${status}"] svg`,
+      );
+      if (drawing === null) {
+        throw new Error(`no reference icon rendered for "${status}"`);
+      }
+      return drawing.innerHTML;
+    };
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
-    // The icon is hidden from a reader who is being told the state in words,
-    // and it is a different icon for each state — the whole point of drawing
-    // one at all. Read off the DOM because an `aria-hidden` element answers no
-    // role query, which is correct and is why the count has to be asked here.
-    const icons = [...outline.querySelectorAll('svg[aria-hidden="true"]')];
-    expect(icons).toHaveLength(5);
-    // Five distinct drawings for five states. A table that answered with one
-    // icon for two of them would leave those two states told apart by their
-    // words alone, which is exactly what drawing one is for.
+    // The icon is hidden from a reader who is being told the state in words.
+    // Read off the DOM because an `aria-hidden` element answers no role query,
+    // which is correct and is why this has to be asked here.
+    const drawn = [...outline.querySelectorAll('svg[aria-hidden="true"]')].map(
+      (icon) => icon.innerHTML,
+    );
+    expect(drawn).toHaveLength(5);
+    // Five states, five different drawings: a table answering with one icon
+    // for two of them leaves those two told apart by their words alone, which
+    // is exactly what drawing one is for.
     expect(
-      new Set(icons.map((icon) => icon.getAttribute('class'))),
-    ).toHaveLength(5);
+      new Set(EVERY_STATUS.map((entry) => expected(entry.status))).size,
+    ).toBe(5);
+    // And each row carries its OWN state's drawing, so two states cannot
+    // quietly swap icons and stay green here either.
+    expect(drawn).toEqual(EVERY_STATUS.map((entry) => expected(entry.status)));
   });
 
   it('reads out what the protocol refused when no field on the page says it', () => {
