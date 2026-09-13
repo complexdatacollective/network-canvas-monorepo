@@ -36,12 +36,14 @@ type RecoveredUser = { id: string; email: string; email_verified: boolean };
 // the independent authority set rather than a second buffered database copy.
 async function* recoveryPages<T extends pg.QueryResultRow>(
   client: pg.PoolClient,
+  backup: pg.PoolClient,
   query: string,
   cursorColumn: keyof T,
 ): AsyncGenerator<T[]> {
   let cursor: string | null = null;
   for (;;) {
     const page = await client.query<T>(query, [cursor, 64]);
+    await keepRecoveryTransactionsAlive(client, backup);
     if (page.rows.length === 0) return;
     yield page.rows;
     if (page.rows.length < 64) return;
@@ -67,6 +69,7 @@ export async function verifyRegistryRecoveryArtifacts(
   await blobs.ready();
   for await (const artifacts of recoveryPages<Artifact>(
     client,
+    backup,
     `SELECT artifact.root, artifact.raw_hash, artifact.byte_size,
       content.template, content.metadata, content.license
     FROM registry_artifacts artifact
@@ -177,6 +180,7 @@ export async function reconcileRegistryRecovery({
     let userCount = 0;
     for await (const users of recoveryPages<RecoveredUser>(
       client,
+      backup,
       'SELECT id, email, email_verified FROM registry_auth_user WHERE ($1::text IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {
@@ -206,6 +210,7 @@ export async function reconcileRegistryRecovery({
       user_id: string;
     }>(
       client,
+      backup,
       'SELECT id, user_id FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {

@@ -19,13 +19,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "ncr1_<256-bit secret>",
-        "description": "Registry-issued credentials. Studio instance API tokens do not authenticate here."
+        "description": "Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. Studio instance API tokens do not authenticate here."
       },
       "registrySession": {
         "type": "apiKey",
         "in": "cookie",
         "name": "__Secure-registry.session_token",
-        "description": "Verified email session issued by this registry. Account writes also require the registry Origin header."
+        "description": "Verified email session issued by this registry. Account writes also require the registry Origin header; moderation operations separately declare x-registry-operator-required."
       }
     },
     "schemas": {
@@ -892,7 +892,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/entries/{id}": {
@@ -1424,7 +1425,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/entries/{id}/reports": {
@@ -1755,7 +1757,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/account": {
@@ -2914,7 +2917,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/moderation/entries/{id}/restore": {
@@ -3088,7 +3092,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/moderation/artifacts/{root}": {
@@ -3261,7 +3266,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/moderation/publishers/{id}/suspension": {
@@ -3441,7 +3447,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/moderation/entries/{id}/curation": {
@@ -3621,7 +3628,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/moderation/reports": {
@@ -3634,7 +3642,8 @@
             "name": "after",
             "schema": {
               "type": "string",
-              "pattern": "^[1-9][0-9]{0,18}$"
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "description": "Decimal report sequence returned by the preceding reports page."
             },
             "allowEmptyValue": false,
             "allowReserved": true
@@ -3707,9 +3716,8 @@
                     },
                     "next_cursor": {
                       "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024,
-                      "pattern": "^[A-Za-z0-9_-]+$",
+                      "pattern": "^[1-9][0-9]{0,18}$",
+                      "description": "Decimal report sequence returned by the preceding reports page.",
                       "nullable": true
                     },
                     "has_more": {
@@ -3847,7 +3855,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"]
       }
     },
     "/account/moderation/entries/{id}/takedown": {
@@ -4030,7 +4039,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/restore": {
@@ -4213,7 +4223,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/artifacts/{root}": {
@@ -4395,7 +4406,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/publishers/{id}/suspension": {
@@ -4584,7 +4596,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/curation": {
@@ -4773,7 +4786,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/reports": {
@@ -4789,7 +4803,8 @@
                 "properties": {
                   "after": {
                     "type": "string",
-                    "pattern": "^[1-9][0-9]{0,18}$"
+                    "pattern": "^[1-9][0-9]{0,18}$",
+                    "description": "Decimal report sequence returned by the preceding reports page."
                   },
                   "limit": {
                     "default": 20,
@@ -4858,9 +4873,8 @@
                     },
                     "next_cursor": {
                       "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024,
-                      "pattern": "^[A-Za-z0-9_-]+$",
+                      "pattern": "^[1-9][0-9]{0,18}$",
+                      "description": "Decimal report sequence returned by the preceding reports page.",
                       "nullable": true
                     },
                     "has_more": {
@@ -5009,7 +5023,8 @@
             },
             "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     }
   }

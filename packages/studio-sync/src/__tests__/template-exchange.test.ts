@@ -210,7 +210,7 @@ function writeManifest(
 
 function datasetFixture(
   type: 'network' | 'geojson',
-  mediaType: 'application/json' | 'application/geo+json',
+  mediaType: 'text/csv' | 'application/json' | 'application/geo+json',
   source: string,
   text: string,
 ): TemplateArtifactInput {
@@ -670,6 +670,41 @@ describe('portable template artifact', () => {
           ...input,
           assets: [{ ...input.assets[0]!, bytes }],
         }),
+      ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
+    }
+  });
+
+  it('accepts the normative CSV grammar and rejects malformed or inconsistent records', async () => {
+    const valid = [
+      'name,age\nExample,25',
+      'name,age\r\nExample,25\r\n',
+      'name,notes\nExample,"comma, newline\nand ""quote"""\n',
+      'name\n\nExample\n',
+      'naïve,tab\n你好,one\tvalue',
+      ',\n,',
+    ];
+    const malformed = [
+      'name,notes\nExample,"unclosed',
+      'name,notes\nExam"ple,value',
+      'name,notes\n"Example"suffix,value',
+      'name,age\rExample,25',
+      'name,age\nExample',
+      'name,age\n\nExample,25',
+    ];
+    expect(valid).toHaveLength(6);
+    expect(malformed).toHaveLength(6);
+    for (const text of valid) {
+      await expect(
+        createTemplateArtifact(
+          datasetFixture('network', 'text/csv', 'roster.csv', text),
+        ),
+      ).resolves.toBeDefined();
+    }
+    for (const text of malformed) {
+      await expect(
+        createTemplateArtifact(
+          datasetFixture('network', 'text/csv', 'roster.csv', text),
+        ),
       ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
     }
   });

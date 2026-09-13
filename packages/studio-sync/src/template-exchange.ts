@@ -366,6 +366,64 @@ function validGeoJson(value: unknown): boolean {
   return geometryDimensions(value) !== null;
 }
 
+/** Validate the v1 CSV grammar in one pass without retaining decoded records. */
+function validCsv(value: string): boolean {
+  type State = 'field-start' | 'unquoted' | 'quoted' | 'after-quote';
+  let state: State = 'field-start';
+  let fields = 1;
+  let expectedFields: number | undefined;
+  let endedWithRecord = false;
+  const finishRecord = () => {
+    if (expectedFields === undefined) expectedFields = fields;
+    else if (fields !== expectedFields) return false;
+    fields = 1;
+    state = 'field-start';
+    endedWithRecord = true;
+    return true;
+  };
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (state === 'quoted') {
+      if (character === '"') {
+        if (value[index + 1] === '"') index += 1;
+        else state = 'after-quote';
+      } else if (character === '\r') {
+        if (value[index + 1] !== '\n') return false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === ',') {
+      fields += 1;
+      state = 'field-start';
+      endedWithRecord = false;
+      continue;
+    }
+    if (character === '\n' || character === '\r') {
+      if (character === '\r') {
+        if (value[index + 1] !== '\n') return false;
+        index += 1;
+      }
+      if (!finishRecord()) return false;
+      continue;
+    }
+    if (character === '"') {
+      if (state !== 'field-start') return false;
+      state = 'quoted';
+      endedWithRecord = false;
+      continue;
+    }
+    if (state === 'after-quote') return false;
+    state = 'unquoted';
+    endedWithRecord = false;
+  }
+
+  if (state === 'quoted') return false;
+  return endedWithRecord || finishRecord();
+}
+
 async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
   if (asset.bytes.byteLength !== asset.byte_size) invalid();
   requireHash(asset.bytes, asset.hash);
@@ -385,7 +443,7 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
         invalid();
       if (asset.media_type === 'text/csv') {
         // CSV is inert dataset text, never an inline browser document.
-        admitted = !/^\s*</.test(text);
+        admitted = !/^\s*</.test(text) && validCsv(text);
       } else {
         const value = parseBoundedJson(text);
         admitted = value !== null && typeof value === 'object';

@@ -7,7 +7,7 @@ import { template } from './__tests__/fixtures.ts';
 import type { RegistryBlobStore } from './blob-store.ts';
 import { verifyRegistryRecoveryArtifacts } from './recovery.ts';
 
-it('probes an empty store and keeps both pinned transactions alive after each artifact', async () => {
+it('probes an empty store and keeps both pinned transactions alive after each page and artifact', async () => {
   const { bytes, artifact } = await template('Recovery proof');
   const rawHash = templateBytesHash(bytes);
   const rows = [
@@ -42,8 +42,10 @@ it('probes an empty store and keeps both pinned transactions alive after each ar
 
   expect(blobs.ready).toHaveBeenCalledOnce();
   expect(ownerQuery).toHaveBeenNthCalledWith(2, 'SELECT 1');
-  expect(backupQuery).toHaveBeenCalledOnce();
-  expect(backupQuery).toHaveBeenCalledWith('SELECT 1');
+  expect(ownerQuery).toHaveBeenNthCalledWith(3, 'SELECT 1');
+  expect(backupQuery).toHaveBeenCalledTimes(2);
+  expect(backupQuery).toHaveBeenNthCalledWith(1, 'SELECT 1');
+  expect(backupQuery).toHaveBeenNthCalledWith(2, 'SELECT 1');
 });
 
 it('probes object storage even when no artifacts exist', async () => {

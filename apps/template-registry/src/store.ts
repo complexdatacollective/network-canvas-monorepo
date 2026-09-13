@@ -193,7 +193,9 @@ export class RegistryStore {
   }
 
   async publisher(token: string) {
-    return this.#publicPublisher(await this.#principal(this.#pool, token));
+    return this.#publicPublisher(
+      await this.#principal(this.#pool, token, 'publish'),
+    );
   }
   async account(headers: Headers) {
     const userId = await this.#verifiedSession(new Headers(headers));

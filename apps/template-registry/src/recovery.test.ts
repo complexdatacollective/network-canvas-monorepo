@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 import { escapeIdentifier, escapeLiteral } from 'pg';
-import type { PoolClient } from 'pg';
+import type pg from 'pg';
 import { expect, it, vi } from 'vitest';
 
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
@@ -12,6 +12,32 @@ import { createRegistryInstallation } from './__tests__/installation.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
 import { registryMigrator } from './db/migrate.ts';
 import { reconcileRegistryRecovery } from './recovery.ts';
+
+type RecoveryQueryEvent = {
+  lane: 'owner' | 'backup';
+  sql: string;
+};
+
+function observeRecoveryPool(
+  pool: pg.Pool,
+  lane: RecoveryQueryEvent['lane'],
+  events: RecoveryQueryEvent[],
+): pg.Pool {
+  return {
+    connect: async () => {
+      const client = await pool.connect();
+      return {
+        query: ((...args: unknown[]) => {
+          const sql = args[0];
+          if (typeof sql === 'string')
+            events.push({ lane, sql: sql.replaceAll(/\s+/g, ' ').trim() });
+          return Reflect.apply(client.query, client, args);
+        }) as pg.PoolClient['query'],
+        release: client.release.bind(client),
+      } as pg.PoolClient;
+    },
+  } as pg.Pool;
+}
 
 it('reconciles an isolated restored registry only after schema, backup, and artifact proofs', async () => {
   const installation = await createRegistryInstallation();
@@ -68,9 +94,14 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
          ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
       );
     });
+    const recoveryQueries: RecoveryQueryEvent[] = [];
     await reconcileRegistryRecovery({
-      pool: fixture.owner,
-      backupPool: installation.backupPool,
+      pool: observeRecoveryPool(fixture.owner, 'owner', recoveryQueries),
+      backupPool: observeRecoveryPool(
+        installation.backupPool,
+        'backup',
+        recoveryQueries,
+      ),
       blobs: fixture.blobs,
       admission: { allowedLogins: installation.allowedLogins },
       reconciliation: {
@@ -120,6 +151,43 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         ],
       },
     });
+
+    const inventoryPages = recoveryQueries
+      .map((event, index) => ({ event, index }))
+      .filter(
+        ({ event }) =>
+          event.lane === 'owner' &&
+          (event.sql.startsWith(
+            'SELECT id, email, email_verified FROM registry_auth_user',
+          ) ||
+            event.sql.startsWith(
+              'SELECT id, user_id FROM registry_publishers',
+            )),
+      );
+    expect(
+      inventoryPages.filter(({ event }) =>
+        event.sql.includes('registry_auth_user'),
+      ),
+    ).toHaveLength(2);
+    expect(
+      inventoryPages.filter(({ event }) =>
+        event.sql.includes('registry_publishers'),
+      ),
+    ).toHaveLength(2);
+    for (const { index } of inventoryPages) {
+      expect(recoveryQueries.slice(index + 1, index + 3)).toEqual([
+        { lane: 'owner', sql: 'SELECT 1' },
+        { lane: 'backup', sql: 'SELECT 1' },
+      ]);
+    }
+    const lockIndex = recoveryQueries.findIndex(({ sql }) =>
+      sql.startsWith('LOCK TABLE registry_auth_user'),
+    );
+    expect(lockIndex).toBeGreaterThanOrEqual(0);
+    expect(recoveryQueries.slice(lockIndex + 1, lockIndex + 3)).not.toEqual([
+      { lane: 'owner', sql: 'SELECT 1' },
+      { lane: 'backup', sql: 'SELECT 1' },
+    ]);
 
     expect(fixture.blobs.ready).toHaveBeenCalledOnce();
     expect(
@@ -350,7 +418,7 @@ it.each([
 ])('refuses %s and preserves the original credentials', async (kind) => {
   const installation = await createRegistryInstallation();
   const fixture = await createRegistryFixture({}, installation);
-  let held: PoolClient | undefined;
+  let held: pg.PoolClient | undefined;
   const preparedName = `registry_recovery_${installation.databaseName}`;
   let prepared = false;
   try {
