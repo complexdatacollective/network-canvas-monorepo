@@ -32,6 +32,7 @@ import {
   readDeliveryContact,
   readRenderedMessage,
   sealRenderedMessage,
+  RenderedMessageSchema,
   type RenderedMessage,
 } from '../pii/message-deliveries.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
@@ -492,7 +493,12 @@ export async function produceDueOccurrenceMessage(options: {
         (template) => !template.body.includes('{{interviewLink}}'),
       ) ||
       messages.some(
-        (message) => message.channel === 'sms' && message.body.length > 1600,
+        (message) =>
+          !RenderedMessageSchema.safeParse({
+            subject: message.subject,
+            body: message.body,
+          }).success ||
+          (message.channel === 'sms' && message.body.length > 1600),
       )
     ) {
       await transitionScheduledOccurrence(

@@ -619,6 +619,75 @@ describe('message delivery runtime', () => {
       );
       await expect(produce()).resolves.toBe(false);
 
+      for (const body of [
+        '{{interviewLink}}' + 'x'.repeat(7950),
+        '{{interviewLink}}' + '界'.repeat(6000),
+      ]) {
+        const oversizedEmail = await occurrence(
+          fixture,
+          false,
+          'email',
+          waveId,
+        );
+        await fixture.scratch.pool.query(
+          'DELETE FROM message_templates WHERE id=$1',
+          [oversizedEmail.templateId],
+        );
+        await fixture.scratch.pool.query(
+          `INSERT INTO message_templates (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+           VALUES($1,$2,$3,'prompt','email','en',$4,'published','A prompt',$5)`,
+          [
+            oversizedEmail.templateId,
+            fixture.context.tenantDb.teamId,
+            fixture.target.studyId,
+            ++templateVersion,
+            body,
+          ],
+        );
+        await expect(produce()).resolves.toBe(false);
+        expect(
+          (
+            await fixture.scratch.pool.query(
+              'SELECT state FROM schedule_occurrences WHERE id=$1',
+              [oversizedEmail.occurrenceId],
+            )
+          ).rows,
+        ).toEqual([{ state: 'blocked' }]);
+        expect(
+          (
+            await fixture.scratch.pool.query(
+              'SELECT count(*)::int AS n FROM message_deliveries WHERE occurrence_id=$1',
+              [oversizedEmail.occurrenceId],
+            )
+          ).rows,
+        ).toEqual([{ n: 0 }]);
+      }
+      const laterEligible = await occurrence(fixture, false, 'email', waveId);
+      await fixture.scratch.pool.query(
+        'DELETE FROM message_templates WHERE id=$1',
+        [laterEligible.templateId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO message_templates (id,team_id,study_id,kind,channel,locale,version,state,subject,body)
+         VALUES($1,$2,$3,'prompt','email','en',$4,'published','A prompt',$5)`,
+        [
+          laterEligible.templateId,
+          fixture.context.tenantDb.teamId,
+          fixture.target.studyId,
+          ++templateVersion,
+          '{{interviewLink}}' + '界'.repeat(5000),
+        ],
+      );
+      await expect(produce()).resolves.toBe(true);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT state FROM schedule_occurrences WHERE id=$1',
+            [laterEligible.occurrenceId],
+          )
+        ).rows,
+      ).toEqual([{ state: 'dispatched' }]);
+
       const rows = await fixture.scratch.pool.query<{
         id: string;
         state: string;

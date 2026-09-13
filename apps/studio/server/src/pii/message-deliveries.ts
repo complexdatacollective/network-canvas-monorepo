@@ -13,14 +13,22 @@ import type { AuditEventInput } from '../audit/events.ts';
 import type { EncryptionKeys } from './keys.ts';
 import { createDataProtection, ProtectedDataError } from './protection.ts';
 
-export const RenderedMessageSchema = z.strictObject({
-  subject: z.string().min(1).max(200).nullable(),
-  body: z
-    .string()
-    .min(1)
-    .max(8000)
-    .refine((value) => value.isWellFormed() && !value.includes('\0')),
-});
+export const RenderedMessageSchema = z
+  .strictObject({
+    subject: z.string().min(1).max(200).nullable(),
+    body: z
+      .string()
+      .min(1)
+      .max(8000)
+      .refine((value) => value.isWellFormed() && !value.includes('\0')),
+  })
+  .refine(
+    // The aes-256-gcm.v1 envelope adds one version byte, a 12-byte nonce and
+    // a 16-byte tag to UTF-8 JSON; the persisted envelope is capped at 16 KiB.
+    (value) =>
+      Buffer.byteLength(JSON.stringify(value), 'utf8') + 1 + 12 + 16 <= 16_384,
+    { message: 'Rendered message exceeds its encrypted storage limit' },
+  );
 export type RenderedMessage = z.infer<typeof RenderedMessageSchema>;
 
 export type DeliveryCiphertext = {
