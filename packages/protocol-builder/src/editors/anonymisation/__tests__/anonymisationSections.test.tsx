@@ -717,6 +717,14 @@ describe('the attributes a passphrase protects', () => {
       );
       expect(personVariable(harness, 'name').encrypted).toBe(true);
       expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
+      // And the researcher is told why, as every other refusal here tells
+      // them: a switch that sprang back with nothing said is the one decline
+      // they would be left to guess at.
+      expect(
+        screen.getByText(
+          'This stage is read-only, so your change was not made. Somebody else is editing it.',
+        ),
+      ).toBeInTheDocument();
     });
 
     /** Switching a type ON is not a decision about any attribute. */
@@ -730,6 +738,128 @@ describe('the attributes a passphrase protects', () => {
       expect(
         screen.queryByRole('button', { name: 'Clear encrypted attributes' }),
       ).toBeNull();
+    });
+  });
+
+  /**
+   * A type's switch says what the CODEBOOK says, for as long as the section is
+   * open.
+   *
+   * `Section` holds `open` itself and reads `defaultOpen` only as it mounts,
+   * so a switch left to it stops following the codebook the moment it is on
+   * screen. That is a mirror, and this section holds none: an attribute a
+   * collaborator encrypts on a type whose switch stands off would tell the
+   * researcher that type protects nothing while the interview encrypts it, and
+   * the only affordance that could clear it is behind the closed switch.
+   */
+  describe('a type’s switch after a collaborator writes', () => {
+    /** One attribute of the person type, as a collaborator leaves it. */
+    const collaboratorSets = (
+      harness: StageEditorHarness,
+      variableId: string,
+      variable: Readonly<Record<string, unknown>>,
+    ): void => {
+      const person = personDocument(harness);
+      harness.receiveCodebookUpdate({
+        node: {
+          person: {
+            ...person,
+            variables: {
+              ...(person.variables as Record<string, unknown>),
+              [variableId]: variable,
+            },
+          },
+        },
+      });
+    };
+
+    it('shows the researcher that a type now protects something', async () => {
+      const harness = openEditor();
+      await harness.opened();
+      expect(screen.getByRole('switch', { name: 'person' })).not.toBeChecked();
+
+      collaboratorSets(harness, 'name', {
+        name: 'name',
+        type: 'text',
+        encrypted: true,
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole('switch', { name: 'person' })).toBeChecked(),
+      );
+      // And the panel the switch controls is on screen, which is where the
+      // affordance that could clear it lives.
+      expect(attributeCheckbox('person', 'name')).toBeChecked();
+    });
+
+    it('closes the switch once a collaborator clears the last flag', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        client: alreadyProtecting('name'),
+      });
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+
+      collaboratorSets(harness, 'name', { name: 'name', type: 'text' });
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('switch', { name: 'person' }),
+        ).not.toBeChecked(),
+      );
+    });
+
+    /**
+     * A panel the researcher opened over a type that protects nothing yet is
+     * theirs, and a collaborator's edit to ANOTHER type is not news about it.
+     * Re-seeding it would take away the boxes they are about to tick.
+     */
+    it('leaves a panel the researcher opened over an unprotected type open', async () => {
+      const harness = openEditor();
+      await switchOnType(harness, 'person');
+
+      collaboratorSets(harness, 'relationship_to_ego', {
+        name: 'relationship_to_ego',
+        type: 'text',
+      });
+      await waitFor(() =>
+        expect(
+          personDocument(harness).variables as Record<string, unknown>,
+        ).toHaveProperty('relationship_to_ego'),
+      );
+
+      expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
+      expect(
+        screen.getByRole('group', { name: 'Encrypted attributes for person' }),
+      ).toBeInTheDocument();
+    });
+
+    /**
+     * The researcher's own tick is not a collaborator's: unticking the last
+     * attribute must leave the panel open over the boxes they are working in,
+     * exactly as it would if nothing had been written at all.
+     */
+    it('leaves the panel open when the researcher unticks the last attribute', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        client: alreadyProtecting('name'),
+      });
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      await waitFor(() =>
+        expect(
+          Object.hasOwn(personVariable(harness, 'name'), 'encrypted'),
+        ).toBe(false),
+      );
+      expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
     });
   });
 

@@ -63,9 +63,10 @@ export const switchOnType = async (
  * the editor opens.
  *
  * Written through the host rather than through the harness's own codebook
- * update because a type's switch reads what the codebook holds as it mounts:
- * a revision delivered afterwards is a collaborator's change to a section
- * whose switch is already standing where it stands.
+ * update because the two are different situations: this is a protocol that
+ * already protects something when the editor opens, and a revision delivered
+ * afterwards is a collaborator changing one that did not. The switch follows
+ * both — which is what the tests that deliver one afterwards are about.
  */
 export const alreadyProtecting =
   (variableId: string) =>

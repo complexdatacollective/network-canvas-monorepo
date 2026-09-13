@@ -184,7 +184,7 @@ export const anonymisationMessages = defineMessages({
   clearTypeConfirmDescription: {
     id: 'protocolBuilder.anonymisation.clearTypeConfirmDescription',
     defaultMessage:
-      'Every encrypted attribute of the {typeName} type will stop being encrypted. Do you want to continue?',
+      'This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?',
     description:
       'Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as "person".',
   },
