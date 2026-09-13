@@ -74,6 +74,7 @@ type CreateAppDeps = {
   /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
+  maintenancePool?: pg.Pool;
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
@@ -209,6 +210,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       deps.invitationDeliveryAvailable && authCaps.magicLink,
     ),
     pool,
+    maintenancePool: deps.maintenancePool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
     templateRegistryOrigin: env.templateRegistryOrigin,

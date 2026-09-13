@@ -47,6 +47,7 @@ export class TemplateRegistryCommandError extends Error {
 type RegistryConfig = {
   origin: string;
   assetStore: AssetStore;
+  maintenancePool?: pg.Pool;
   client?: TemplateRegistryClient;
 };
 

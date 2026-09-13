@@ -325,6 +325,42 @@ const TemplateRegistryImportedV1EventSchema =
     }),
   }).strict();
 
+const CommonTemplateRegistryReconciledV2EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Template Registry reconciliation'),
+    eventVersion: z.literal(2),
+  }).strict();
+
+const TemplateRegistryPublishedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_published'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
+    }),
+  }).strict();
+
+const TemplateRegistryImportedV2EventSchema =
+  CommonTemplateRegistryReconciledV2EventSchema.extend({
+    eventType: z.literal('template.registry_imported'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+      intentId: z.uuid(),
+      initiatingActorId: IdentifierSchema,
+      initiatingActorLabel: LabelSchema,
+      initiatingRequestId: z.uuid(),
+    }),
+  }).strict();
+
 // The study tier (#1262). Creating a study is a role-gated action (#1257), so
 // both outcomes are recorded: the creation itself, and a refusal, which is
 // what tells a team Admin that somebody without the role tried.
@@ -511,6 +547,8 @@ export const AuditEventInputSchema = z.union([
   ProtocolDraftCommittedV1EventSchema,
   TemplateRegistryPublishedV1EventSchema,
   TemplateRegistryImportedV1EventSchema,
+  TemplateRegistryPublishedV2EventSchema,
+  TemplateRegistryImportedV2EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
   ParticipantPiiReadV1EventSchema,
@@ -1122,6 +1160,70 @@ export const AUDIT_EVENT_REGISTRY = {
       },
     },
   },
+  'template.registry_published@2': {
+    inputSchema: TemplateRegistryPublishedV2EventSchema,
+    title: 'Template publication reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_published',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
+      },
+    },
+  },
+  'template.registry_imported@2': {
+    inputSchema: TemplateRegistryImportedV2EventSchema,
+    title: 'Template import reconciled',
+    detailFields: [
+      'versionId',
+      'registryEntryId',
+      'registryRoot',
+      'intentId',
+      'initiatingActorId',
+      'initiatingActorLabel',
+      'initiatingRequestId',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      eventVersion: 2,
+      eventType: 'template.registry_imported',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+        intentId: '00000000-0000-4000-8000-000000000013',
+        initiatingActorId: 'fixture-user',
+        initiatingActorLabel: 'Fixture user',
+        initiatingRequestId: '00000000-0000-4000-8000-000000000014',
+      },
+    },
+  },
   'study.created@1': {
     inputSchema: StudyCreatedV1EventSchema,
     title: 'Study created',
@@ -1163,7 +1265,11 @@ export const AUDIT_EVENT_REGISTRY = {
 
 export function auditEventKey(event: AuditEventInput): AuditEventKey {
   if (event.eventVersion === 2) {
-    return 'team.invitation.cancelled@2';
+    if (event.eventType === 'team.invitation.cancelled')
+      return 'team.invitation.cancelled@2';
+    if (event.eventType === 'template.registry_published')
+      return 'template.registry_published@2';
+    return 'template.registry_imported@2';
   }
   return `${event.eventType}@1`;
 }

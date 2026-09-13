@@ -359,6 +359,7 @@ export function createRpcRouter(
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
+    maintenancePool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
     templateRegistryOrigin?: string;
@@ -370,6 +371,7 @@ export function createRpcRouter(
     invitationDeliveryAvailable,
     bootstrapToken,
     pool,
+    maintenancePool,
     assetStore,
     templateRegistryOrigin,
   } = deps;
@@ -584,6 +586,7 @@ export function createRpcRouter(
               {
                 origin: templateRegistryOrigin,
                 assetStore,
+                maintenancePool,
               },
               input,
             );
@@ -604,7 +607,7 @@ export function createRpcRouter(
           try {
             return await importRegistryTemplate(
               auditedContextFor(context),
-              { origin: templateRegistryOrigin, assetStore },
+              { origin: templateRegistryOrigin, assetStore, maintenancePool },
               input.entryId,
             );
           } catch (error) {

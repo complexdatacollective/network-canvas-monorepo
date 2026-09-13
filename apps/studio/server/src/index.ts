@@ -221,6 +221,7 @@ const app = servesWeb
         env.auth && env.auth.mailer.kind !== 'refuse',
       ),
       pool,
+      maintenancePool,
     })
   : createOperationalApp(env, observability, undefined, (error) =>
       telemetry?.capture('server_request', error),
