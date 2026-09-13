@@ -13,6 +13,11 @@ const COMPOSE_COMMANDS = new Set([
   'up',
 ]);
 const TARGET_SERVICES = ['studio', 'worker', 'registry'];
+const NAMESPACE_SERVICES = [
+  'telemetry-namespace-studio',
+  'telemetry-namespace-worker',
+  'telemetry-namespace-registry',
+];
 const OBSERVER_SERVICES = [
   'telemetry-kernel-studio',
   'telemetry-kernel-worker',
@@ -63,14 +68,15 @@ export function qualificationKernelPreflightArguments(argumentsValue) {
     create: [
       ...argumentsValue.slice(0, command),
       'create',
-      '--no-start',
       ...TARGET_SERVICES,
+      ...NAMESPACE_SERVICES,
       'telemetry-detector',
       ...OBSERVER_SERVICES,
     ],
     start: [
       ...argumentsValue.slice(0, command),
       'start',
+      ...NAMESPACE_SERVICES,
       'telemetry-detector',
       ...OBSERVER_SERVICES,
     ],
