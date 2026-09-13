@@ -10,7 +10,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
-import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
@@ -18,10 +18,8 @@ import {
   getStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
@@ -356,8 +354,8 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // in flight.
 //
 // `draftDirty` reflects whether the stage editor holds uncommitted edits. The
-// stage draft is not persisted (see rememberedKeys in store.ts), so leaving with
-// a dirty draft uses a separate discard dialog and resets the draft on confirm.
+// editor's document lives in its form and is not persisted, so leaving with a
+// dirty editor uses a separate discard dialog.
 //
 // `persistence` selects the pristine-editor copy. The reassuring "saved
 // automatically" wording is only true when this tab actually owns the saved
@@ -453,9 +451,6 @@ export const promptLeaveEditor = async (
 
     guardState.bypass = true;
     try {
-      if (draftDirty) {
-        dispatch(resetDraft(null));
-      }
       dispatch(clearActiveProtocol());
       await performLeave();
     } finally {
@@ -471,37 +466,34 @@ export const promptLeaveEditor = async (
 // draft, or a nested editor left open anywhere (the Codebook's type editor, a
 // Resources editor), which is not gated on the stage-editor path at all. On
 // confirm, runs `performLeave` with the bypass flag set so the navigation isn't
-// re-guarded, clearing the stage draft only when that draft is what is being
-// discarded. Skips if a prompt is already in flight, so a single Back can never
-// stack two confirmations.
+// re-guarded. Skips if a prompt is already in flight, so a single Back can
+// never stack two confirmations.
 const promptDiscardDraft = async (
-  dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
   // Whether the STAGE editor's own draft is what is being discarded. A dirty
   // editor elsewhere (the Codebook's type editor, a Resources editor) is just
-  // as lossy and must still prompt — but resetting the stage draft for it would
-  // throw away uncommitted stage work the researcher never navigated away from.
-  resetStageDraft = true,
+  // as lossy and must still prompt, but it is not the stage the copy names.
+  isStageEditorDraft = true,
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
     const persistence = getLeavePersistence(store.getState());
-    // `resetStageDraft` already distinguishes the two situations that reach
-    // here, so it also selects the copy. Naming the stage — and describing what
-    // will be reloaded into it — is only honest when the stage editor's own
-    // draft is what is being discarded.
+    // `isStageEditorDraft` distinguishes the two situations that reach here, so
+    // it selects the copy. Naming the stage — and describing what will be
+    // reloaded into it — is only honest when the stage editor's own draft is
+    // what is being discarded.
     const confirmed = await openDialog({
       type: 'choice',
-      title: resetStageDraft
+      title: isStageEditorDraft
         ? createElement(AppMessage, {
             message: utilityMessages.discardUnsavedStageChanges,
           })
         : createElement(AppMessage, {
             message: utilityMessages.discardUnsavedChanges,
           }),
-      description: resetStageDraft
+      description: isStageEditorDraft
         ? createElement(AppMessage, {
             message:
               stageDiscardDescriptions[
@@ -531,9 +523,6 @@ const promptDiscardDraft = async (
 
     guardState.bypass = true;
     try {
-      if (resetStageDraft) {
-        dispatch(resetDraft(null));
-      }
       performLeave();
     } finally {
       guardState.bypass = false;
@@ -619,15 +608,13 @@ export const useProtocolNavGuard = () => {
       // overview) with uncommitted edits: intra-/protocol nav that the
       // leavingProtocol check misses. Only prompt when the draft is actually
       // dirty, so ordinary Back from a pristine editor navigates freely.
-      // The mirror of the stage form's values is debounced, so an edit made
-      // in the last moment before Back is not in Redux yet. Without this the
-      // guard reads a pristine draft and discards that edit silently.
-      flushStageLiveValues();
+      // The editor publishes its draft as it changes, so this reading includes
+      // the edit made in the moment before Back.
       const leavingDirtyStageEditor =
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&
         !isStageEditorPath(newPath) &&
-        getLiveStageDraftDirty(store.getState());
+        readStageDraft().dirty;
 
       // A dirty nested editor is unsaved work wherever it is open, and any pop
       // unmounts it. Deliberately NOT gated on the stage-editor path: the
@@ -669,10 +656,9 @@ export const useProtocolNavGuard = () => {
       if (leavingProtocol) {
         // A multi-step Back can jump straight from the stage editor to '/'. That
         // takes this branch, but the uncommitted (unpersisted) draft would still
-        // be lost — so surface it and reset the draft on confirm.
+        // be lost — so surface it.
         const draftDirty =
-          (isStageEditorPath(oldPath) &&
-            getLiveStageDraftDirty(store.getState())) ||
+          (isStageEditorPath(oldPath) && readStageDraft().dirty) ||
           hasDirtyNestedDraft();
         void promptLeaveEditor(
           dispatch,
@@ -688,7 +674,6 @@ export const useProtocolNavGuard = () => {
       }
 
       void promptDiscardDraft(
-        dispatch,
         openDialog,
         () => setLocation(newPath),
         leavingDirtyStageEditor,

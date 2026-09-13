@@ -3,6 +3,7 @@ import {
   type ColumnDef,
   getCoreRowModel,
   getSortedRowModel,
+  type HeaderContext,
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -45,31 +46,39 @@ const sampleData = [
   { id: 5, name: 'Eve Davis', email: 'eve@example.com', role: 'User' },
 ];
 
+type SampleRow = (typeof sampleData)[number];
+
+function NameHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+  return <DataTableColumnHeader column={column} table={table} title="Name" />;
+}
+
+function EmailHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+  return <DataTableColumnHeader column={column} table={table} title="Email" />;
+}
+
+function RoleHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+  return <DataTableColumnHeader column={column} table={table} title="Role" />;
+}
+
 function SortableDataTableExample() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
-  const columns = useMemo<ColumnDef<(typeof sampleData)[number]>[]>(
+  const columns = useMemo<ColumnDef<SampleRow>[]>(
     () => [
       {
         accessorKey: 'name',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader column={column} table={table} title="Name" />
-        ),
+        header: NameHeader,
         cell: ({ row }) => row.original.name,
       },
       {
         accessorKey: 'email',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader column={column} table={table} title="Email" />
-        ),
+        header: EmailHeader,
         cell: ({ row }) => row.original.email,
       },
       {
         accessorKey: 'role',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader column={column} table={table} title="Role" />
-        ),
+        header: RoleHeader,
         cell: ({ row }) => row.original.role,
       },
     ],

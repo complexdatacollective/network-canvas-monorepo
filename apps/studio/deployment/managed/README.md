@@ -97,7 +97,7 @@ separate qualified operator action.
 
 ## Managed operational log boundary
 
-`scripts/studio-managed-log-sanitizer.mjs` is the collector-facing privacy
+`scripts/studio/studio-managed-log-sanitizer.mjs` is the collector-facing privacy
 boundary for application logs. Its byte-oriented API accepts only the four
 service/environment pairs in this estate, parses at most 4 KiB per record, and
 refuses an input batch above 256 records or 256 KiB before decoding any member.
@@ -122,7 +122,7 @@ subject provenance when it supplies the binding, call this sanitizer before
 queueing any bytes for egress, and treat an empty result as a dropped batch. No
 provider call or account configuration is exercised by its repository tests.
 
-`scripts/studio-managed-fly-log-envelope.mjs` supplies the preceding portable
+`scripts/studio/studio-managed-fly-log-envelope.mjs` supplies the preceding portable
 Fly-envelope boundary. Fly's official log stream uses the NATS subject
 `logs.<app_name>.<region>.<instance_id>` and sends a structured JSON envelope;
 Fly's maintained Log Shipper first parses the NATS message as JSON, while the
@@ -658,12 +658,12 @@ design. Official capability references:
 The local observability qualification suite is provider-free:
 
 ```sh
-node --test \
-  apps/studio/deployment/managed/observability-egress-budget.test.mjs \
-  scripts/studio-managed-fly-log-envelope.test.mjs \
-  scripts/studio-managed-log-sanitizer.test.mjs \
-  scripts/studio-managed-new-relic-logs.test.mjs \
-  scripts/studio-managed-new-relic-usage.test.mjs
+node --test apps/studio/deployment/managed/observability-egress-budget.test.mjs
+pnpm exec vitest run --config scripts/vitest.config.ts \
+  scripts/studio/studio-managed-fly-log-envelope.test.mjs \
+  scripts/studio/studio-managed-log-sanitizer.test.mjs \
+  scripts/studio/studio-managed-new-relic-logs.test.mjs \
+  scripts/studio/studio-managed-new-relic-usage.test.mjs
 ```
 
 These tests use injected transports and local custody fixtures. They do not

@@ -21,6 +21,7 @@ const Entity = ({ type, entity, variables }: EntityProps) => {
   const intl = useAppIntl();
   return (
     <div
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
       className="page-break-marker flex break-before-page flex-col gap-6"
       id={entity === 'ego' ? 'ego' : `entity-${type ?? ''}`}
     >

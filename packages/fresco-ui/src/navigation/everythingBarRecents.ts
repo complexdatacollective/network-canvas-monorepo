@@ -140,6 +140,30 @@ async function resolveRef(
   }
 }
 
+// A resolution carries the request it answered, so a stale one can be
+// recognised as stale without a second piece of state saying so.
+type Resolution = {
+  openEpoch: number;
+  storageKey: string;
+  limit: number;
+  providerKey: string;
+  entries: EverythingBarEntry[];
+};
+
+// True while a resolution still answers the request being rendered.
+const answersRequest = (
+  resolution: Resolution | null,
+  openEpoch: number,
+  storageKey: string,
+  limit: number,
+  providerKey: string,
+): resolution is Resolution =>
+  resolution !== null &&
+  resolution.openEpoch === openEpoch &&
+  resolution.storageKey === storageKey &&
+  resolution.limit === limit &&
+  resolution.providerKey === providerKey;
+
 /**
  * Resolves the stored references whenever the bar opens, prunes the ones their
  * provider no longer returns, and records new activations.
@@ -155,7 +179,6 @@ export function useEverythingBarRecents({
   storageKey: string;
   limit?: number;
 }) {
-  const [entries, setEntries] = useState<EverythingBarEntry[]>(NO_ENTRIES);
   const providersRef = useRef(providers);
   providersRef.current = providers;
   // Recents are resolved BY the providers, so a provider swap invalidates a
@@ -164,13 +187,32 @@ export function useEverythingBarRecents({
   // longer hold. Same identity key, so the two cannot disagree.
   const providerKey = providerSetKey(providers);
 
+  // Every opening is its own request, counted so that reopening the bar with
+  // an unchanged provider set still counts as a different one. Without this,
+  // the request key would match the resolution the previous opening ended
+  // with and those rows would paint again on reopen.
+  const [openEpoch, setOpenEpoch] = useState(0);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    setOpenEpoch((current) => current + 1);
+  }
+
+  const [resolution, setResolution] = useState<Resolution | null>(null);
+  // Nothing survives a close, and nothing survives into a new resolution.
+  // A reference is only ever rendered from a resolution that has just
+  // succeeded against current permissions — holding the last one would show
+  // labels of entities since renamed, and links into places the researcher
+  // may since have lost, for as long as the new resolution takes. The stored
+  // resolution carries the request it answered, so a stale one is discarded
+  // in the very render that changes the request, with no frame in between.
+  const entries =
+    open &&
+    answersRequest(resolution, openEpoch, storageKey, limit, providerKey)
+      ? resolution.entries
+      : NO_ENTRIES;
+
   useEffect(() => {
-    // Nothing survives a close, and nothing survives into a new resolution.
-    // A reference is only ever rendered from a resolution that has just
-    // succeeded against current permissions — holding the last one would show
-    // labels of entities since renamed, and links into places the researcher
-    // may since have lost, for as long as the new resolution takes.
-    setEntries(NO_ENTRIES);
     if (!open) return undefined;
 
     const refs = readRecents(storageKey).slice(0, limit);
@@ -183,11 +225,15 @@ export function useEverythingBarRecents({
       );
       if (cancelled) return;
 
-      setEntries(
-        outcomes
+      setResolution({
+        openEpoch,
+        storageKey,
+        limit,
+        providerKey,
+        entries: outcomes
           .map((outcome) => outcome.entry)
           .filter((entry): entry is EverythingBarEntry => entry !== null),
-      );
+      });
 
       const kept = outcomes
         .filter((outcome) => outcome.entry !== null || !outcome.answered)
@@ -202,7 +248,7 @@ export function useEverythingBarRecents({
       // sources this bar no longer has: it must never land.
       cancelled = true;
     };
-  }, [open, storageKey, limit, providerKey]);
+  }, [open, openEpoch, storageKey, limit, providerKey]);
 
   const record = useCallback(
     (providerId: string, item: EverythingBarItem) => {

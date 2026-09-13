@@ -8,11 +8,9 @@ import {
   useTransform,
 } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import { useRef, useSyncExternalStore } from 'react';
+import { useRef } from 'react';
 
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 
 type ProtocolMigrationIllustrationProps = {
   className?: string;
@@ -24,11 +22,7 @@ export function ProtocolMigrationIllustration({
   const t = useTranslations('SummerUpdate.compatibility.illustration');
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
   const { scrollYProgress } = useScroll({
     target: containerRef,

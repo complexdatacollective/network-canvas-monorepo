@@ -1,7 +1,7 @@
 'use client';
 
 import { Upload } from 'lucide-react';
-import { useCallback } from 'react';
+import { type ReactNode, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -38,6 +38,8 @@ const messages = defineMessages({
       'Researcher-facing ProtocolImport / ProtocolImportDropzone: Browse files',
   },
 });
+
+const renderCodeChunks = (chunks: ReactNode[]) => <code>{chunks}</code>;
 
 type ProtocolImportDropzoneProps = {
   onFilesAccepted: (files: File[]) => void;
@@ -104,7 +106,7 @@ export default function ProtocolImportDropzone({
         <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
           {intl.formatMessage(messages.dragDropFilesHere, {
             value1: PROTOCOL_EXTENSION,
-            tag1: (chunks) => <code>{chunks}</code>,
+            tag1: renderCodeChunks,
           })}
         </Paragraph>
       </div>

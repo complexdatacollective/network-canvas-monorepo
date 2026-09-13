@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createAuthenticatedFlyLogAdapter } from '../../../../scripts/studio-managed-fly-log-envelope.mjs';
-import { MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY } from '../../../../scripts/studio-managed-log-sanitizer.mjs';
+import { createAuthenticatedFlyLogAdapter } from '../../../../scripts/studio/studio-managed-fly-log-envelope.mjs';
+import { MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY } from '../../../../scripts/studio/studio-managed-log-sanitizer.mjs';
 
 const ENDPOINT = 'https://log-api.newrelic.com/log/v1';
 const MAX_BODY_BYTES = 262_144;

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Link from '~/components/Link';
@@ -59,6 +61,12 @@ const messages = defineMessages({
       'Researcher-facing settings / StorageProviderSection: UploadThing API Key',
   },
 });
+
+const renderUploadThingHelpLinkChunks = (chunks: ReactNode[]) => (
+  <Link href="https://documentation.networkcanvas.com/en/fresco/deployment/guide#create-a-storage-bucket-using-uploadthing">
+    {chunks}
+  </Link>
+);
 
 export default async function StorageProviderSection() {
   const intl = await getServerIntl();
@@ -132,11 +140,7 @@ export default async function StorageProviderSection() {
         <SettingsField
           label={intl.formatMessage(messages.uploadThingAPIKey)}
           description={intl.formatMessage(messages.uploadThingHelp, {
-            link: (chunks) => (
-              <Link href="https://documentation.networkcanvas.com/en/fresco/deployment/guide#create-a-storage-bucket-using-uploadthing">
-                {chunks}
-              </Link>
-            ),
+            link: renderUploadThingHelpLinkChunks,
           })}
         >
           <UpdateUploadThingToken

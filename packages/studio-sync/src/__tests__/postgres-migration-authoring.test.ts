@@ -145,3 +145,79 @@ it('preserves authored SQL bytes and rejects duplicate, missing or unknown CLI o
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+it('snapshots caller-owned sidecars before authoring awaits', async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), 'migration-sidecar-snapshot-'),
+  );
+  const root = join(directory, 'migrations');
+  const schema = {
+    item: pgTable('sidecar_snapshot_item', {
+      id: text('id').primaryKey(),
+    }),
+  };
+  const sidecarStatements = ['SELECT 1;'];
+  const expectedFingerprint = fingerprintPostgresSchema(
+    await renderPostgresSchemaStatements(schema),
+    sidecarStatements,
+  );
+  try {
+    const pending = generatePostgresMigrationFiles({
+      schema,
+      sidecarStatements,
+      expectedFingerprint,
+      root,
+      name: 'initial',
+    });
+    sidecarStatements.splice(0, sidecarStatements.length, 'SELECT 2;');
+    await expect(pending).resolves.toEqual({
+      id: '0001_initial',
+      statements: 1,
+    });
+    expect(
+      await readFile(join(root, '0001_initial', 'sidecars.sql'), 'utf8'),
+    ).toBe('SELECT 1;\n');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it('refuses a schema that changes between fingerprinting and artifact generation', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'migration-schema-snapshot-'));
+  const original = pgTable('changing_schema', { id: text('id').primaryKey() });
+  const changed = pgTable('changing_schema', {
+    id: text('id').primaryKey(),
+    added: text('added'),
+  });
+  const sidecarStatements = ['SELECT 1;'];
+  const expectedFingerprint = fingerprintPostgresSchema(
+    await renderPostgresSchemaStatements({ item: original }),
+    sidecarStatements,
+  );
+  let reads = 0;
+  // Deterministically model a caller replacing a table after the initial
+  // rendering, while the author waits for the existing history on disk.
+  const schema = {
+    get item() {
+      reads += 1;
+      return reads === 1 ? original : changed;
+    },
+  };
+  try {
+    await expect(
+      generatePostgresMigrationFiles({
+        schema,
+        sidecarStatements,
+        expectedFingerprint,
+        root,
+        name: 'initial',
+      }),
+    ).rejects.toThrow('Schema changed during migration authoring');
+    expect(reads).toBeGreaterThan(1);
+    await expect(
+      readFile(join(root, '0001_initial', 'manifest.json'), 'utf8'),
+    ).rejects.toHaveProperty('code', 'ENOENT');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

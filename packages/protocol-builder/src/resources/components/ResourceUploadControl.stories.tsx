@@ -5,14 +5,14 @@ import { expect, userEvent, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { enIntl } from '../../testing/i18n.ts';
-import { ResourceGatewayProvider } from '../context.tsx';
-import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
+import { ResourceClientProvider } from '../client.tsx';
 import type { ResourcePickerKind } from './resourceKinds.ts';
 import ResourceUploadControl from './ResourceUploadControl.tsx';
 import {
+  createStoryHost,
   fieldNotesFile,
-  PROTOCOL_RESOURCES,
   skylineImageFile,
 } from './storyFixtures.ts';
 
@@ -21,7 +21,7 @@ type UploadControlHostProps = Readonly<{
   kind: Exclude<ResourcePickerKind, 'apikey'>;
   /** Whether the host will take the next file it is offered. */
   hostAcceptsFiles?: boolean;
-  /** The session is open for reading, so nothing can be imported into it. */
+  /** Somebody else holds the stage, so nothing can be imported into it. */
   disabled?: boolean;
 }>;
 
@@ -34,32 +34,34 @@ function UploadControlHost({
   hostAcceptsFiles = true,
   disabled = false,
 }: UploadControlHostProps) {
-  const [gateway] = useState(() => {
-    const host = new InMemoryResourceGateway({
-      committed: [...PROTOCOL_RESOURCES],
-    });
-    if (!hostAcceptsFiles) host.failNext('stageUpload');
-    return host;
-  });
+  const [host] = useState(() =>
+    createStoryHost(
+      hostAcceptsFiles
+        ? {}
+        : { refuses: { procedure: 'stage', forever: true } },
+    ),
+  );
   const [imported, setImported] = useState('Nothing has been imported yet.');
 
   return (
-    <ResourceGatewayProvider gateway={gateway}>
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-        <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
-          {imported}
-        </Paragraph>
-        <ResourceUploadControl
-          kind={kind}
-          disabled={disabled}
-          onStaged={(descriptor) =>
-            setImported(
-              `${descriptor.name} was staged as ${descriptor.id}, and is not saved yet.`,
-            )
-          }
-        />
-      </main>
-    </ResourceGatewayProvider>
+    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ResourceClientProvider>
+        <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+          <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
+            {imported}
+          </Paragraph>
+          <ResourceUploadControl
+            kind={kind}
+            disabled={disabled}
+            onStaged={(descriptor) =>
+              setImported(
+                `${descriptor.name} was staged as ${descriptor.id}, and is not saved yet.`,
+              )
+            }
+          />
+        </main>
+      </ResourceClientProvider>
+    </ProtocolBuilder>
   );
 }
 
@@ -71,7 +73,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Imports one file into the editing session through the gateway alone. Two ways in, deliberately: a drop target for a pointer, and a file input that is a real, labelled, focusable control rather than a hidden one behind the drop target — dropping a file is not something a keyboard can do. The import is not finished until the host has read back what it staged, because a field left pointing at content the interview cannot read is a protocol that fails when it is used.',
+          'Imports one file into the open stage edit, through the host contract alone. Two ways in, deliberately: a drop target for a pointer, and a file input that is a real, labelled, focusable control rather than a hidden one behind the drop target — dropping a file is not something a keyboard can do. The import is not finished until the host has read back what it staged, because a field left pointing at content the interview cannot read is a protocol that fails when it is used.',
       },
     },
   },
@@ -166,7 +168,7 @@ export const TheHostRefusedTheFile: Story = {
   },
 };
 
-/** Nothing can be imported into a session that is open for reading. */
+/** Nothing can be imported into a stage somebody else is holding. */
 export const Spectating: Story = {
   args: { disabled: true },
 };

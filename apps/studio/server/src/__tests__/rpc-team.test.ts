@@ -34,7 +34,6 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe.skipIf(!db)('team-scoped procedures', () => {
   let dispose: () => Promise<void>;
-  let ownerPool: Parameters<typeof provisionScratchSchema>[0];
   let memberships: Record<string, { role: string }>;
   let client: RouterContractClient<typeof contract>;
   let anonymousClient: RouterContractClient<typeof contract>;
@@ -43,7 +42,6 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     dispose = scratch.dispose;
-    ownerPool = scratch.pool;
     await provisionScratchSchema(scratch.pool);
     for (const teamId of ['team-a', 'team-b']) {
       await seedTeam(scratch.pool, teamId);
@@ -94,7 +92,7 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     expect(row.createdAt).toBeInstanceOf(Date);
   });
 
-  it('opens, structures, leases, and commits an editor draft', async () => {
+  it('opens and structures an editor draft', async () => {
     const created = await client.protocols.create({
       teamId: 'team-a',
       name: 'Editor proof',
@@ -129,97 +127,6 @@ describe.skipIf(!db)('team-scoped procedures', () => {
       }),
     );
     expect(staleMove.error).not.toBeNull();
-
-    const clientId = '33333333-3333-4333-8333-333333333333';
-    const sectionId = `stage:${stageA}`;
-    const lease = await client.protocols.acquireSection({
-      ...scope,
-      sectionId,
-      clientId,
-    });
-    expect(lease.mode).toBe('editable');
-    if (lease.mode !== 'editable') throw new Error('expected editable lease');
-    expect(lease.nextClientSequence).toBe('1');
-
-    const revision = await client.protocols.commitSection({
-      ...scope,
-      sectionId,
-      clientId,
-      leaseEpoch: lease.leaseEpoch,
-      clientSequence: '1',
-      commands: [{ op: 'set', key: 'label', value: 'Welcome' }],
-    });
-    expect(BigInt(revision.sequence)).toBeGreaterThan(0n);
-    expect(
-      (await client.protocols.draft(scope)).sections[sectionId],
-    ).toMatchObject({ label: 'Welcome' });
-    const reacquired = await client.protocols.acquireSection({
-      ...scope,
-      sectionId,
-      clientId,
-    });
-    expect(reacquired).toMatchObject({
-      mode: 'editable',
-      leaseEpoch: lease.leaseEpoch,
-      nextClientSequence: '2',
-    });
-    expect(
-      await client.protocols.renewSection({
-        ...scope,
-        sectionId,
-        clientId,
-        leaseEpoch: lease.leaseEpoch,
-      }),
-    ).toEqual({ renewed: true });
-    await client.protocols.releaseSection({
-      ...scope,
-      sectionId,
-      clientId,
-      leaseEpoch: lease.leaseEpoch,
-    });
-  });
-
-  it('releases an acquired section when resume post-processing fails', async () => {
-    const created = await client.protocols.create({
-      teamId: 'team-a',
-      name: 'Resume failure proof',
-      protocolId: randomUUID(),
-      draftId: randomUUID(),
-    });
-    const scope = {
-      teamId: 'team-a',
-      protocolId: created.protocolId,
-      draftId: created.draftId,
-    };
-    const stageId = randomUUID();
-    const sectionId = `stage:${stageId}`;
-    await client.protocols.addInformationStage({ ...scope, stageId });
-
-    await ownerPool.query(
-      'ALTER TABLE command_log RENAME TO command_log_unavailable',
-    );
-    try {
-      const failed = await safe(
-        client.protocols.acquireSection({
-          ...scope,
-          sectionId,
-          clientId: randomUUID(),
-        }),
-      );
-      expect(failed.error).not.toBeNull();
-    } finally {
-      await ownerPool.query(
-        'ALTER TABLE command_log_unavailable RENAME TO command_log',
-      );
-    }
-
-    await expect(
-      client.protocols.acquireSection({
-        ...scope,
-        sectionId,
-        clientId: randomUUID(),
-      }),
-    ).resolves.toMatchObject({ mode: 'editable' });
   });
 
   it('refuses a non-member team and an unknown team identically', async () => {

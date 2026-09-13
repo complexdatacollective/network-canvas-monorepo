@@ -235,7 +235,7 @@ describe('VariablePicker', () => {
     const { getValue } = setup();
     if (!storeApi) throw new Error('form store was not captured');
 
-    // Mirrors a newly-added AssignAttributes row: the owning field is dirty
+    // Mirrors a newly-added array row: the owning field is dirty
     // before its picker opens, but the researcher has not left that field.
     act(() => {
       storeApi?.getState().setFieldValue('variable', '');
@@ -336,7 +336,7 @@ describe('VariablePicker', () => {
           name: 'Create new attribute called height',
         }),
       );
-      // What `withFieldsHandlers.handleNewVariable` does next.
+      // What the caller does next once the attribute has been created.
       act(() => {
         setFieldValue()('variable', 'height');
       });

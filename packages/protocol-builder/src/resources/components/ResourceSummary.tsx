@@ -5,7 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import type { ResourceInspection } from '../gateway.ts';
+import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
   resourceKindLabel,
@@ -17,7 +17,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.resourceSummary.fileTerm',
     defaultMessage: 'File',
     description:
-      'Label beside the original filename of a resource a researcher imported into their protocol.',
+      'Label beside the original filename of a file a researcher has just imported into their protocol and not yet saved.',
   },
   sizeTerm: {
     id: 'protocolBuilder.resourceSummary.sizeTerm',
@@ -107,7 +107,17 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         <Badge>{resourceStatusLabel(descriptor.status, intl)}</Badge>
       </div>
       <dl className="flex flex-col gap-1 text-sm">
-        {descriptor.source !== undefined && (
+        {/*
+          The file the researcher picked, while their import is still theirs to
+          recognise. Only while it is staged: once the protocol has committed
+          it, `source` is the name the host files the bytes under — worked out
+          from the bytes themselves, so two files imported under one filename
+          stay two assets — and showing that under "File" would tell the
+          researcher their photograph is called sixty-four hex characters. The
+          heading above is what the protocol calls the resource, and that is
+          the answer to "which file is this" for a saved one.
+        */}
+        {descriptor.status === 'staged' && descriptor.source !== undefined && (
           <Detail term={intl.formatMessage(messages.fileTerm)}>
             {descriptor.source}
           </Detail>

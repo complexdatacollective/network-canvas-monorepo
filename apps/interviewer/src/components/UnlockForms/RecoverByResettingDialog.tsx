@@ -114,6 +114,11 @@ function RecoverByResettingDialogContent({
             onReset?.();
             return { success: true };
           } catch (error) {
+            // Only the generic translated message below reaches the user; this
+            // recovery flow runs while the device may be locked out (pre-unlock),
+            // when analytics is not reliably available, so the console is the
+            // only place the raw cause survives for debugging.
+            // oxlint-disable-next-line no-console -- only diagnostic for this locked-out recovery flow; analytics is not reliably available here
             console.error('App data reset failed', error);
             return {
               success: false,

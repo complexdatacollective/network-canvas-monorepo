@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS } from '../diagnostic-catalog.ts';
 import {
   createOperationalLogger,
   logOperational,
@@ -11,6 +12,30 @@ import {
 import { createObservability } from '../runtime.ts';
 
 describe('operational output allowlists', () => {
+  it('emits every canonical diagnostic at its declared severity', () => {
+    const lines: Record<string, unknown>[] = [];
+    const logger = createOperationalLogger({
+      write(line) {
+        lines.push(JSON.parse(line) as Record<string, unknown>);
+      },
+    });
+    const numericLevel = { info: 30, warn: 40, error: 50 } as const;
+    const diagnostics = Object.entries(STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS);
+    expect(diagnostics.length).toBeGreaterThan(0);
+    for (const [code] of diagnostics)
+      logger.diagnostic(
+        code as keyof typeof STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS,
+      );
+    expect(lines).toEqual(
+      diagnostics.map(([code, level]) => ({
+        level: numericLevel[level],
+        time: expect.any(String),
+        event: 'operational',
+        code,
+      })),
+    );
+  });
+
   it('has no raw runtime console or warning bypass outside the explicit development tools', async () => {
     const source = new URL('../../', import.meta.url);
     const files = await readdir(source, { recursive: true });

@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.4.5
+
+### Patch Changes
+
+- Add a newly published Network Canvas study to the website publications list.
+
 ## 0.4.4
 
 ### Patch Changes

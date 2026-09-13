@@ -279,6 +279,10 @@ export function useSetupWizard({
       try {
         initialAnalyticsEnabled = (await getSettings()).analyticsEnabled;
       } catch (cause) {
+        // Only the generic translated message below reaches the user. This can
+        // fail before the wizard has read (or the user has set) the analytics
+        // preference, so routing through analytics is not reliable here.
+        // oxlint-disable-next-line no-console -- only diagnostic for this pre-enrolment settings read; analytics preference is not yet established at this point
         console.error('Security setup failed', cause);
         toast.add({
           title: createElement(AppMessage, {
@@ -520,6 +524,10 @@ export function useSetupWizard({
 
       if (!preserveExistingData) await refresh();
     } catch (cause) {
+      // Only the generic translated message below reaches the user. A first-run
+      // enrolment failure can happen before the analytics preference this same
+      // flow is setting has taken effect, so the console is the reliable path.
+      // oxlint-disable-next-line no-console -- only diagnostic for enrolment failures that can occur before this flow's own analytics preference takes effect
       console.error('Security setup failed', cause);
       toast.add({
         title: createElement(AppMessage, {
@@ -539,6 +547,10 @@ export function useSetupWizard({
         try {
           await refresh();
         } catch (cause) {
+          // Only the generic translated message below reaches the user; this is
+          // the emergency post-enrolment refresh, so the console is the
+          // reliable path regardless of analytics state.
+          // oxlint-disable-next-line no-console -- only diagnostic for this post-enrolment auth refresh; the reliable path regardless of analytics state
           console.error('Security setup failed', cause);
           toast.add({
             title: createElement(AppMessage, {

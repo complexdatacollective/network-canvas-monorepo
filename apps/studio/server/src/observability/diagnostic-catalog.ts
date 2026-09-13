@@ -4,6 +4,7 @@ export const STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS = Object.freeze({
   STUDIO_ENCRYPTION_INVALID: 'error',
   STUDIO_ENCRYPTION_MAINTENANCE_FAILED: 'error',
   STUDIO_BACKUP_ACCESS_UNSAFE: 'error',
+  // Emitted by the standalone recovered-asset verifier before serving resumes.
   STUDIO_RECOVERED_ASSET_VERIFICATION_FAILED: 'error',
   STUDIO_PROCESS_FAILED: 'error',
   STUDIO_RECOVERY_AUTHORIZATION_RECONCILED: 'info',
@@ -11,6 +12,7 @@ export const STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS = Object.freeze({
   STUDIO_RECOVERY_CURRENT_AUTHORIZATION_COMPLETED: 'info',
   STUDIO_RECOVERY_CURRENT_AUTHORIZATION_FAILED: 'error',
   STUDIO_CLIENT_ASSETS_UNAVAILABLE: 'warn',
+  // Emitted by the managed client-asset retention admission check.
   STUDIO_CLIENT_ASSETS_INVALID: 'error',
   STUDIO_DATABASE_IDLE_ERROR: 'error',
   STUDIO_DATABASE_IDENTITY_UNSAFE: 'error',
@@ -29,6 +31,10 @@ export const STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS = Object.freeze({
   STUDIO_AUTH_ERROR: 'error',
   STUDIO_AUTH_WARNING: 'warn',
   STUDIO_WEBSOCKET_ERROR: 'error',
+  STUDIO_PROTOCOL_LEASE_RELEASE_FAILED: 'error',
   STUDIO_RESPONSE_STREAM_FAILED: 'error',
   STUDIO_INVITATION_WORKER_ERROR: 'error',
 } as const);
+
+export type StudioOperationalDiagnosticCode =
+  keyof typeof STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS;

@@ -5,15 +5,11 @@ import { expect, userEvent, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { ResourceGatewayProvider } from '../context.tsx';
-import type {
-  ProtocolBuilderResourceGateway,
-  ResourceSecretStorage,
-} from '../gateway.ts';
-import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
-import { overrideGateway } from '../overrideGateway.ts';
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../client.tsx';
+import type { ResourceSecretStorage } from '../types.ts';
 import ResourceSecretControl from './ResourceSecretControl.tsx';
-import { API_KEY_RESOURCE } from './storyFixtures.ts';
+import { API_KEY_RESOURCE, createStoryHost } from './storyFixtures.ts';
 
 /** A key of the shape a researcher pastes out of their map provider. */
 const MAPBOX_KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzdG9yeWJvb2sifQ';
@@ -29,40 +25,42 @@ type SecretControlHostProps = Readonly<{
  * A host holding the key control and reporting what it was handed.
  *
  * It reports the descriptor, which is all the control ever gives it: the value
- * goes to the gateway and the opaque handle promotion needs is the session's,
+ * goes to the host and the opaque handle promotion needs is the edit's,
  * captured where the secret was staged.
  */
 function SecretControlHost({
   secretStorage,
   hostAcceptsKeys = true,
 }: SecretControlHostProps) {
-  const [gateway] = useState<ProtocolBuilderResourceGateway>(() => {
-    const host = new InMemoryResourceGateway({
-      committed: [API_KEY_RESOURCE],
-    });
-    if (!hostAcceptsKeys) host.failNext('stageSecret');
-    // The in-memory host's own promotion writes the value into the protocol's
-    // `apiKey` asset, which IS the `plaintext` answer — so it cannot honestly
-    // say anything else about itself, and the vault story replaces the one
-    // thing the control reads to decide what it tells the researcher.
-    if (secretStorage === 'plaintext') return host;
-    return overrideGateway(host, { secretStorage });
-  });
+  // The in-memory host's own promotion writes the value into the protocol's
+  // `apikey` asset, which IS the `plaintext` answer — so the vault story is a
+  // host that says of itself what a host with a secret store of its own would.
+  const [host] = useState(() =>
+    createStoryHost({
+      resources: [API_KEY_RESOURCE],
+      secretStorage,
+      ...(hostAcceptsKeys
+        ? {}
+        : { refuses: { procedure: 'stage', forever: true } as const }),
+    }),
+  );
   const [added, setAdded] = useState('No key has been added yet.');
 
   return (
-    <ResourceGatewayProvider gateway={gateway}>
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-        <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
-          {added}
-        </Paragraph>
-        <ResourceSecretControl
-          onStaged={(descriptor) =>
-            setAdded(`The stage now refers to ${descriptor.id}.`)
-          }
-        />
-      </main>
-    </ResourceGatewayProvider>
+    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ResourceClientProvider>
+        <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+          <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
+            {added}
+          </Paragraph>
+          <ResourceSecretControl
+            onStaged={(descriptor) =>
+              setAdded(`The stage now refers to ${descriptor.id}.`)
+            }
+          />
+        </main>
+      </ResourceClientProvider>
+    </ProtocolBuilder>
   );
 }
 

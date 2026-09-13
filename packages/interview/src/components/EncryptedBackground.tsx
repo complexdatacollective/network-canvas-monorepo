@@ -241,6 +241,17 @@ const createDeterministicStream = (
   };
 };
 
+const STREAM_COUNT = 40;
+
+const createInitialStreams = (thresholdPosition: number): Stream[] =>
+  isChromatic()
+    ? Array.from({ length: STREAM_COUNT }, (_, index) =>
+        createDeterministicStream(index, STREAM_COUNT, thresholdPosition),
+      )
+    : Array.from({ length: STREAM_COUNT }, (_, index) =>
+        createStream(-20 + (index * 120) / STREAM_COUNT, thresholdPosition),
+      );
+
 type EncryptionBackgroundProps = {
   thresholdPosition: number;
 };
@@ -248,26 +259,27 @@ type EncryptionBackgroundProps = {
 const EncryptionBackground = ({
   thresholdPosition,
 }: EncryptionBackgroundProps) => {
-  const [streams, setStreams] = useState<Stream[]>([]);
+  const [streams, setStreams] = useState<Stream[]>(() =>
+    createInitialStreams(thresholdPosition),
+  );
+  // Moving the threshold re-seeds the field, exactly as it did when the effect
+  // below owned the seeding. Done during render so the new streams and the new
+  // threshold reach the screen in the same frame.
+  const [seededThreshold, setSeededThreshold] = useState(thresholdPosition);
+  if (seededThreshold !== thresholdPosition) {
+    setSeededThreshold(thresholdPosition);
+    setStreams(createInitialStreams(thresholdPosition));
+  }
+
   const animationFrameRef = useRef<number>(undefined);
   const lastUpdateTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    const streamCount = 40;
-
+    // Chromatic gets the deterministic seed above and no animation loop, so
+    // every snapshot of this background is the same picture.
     if (isChromatic()) {
-      setStreams(
-        Array.from({ length: streamCount }, (_, index) =>
-          createDeterministicStream(index, streamCount, thresholdPosition),
-        ),
-      );
       return;
     }
-
-    const initialStreams = Array.from({ length: streamCount }, (_, index) =>
-      createStream(-20 + (index * 120) / streamCount, thresholdPosition),
-    );
-    setStreams(initialStreams);
 
     const updateStreams = (currentTime: number) => {
       const timeDelta = currentTime - lastUpdateTimeRef.current;

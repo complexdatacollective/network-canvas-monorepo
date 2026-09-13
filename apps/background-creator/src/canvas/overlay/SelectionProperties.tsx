@@ -51,26 +51,39 @@ export function SelectionProperties({
   const open = openForId !== null && openForId === selectedId;
   const setOpen = (next: boolean) => setOpenForId(next ? selectedId : null);
 
+  // Drop the open binding when the selection clears (including a Delete
+  // pressed inside the panel, which is not an outside-press so no managed
+  // close runs). Otherwise a stale openForId could re-match a later
+  // selection of the same id — e.g. delete-then-undo restores the element —
+  // and the panel would reopen without an explicit trigger press. Adjusted
+  // during render (not an effect) so there is no extra paint where the
+  // binding is still stale.
+  const [prevSelectedId, setPrevSelectedId] = useState(selectedId);
+  if (selectedId !== prevSelectedId) {
+    setPrevSelectedId(selectedId);
+    if (selectedId === null) {
+      setOpenForId(null);
+    }
+  }
+
   // If the popup held focus when its element vanished — Delete pressed inside
   // the panel — the whole popover unmounts and focus falls to <body>; hand it
   // to the stage instead so the keyboard user is not stranded at the top of
   // the document. Fire only on a real→null transition: on initial mount (or any
   // reselection) there is no focus to rescue, and grabbing focus on page load
   // would yank keyboard and screen-reader users into the canvas uninvited.
+  // Genuinely needs an effect: it reads/writes DOM focus, which must happen
+  // after the popover has actually unmounted and committed.
   const hadSelectionRef = useRef(false);
   useEffect(() => {
     const hadSelection = hadSelectionRef.current;
     hadSelectionRef.current = selectedId !== null;
-    if (selectedId === null) {
-      // Drop the open binding when the selection clears (including a Delete
-      // pressed inside the panel, which is not an outside-press so no managed
-      // close runs). Otherwise a stale openForId could re-match a later
-      // selection of the same id — e.g. delete-then-undo restores the element —
-      // and the panel would reopen without an explicit trigger press.
-      setOpenForId(null);
-      if (hadSelection && document.activeElement === document.body) {
-        stageRef.current?.focus();
-      }
+    if (
+      selectedId === null &&
+      hadSelection &&
+      document.activeElement === document.body
+    ) {
+      stageRef.current?.focus();
     }
   }, [selectedId, stageRef]);
 

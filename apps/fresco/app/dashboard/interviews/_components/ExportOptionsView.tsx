@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -57,6 +57,8 @@ const sectionClasses = cx(
   '[&_div]:basis-[fit-content]',
   '[&_div:nth-child(2)]:flex [&_div:nth-child(2)]:items-center [&_div:nth-child(2)]:justify-center [&_div:nth-child(2)]:p-4',
 );
+
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 const ExportOptionsView = ({
   exportOptions,
@@ -145,9 +147,9 @@ const ExportOptionsView = ({
           </Heading>
           <Paragraph intent="smallText">
             {intl.formatMessage(messages.cSVIsAWidelyUsedFormatFor, {
-              tag1: (chunks) => <strong>{chunks}</strong>,
-              tag2: (chunks) => <strong>{chunks}</strong>,
-              tag3: (chunks) => <strong>{chunks}</strong>,
+              tag1: renderStrongChunks,
+              tag2: renderStrongChunks,
+              tag3: renderStrongChunks,
             })}
           </Paragraph>
         </div>

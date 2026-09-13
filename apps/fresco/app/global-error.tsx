@@ -1,7 +1,7 @@
 'use client';
 import { ClipboardCopy } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -51,6 +51,10 @@ const messages = defineMessages({
       "Researcher-facing globalerror: This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified an",
   },
 });
+
+const renderCommunityLinkChunks = (chunks: ReactNode[]) => (
+  <Link href="https://community.networkcanvas.com">{chunks}</Link>
+);
 
 function ErrorContent({
   error,
@@ -104,9 +108,7 @@ ${error.stack}`;
         </Paragraph>
         <Paragraph>
           {intl.formatMessage(messages.thisCouldIndicateAProblemWithYour, {
-            tag1: (chunks) => (
-              <Link href="https://community.networkcanvas.com">{chunks}</Link>
-            ),
+            tag1: renderCommunityLinkChunks,
           })}
         </Paragraph>
         <div className="mt-4 flex flex-col gap-2">

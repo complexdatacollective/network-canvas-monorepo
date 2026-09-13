@@ -1,37 +1,37 @@
 {
-  "label": "Your Family",
-  "id": "id-1",
-  "type": "FamilyPedigree",
+  "boundaries": {
+    "requireChildrenContributors": "off",
+    "requireGrandparents": "off"
+  },
+  "censusPrompt": "Who is in your family?",
+  "edgeConfig": {
+    "gameteRoleVariable": "id-1",
+    "isActiveVariable": "id-2",
+    "isGestationalCarrierVariable": "id-3",
+    "relationshipTypeVariable": "id-4",
+    "type": "id-5"
+  },
   "framing": {
     "mode": "fixed",
     "value": "gamete"
   },
-  "boundaries": {
-    "requireGrandparents": "off",
-    "requireChildrenContributors": "off"
-  },
+  "id": "id-6",
   "introScreen": {
     "items": [
       {
-        "id": "id-2",
-        "type": "text",
-        "content": "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later."
+        "content": "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
+        "id": "id-7",
+        "type": "text"
       }
     ]
   },
+  "label": "Your Family",
   "nodeConfig": {
-    "type": "id-3",
-    "nodeLabelVariable": "id-4",
-    "egoVariable": "id-5",
-    "relationshipVariable": "id-6",
-    "biologicalSexVariable": "id-7"
+    "biologicalSexVariable": "id-8",
+    "egoVariable": "id-9",
+    "nodeLabelVariable": "id-10",
+    "relationshipVariable": "id-11",
+    "type": "id-12"
   },
-  "edgeConfig": {
-    "type": "id-8",
-    "relationshipTypeVariable": "id-9",
-    "isActiveVariable": "id-10",
-    "isGestationalCarrierVariable": "id-11",
-    "gameteRoleVariable": "id-12"
-  },
-  "censusPrompt": "Who is in your family?"
+  "type": "FamilyPedigree"
 }

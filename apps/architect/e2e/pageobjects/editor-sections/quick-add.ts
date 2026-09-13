@@ -1,41 +1,33 @@
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
-import { createVariableViaSpotlight } from './variables.js';
+import { chooseOrCreateAttribute } from './variables.js';
 
-// QuickAdd section (sections/QuickAdd/QuickAdd.tsx, `Section title="Quick add
-// configuration"`; returns null entirely until `subject.type` is set — pick the
-// node type first). Creating a variable through this picker hard-codes
-// `validation: { required: true }` onto the codebook entry
-// (QuickAdd.tsx `handleCreateVariable(value, 'text', 'quickAdd', { required:
-// true })`); the canonical sample-protocol `name` variable has no validation,
-// so this helper then toggles OFF the nested Validation section that mounts under
-// the picker — ValidationSection dispatches `validation: null`, and
-// CodebookVariableValidationSection's `updateVariableAsync` with
-// `replaceProperties: ['validation']` deletes the key from the codebook
-// immediately (not at stage save).
-export async function createQuickAddVariable(
+// The quick-add section (`@codaco/protocol-builder`'s
+// `editors/name-generator-quick-add/sections/QuickAddSection.tsx`, `Quick add`)
+// holds one field, `quickAdd`, labelled "Select an attribute" and rendered by
+// `VariablePickerField`. Facts read from that source:
+// - The picker is a trigger opening the attribute window over the node type's
+//   TEXT attributes; because this section passes `onCreateOption`, the window
+//   also offers to create one under whatever is typed into its search box.
+// - So this selects when the type already has the attribute and creates only
+//   when it does not — a second quick-add stage on the same node type points
+//   at the attribute the first one made, and asking the codebook for a name it
+//   already holds is refused as a duplicate.
+// - Creating writes `{ type: 'text', component: 'Text' }` into the codebook and
+//   selects the new attribute (`createQuickAddAttribute`).
+export async function selectOrCreateQuickAddVariable(
   editor: StageEditor,
-  page: Page,
   variableName: string,
-  opts: { clearRequiredValidation?: boolean } = {},
 ): Promise<void> {
-  await createVariableViaSpotlight(page, {
-    variableName,
-    scope: editor.field('quickAdd'),
-    until: editor
-      .field('quickAdd')
-      .getByRole('button', { name: 'Change attribute' }),
-  });
-  if (opts.clearRequiredValidation) {
-    const validation = editor.section('Validation');
-    const toggle = validation.getByRole('switch', {
-      name: 'Validation',
-      exact: true,
-    });
-    // The created variable carries `required`, so the section starts
-    // expanded (`defaultOpen={hasValidation}`); one click turns it off.
-    await expect(toggle).toHaveAttribute('aria-checked', 'true');
-    await toggle.click();
-  }
+  // Scoped to the field: a prompt dialog's attribute stamps render a picker of
+  // their own, and so does the codebook surface.
+  const picker = editor.field('quickAdd');
+  await chooseOrCreateAttribute(picker, variableName);
+  // And the FIELD holds it, not merely the codebook: a create that landed
+  // while the section had moved on answers `{ status: 'unassigned' }`, which
+  // leaves the trigger reading "Select attribute".
+  await expect(
+    picker.getByRole('button', { name: 'Change attribute', exact: true }),
+  ).toBeVisible();
 }

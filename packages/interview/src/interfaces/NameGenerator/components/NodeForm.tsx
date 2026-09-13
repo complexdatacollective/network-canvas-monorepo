@@ -77,12 +77,20 @@ const NodeForm = (props: NodeFormProps) => {
   );
 
   // When a selected node is passed in, we are editing an existing node.
-  // We need to show the form and populate it with the node's data.
-  useEffect(() => {
+  // We need to show the form and populate it with the node's data. Compared
+  // during render rather than in an effect, so the form opens in the same
+  // frame the node is handed to it.
+  // Seeded `null`, not `selectedNode`: the effect this replaces ran on mount,
+  // so a NodeForm mounted with a node already selected opened straight into
+  // the edit form. Seeding the current value would skip that first run and
+  // leave such a mount showing a closed dialog.
+  const [openedForNode, setOpenedForNode] = useState<NcNode | null>(null);
+  if (openedForNode !== selectedNode) {
+    setOpenedForNode(selectedNode);
     if (selectedNode) {
       setShow(true);
     }
-  }, [selectedNode]);
+  }
 
   const previousShowRef = useRef(false);
   useEffect(() => {

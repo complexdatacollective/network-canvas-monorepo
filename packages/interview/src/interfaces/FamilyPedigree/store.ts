@@ -171,8 +171,11 @@ export const createFamilyPedigreeStore = (
         ((edge.from === from && edge.to === to) ||
           (edge.from === to && edge.to === from))
       ) {
+        // The node ids stay out of the message: errors are reported to
+        // analytics, and a node id is a participant-network identifier the
+        // runtime otherwise pseudonymises.
         throw new Error(
-          `Duplicate FamilyPedigree edge: a "${String(relationshipType)}" edge already connects "${from}" and "${to}".`,
+          `Duplicate FamilyPedigree edge: a "${String(relationshipType)}" edge already connects these two nodes.`,
         );
       }
     }

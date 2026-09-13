@@ -2,4 +2,4 @@
 // Resync after any schema or sidecar change:
 //   pnpm --filter @codaco/studio-server sync-fingerprint
 export const SCHEMA_FINGERPRINT =
-  '01e8b6fce6424a2886c1d184e7bf008da5d971535301e6a1c1afb946f8303df0';
+  '8f2de6724eda53cdefcb0d2f890ad162403cb67926e659ab838b99798fb76650';

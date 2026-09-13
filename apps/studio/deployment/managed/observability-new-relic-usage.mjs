@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { hasDuplicateJsonObjectKeys } from '../../../../scripts/studio-managed-strict-json.mjs';
+import { hasDuplicateJsonObjectKeys } from '../../../../scripts/studio/studio-managed-strict-json.mjs';
 
 const ENDPOINT = 'https://api.newrelic.com/graphql';
 const MAX_RESPONSE_BYTES = 16_384;

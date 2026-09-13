@@ -224,13 +224,16 @@ const NameGenerator = (props: NameGeneratorProps) => {
               if (codebookForNodeType[variableId]?.encrypted) {
                 const secureAttributes = node[entitySecureAttributesMeta];
                 if (!secureAttributes?.[variableId]) {
+                  // The node id stays out of the message: errors are
+                  // reported to analytics, and a node id is a participant
+                  // network identifier the runtime otherwise pseudonymises.
                   throw new Error(
-                    `Secure attributes missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
+                    `Secure attributes missing for encrypted variable ${variableId}`,
                   );
                 }
                 if (!isNumberArray(value)) {
                   throw new Error(
-                    `Encrypted value missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
+                    `Encrypted value missing for encrypted variable ${variableId}`,
                   );
                 }
 

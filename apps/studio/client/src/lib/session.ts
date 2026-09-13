@@ -6,6 +6,7 @@ import {
 import { useRouter, type AnyRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
+import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
 import { authClient } from './auth.ts';
 
 /**
@@ -40,10 +41,37 @@ async function fetchSessionState(): Promise<SessionState> {
     // degradation, not a failure. That is a reachable server saying nobody is
     // signed in, so it belongs on the sign-in page, which reads the same
     // capability from the status query and explains it.
-    if (error.status === 503) return 'signedOut';
+    if (error.status === 503) return endedSession();
     throw new ServerUnreachableError();
   }
-  return data ? 'signedIn' : 'signedOut';
+  return data ? 'signedIn' : endedSession();
+}
+
+/**
+ * Nobody is signed in — and this tab's editor session ends here.
+ *
+ * Here because this query is the one channel through which the application
+ * learns it (§6.2). The app shell's guard reads it, the sign-in guard reads
+ * it, and on a marketing page the site shell's own entry is the ONLY reader:
+ * that branch has no guard at all, so a researcher who leaves the editor for a
+ * public page and is signed out from another tab is told here and nowhere
+ * else. Putting it in any one of those readers leaves the others out, which is
+ * how the app guard came to be the only place that did it.
+ *
+ * What has to end is the socket the protocol editor talks its host over. The
+ * server reads the account once, at the upgrade, and authorises and audits
+ * every later message on that socket as them — so a socket that outlives the
+ * session is one the next account to sign in on this tab would be editing,
+ * and be audited, through. `closeStudioEditorSessions` is idempotent, so
+ * saying it again about a session already ended costs nothing.
+ *
+ * Not knowing ends nothing: an unreachable server throws above rather than
+ * reaching here, for the same reason it is not allowed to look like a
+ * sign-out anywhere else in this file.
+ */
+async function endedSession(): Promise<SessionState> {
+  await closeStudioEditorSessions();
+  return 'signedOut';
 }
 
 /**

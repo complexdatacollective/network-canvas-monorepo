@@ -168,6 +168,10 @@ function currentStore() {
   return store;
 }
 
+const taskCompleteDescription = (
+  <AppMessage message={runtimeMessages.taskComplete} />
+);
+
 function StandaloneToast() {
   const { showToast, closeToast } = useStageValidation({ constraints: [] });
   const id = useRef<string | null>(null);
@@ -176,7 +180,7 @@ function StandaloneToast() {
       <button
         onClick={() => {
           id.current = showToast({
-            description: <AppMessage message={runtimeMessages.taskComplete} />,
+            description: taskCompleteDescription,
             variant: 'success',
             anchor: 'forward',
             timeout: 0,

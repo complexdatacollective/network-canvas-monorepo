@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { action } from 'storybook/actions';
-import { fn } from 'storybook/test';
+import { expect, fn, screen, userEvent } from 'storybook/test';
 
 import Button from '../Button';
 import Heading from '../typography/Heading';
@@ -593,6 +593,65 @@ export const AsyncConfirmWithError: Story = {
         <Button onClick={handleAction}>Save (always fails after 1s)</Button>
       </div>
     );
+  },
+};
+
+/**
+ * A dialog that must not be dismissed by accident sets `dismissible={false}`.
+ * That hides the close button AND refuses both dismissal gestures: Escape and
+ * a press outside neither close it nor call `closeDialog`.
+ *
+ * Reach for it while work is in flight behind the dialog — a submit, an export
+ * being built — or for a flow that has to be completed, such as a lock screen.
+ * Because both reflexes are refused and the close button is gone, the dialog
+ * owes the researcher a way out they can reach from the keyboard: here, the
+ * footer's Cancel.
+ */
+export const NonDismissible: Story = {
+  render: () => {
+    const [open, setOpen] = useState(true);
+
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Button onClick={() => setOpen(true)}>Export data</Button>
+        <Dialog
+          open={open}
+          closeDialog={() => setOpen(false)}
+          title="Exporting 12 interviews"
+          description="Escape and a press outside are both refused while the archive is being built. Only Cancel stops it."
+          dismissible={false}
+          footer={<Button onClick={() => setOpen(false)}>Cancel export</Button>}
+        >
+          <Paragraph margin="none">Collecting interview files…</Paragraph>
+        </Dialog>
+      </div>
+    );
+  },
+  play: async () => {
+    const dialog = await screen.findByRole('dialog');
+
+    // No close button, and neither reflex closes it. The pair of assertions
+    // below only means something because `Cancel` then does close it: without
+    // that, a dialog that never opened would pass this play just as well.
+    await expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Escape}');
+    await expect(dialog).toBeInTheDocument();
+
+    await userEvent.click(document.body);
+    await expect(dialog).toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Cancel export' }),
+    );
+    await expect(dialog).not.toBeInTheDocument();
+
+    // Reopened so the story settles on the dialog itself, which is what its
+    // snapshot is for.
+    await userEvent.click(screen.getByRole('button', { name: 'Export data' }));
+    await screen.findByRole('dialog');
   },
 };
 
