@@ -294,6 +294,44 @@ describe.skipIf(!db)('staged audit export', () => {
     ]);
   });
 
+  it('drops generated state even when both completion and retry writes fail', async () => {
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    const adapter = new AuditExportAdapter(
+      maintenance,
+      store,
+      await loadTestKeys(),
+      0,
+    );
+    const lease = { owner: randomUUID(), durationMs: 30_000 };
+    const claim = await adapter.claim(lease, 8);
+    if (!claim) throw new Error('expected claim');
+    await adapter.deliver(claim);
+    expect(Reflect.get(adapter, 'generated')).toHaveProperty('size', 1);
+    await owner.query(
+      'REVOKE UPDATE ON audit_export_jobs FROM studio_maintenance',
+    );
+    try {
+      await expect(adapter.recordComplete(claim, lease)).rejects.toMatchObject({
+        code: '42501',
+      });
+      await expect(
+        adapter.recordFailure(claim, lease, new Error('completion failed'), 0),
+      ).rejects.toMatchObject({ code: '42501' });
+      expect(Reflect.get(adapter, 'generated')).toHaveProperty('size', 0);
+    } finally {
+      await owner.query(
+        'GRANT UPDATE ON audit_export_jobs TO studio_maintenance',
+      );
+      await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [
+        requested.jobId,
+      ]);
+    }
+  });
+
   it('releases its lease and retains a retryable job after storage failure', async () => {
     const requested = await requestAuditExport(
       { ...context, requestId: randomUUID() },

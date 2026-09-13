@@ -1141,17 +1141,20 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         throw cleanupError;
       }
     }
-    const r = await this.pool.query(
-      `UPDATE audit_export_jobs SET status=CASE WHEN $4::bigint IS NULL THEN 'failed' ELSE 'pending' END,
+    try {
+      const r = await this.pool.query(
+        `UPDATE audit_export_jobs SET status=CASE WHEN $4::bigint IS NULL THEN 'failed' ELSE 'pending' END,
       failed_at=CASE WHEN $4::bigint IS NULL THEN statement_timestamp() ELSE NULL END,
       available_at=CASE WHEN $4::bigint IS NULL THEN available_at ELSE statement_timestamp()+($4*interval '1 millisecond') END,
       last_error=$3,artifact_attempt_id=NULL,artifact_key=NULL,lease_owner=NULL,lease_expires_at=NULL
       WHERE id=$1 AND lease_owner=$2
         AND ($5::uuid IS NULL OR artifact_attempt_id=$5) RETURNING id`,
-      [c.id, l.owner, message, retry, c.attemptId],
-    );
-    this.forgetGenerated(c);
-    return r.rowCount === 1;
+        [c.id, l.owner, message, retry, c.attemptId],
+      );
+      return r.rowCount === 1;
+    } finally {
+      this.forgetGenerated(c);
+    }
   }
   async recordComplete(c: Claim, l: OutboxLease) {
     const g = this.generatedFor(c);
