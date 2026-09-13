@@ -103,6 +103,40 @@ describe('useStageNavigationAnalytics', () => {
     expect(typeof exitCall?.[1].duration_ms).toBe('number');
   });
 
+  it('classifies a nonadjacent transition as jumped on both events', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const stages = [
+      { type: 'Information' },
+      { type: 'NameGenerator' },
+      { type: 'AlterForm' },
+    ];
+    const wrapper = makeWrapper(tracker, stages);
+    const { rerender } = renderHook(
+      (props: { stage_index: number; stage_type?: string }) =>
+        useStageNavigationAnalytics(props),
+      {
+        wrapper,
+        initialProps: { stage_index: 0, stage_type: 'Information' },
+      },
+    );
+
+    tracker.track.mockClear();
+    rerender({ stage_index: 2, stage_type: 'AlterForm' });
+
+    expect(tracker.track).toHaveBeenCalledWith(
+      'stage_exited',
+      expect.objectContaining({ stage_index: 0, exit_direction: 'jumped' }),
+    );
+    expect(tracker.track).toHaveBeenCalledWith(
+      'stage_entered',
+      expect.objectContaining({ stage_index: 2, direction: 'jumped' }),
+    );
+    expect(
+      wrapper.store.getState().session.stageTiming?.stageExits[0]
+        ?.exitDirection,
+    ).toBe('jumped');
+  });
+
   it('emits the final stage exit once when the interview unmounts', async () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
     const BaseWrapper = makeWrapper(tracker, [{ type: 'NameGenerator' }]);

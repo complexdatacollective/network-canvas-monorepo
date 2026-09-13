@@ -13,7 +13,10 @@ import {
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import { seedMonitoringRollups } from '../../db/seed/monitoring.ts';
-import { createSessionTimingOpenRoute } from '../../study/session-timing-route.ts';
+import {
+  createSessionTimingOpenRoute,
+  createSessionTimingRoute,
+} from '../../study/session-timing-route.ts';
 import {
   MAX_TIMING_INTERVAL_MS,
   openInterviewSession,
@@ -29,7 +32,7 @@ const TEAM = `timing.team.with.dots.${'a'.repeat(130)}`;
 const OTHER_TEAM = 'timing-team-b';
 const PROTOCOL_STAGES = [
   ['info-1', 'Information'],
-  ['info-2', 'Information'],
+  ['info.2:section', 'Information'],
   ['ego-1', 'Ego'],
   ['edge-1', 'Edge'],
 ] as const;
@@ -231,6 +234,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
 
     const route = new Hono();
     route.post('/interview/:sessionId/open', createSessionTimingOpenRoute(app));
+    route.post('/interview/:sessionId/sync', createSessionTimingRoute(app));
     const response = await route.request(`/interview/${sessionId}/open`, {
       method: 'POST',
       headers: {
@@ -246,6 +250,17 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     };
     holderEpoch = opened.holderEpoch;
     expect(opened.syncRevision).toBe(0);
+
+    const malformed = await route.request('/interview/not-a-uuid/open', {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ writerId }),
+    });
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toEqual({ error: 'Invalid timing payload' });
 
     const stageTiming = {
       stageExits: [
@@ -285,18 +300,23 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       promptExits: [],
       totalDurationMs: 1385.5,
     };
-    await expect(
-      writeInterviewTiming(app, {
-        sessionId,
-        accessToken: token,
+    const synced = await route.request(`/interview/${sessionId}/sync`, {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
         writerId,
         holderEpoch,
         syncRevision: 1,
         stageTiming,
-        currentStageIndex: 3,
-        currentStageId: null,
+        currentStageIndex: 1,
+        currentStageId: 'info.2:section',
       }),
-    ).resolves.toEqual({ kind: 'applied', applied: true, syncRevision: 1 });
+    });
+    expect(synced.status).toBe(200);
+    expect(await synced.json()).toMatchObject({ applied: true });
 
     const stored = await pool.query<{
       sync_revision: number;
@@ -318,7 +338,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
           stageId: PROTOCOL_STAGES[exit.stageIndex]![0],
         })),
       },
-      current_stage_id: 'edge-1',
+      current_stage_id: 'info.2:section',
     });
     await expect(
       writeInterviewTiming(app, {
@@ -380,7 +400,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
           missing_item_count: 0,
         },
         {
-          stage_id: 'info-2',
+          stage_id: 'info.2:section',
           completed_count: 1,
           abandoned_count: 0,
           missing_item_count: 0,
@@ -451,7 +471,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         missing_item_count: 0,
       },
       {
-        stage_id: 'info-2',
+        stage_id: 'info.2:section',
         entered_count: 1,
         completed_count: 1,
         abandoned_count: 0,
@@ -486,6 +506,29 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
       claimed: 0,
     });
+  });
+
+  it('counts a session current stage before its first exit', async () => {
+    const currentSession = randomUUID();
+    await insert('interview_sessions', {
+      id: currentSession,
+      study_id: studyId,
+      team_id: TEAM,
+      wave_id: waveId,
+      protocol_version_id: versionId,
+      ego_uid: `ego-${currentSession.slice(0, 8)}`,
+      current_stage_index: 3,
+      current_stage_id: 'edge-1',
+    });
+
+    await runMonitoringRollupOnce(maintenance);
+
+    const row = await pool.query<{ entered_count: number }>(
+      `select entered_count from study_stage_rollups
+        where wave_id = $1 and stage_id = 'edge-1'`,
+      [waveId],
+    );
+    expect(row.rows[0]?.entered_count).toBe(2);
   });
 
   it('rejects implausible timing at the server boundary before writing', async () => {
@@ -670,11 +713,21 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       releaseRecompute?.();
     }
     await Promise.all([worker, newerWrite]);
-    const state = await pool.query<{ stale_at: Date | null }>(
-      `select stale_at from study_wave_rollups where wave_id = $1`,
+    const state = await pool.query<{
+      stale_at: Date | null;
+      pending_invalidations: number;
+    }>(
+      `select r.stale_at,
+              (select count(*)::int from monitoring_rollup_invalidations i
+                where i.wave_id = r.wave_id) as pending_invalidations
+         from study_wave_rollups r where r.wave_id = $1`,
       [waveId],
     );
-    expect(state.rows[0]?.stale_at).not.toBeNull();
+    expect(state.rows[0]).toEqual({
+      stale_at: null,
+      pending_invalidations: expect.any(Number),
+    });
+    expect(state.rows[0]!.pending_invalidations).toBeGreaterThan(0);
 
     const claims = await Promise.all([
       runMonitoringRollupOnce(maintenance),
@@ -846,12 +899,14 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     holderEpoch = reopened.holderEpoch;
   });
 
-  it('serializes link revocation with an in-flight authenticated write', async () => {
+  it('commits source invalidation without waiting on a locked wave rollup', async () => {
+    await pool.query(
+      `INSERT INTO study_wave_rollups (team_id, study_id, wave_id)
+       VALUES ($1, $2, $3) ON CONFLICT (wave_id) DO NOTHING`,
+      [TEAM, studyId, waveId],
+    );
     const waveBlocker = await pool.connect();
-    const revoker = await pool.connect();
     try {
-      await app.query(`set application_name = 'timing-source-write'`);
-      await revoker.query(`set application_name = 'timing-link-revoker'`);
       await waveBlocker.query('begin');
       await waveBlocker.query(
         `select 1 from study_wave_rollups where wave_id = $1 for update`,
@@ -864,13 +919,78 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         holderEpoch,
         syncRevision: 16,
       });
+      const outcome = await Promise.race([
+        writing.then(() => 'committed' as const),
+        new Promise<'blocked'>((resolve) =>
+          setTimeout(() => resolve('blocked'), 250),
+        ),
+      ]);
+      expect(outcome).toBe('committed');
+      await expect(writing).resolves.toMatchObject({ applied: true });
+      const pending = await pool.query<{ count: number }>(
+        `select count(*)::int as count from monitoring_rollup_invalidations
+          where wave_id = $1`,
+        [waveId],
+      );
+      expect(pending.rows[0]?.count).toBeGreaterThan(0);
+    } finally {
+      await waveBlocker.query('rollback').catch(() => undefined);
+      waveBlocker.release();
+    }
+  });
+
+  it('reports an invalidation-drain failure and preserves its durable work', async () => {
+    await pool.query(
+      'REVOKE DELETE ON monitoring_rollup_invalidations FROM studio_maintenance',
+    );
+    try {
+      const before = await pool.query<{ count: number }>(
+        `SELECT count(*)::int AS count FROM monitoring_rollup_invalidations
+          WHERE wave_id = $1`,
+        [waveId],
+      );
+      expect(before.rows[0]!.count).toBeGreaterThan(0);
+      await expect(runMonitoringRollupOnce(maintenance)).rejects.toMatchObject({
+        code: '42501',
+      });
+      const after = await pool.query<{ count: number }>(
+        `SELECT count(*)::int AS count FROM monitoring_rollup_invalidations
+          WHERE wave_id = $1`,
+        [waveId],
+      );
+      expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+    } finally {
+      await pool.query(
+        'GRANT DELETE ON monitoring_rollup_invalidations TO studio_maintenance',
+      );
+    }
+  });
+
+  it('serializes link revocation with an in-flight authenticated write', async () => {
+    const sessionBlocker = await pool.connect();
+    const revoker = await pool.connect();
+    try {
+      await app.query(`set application_name = 'timing-source-write'`);
+      await revoker.query(`set application_name = 'timing-link-revoker'`);
+      await sessionBlocker.query('begin');
+      await sessionBlocker.query(
+        `select 1 from interview_sessions where id = $1 for update`,
+        [sessionId],
+      );
+      const writing = writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: 17,
+      });
       await waitForBlockedApplication('timing-source-write');
       const revoking = revoker.query(
         `update interview_links set revoked_at = clock_timestamp() where id = $1`,
         [linkId],
       );
       await waitForBlockedApplication('timing-link-revoker');
-      await waveBlocker.query('commit');
+      await sessionBlocker.query('commit');
       await expect(writing).resolves.toMatchObject({ applied: true });
       await revoking;
       await expect(
@@ -879,13 +999,67 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
           accessToken: token,
           writerId,
           holderEpoch,
-          syncRevision: 17,
+          syncRevision: 18,
         }),
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });
     } finally {
-      await waveBlocker.query('rollback').catch(() => undefined);
-      waveBlocker.release();
+      await sessionBlocker.query('rollback').catch(() => undefined);
+      sessionBlocker.release();
       revoker.release();
     }
+  });
+
+  it('captures each source identity before bottom-up deletion removes joins', async () => {
+    const disposableLink = randomUUID();
+    const disposableSession = randomUUID();
+    await insert('interview_links', {
+      id: disposableLink,
+      study_id: studyId,
+      team_id: TEAM,
+      wave_id: waveId,
+      kind: 'anonymous',
+      token_hash: randomBytes(32),
+    });
+    await insert('interview_sessions', {
+      id: disposableSession,
+      study_id: studyId,
+      team_id: TEAM,
+      wave_id: waveId,
+      protocol_version_id: versionId,
+      link_id: disposableLink,
+      ego_uid: `ego-${disposableSession.slice(0, 8)}`,
+    });
+    await insert('nodes', {
+      team_id: TEAM,
+      session_id: disposableSession,
+      node_id: 'delete-cascade-node',
+      type: 'person',
+      stage_id: 'info-1',
+    });
+    await pool.query(
+      'DELETE FROM monitoring_rollup_invalidations WHERE wave_id = $1',
+      [waveId],
+    );
+
+    await maintenance.query('DELETE FROM nodes WHERE session_id = $1', [
+      disposableSession,
+    ]);
+    await maintenance.query('DELETE FROM interview_sessions WHERE id = $1', [
+      disposableSession,
+    ]);
+    await maintenance.query('DELETE FROM interview_links WHERE id = $1', [
+      disposableLink,
+    ]);
+
+    const sources = await pool.query<{ source: string }>(
+      `SELECT DISTINCT source FROM monitoring_rollup_invalidations
+        WHERE wave_id = $1 ORDER BY source`,
+      [waveId],
+    );
+    expect(sources.rows).toEqual([
+      { source: 'interview_links' },
+      { source: 'interview_sessions' },
+      { source: 'nodes' },
+    ]);
   });
 });

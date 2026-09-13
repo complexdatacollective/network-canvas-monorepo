@@ -173,14 +173,7 @@ function validateWrite(input: SessionTimingWrite): SessionTimingWrite {
         .nonnegative()
         .max(MAX_STAGE_INDEX)
         .optional(),
-      currentStageId: z
-        .string()
-        .trim()
-        .min(1)
-        .max(128)
-        .regex(/^[A-Za-z0-9_-]+$/)
-        .nullable()
-        .optional(),
+      currentStageId: z.string().nullable().optional(),
     })
     .parse(input);
   return parsed;
@@ -321,16 +314,6 @@ async function lockedLinkedSession(
   );
   const authorization = link.rows[0];
   if (!authorization) throw new SessionTimingError('NOT_FOUND');
-  await client.query(
-    `insert into study_wave_rollups (team_id, study_id, wave_id)
-     values ($1, $2, $3)
-     on conflict (wave_id) do nothing`,
-    [authorization.team_id, authorization.study_id, authorization.wave_id],
-  );
-  await client.query(
-    `select 1 from study_wave_rollups where wave_id = $1 for update`,
-    [authorization.wave_id],
-  );
   const result = await client.query<{
     team_id: string;
     study_id: string;
@@ -531,18 +514,6 @@ export async function writeInterviewTiming(
               last_activity_at = clock_timestamp()
         where id = $1`,
       values,
-    );
-    await client.query(
-      `update study_wave_rollups
-          set dirty_generation = dirty_generation + 1,
-              stale_at = clock_timestamp(),
-              attempt_count = 0,
-              failed_at = null,
-              last_error = null,
-              lease_owner = null,
-              lease_expires_at = null
-        where wave_id = $1`,
-      [row.waveId],
     );
     return {
       kind: 'applied',

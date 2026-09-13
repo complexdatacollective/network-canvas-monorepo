@@ -61,6 +61,12 @@ const shapes = {
     uncertain: 'uncertain_at',
   },
   study_wave_rollups: {
+    table: `(SELECT stale_at, lease_expires_at, failed_at
+      FROM study_wave_rollups
+      UNION ALL
+      SELECT created_at AS stale_at, NULL::timestamptz AS lease_expires_at,
+             NULL::timestamptz AS failed_at
+      FROM monitoring_rollup_invalidations) study_wave_rollup_work`,
     pending: 'stale_at IS NOT NULL AND failed_at IS NULL',
     available: 'stale_at',
     lease: 'lease_expires_at',

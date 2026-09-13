@@ -27,6 +27,8 @@ type Row = Record<string, unknown>;
 
 describe.skipIf(!db)('monitoring rollup schema', () => {
   let pool: pg.Pool;
+  let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
 
   /** Per team: one study with one wave. */
@@ -68,7 +70,7 @@ describe.skipIf(!db)('monitoring rollup schema', () => {
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, dispose } = await createScratchSchema(db));
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
 
     for (const teamId of [TEAM_A, TEAM_B]) {
@@ -310,6 +312,80 @@ describe.skipIf(!db)('monitoring rollup schema', () => {
         code: '23503',
         constraint: 'study_stage_rollups_wave_fk',
       });
+    });
+  });
+
+  describe('monitoring_rollup_invalidations', () => {
+    it('keeps event inspection and removal out of the application role', async () => {
+      await expect(
+        app.query('SELECT 1 FROM monitoring_rollup_invalidations'),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        app.query('DELETE FROM monitoring_rollup_invalidations'),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        maintenance.query(
+          'UPDATE monitoring_rollup_invalidations SET source = source',
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('binds every event to the exact tenant, study, and wave', async () => {
+      await expect(
+        insert('monitoring_rollup_invalidations', {
+          team_id: TEAM_A,
+          study_id: studyOf[TEAM_A],
+          wave_id: waveOf[TEAM_B],
+          source: 'test',
+        }),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'monitoring_rollup_invalidations_wave_fk',
+      });
+      await expect(
+        insert('monitoring_rollup_invalidations', {
+          team_id: TEAM_A,
+          study_id: studyOf[TEAM_A],
+          wave_id: spareWaveId,
+          source: 'test',
+        }),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'monitoring_rollup_invalidations_wave_fk',
+      });
+    });
+
+    it('removes obsolete events when their parent wave is deleted', async () => {
+      const studyId = randomUUID();
+      const waveId = randomUUID();
+      await insert('studies', {
+        id: studyId,
+        team_id: TEAM_A,
+        name: 'disposable invalidation study',
+      });
+      await insert('study_waves', {
+        id: waveId,
+        study_id: studyId,
+        team_id: TEAM_A,
+        wave_number: 1,
+      });
+      await insert('monitoring_rollup_invalidations', {
+        team_id: TEAM_A,
+        study_id: studyId,
+        wave_id: waveId,
+        source: 'test',
+      });
+
+      await pool.query('DELETE FROM study_waves WHERE id = $1', [waveId]);
+
+      expect(
+        (
+          await pool.query(
+            'SELECT 1 FROM monitoring_rollup_invalidations WHERE wave_id = $1',
+            [waveId],
+          )
+        ).rowCount,
+      ).toBe(0);
     });
   });
 });

@@ -27,6 +27,12 @@ type StageShape = {
 
 type ExitDirection = StageTimingExitDirection;
 
+function transitionDirection(previousIndex: number, nextIndex: number) {
+  if (nextIndex === previousIndex + 1) return 'forward' as const;
+  if (nextIndex === previousIndex - 1) return 'back' as const;
+  return 'jumped' as const;
+}
+
 function isSyntheticFinishStage(
   stages: StageShape[] | undefined,
   stageIndex: number,
@@ -172,24 +178,14 @@ export function useStageNavigationAnalytics({
     if (previousIndex !== null && previousEnteredAt !== null) {
       emitStageExitRef.current(
         now,
-        stage_index > previousIndex
-          ? 'forward'
-          : stage_index < previousIndex
-            ? 'back'
-            : 'jumped',
+        transitionDirection(previousIndex, stage_index),
       );
     }
 
     const direction =
       previousIndex === null
         ? 'initial'
-        : stage_index === previousIndex + 1
-          ? 'forward'
-          : stage_index === previousIndex - 1
-            ? 'back'
-            : stage_index === previousIndex
-              ? 'initial'
-              : 'jumped';
+        : transitionDirection(previousIndex, stage_index);
 
     track('stage_entered', {
       [SUPER_PROPS.STAGE_TYPE]: stage_type,

@@ -416,6 +416,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     '/rpc',
     '/storage',
     '/audit-exports',
+    '/interview',
     '/healthz',
     '/readyz',
     '/metrics',

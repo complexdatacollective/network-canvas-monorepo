@@ -401,4 +401,61 @@ describe('createInterviewSyncHandler', () => {
     ).rejects.toThrow(/interview-2.+interview-1/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('keeps an otherwise-small unloading snapshot eligible for keepalive', async () => {
+    const session = sessionWith('answer retained');
+    session.stageTiming = {
+      stageExits: Array.from({ length: 2_000 }, (_, stageIndex) => ({
+        stageIndex,
+        stageType: 'Information',
+        promptIndex: 0,
+        promptCount: 1,
+        durationMs: 10,
+        exitDirection: 'forward' as const,
+      })),
+      promptExits: Array.from({ length: 2_000 }, (_, stageIndex) => ({
+        stageIndex,
+        stageType: 'Information',
+        promptIndex: 0,
+        promptCount: 1,
+        durationMs: 5,
+        exitDirection: 'forward' as const,
+      })),
+      totalDurationMs: 20_000,
+    };
+    expect(new Blob([JSON.stringify(session)]).size).toBeGreaterThan(60_000);
+    let sentBody = '';
+    let sentKeepalive = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init: { body: string; keepalive: boolean }) => {
+        sentBody = init.body;
+        sentKeepalive = init.keepalive;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ applied: true, syncRevision: 1 }),
+        });
+      }),
+    );
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      getCurrentStep: () => 1,
+    });
+
+    await onSync('interview-1', session, UNLOADING);
+
+    const sent = JSON.parse(sentBody) as SessionPayload;
+    expect(new Blob([sentBody]).size).toBeLessThanOrEqual(60_000);
+    expect(sentKeepalive).toBe(true);
+    expect(sent.network).toEqual(session.network);
+    const sentTiming = sent.stageTiming;
+    if (!sentTiming?.stageExits) throw new Error('timing was not retained');
+    expect(sentTiming.stageExits.length).toBeGreaterThan(0);
+    expect(sentTiming.stageExits.length).toBeLessThan(2_000);
+    expect(sentTiming.stageExits.at(-1)?.stageIndex).toBe(1_999);
+    expect(sentTiming.promptExits?.at(-1)?.stageIndex).toBe(1_999);
+    expect(sentTiming.totalDurationMs).toBe(sentTiming.stageExits.length * 10);
+    expect(session.stageTiming.stageExits).toHaveLength(2_000);
+  });
 });

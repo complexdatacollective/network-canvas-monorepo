@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "f5fb79c6-5269-4f45-a883-e6e421da1d70",
+  "id": "119d293d-ed23-4278-87a5-6c72a072fb92",
   "prevIds": ["8c6997bd-ce62-4c1e-9206-f5139ee01419"],
   "version": "8",
   "ddl": [
@@ -349,6 +349,12 @@
     {
       "isRlsEnabled": true,
       "name": "study_stage_rollups",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "monitoring_rollup_invalidations",
       "entityType": "tables",
       "schema": "public"
     },
@@ -8650,6 +8656,84 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "study_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "wave_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
@@ -12832,6 +12916,27 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "monitoring_rollup_invalidations_created_at_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "team_id",
           "isExpression": false,
           "asc": true,
@@ -14268,6 +14373,19 @@
     },
     {
       "nameExplicit": true,
+      "columns": ["wave_id", "study_id", "team_id"],
+      "schemaTo": "public",
+      "tableTo": "study_waves",
+      "columnsTo": ["id", "study_id", "team_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "monitoring_rollup_invalidations_wave_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "nameExplicit": true,
       "columns": [
         "audit_event_id",
         "team_id",
@@ -14807,6 +14925,14 @@
       "name": "feedback_reports_pkey",
       "schema": "public",
       "table": "feedback_reports",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "monitoring_rollup_invalidations_pkey",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations",
       "entityType": "pks"
     },
     {
@@ -16677,6 +16803,13 @@
       "table": "study_stage_rollups"
     },
     {
+      "value": "char_length(\"source\") between 1 and 64",
+      "name": "monitoring_rollup_invalidations_source_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
       "value": "\"category\" IN ('team_access', 'protocol', 'study', 'participant_data', 'data_egress', 'credential', 'integration', 'security', 'audit')",
       "name": "audit_events_category_check",
       "entityType": "checks",
@@ -18088,6 +18221,28 @@
       "entityType": "policies",
       "schema": "public",
       "table": "study_stage_rollups"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "monitoring_rollup_invalidations"
     },
     {
       "as": "PERMISSIVE",

@@ -28,6 +28,7 @@ type MonitoringRollupOptions = OutboxRetryOptions & {
   observer?: OutboxObserver;
   afterRecompute?: () => Promise<void>;
 };
+const INVALIDATION_BATCH_SIZE = 1_000;
 
 /**
  * Rebuilds one wave and all of its stage rows from source tables. Stage
@@ -64,6 +65,11 @@ async function recomputeWave(
        order by session_id, stage_id, ordinal desc
      ),
      observed as (
+       select s.team_id, s.study_id, s.wave_id, s.id as session_id,
+              s.current_stage_id as stage_id
+       from interview_sessions s
+       where s.wave_id = $1 and s.current_stage_id is not null
+       union
        select s.team_id, s.study_id, s.wave_id, s.id as session_id,
               n.stage_id
        from interview_sessions s
@@ -125,6 +131,10 @@ async function recomputeWave(
         )
         and not exists (
           select 1 from interview_sessions s
+          where s.wave_id = r.wave_id and s.current_stage_id = r.stage_id
+        )
+        and not exists (
+          select 1 from interview_sessions s
           cross join lateral jsonb_array_elements(
             coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
           ) exit_item
@@ -138,6 +148,10 @@ async function recomputeWave(
     `delete from study_stage_rollups r
       where r.wave_id = $1
         and (r.lease_owner is null or r.lease_expires_at <= clock_timestamp())
+        and not exists (
+          select 1 from interview_sessions s
+          where s.wave_id = r.wave_id and s.current_stage_id = r.stage_id
+        )
         and not exists (
           select 1 from interview_sessions s
           join nodes n on n.session_id = s.id and n.team_id = s.team_id
@@ -209,6 +223,31 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
   }
 
   async suppressUndeliverable(): Promise<number> {
+    await this.pool.query(
+      `with claimed as (
+         delete from monitoring_rollup_invalidations
+          where id in (
+            select id from monitoring_rollup_invalidations
+             order by created_at, id limit $1
+          )
+          returning team_id, study_id, wave_id
+       ), waves as (
+         select team_id, study_id, wave_id from claimed
+         group by team_id, study_id, wave_id
+       ), queued as (
+         insert into study_wave_rollups (
+           team_id, study_id, wave_id, dirty_generation, stale_at)
+         select team_id, study_id, wave_id, 1, clock_timestamp() from waves
+         on conflict (wave_id) do update
+           set dirty_generation = study_wave_rollups.dirty_generation + 1,
+               stale_at = clock_timestamp(), attempt_count = 0,
+               failed_at = null, last_error = null,
+               lease_owner = null, lease_expires_at = null
+         returning wave_id
+       )
+       select count(*) from queued`,
+      [INVALIDATION_BATCH_SIZE],
+    );
     return 0;
   }
 

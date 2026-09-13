@@ -14,6 +14,67 @@ const SYNC_DEBOUNCE_MS = 3000;
 // it with room to spare.
 const KEEPALIVE_MAX_BYTES = 60_000;
 
+type SyncRequest = SessionPayload & {
+  currentStep: number;
+  syncRevision: number;
+};
+
+function serializedRequest(request: SyncRequest, unloading: boolean): string {
+  const original = JSON.stringify(request);
+  const timing = request.stageTiming;
+  if (
+    !unloading ||
+    timing === undefined ||
+    new Blob([original]).size <= KEEPALIVE_MAX_BYTES
+  ) {
+    return original;
+  }
+
+  const stageExits = timing.stageExits;
+  const promptExits = timing.promptExits ?? [];
+  const candidate = (partsPerMillion: number): string => {
+    const stageCount = Math.floor(
+      (stageExits.length * partsPerMillion) / 1_000_000,
+    );
+    const promptCount = Math.floor(
+      (promptExits.length * partsPerMillion) / 1_000_000,
+    );
+    const retainedStages =
+      stageCount === 0 ? [] : stageExits.slice(-stageCount);
+    const retainedPrompts =
+      promptCount === 0 ? [] : promptExits.slice(-promptCount);
+    return JSON.stringify({
+      ...request,
+      stageTiming: {
+        ...timing,
+        stageExits: retainedStages,
+        promptExits: retainedPrompts,
+        ...(timing.totalDurationMs === undefined
+          ? {}
+          : {
+              totalDurationMs: retainedStages.reduce(
+                (sum, exit) => sum + exit.durationMs,
+                0,
+              ),
+            }),
+      },
+    });
+  };
+
+  // If the participant answers alone exceed keepalive's limit, discarding
+  // timing cannot make the request safe and would only lose observations.
+  if (new Blob([candidate(0)]).size > KEEPALIVE_MAX_BYTES) return original;
+
+  let low = 0;
+  let high = 1_000_000;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (new Blob([candidate(middle)]).size <= KEEPALIVE_MAX_BYTES) low = middle;
+    else high = middle - 1;
+  }
+  return candidate(low);
+}
+
 type Args = {
   interviewId: string;
   /**
@@ -114,11 +175,14 @@ export function createInterviewSyncHandler({
 
     const controller = new AbortController();
     inFlight = controller;
-    const body = JSON.stringify({
-      ...session,
-      currentStep: getCurrentStep(),
-      syncRevision: revision,
-    });
+    const body = serializedRequest(
+      {
+        ...session,
+        currentStep: getCurrentStep(),
+        syncRevision: revision,
+      },
+      unloading,
+    );
 
     try {
       const response = await fetch(`/interview/${interviewId}/sync`, {

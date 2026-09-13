@@ -17,14 +17,7 @@ const BodySchema = z.object({
   syncRevision: z.number().int().nonnegative().safe(),
   stageTiming: StageTimingSchema.optional(),
   currentStageIndex: z.number().int().nonnegative().max(10_000).optional(),
-  currentStageId: z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .regex(/^[A-Za-z0-9_-]+$/)
-    .nullable()
-    .optional(),
+  currentStageId: z.string().nullable().optional(),
 });
 
 const OpenBodySchema = z.object({
@@ -142,6 +135,9 @@ export function createSessionTimingOpenRoute(pool: pg.Pool): Handler {
           },
           error.code === 'HOLDER_CONFLICT' ? 409 : 404,
         );
+      }
+      if (error instanceof z.ZodError) {
+        return context.json({ error: 'Invalid timing payload' }, 400);
       }
       throw error;
     }

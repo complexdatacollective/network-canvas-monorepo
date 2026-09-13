@@ -164,16 +164,18 @@ describe('the machine surfaces under the gate', () => {
   // catch-alls must still win on their own prefixes.
   const app = appFor('self-hosted');
 
-  it.each(['/api/v1/nope', '/rpc/nope', '/storage/deadbeef/extra'])(
-    'still refuses %s as problem JSON',
-    async (path) => {
-      const response = await app.request(path);
-      expect(response.status).toBe(404);
-      expect(response.headers.get('Content-Type')).toContain(
-        'application/problem+json',
-      );
-    },
-  );
+  it.each([
+    '/api/v1/nope',
+    '/rpc/nope',
+    '/storage/deadbeef/extra',
+    '/interview/not-a-session/open',
+  ])('still refuses %s as problem JSON', async (path) => {
+    const response = await app.request(path);
+    expect(response.status).toBe(404);
+    expect(response.headers.get('Content-Type')).toContain(
+      'application/problem+json',
+    );
+  });
 
   it('does not name the deployment on the public API', async () => {
     // The public surface's output schema is the serialization allowlist

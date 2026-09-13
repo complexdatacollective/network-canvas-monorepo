@@ -343,6 +343,21 @@ describe.skipIf(!db)(
       // Existing realistic synthetic fixtures supply the relational parents.
       // They are confined to this newly-created scratch schema.
       await seed(scratch.pool, { scale: 'tiny' });
+      const invalidations = await scratch.pool.query<{
+        source: string;
+        count: number;
+      }>(
+        `SELECT source, count(*)::int AS count
+           FROM monitoring_rollup_invalidations
+          GROUP BY source ORDER BY source`,
+      );
+      expect(invalidations.rows.map((row) => row.source)).toEqual([
+        'interview_links',
+        'interview_sessions',
+        'message_deliveries',
+        'nodes',
+        'participant_consents',
+      ]);
       const expected = new Map<
         string,
         {
@@ -388,6 +403,13 @@ describe.skipIf(!db)(
           uncertain,
         });
       }
+      const pendingInvalidations = Number(
+        (
+          await scratch.pool.query<{ count: string }>(
+            'SELECT count(*) AS count FROM monitoring_rollup_invalidations',
+          )
+        ).rows[0]?.count ?? 0,
+      );
       for (const queue of [
         'study_wave_rollups',
         'study_stage_rollups',
@@ -397,8 +419,12 @@ describe.skipIf(!db)(
         );
         expect(updated.rowCount).toBeGreaterThan(0);
         expected.set(queue, {
-          pending: updated.rowCount!,
-          ready: updated.rowCount!,
+          pending:
+            updated.rowCount! +
+            (queue === 'study_wave_rollups' ? pendingInvalidations : 0),
+          ready:
+            updated.rowCount! +
+            (queue === 'study_wave_rollups' ? pendingInvalidations : 0),
           leased: 0,
           failed: 0,
           uncertain: 0,

@@ -137,10 +137,181 @@ const studyStageRollups = pgTable(
   ],
 );
 
-export const MONITORING_TABLES = { studyWaveRollups, studyStageRollups };
+const monitoringRollupInvalidations = pgTable(
+  'monitoring_rollup_invalidations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: text('team_id').notNull(),
+    studyId: uuid('study_id').notNull(),
+    waveId: uuid('wave_id').notNull(),
+    source: text('source').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'monitoring_rollup_invalidations_wave_fk',
+      columns: [table.waveId, table.studyId, table.teamId],
+      foreignColumns: [studyWaves.id, studyWaves.studyId, studyWaves.teamId],
+    }).onDelete('cascade'),
+    index('monitoring_rollup_invalidations_created_at_idx').on(table.createdAt),
+    check(
+      'monitoring_rollup_invalidations_source_check',
+      sql`char_length(${table.source}) between 1 and 64`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
 
-// Hashed into the schema fingerprint — whitespace counts. No triggers: every
-// row here is derived, so there is no history to protect.
+export const MONITORING_TABLES = {
+  studyWaveRollups,
+  studyStageRollups,
+  monitoringRollupInvalidations,
+};
+
+// Hashed into the schema fingerprint — whitespace counts. Source-table
+// triggers append cheap invalidation events; the worker coalesces them into
+// the derived rollup worklist outside participant and operator transactions.
 export const MONITORING_SIDECAR_SQL = `
-${tenantTablesSql(['study_wave_rollups', 'study_stage_rollups'])}
+${tenantTablesSql([
+  'study_wave_rollups',
+  'study_stage_rollups',
+  'monitoring_rollup_invalidations',
+])}
+
+REVOKE SELECT, UPDATE, DELETE, TRUNCATE ON monitoring_rollup_invalidations FROM studio_app;
+REVOKE UPDATE, TRUNCATE ON monitoring_rollup_invalidations FROM studio_maintenance;
+
+CREATE OR REPLACE FUNCTION enqueue_session_rollup_invalidation() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path FROM CURRENT AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    VALUES (OLD.team_id, OLD.study_id, OLD.wave_id, TG_TABLE_NAME);
+    RETURN OLD;
+  END IF;
+  INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+  VALUES (NEW.team_id, NEW.study_id, NEW.wave_id, TG_TABLE_NAME);
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE TRIGGER interview_links_rollup_invalidation_delete
+BEFORE DELETE ON interview_links
+FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER interview_links_rollup_invalidation_insert
+AFTER INSERT ON interview_links
+FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER interview_sessions_rollup_invalidation_delete
+BEFORE DELETE ON interview_sessions
+FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER interview_sessions_rollup_invalidation_mutation
+AFTER INSERT OR UPDATE OF participant_id, status, current_stage_id, stage_timing ON interview_sessions
+FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
+
+CREATE OR REPLACE FUNCTION enqueue_node_rollup_invalidation() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path FROM CURRENT AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    SELECT OLD.team_id, s.study_id, s.wave_id, TG_TABLE_NAME
+    FROM interview_sessions s
+    WHERE s.id = OLD.session_id AND s.team_id = OLD.team_id;
+    RETURN OLD;
+  END IF;
+  INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+  SELECT NEW.team_id, s.study_id, s.wave_id, TG_TABLE_NAME
+  FROM interview_sessions s
+  WHERE s.id = NEW.session_id AND s.team_id = NEW.team_id;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE TRIGGER nodes_rollup_invalidation_delete
+BEFORE DELETE ON nodes
+FOR EACH ROW EXECUTE FUNCTION enqueue_node_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER nodes_rollup_invalidation_mutation
+AFTER INSERT OR UPDATE OF stage_id ON nodes
+FOR EACH ROW EXECUTE FUNCTION enqueue_node_rollup_invalidation();
+
+CREATE OR REPLACE FUNCTION enqueue_consent_rollup_invalidation() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path FROM CURRENT AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    SELECT DISTINCT OLD.team_id, s.study_id, s.wave_id, TG_TABLE_NAME
+    FROM interview_sessions s
+    WHERE s.participant_id = OLD.participant_id AND s.team_id = OLD.team_id;
+    RETURN OLD;
+  END IF;
+  INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+  SELECT DISTINCT NEW.team_id, s.study_id, s.wave_id, TG_TABLE_NAME
+  FROM interview_sessions s
+  WHERE s.participant_id = NEW.participant_id AND s.team_id = NEW.team_id;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE TRIGGER participant_consents_rollup_invalidation
+AFTER INSERT OR DELETE OR UPDATE OF withdrawn_at ON participant_consents
+FOR EACH ROW EXECUTE FUNCTION enqueue_consent_rollup_invalidation();
+
+CREATE OR REPLACE FUNCTION enqueue_delivery_rollup_invalidation() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path FROM CURRENT AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.failed_at IS NOT NULL THEN
+      INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+      SELECT OLD.team_id, sc.study_id, sc.wave_id, TG_TABLE_NAME
+      FROM schedule_occurrences o
+      JOIN study_schedules sc ON sc.id = o.schedule_id AND sc.team_id = o.team_id
+      WHERE o.id = OLD.occurrence_id AND o.team_id = OLD.team_id
+        AND sc.wave_id IS NOT NULL;
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF NEW.failed_at IS NOT NULL OR
+     (TG_OP = 'UPDATE' AND OLD.failed_at IS NOT NULL) THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    SELECT NEW.team_id, sc.study_id, sc.wave_id, TG_TABLE_NAME
+    FROM schedule_occurrences o
+    JOIN study_schedules sc ON sc.id = o.schedule_id AND sc.team_id = o.team_id
+    WHERE o.id = NEW.occurrence_id AND o.team_id = NEW.team_id
+      AND sc.wave_id IS NOT NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE TRIGGER message_deliveries_rollup_invalidation_delete
+BEFORE DELETE ON message_deliveries
+FOR EACH ROW EXECUTE FUNCTION enqueue_delivery_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER message_deliveries_rollup_invalidation_mutation
+AFTER INSERT OR UPDATE OF failed_at ON message_deliveries
+FOR EACH ROW EXECUTE FUNCTION enqueue_delivery_rollup_invalidation();
+
+CREATE OR REPLACE FUNCTION enqueue_schedule_rollup_invalidation() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path FROM CURRENT AS $$
+BEGIN
+  IF OLD.wave_id IS NOT NULL THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    VALUES (OLD.team_id, OLD.study_id, OLD.wave_id, TG_TABLE_NAME);
+  END IF;
+  IF TG_OP = 'UPDATE' AND NEW.wave_id IS NOT NULL AND NEW.wave_id IS DISTINCT FROM OLD.wave_id THEN
+    INSERT INTO monitoring_rollup_invalidations (team_id, study_id, wave_id, source)
+    VALUES (NEW.team_id, NEW.study_id, NEW.wave_id, TG_TABLE_NAME);
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE TRIGGER study_schedules_rollup_invalidation_delete
+BEFORE DELETE ON study_schedules
+FOR EACH ROW EXECUTE FUNCTION enqueue_schedule_rollup_invalidation();
+
+CREATE OR REPLACE TRIGGER study_schedules_rollup_invalidation_wave
+AFTER UPDATE OF wave_id ON study_schedules
+FOR EACH ROW EXECUTE FUNCTION enqueue_schedule_rollup_invalidation();
 `;

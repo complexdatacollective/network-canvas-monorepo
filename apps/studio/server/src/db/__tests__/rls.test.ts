@@ -102,6 +102,7 @@ describe.skipIf(!db)('row-level security', () => {
       'message_deliveries',
       'message_delivery_events',
       'message_templates',
+      'monitoring_rollup_invalidations',
       'nodes',
       'participant_consent_item_responses',
       'participant_consents',
