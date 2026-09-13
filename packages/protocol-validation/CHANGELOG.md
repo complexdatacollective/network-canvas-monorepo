@@ -1,5 +1,130 @@
 # @codaco/protocol-validation
 
+## 13.1.0
+
+### Minor Changes
+
+- 4ea797d: Export `assetSourceSchema`, the rule an asset manifest entry's `source` is
+  already validated by: a filename with no path separators and no `..`, because
+  that string becomes a zip entry name when a protocol is exported. A host that
+  stages a file can now refuse an unsafe name where the file arrives, rather than
+  accepting it and producing a protocol that cannot be published.
+- d7e93c5: `schemaRefusesContainer` answers whether a container an editor has ASSEMBLED —
+  out of one person's edit and another's, neither of them wrong on its own — is
+  one the stage schemas refuse. It is for the places whose members constrain each
+  other without being rivals, which the exclusive-variant answer cannot help with:
+  a sociogram prompt's `edges` says which edges to draw and which the participant
+  may create, and an `edges` setting neither has no effect, so the schema refuses
+  it. One researcher stops offering edge creation while another stops drawing the
+  edges, and a merge that keeps each of their decisions produces a prompt neither
+  of them held.
+
+  Writing the container whole, the way a variant travels, would throw away exactly
+  the collaboration that merging property by property exists to keep. So the
+  container is assembled as before and then put to the schema, and only a refusal
+  changes the answer.
+
+  Which containers those are is read off the stage schemas rather than listed
+  beside them, so a stage type that gains a rule about two of a container's
+  members together is covered without anything else being remembered. Every schema
+  declared at a path is consulted, because a caller holding a stage's fields does
+  not know which stage it has: a prompt row is `prompts.*` whether it belongs to a
+  sociogram or a name generator, and a container is called refused only when no
+  stage type's schema for that path can read it.
+
+- 55f5549: `isExclusiveVariantContainer` answers whether a place in a stage document holds
+  one of several mutually exclusive shapes — a sociogram's background, which is an
+  image or a number of concentric circles and never both; a family pedigree's
+  framing; the destination a skip-logic rule jumps to. An editor that writes part
+  of such a container while somebody else switches which shape it is would leave a
+  protocol carrying half of each, so an editor can now ask, and write the whole
+  container instead.
+
+  The answer is read off the stage schemas themselves rather than from a list kept
+  beside them, so a stage type that gains a variant is covered without anything
+  else being remembered. A path may run through a list, naming its rows with the
+  exported `VARIANT_ROW_SEGMENT`: a sociogram prompt's highlight is a variant too,
+  and a merge that puts a rewritten row back property by property can leave half
+  of each shape there just as readily.
+
+  One path is deliberately unanswered, because the stage types disagree about it:
+  a categorical bin's prompt row is itself a choice of shape, and every other
+  stage type's prompt is an ordinary row. A caller holding a stage's fields cannot
+  tell which it has, so neither answer is given.
+
+- 2bea7ee: State what kind of value each filter operator compares against once, and
+  export it. `FilterOperandKinds` maps every operator to `none`, `number`,
+  `integer`, `string` or `attribute`, and schema 8's filter-rule validation now
+  reads that table instead of keeping three private operator lists of its own.
+  `filterValueSchema` is exported alongside it, so a protocol builder can choose
+  each operand's input control from the same statements the validator applies
+  rather than from a second list that could drift.
+
+  Two rule-value verdicts change with it. A comparison value may now be a
+  fraction: `filterValueSchema` previously required whole numbers, which left a
+  scalar attribute — recorded as a normalised 0-1 reading — with no expressible
+  comparison beyond the two ends of its scale, and rejected an ordinary
+  `hours > 2.5` rule against a number attribute. The four operators that count
+  SELECTED OPTIONS still require a whole number, and now say so: a fractional
+  count is reported as an issue rather than stored as a rule that can never be
+  satisfied.
+
+  Each operand kind is applied by `filterRuleSchema` itself rather than by the
+  protocol schema's cross-reference pass, so validating a bare filter through the
+  exported `FilterSchema` or `filterRuleSchema` reaches the same verdict as
+  validating the protocol it sits in — a fractional count is refused either way,
+  where before only the whole-protocol path asked. `FilterSchema` is one object
+  with a check on it instead of a union of a one-rule and a several-rule shape:
+  it accepts and refuses exactly the same filters, but a rule that broke both
+  shapes used to be reported as a single "Invalid input" against the whole
+  filter, discarding the reason the rule was refused.
+
+  Nothing here asks whether a rule's operand is one of the options its attribute
+  authored. That check stays out of this validator on purpose: protocols already
+  in the field hold rules naming an option a collaborator has since renamed or
+  deleted, and refusing to LOAD one would lock the researcher out of the very
+  editor that could fix it. Whether an operand is still one of the attribute's
+  options is an editor rule, reported on the rule by the protocol builder.
+
+  `collectEntityTypeReferencesFromSchema` is exported alongside the existing
+  `collectEntityTypeReferences`, which now calls it. It takes any fragment of the
+  schema and any value shaped like it, so a caller holding one stage rather than
+  a whole protocol — a stage editor — can ask which codebook node and edge types
+  that stage names, and get every field the schema tags as an entity-type
+  reference instead of the two or three paths the caller happened to know about.
+  It is the entity-type counterpart of the `collectEntityAttributeReferencesFromSchema`
+  that was already exported.
+
+- eee19fb: Export `collectStageReferences` and `declaredStageReferenceSites`, the stage
+  counterpart of the entity-attribute, entity-type and asset collectors: every
+  other stage a protocol's stages name — a skip-logic destination, the
+  FamilyPedigree a NarrativePedigree describes the people of — discovered from
+  new `stageReference` tags on the schema rather than from a hand-kept list of
+  paths. A host deciding whether a stage may be removed can now derive its
+  dependants from the schema, so a stage type that gains a pointer at another
+  stage is covered the moment its schema is tagged instead of the removal
+  silently leaving a protocol that names a stage it no longer has.
+- 3ae3a94: Provide optional localized researcher guidance with complete Spanish catalogs:
+  protocol import failures, migration approval notes and validation conflicts, synthetic generation
+  refusals, and export progress. Applications can present this guidance in the
+  active language while keeping existing technical diagnostics, event identifiers,
+  and generated interview data unchanged.
+
+  Synthetic generation guidance covers both `generateNetwork` and the public
+  `SyntheticInterview` builder, including fixed-value conflicts and unsupported
+  participant uniqueness rules.
+
+  Protocol validation also exports `parseAcceptLanguage` for HTTP hosts to parse
+  canonical, quality-ordered browser preferences through the shared locale
+  negotiation flow.
+
+### Patch Changes
+
+- eea0b5a: "External-data panel filters cannot use edge rules" is now stated by the stage schema instead of the whole-protocol one, so a host validating a single stage — a stage editor checking the stage it is saving — refuses the panel at that moment rather than letting it through until the whole protocol is validated. `stageSchema` reports it at the stage-relative path `panels.<i>.filter.rules.<j>.type`. The message and the protocol-level path `stages.<n>.panels.<i>.filter.rules.<j>.type` are unchanged, as is which panels the rule refuses: only one reading an imported file, never one reading the interview network itself.
+- 01aaed2: Use `libro de códigos` for the codebook throughout the Spanish catalogs.
+- Updated dependencies ([b2ca402](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b2ca402a852b5527e0455c7ff2949da3be50dccd))
+  - @codaco/shared-consts@6.1.0
+
 ## 13.0.1
 
 ### Patch Changes

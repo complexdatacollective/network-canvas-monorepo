@@ -1,5 +1,35 @@
 # @codaco/network-exporters
 
+## 2.1.0
+
+### Minor Changes
+
+- 3ae3a94: Provide optional localized researcher guidance with complete Spanish catalogs:
+  protocol import failures, migration approval notes and validation conflicts, synthetic generation
+  refusals, and export progress. Applications can present this guidance in the
+  active language while keeping existing technical diagnostics, event identifiers,
+  and generated interview data unchanged.
+
+  Synthetic generation guidance covers both `generateNetwork` and the public
+  `SyntheticInterview` builder, including fixed-value conflicts and unsupported
+  participant uniqueness rules.
+
+  Protocol validation also exports `parseAcceptLanguage` for HTTP hosts to parse
+  canonical, quality-ordered browser preferences through the shared locale
+  negotiation flow.
+
+### Patch Changes
+
+- 5de44c1: Bump `@xmldom/xmldom` from 0.9.10 to 0.9.12, fixing several denial-of-service
+  vulnerabilities in XML parsing and serialization: quadratic-memory namespace
+  handling, quadratic-time duplicate-attribute de-duplication, and RAWTEXT
+  closing-tag output amplification, among others. `@codaco/network-exporters`
+  builds and serializes GraphML exports through this dependency, so npm
+  consumers pinned to the previous floor need this patch to pick up the fix.
+- Updated dependencies ([4ea797d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4ea797d7159622173f7a605cf2ce6cac1884e854), [d7e93c5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d7e93c571df1fea1a8fc71d8c9d4f6692e2dbe7c), [55f5549](https://github.com/complexdatacollective/network-canvas-monorepo/commit/55f554975bc6731a7f5bc94dde0a7000b64ce2da), [2bea7ee](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2bea7eed99b1f0f5056144a1d6ac30855c36513e), [eea0b5a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eea0b5acf7c4b852a57c6b57c5a504a34a7d11c0), [eee19fb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eee19fb93d4cb57d3c4d256971da78df15730a88), [b2ca402](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b2ca402a852b5527e0455c7ff2949da3be50dccd), [3ae3a94](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3ae3a9438da400fc357a0c71721d45cd32f3a7ac), [01aaed2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01aaed2d0bcd7ce203f50952ddd3e4ddeaed143a))
+  - @codaco/protocol-validation@13.1.0
+  - @codaco/shared-consts@6.1.0
+
 ## 2.0.1
 
 ### Patch Changes

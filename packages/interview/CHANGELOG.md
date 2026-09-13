@@ -1,5 +1,86 @@
 # @codaco/interview
 
+## 9.1.0
+
+### Minor Changes
+
+- 29b11be: Built-in interview controls, help, validation, dialogs and accessibility messages
+  are available in English, British English and Spanish. The interview menu now
+  includes an interface language chooser, with all messages available offline.
+
+  Hosts can pass a preference or an already negotiated language through
+  `Shell.requestedLocale`; the interview package finds the best match among its
+  own supported languages. `onLocaleChange` lets hosts persist menu choices, and
+  `InterviewI18nProvider` gives inline field previews the same negotiation and
+  catalogs. Language changes preserve entered answers, open forms and the current
+  interview position. Protocol-authored content and research values keep their
+  existing language and meaning.
+
+### Patch Changes
+
+- 1dac91b: The interview runtime's optional analytics no longer use the interview session id as the per-event `distinct_id`. In Fresco that id is the participant's unauthenticated access link, so it must not leave the deployment. Events are now grouped under a random per-session pseudonym generated in the browser, held in memory for the life of the session alongside the existing entity-id pseudonyms. Analytics still group one session's events together; a page reload starts a new pseudonym. Errors the Name Generator raises for a malformed encrypted attribute no longer embed the node's id in their message, since error reports can be captured by analytics and a node id is a participant-network identifier the runtime otherwise pseudonymises. The same is true of a duplicate-relationship error the Family Pedigree interface throws, which no longer names the two node ids it connects.
+- 23dcf99: Analytics now reports a session-scoped pseudonym for every entity id, rather
+  than the interview's own `_uid`.
+
+  The event taxonomy admits `node_id` and `edge_id` on the premise that they are
+  random values minted at creation time, derived from nothing a participant
+  supplied. Roster nodes break that premise: an external-data row is keyed as
+  `${subjectType}_${hash({ node, index })}`, a deterministic, unkeyed digest of
+  the row's own content, and the node is added to the network under exactly that
+  key. Anyone holding the roster could recompute the digest and so recognise
+  which roster row an event was about, and because the digest does not vary the
+  same person carried the same identifier in every interview — so events from
+  separate sessions about one person could be joined together.
+
+  Each session now mints a random pseudonym per entity, held in memory and never
+  persisted or transmitted. Events within a session still join on the entity,
+  which is all these properties are for; nothing joins across sessions or back to
+  a roster row. The substitution happens at the tracker, the single boundary every
+  event passes through, so no emitter can reintroduce a raw identifier. When
+  events fire, and which events fire, is unchanged.
+
+- a13f261: Every module that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import this runtime from a Server Component.
+
+  Seventy-four modules were missing the directive: the navigation, node list, node
+  drawer and panel components, the canvas layers and their layout hooks, the
+  protocol form, and the Anonymisation, CategoricalBin, DyadCensus, EgoForm,
+  FamilyPedigree, Geospatial, NameGenerator, NameGeneratorRoster, Narrative,
+  NarrativePedigree, NetworkComposer, OneToManyDyadCensus, OrdinalBin, SlidesForm
+  and Sociogram interfaces. An unmarked module is treated as server code, so
+  reaching one from a Server Component's import graph failed the build rather than
+  rendering.
+
+  The published bundles now carry the directive too. Bundling had been erasing it,
+  so even the modules that already declared it arrived at npm consumers unmarked.
+  `dist/index.js` and the lazily loaded Geospatial chunks are now marked;
+  `dist/contract.js` and `dist/protocol-schema-version.js` are unmarked, as their
+  server safety intends, and stay that way only for as long as no module carrying
+  the directive is reachable from them.
+
+  Architect, Interviewer and Fresco are released alongside because each bundles
+  this runtime. Nothing about how an interview looks or behaves changes.
+
+- c5758a4: Fix text in the Information interface being unselectable. It carried an `allow-text-selection` marker class meant to override the host app's global `user-select: none`, but the shared-theme migration dropped the CSS utility that implemented it (as an apparent "zero consumers" cleanup) without noticing this interface still relied on it, so the override silently stopped doing anything. Participants and researchers previewing an Information stage could not select or copy its text. Now uses Tailwind's built-in `select-text`, which restores the original behaviour by inheritance since nothing inside the interface sets its own `user-select`.
+- a78b7c2: A video on an interview screen now announces itself with the description the
+  researcher wrote for it, and falls back to the asset's file name only when
+  nobody has written one. An image has always read that description as its alt
+  text and an audio player as its own name; the video player was the one place
+  that ignored it, so a participant listening to the screen heard a filename
+  where every other medium said what the thing was.
+
+  A description a researcher left blank now counts as no description at all, for
+  pictures and audio as well as video. A protocol written by hand or brought in
+  from elsewhere can carry a description of nothing but spaces, and every medium
+  used to pass it straight through — so a participant using a screen reader was
+  told a run of whitespace instead of what the file was called.
+
+- f6565fe: Interview screens now settle in one step where they previously took two. Moving to the next pair in Dyad Census or Tie Strength Census, changing prompt in Categorical Bin, Sociogram or Geospatial, and opening a name generator's edit form no longer render a frame that still carries the previous item's state.
+
+  Place search is more accurate about what it tells a screen reader: a status that has been superseded is no longer read back when a query starts matching again, and a search still in flight when the participant moves on can no longer repopulate the next person's suggestions.
+
+  An encrypted name that could not be decrypted after the passphrase changed now shows the locked indicator instead of the name read earlier under the old passphrase.
+
 ## 9.0.1
 
 ### Patch Changes
