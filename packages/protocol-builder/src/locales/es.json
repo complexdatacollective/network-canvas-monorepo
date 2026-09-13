@@ -73,6 +73,7 @@
   "protocolBuilder.attributeCodebookControls.editParameters": "Definir qué acepta este campo",
   "protocolBuilder.attributeCodebookControls.editRules": "Definir reglas para esta respuesta",
   "protocolBuilder.attributeCodebookControls.editValues": "Cambiar los valores de este atributo",
+  "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": "{ruleCount, plural, one {Cambiar el tipo de respuesta eliminó una regla que no se traslada: {ruleNames}.} other {Cambiar el tipo de respuesta eliminó reglas que no se trasladan: {ruleNames}.}}",
   "protocolBuilder.cardDisplay.addLabel": "Añadir nueva propiedad de visualización",
   "protocolBuilder.cardDisplay.attributeColumn": "Atributo",
   "protocolBuilder.cardDisplay.clearConfirm": "Borrar la visualización de tarjetas",

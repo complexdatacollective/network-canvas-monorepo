@@ -3385,6 +3385,261 @@ describe('rules for the attribute a field is inventing', () => {
     ).toBeNull();
   });
 
+  /**
+   * The kind of answer is a control the researcher can go back to, and the
+   * rules are held on the ROW rather than on an attribute — so they outlive
+   * the kind they were written about unless something moves them.
+   *
+   * Every variable schema's `validation` is picked from its own kind's rule
+   * set, so a rule the new kind does not accept is refused by the create; and
+   * a rules editor opened on the new kind lists that kind's rules alone, so
+   * the researcher cannot switch the offending one off either. Left on the
+   * row, it is a field that can neither be added nor corrected. The draft
+   * follows the kind instead, by the same reading the codebook editor's own
+   * type control makes.
+   */
+  it('drops a rule the new kind of answer cannot take, and says which', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Minimum text length' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
+      ).toBeNull(),
+    );
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'number',
+    );
+
+    // Said, because the researcher wrote it: a rule that disappeared between
+    // one control and the next is a change to their work.
+    expect(
+      await dialog.findByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'How many people live there?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The row saved, and what it wrote is the rule a number answer does take.
+    expect(inventedNickname(harness)?.[1]).toEqual({
+      name: 'nickname',
+      type: 'number',
+      component: 'Number',
+      validation: { required: true },
+    });
+  });
+
+  /**
+   * A comparison rule names another attribute rather than a value, and none of
+   * them carries across a change of kind: the attribute a rule points at was
+   * comparable with the kind the rule was written for, and may not be with the
+   * next one. That is an answer about a kind that MOVED — asked of a draft the
+   * researcher has just written against the kind the row holds now, it would
+   * take the rule away the moment it landed, leaving a control that offers
+   * `sameAs` and a row that deletes it.
+   */
+  it('writes a comparison rule the row has just been given', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Same as another attribute' }),
+      'composerName',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Same as another attribute' }),
+      ).toBeNull(),
+    );
+
+    // And nothing is said about a change of kind the researcher never made.
+    expect(
+      dialog.queryByText(/Changing the kind of answer removed/),
+    ).toBeNull();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'What do people call them?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(inventedNickname(harness)?.[1]).toEqual({
+      name: 'nickname',
+      type: 'text',
+      component: 'Text',
+      validation: { sameAs: 'composerName' },
+    });
+  });
+
+  /**
+   * The notice reports one change of kind, and ends at the next act that
+   * answers it: a save of the rules editor, which is the researcher looking at
+   * the draft the row holds now, or another change of kind, which asks the
+   * question again. Left standing it would report a loss that has been made
+   * good — a rule sitting in the editor under a sentence saying it was
+   * removed.
+   */
+  it('takes the notice down once the draft and the kind agree again', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
+      ).toBeNull(),
+    );
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'number',
+    );
+    expect(
+      await dialog.findByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    // Written again, under the kind that takes it: the researcher has now seen
+    // the draft the row holds, so there is nothing left to report.
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum value' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        dialog.queryByText(/Changing the kind of answer removed/),
+      ).toBeNull(),
+    );
+
+    // The kind moves again, and the rule written for a number goes with it —
+    // which is the notice's own subject, said again about this change.
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'text',
+    );
+    expect(
+      await dialog.findByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum value.',
+      ),
+    ).toBeInTheDocument();
+
+    // And a change of kind that takes nothing away is the end of it: the draft
+    // is empty, so this kind holds everything the last one did.
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'boolean',
+    );
+    await waitFor(() =>
+      expect(
+        dialog.queryByText(/Changing the kind of answer removed/),
+      ).toBeNull(),
+    );
+  });
+
+  /**
+   * A kind a name cannot finish takes the rules button away and sends the
+   * invention to the codebook's own editor, which creates the attribute as it
+   * saves. Rules written while the kind was one a name could finish are still
+   * on the row at that moment: they go into that create, rather than being
+   * dropped behind a control the researcher can no longer see.
+   */
+  it('carries the rules into the editor that creates a kind a name cannot finish', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Required answer' }),
+      ).toBeNull(),
+    );
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('nickname');
+    await addValue(harness, 1, 'At home', 'home');
+    await addValue(harness, 2, 'At work', 'work');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    const created = await waitFor(() => {
+      const entry = savedAttribute(harness, 'nickname');
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(asRecord(created[1]).validation).toEqual({ required: true });
+  });
+
   /** And a row that has not said what kind of answer it holds has no rules. */
   it('offers none until the kind of answer is chosen', async () => {
     const harness = renderStageEditor({

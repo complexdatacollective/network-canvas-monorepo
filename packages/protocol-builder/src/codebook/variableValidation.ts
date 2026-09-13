@@ -315,6 +315,42 @@ export const formatCommitted = (value: unknown): string => {
 export const isValidationMap = (value: unknown): value is ValidationMap =>
   isRecord(value);
 
+/**
+ * The rules that survive a change of kind of answer, and the ones that do not.
+ *
+ * One rule for every surface where the kind moves under rules that are already
+ * written, because there is more than one: the codebook editor's own type
+ * control (`draftForType`), and a form-field row holding rules for an
+ * attribute it has not created yet. Each kind's `VARIABLE_TYPE_VALIDATIONS`
+ * entry is the record its variable schema picks its `validation` shape from,
+ * so a rule outside it is one the write would be refused for — and a rules
+ * editor opened on the new kind lists only that entry, so it is not a rule the
+ * researcher could switch off either.
+ *
+ * Comparison rules go whatever the new kind accepts: each names another
+ * attribute that was comparable with the old kind, and a rule comparing two
+ * attributes that no longer hold the same sort of answer has to be written
+ * again against a target that is.
+ */
+export const rulesSurvivingTypeChange = <TValue>(
+  validation: Readonly<Record<string, TValue>>,
+  nextType: VariableType,
+): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
+  const kept: Record<string, TValue> = {};
+  const dropped: string[] = [];
+  for (const [rule, value] of Object.entries(validation)) {
+    if (
+      Object.hasOwn(VARIABLE_TYPE_VALIDATIONS[nextType], rule) &&
+      !isValidationWithListValue(rule)
+    ) {
+      kept[rule] = value;
+    } else {
+      dropped.push(rule);
+    }
+  }
+  return { kept, dropped };
+};
+
 export const isRuleValueComplete = (
   ruleKey: string,
   value: unknown,
