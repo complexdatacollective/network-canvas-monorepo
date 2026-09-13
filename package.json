@@ -8,6 +8,7 @@
     "test": "turbo run test",
     "test:watch": "turbo watch test:watch",
     "test:scripts": "vitest run --config scripts/vitest.config.ts",
+    "studio:managed-log-collector": "node scripts/studio/studio-managed-log-collector.mjs",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
@@ -27,6 +28,9 @@
     "agent:check": "node scripts/agent-hooks/stop-check.mjs --manual",
     "agent:test": "node scripts/agent-hooks/agent-test.mjs",
     "ci:metrics": "node scripts/ci/ci-metrics.mjs"
+  },
+  "dependencies": {
+    "@nats-io/transport-node": "3.4.0"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "3.1102.0",

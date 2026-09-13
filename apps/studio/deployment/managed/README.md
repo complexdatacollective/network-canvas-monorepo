@@ -625,6 +625,63 @@ no live account query or production qualification is claimed.
 The query follows the [official usage query guidance](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/)
 and [NrMTDConsumption attribute definitions](https://docs.newrelic.com/attribute-dictionary/).
 
+## Managed log collector runtime
+
+`pnpm studio:managed-log-collector` runs the private collector. It connects only
+to Fly's documented in-network NATS endpoint at `nats://[fdaa::3]:4223`, using
+the organization slug as the username and a read-only Fly token as the
+password. It subscribes separately to the four configured
+`logs.<app>.iad.*` subjects. The NATS message subject, rather than any field in
+the message, supplies the provenance consumed by the Fly envelope adapter.
+
+The process requires every variable below and accepts no implicit numeric
+defaults:
+
+| Variable                                          | Contract                                                                                            |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `FLY_ORG`                                         | Fly organization slug used as the NATS username                                                     |
+| `FLY_NATS_TOKEN`                                  | Read-only Fly access token used only as the NATS password                                           |
+| `STUDIO_FLY_PRODUCTION_APP`                       | Exact production Studio Fly application name                                                        |
+| `STUDIO_FLY_STAGING_APP`                          | Exact staging Studio Fly application name                                                           |
+| `REGISTRY_FLY_PRODUCTION_APP`                     | Exact production registry Fly application name                                                      |
+| `REGISTRY_FLY_STAGING_APP`                        | Exact staging registry Fly application name                                                         |
+| `NEW_RELIC_ACCOUNT_ID`                            | Positive US New Relic account integer                                                               |
+| `NEW_RELIC_LICENSE_KEY`                           | Log API ingest key                                                                                  |
+| `NEW_RELIC_USER_KEY`                              | Read-only NerdGraph user key for account usage                                                      |
+| `OBSERVABILITY_ANCHOR_URL`                        | HTTPS origin of the independent anchor, with no path, query, or credentials                         |
+| `OBSERVABILITY_ANCHOR_FORWARDER_TOKEN`            | Forwarder-only anchor bearer token                                                                  |
+| `STUDIO_OBSERVABILITY_BUDGET_DIRECTORY`           | Absolute operator-owned mode-0700 durable state directory                                           |
+| `STUDIO_OBSERVABILITY_MONTHLY_LIMIT_BYTES`        | Positive attempted-ingest allowance, at most 50,000,000,000 bytes                                   |
+| `STUDIO_OBSERVABILITY_FINAL_SIGNAL_RESERVE_BYTES` | Positive reserve smaller than the monthly allowance                                                 |
+| `STUDIO_NEW_RELIC_STOP_BEFORE_BYTES`              | Positive hard-stop threshold strictly below the 100,000,000,000-byte free limit                     |
+| `STUDIO_NEW_RELIC_USAGE_LAG_RESERVE_BYTES`        | Positive measured allowance for ingest outstanding during reporting lag, smaller than the hard stop |
+| `STUDIO_NEW_RELIC_STORED_EXPANSION_BPS`           | Measured stored-bytes/wire-bytes multiplier in basis points, from 10,000 through 1,000,000          |
+| `STUDIO_NEW_RELIC_EXPANSION_EVIDENCE_SHA256`      | SHA-256 of the reviewed expansion measurement evidence                                              |
+
+The expansion measurement, lag reserve, pre-limit stop, fixed wire schema, and
+evidence digest form the durable budget policy identity. Each batch first reads
+fresh account usage, applies the measured expansion, checks the lag reserve and
+pre-limit stop, and awaits the local fsync plus independent anchor
+compare-and-set before the fixed New Relic Log API request can start. An
+ambiguous request remains charged. Missing, stale, regressed, or wrong-month
+usage stops egress.
+
+The in-process queue is bounded by the existing 256-record and 262,144-byte
+Fly adapter limits. Overflow or a NATS slow-consumer event closes the connection
+and exits with a fixed error code instead of silently continuing after loss.
+The NATS client attempts at most 60 reconnects at one-second intervals with
+bounded jitter. `SIGINT` and `SIGTERM` stop intake, drain admitted queue entries,
+drain NATS, and await release of the durable budget lease.
+
+This CLI is executable but is not deployed or production-qualified here. It
+still requires a signed immutable collector image, Fly Machine configuration,
+operator bootstrap of the budget and anchor, real expansion/lag measurements,
+and live evidence for retention, queryability, NATS loss behavior, alert
+delivery, and the hard stop. Fly describes the direct NATS logs transport as
+experimental and real-time only, so reconnects cannot recover messages missed
+while disconnected. See the [Fly NATS connection and authentication contract](https://fly.io/docs/blueprints/observability-for-user-apps/)
+and [Fly log export behavior](https://fly.io/docs/monitoring/exporting-logs/).
+
 ## Operator alert and migration runbook
 
 Operator-facing alerts route to `info@networkcanvas.com`, the project-owned

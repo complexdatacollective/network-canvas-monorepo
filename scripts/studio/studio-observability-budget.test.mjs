@@ -15,6 +15,7 @@ test('managed observability budget and anchor controls', () => {
       'apps/studio/deployment/managed/observability-dynamodb-anchor-store.test.mjs',
       'apps/studio/deployment/managed/observability-dynamodb-anchor-store.integration.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-client.test.mjs',
+      'scripts/studio/studio-managed-log-collector.test.mjs',
     ],
     { encoding: 'utf8', timeout: 180_000, maxBuffer: 4 * 1024 * 1024 },
   );

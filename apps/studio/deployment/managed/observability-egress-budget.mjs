@@ -599,6 +599,10 @@ class MonthlyEgressBudget {
     this.#anchor = anchor;
   }
 
+  get bindingSha256() {
+    return this.#options.bindingSha256;
+  }
+
   #requireOpen() {
     if (this.#closed) refuse('EGRESS_BUDGET_CLOSED');
     try {
