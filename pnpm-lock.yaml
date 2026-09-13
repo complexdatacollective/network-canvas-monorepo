@@ -304,11 +304,10 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
+    devDependencies:
       '@aws-sdk/client-dynamodb':
         specifier: 3.1102.0
         version: 3.1102.0
-    devDependencies:
       '@changesets/cli':
         specifier: ^3.0.1
         version: 3.0.1
