@@ -162,18 +162,6 @@ function principal(userId: string): SessionPrincipal {
   };
 }
 
-async function waitUntilBlocked(pool: pg.Pool, pid: number): Promise<void> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const blocked = await pool.query<{ blocked: boolean }>(
-      'SELECT cardinality(pg_blocking_pids($1)) > 0 AS blocked',
-      [pid],
-    );
-    if (blocked.rows[0]?.blocked) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error('role update did not block on the publication lock');
-}
-
 function requestUrl(input: string | URL | Request): URL {
   return new URL(input instanceof Request ? input.url : input);
 }
@@ -195,6 +183,8 @@ function registryClient(options: {
           orcid: null,
         });
       }
+      if (url.pathname === '/api/v1/entries' && init?.method === 'GET')
+        return Response.json({ data: [], next_cursor: null, has_more: false });
       if (url.pathname !== '/api/v1/entries' || init?.method !== 'POST')
         throw new Error('unexpected Registry request');
       const request = new Request(input, init);
@@ -235,11 +225,12 @@ function registryClient(options: {
 describe.skipIf(!db)('Studio Registry publication command', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
   });
 
@@ -364,7 +355,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     };
   }
 
-  it('holds the locked administrator authorization through the external handoff', async () => {
+  it('commits the intent before handoff and finalizes after the initiating administrator is revoked', async () => {
     const seeded = await seedPublication('registry-lock');
     const started = deferred();
     const release = deferred();
@@ -373,6 +364,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       {
         origin: ORIGIN,
         assetStore,
+        maintenancePool: maintenance,
         client: registryClient({
           handoffStarted: started.resolve,
           releaseHandoff: release.promise,
@@ -381,29 +373,32 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       { versionId: seeded.versionId, credential: CREDENTIAL },
     );
     await started.promise;
-
-    const updater = await pool.connect();
-    try {
-      await updater.query('BEGIN');
-      const pid = await updater.query<{ pid: number }>(
-        'SELECT pg_backend_pid() AS pid',
-      );
-      const update = updater.query(
-        `UPDATE team_members SET role = 'member' WHERE team_id = $1`,
+    await expect(
+      pool.query(`UPDATE team_members SET role = 'member' WHERE team_id = $1`, [
+        'registry-lock',
+      ]),
+    ).resolves.toMatchObject({ rowCount: 1 });
+    await expect(
+      pool.query(
+        `SELECT count(*)::int AS count
+         FROM template_registry_publication_intents WHERE team_id = $1`,
         ['registry-lock'],
-      );
-      await waitUntilBlocked(pool, pid.rows[0]!.pid);
-      release.resolve();
-      await expect(publishing).resolves.toMatchObject({ replayed: false });
-      await expect(update).resolves.toMatchObject({ rowCount: 1 });
-      await updater.query('COMMIT');
-    } catch (error) {
-      await updater.query('ROLLBACK').catch(() => undefined);
-      release.resolve();
-      throw error;
-    } finally {
-      updater.release();
-    }
+      ),
+    ).resolves.toHaveProperty('rows', [{ count: 1 }]);
+    release.resolve();
+    await expect(publishing).resolves.toMatchObject({
+      status: 'completed',
+      replayed: false,
+    });
+    const events = await pool.query<{
+      actor_kind: string;
+      event_version: number;
+    }>(
+      `SELECT actor_kind, event_version FROM audit_events
+       WHERE team_id = $1 AND event_type = 'template.registry_published'`,
+      ['registry-lock'],
+    );
+    expect(events.rows).toEqual([{ actor_kind: 'system', event_version: 2 }]);
   });
 
   it('rechecks a revoked administrator before any Registry request', async () => {
@@ -423,7 +418,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     await expect(
       publishTemplateVersion(
         seeded.context,
-        { origin: ORIGIN, assetStore, client },
+        { origin: ORIGIN, assetStore, maintenancePool: maintenance, client },
         { versionId: seeded.versionId, credential: CREDENTIAL },
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -460,7 +455,12 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     await expect(
       publishTemplateVersion(
         seeded.context,
-        { origin: ORIGIN, assetStore: corruptStore, client },
+        {
+          origin: ORIGIN,
+          assetStore: corruptStore,
+          maintenancePool: maintenance,
+          client,
+        },
         { versionId: seeded.versionId, credential: CREDENTIAL },
       ),
     ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
@@ -512,7 +512,12 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     await expect(
       publishTemplateVersion(
         seeded.context,
-        { origin: ORIGIN, assetStore: oversizedStore, client },
+        {
+          origin: ORIGIN,
+          assetStore: oversizedStore,
+          maintenancePool: maintenance,
+          client,
+        },
         { versionId: seeded.versionId, credential: CREDENTIAL },
       ),
     ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
@@ -543,6 +548,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
         {
           origin: ORIGIN,
           assetStore: unopenedStore,
+          maintenancePool: maintenance,
           client: registryClient({}),
         },
         { versionId: seeded.versionId, credential: CREDENTIAL },
@@ -576,6 +582,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
           {
             origin: ORIGIN,
             assetStore: brokenStore,
+            maintenancePool: maintenance,
             client: registryClient({}),
           },
           { versionId: seeded.versionId, credential: CREDENTIAL },
@@ -632,6 +639,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       {
         origin: ORIGIN,
         assetStore: sequentialStore,
+        maintenancePool: maintenance,
         client: registryClient({}),
       },
       { versionId: seeded.versionId, credential: CREDENTIAL },
@@ -648,7 +656,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     const seeded = await seedPublication('registry-retry');
     await pool.query(`
       CREATE SEQUENCE registry_test_record_attempt;
-      GRANT USAGE, SELECT, UPDATE ON SEQUENCE registry_test_record_attempt TO studio_app;
+      GRANT USAGE, SELECT, UPDATE ON SEQUENCE registry_test_record_attempt TO studio_app, studio_maintenance;
       CREATE FUNCTION registry_test_fail_first_record() RETURNS trigger AS $$
       BEGIN
         IF nextval('registry_test_record_attempt') = 1 THEN
@@ -666,7 +674,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     const publish = () =>
       publishTemplateVersion(
         { ...seeded.context, requestId: randomUUID() },
-        { origin: ORIGIN, assetStore, client },
+        { origin: ORIGIN, assetStore, maintenancePool: maintenance, client },
         { versionId: seeded.versionId, credential: CREDENTIAL },
       );
 

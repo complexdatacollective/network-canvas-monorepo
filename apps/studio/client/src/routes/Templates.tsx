@@ -134,6 +134,11 @@ const messages = defineMessages({
     defaultMessage: 'The Registry template was imported.',
     description: 'Registry import success announcement.',
   },
+  publicationPending: {
+    id: 'studio.templates.publicationPending',
+    defaultMessage: 'Publication is pending Registry reconciliation.',
+    description: 'Durable Registry publication pending announcement.',
+  },
   published: {
     id: 'studio.templates.published',
     defaultMessage: 'The template version was published.',
@@ -301,6 +306,13 @@ function TeamTemplates({
                           versionId: template.versionId,
                           credential,
                         });
+                        if (result.status === 'pending') {
+                          setNotice(
+                            intl.formatMessage(messages.publicationPending),
+                          );
+                          void refresh().catch(() => undefined);
+                          return { success: true };
+                        }
                         queryClient.setQueryData<
                           Awaited<ReturnType<typeof rpcClient.templates.list>>
                         >(templatesQuery.queryKey, (current) =>

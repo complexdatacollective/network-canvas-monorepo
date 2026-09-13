@@ -105,6 +105,33 @@ export async function claimTemplateRegistryIntent(
     : null;
 }
 
+export async function claimSpecificTemplateRegistryIntent(
+  pool: pg.Pool,
+  kind: ClaimedTemplateRegistryIntent['kind'],
+  id: string,
+  leaseMs = DEFAULT_LEASE_MS,
+): Promise<ClaimedTemplateRegistryIntent | null> {
+  await assertMaintenance(pool);
+  const leaseOwner = randomUUID();
+  const table =
+    kind === 'publication'
+      ? 'template_registry_publication_intents'
+      : 'template_registry_import_intents';
+  const claimed = await pool.query<{ team_id: string }>(
+    `UPDATE ${table}
+     SET lease_owner = $2,
+         lease_expires_at = clock_timestamp()
+           + make_interval(secs => $3::float / 1000),
+         attempt_count = attempt_count + 1
+     WHERE id = $1 AND completed_at IS NULL AND quarantined_at IS NULL
+       AND (lease_expires_at IS NULL OR lease_expires_at <= clock_timestamp())
+     RETURNING team_id`,
+    [id, leaseOwner, leaseMs],
+  );
+  const row = claimed.rows[0];
+  return row ? { kind, id, teamId: row.team_id, leaseOwner } : null;
+}
+
 function intentTable(intent: ClaimedTemplateRegistryIntent): string {
   return intent.kind === 'publication'
     ? 'template_registry_publication_intents'
@@ -128,7 +155,7 @@ async function renewTemplateRegistryIntentLease(
   return renewed.rowCount === 1;
 }
 
-async function deferTemplateRegistryIntent(
+export async function deferTemplateRegistryIntent(
   pool: pg.Pool,
   intent: ClaimedTemplateRegistryIntent,
   retryMs: number,

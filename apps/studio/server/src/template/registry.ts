@@ -16,6 +16,7 @@ import {
   TemplateRegistryClient,
   TemplateRegistryClientError,
 } from '@codaco/studio-sync/template-registry-client';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import type { AssetStore } from '../assets.ts';
 import {
@@ -23,10 +24,16 @@ import {
   type AuditedCommandContext,
   type LockedAuditedCommandContext,
   runAuditedCommand,
+  runAuditedSystemMutation,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore } from '../team/store.ts';
+import {
+  claimSpecificTemplateRegistryIntent,
+  deferTemplateRegistryIntent,
+  type ClaimedTemplateRegistryIntent,
+} from './registry-intent-worker.ts';
 
 export class TemplateRegistryCommandError extends Error {
   readonly code:
@@ -349,118 +356,293 @@ export async function listTemplateVersions(context: AuditedCommandContext) {
   return result.rows;
 }
 
+async function finalizePublicationIntent(
+  pool: pg.Pool,
+  claim: ClaimedTemplateRegistryIntent,
+  entry: {
+    id: string;
+    root: string;
+    publisher: Publisher;
+    published_at: string;
+  },
+): Promise<Publication> {
+  return await runAuditedSystemMutation(
+    {
+      tenantDb: createTenantDb(pool, claim.teamId),
+      actorLabel: 'Template Registry reconciliation',
+      requestId: claim.id,
+    },
+    async (client, auditContext) => {
+      const intent = await client.query<{
+        template_version_id: string;
+        registry_url: string;
+        registry_root: string;
+        publisher_id: string;
+        publisher_name: string;
+        publisher_orcid: string | null;
+        initiating_actor_id: string;
+        initiating_actor_label: string;
+        initiating_request_id: string;
+        template_id: string;
+        template_name: string;
+      }>(
+        `SELECT i.template_version_id, i.registry_url, i.registry_root,
+                i.publisher_id, i.publisher_name, i.publisher_orcid,
+                i.initiating_actor_id, i.initiating_actor_label,
+                i.initiating_request_id, v.template_id, t.name template_name
+         FROM template_registry_publication_intents i
+         JOIN template_versions v ON v.id = i.template_version_id
+           AND v.team_id = i.team_id
+         JOIN templates t ON t.id = v.template_id AND t.team_id = v.team_id
+         WHERE i.id = $1 AND i.team_id = $2 AND i.lease_owner = $3
+           AND i.lease_expires_at > clock_timestamp()
+           AND i.completed_at IS NULL AND i.quarantined_at IS NULL
+         FOR UPDATE OF i`,
+        [claim.id, claim.teamId, claim.leaseOwner],
+      );
+      const row = intent.rows[0];
+      if (!row)
+        throw new Error('Registry publication intent lease is not owned');
+      if (
+        entry.root !== row.registry_root ||
+        entry.publisher.id !== row.publisher_id
+      )
+        throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
+      const publishedAt = new Date(entry.published_at);
+      await client.query(
+        `INSERT INTO template_registry_publications
+          (id, team_id, template_version_id, registry_url, registry_entry_id,
+           registry_root, publisher_id, publisher_name, publisher_orcid,
+           published_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (team_id, template_version_id, registry_url) DO NOTHING`,
+        [
+          randomUUID(),
+          claim.teamId,
+          row.template_version_id,
+          row.registry_url,
+          entry.id,
+          entry.root,
+          entry.publisher.id,
+          entry.publisher.name,
+          entry.publisher.orcid,
+          publishedAt,
+        ],
+      );
+      const completed = await client.query(
+        `UPDATE template_registry_publication_intents
+         SET registry_entry_id = $4, completed_at = clock_timestamp(),
+             lease_owner = NULL, lease_expires_at = NULL
+         WHERE id = $1 AND team_id = $2 AND lease_owner = $3
+           AND completed_at IS NULL AND quarantined_at IS NULL`,
+        [claim.id, claim.teamId, claim.leaseOwner, entry.id],
+      );
+      if (completed.rowCount !== 1)
+        throw new Error('Registry publication intent lease was lost');
+      const event = {
+        ...auditContext,
+        eventVersion: 2,
+        eventType: 'template.registry_published',
+        category: 'integration',
+        outcome: 'succeeded',
+        subjectType: null,
+        subjectId: null,
+        subjectLabel: null,
+        resourceType: 'template',
+        resourceId: row.template_id,
+        resourceLabel: row.template_name.slice(0, 320),
+        details: {
+          versionId: row.template_version_id,
+          registryEntryId: entry.id,
+          registryRoot: entry.root,
+          intentId: claim.id,
+          initiatingActorId: row.initiating_actor_id,
+          initiatingActorLabel: row.initiating_actor_label,
+          initiatingRequestId: row.initiating_request_id,
+        },
+      } satisfies AuditEventInput;
+      return {
+        result: {
+          entryId: entry.id,
+          registryUrl: row.registry_url,
+          root: entry.root,
+          publisher: entry.publisher,
+          publishedAt,
+        },
+        events: [event],
+      };
+    },
+  );
+}
+
+type PriorPublicationRow = {
+  registry_entry_id: string;
+  registry_root: string;
+  publisher_id: string;
+  publisher_name: string;
+  publisher_orcid: string | null;
+  published_at: Date;
+};
+type PreparedPublication =
+  | { prior: PriorPublicationRow }
+  | {
+      intentId: string;
+      artifact: Awaited<ReturnType<typeof createTemplateArtifact>>;
+      publisher: Publisher;
+    };
+
+export type PublishTemplateVersionResult =
+  | { status: 'completed'; publication: Publication; replayed: boolean }
+  | { status: 'pending'; intentId: string };
+
 export async function publishTemplateVersion(
   context: AuditedCommandContext,
   config: RegistryConfig,
   input: { versionId: string; credential: string },
-): Promise<{ publication: Publication; replayed: boolean }> {
-  return await runAuditedCommand<{
-    publication: Publication;
-    replayed: boolean;
-  }>(context, async (client, auditContext) => {
-    await requireLockedAdministrator(client, context);
-    const existing = await client.query<{
-      registry_entry_id: string;
-      registry_root: string;
-      publisher_id: string;
-      publisher_name: string;
-      publisher_orcid: string | null;
-      published_at: Date;
-    }>(
-      `SELECT registry_entry_id, registry_root, publisher_id, publisher_name,
-              publisher_orcid, published_at
-         FROM template_registry_publications
-        WHERE team_id = $1 AND template_version_id = $2 AND registry_url = $3`,
-      [context.tenantDb.teamId, input.versionId, config.origin],
-    );
-    const prior = existing.rows[0];
-    if (prior) {
-      return {
-        status: 'unchanged',
-        result: {
-          replayed: true,
-          publication: {
-            entryId: prior.registry_entry_id,
-            registryUrl: config.origin,
-            root: prior.registry_root,
-            publisher: {
-              id: prior.publisher_id,
-              name: prior.publisher_name,
-              orcid: prior.publisher_orcid,
-            },
-            publishedAt: prior.published_at,
-          },
-        },
-      };
-    }
-    const local = await loadArtifactInput(
-      client,
-      config.assetStore,
-      context.tenantDb.teamId,
-      input.versionId,
-    );
-    const link = await client.query<{ publisher_id: string }>(
-      `SELECT publisher_id FROM template_registry_accounts
-        WHERE user_id = $1 AND registry_url = $2`,
-      [context.principal.userId, config.origin],
-    );
-    const registry = clientFor(config);
-    let publisher: Publisher;
-    try {
-      publisher = await registry.publisher(input.credential);
-    } catch (error) {
-      translateRegistryError(error);
-    }
-    if (link.rows[0]?.publisher_id !== publisher.id)
-      throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
-    const artifact = await createTemplateArtifact(local.input);
-    let entry;
-    try {
-      entry = await registry.publish(artifact.bytes, input.credential);
-    } catch (error) {
-      translateRegistryError(error);
-    }
-    const recorded = await client.query<{ published_at: Date }>(
-      `INSERT INTO template_registry_publications
-        (id, team_id, template_version_id, registry_url, registry_entry_id,
-         registry_root, publisher_id, publisher_name, publisher_orcid, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING published_at`,
-      [
-        randomUUID(),
+): Promise<PublishTemplateVersionResult> {
+  if (!config.maintenancePool)
+    throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+  const prepared = await runAuditedCommand<PreparedPublication>(
+    context,
+    async (client, auditContext) => {
+      await requireLockedAdministrator(client, context);
+      const existing = await client.query<{
+        registry_entry_id: string;
+        registry_root: string;
+        publisher_id: string;
+        publisher_name: string;
+        publisher_orcid: string | null;
+        published_at: Date;
+      }>(
+        `SELECT registry_entry_id, registry_root, publisher_id, publisher_name,
+      publisher_orcid, published_at FROM template_registry_publications
+      WHERE team_id=$1 AND template_version_id=$2 AND registry_url=$3`,
+        [context.tenantDb.teamId, input.versionId, config.origin],
+      );
+      const prior = existing.rows[0];
+      if (prior) return { status: 'unchanged' as const, result: { prior } };
+      const local = await loadArtifactInput(
+        client,
+        config.assetStore,
         context.tenantDb.teamId,
         input.versionId,
-        config.origin,
-        entry.id,
-        entry.root,
-        entry.publisher.id,
-        entry.publisher.name,
-        entry.publisher.orcid,
-        new Date(entry.published_at),
-      ],
-    );
-    const publication = {
-      entryId: entry.id,
-      registryUrl: config.origin,
-      root: entry.root,
-      publisher: entry.publisher,
-      publishedAt: recorded.rows[0]!.published_at,
-    };
-    const event = {
-      ...eventContext(auditContext, { id: local.templateId, name: local.name }),
-      eventType: 'template.registry_published',
-      details: {
-        versionId: input.versionId,
-        registryEntryId: entry.id,
-        registryRoot: entry.root,
-      },
-    } satisfies AuditEventInput;
+      );
+      const registry = clientFor(config);
+      let publisher: Publisher;
+      try {
+        publisher = await registry.publisher(input.credential);
+      } catch (error) {
+        translateRegistryError(error);
+      }
+      const link = await client.query<{ publisher_id: string }>(
+        `SELECT publisher_id FROM template_registry_accounts
+       WHERE user_id=$1 AND registry_url=$2`,
+        [context.principal.userId, config.origin],
+      );
+      if (link.rows[0]?.publisher_id !== publisher.id)
+        throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
+      const artifact = await createTemplateArtifact(local.input);
+      const root = artifact.artifact.manifest.merkle_root;
+      const priorIntent = await client.query<{
+        id: string;
+        registry_root: string;
+        publisher_id: string;
+      }>(
+        `SELECT id, registry_root, publisher_id
+      FROM template_registry_publication_intents
+      WHERE team_id=$1 AND template_version_id=$2 AND registry_url=$3
+        AND completed_at IS NULL AND quarantined_at IS NULL FOR UPDATE`,
+        [context.tenantDb.teamId, input.versionId, config.origin],
+      );
+      if (priorIntent.rows[0]) {
+        if (
+          priorIntent.rows[0].registry_root !== root ||
+          priorIntent.rows[0].publisher_id !== publisher.id
+        )
+          throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
+        return {
+          status: 'unchanged' as const,
+          result: { intentId: priorIntent.rows[0].id, artifact, publisher },
+        };
+      }
+      const intentId = randomUUID();
+      await client.query(
+        `INSERT INTO template_registry_publication_intents
+      (id,team_id,template_version_id,registry_url,registry_root,publisher_id,
+       publisher_name,publisher_orcid,initiating_actor_id,initiating_actor_label,
+       initiating_request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [
+          intentId,
+          context.tenantDb.teamId,
+          input.versionId,
+          config.origin,
+          root,
+          publisher.id,
+          publisher.name,
+          publisher.orcid,
+          auditActorEventContext(auditContext).actorId,
+          auditActorEventContext(auditContext).actorLabel,
+          auditContext.requestId,
+        ],
+      );
+      const event = {
+        ...eventContext(auditContext, {
+          id: local.templateId,
+          name: local.name,
+        }),
+        eventType: 'template.registry_publish_requested',
+        details: { intentId, versionId: input.versionId, registryRoot: root },
+      } satisfies AuditEventInput;
+      return {
+        status: 'succeeded' as const,
+        result: { intentId, artifact, publisher },
+        events: [event],
+      };
+    },
+  );
+  if ('prior' in prepared) {
+    const prior = prepared.prior;
     return {
-      status: 'succeeded',
-      result: { publication, replayed: false },
-      events: [event],
+      status: 'completed',
+      replayed: true,
+      publication: {
+        entryId: prior.registry_entry_id,
+        registryUrl: config.origin,
+        root: prior.registry_root,
+        publisher: {
+          id: prior.publisher_id,
+          name: prior.publisher_name,
+          orcid: prior.publisher_orcid,
+        },
+        publishedAt: prior.published_at,
+      },
     };
-  });
+  }
+  const claim = await claimSpecificTemplateRegistryIntent(
+    config.maintenancePool,
+    'publication',
+    prepared.intentId,
+  );
+  if (!claim) return { status: 'pending', intentId: prepared.intentId };
+  const registry = clientFor(config);
+  try {
+    let entry = await registry.findEntry(
+      prepared.artifact.artifact.manifest.merkle_root,
+      prepared.publisher.id,
+    );
+    if (!entry)
+      entry = await registry.publish(prepared.artifact.bytes, input.credential);
+    const publication = await finalizePublicationIntent(
+      config.maintenancePool,
+      claim,
+      entry,
+    );
+    return { status: 'completed', publication, replayed: false };
+  } catch (error) {
+    await deferTemplateRegistryIntent(config.maintenancePool, claim, 5_000);
+    if (error instanceof TemplateRegistryCommandError) throw error;
+    return translateRegistryError(error);
+  }
 }
 
 export async function importRegistryTemplate(

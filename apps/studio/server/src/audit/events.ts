@@ -305,6 +305,26 @@ const CommonTemplateRegistryV1EventSchema = CommonUserEventSchema.extend({
   resourceLabel: LabelSchema,
 }).strict();
 
+const TemplateRegistryPublishRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_publish_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      versionId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const TemplateRegistryImportRequestedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_import_requested'),
+    details: z.strictObject({
+      intentId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
 const TemplateRegistryPublishedV1EventSchema =
   CommonTemplateRegistryV1EventSchema.extend({
     eventType: z.literal('template.registry_published'),
@@ -545,6 +565,8 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
+  TemplateRegistryPublishRequestedV1EventSchema,
+  TemplateRegistryImportRequestedV1EventSchema,
   TemplateRegistryPublishedV1EventSchema,
   TemplateRegistryImportedV1EventSchema,
   TemplateRegistryPublishedV2EventSchema,
@@ -1125,6 +1147,38 @@ export const AUDIT_EVENT_REGISTRY = {
         affectedSectionIds: ['stage:fixture-stage'],
         operationTypes: ['set'],
         operationCount: 1,
+      },
+    },
+  },
+  'template.registry_publish_requested@1': {
+    inputSchema: TemplateRegistryPublishRequestedV1EventSchema,
+    title: 'Template publication requested',
+    detailFields: ['intentId', 'versionId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_publish_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_import_requested@1': {
+    inputSchema: TemplateRegistryImportRequestedV1EventSchema,
+    title: 'Template import requested',
+    detailFields: ['intentId', 'registryEntryId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_import_requested',
+      details: {
+        intentId: '00000000-0000-4000-8000-000000000013',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
       },
     },
   },

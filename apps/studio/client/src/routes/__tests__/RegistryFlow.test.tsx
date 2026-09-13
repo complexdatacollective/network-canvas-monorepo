@@ -112,7 +112,11 @@ beforeEach(() => {
   calls.registry.mockResolvedValue(account);
   calls.linkRegistry.mockResolvedValue(account);
   calls.list.mockResolvedValue([version()]);
-  calls.publish.mockResolvedValue({ publication, replayed: false });
+  calls.publish.mockResolvedValue({
+    status: 'completed',
+    publication,
+    replayed: false,
+  });
   calls.import.mockResolvedValue({ templateId, versionId, replayed: false });
 });
 
@@ -175,7 +179,7 @@ describe('Studio Registry forms', () => {
       calls.list.mockResolvedValue([
         { ...version(), publications: [publication] },
       ]);
-      return { publication, replayed: false };
+      return { status: 'completed', publication, replayed: false };
     });
     renderPage(<Templates />);
     expect(
@@ -206,6 +210,39 @@ describe('Studio Registry forms', () => {
     expect(screen.getByRole('button', { name: 'Published' })).toBeDisabled();
   });
 
+  it('clears the credential and reports a durable pending publication', async () => {
+    calls.publish.mockResolvedValue({
+      status: 'pending',
+      intentId: '00000000-0000-4000-8000-000000000099',
+    });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    expect(
+      await screen.findByText(
+        'Publication is pending Registry reconciliation.',
+      ),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
+  it('clears the credential after a failed Registry handoff', async () => {
+    calls.publish.mockRejectedValue(new Error('handoff failed'));
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    expect(
+      await screen.findByText(/Registry operation could not be completed/),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
   it('waits for an actual Registry response and prevents another click while publishing', async () => {
     let release!: (
       value: Awaited<ReturnType<typeof rpcClient.templates.publish>>,
@@ -230,7 +267,7 @@ describe('Studio Registry forms', () => {
     expect(
       screen.queryByText('The template version was published.'),
     ).toBeNull();
-    release({ publication, replayed: false });
+    release({ status: 'completed', publication, replayed: false });
     expect(
       await screen.findByText('The template version was published.'),
     ).toBeInTheDocument();
@@ -240,7 +277,11 @@ describe('Studio Registry forms', () => {
     const invalidateQueries = vi
       .spyOn(QueryClient.prototype, 'invalidateQueries')
       .mockRejectedValueOnce(new Error('receipt-refresh-failed'));
-    calls.publish.mockResolvedValue({ publication, replayed: true });
+    calls.publish.mockResolvedValue({
+      status: 'completed',
+      publication,
+      replayed: true,
+    });
     renderPage(<Templates />);
     const input = await screen.findByLabelText(
       /Registry publishing credential/,
