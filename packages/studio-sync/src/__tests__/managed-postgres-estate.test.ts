@@ -206,14 +206,70 @@ describe('managed PostgreSQL estate enrollment', () => {
     ).rejects.toMatchObject({ code: '42501' });
   });
 
-  it('refuses an unrelated object before creating any estate database', async () => {
+  it('resumes after the first database connector fails', async () => {
+    if (!available) return;
+    await cleanup();
+    let failFirstConnection = true;
+    await expect(
+      applyManagedPostgresEstate(
+        admin,
+        async (database) => {
+          if (failFirstConnection) {
+            failFirstConnection = false;
+            throw new Error('synthetic first database connection failure');
+          }
+          return connectDatabase(database);
+        },
+        credentials,
+      ),
+    ).rejects.toEqual(new UnsafeManagedPostgresEstateError('apply'));
+    expect(
+      (await planManagedPostgresEstate(admin)).databases.every(
+        ({ state }) => state === 'quarantined',
+      ),
+    ).toBe(true);
+    await expect(
+      applyManagedPostgresEstate(admin, connectDatabase, credentials),
+    ).resolves.toMatchObject({
+      databases: MANAGED_POSTGRES_DATABASES.map(({ key, database }) => ({
+        key,
+        database,
+        state: 'active',
+      })),
+    });
+  });
+
+  it('keeps a colliding unrelated login and its active session unchanged', async () => {
     if (!available) return;
     await cleanup();
     const collision = MANAGED_POSTGRES_DATABASES[0]!.logins.runtime;
-    await admin.query(`CREATE ROLE ${escapeIdentifier(collision)} NOLOGIN`);
-    await expect(planManagedPostgresEstate(admin)).rejects.toEqual(
-      new UnsafeManagedPostgresEstateError('identity'),
+    await admin.query(
+      `CREATE ROLE ${escapeIdentifier(collision)} LOGIN PASSWORD ${escapeLiteral(password)}`,
     );
+    const session = new Pool({
+      host: '127.0.0.1',
+      port,
+      user: collision,
+      password,
+      database: 'postgres',
+      max: 1,
+    });
+    session.on('error', () => undefined);
+    await session.query('SELECT 1');
+    await expect(
+      applyManagedPostgresEstate(admin, connectDatabase, credentials),
+    ).rejects.toEqual(new UnsafeManagedPostgresEstateError('identity'));
+    await expect(session.query('SELECT 1')).resolves.toMatchObject({
+      rowCount: 1,
+    });
+    expect(
+      (
+        await admin.query<{ rolcanlogin: boolean }>(
+          'SELECT rolcanlogin FROM pg_roles WHERE rolname = $1',
+          [collision],
+        )
+      ).rows,
+    ).toEqual([{ rolcanlogin: true }]);
     expect(
       (
         await admin.query<{ count: number }>(
@@ -222,6 +278,30 @@ describe('managed PostgreSQL estate enrollment', () => {
         )
       ).rows,
     ).toEqual([{ count: 0 }]);
+    await session.end();
     await admin.query(`DROP ROLE ${escapeIdentifier(collision)}`);
+  });
+
+  it('keeps a colliding unrelated database admission unchanged', async () => {
+    if (!available) return;
+    await cleanup();
+    const collision = MANAGED_POSTGRES_DATABASES[0]!.database;
+    await admin.query(`CREATE DATABASE ${escapeIdentifier(collision)}`);
+    const session = poolFor(collision);
+    await session.query('SELECT 1');
+    await expect(
+      applyManagedPostgresEstate(admin, connectDatabase, credentials),
+    ).rejects.toEqual(new UnsafeManagedPostgresEstateError('identity'));
+    expect(
+      (
+        await admin.query<{ datconnlimit: number }>(
+          'SELECT datconnlimit FROM pg_database WHERE datname = $1',
+          [collision],
+        )
+      ).rows,
+    ).toEqual([{ datconnlimit: -1 }]);
+    await expect(session.query('SELECT 1')).resolves.toMatchObject({
+      rowCount: 1,
+    });
   });
 });

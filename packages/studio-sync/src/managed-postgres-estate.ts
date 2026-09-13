@@ -349,6 +349,19 @@ async function createMissingDatabases(
     await client.query(
       `COMMENT ON DATABASE ${escapeIdentifier(database.database)} IS ${escapeLiteral(marker('database', database.database))}`,
     );
+    // Database ACLs are cluster catalog state, so establish quarantine before
+    // the first connection to the new database. A transient connector failure
+    // must leave an exact state that the next read-only plan can accept.
+    const everyIdentity = [...allDomainRoles(), ...allLogins()]
+      .map(escapeIdentifier)
+      .join(', ');
+    const allowed = Object.values(database.logins)
+      .map(escapeIdentifier)
+      .join(', ');
+    await client.query(
+      `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(database.database)} FROM PUBLIC, ${everyIdentity};
+       GRANT CONNECT ON DATABASE ${escapeIdentifier(database.database)} TO ${allowed}`,
+    );
   }
 }
 
@@ -411,17 +424,36 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
   const logins = allLogins();
   await client.query('BEGIN');
   try {
-    const existing = await client.query<{ rolname: string }>(
-      'SELECT rolname FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])',
+    const existing = await client.query<{
+      rolname: string;
+      description: string | null;
+    }>(
+      `SELECT rolname, pg_catalog.shobj_description(oid, 'pg_authid') AS description
+       FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])`,
       [logins],
     );
-    for (const { rolname: login } of existing.rows)
+    const ownedLogins = existing.rows
+      .filter(
+        ({ rolname, description }) => description === marker('role', rolname),
+      )
+      .map(({ rolname }) => rolname);
+    for (const login of ownedLogins)
       await client.query(`ALTER ROLE ${escapeIdentifier(login)} NOLOGIN`);
-    const databases = await client.query<{ datname: string }>(
-      'SELECT datname FROM pg_catalog.pg_database WHERE datname = ANY($1::pg_catalog.text[])',
+    const databases = await client.query<{
+      datname: string;
+      description: string | null;
+    }>(
+      `SELECT datname, pg_catalog.shobj_description(oid, 'pg_database') AS description
+       FROM pg_catalog.pg_database WHERE datname = ANY($1::pg_catalog.text[])`,
       [MANAGED_POSTGRES_DATABASES.map(({ database }) => database)],
     );
-    for (const { datname } of databases.rows)
+    const ownedDatabases = databases.rows
+      .filter(
+        ({ datname, description }) =>
+          description === marker('database', datname),
+      )
+      .map(({ datname }) => datname);
+    for (const datname of ownedDatabases)
       await client.query(
         `ALTER DATABASE ${escapeIdentifier(datname)} CONNECTION LIMIT 0`,
       );
@@ -430,7 +462,7 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
       `SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000)
        FROM pg_catalog.pg_stat_activity activity JOIN pg_catalog.pg_roles role ON role.oid = activity.usesysid
        WHERE role.rolname = ANY($1::pg_catalog.text[]) AND activity.pid <> pg_catalog.pg_backend_pid()`,
-      [logins],
+      [ownedLogins],
     );
   } catch (error) {
     await client.query('ROLLBACK');
@@ -497,6 +529,7 @@ export async function applyManagedPostgresEstate(
 ): Promise<ManagedPostgresEstatePlan> {
   const client = await pool.connect();
   let locked = false;
+  let mutationStarted = false;
   let phase: 'apply' | 'credentials' | 'readback' = 'apply';
   try {
     await client.query('SELECT pg_catalog.pg_advisory_lock($1::bigint)', [
@@ -504,6 +537,7 @@ export async function applyManagedPostgresEstate(
     ]);
     locked = true;
     const plan = await inspectEstate(client);
+    mutationStarted = true;
     await createMissingRoles(client, plan);
     await createMissingDatabases(client, plan);
     await configureClusterMemberships(client);
@@ -548,7 +582,7 @@ export async function applyManagedPostgresEstate(
     }
     return await inspectEstate(client);
   } catch (error) {
-    await disableAndDrain(client).catch(() => undefined);
+    if (mutationStarted) await disableAndDrain(client).catch(() => undefined);
     if (error instanceof UnsafeManagedPostgresEstateError) throw error;
     throw new UnsafeManagedPostgresEstateError(phase);
   } finally {
