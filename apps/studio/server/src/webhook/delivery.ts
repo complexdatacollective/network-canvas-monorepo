@@ -1,11 +1,15 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { request } from 'node:https';
+import type { LookupFunction } from 'node:net';
 
 import ipaddr from 'ipaddr.js';
 import type pg from 'pg';
 
-import { StudyCreatedWebhookEventSchema } from '@codaco/studio-rpc/webhooks';
+import {
+  StudyCreatedWebhookEventSchema,
+  WebhookEventTypeSchema,
+} from '@codaco/studio-rpc/webhooks';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -105,7 +109,7 @@ async function resolvePublicAddress(
   hostname: string,
   lookupAddress: AddressLookup,
 ) {
-  const addresses = await lookupAddress(hostname, {
+  const addresses = await lookupAddress(normalizeDnsHostname(hostname), {
     all: true,
     verbatim: true,
   });
@@ -115,6 +119,26 @@ async function resolvePublicAddress(
   )
     throw new WebhookDeliveryError('permanent');
   return addresses[0]!;
+}
+
+export function normalizeDnsHostname(hostname: string): string {
+  return hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname;
+}
+
+export function createPinnedLookup(pinned: {
+  address: string;
+  family: number;
+}): LookupFunction {
+  const family = pinned.family === 6 ? 6 : 4;
+  return (_hostname, options, callback) => {
+    if (typeof options === 'object' && options.all) {
+      callback(null, [{ address: pinned.address, family }]);
+      return;
+    }
+    callback(null, pinned.address, family);
+  };
 }
 
 export function createStandardWebhookSender(
@@ -187,8 +211,7 @@ export function createStandardWebhookSender(
               'webhook-timestamp': input.timestamp,
               'webhook-signature': input.signature,
             },
-            lookup: (_hostname, _options, callback) =>
-              callback(null, pinned.address, pinned.family),
+            lookup: createPinnedLookup(pinned),
           },
           (response) => {
             try {
@@ -218,9 +241,16 @@ type Options = OutboxRetryOptions & {
   encryptionKeys: EncryptionKeys;
   sender?: WebhookSender;
   observer?: OutboxObserver;
+  handoff?: typeof beginWebhookHandoff;
 };
 
 class LeaseLostError extends Error {}
+
+export type WebhookHandoffResult =
+  | 'handed-off'
+  | 'retry'
+  | 'suppressed'
+  | 'lease-lost';
 
 export async function beginWebhookHandoff(
   pool: pg.Pool,
@@ -229,7 +259,7 @@ export async function beginWebhookHandoff(
     'id' | 'teamId' | 'subscriptionId' | 'eventType' | 'leaseOwner'
   >,
   snapshot: WebhookSecretRead['snapshot'],
-): Promise<boolean> {
+): Promise<WebhookHandoffResult> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -254,15 +284,19 @@ export async function beginWebhookHandoff(
     const row = delivery.rows[0];
     if (!row) {
       await client.query('COMMIT');
-      return false;
+      return 'lease-lost';
     }
-    const subscription = await client.query(
-      `SELECT id
+    const subscription = await client.query<{
+      active: boolean;
+      subscribed: boolean;
+      snapshotMatches: boolean;
+    }>(
+      `SELECT state = 'active' AS active,
+              $3 = ANY(event_types) AS subscribed,
+              secret_key_id = $4 AND secret_algorithm = $5
+                AND secret_ciphertext = $6 AS "snapshotMatches"
        FROM webhook_subscriptions
-       WHERE id = $1 AND team_id = $2 AND state = 'active'
-         AND $3 = ANY(event_types)
-         AND secret_key_id = $4 AND secret_algorithm = $5
-         AND secret_ciphertext = $6
+       WHERE id = $1 AND team_id = $2
        FOR UPDATE`,
       [
         row.subscriptionId,
@@ -273,9 +307,14 @@ export async function beginWebhookHandoff(
         snapshot.secretCiphertext,
       ],
     );
-    if (subscription.rowCount !== 1) {
+    const current = subscription.rows[0];
+    if (!current || !current.active || !current.subscribed) {
       await client.query('COMMIT');
-      return false;
+      return 'suppressed';
+    }
+    if (!current.snapshotMatches) {
+      await client.query('COMMIT');
+      return 'retry';
     }
     const handoff = await client.query(
       `UPDATE webhook_deliveries
@@ -286,7 +325,7 @@ export async function beginWebhookHandoff(
       [claim.id, claim.leaseOwner],
     );
     await client.query('COMMIT');
-    return handoff.rowCount === 1;
+    return handoff.rowCount === 1 ? 'handed-off' : 'lease-lost';
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw error;
@@ -328,11 +367,13 @@ function deliveryEvent(
 export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDelivery> {
   readonly queue = QUEUE;
   private readonly sender: WebhookSender;
+  private readonly handoff: typeof beginWebhookHandoff;
   private readonly options: Options;
 
   constructor(options: Options) {
     this.options = options;
     this.sender = options.sender ?? createStandardWebhookSender();
+    this.handoff = options.handoff ?? beginWebhookHandoff;
   }
 
   failureDisposition(error: unknown) {
@@ -371,7 +412,9 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
               d.lease_owner AS "leaseOwner", d.send_started_at AS "sendStartedAt"
        FROM webhook_deliveries d
        JOIN webhook_subscriptions s ON s.id = d.subscription_id AND s.team_id = d.team_id
-       WHERE ${PENDING} AND d.lease_expires_at <= clock_timestamp()
+       WHERE ${PENDING}
+         AND (d.lease_expires_at <= clock_timestamp()
+           OR (d.lease_owner IS NULL AND d.lease_expires_at IS NULL))
          AND d.attempt_count >= $1
        ORDER BY d.created_at, d.id LIMIT 100`,
       [maxAttempts],
@@ -473,6 +516,10 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
   async deliver(claim: ClaimedWebhookDelivery): Promise<void | 'suppressed'> {
     let secret: Buffer | undefined;
     try {
+      // Historical seed types remain listable for operators, but this worker
+      // must not imply a producer or wire contract that the runtime lacks.
+      if (!WebhookEventTypeSchema.safeParse(claim.eventType).success)
+        throw new WebhookDeliveryError('permanent');
       const parsed = WebhookPayloadSchema.safeParse(claim.payload);
       if (!parsed.success) throw new WebhookDeliveryError('permanent');
       const payload = parsed.data;
@@ -494,12 +541,14 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
         },
       );
       secret = secretRead.secret;
-      const handedOff = await beginWebhookHandoff(
+      const handoff = await this.handoff(
         this.options.pool,
         claim,
         secretRead.snapshot,
       );
-      if (!handedOff) return 'suppressed';
+      if (handoff === 'suppressed') return 'suppressed';
+      if (handoff === 'retry') throw new WebhookDeliveryError('retryable');
+      if (handoff === 'lease-lost') throw new LeaseLostError();
       const body = JSON.stringify(payload, Object.keys(payload).toSorted());
       const timestamp = String(Math.floor(Date.now() / 1000));
       const signature = `v1,${createHmac('sha256', secret)
@@ -522,6 +571,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
       );
     } catch (error) {
       if (error instanceof ProtectedDataError) return 'suppressed';
+      if (error instanceof LeaseLostError) throw error;
       if (error instanceof WebhookDeliveryError) throw error;
       throw new WebhookDeliveryError('retryable');
     } finally {
@@ -698,8 +748,10 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
            lease_owner = NULL, lease_expires_at = NULL,
            last_status_code = $4,
            last_error = CASE WHEN $3 = 'delivered' THEN NULL ELSE 'delivery_' || $3 END
-       WHERE id = $1 AND lease_owner = $2
-         AND lease_expires_at <= clock_timestamp() AND ${PENDING}`,
+       WHERE id = $1
+         AND ((lease_owner = $2 AND lease_expires_at <= clock_timestamp())
+           OR (lease_owner IS NULL AND lease_expires_at IS NULL))
+         AND ${PENDING}`,
       [claim.id, leaseOwner, outcome, statusCode],
     );
   }

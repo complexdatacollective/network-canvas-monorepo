@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+import { ORPCError } from '@orpc/server';
 import type pg from 'pg';
 
 import type { AuditActorFilter } from '@codaco/studio-rpc';
@@ -25,6 +26,7 @@ import {
 } from './command.ts';
 import type { AuditEventInput } from './events.ts';
 import { AUDIT_EVENT_REGISTRY } from './events.ts';
+import { AuditReadDeniedError } from './read-authorization.ts';
 import { runNoAuditTenantTransaction } from './transaction.ts';
 
 const DIRECT_ROWS = 1_000;
@@ -335,30 +337,9 @@ export async function requestAuditExport(
         context.tenantDb.teamId,
         context.principal.userId,
       );
-      if (!actor || !roleGrantsTeamAdministration(actor.role))
-        return {
-          status: 'denied' as const,
-          error: new Error('audit export forbidden'),
-          events: [
-            {
-              ...auditActorEventContext(locked),
-              eventVersion: 1 as const,
-              eventType: 'audit.read_denied' as const,
-              category: 'audit' as const,
-              outcome: 'denied' as const,
-              subjectType: null,
-              subjectId: null,
-              subjectLabel: null,
-              resourceType: null,
-              resourceId: null,
-              resourceLabel: null,
-              details: {
-                procedure: 'audit.export' as const,
-                reason: 'insufficient_permission' as const,
-              },
-            },
-          ],
-        };
+      if (!actor) throw new ORPCError('FORBIDDEN');
+      if (!roleGrantsTeamAdministration(actor.role))
+        throw new AuditReadDeniedError();
       const high = await client.query<{ sequence: string }>(
         `SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM audit_events WHERE team_id = $1`,
         [context.tenantDb.teamId],
@@ -434,8 +415,9 @@ async function authorizedExportRow(
         context.tenantDb.teamId,
         context.principal.userId,
       );
-      if (!actor || !roleGrantsTeamAdministration(actor.role))
-        throw new Error('audit export forbidden');
+      if (!actor) throw new ORPCError('FORBIDDEN');
+      if (!roleGrantsTeamAdministration(actor.role))
+        throw new AuditReadDeniedError();
       const row = await client.query<{
         status: 'pending' | 'generating' | 'ready' | 'failed';
         actor_id: string;
@@ -561,6 +543,9 @@ export async function openAuditExportDownload(
         context.tenantDb.teamId,
         context.principal.userId,
       );
+      // The one-use download route deliberately returns the same unavailable
+      // response for missing, consumed and unauthorized handles; it does not
+      // use the RPC audit-read denial guard.
       if (!actor || !roleGrantsTeamAdministration(actor.role))
         throw new Error('audit export forbidden');
       return (

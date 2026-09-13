@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { operationalLogger } from '../observability/logger.ts';
+import { loadTestKeys } from '../pii/__tests__/fixtures.ts';
 import { stubAuthService } from './support/auth.ts';
 import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
@@ -510,6 +511,59 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     ]);
     currentPrincipal = OWNER;
   });
+
+  it.each(['export', 'exportStatus'] as const)(
+    'rate-limits %s member denials with exactly one audit event per admitted request',
+    async (procedure) => {
+      const deniedUser = principal(
+        `audit-denied-${procedure}`,
+        'Denied Export',
+      );
+      await pool.query(
+        `INSERT INTO "user" (id,name,email,"emailVerified") VALUES ($1,$2,$3,true)`,
+        [deniedUser.userId, deniedUser.name, deniedUser.email],
+      );
+      await pool.query(
+        `INSERT INTO team_members (id,team_id,user_id,role) VALUES ($1,$2,$3,'member')`,
+        [`${deniedUser.userId}-member`, TEAM, deniedUser.userId],
+      );
+      const deniedClient = createRpcClient(
+        createApp(readEnv(), {
+          pool: appPool,
+          encryptionKeys: await loadTestKeys(),
+          auth: stubAuthService({
+            getSession: () => Promise.resolve(deniedUser),
+            getMembership: () => Promise.resolve({ role: 'member' }),
+          }),
+        }),
+      );
+      for (let attempt = 0; attempt < 7; attempt++) {
+        const result =
+          procedure === 'export'
+            ? await safe(deniedClient.audit.export({ teamId: TEAM }))
+            : await safe(
+                deniedClient.audit.exportStatus({
+                  teamId: TEAM,
+                  jobId: randomUUID(),
+                }),
+              );
+        expect(result.error).toMatchObject({ code: 'FORBIDDEN' });
+      }
+      const denied = await pool.query<{ procedure: string }>(
+        `SELECT details->>'procedure' AS procedure FROM audit_events
+          WHERE team_id=$1 AND actor_id=$2 AND event_type='audit.read_denied'`,
+        [TEAM, deniedUser.userId],
+      );
+      expect(denied.rows).toEqual(
+        Array.from({ length: 5 }, () => ({ procedure: `audit.${procedure}` })),
+      );
+      expect(
+        await pool.query('SELECT id FROM audit_export_jobs WHERE actor_id=$1', [
+          deniedUser.userId,
+        ]),
+      ).toHaveProperty('rowCount', 0);
+    },
+  );
 
   it('refuses non-members and unknown teams identically, with no event', async () => {
     currentPrincipal = principal('audit-outsider', 'Outsider');
