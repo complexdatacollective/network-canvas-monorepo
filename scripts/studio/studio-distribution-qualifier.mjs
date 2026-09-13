@@ -297,16 +297,57 @@ export async function prepareStudioDistributionQualification(
 
 /** Run the concrete local installation/recovery drill and return only the
  * receipt derived from its completed observations. */
-export async function qualifyStudioDistribution(input) {
-  const prepared = await prepareStudioDistributionQualification(input);
+export function qualifyStudioTelemetryRelease(
+  image,
+  { run = command, cwd = process.cwd() } = {},
+) {
+  if (
+    typeof image !== 'string' ||
+    !/^[a-z0-9.-]+(?::[0-9]{1,5})?\/[a-z0-9][a-z0-9._/-]*@sha256:[a-f0-9]{64}$/.test(
+      image,
+    )
+  )
+    throw new Error('Studio telemetry release image is invalid.');
+  return run(
+    'pnpm',
+    [
+      '--filter',
+      '@codaco/studio-client',
+      'exec',
+      'node',
+      'scripts/telemetry-release-gate.mjs',
+    ],
+    {
+      cwd,
+      env: { ...process.env, STUDIO_TELEMETRY_RELEASE_IMAGE: image },
+      timeout: 1_200_000,
+      killSignal: 'SIGKILL',
+    },
+  );
+}
+
+async function qualifyLocalDistribution(input) {
+  const { runLocalStudioDistributionQualification } =
+    await import('../../apps/studio/server/qualification/distribution.ts');
+  return runLocalStudioDistributionQualification(input);
+}
+
+export async function qualifyStudioDistribution(
+  input,
+  {
+    prepare = prepareStudioDistributionQualification,
+    qualifyLocal = qualifyLocalDistribution,
+    qualifyTelemetry = qualifyStudioTelemetryRelease,
+  } = {},
+) {
+  const prepared = await prepare(input);
   try {
-    const { runLocalStudioDistributionQualification } =
-      await import('../../apps/studio/server/qualification/distribution.ts');
-    await runLocalStudioDistributionQualification({
+    await qualifyLocal({
       candidate: prepared.candidate,
       sources: prepared.sources,
       cosign: input.executables.cosign,
     });
+    await qualifyTelemetry(prepared.candidate.release.images.studio.reference);
     return {
       verdict: 'passed',
       source: prepared.candidate.current.source,

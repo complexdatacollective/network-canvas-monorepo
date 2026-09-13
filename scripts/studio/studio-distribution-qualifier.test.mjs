@@ -12,7 +12,11 @@ import {
   releasedDistribution,
   studioSbom,
 } from '../test-support/studio-release.mjs';
-import { prepareStudioDistributionQualification } from './studio-distribution-qualifier.mjs';
+import {
+  prepareStudioDistributionQualification,
+  qualifyStudioDistribution,
+  qualifyStudioTelemetryRelease,
+} from './studio-distribution-qualifier.mjs';
 
 function signedRelease(generation, previous = []) {
   const release = releasedDistribution(generation, previous);
@@ -127,6 +131,62 @@ test('stages exact authenticated candidate and historical installers only after 
     prepared.cleanup();
     assert.equal(existsSync(root), false);
   }
+});
+
+test('gates a passed distribution receipt on the exact immutable browser telemetry image', async () => {
+  const image = `ghcr.io/networkcanvas/studio@sha256:${'a'.repeat(64)}`;
+  const calls = [];
+  qualifyStudioTelemetryRelease(image, {
+    cwd: '/reviewed/source',
+    run: (program, args, options) => calls.push({ program, args, options }),
+  });
+  assert.deepEqual(calls, [
+    {
+      program: 'pnpm',
+      args: [
+        '--filter',
+        '@codaco/studio-client',
+        'exec',
+        'node',
+        'scripts/telemetry-release-gate.mjs',
+      ],
+      options: {
+        cwd: '/reviewed/source',
+        env: { ...process.env, STUDIO_TELEMETRY_RELEASE_IMAGE: image },
+        timeout: 1_200_000,
+        killSignal: 'SIGKILL',
+      },
+    },
+  ]);
+
+  const order = [];
+  let cleaned = false;
+  const prepared = {
+    candidate: {
+      release: { images: { studio: { reference: image } } },
+      current: { source: 'b'.repeat(40), digest: 'c'.repeat(64) },
+    },
+    sources: [],
+    cleanup: () => {
+      cleaned = true;
+    },
+  };
+  await assert.rejects(
+    qualifyStudioDistribution(
+      { executables: { cosign: '/pinned/cosign' } },
+      {
+        prepare: async () => prepared,
+        qualifyLocal: async () => order.push('local'),
+        qualifyTelemetry: async (reference) => {
+          order.push(reference);
+          throw new Error('browser telemetry escaped');
+        },
+      },
+    ),
+    /browser telemetry escaped/,
+  );
+  assert.deepEqual(order, ['local', image]);
+  assert.equal(cleaned, true);
 });
 
 for (const defect of [
