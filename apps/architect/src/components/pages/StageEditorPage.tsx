@@ -309,40 +309,58 @@ const StageEditorPage = () => {
         {stageName}
       </Heading>
       {/*
-        The container is the column, and the grid inside it is what the
-        column's own width is asked about: an element declaring `@container`
-        is a container for what it CONTAINS, so a query written on the same
-        element would be answered by whatever happens to be above the page
-        instead — which is nothing, and the two columns would never arrive.
+        The route's gutter, OUTSIDE the query container. What the container
+        measures is what the grid decides on, so a gutter inside it makes the
+        editor answer about 32px (48px above phone width) of padding the
+        researcher never sees: the two columns would arrive on a screen too
+        narrow for them, and the 16rem list would keep only what its own
+        padding left of the track. Measured in Chromium: with the gutter
+        inside, the columns split from 960px of viewport instead of 1008 and
+        the list rendered 208px wide instead of 256.
       */}
-      <div className="@container mx-auto w-full max-w-6xl">
-        <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-          {/*
-            Where the section list goes. The editor publishes its sections on
-            the action slot, which is called inside the form — so the chrome
-            rendered there portals the list up into this column, and the list
-            reads a form it is not rendered inside.
+      <div className="phone-landscape:px-6 px-4">
+        {/*
+          The container is the column, and the grid inside it is what the
+          column's own width is asked about: an element declaring `@container`
+          is a container for what it CONTAINS, so a query written on the same
+          element would be answered by whatever happens to be above the page
+          instead — which is nothing, and the two columns would never arrive.
+        */}
+        <div className="@container mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
+            {/*
+              Where the section list goes. The editor publishes its sections on
+              the action slot, which is called inside the form — so the chrome
+              rendered there portals the list up into this column, and the list
+              reads a form it is not rendered inside.
 
-            The gutter is this column's own, and the editor column carries the
-            same one inside the package: a gutter on a wrapper around both
-            would be applied to the form twice, indenting it by 32px at phone
-            width and 48px above it.
-          */}
-          <div ref={setOutlineHost} className="phone-landscape:px-6 px-4" />
-          {/*
-            No `EnclosingHeadingLevel` around the editor: the heading above it
-            is this page's `h1`, which is the top of the ladder and what the
-            editor already assumes when nothing states otherwise — its own
-            stage title lands on `h2` and every section one below that.
-          */}
-          <ProtocolBuilder client={client} protocolId={activeProtocolId}>
-            <StageEditor
-              target={target}
-              formId={STAGE_FORM_ID}
-              actions={renderChrome}
-              onSaved={handleSaved}
-            />
-          </ProtocolBuilder>
+              No gutter of its own: the route's is already outside both
+              columns, and this column is the one that takes it as given.
+            */}
+            <div ref={setOutlineHost} />
+            {/*
+              The editor column gives the route's gutter back, because the
+              package pads this column itself — the editor is a whole page in
+              a host that draws no list, so its own gutter is not Architect's
+              to leave off. Applying both indents the form twice: 32px at
+              phone width, 48px above it.
+
+              No `EnclosingHeadingLevel` around the editor: the heading above
+              it is this page's `h1`, which is the top of the ladder and what
+              the editor already assumes when nothing states otherwise — its
+              own stage title lands on `h2` and every section one below that.
+            */}
+            <div className="phone-landscape:-mx-6 -mx-4">
+              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+                <StageEditor
+                  target={target}
+                  formId={STAGE_FORM_ID}
+                  actions={renderChrome}
+                  onSaved={handleSaved}
+                />
+              </ProtocolBuilder>
+            </div>
+          </div>
         </div>
       </div>
     </div>
