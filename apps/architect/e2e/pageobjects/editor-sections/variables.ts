@@ -19,10 +19,10 @@ export type OptionRow = { label: string; value: string };
  *   match two windows at page scope — the OPEN one is the window, and
  *   `data-open` is what says so. A window that has closed then matches
  *   nothing, which is what `dismissAttributeWindow` reads. Inside it: a
- *   `role="searchbox"` named
- *   "Find or create an attribute" — the same name whether or not this caller
- *   allows one to be created — and one flat `role="listbox"` named "Attribute
- *   results" whose rows are named for the attribute and carry
+ *   `role="searchbox"` named "Find or create an attribute" where this caller
+ *   allows one to be created and "Find an attribute" where it does not — the
+ *   name says which, as the placeholder does — and one flat `role="listbox"`
+ *   named "Attribute results" whose rows are named for the attribute and carry
  *   `data-attribute-type`.
  * - Where the caller allows creation, a term matching nothing puts a row
  *   reading `Create new attribute called “X”.` first; a duplicate name or one
@@ -93,14 +93,24 @@ export async function openAttributeWindow(field: Locator): Promise<Locator> {
   return window;
 }
 
+/**
+ * The two names the window's search box goes by.
+ *
+ * It says whether this window can invent an attribute, so a helper that knew
+ * only one of them would find the box at the sites that create and lose it at
+ * the sites that only choose — the rule builder's two pickers and the
+ * narrative preset's grouping attribute, all of which are read through
+ * `chooseAttribute`. Which name is drawn where is asserted by
+ * `attribute-picker.spec.ts`, which is the spec about this window.
+ */
+const SEARCH_BOX_NAME = /^Find (?:or create )?an attribute$/;
+
 /** Narrows the open window to a term. */
 export async function searchAttributes(
   window: Locator,
   term: string,
 ): Promise<void> {
-  await window
-    .getByRole('searchbox', { name: 'Find or create an attribute' })
-    .fill(term);
+  await window.getByRole('searchbox', { name: SEARCH_BOX_NAME }).fill(term);
 }
 
 /**

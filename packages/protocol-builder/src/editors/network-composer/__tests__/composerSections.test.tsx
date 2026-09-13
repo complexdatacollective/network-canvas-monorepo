@@ -917,6 +917,13 @@ describe('what a network composer lets the participant build', () => {
  */
 describe('inventing the attribute a connection form records', () => {
   const SEARCH_LABEL = 'Find or create an attribute';
+  /**
+   * What the same box is called where nothing may be created — the other half
+   * of the same fact, said to a researcher who cannot see the list. Asked for
+   * by name in the negative case, so a site that started offering creation
+   * fails here rather than quietly renaming its own search box.
+   */
+  const SEARCH_ONLY_LABEL = 'Find an attribute';
   const createRowName = (term: string) =>
     `Create new attribute called “${term}”.`;
 
@@ -938,12 +945,13 @@ describe('inventing the attribute a connection form records', () => {
 
   const createRowOfTheOpenRow = async (
     harness: ReturnType<typeof renderStageEditor>,
+    searchLabel: string = SEARCH_LABEL,
   ): Promise<HTMLElement | null> => {
     await openRow(harness, 'Edit form field');
     return createRowIn(
       harness.user,
       picker('Attribute'),
-      SEARCH_LABEL,
+      searchLabel,
       createRowName,
       'howOften',
     );
@@ -965,6 +973,7 @@ describe('inventing the attribute a connection form records', () => {
     expect(
       await createRowOfTheOpenRow(
         renderStageEditor(askingAbout('former_edge')),
+        SEARCH_ONLY_LABEL,
       ),
     ).toBeNull();
   });

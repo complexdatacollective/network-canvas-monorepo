@@ -1499,6 +1499,7 @@
   "protocolBuilder.variablePicker.resultsLabel": "Resultados de atributos",
   "protocolBuilder.variablePicker.rowTypeDescription": "Tipo de atributo: {attributeType}",
   "protocolBuilder.variablePicker.searchLabel": "Busca o crea un atributo",
+  "protocolBuilder.variablePicker.searchOnlyLabel": "Busca un atributo",
   "protocolBuilder.variablePicker.searchOnlyPlaceholder": "Busca un atributo…",
   "protocolBuilder.variablePicker.searchPlaceholder": "Busca o crea un atributo…",
   "protocolBuilder.variablePicker.selectAttribute": "Seleccionar atributo",

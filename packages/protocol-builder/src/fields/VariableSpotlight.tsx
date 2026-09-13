@@ -3,6 +3,7 @@ import {
   useCallback,
   useId,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
   type KeyboardEvent,
@@ -22,7 +23,10 @@ import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { VariableNameSchema } from '@codaco/shared-consts';
+import {
+  normalizeForComparison,
+  VariableNameSchema,
+} from '@codaco/shared-consts';
 
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import AttributePill from './AttributePill.tsx';
@@ -39,7 +43,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.variablePicker.searchLabel',
     defaultMessage: 'Find or create an attribute',
     description:
-      'Accessible name of the search box at the top of the attribute window. Typing in it narrows the list below, and — where this control allows it — offers to create an attribute under whatever was typed.',
+      'Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed.',
+  },
+  searchOnlyLabel: {
+    id: 'protocolBuilder.variablePicker.searchOnlyLabel',
+    defaultMessage: 'Find an attribute',
+    description:
+      'Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below.',
   },
   searchPlaceholder: {
     id: 'protocolBuilder.variablePicker.searchPlaceholder',
@@ -126,6 +136,18 @@ const ROW_CLASSES = cx(
   'data-focused:bg-surface-2',
   'data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:bg-transparent',
 );
+
+/**
+ * What an attribute's row is keyed under.
+ *
+ * An id the protocol minted and the two keys this list makes up for itself
+ * share one key space, and a protocol may file an attribute under an id
+ * holding a colon — so an attribute stored as `create:nick` would be the same
+ * key as the offer to create `nick`, and the collection keeps only the first
+ * of two rows that share one. Prefixed, no id can name a row this list
+ * invented.
+ */
+const ATTRIBUTE_KEY_PREFIX = 'attribute:';
 
 /**
  * One row of the list, which is one of three things.
@@ -247,9 +269,20 @@ export default function VariableSpotlight({
     undefined,
   );
 
+  /**
+   * How many times this window has been closed, so an answer that arrives
+   * after a close can tell that the question it belongs to is over.
+   *
+   * Counted here, beside the reset, because every close passes through this
+   * comparison: the ones the researcher makes and the one a completed pick
+   * makes through the field.
+   */
+  const dismissals = useRef(0);
+
   if (openBaseline !== open) {
     setOpenBaseline(open);
     if (!open) {
+      dismissals.current += 1;
       setTerm('');
       setRefusedReason(undefined);
     }
@@ -278,10 +311,21 @@ export default function VariableSpotlight({
    * schema's own name rule rather than a second opinion about it: the codebook
    * is what refuses the write, and a row that offered a create the codebook
    * would refuse would spend a round trip to say so.
+   *
+   * Which is why the names are compared through `normalizeForComparison`, the
+   * helper `assertVariableNameAvailable` judges a write with: it case-folds
+   * and canonicalises, so `AGE` is the name `age` and a decomposed `café` is
+   * the precomposed one. A raw comparison here would offer to create a name
+   * the codebook holds, and answer with a duplicate-name refusal about a name
+   * the researcher believed was free.
    */
   const refusal = useMemo(() => {
     if (term === '') return undefined;
-    if (namesInUse?.includes(term) === true) {
+    const typed = normalizeForComparison(term);
+    if (
+      namesInUse?.some((held) => normalizeForComparison(held) === typed) ===
+      true
+    ) {
       return intl.formatMessage(messages.nameTaken);
     }
     if (!VariableNameSchema.safeParse(term).success) {
@@ -290,12 +334,24 @@ export default function VariableSpotlight({
     return undefined;
   }, [intl, namesInUse, term]);
 
-  const exactMatch = options.some((option) => option.label === term);
+  /**
+   * Whether an attribute on offer already goes by the typed name — asked the
+   * codebook's way, so `Name` finds `name` and a decomposed `café` finds the
+   * precomposed one. There is nothing to create under a name that is already
+   * in the list, and the row that offered it would be a row above its own
+   * answer.
+   */
+  const exactMatch = useMemo(() => {
+    const typed = normalizeForComparison(term);
+    return options.some(
+      (option) => normalizeForComparison(option.label) === typed,
+    );
+  }, [options, term]);
   const offersCreate = onCreate !== undefined && term !== '' && !exactMatch;
 
   const rows = useMemo<SpotlightRow[]>(() => {
     const attributes = matching.map((option): SpotlightRow => ({
-      id: option.value,
+      id: `${ATTRIBUTE_KEY_PREFIX}${option.value}`,
       kind: 'attribute',
       option,
     }));
@@ -331,12 +387,22 @@ export default function VariableSpotlight({
   const requestCreate = useCallback(
     async (name: string) => {
       if (onCreate === undefined || creating !== undefined) return;
+      const asked = dismissals.current;
       setCreating(name);
       try {
         // A refusal is ABOUT this name, so the window stays open with the name
         // still in the box for the researcher to correct — and whoever refused
         // it has already said why, on the field this window belongs to.
         const outcome = await onCreate(name);
+        // Unless the window it was asked from has been dismissed since. The
+        // window stays dismissible while a write is out — Architect's never
+        // held the researcher there either — so this answer can be about a
+        // name they have already walked away from, and the only state left to
+        // put it in is the NEXT window's, over whatever they type in it.
+        // Dropped, so the next open starts clean. What the codebook actually
+        // DID is not dropped with it: the field says an unassigned create in
+        // its own notice, which outlives this window.
+        if (asked !== dismissals.current) return;
         if (outcome === 'correct-the-name') return;
         if (typeof outcome === 'object') {
           setRefusedReason(outcome.keep);
@@ -546,7 +612,15 @@ export default function VariableSpotlight({
               disabled={creating !== undefined}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label={intl.formatMessage(messages.searchLabel)}
+              // Both the name and the placeholder say whether this window can
+              // invent an attribute, because a researcher who hears only the
+              // name would be told they may create one where no create row
+              // will ever appear.
+              aria-label={intl.formatMessage(
+                onCreate === undefined
+                  ? messages.searchOnlyLabel
+                  : messages.searchLabel,
+              )}
               placeholder={intl.formatMessage(
                 onCreate === undefined
                   ? messages.searchOnlyPlaceholder

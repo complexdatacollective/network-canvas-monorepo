@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
@@ -209,6 +209,31 @@ function UnsortedPicker() {
   );
 }
 
+/**
+ * One picker over an attribute the protocol filed under an id that reads
+ * exactly like a row this window makes up for itself.
+ *
+ * An id is minted rather than typed, so no researcher authored this one — but
+ * ids travel between protocols and hosts, and the schema puts nothing in the
+ * way of a colon. Mounted directly, because what is being read is the window's
+ * own key space rather than anything a row does with it.
+ */
+function CollidingIds() {
+  return (
+    <Section title="What this question records">
+      <Field<typeof VariablePickerField>
+        name="nodeConfig.egoVariable"
+        component={VariablePickerField}
+        label={DIRECT_PICKER}
+        options={[{ value: 'create:nick', label: 'nickname', type: 'text' }]}
+        onCreateOption={async (): Promise<CreateOptionOutcome> =>
+          Promise.resolve({ status: 'refused' })
+        }
+      />
+    </Section>
+  );
+}
+
 const renderRows = (sections: ReactNode) =>
   renderStageEditor({ stageId: 'name-generator-1', sections });
 
@@ -226,6 +251,18 @@ const trigger = (name: 'Select attribute' | 'Change attribute') =>
   within(picker()).getByRole('button', { name });
 
 /**
+ * The two names the window's search box goes by.
+ *
+ * It says whether this window can invent an attribute, the way the trigger
+ * says whether one has been chosen — so a helper that knew only one of the two
+ * would find the box at the sites that create and lose it at the sites that
+ * only choose. Which name is drawn where is asserted by the tests that are
+ * about it.
+ */
+const isSearchBox = (name: string) =>
+  name === 'Find or create an attribute' || name === 'Find an attribute';
+
+/**
  * Types a name into the open window's search box.
  *
  * `paste` rather than `type`: what is asserted below is the list the term
@@ -237,9 +274,7 @@ const search = async (
   dialog: HTMLElement,
   term: string,
 ) => {
-  const box = within(dialog).getByRole('searchbox', {
-    name: 'Find or create an attribute',
-  });
+  const box = within(dialog).getByRole('searchbox', { name: isSearchBox });
   await harness.user.clear(box);
   await harness.user.type(box, term);
   return box;
@@ -300,10 +335,10 @@ describe('the attribute picker', () => {
     const dialog = await openAttributePicker(harness.user, picker());
 
     expect(dialog).toHaveAccessibleName(ROW_PICKER);
+    // Named for what this window can do, which is only to find one: this row
+    // chooses from what the codebook holds and was handed no way to create.
     expect(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveFocus();
   });
 
@@ -372,9 +407,7 @@ describe('the attribute picker', () => {
 
     const reopened = await openAttributePicker(harness.user, picker());
     expect(
-      within(reopened).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(reopened).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveValue('');
   });
 
@@ -446,6 +479,33 @@ describe('the attribute picker', () => {
 
     await chooseAttribute(harness.user, picker(), 'flagged');
     expect(trigger('Change attribute')).not.toHaveFocus();
+  });
+
+  /**
+   * A researcher who answered from the keyboard has no next click to swallow,
+   * and everything to lose by being left on `<body>`: this window is opened
+   * from inside another dialog, and a Tab from nowhere restarts a document
+   * walk that steps straight out of it. So the trigger — which now names the
+   * attribute they chose — takes focus back.
+   */
+  it('returns focus to the trigger when the pick was made from the keyboard', async () => {
+    const harness = renderRows(<SelectableAttributes />);
+    await addRow(harness);
+
+    // Enter on the row the arrows walked to.
+    await openAttributePicker(harness.user, picker());
+    await harness.user.keyboard('{ArrowDown}');
+    await harness.user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(trigger('Change attribute')).toHaveFocus();
+
+    // Enter in the search box, on the one result left.
+    const reopened = await openAttributePicker(harness.user, picker());
+    await search(harness, reopened, 'flagged');
+    await harness.user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(heldVariableName()).toBe('flagged');
+    expect(trigger('Change attribute')).toHaveFocus();
   });
 
   /** The trigger says which act pressing it is. */
@@ -545,6 +605,35 @@ describe('inventing an attribute from the picker', () => {
     expect(createRow(dialog, 'age_')).not.toHaveAttribute('aria-disabled');
   });
 
+  /**
+   * The codebook asks whether a name is free through `normalizeForComparison`
+   * — case-folded and Unicode-canonical — so this row has to ask it the same
+   * way. Asked case-sensitively it offered `AGE` as a name nobody held, and
+   * the codebook answered the press with a duplicate-name refusal about a name
+   * the researcher had just been told was free.
+   */
+  it('reads a case variant as the name the type already has', async () => {
+    const harness = renderRows(<StampedAttributes />);
+    await addRow(harness);
+    const dialog = await openAttributePicker(harness.user, picker());
+
+    await search(harness, dialog, 'AGE');
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Cannot create attribute named “AGE”: this type already has an attribute called that',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    // One this picker DOES offer: a name already in the list is not a new name
+    // whichever case it was typed in, so the list says what it says for the
+    // name typed exactly — the attribute, and nothing above it. Not even the
+    // refused row: there is nothing to refuse, because nothing was offered.
+    await search(harness, dialog, 'Flagged');
+    const offered = within(dialog).getAllByRole('option');
+    expect(offered).toHaveLength(1);
+    expect(offered[0]).toHaveAccessibleName('flagged');
+  });
+
   it('switches off the create row for a name the codebook cannot store', async () => {
     const harness = renderRows(<StampedAttributes />);
     await addRow(harness);
@@ -629,6 +718,30 @@ describe('inventing an attribute from the picker', () => {
    * — and the reason has to be inside the window, because the section that
    * refused it is behind a modal while the window is open.
    */
+  /**
+   * The rows a search produces are keyed for a collection that keeps only the
+   * first of two rows sharing a key — so the offer to create `nick` and an
+   * attribute the protocol filed under the id `create:nick` were one key, and
+   * the attribute silently left the list a researcher was searching it in.
+   */
+  it('offers an attribute whose id reads like the row it invents', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <CollidingIds />,
+    });
+    await harness.opened();
+    const dialog = await openAttributePicker(
+      harness.user,
+      attributeField(DIRECT_PICKER),
+    );
+
+    await search(harness, dialog, 'nick');
+    expect(createRow(dialog, 'nick')).toBeVisible();
+    expect(
+      within(dialog).getByRole('option', { name: 'nickname' }),
+    ).toBeVisible();
+  });
+
   it('keeps the window open on a name the codebook refused, and says why', async () => {
     const harness = renderRows(
       <StampedAttributes
@@ -926,6 +1039,148 @@ describe('the create row while the codebook write is in flight', () => {
 
     expect(notice()).toBeEmptyDOMElement();
     control.answerWith({ status: 'created' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  /**
+   * The window is dismissible while the write is out — Architect's create
+   * never held the researcher there either — so a refusal can arrive about a
+   * name they have already walked away from. There is no window left to say it
+   * in, and the next one they open is about a different name: a refusal kept
+   * across the close would stand over whatever they type there, which is the
+   * "sentence the researcher cannot read about the name it was written for"
+   * the reason was moved into the window to prevent, one step later.
+   */
+  it('drops a refusal that lands after the window was dismissed', async () => {
+    const control = mountControl();
+    await askFor(control, 'nominated_early');
+
+    await control.user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    control.answerWith({
+      status: 'refused',
+      message: 'Robin is currently editing a section needed for this change.',
+    });
+
+    await control.user.click(
+      screen.getByRole('button', { name: 'Select attribute' }),
+    );
+    const reopened = await screen.findByRole('dialog');
+    const searchBox = within(reopened).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    expect(within(reopened).queryByRole('alert')).toBeNull();
+    expect(searchBox).toHaveValue('');
+    expect(searchBox).toBeEnabled();
+  });
+});
+
+/**
+ * A field can turn read-only underneath its own open window: the shell keeps
+ * the form mounted when a save is answered `notLockHolder` and closes
+ * `FieldsDisabled` over every field in it, and a researcher who pressed Save
+ * and opened this picker before the answer landed is standing in that window
+ * when it does. `Modal` has made the page behind it inert, so the window is
+ * the only thing left on screen that answers a press — and everything it
+ * offers is now refused.
+ */
+describe('the window when the field turns read-only under it', () => {
+  const OPTIONS = [
+    { value: 'flagged', label: 'flagged', type: 'boolean' as const },
+  ];
+
+  const openOver = async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <VariablePickerField name="variable" options={OPTIONS} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Select attribute' }));
+    await screen.findByRole('dialog');
+    return { user, view };
+  };
+
+  /** Escape is the way out, and it is honoured whatever the field has become. */
+  it('closes on Escape after the stage lock is lost', async () => {
+    const { user, view } = await openOver();
+
+    view.rerender(
+      <VariablePickerField name="variable" options={OPTIONS} readOnly />,
+    );
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      screen.getByRole('button', { name: 'Select attribute' }),
+    ).toBeDisabled();
+  });
+
+  /** And so is a press outside it, which is the other way a window is let go. */
+  it('closes on a press outside it after the field is disabled', async () => {
+    const { user, view } = await openOver();
+
+    view.rerender(
+      <VariablePickerField name="variable" options={OPTIONS} disabled />,
+    );
+    await user.click(document.body);
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  /**
+   * And what the window still offers follows the field, rather than standing
+   * over it.
+   *
+   * The create row is the one thing in here that writes to the codebook, and a
+   * field that has stopped taking a chosen attribute has stopped taking an
+   * invented one too — the host refuses the write, and what the researcher is
+   * offered should say so before they press it rather than after. The window
+   * keeps its way out either way: the row goes, the search box stays, and
+   * Escape still closes it.
+   */
+  it('stops offering to create once the field turns read-only under it', async () => {
+    const user = userEvent.setup();
+    const onCreateOption = vi.fn();
+    const view = render(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'nominated_early',
+    );
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeInTheDocument();
+
+    view.rerender(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+        readOnly
+      />,
+    );
+
+    expect(
+      within(dialog).queryByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
+    ).toHaveValue('nominated_early');
+    expect(onCreateOption).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

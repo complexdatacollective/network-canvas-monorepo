@@ -109,6 +109,12 @@ test('finds an attribute, and invents the one that is missing', async ({
   await expect(
     second.getByRole('button', { name: 'Change attribute', exact: true }),
   ).toBeVisible();
+  // Answered from the KEYBOARD, so focus comes back to the trigger the choice
+  // is now named on. Left on `<body>`, the next Tab restarts a document walk
+  // and steps straight out of the editor the window was opened from.
+  await expect(
+    second.getByRole('button', { name: 'Change attribute', exact: true }),
+  ).toBeFocused();
   await expect(second.locator('[data-attribute-type]')).toHaveText('nickname');
 
   await addPrompt(editor.field('prompts'), async () => {

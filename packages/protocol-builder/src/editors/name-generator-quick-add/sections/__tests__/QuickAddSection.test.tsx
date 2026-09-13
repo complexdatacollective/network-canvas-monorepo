@@ -323,6 +323,55 @@ describe('a quick-add attribute that need not be answered', () => {
    * with the warning the moment the attribute changed, leaving whoever pressed
    * the button with no account of what happened.
    */
+  /**
+   * The same refusal, on the other codebook write this section makes — and the
+   * name it is about was typed in the picker's window, which stays open on it.
+   * A sentence left on this section would be under a modal, which is where the
+   * researcher cannot read it, and would still be there after they recovered
+   * by choosing an attribute that already exists.
+   */
+  it('says inside the window why the codebook refused the name', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Robin',
+        },
+      ],
+    });
+
+    const dialog = await openAttributePicker(harness.user, await findPicker());
+    await harness.user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'nickname',
+    );
+    await harness.user.click(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nickname”.',
+      }),
+    );
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Robin is currently editing a section needed for this change.',
+    );
+    // Still open on the name that was refused, which is what the sentence is
+    // about and what the researcher has to correct.
+    expect(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+    ).toHaveValue('nickname');
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nickname');
+  });
+
   it('names the colleague who refused the rule, and leaves the offer standing', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
