@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 import { chmod, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 
@@ -19,6 +20,83 @@ import {
 
 const execute = promisify(execFile);
 const DEADLINE = 30_000;
+
+function environmentAssignment(name, value) {
+  assert(value && !value.includes('\0'), `${name} is required.`);
+  return `${name}=${value}`;
+}
+
+/**
+ * Enter privilege before Playwright opens Chromium's remote-debugging pipes.
+ * sudo closes inherited descriptors by default, so placing it in the browser
+ * executable wrapper loses Playwright's descriptors 3 and 4.
+ */
+export function kernelQualificationEscalationCommand({
+  platform = process.platform,
+  uid = process.getuid(),
+  home = process.env.HOME,
+  node = process.execPath,
+  entrypoint = process.argv[1],
+  image = process.env.STUDIO_TELEMETRY_KERNEL_IMAGE,
+  observerImage = process.env.STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE,
+  playwrightBrowsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH,
+} = {}) {
+  if (platform !== 'linux' || uid === 0) return null;
+  assert(
+    home && isAbsolute(home),
+    'Kernel browser qualification requires an absolute HOME.',
+  );
+  assert(
+    node && isAbsolute(node),
+    'Kernel browser qualification requires an absolute Node executable.',
+  );
+  assert(
+    entrypoint && isAbsolute(entrypoint),
+    'Kernel browser qualification requires an absolute entrypoint.',
+  );
+  const environment = [
+    environmentAssignment('HOME', home),
+    environmentAssignment('STUDIO_TELEMETRY_KERNEL_IMAGE', image),
+    environmentAssignment(
+      'STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE',
+      observerImage,
+    ),
+  ];
+  if (playwrightBrowsersPath)
+    environment.push(
+      environmentAssignment('PLAYWRIGHT_BROWSERS_PATH', playwrightBrowsersPath),
+    );
+  return {
+    file: 'sudo',
+    args: ['--non-interactive', 'env', ...environment, node, entrypoint],
+  };
+}
+
+export async function runKernelQualificationCli(entrypoint, qualify) {
+  const escalation = kernelQualificationEscalationCommand({ entrypoint });
+  if (!escalation) return qualify();
+  const child = spawn(escalation.file, escalation.args, { stdio: 'inherit' });
+  const [code, signal] = await once(child, 'exit');
+  assert.equal(
+    signal,
+    null,
+    `Kernel browser qualification exited on ${signal}.`,
+  );
+  assert.equal(code, 0, `Kernel browser qualification exited with ${code}.`);
+}
+
+export function kernelChromiumWrapperSource({
+  namespacePid,
+  browserUid,
+  browserGid,
+  executablePath,
+}) {
+  assert.match(namespacePid, /^[1-9][0-9]*$/u);
+  assert.match(browserUid, /^[0-9]+$/u);
+  assert.match(browserGid, /^[0-9]+$/u);
+  assert(executablePath && isAbsolute(executablePath));
+  return `#!/bin/sh\nexec nsenter --target ${namespacePid} --net -- setpriv --reuid=${browserUid} --regid=${browserGid} --clear-groups ${JSON.stringify(executablePath)} "$@"\n`;
+}
 
 async function docker(args, { includeStderr = false, ...options } = {}) {
   const result = await execute('docker', args, {
@@ -69,6 +147,11 @@ export async function launchKernelObservedChromium({
     process.platform,
     'linux',
     'Kernel browser qualification requires Linux.',
+  );
+  assert.equal(
+    process.getuid(),
+    0,
+    'Kernel browser qualification must elevate before Playwright launches Chromium.',
   );
   assert.match(image, /^[a-zA-Z0-9][a-zA-Z0-9._/@:+-]{0,511}$/u);
   assert.match(observerImage, /^[a-zA-Z0-9][a-zA-Z0-9._/@:+-]{0,511}$/u);
@@ -187,10 +270,14 @@ export async function launchKernelObservedChromium({
       process.env.STUDIO_TELEMETRY_BROWSER_UID ?? String(process.getuid());
     const browserGid =
       process.env.STUDIO_TELEMETRY_BROWSER_GID ?? String(process.getgid());
-    const sudo = process.getuid() === 0 ? '' : 'sudo ';
     await writeFile(
       wrapper,
-      `#!/bin/sh\nexec ${sudo}nsenter --target ${namespacePid} --net -- setpriv --reuid=${browserUid} --regid=${browserGid} --clear-groups ${JSON.stringify(chromium.executablePath())} "$@"\n`,
+      kernelChromiumWrapperSource({
+        namespacePid,
+        browserUid,
+        browserGid,
+        executablePath: chromium.executablePath(),
+      }),
       { mode: 0o700 },
     );
     await chmod(wrapper, 0o700);

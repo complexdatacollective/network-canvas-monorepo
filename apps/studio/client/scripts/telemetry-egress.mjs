@@ -13,7 +13,10 @@ import { pathToFileURL } from 'node:url';
 
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
-import { launchKernelObservedChromium } from './telemetry-kernel-browser.mjs';
+import {
+  launchKernelObservedChromium,
+  runKernelQualificationCli,
+} from './telemetry-kernel-browser.mjs';
 
 const CANARY = 'BrowserPerson@example.test-PrivateProtocol-SecretBrowserToken';
 const relay = 'ph-relay.networkcanvas.com';
@@ -424,4 +427,6 @@ export async function runTelemetryBrowserQualification({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await runTelemetryBrowserQualification();
+  await runKernelQualificationCli(resolve(process.argv[1]), () =>
+    runTelemetryBrowserQualification(),
+  );
