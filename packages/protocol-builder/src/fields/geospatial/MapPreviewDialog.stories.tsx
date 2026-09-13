@@ -318,8 +318,8 @@ export const NoWayInForASpectator: Story = {
         component={MapViewField}
         zoomFieldName="mapOptions.initialZoom"
         tokenAssetId={KEY_ASSET}
-        label="Starting center"
-        hint="Enter the coordinates, or set them by panning a map."
+        label="Initial map view"
+        hint="Configure the initial map view to adjust where it will be centered and zoomed to."
         required={REQUIRED}
       />
     ),

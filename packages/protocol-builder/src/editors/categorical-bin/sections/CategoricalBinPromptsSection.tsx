@@ -222,10 +222,6 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * What the participant is doing while they answer, said before the researcher
- * writes the question rather than after it.
- */
-/**
  * One Categorical Bin question: what to ask, which attribute's values become
  * the bins, what happens to an answer none of them covers, and the two orders
  * the people are met in.

@@ -48,7 +48,10 @@ const fixtureEntries = Object.entries(fixture) as [
   Readonly<{ en: string; es: string; from: string }>,
 ][];
 
-const removedIds = Object.keys(removed);
+// The manifest is a JSON array of ids: read it as one. `Object.keys` on an
+// array yields "0"…"38", which no catalog and no source file ever names, so
+// both sweeps below would pass having checked nothing.
+const removedIds = removed as string[];
 
 describe('the generator, census and bin copy matches released Architect', () => {
   it('carries every id the fixture names', () => {
