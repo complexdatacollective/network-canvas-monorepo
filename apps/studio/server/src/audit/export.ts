@@ -314,6 +314,7 @@ type AuditExportRequestResult =
 export async function requestAuditExport(
   context: AuditedCommandContext,
   filters: AuditExportFilters,
+  options: { stagedAvailable: boolean },
 ): Promise<AuditExportRequestResult> {
   const immutableFilters: AuditExportFilters = Object.freeze({
     ...(filters.categories
@@ -352,6 +353,8 @@ export async function requestAuditExport(
         immutableFilters,
       );
       const direct = preflight.direct;
+      if (!direct && !options.stagedAvailable)
+        throw new ORPCError('SERVICE_UNAVAILABLE');
       const jobId = randomUUID();
       const mode = direct ? 'direct' : 'staged';
       return {
@@ -435,7 +438,7 @@ async function authorizedExportRow(
       );
       const job = row.rows[0];
       if (!job || job.actor_id !== context.principal.userId)
-        throw new Error('audit export not found');
+        throw new ORPCError('NOT_FOUND');
       return job;
     },
   );
@@ -1009,7 +1012,6 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       rowCount: 0,
       byteCount: 0,
     };
-    this.generated.set(generatedId(c), generated);
     if (generated.key !== c.artifactKey)
       throw new Error('audit export artifact key mismatch');
     const artifact = await this.store.putAuditExport(
@@ -1064,6 +1066,9 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     } finally {
       handleBytes.fill(0);
     }
+    // Failed/aborted uploads have only durable cleanup state. The dispatcher
+    // may skip finalization after lease loss, so retain memory only on success.
+    this.generated.set(generatedId(c), generated);
   }
   failureDisposition(e: unknown) {
     return e instanceof Error && e.message.includes('limit exceeded')
@@ -1136,17 +1141,20 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         throw cleanupError;
       }
     }
-    const r = await this.pool.query(
-      `UPDATE audit_export_jobs SET status=CASE WHEN $4::bigint IS NULL THEN 'failed' ELSE 'pending' END,
+    try {
+      const r = await this.pool.query(
+        `UPDATE audit_export_jobs SET status=CASE WHEN $4::bigint IS NULL THEN 'failed' ELSE 'pending' END,
       failed_at=CASE WHEN $4::bigint IS NULL THEN statement_timestamp() ELSE NULL END,
       available_at=CASE WHEN $4::bigint IS NULL THEN available_at ELSE statement_timestamp()+($4*interval '1 millisecond') END,
       last_error=$3,artifact_attempt_id=NULL,artifact_key=NULL,lease_owner=NULL,lease_expires_at=NULL
       WHERE id=$1 AND lease_owner=$2
         AND ($5::uuid IS NULL OR artifact_attempt_id=$5) RETURNING id`,
-      [c.id, l.owner, message, retry, c.attemptId],
-    );
-    this.forgetGenerated(c);
-    return r.rowCount === 1;
+        [c.id, l.owner, message, retry, c.attemptId],
+      );
+      return r.rowCount === 1;
+    } finally {
+      this.forgetGenerated(c);
+    }
   }
   async recordComplete(c: Claim, l: OutboxLease) {
     const g = this.generatedFor(c);

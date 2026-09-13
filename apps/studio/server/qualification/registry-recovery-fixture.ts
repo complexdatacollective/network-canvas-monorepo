@@ -21,7 +21,7 @@ export function createRegistryRecoveryReconciliation(
 ): RegistryRecoveryReconciliation {
   return {
     format: 'template-registry-recovery-reconciliation',
-    version: 3,
+    version: 4,
     inventories: {
       users: createRegistryRecoveryInventory('users', [
         {
@@ -34,6 +34,8 @@ export function createRegistryRecoveryReconciliation(
         {
           id: recoveryFixture.registry.publisherId,
           userId: recoveryFixture.registry.userId,
+          name: recoveryFixture.registry.publisherName,
+          orcid: null,
           suspended: false,
         },
       ]),
@@ -55,7 +57,7 @@ export function createRegistryRecoveryReconciliation(
 
 export const emptyRegistryRecoveryReconciliation = {
   format: 'template-registry-recovery-reconciliation',
-  version: 3,
+  version: 4,
   inventories: {
     users: createRegistryRecoveryInventory('users', []),
     publishers: createRegistryRecoveryInventory('publishers', []),

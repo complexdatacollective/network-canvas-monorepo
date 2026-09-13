@@ -387,17 +387,15 @@ async function reconcileInventories(
         )
       )
         throw new Error(MISMATCH);
-      const activeScheduleIds = new Set(activeSchedules);
+      const reviewedScheduleIds = new Set(evidence.activeScheduleIds);
       if (
         mode === 'require-exact' &&
-        evidence.activeScheduleIds.some((id) => !activeScheduleIds.has(id))
+        activeSchedules.some((id) => !reviewedScheduleIds.has(id))
       )
         throw new Error(MISMATCH);
-      if (
-        mode === 'require-exact' &&
-        activeSchedules.length !== evidence.activeScheduleIds.length
-      )
-        throw new Error(MISMATCH);
+      // Reconciliation already pauses reviewed schedules. Their continued
+      // presence in signed current evidence remains valid; an active schedule
+      // outside that inventory still refuses current authorization.
       // The schedule IDs in signed evidence prove the inventory that the
       // operator reviewed; they do not prove that recurrence, channels,
       // participant time zones, settings, or pending occurrences are safe to

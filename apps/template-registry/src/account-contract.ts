@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { TemplateContentHashSchema } from '@codaco/studio-sync/template-exchange';
 import {
   OrcidSchema,
   StrictUuidSchema,
@@ -98,6 +99,8 @@ export const ReportsPageSchema = paginatedPageSchema(
   z.strictObject({
     id: StrictUuidSchema,
     entry_id: StrictUuidSchema,
+    artifact_root: TemplateContentHashSchema,
+    publisher_id: StrictUuidSchema,
     category: ReportSchema.shape.category,
     details: ReportSchema.shape.details.nullable(),
     created_at: stamp,

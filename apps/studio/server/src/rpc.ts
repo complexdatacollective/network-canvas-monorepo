@@ -369,6 +369,7 @@ export function createRpcRouter(
     maintenancePool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
+    auditExportAvailable?: boolean;
     encryptionKeys?: EncryptionKeys;
     templateRegistryOrigin?: string;
   },
@@ -960,14 +961,18 @@ export function createRpcRouter(
       }),
       export: os.audit.export.use(requireTeam).handler(({ context, input }) =>
         guardAuditRead(context, 'audit.export', () =>
-          requestAuditExport(auditedContextFor(context), {
-            categories: input.categories,
-            eventTypes: input.eventTypes,
-            actor: input.actor,
-            outcomes: input.outcomes,
-            from: input.from,
-            to: input.to,
-          }),
+          requestAuditExport(
+            auditedContextFor(context),
+            {
+              categories: input.categories,
+              eventTypes: input.eventTypes,
+              actor: input.actor,
+              outcomes: input.outcomes,
+              from: input.from,
+              to: input.to,
+            },
+            { stagedAvailable: deps.auditExportAvailable === true },
+          ),
         ),
       ),
       exportStatus: os.audit.exportStatus

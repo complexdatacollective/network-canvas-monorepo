@@ -511,11 +511,14 @@ export function assertNoKernelTelemetryEgress(logs: string) {
   }
 }
 
-export function assertKernelTelemetryEgressProtocols(logs: string) {
+export function assertKernelTelemetryEgressProtocols(
+  logs: string,
+  endpoint: { destination: string; port: number },
+) {
   for (const protocol of ['tcp', 'udp'])
     if (
       !logs.includes(
-        `${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"${protocol}"`,
+        `${TELEMETRY_KERNEL_EGRESS_MARKER} ${JSON.stringify({ protocol, ...endpoint })}`,
       )
     )
       throw new Error(`Kernel egress observer missed ${protocol} egress.`);
