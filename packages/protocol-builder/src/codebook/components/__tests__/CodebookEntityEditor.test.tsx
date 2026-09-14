@@ -240,9 +240,11 @@ describe('CodebookEntityEditor', () => {
     ).toBeChecked();
     // Nothing in the palette stands in for it: a swatch checked here would be
     // a colour the researcher never chose, and touching any other swatch would
-    // write it over the one the type actually has.
+    // write it over the one the type actually has. Counted inside the colour
+    // field, because the shape beside it is a group of swatches too and one of
+    // those is legitimately checked.
     expect(
-      screen
+      within(screen.getByRole('radiogroup', { name: 'Protocol color' }))
         .getAllByRole('radio')
         .filter((swatch) => swatch.getAttribute('aria-checked') === 'true'),
     ).toHaveLength(1);

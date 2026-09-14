@@ -23,9 +23,9 @@ import ColorPickerField, {
   type ColorSwatchOption,
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import {
   EdgeColorSequence,
@@ -37,6 +37,7 @@ import {
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
+import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
@@ -50,7 +51,6 @@ import {
   shapeMappingDraft,
   shapeMappingIssue,
   shapeMappingVariables,
-  shapeOptions,
   type ShapeMappingDraft,
 } from '../shapeMapping.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
@@ -151,12 +151,6 @@ const messages = defineMessages({
     defaultMessage: 'Choose a default shape for this node type.',
     description:
       'Guidance under the shape field. A node is a member of the interview network.',
-  },
-  shapePlaceholder: {
-    id: 'protocolBuilder.codebookEntity.shapePlaceholder',
-    defaultMessage: 'Choose a shape…',
-    description:
-      'Placeholder shown in the shape field of the node type editor before a choice is made.',
   },
   iconLabel: {
     id: 'protocolBuilder.codebookEntity.iconLabel',
@@ -281,6 +275,12 @@ const colorOptions = (
 type EntityFieldErrors = Readonly<
   Partial<Record<'name' | 'color' | 'shape' | 'shape.dynamic' | 'icon', string>>
 >;
+
+/** The default shape a type holds, where it holds one this picker knows. */
+const asNodeShape = (value: unknown): NodeShape | undefined =>
+  value === 'circle' || value === 'square' || value === 'diamond'
+    ? value
+    : undefined;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -481,15 +481,16 @@ export function CodebookEntityFields({
               name="shape"
               label={intl.formatMessage(messages.shapeLabel)}
               hint={intl.formatMessage(messages.shapeHint)}
-              component={NativeSelect}
+              component={ShapePickerField}
+              nodeColor={currentColor}
               value={
-                isRecord(draft.shape) ? stringValue(draft.shape.default) : ''
+                isRecord(draft.shape)
+                  ? asNodeShape(draft.shape.default)
+                  : undefined
               }
               onChange={(value) =>
                 onChange(replaceDefaultShape(draft, String(value)))
               }
-              options={shapeOptions(intl)}
-              placeholder={intl.formatMessage(messages.shapePlaceholder)}
               required
               disabled={disabled}
               errors={errors.shape === undefined ? undefined : [errors.shape]}
@@ -497,6 +498,7 @@ export function CodebookEntityFields({
             />
 
             <NodeShapeMappingFields
+              nodeColor={currentColor}
               variables={shapeMappingVariables(draft.variables)}
               {...(currentDefaultShape === undefined
                 ? {}

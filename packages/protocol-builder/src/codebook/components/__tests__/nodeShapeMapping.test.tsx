@@ -102,6 +102,22 @@ const renderEditor = (
   return userEvent.setup();
 };
 
+/**
+ * Chooses a shape the way a researcher does: by pressing the swatch for it in
+ * the named group, rather than by picking a word out of a list.
+ */
+const chooseShape = async (
+  user: ReturnType<typeof userEvent.setup>,
+  group: string,
+  shape: string,
+) => {
+  await user.click(
+    within(screen.getByRole('radiogroup', { name: group })).getByRole('radio', {
+      name: `Select shape ${shape}`,
+    }),
+  );
+};
+
 const toggle = () =>
   screen.getByRole('switch', { name: 'Map attribute to shape' });
 
@@ -180,7 +196,7 @@ describe('the shape mapping switch', () => {
     await user.click(toggle());
 
     expect(
-      screen.queryByRole('combobox', { name: 'Shape for Asian' }),
+      screen.queryByRole('radiogroup', { name: 'Shape for Asian' }),
     ).toBeNull();
 
     await user.click(save());
@@ -221,14 +237,8 @@ describe('the attribute a shape can follow', () => {
     expect(screen.queryByText('Thresholds')).toBeNull();
     expect(screen.getByText('Shape for each value')).toBeVisible();
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for Asian' }),
-      'square',
-    );
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for White' }),
-      'diamond',
-    );
+    await chooseShape(user, 'Shape for Asian', 'Square');
+    await chooseShape(user, 'Shape for White', 'Diamond');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -255,14 +265,8 @@ describe('a mapping that follows one answer at a time', () => {
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Alive');
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for True' }),
-      'circle',
-    );
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for False' }),
-      'diamond',
-    );
+    await chooseShape(user, 'Shape for True', 'Circle');
+    await chooseShape(user, 'Shape for False', 'Diamond');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -285,16 +289,10 @@ describe('a mapping that follows one answer at a time', () => {
     const notice = 'Some values are unmapped and will use the default shape.';
     expect(screen.getByText(notice)).toBeVisible();
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for Asian' }),
-      'square',
-    );
+    await chooseShape(user, 'Shape for Asian', 'Square');
     expect(screen.getByText(notice)).toBeVisible();
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for White' }),
-      'diamond',
-    );
+    await chooseShape(user, 'Shape for White', 'Diamond');
     expect(screen.queryByText(notice)).toBeNull();
   });
 
@@ -303,10 +301,7 @@ describe('a mapping that follows one answer at a time', () => {
     const user = renderEditor(onSubmit);
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Ethnicity');
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape for Asian' }),
-      'square',
-    );
+    await chooseShape(user, 'Shape for Asian', 'Square');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -388,7 +383,7 @@ describe('a mapping that changes shape at a threshold', () => {
     await user.tab();
 
     expect(
-      screen.getByRole('combobox', { name: 'Shape at threshold 2.5' }),
+      screen.getByRole('radiogroup', { name: 'Shape at threshold 2.5' }),
     ).toBeVisible();
   });
 
@@ -444,7 +439,7 @@ describe('a mapping that changes shape at a threshold', () => {
 
     expect(thresholdValue(2)).toHaveValue(0.3);
     expect(
-      screen.getByRole('combobox', { name: 'Shape at threshold 0.3' }),
+      screen.getByRole('radiogroup', { name: 'Shape at threshold 0.3' }),
     ).toBeVisible();
   });
 
@@ -572,9 +567,13 @@ describe('a mapping that changes shape at a threshold', () => {
 
     const row = screen.getByText('Below first threshold').closest('div');
     if (row === null) throw new Error('expected a first-threshold row');
-    const shown = within(row).getByRole('combobox', { name: 'Default shape' });
-    expect(shown).toHaveValue('diamond');
-    expect(shown).toBeDisabled();
+    const shown = within(row).getByRole('radiogroup', {
+      name: 'Default shape',
+    });
+    expect(
+      within(shown).getByRole('radio', { name: 'Select shape Diamond' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(shown).toHaveAttribute('aria-disabled', 'true');
     expect(
       within(row).getByRole('button', {
         name: 'Below first threshold cannot be removed',

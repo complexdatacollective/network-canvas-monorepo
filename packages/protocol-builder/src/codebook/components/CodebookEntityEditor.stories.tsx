@@ -188,8 +188,10 @@ export const WithAShapeMapping: Story = {
       dialog.getByRole('switch', { name: 'Map attribute to shape' }),
     ).toBeChecked();
     await expect(
-      dialog.getByRole('combobox', { name: 'Shape for Asian' }),
-    ).toHaveValue('square');
+      within(
+        dialog.getByRole('radiogroup', { name: 'Shape for Asian' }),
+      ).getByRole('radio', { name: 'Select shape Square' }),
+    ).toHaveAttribute('aria-checked', 'true');
     // The other answer has no shape of its own yet, which the editor says
     // rather than leaving the researcher to notice.
     await expect(

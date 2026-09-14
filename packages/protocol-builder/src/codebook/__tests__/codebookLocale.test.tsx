@@ -308,7 +308,9 @@ describe('the codebook editors swept for English', () => {
       screen.getByRole('heading', { name: 'Apariencia de los nodos' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
-    expect(screen.getByRole('option', { name: 'Círculo' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: 'Seleccionar forma Círculo' }),
+    ).toBeInTheDocument();
     expectNoLocaleLeaks('the entity editor', protocolStrings(PERSON_DOCUMENT));
 
     // The shape mapping is behind a switch, so nothing above has read a word

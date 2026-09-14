@@ -193,6 +193,14 @@ describe('ColorPickerField', () => {
     );
     expect(chosen).not.toHaveClass('hover:outline-selected/70');
 
+    // Under forced colours the faded outline is not faded — the system's own
+    // palette replaces it — so the offer differs from the answer by being
+    // dashed rather than by being weaker. Asserted on the utility rather than
+    // on a computed style: jsdom loads no stylesheet, so there is nothing to
+    // compute, and a forced-colours reading can only be taken in a browser.
+    expect(unchosen).toHaveClass('forced-colors:hover:outline-dashed');
+    expect(chosen).not.toHaveClass('forced-colors:hover:outline-dashed');
+
     // The swatch's edge, in the group's foreground rather than in its fill, so
     // a swatch painted the colour of the ground is still a disc.
     for (const swatch of screen.getAllByRole('radio')) {

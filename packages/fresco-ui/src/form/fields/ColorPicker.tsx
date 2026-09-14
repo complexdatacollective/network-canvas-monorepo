@@ -392,7 +392,14 @@ export default function ColorPickerField({
                   'focus-visible:outline-input-contrast',
                   state.checked
                     ? 'outline-selected outline-2 outline-offset-2'
-                    : 'hover:outline-selected/70 hover:outline-2 hover:outline-offset-2',
+                    : cx(
+                        'hover:outline-selected/70 hover:outline-2 hover:outline-offset-2',
+                        // Forced colours discards the 70% that separates the
+                        // offer from the answer — both resolve to the same
+                        // solid outline at the same offset — so under it the
+                        // offer is told apart by being dashed instead.
+                        'forced-colors:hover:outline-dashed',
+                      ),
                   readOnly && 'pointer-events-none',
                 )}
                 style={

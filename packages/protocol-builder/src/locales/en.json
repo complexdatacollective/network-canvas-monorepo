@@ -1059,10 +1059,6 @@
     "defaultMessage": "No thresholds yet — every value uses the default shape.",
     "description": "Shown in place of the threshold list while no threshold has been set."
   },
-  "protocolBuilder.codebookEntity.shapePlaceholder": {
-    "defaultMessage": "Choose a shape…",
-    "description": "Placeholder shown in the shape field of the node type editor before a choice is made."
-  },
   "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
     "defaultMessage": "Remove threshold {value1, number}",
     "description": "Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one."
@@ -5606,6 +5602,10 @@
   "protocolBuilder.searchOptions.waitingDescription": {
     "defaultMessage": "Select a roster data source before configuring search.",
     "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
+  },
+  "protocolBuilder.shapePicker.selectShape": {
+    "defaultMessage": "Select shape {value1}",
+    "description": "Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network."
   },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",

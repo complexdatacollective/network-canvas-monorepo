@@ -8,7 +8,6 @@ import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import {
   headingTagBelow,
@@ -18,6 +17,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NodeShape } from '@codaco/protocol-validation';
 
+import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import {
   eligibleShapeVariables,
@@ -26,7 +26,6 @@ import {
   mappingForVariable,
   nextThresholdValue,
   shapeForValue,
-  shapeOptions,
   thresholdInputConfig,
   withDiscreteShape,
   withThresholds,
@@ -183,6 +182,7 @@ type ThresholdRowProps = Readonly<{
   threshold: ShapeThreshold;
   index: number;
   config: ReturnType<typeof thresholdInputConfig>;
+  nodeColor: string | undefined;
   disabled: boolean;
   onUpdate(next: ShapeThreshold): void;
   onRemove(): void;
@@ -200,6 +200,7 @@ function ThresholdRow({
   threshold,
   index,
   config,
+  nodeColor,
   disabled,
   onUpdate,
   onRemove,
@@ -268,8 +269,9 @@ function ThresholdRow({
             }),
           })}
           labelHidden
-          component={NativeSelect}
-          options={shapeOptions(intl)}
+          component={ShapePickerField}
+          small
+          nodeColor={nodeColor}
           value={threshold.shape}
           disabled={disabled}
           onChange={(value) =>
@@ -326,6 +328,8 @@ export type NodeShapeMappingFieldsProps = Readonly<{
   variables: Readonly<Record<string, ShapeMappingVariable>>;
   /** The shape used wherever the mapping says nothing. */
   defaultShape?: NodeShape;
+  /** The type's own colour, so a swatch is drawn as the node will be. */
+  nodeColor?: string;
   /** The mapping as it stands; absent means the feature is switched off. */
   value?: ShapeMappingDraft;
   /** Absent clears `shape.dynamic` — see the toggle below. */
@@ -347,6 +351,7 @@ export type NodeShapeMappingFieldsProps = Readonly<{
 export default function NodeShapeMappingFields({
   variables,
   defaultShape,
+  nodeColor,
   value,
   onChange,
   error,
@@ -430,9 +435,10 @@ export default function NodeShapeMappingFields({
                         value1: answer.label,
                       })}
                       labelHidden
-                      component={NativeSelect}
-                      options={shapeOptions(intl)}
-                      value={shapeForValue(mapping, answer.value) ?? ''}
+                      component={ShapePickerField}
+                      small
+                      nodeColor={nodeColor}
+                      value={shapeForValue(mapping, answer.value)}
                       disabled={disabled}
                       onChange={(next) => {
                         if (isNodeShape(next)) {
@@ -472,9 +478,10 @@ export default function NodeShapeMappingFields({
                     name="shape-below-first-threshold"
                     label={intl.formatMessage(messages.shapeDefaultSwatch)}
                     labelHidden
-                    component={NativeSelect}
-                    options={shapeOptions(intl)}
-                    value={defaultShape ?? ''}
+                    component={ShapePickerField}
+                    small
+                    nodeColor={nodeColor}
+                    value={defaultShape}
                     disabled
                     onChange={() => undefined}
                   />
@@ -505,6 +512,7 @@ export default function NodeShapeMappingFields({
                   threshold={threshold}
                   index={index}
                   config={config}
+                  nodeColor={nodeColor}
                   disabled={disabled}
                   onUpdate={(next) =>
                     onChange(

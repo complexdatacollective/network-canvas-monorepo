@@ -68,6 +68,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",

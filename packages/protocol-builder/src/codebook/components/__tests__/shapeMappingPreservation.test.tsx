@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -89,9 +89,11 @@ describe('a stored shape mapping', () => {
     const onSubmit = vi.fn<SubmitEntity>(applied);
     renderEditor(onSubmit);
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Shape' }),
-      'diamond',
+    await user.click(
+      within(screen.getByRole('radiogroup', { name: 'Shape' })).getByRole(
+        'radio',
+        { name: 'Select shape Diamond' },
+      ),
     );
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
