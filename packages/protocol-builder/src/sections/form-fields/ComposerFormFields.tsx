@@ -105,7 +105,6 @@ import {
   isOptionType,
   needsCodebookEditorToCreate,
 } from '../collectableTypes.ts';
-import { useRenameAttributeProps } from '../useRenameAttribute.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
 import {
@@ -1142,7 +1141,6 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
    * the picker's rule is that a create row exists exactly where a create does.
    */
   const sectionIsLive = useCodebookSectionDocument(subject) !== undefined;
-  const renameProps = useRenameAttributeProps(subject);
   const invent = useCallback(
     (variableName: string): Promise<CreateOptionOutcome> => {
       setRowValue(VARIABLE_FIELD, NEW_VARIABLE);
@@ -1169,7 +1167,6 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         {...(subject === undefined || !sectionIsLive
           ? {}
           : { onCreateOption: invent, namesInUse })}
-        {...renameProps}
       />
       <Field<typeof NativeSelectField>
         name={COMPONENT_FIELD}

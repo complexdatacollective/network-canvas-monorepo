@@ -93,13 +93,6 @@ const messages = defineMessages({
     description:
       'Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own.',
   },
-  refusedNameUnchanged: {
-    id: 'protocolBuilder.codebookEditing.renameVariableRefused',
-    defaultMessage:
-      'This attribute could not be renamed, so nothing was changed. Try again.',
-    description:
-      'Refusal shown beside an attribute whose name could not be changed, for a reason with no explanation of its own.',
-  },
   refusedOptionsUnchanged: {
     id: 'protocolBuilder.codebookEditing.setOptionsRefused',
     defaultMessage:
@@ -590,89 +583,6 @@ export function useSetVariableOptions(): SetVariableOptions {
               component: Reflect.get(current, 'component'),
             },
             intl.formatMessage(messages.refusedOptionsUnchanged),
-            intl,
-          );
-          throw error;
-        }
-      });
-
-      if (outcome.status === 'applied') return { status: 'written' };
-      return {
-        status: 'refused',
-        message: refusal ?? rowRefusal(outcome, intl),
-      };
-    },
-    [intl, protocolContext, write],
-  );
-}
-
-export type RenameCodebookVariable = (
-  subject: CodebookSubject | undefined,
-  variableId: string,
-  name: string,
-) => Promise<SetVariableComponentOutcome>;
-
-/**
- * Changes the researcher's own name for an attribute.
- *
- * Architect renamed an attribute from the pill that shows it, and nowhere
- * else: its codebook screen had no row editor, so the pill was the only way
- * (`components/VariablePill.tsx`'s `editable` branch). The name is the
- * attribute's own, so this is a codebook write under that section's lock —
- * and it is only the name: every reference to an attribute is by record key,
- * so nothing else in the protocol has to move with it.
- *
- * A duplicate is refused in the words the control that typed it already uses,
- * because the write is the only place the question can be settled: the list a
- * caller judged against is the render it judged against, and a collaborator
- * can take the name inside this very write.
- */
-export function useRenameCodebookVariable(): RenameCodebookVariable {
-  const write = useCodebookSectionWrite();
-  const protocolContext = useProtocolContext();
-  const intl = useAppIntl();
-
-  return useCallback(
-    async (subject, variableId, name) => {
-      if (subject === undefined) {
-        return {
-          status: 'refused',
-          message: intl.formatMessage(messages.noSubject),
-        };
-      }
-      const held = variablesForSubject(protocolContext, subject)[variableId];
-      if (held !== undefined && held.name === name) {
-        return { status: 'unchanged' };
-      }
-
-      let refusal: string | undefined;
-      const outcome = await write(subject, (authoritativeDocument) => {
-        const variables = authoritativeDocument.variables;
-        const current =
-          typeof variables === 'object' && variables !== null
-            ? Reflect.get(variables, variableId)
-            : undefined;
-        if (typeof current !== 'object' || current === null) {
-          refusal = intl.formatMessage(messages.missingVariable);
-          throw new MissingVariableError(variableId);
-        }
-
-        try {
-          return documentWithUpdatedVariable({
-            subject,
-            authoritativeDocument,
-            variableId,
-            draft: { name },
-          });
-        } catch (error: unknown) {
-          refusal = refusalMessage(
-            error,
-            {
-              name,
-              type: Reflect.get(current, 'type'),
-              component: Reflect.get(current, 'component'),
-            },
-            intl.formatMessage(messages.refusedNameUnchanged),
             intl,
           );
           throw error;

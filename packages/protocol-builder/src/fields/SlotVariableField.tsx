@@ -28,7 +28,6 @@ import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
-import { useRenameAttributeProps } from '../sections/useRenameAttribute.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
@@ -141,7 +140,6 @@ export default function SlotVariableField({
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
   const committedValue: unknown = get(committedFields, name);
-  const renameProps = useRenameAttributeProps(subject ?? undefined);
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType,
@@ -286,7 +284,6 @@ export default function SlotVariableField({
         emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}
         {...createProps}
-        {...renameProps}
       />
       {editor}
       {offerValidation && (

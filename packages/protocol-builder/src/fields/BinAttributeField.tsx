@@ -37,7 +37,6 @@ import AttributeValueFields, {
   attributeOptionsFieldFor,
 } from '../sections/AttributeValueFields.tsx';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
-import { useRenameAttributeProps } from '../sections/useRenameAttribute.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
@@ -147,7 +146,6 @@ export default function BinAttributeField({
   // so a reader that looked past it to the stage would never see the
   // researcher choose anything.
   const picked = asString(useRowValue(slot.name)) ?? committed;
-  const renameProps = useRenameAttributeProps(subject);
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType: slot.variableType,
@@ -207,7 +205,6 @@ export default function BinAttributeField({
         initialValue={committed}
         required={requiredMessage}
         {...createProps}
-        {...renameProps}
       />
       {/*
         The create row escalates to the codebook's own attribute editor for a

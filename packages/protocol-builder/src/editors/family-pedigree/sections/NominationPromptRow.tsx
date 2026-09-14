@@ -18,7 +18,6 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
-import { useRenameAttributeProps } from '../../../sections/useRenameAttribute.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
@@ -82,7 +81,6 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const subject = useNominationSubject();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const renameProps = useRenameAttributeProps(subject ?? undefined);
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType: NOMINATION_TYPE,
@@ -160,7 +158,6 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
           pedigreeMessages.nominationVariableRequired,
         )}
         {...createProps}
-        {...renameProps}
       />
       {editor}
     </Section>

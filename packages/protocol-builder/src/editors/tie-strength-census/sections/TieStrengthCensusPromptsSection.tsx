@@ -42,7 +42,6 @@ import AttributeValueFields, {
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
-import { useRenameAttributeProps } from '../../../sections/useRenameAttribute.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import EdgeTypeSection, {
@@ -290,7 +289,6 @@ function ScaleField({
     SCALE_FIELD,
   ] as const);
   const subject = useMemo(() => edgeSubjectOf(createEdge), [createEdge]);
-  const renameProps = useRenameAttributeProps(subject);
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType: SCALE_TYPE,
@@ -358,7 +356,6 @@ function ScaleField({
         initialValue={committed}
         required={intl.formatMessage(messages.scaleRequired)}
         {...createProps}
-        {...renameProps}
       />
       {/*
         The create row escalates to the codebook's own attribute editor rather

@@ -11,7 +11,6 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
 import AttributePill from './AttributePill.tsx';
-import { variableNameRefusal } from './variableNameRules.ts';
 import VariableSpotlight, {
   type CreateRowOutcome,
 } from './VariableSpotlight.tsx';
@@ -63,19 +62,6 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      * that read the protocol for itself could not be rendered outside one.
      */
     namesInUse?: readonly string[];
-    /**
-     * Renames the attribute this field is holding, and says whether the write
-     * was taken.
-     *
-     * Present turns the held pill into the rename control Architect had here
-     * and only here (`VariablePicker.tsx`'s held typed value): its codebook
-     * screen had no row editor, so the pill was the only way to rename an
-     * attribute at all. Omitted leaves the pill a statement.
-     */
-    onRename?: (
-      variableId: string,
-      name: string,
-    ) => Promise<RenameOutcome> | RenameOutcome;
     /**
      * Adds an attribute to the codebook under this name and selects it here.
      *
@@ -251,22 +237,9 @@ export type CreateOptionOutcome =
  * window stays open with the name to correct, which is where the researcher is
  * looking.
  */
-/**
- * What a rename asked of the codebook came back with.
- *
- * `refused` carries the sentence the picker says in its own notice region: a
- * refusal is about the section rather than about the name, and a held section
- * is somebody else's work in progress rather than the researcher's mistake.
- */
-export type RenameOutcome =
-  | Readonly<{ status: 'written' }>
-  | Readonly<{ status: 'refused'; message: string }>;
-
 type CreateNotice =
   /** The attribute exists, and nothing here was given it. */
   | Readonly<{ kind: 'unassigned'; variableName: string }>
-  /** The rename was refused, in the words the codebook answered with. */
-  | Readonly<{ kind: 'renameRefused'; message: string }>
   /**
    * The create ended without an answer at all — the caller broke the promise
    * `onCreateOption` makes, so nothing is known to exist and nobody has told
@@ -317,7 +290,6 @@ export default function VariablePickerField({
   emptyMessage,
   namesInUse,
   onCreateOption,
-  onRename,
   disabled = false,
   readOnly = false,
   className,
@@ -351,21 +323,6 @@ export default function VariablePickerField({
    * there is no attribute to name.
    */
   const [notice, setNotice] = useState<CreateNotice | undefined>(undefined);
-
-  /**
-   * Why a name typed into the held pill's editor cannot be used, or
-   * `undefined` while it can.
-   *
-   * The same rule the create row of the attribute window asks
-   * (`variableNameRefusal`), with the attribute's own current name excluded:
-   * an attribute is not the thing standing in its own way.
-   */
-  const nameRefusal = (typed: string): string | undefined =>
-    variableNameRefusal(typed, {
-      intl,
-      ...(namesInUse === undefined ? {} : { namesInUse }),
-      excluding: options.find((option) => option.value === value)?.label ?? '',
-    });
 
   const selected = options.find((option) => option.value === value);
   const held = value !== undefined && value !== '';
@@ -541,32 +498,7 @@ export default function VariablePickerField({
         />
       );
     }
-    // The one mount Architect made editable: the attribute the picker is
-    // holding, and only where this field may write at all. A missing or
-    // unusable pill above stays a statement — there is nothing to rename in
-    // the first case, and renaming what a rule cannot use would not make it
-    // usable.
-    const renameable = onRename !== undefined && !readOnly && !disabled;
-    if (!renameable) {
-      return <AttributePill name={selected.label} type={selected.type} />;
-    }
-    return (
-      <AttributePill
-        name={selected.label}
-        type={selected.type}
-        editable
-        validateName={nameRefusal}
-        onRename={async (next) => {
-          setNotice(undefined);
-          const outcome = await onRename(selected.value, next);
-          if (outcome.status === 'refused') {
-            setNotice({ kind: 'renameRefused', message: outcome.message });
-            return false;
-          }
-          return true;
-        }}
-      />
-    );
+    return <AttributePill name={selected.label} type={selected.type} />;
   })();
 
   return (
@@ -699,11 +631,6 @@ export default function VariablePickerField({
                     variableName: notice.variableName,
                   })}
                 </AlertDescription>
-              </Alert>
-            )}
-            {notice?.kind === 'renameRefused' && (
-              <Alert variant="info" role="presentation">
-                <AlertDescription>{notice.message}</AlertDescription>
               </Alert>
             )}
             {notice?.kind === 'failed' && (

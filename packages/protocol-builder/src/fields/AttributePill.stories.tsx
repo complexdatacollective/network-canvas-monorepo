@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 
 import type { VariableType } from '@codaco/protocol-validation';
 
@@ -136,100 +136,4 @@ export const ANameLongerThanTheSpace: Story = {
       <AttributePill {...args} />
     </div>
   ),
-};
-
-/**
- * The pill as the rename control Architect made it, at the one mount that
- * turns it on: the attribute a picker is holding.
- *
- * Pressing it zooms the pill into an editor over the page, with the name in a
- * box, Cancel and Save Changes. It was the ONLY way Architect offered to
- * rename an existing attribute — its codebook screen had no row editor — so a
- * researcher who mistyped a name met this or nothing.
- */
-export const Editable: Story = {
-  args: {
-    name: 'age',
-    type: 'number',
-    editable: true,
-    onRename: () => true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const trigger = canvas.getByRole('button', {
-      name: 'Edit attribute name: age',
-    });
-    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
-  },
-};
-
-/** The editor open on the name, which is what pressing the pill above opens. */
-export const EditingTheName: Story = {
-  args: {
-    name: 'age',
-    type: 'number',
-    editable: true,
-    onRename: () => true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Edit attribute name: age' }),
-    );
-
-    // The editor is a layer over the page, so it is found on the document
-    // rather than in the story's own canvas.
-    const editor = within(
-      await within(document.body).findByRole('dialog', {
-        name: 'Edit attribute name',
-      }),
-    );
-    await expect(
-      editor.getByRole('textbox', { name: 'Attribute name' }),
-    ).toHaveValue('age');
-    // Held until there is something to save, which is Architect's own rule.
-    await expect(
-      editor.getByRole('button', { name: 'Save Changes' }),
-    ).toBeDisabled();
-  },
-};
-
-/**
- * A name the caller refuses, stated under the box rather than on save: the
- * researcher is told while they are still looking at what they typed.
- */
-export const ANameThatCannotBeUsed: Story = {
-  args: {
-    name: 'age',
-    type: 'number',
-    editable: true,
-    onRename: () => true,
-    validateName: () => 'this type already has an attribute called that',
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Edit attribute name: age' }),
-    );
-    const editor = within(
-      await within(document.body).findByRole('dialog', {
-        name: 'Edit attribute name',
-      }),
-    );
-    const box = editor.getByRole('textbox', { name: 'Attribute name' });
-    await userEvent.clear(box);
-    await userEvent.type(box, 'height');
-
-    await expect(
-      await within(document.body).findByText(
-        'this type already has an attribute called that',
-      ),
-    ).toBeVisible();
-    await expect(
-      editor.getByRole('button', { name: 'Save Changes' }),
-    ).toBeDisabled();
-  },
 };
