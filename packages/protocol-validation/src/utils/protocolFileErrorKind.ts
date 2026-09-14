@@ -1,6 +1,7 @@
 import {
   MigrationError,
   MigrationNotPossibleError,
+  MigrationResultInvalidError,
   MigrationStepError,
   SchemaVersionDetectionError,
   ValidationError,
@@ -83,6 +84,12 @@ export function getProtocolFileErrorKind(
     if (error instanceof VersionMismatchError) return 'newerVersion';
     if (error instanceof MigrationNotPossibleError) return 'cannotUpgrade';
     if (error instanceof MigrationStepError) return 'upgradeStepFailed';
+    // A migration that returned an invalid document has the same consequence
+    // for the researcher as one that threw — nothing on their device changed —
+    // and the same cause for us, so it shares the kind rather than needing a
+    // sentence of its own.
+    if (error instanceof MigrationResultInvalidError)
+      return 'upgradeStepFailed';
     if (error instanceof SchemaVersionDetectionError) return 'missingVersion';
     if (error instanceof ValidationError) return 'invalidBeforeUpgrade';
     return 'upgradeFailed';

@@ -30,6 +30,27 @@ export class MigrationStepError extends MigrationError {
   }
 }
 
+/**
+ * A migration ran and returned a document that does not satisfy the schema it
+ * targeted.
+ *
+ * Separate from `ValidationError`, which the same function throws when the
+ * *researcher's* document fails the checks for its own version. The two read
+ * identically at the throw site and mean opposite things: one is a fact about
+ * the file, the other is a migration that produced garbage. A host that cannot
+ * tell them apart either reports every old protocol as a bug, or — worse —
+ * reports none of its own broken migrations.
+ */
+export class MigrationResultInvalidError extends MigrationError {
+  readonly targetVersion: number;
+
+  constructor(message: string, targetVersion: number) {
+    super(message);
+    this.name = 'MigrationResultInvalidError';
+    this.targetVersion = targetVersion;
+  }
+}
+
 export class SchemaVersionDetectionError extends MigrationError {
   constructor() {
     super('Unable to detect schema version from document');

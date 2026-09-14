@@ -12,6 +12,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { warnAboutDuplicateRows } from '~/components/AssetBrowser/duplicateRowsWarning';
 import ExternalLink from '~/components/ExternalLink';
 import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -84,24 +85,6 @@ const additionalMessages = defineMessages({
   },
 });
 const messages = defineMessages({
-  warningContainsDuplicateRows: {
-    id: 'architect.form.autoFileDrop.warningContainsDuplicateRows',
-    defaultMessage: 'Warning: {value1} contains duplicate rows',
-    description: 'The title text in components / Form / AutoFileDrop.',
-  },
-  theFileContainsDuplicateDuplicate: {
-    id: 'architect.form.autoFileDrop.theFileContainsDuplicateDuplicate',
-    defaultMessage:
-      'The file contains {count, plural, one {# duplicate row} other {# duplicate rows}}. Duplicate rows will be removed when this roster is used in Fresco.',
-    description:
-      'Queued warning after importing a network resource. count is the number of duplicate rows detected; Fresco removes these rows when using the roster, not during this Architect import.',
-  },
-  considerRemovingDuplicatesFromYourCSV: {
-    id: 'architect.form.autoFileDrop.considerRemovingDuplicatesFromYourCSV',
-    defaultMessage:
-      'Consider removing duplicates from your CSV file before importing.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
-  },
   oK: {
     id: 'architect.form.autoFileDrop.oK',
     defaultMessage: 'OK',
@@ -269,42 +252,11 @@ const AutoFileDrop = ({
         try {
           const result = await dispatch(importAssetAsync({ file })).unwrap();
           ids.push(result.id);
-          if (result.duplicateCount > 0) {
-            void openDialog({
-              type: 'acknowledge',
-              intent: 'warning',
-              title: createElement(AppMessage, {
-                message: messages.warningContainsDuplicateRows,
-                values: {
-                  value1: file.name,
-                },
-              }),
-              children: (
-                <>
-                  <Paragraph>
-                    {createElement(AppMessage, {
-                      message: messages.theFileContainsDuplicateDuplicate,
-                      values: {
-                        count: result.duplicateCount,
-                      },
-                    })}
-                  </Paragraph>
-                  <Paragraph>
-                    {createElement(AppMessage, {
-                      message: messages.considerRemovingDuplicatesFromYourCSV,
-                    })}
-                  </Paragraph>
-                </>
-              ),
-              actions: {
-                primary: {
-                  label: createElement(AppMessage, { message: messages.oK }),
-                  value: true,
-                },
-              },
-              finalFocus,
-            });
-          }
+          warnAboutDuplicateRows(openDialog, {
+            fileName: file.name,
+            duplicateCount: result.duplicateCount,
+            finalFocus,
+          });
         } catch (error) {
           const importError = getImportAssetErrorInfo(error, file.name);
           const isValidationError =

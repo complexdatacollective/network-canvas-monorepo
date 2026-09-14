@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
+import { warnAboutDuplicateRows } from '~/components/AssetBrowser/duplicateRowsWarning';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { getAccepts } from '~/components/Form/AutoFileDrop';
@@ -136,7 +137,7 @@ const AssetBrowser = ({
         // Keeps the manifest key, so every stage already pointing at this
         // resource keeps working, and keeps the researcher's own name for it
         // rather than adopting the replacement file's.
-        await dispatch(
+        const repaired = await dispatch(
           importAssetAsync({
             file,
             name: asset.name,
@@ -144,6 +145,15 @@ const AssetBrowser = ({
             expectedType: asset.type,
           }),
         ).unwrap();
+
+        // The same warning the drop zone gives, for the same reason: Fresco
+        // drops duplicate rows when it runs the roster. Repairing one is the
+        // case where staying silent costs most, because the resource being
+        // repaired is already in use by the interview.
+        warnAboutDuplicateRows(openDialog, {
+          fileName: file.name,
+          duplicateCount: repaired.duplicateCount,
+        });
       } catch (error) {
         const description =
           error && typeof error === 'object' && 'message' in error

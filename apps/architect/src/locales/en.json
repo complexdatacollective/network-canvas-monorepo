@@ -279,6 +279,10 @@
     "defaultMessage": "Resource library",
     "description": "The aria-label text in components / AssetBrowser / Assets."
   },
+  "architect.assetBrowser.duplicateRowsWarning.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / AssetBrowser / duplicateRowsWarning."
+  },
   "architect.assetBrowser.preview.closePreview": {
     "defaultMessage": "Close preview",
     "description": "Visible text in components / AssetBrowser / Preview."

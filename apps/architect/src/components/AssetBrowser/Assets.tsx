@@ -159,9 +159,18 @@ const Assets = ({
         return;
       }
 
+      // Activating the card is a second route to Preview, so hiding the button
+      // is not enough: it would open a preview of bytes that are known not to
+      // exist, with a download that cannot work. Send the researcher to the
+      // one action that resolves it instead.
+      if (unresolvedAssetIds.has(selectedKey)) {
+        onReplace?.(selectedKey);
+        return;
+      }
+
       onPreview?.(selectedKey);
     },
-    [onPreview, onSelect],
+    [onPreview, onReplace, onSelect, unresolvedAssetIds],
   );
 
   const renderItem = useCallback(

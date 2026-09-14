@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MigrationNotPossibleError,
+  MigrationResultInvalidError,
   MigrationStepError,
   SchemaVersionDetectionError,
   ValidationError,
@@ -37,6 +38,16 @@ describe('isProtocolFileFault', () => {
     ['a protocol invalid for its own version', new ValidationError('nope')],
   ])("treats %s as the file's fault", (_label, error) => {
     expect(isProtocolFileFault(error)).toBe(true);
+  });
+
+  it("does not treat a migration returning an invalid document as the file's fault", () => {
+    // `migrateProtocol` validates twice and used to throw `ValidationError`
+    // for both: once for the researcher's document against its own version,
+    // once for a migration's own output. Only the first is about the file.
+    const error = new MigrationResultInvalidError('bad output', 8);
+
+    expect(getProtocolFileErrorKind(error)).toBe('upgradeStepFailed');
+    expect(isProtocolFileFault(error)).toBe(false);
   });
 
   it("does not treat a failed migration step as the file's fault", () => {

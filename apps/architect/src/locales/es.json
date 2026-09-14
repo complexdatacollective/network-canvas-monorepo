@@ -69,6 +69,7 @@
   "architect.assetBrowser.assets.filterResourcesByType": "Filtrar recursos por tipo",
   "architect.assetBrowser.assets.noResourcesToDisplay": "No hay recursos para mostrar.",
   "architect.assetBrowser.assets.resourceLibrary": "Biblioteca de recursos",
+  "architect.assetBrowser.duplicateRowsWarning.oK": "Aceptar",
   "architect.assetBrowser.preview.closePreview": "Cerrar vista previa",
   "architect.assetBrowser.preview.copyAPIKey": "Copiar clave de API",
   "architect.assetBrowser.preview.downloadAsset": "Descargar recurso",
