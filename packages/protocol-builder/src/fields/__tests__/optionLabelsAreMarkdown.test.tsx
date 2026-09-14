@@ -13,7 +13,6 @@ import VariableEditor, {
 import type { CodebookWriteOutcome } from '../../codebook/writes.ts';
 import { createStageDraftProbe } from '../../form/__tests__/stageDraftProbe.tsx';
 import Options, { optionsValidation } from '../../form/arrayFields/Options.tsx';
-import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { richTextOf } from '../../testing/text.ts';
@@ -91,13 +90,6 @@ const APPLIED: CodebookWriteOutcome = {
   status: 'applied',
   sectionId: PERSON_SECTION,
 };
-const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
-  codebook: { node: {}, edge: {} },
-  assets: {},
-  orderedStages: [],
-  issues: [],
-};
-
 const personDocument = (
   variables: Readonly<Record<string, unknown>> = {},
 ): SectionDoc => ({
@@ -125,7 +117,6 @@ function renderAttributeEditor(
     authoritativeDocument: personDocument({ closeness: committed }),
     variableId: 'closeness',
     initialDraft: committed,
-    protocolContext: EMPTY_CONTEXT,
     onSubmitDocument,
     onComplete: () => undefined,
   };
