@@ -91,7 +91,11 @@ export const JOB_QUEUES = [
   {
     // A sign-in link is useless once it expires, so a failed send is worth two
     // quick retries and nothing more: no dead letter, and both the job and its
-    // record are gone within minutes.
+    // record are gone within minutes — which holds only because the worker
+    // runs pg-boss's maintenance pass every minute (src/jobs/worker.ts in the
+    // server). Deletion happens on that pass alone, so at pg-boss's own
+    // 24-hour default this row, whose payload is the magic link itself, would
+    // outlive the link by most of a day.
     name: 'sign-in-email',
     options: {
       policy: 'standard',

@@ -24,19 +24,36 @@ const SERVER_ROOT = resolve(
 /**
  * Every module specifier in a file, through the tokenizer rather than a
  * regular expression: a specifier named in a comment or inside a string
- * cannot add to the graph, and a real one cannot hide from it. `from` is a
- * contextual keyword, so what identifies an import is a `from` immediately
- * followed by a string literal — which no expression produces.
+ * cannot add to the graph, and a real one cannot hide from it.
+ *
+ * All three forms that reach a module, because a graph that followed only the
+ * first would report a process as free of what it loads by either of the
+ * others: `from 'x'` for a static import or re-export, `import 'x'` for a
+ * side-effect import, which has no `from` at all, and `import('x')` for a
+ * dynamic one — the form a lazily loaded transport or router would arrive by.
+ * `from` is a contextual keyword, so what identifies it is a `from`
+ * immediately followed by a string literal, which no expression produces;
+ * `import` is reserved, so a literal after it, or after its opening
+ * parenthesis, is always a specifier.
  */
 function moduleSpecifiers(source: string): string[] {
   const tokens = sourceTokens(source);
+  const literalAt = (index: number): string | undefined => {
+    const token = tokens[index];
+    return token?.raw.startsWith("'") || token?.raw.startsWith('"')
+      ? token.value
+      : undefined;
+  };
+
   const specifiers: string[] = [];
   for (const [index, token] of tokens.entries()) {
-    if (token.raw !== 'from') continue;
-    const next = tokens[index + 1];
-    if (next?.raw.startsWith("'") || next?.raw.startsWith('"')) {
-      specifiers.push(next.value);
-    }
+    if (token.raw !== 'from' && token.raw !== 'import') continue;
+    const specifier =
+      literalAt(index + 1) ??
+      (token.raw === 'import' && tokens[index + 1]?.raw === '('
+        ? literalAt(index + 2)
+        : undefined);
+    if (specifier !== undefined) specifiers.push(specifier);
   }
   return specifiers;
 }
@@ -82,6 +99,37 @@ function reached(
 ): string[] {
   return names.filter((name) => modules.has(name) || packages.has(name));
 }
+
+describe('the import inventory', () => {
+  it('follows every form one module reaches another by', () => {
+    // The inventory above is only as complete as this: a specifier it does
+    // not follow is a module the graph reports as unreached, which is how a
+    // process could load the mail transport or the HTTP app and still pass.
+    //
+    // Mutation: drop the `import` half of `moduleSpecifiers` (follow `from`
+    // alone, as it did before) and the side-effect and dynamic specifiers
+    // below go missing.
+    expect(
+      moduleSpecifiers(
+        [
+          "import { named } from './named.ts';",
+          "import './side-effect.ts';",
+          "const lazy = await import('./dynamic.ts');",
+          "export * from './re-export.ts';",
+          "import type { Shape } from './type-only.ts';",
+          "// import './commented-out.ts';",
+          'const quoted = "import \'./inside-a-string.ts\';";',
+        ].join('\n'),
+      ),
+    ).toEqual([
+      './named.ts',
+      './side-effect.ts',
+      './dynamic.ts',
+      './re-export.ts',
+      './type-only.ts',
+    ]);
+  });
+});
 
 describe('the worker process', () => {
   const graph = moduleGraph('src/worker.ts');

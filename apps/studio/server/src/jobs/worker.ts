@@ -18,9 +18,11 @@ import { registerJobs } from './register.ts';
 const DEFAULT_STOP_TIMEOUT_MS = 25_000;
 
 /**
- * pg-boss's background cadences. Production leaves every one of them at its
- * default; the suites turn them down so a test does not wait out a 30-second
- * cron monitor to observe one pass.
+ * pg-boss's background cadences. Production leaves them at their defaults
+ * apart from the maintenance pass, which `createJobWorker` sets because a
+ * queue's retention is only as short as the pass that enforces it; the suites
+ * turn them all down so a test does not wait out a 30-second cron monitor to
+ * observe one pass.
  */
 export type JobWorkerIntervals = {
   superviseIntervalSeconds?: number;
@@ -57,6 +59,12 @@ export type JobWorkerDeps = {
 export type JobWorker = {
   /** The instance, for tests that observe pg-boss rather than drive it. */
   boss: PgBoss;
+  /**
+   * What pg-boss was constructed with. pg-boss keeps its own copy private, so
+   * this is how a suite reads back a cadence a deployment depends on — a
+   * default left to pg-boss is a promise this build does not keep.
+   */
+  config: JobWorkerConfig;
   start(): Promise<void>;
   stop(): Promise<void>;
 };
@@ -95,6 +103,12 @@ export function createJobWorker(deps: JobWorkerDeps): JobWorker {
     reindex: false,
     persistWarnings: false,
     persistQueueStats: false,
+    // Deleting a completed job happens on the maintenance pass and nowhere
+    // else, so pg-boss's own default — 24 hours — is the real lifetime of
+    // every queue's `deleteAfterSeconds`: a sign-in job, whose payload is the
+    // magic link itself, would sit in the table for most of a day after the
+    // link expired. A minute makes the queue's declared minute mean it.
+    maintenanceIntervalSeconds: 60,
     ...deps.intervals,
   };
   const boss = new PgBoss(config);
@@ -112,6 +126,7 @@ export function createJobWorker(deps: JobWorkerDeps): JobWorker {
 
   return {
     boss,
+    config,
     start: () => {
       starting ??= (async () => {
         await boss.start();

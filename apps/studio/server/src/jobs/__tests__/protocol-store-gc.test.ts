@@ -32,6 +32,19 @@ const GC_SCHEDULE = JOB_SCHEDULES.find(
 const EVERY_MINUTE = '* * * * *';
 const TEST_SCHEDULE_KEY = 'minute-boundary';
 
+/** A schedule under a key no release declares: what a dropped one looks like. */
+const RETIRED_SCHEDULE_KEY = 'retired-by-a-previous-release';
+
+/**
+ * Midnight on the first of January: a schedule that cannot come due inside
+ * this file's run, so a row written to be reconciled away never creates a
+ * sweep another case would count.
+ */
+const NEVER_THIS_RUN = '0 0 1 1 *';
+
+/** pg-boss's own cron-forwarding queue, which it schedules against itself. */
+const INTERNAL_QUEUE = '__pgboss__send-it';
+
 const TEAM_ID = 'team-gc-cron';
 
 function sleep(ms: number): Promise<void> {
@@ -108,6 +121,13 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
     return result.rows[0]?.state;
   };
 
+  const scheduleRows = async (): Promise<{ name: string; key: string }[]> => {
+    const result = await scratch.pool.query<{ name: string; key: string }>(
+      `select name, key from ${scratch.jobSchema}.schedule order by name, key`,
+    );
+    return result.rows;
+  };
+
   const gcJobCount = async (): Promise<number> => {
     const result = await scratch.pool.query<{ count: string }>(
       `select count(*) as count from ${scratch.jobSchema}.job_common where name = 'protocol-store-gc'`,
@@ -155,6 +175,57 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
       ]);
     } finally {
       await stopAll(workers);
+    }
+  });
+
+  it('drops a schedule this build no longer declares', async () => {
+    // pg-boss's schedule table is state, not configuration: a schedule a
+    // previous release wrote keeps coming due after JOB_SCHEDULES stops
+    // declaring it, creating a job an hour on a queue nothing works. A worker
+    // booting is the only moment anything reconciles the two. One worker is
+    // enough for that: a second would write the same row.
+    const running = scratch.createJobWorker();
+    await running.start();
+    try {
+      await running.boss.schedule(
+        'protocol-store-gc',
+        NEVER_THIS_RUN,
+        {},
+        {
+          tz: 'UTC',
+          key: RETIRED_SCHEDULE_KEY,
+        },
+      );
+      // pg-boss's own scheduling state, which a reconciliation that worked by
+      // name alone would take with it. The row is written directly because
+      // nothing of Studio's may schedule onto pg-boss's internal queue.
+      await scratch.pool.query(
+        `insert into ${scratch.jobSchema}.schedule (name, cron, timezone)
+         values ($1, $2, 'UTC')`,
+        [INTERNAL_QUEUE, NEVER_THIS_RUN],
+      );
+      expect(await scheduleRows()).toEqual([
+        { name: INTERNAL_QUEUE, key: '' },
+        { name: 'protocol-store-gc', key: '' },
+        { name: 'protocol-store-gc', key: RETIRED_SCHEDULE_KEY },
+      ]);
+
+      const next = scratch.createJobWorker();
+      await next.start();
+      await next.stop();
+
+      // The declared schedule stays, the retired one is gone, and pg-boss's
+      // own row is not Studio's to remove.
+      expect(await scheduleRows()).toEqual([
+        { name: INTERNAL_QUEUE, key: '' },
+        { name: 'protocol-store-gc', key: '' },
+      ]);
+    } finally {
+      await running.stop();
+      await scratch.pool.query(
+        `delete from ${scratch.jobSchema}.schedule where name = $1`,
+        [INTERNAL_QUEUE],
+      );
     }
   });
 

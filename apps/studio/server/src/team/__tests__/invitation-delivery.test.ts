@@ -42,6 +42,15 @@ const RETRY_LIMIT = 7;
 /** A worked queue can take a moment; a hung one must not take the file down. */
 const WORKED_JOB_TIMEOUT_MS = 20_000;
 
+/**
+ * What the handler refuses an attempt with when it cannot take the invitation.
+ * One message for both holders, because from here they are the same finding:
+ * an earlier attempt still inside its SMTP call, or an acceptance, which takes
+ * the same row and waits for it.
+ */
+const LOCKED_BY_SOMEONE_ELSE =
+  'invitation row is locked by an earlier attempt or another command; retrying later';
+
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: INVITER_ID,
@@ -591,14 +600,59 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
     // The expiry of the first attempt would make pg-boss hand the job to a
     // second worker while the first is still inside its SMTP call.
     await expect(handler([jobFor(deliveryId, 1)])).rejects.toThrow(
-      'delivery still in progress from an earlier attempt',
+      LOCKED_BY_SOMEONE_ELSE,
     );
     expect(sendTeamInvitation).toHaveBeenCalledOnce();
+    // The refusal counted nothing. An attempt that never got the lock did no
+    // work, and a send that outlives the job's expiry would otherwise have
+    // every retry behind it stamp a number and give up — spending the whole
+    // ladder on refusals while the row's `last_error` stayed empty.
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
+      last_error: null,
+    });
 
     sending.resolve();
     await expect(first).resolves.toBeUndefined();
     expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
       sent_at: expect.any(Date),
+    });
+  });
+
+  it('records the delivery failed when the last attempt cannot take the invitation', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    await createTenantDb(scratch.app, TEAM_ID).transaction(async (client) => {
+      // An acceptance holds the invitation and waits for it, which is what an
+      // attempt overtaken by its own expiry looks like from here.
+      await client.query(
+        `SELECT id FROM team_invitations
+         WHERE team_id = $1 AND id = $2
+         FOR UPDATE`,
+        [TEAM_ID, invitation.invitationId],
+      );
+      // The last attempt pg-boss will make: it dead-letters the job after
+      // this one, and nothing runs behind it to record how the delivery
+      // ended.
+      await expect(
+        handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]),
+      ).rejects.toThrow(LOCKED_BY_SOMEONE_ELSE);
+    });
+
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      // Still nothing counted — but the row says what ended it rather than
+      // sitting blank and pending beside a dead-lettered job.
+      attempt_count: 0,
+      failed_at: expect.any(Date),
+      last_error: LOCKED_BY_SOMEONE_ELSE,
+      sent_at: null,
     });
   });
 
@@ -675,7 +729,7 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
       // attempt holding it: the handler gives up rather than sending mail for
       // an invitation someone is in the middle of withdrawing.
       await expect(handler([jobFor(deliveryId, 0)])).rejects.toThrow(
-        'delivery still in progress from an earlier attempt',
+        LOCKED_BY_SOMEONE_ELSE,
       );
       await client.query(
         `UPDATE team_invitations SET status = 'canceled'

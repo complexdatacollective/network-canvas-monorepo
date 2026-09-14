@@ -132,6 +132,15 @@ export function createJobClient(
     boss,
     start,
     enqueue: async (client, queue, data, enqueueOptions) => {
+      // Waited for inside the caller's transaction, which for an invitation
+      // means while the team's audit lock is held (src/team/commands.ts): a
+      // database that is up but slow to connect holds that lock for as long
+      // as this takes, and a start that failed is retried by the next call
+      // rather than memoised — so a command arriving while the database is
+      // down runs a fresh connection attempt of its own. Both are bounded by
+      // the pool's `connectionTimeoutMillis` (src/db/pool.ts), which is what
+      // keeps a team's commands from queueing behind an unreachable database
+      // indefinitely.
       await start();
       return enqueueJob(boss, client, queue, data, enqueueOptions);
     },

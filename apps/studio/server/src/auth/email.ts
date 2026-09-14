@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
@@ -38,17 +39,28 @@ function createConsoleMailer(): StudioMailer {
 }
 
 function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  // Magic-link sends happen inside the sign-in request, and nodemailer's
-  // defaults (2 minutes to connect, 10 minutes of socket inactivity) would
-  // hold that request open long past the point the person gave up. These
-  // bounds also keep an invitation attempt within its worker's 60-second
-  // lease under ordinary transport failures.
-  const transport = nodemailer.createTransport({
-    url: smtpUrl,
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-  });
+  // nodemailer's defaults — 2 minutes to connect, 30 seconds for a greeting,
+  // 10 minutes of socket inactivity — are longer than anything that waits on
+  // a send: the invitation queue expires an attempt after 60 seconds, and the
+  // worker gives an in-flight handler 25 seconds when a container stops it,
+  // after which pg-boss fails the job as 'shut down while active' rather than
+  // letting it retry. These bounds fit inside both.
+  //
+  // Built through SMTPTransport rather than by handing `createTransport` a
+  // configuration object, because that call discards the object when it
+  // carries a `url`: it replaces the whole configuration with what it parses
+  // out of the URL (nodemailer/lib/nodemailer.js), so options set beside one
+  // never reach the connection. SMTPTransport instead merges the URL over the
+  // options it was given, which keeps both — and leaves a URL free to carry
+  // its own overrides in a query string.
+  const transport = nodemailer.createTransport(
+    new SMTPTransport({
+      url: smtpUrl,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
+    }),
+  );
   return {
     sendMagicLink: async ({ email, url }) => {
       await transport.sendMail({

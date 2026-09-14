@@ -34,6 +34,37 @@ const DEFAULT_WORK_POLLING_INTERVAL_SECONDS = 0.5;
 /** Every handler takes one job at a time and needs its retry counters. */
 const WORK_OPTIONS = { batchSize: 1, includeMetadata: true } as const;
 
+/**
+ * pg-boss's own queues, which it schedules nothing on today but which a later
+ * release could. A schedule row this build did not declare is Studio's to
+ * remove; one belonging to the library is not.
+ */
+const INTERNAL_QUEUE_PREFIX = '__pgboss__';
+
+/**
+ * The schedule table is state, not configuration: removing a schedule from
+ * JOB_SCHEDULES only stops a new deployment from writing it, and the row a
+ * previous release left keeps coming due — creating a job every hour on a
+ * queue no worker registers a handler for, which then sits until its retention
+ * expires. The upserts above and this together make the declarations the whole
+ * of what a deployment runs.
+ *
+ * Keyed on (queue, key) because `schedule()` is: every schedule Studio
+ * declares is written with the default empty key, so a row under any other key
+ * came from somewhere else.
+ */
+async function dropUndeclaredSchedules(boss: PgBoss): Promise<void> {
+  const isDeclared = (name: string, key: string): boolean =>
+    key === '' && JOB_SCHEDULES.some(({ queue }) => queue === name);
+
+  for (const { name, key } of await boss.getSchedules()) {
+    if (name.startsWith(INTERNAL_QUEUE_PREFIX) || isDeclared(name, key)) {
+      continue;
+    }
+    await boss.unschedule(name, key);
+  }
+}
+
 export async function registerJobs(
   boss: PgBoss,
   deps: JobWorkerDeps,
@@ -49,6 +80,7 @@ export async function registerJobs(
   for (const { queue, cron, tz } of JOB_SCHEDULES) {
     await boss.schedule(queue, cron, {}, { tz });
   }
+  await dropUndeclaredSchedules(boss);
 
   await boss.work(
     'protocol-store-gc',

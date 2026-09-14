@@ -98,33 +98,42 @@ export function createInvitationDeliveryHandler(
     ) =>
       logJobOutcome({ queue: QUEUE, jobId: job.id, outcome, attempt, error });
 
-    // Before anything else, and on its own transaction: a process that dies
-    // mid-send still leaves the attempt counted, which is what the claim did
-    // when this was a lease. It is also how "there is nothing to do" is
-    // learned without taking a lock.
-    const stamped = await deps.maintenancePool.query(
-      `UPDATE team_invitation_deliveries
-          SET attempt_count = $2
-        WHERE id = $1
-          AND ${STILL_PENDING}`,
-      [deliveryId, attempt],
-    );
-    if (stamped.rowCount === 0) {
-      const known = await deps.maintenancePool.query(
-        `SELECT 1 FROM team_invitation_deliveries WHERE id = $1`,
-        [deliveryId],
+    /**
+     * The row's half of an attempt that failed. `last_error` every time, and
+     * `failed_at` only on the attempt pg-boss will not retry — which is what
+     * makes the row and the dead-letter copy agree about how the delivery
+     * ended. Its own statement, never inside the send's transaction: the
+     * invitation lock is released before this runs.
+     */
+    const recordFailure = (error: unknown): Promise<unknown> =>
+      deps.maintenancePool.query(
+        `UPDATE team_invitation_deliveries
+            SET last_error = $2,
+                failed_at = CASE
+                  WHEN $3::boolean THEN clock_timestamp() ELSE NULL
+                END
+          WHERE id = $1
+            AND ${STILL_PENDING}`,
+        [deliveryId, errorMessage(error), finalAttempt],
       );
-      // Both are ordinary: a delivery settles once and its job may still be
-      // retried behind it, and an invitation deleted with its team takes the
-      // row with it while the job outlives both.
-      record(
-        'completed',
-        known.rowCount === 1
-          ? 'the delivery had already ended'
-          : 'no delivery row remains for this job',
+
+    /**
+     * Someone else holds the invitation: an earlier attempt still inside its
+     * SMTP call, or an acceptance, which takes the same row and waits for it.
+     * Nothing is written while the job has attempts left — whoever holds the
+     * row is the one entitled to record how the delivery ended, and they may
+     * yet succeed. On the last attempt there is no one behind this to write
+     * anything, so the row records the refusal rather than staying blank
+     * beside a dead-lettered job.
+     */
+    const lockRefusal = async (): Promise<Error> => {
+      const inProgress = new Error(
+        'invitation row is locked by an earlier attempt or another command; retrying later',
       );
-      return;
-    }
+      if (finalAttempt) await recordFailure(inProgress);
+      record(finalAttempt ? 'failed' : 'retrying', inProgress);
+      return inProgress;
+    };
 
     /**
      * SMTP has accepted the message and Studio could not record that it did.
@@ -151,6 +160,63 @@ export function createInvitationDeliveryHandler(
 
     const client = await deps.maintenancePool.connect();
     try {
+      // Two transactions on one connection. The first takes the invitation
+      // lock and counts the attempt; the second takes it again for the send.
+      // Counting is inside the lock rather than ahead of it because an attempt
+      // refused the lock did no work: a send that outlived the job's expiry
+      // would otherwise have every retry behind it stamp a number and give up,
+      // spending the ladder on refusals while `last_error` stayed empty.
+      await client.query('BEGIN');
+      try {
+        await client.query(
+          `SELECT 1
+             FROM team_invitation_deliveries d
+             JOIN team_invitations i
+               ON i.id = d.invitation_id AND i.team_id = d.team_id
+            WHERE d.id = $1
+              FOR UPDATE OF i NOWAIT`,
+          [deliveryId],
+        );
+      } catch (error) {
+        await rollback(client);
+        if (!isLockUnavailableError(error)) throw error;
+        throw await lockRefusal();
+      }
+
+      let stamped;
+      try {
+        // Committed before the send, so a process that dies mid-send still
+        // leaves the attempt counted — which is what the claim did when this
+        // was a lease. It is also how "there is nothing to do" is learned.
+        stamped = await client.query(
+          `UPDATE team_invitation_deliveries
+              SET attempt_count = $2
+            WHERE id = $1
+              AND ${STILL_PENDING}`,
+          [deliveryId, attempt],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await rollback(client);
+        throw error;
+      }
+      if (stamped.rowCount === 0) {
+        const known = await client.query(
+          `SELECT 1 FROM team_invitation_deliveries WHERE id = $1`,
+          [deliveryId],
+        );
+        // Both are ordinary: a delivery settles once and its job may still be
+        // retried behind it, and an invitation deleted with its team takes the
+        // row with it while the job outlives both.
+        record(
+          'completed',
+          known.rowCount === 1
+            ? 'the delivery had already ended'
+            : 'no delivery row remains for this job',
+        );
+        return;
+      }
+
       await client.query('BEGIN');
 
       let locked;
@@ -159,7 +225,8 @@ export function createInvitationDeliveryHandler(
         // delivery's own writes are short, and the invitation is what a
         // cancellation contends for. NOWAIT because an attempt that waited
         // would sit behind another attempt's whole SMTP call and then send a
-        // second copy of the same mail.
+        // second copy of the same mail. Taken again because the lock above
+        // ended with the transaction that counted the attempt.
         locked = await client.query<DeliverableRow>(
           `SELECT d.invitation_id AS "invitationId",
                   d.email,
@@ -182,14 +249,9 @@ export function createInvitationDeliveryHandler(
       } catch (error) {
         await rollback(client);
         if (!isLockUnavailableError(error)) throw error;
-        // An earlier attempt of this job still owns the invitation. Nothing is
-        // written to the row: that attempt is the one entitled to record how
-        // it ended, and it may yet succeed.
-        const inProgress = new Error(
-          'delivery still in progress from an earlier attempt',
-        );
-        record(finalAttempt ? 'failed' : 'retrying', inProgress);
-        throw inProgress;
+        // Taken between the two transactions, by a cancellation or by an
+        // attempt this one overtook.
+        throw await lockRefusal();
       }
 
       const delivery = locked.rows[0];
@@ -247,16 +309,7 @@ export function createInvitationDeliveryHandler(
         // that hung until the job expired does not keep the invitation locked
         // while this attempt tidies up.
         await rollback(client);
-        await deps.maintenancePool.query(
-          `UPDATE team_invitation_deliveries
-              SET last_error = $2,
-                  failed_at = CASE
-                    WHEN $3::boolean THEN clock_timestamp() ELSE NULL
-                  END
-            WHERE id = $1
-              AND ${STILL_PENDING}`,
-          [deliveryId, errorMessage(error), finalAttempt],
-        );
+        await recordFailure(error);
         record(finalAttempt ? 'failed' : 'retrying', error);
         // pg-boss retries, or fails the job and copies it to the dead letter
         // queue. Stamping `failed_at` first is what makes the row and that

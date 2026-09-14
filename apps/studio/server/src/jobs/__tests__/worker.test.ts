@@ -14,6 +14,8 @@ import {
 import { settlesWithin } from '../../__tests__/support/timing.ts';
 import type { StudioMailer } from '../../auth/email.ts';
 import type { JobClient } from '../client.ts';
+import { jobQueueDefinitions } from '../queues.ts';
+import { createJobWorker } from '../worker.ts';
 
 const db = await reachableDb();
 
@@ -62,6 +64,53 @@ describe.skipIf(!db)('createJobWorker', () => {
     );
     return state.rows[0]?.state;
   };
+
+  it('runs maintenance often enough for the shortest retention it declares', () => {
+    if (!db) throw new Error('unreachable: probe guaranteed a database');
+    // Deleting a completed job happens on pg-boss's maintenance pass and
+    // nowhere else, so `deleteAfterSeconds` is only as true as that pass is
+    // frequent — and pg-boss's own default is 24 hours, which would leave a
+    // completed sign-in job, whose payload is the magic link itself, in the
+    // table for most of a day after the link expired.
+    //
+    // Built the way a deployment builds it rather than the way this file's
+    // scratch workers do: `scratch.createJobWorker` hands every cadence down
+    // for the suites' sake, which is precisely what must not be what makes
+    // this true. pg-boss keeps its configuration private, so `config` is the
+    // object it was constructed with.
+    const worker = createJobWorker({
+      db,
+      maintenancePool: scratch.maintenance,
+      publicBaseUrl: 'http://localhost:3000',
+      schema: scratch.jobSchema,
+    });
+
+    // Taken from the queues rather than written here, so a queue that later
+    // asks for a shorter retention than the worker can enforce fails this
+    // rather than quietly keeping its jobs longer than it says.
+    // `0` is pg-boss's "keep it forever" (the dead-letter queue asks for it),
+    // which no maintenance cadence can be too slow for.
+    const retentions = jobQueueDefinitions().flatMap(({ options }) =>
+      options.deleteAfterSeconds !== undefined && options.deleteAfterSeconds > 0
+        ? [options.deleteAfterSeconds]
+        : [],
+    );
+    const shortest = Math.min(...retentions);
+    expect(shortest).toBeGreaterThan(0);
+    expect(worker.config.maintenanceIntervalSeconds).toBeLessThanOrEqual(
+      shortest,
+    );
+  });
+
+  it('lets the suites turn that cadence down', () => {
+    // The knob stays a knob: the scratch workers every case here starts run
+    // maintenance every second, so the default above cannot be what any of
+    // them are waiting on.
+    expect(
+      scratch.createJobWorker({ mailer: silentMailer }).config
+        .maintenanceIntervalSeconds,
+    ).toBe(1);
+  });
 
   it('starts against a schema apply-schema installed', async () => {
     const worker = scratch.createJobWorker({ mailer: silentMailer });
