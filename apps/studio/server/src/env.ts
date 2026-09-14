@@ -29,8 +29,6 @@ const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
   'NODE_ENV',
   'STUDIO_DEV_DEFAULTS',
   'PORT',
-  'STUDIO_METRICS_TOKEN',
-  'TRUSTED_PROXIES',
   'HOST',
   'CLIENT_DIST',
   // The Netlify lane is the managed service, and its `status` procedure has
@@ -86,11 +84,6 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
     runtimeEnv,
     emptyStringAsUndefined: true,
     skipValidation,
-    // The library default prints the complete validation issues object.
-    // Entry points decide how to report this fixed, value-free failure.
-    onValidationError: () => {
-      throw new Error('Invalid environment variables');
-    },
   });
 
   return resolve(raw);

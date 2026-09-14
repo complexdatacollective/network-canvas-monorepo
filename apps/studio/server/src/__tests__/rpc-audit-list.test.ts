@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { operationalLogger } from '../observability/logger.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -126,6 +125,18 @@ function poolWithClientBudget(
       return typeof value === 'function' ? value.bind(target) : value;
     },
   });
+}
+
+/** The structured `detail` of a `process.emitWarning` call, parsed. */
+function warningDetail(options: string | object | undefined): unknown {
+  if (typeof options !== 'object' || options === null) {
+    throw new Error('expected structured audit warning options');
+  }
+  const detail = Reflect.get(options, 'detail');
+  if (typeof detail !== 'string') {
+    throw new Error('expected structured audit warning detail');
+  }
+  return JSON.parse(detail);
 }
 
 /** The next free per-team sequence, so a direct seed cannot collide. */
@@ -847,7 +858,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     );
 
     const warning = vi
-      .spyOn(operationalLogger, 'diagnostic')
+      .spyOn(process, 'emitWarning')
       .mockImplementation(() => undefined);
     const unrecordedClient = createRpcClient(
       createApp(readEnv(), {
@@ -872,14 +883,24 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     }
 
     const lost = calls.filter(
-      ([code]) => code === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+      ([, options]) =>
+        typeof options === 'object' &&
+        options !== null &&
+        Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
     );
-    expect(lost).toEqual([
-      [
-        'STUDIO_AUDIT_DENIAL_EVENT_LOST',
-        { teamId: TEAM, requestId: expect.stringMatching(/^[0-9a-f-]{36}$/) },
-      ],
-    ]);
+    expect(lost).toHaveLength(1);
+    expect(lost[0]?.[0]).toBe(
+      'Required audit.read_denied event was not recorded; the read stayed denied.',
+    );
+    expect(warningDetail(lost[0]?.[1])).toEqual({
+      eventType: 'audit.read_denied',
+      procedure: 'audit.list',
+      teamId: TEAM,
+      actorId: unrecorded.userId,
+      requestId: expect.any(String),
+      causeName: 'Error',
+      causeMessage: 'test client budget exhausted',
+    });
 
     // The signal exists precisely because nothing was recorded.
     expect(

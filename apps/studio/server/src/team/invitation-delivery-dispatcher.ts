@@ -3,7 +3,6 @@ import type pg from 'pg';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { InvitationMailer } from '../auth/email.ts';
-import { logOperational } from '../observability/logger.ts';
 import {
   OutboxDispatcher,
   type OutboxAdapter,
@@ -382,6 +381,9 @@ export function startInvitationDeliveryWorker(
     ...options,
     queue: INVITATION_DELIVERY_QUEUE,
     runOnce: () => dispatcher.runOnce(),
-    onError: () => logOperational('STUDIO_INVITATION_WORKER_ERROR'),
+    onError: (error) => {
+      // oxlint-disable-next-line no-console -- background worker diagnostics
+      console.error('Invitation delivery worker failed:', error);
+    },
   });
 }

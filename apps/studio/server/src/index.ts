@@ -2,7 +2,6 @@ import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
-import { createAssetStore } from './assets.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
@@ -15,24 +14,14 @@ import {
   checkSchema,
   type SchemaProblem,
   type SchemaState,
+  schemaProblemMessage,
 } from './db/schema.ts';
 import { readEnv } from './env.ts';
-import { logOperational } from './observability/logger.ts';
-import { observeWebSocketServer } from './observability/requests.ts';
-import { createObservability } from './observability/runtime.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
 } from './team/invitation-delivery-dispatcher.ts';
-
-// The executable owns process failure policy. Imported app modules never
-// install process hooks, and a fatal error never continues serving requests.
-function failProcess(): never {
-  logOperational('STUDIO_PROCESS_FAILED');
-  process.exit(1);
-}
-process.on('uncaughtException', failProcess);
-process.on('unhandledRejection', failProcess);
+import { STUDIO_VERSION } from './version.ts';
 
 // The server entry, development and production both: one Node process serving
 // the public API, the internal RPC surface, /healthz, and the app WebSocket
@@ -41,23 +30,9 @@ process.on('unhandledRejection', failProcess);
 // and development serves them from the Vite dev server, which proxies API
 // paths here so both topologies present a single origin.
 
-const env = (() => {
-  try {
-    return readEnv();
-  } catch {
-    logOperational('STUDIO_CONFIGURATION_INVALID');
-    return process.exit(1);
-  }
-})();
+const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
-const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
-const observability = createObservability({
-  pool,
-  maintenancePool,
-  assetStore,
-  monitorProcess: true,
-});
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
 function startDatabaseWorkers(): void {
@@ -71,7 +46,6 @@ function startDatabaseWorkers(): void {
   }
   invitationDeliveryWorker = startInvitationDeliveryWorker({
     pool: maintenancePool,
-    observer: observability.metrics.observer,
     mailer: createMailer(env.auth.mailer),
     publicBaseUrl: env.auth.baseUrl,
   });
@@ -86,9 +60,8 @@ function startDatabaseWorkers(): void {
 // once the schema is current.
 function exitIfFatal(state: SchemaState): void {
   if (state.kind !== 'current' && !env.devDefaults) {
-    logOperational(
-      state.kind === 'absent' ? 'STUDIO_SCHEMA_ABSENT' : 'STUDIO_SCHEMA_STALE',
-    );
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.error(schemaProblemMessage(state));
     process.exit(1);
   }
 }
@@ -113,7 +86,8 @@ if (pool) {
           if (state.kind === 'current') {
             clearInterval(retry);
             startDatabaseWorkers();
-            logOperational('STUDIO_SCHEMA_CURRENT');
+            // oxlint-disable-next-line no-console -- boot diagnostics
+            console.log('Database schema current.');
           }
           return undefined;
         })
@@ -127,8 +101,11 @@ if (pool) {
 
   const waitForSchema = (state: SchemaProblem) => {
     exitIfFatal(state);
-    logOperational(
-      state.kind === 'absent' ? 'STUDIO_SCHEMA_ABSENT' : 'STUDIO_SCHEMA_STALE',
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.warn(
+      state.kind === 'absent'
+        ? 'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset'
+        : 'Database schema is not from this build; waiting for the development reset (pnpm dev runs it on boot; otherwise: pnpm --filter @codaco/studio-server db:reset)',
     );
     waitUntilCurrent();
   };
@@ -146,16 +123,17 @@ if (pool) {
     if (isMissingRoleError(error)) {
       waitForSchema({ kind: 'absent' });
     } else {
-      logOperational('STUDIO_DATABASE_UNREACHABLE');
-      if (!env.devDefaults) process.exit(1);
+      if (!env.devDefaults) throw error;
+      // oxlint-disable-next-line no-console -- boot diagnostics
+      console.warn(
+        `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
+      );
       waitUntilCurrent();
     }
   }
 }
 
 const app = createApp(env, {
-  assetStore,
-  observability,
   invitationDeliveryAvailable: Boolean(
     env.auth && env.auth.mailer.kind !== 'refuse',
   ),
@@ -165,7 +143,6 @@ const app = createApp(env, {
 mountClient(app, env);
 
 const wsServer = new WebSocketServer({ noServer: true });
-observeWebSocketServer(wsServer);
 
 const server = serve(
   {
@@ -174,7 +151,12 @@ const server = serve(
     hostname: env.host,
     websocket: { server: wsServer },
   },
-  () => logOperational('STUDIO_SERVER_STARTED'),
+  (info) => {
+    // oxlint-disable-next-line no-console -- boot log
+    console.log(
+      `Network Canvas Studio ${STUDIO_VERSION} listening on http://${info.address}:${info.port}`,
+    );
+  },
 );
 
 // Graceful shutdown is a requirement, not a nicety (#1247): every backend
@@ -187,7 +169,6 @@ let shuttingDown = false;
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
-  observability.stop();
   setTimeout(() => process.exit(1), 10_000).unref();
   const closing = [...wsServer.clients].map(
     (client) =>
@@ -207,7 +188,6 @@ function shutdown() {
       ])
         .catch(() => undefined)
         .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
-        .catch(() => logOperational('STUDIO_SHUTDOWN_FAILED'))
         .finally(() => {
           process.exit(0);
         });

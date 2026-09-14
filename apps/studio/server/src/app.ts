@@ -14,11 +14,7 @@ import {
 } from '@codaco/studio-rpc/client-session';
 
 import { createApiV1 } from './api.ts';
-import {
-  createAssetRoutes,
-  createAssetStore,
-  type AssetStore,
-} from './assets.ts';
+import { createAssetRoutes, createAssetStore } from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
@@ -31,15 +27,6 @@ import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
 import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
 import { readEnv } from './env.ts';
-import {
-  logOperational,
-  type OperationalLogger,
-} from './observability/logger.ts';
-import { observeRequests } from './observability/requests.ts';
-import {
-  authorizeMetrics,
-  createObservability,
-} from './observability/runtime.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 
@@ -63,9 +50,6 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 
 type CreateAppDeps = {
   auth?: AuthService;
-  assetStore?: AssetStore;
-  observability?: ReturnType<typeof createObservability>;
-  logger?: OperationalLogger;
   /** True only for an entrypoint that starts a supported outbox dispatcher. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
@@ -77,25 +61,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
   // text/plain default.
-  app.onError((_error, c) => {
+  app.onError((error, c) => {
+    // oxlint-disable-next-line no-console -- server-side failure diagnostics
+    console.error(error);
     return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth = deps.auth ?? createAuthService(env, pool);
-  const assetStore =
-    deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
-  const observability =
-    deps.observability ?? createObservability({ pool, assetStore });
-  app.use(
-    '*',
-    observeRequests({
-      trustedProxies: env.trustedProxies,
-      logger: deps.logger,
-      record: observability.metrics.request,
-    }),
-  );
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -115,23 +89,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const deployment = getDeploymentStatus(env.deploymentMode);
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
-  app.get('/readyz', async (c) => {
-    const readiness = await observability.readiness.check();
-    return c.json(readiness, readiness.status === 'ready' ? 200 : 503, {
-      'Cache-Control': 'no-store',
-    });
-  });
-  app.get('/metrics', async (c) => {
-    c.header('Cache-Control', 'no-store');
-    if (!env.metricsToken)
-      return c.json({ title: 'Not Found', status: 404 }, 404);
-    if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'WWW-Authenticate': 'Bearer',
-      });
-    const metrics = await observability.metrics.scrape();
-    return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
-  });
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -172,7 +129,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
-  app.route('/storage', createAssetRoutes(assetStore));
+  app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
@@ -200,7 +157,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       prefix: '/rpc',
       context: {
         principal: c.get('principal'),
-        requestId: c.get('requestId'),
+        requestId: randomUUID(),
         clientSessionId: readClientSessionId(
           c.req.header(CLIENT_SESSION_HEADER),
         ),
@@ -218,14 +175,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',
     });
-  for (const prefix of [
-    '/api',
-    '/rpc',
-    '/storage',
-    '/healthz',
-    '/readyz',
-    '/metrics',
-  ]) {
+  for (const prefix of ['/api', '/rpc', '/storage']) {
     app.all(prefix, notFound);
     app.all(`${prefix}/*`, notFound);
   }
@@ -242,7 +192,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     upgradeWebSocket(
       (c) => {
         const principal = c.get('principal');
-        const requestId = c.get('requestId');
+        const requestId = randomUUID();
         // The socket is the presence identity, so it needs an id of its own.
         const connectionId = randomUUID();
         // The lock owner is the tab, which outlives its sockets. A browser
@@ -253,22 +203,21 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
           c.req.query(CLIENT_SESSION_PARAM),
         );
         return {
-          onOpen() {
-            observability.metrics.socketOpened();
-          },
           onClose(_event, ws) {
-            observability.metrics.socketClosed();
-            void socketHandler.close(ws).catch(() => {
-              logOperational('STUDIO_WEBSOCKET_ERROR');
+            void socketHandler.close(ws).catch((error: unknown) => {
+              // oxlint-disable-next-line no-console -- server-side failure diagnostics
+              console.error(error);
             });
           },
-          onError() {
-            logOperational('STUDIO_WEBSOCKET_ERROR');
+          onError(event) {
+            // oxlint-disable-next-line no-console -- server-side failure diagnostics
+            console.error(event);
           },
           onMessage(event, ws) {
             const data: unknown = event.data;
             if (typeof data !== 'string' && !(data instanceof ArrayBuffer)) {
-              logOperational('STUDIO_WEBSOCKET_ERROR');
+              // oxlint-disable-next-line no-console -- server-side failure diagnostics
+              console.error(new Error('unreadable WebSocket frame'));
               return;
             }
             // Handed over before any await: the adapter's ordering guarantee
@@ -282,13 +231,19 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
                   clientSessionId,
                 },
               })
-              .catch(() => {
-                logOperational('STUDIO_WEBSOCKET_ERROR');
+              .catch((error: unknown) => {
+                // oxlint-disable-next-line no-console -- server-side failure diagnostics
+                console.error(error);
               });
           },
         };
       },
-      { onError: () => logOperational('STUDIO_WEBSOCKET_ERROR') },
+      {
+        onError: (error) => {
+          // oxlint-disable-next-line no-console -- server-side failure diagnostics
+          console.error(error);
+        },
+      },
     ),
   );
 

@@ -78,13 +78,6 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     deployment: 'Unset ⇒ 3000.',
     example: '3000',
   },
-  STUDIO_METRICS_TOKEN: {
-    group: 'Process',
-    summary:
-      'Bearer token required to read the protected Prometheus /metrics endpoint.',
-    deployment:
-      'Unset ⇒ /metrics refuses with 404. Use a separate random secret of at least 32 characters (openssl rand -base64 32); configure it only on operator scrapers. Never use the authentication signing secret.',
-  },
   HOST: {
     group: 'Process',
     summary: 'Interface the HTTP server binds to.',
@@ -228,9 +221,9 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
   TRUSTED_PROXIES: {
     group: 'Authentication',
     summary:
-      'Comma-separated proxy IP addresses or CIDRs. A UUID X-Request-Id is accepted only when the actual transport peer is in this list.',
+      'Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP.',
     deployment:
-      'Unset ⇒ request ids are generated locally and forwarded headers are not read for authentication. List only your own proxies, each overwriting client-supplied request-id and forwarded headers. Header values never establish transport trust; fetch-only runtimes without socket information always generate request ids.',
+      'Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.',
     example: '10.0.0.0/8,192.168.0.0/16',
   },
 };

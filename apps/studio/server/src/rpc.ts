@@ -35,9 +35,6 @@ import {
   getInstanceStatus,
 } from './domain.ts';
 import {
-  correlateAuthorizedTeam,
-  logOperational,
-} from './observability/logger.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
@@ -156,13 +153,28 @@ async function admitAuditReadDenial(
  */
 function warnAuditReadDenialLost(
   context: TeamRpcContext,
-  _procedure: AuditReadProcedure,
-  _error: unknown,
+  procedure: AuditReadProcedure,
+  error: unknown,
 ): void {
-  logOperational('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
-    teamId: context.team.id,
-    requestId: context.requestId,
-  });
+  const cause =
+    error instanceof Error
+      ? { causeName: error.name, causeMessage: error.message }
+      : { causeName: typeof error, causeMessage: String(error) };
+  process.emitWarning(
+    'Required audit.read_denied event was not recorded; the read stayed denied.',
+    {
+      type: 'StudioAuditError',
+      code: 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+      detail: JSON.stringify({
+        eventType: 'audit.read_denied',
+        procedure,
+        teamId: context.team.id,
+        actorId: context.principal.userId,
+        requestId: context.requestId,
+        ...cause,
+      }),
+    },
+  );
 }
 
 /**
@@ -350,7 +362,6 @@ export function createRpcRouter(
     if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
     const membership = await auth.getMembership(principal.userId, teamId);
     if (!membership) throw new ORPCError('FORBIDDEN');
-    correlateAuthorizedTeam(teamId);
     return {
       principal,
       requestId: context.requestId,
@@ -427,7 +438,6 @@ export function createRpcRouter(
         memberships: await auth.listMemberships(principal.userId),
       });
       if (!resolved) throw new ORPCError('FORBIDDEN');
-      correlateAuthorizedTeam(resolved.teamId);
       return next({
         context: {
           principal,
@@ -478,9 +488,9 @@ export function createRpcRouter(
     team: {
       acceptInvitation: os.team.acceptInvitation
         .use(requireUser)
-        .handler(async ({ context, input }) => {
+        .handler(({ context, input }) => {
           if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
-          const accepted = await handleTeamCommand(() =>
+          return handleTeamCommand(() =>
             acceptTeamInvitation(
               {
                 pool,
@@ -490,8 +500,6 @@ export function createRpcRouter(
               input,
             ),
           );
-          correlateAuthorizedTeam(accepted.teamId);
-          return accepted;
         }),
       updateMemberRole: os.team.updateMemberRole
         .use(requireTeam)

@@ -71,7 +71,5 @@ export const config = {
     '/storage',
     '/storage/*',
     '/healthz',
-    '/readyz',
-    '/metrics',
   ],
 };
