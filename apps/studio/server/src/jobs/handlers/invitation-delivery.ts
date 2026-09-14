@@ -1,12 +1,13 @@
 import type pg from 'pg';
-import type { JobWithMetadata, PgBoss } from 'pg-boss';
+import type { PgBoss } from 'pg-boss';
 
 import type { TeamRole } from '@codaco/studio-rpc';
-import type { InvitationDeliveryJob } from '@codaco/studio-sync/jobs';
+import { InvitationDeliveryJobSchema } from '@codaco/studio-sync/jobs';
 
 import type { InvitationMailer } from '../../auth/email.ts';
 import { isLockUnavailableError } from '../../db/lock.ts';
 import { logJobOutcome } from '../log.ts';
+import type { HandledJob } from './job.ts';
 
 // Sending a team invitation, as a job (#1895). The row in
 // `team_invitation_deliveries` is the record — what was sent, to whom, and how
@@ -19,11 +20,33 @@ import { logJobOutcome } from '../log.ts';
 // "no duplicate send" true: a second attempt asks for the same lock without
 // waiting and gives up, and a cancellation that cannot get it is refused
 // (src/team/commands.ts) rather than left racing an SMTP call.
+//
+// That lock is also what says who may write how a delivery ended: a terminal
+// stamp — `sent_at`, `failed_at`, `suppressed_at`, `uncertain_at` — is written
+// only by the attempt holding the invitation. An attempt that could not take
+// it has no standing to say the delivery failed, because the holder may be
+// about to succeed. There is exactly one exception and it is named where it
+// happens: a send SMTP accepted whose own transaction then died.
 
 const QUEUE = 'invitation-delivery';
 
 /** The column the row's own record is kept in; a longer message is cut. */
 const MAX_ERROR_LENGTH = 1_000;
+
+/** An attempt that did not wait was refused; one behind it will try again. */
+const LOCK_HELD_ELSEWHERE =
+  'invitation row is locked by an earlier attempt or another command; retrying later';
+
+/**
+ * The last attempt was refused the invitation. Nothing runs behind this one,
+ * so the line has to say that the row is not blank by oversight: it belongs to
+ * whoever is holding it, and they record how the delivery ended.
+ */
+const LOCK_HELD_ON_LAST_ATTEMPT =
+  'invitation row is locked by an earlier attempt or another command on the last attempt; how this delivery ended is for the holder to record';
+
+/** What a send that outlived the row it was for is recorded as. */
+const ENDED_MID_SEND = 'the delivery had already ended when its send completed';
 
 /**
  * A delivery that has not ended yet. Repeated in every statement that writes
@@ -42,16 +65,6 @@ export type InvitationDeliveryHandlerDeps = {
   /** The browser-facing origin the invitation link is minted against. */
   publicBaseUrl: string;
 };
-
-/**
- * What the handler reads off a job, taken from pg-boss's own metadata type so
- * that a renamed field fails the typecheck rather than a deployment. A test
- * fabricates one of these rather than a whole `JobWithMetadata`.
- */
-export type InvitationDeliveryJobView = Pick<
-  JobWithMetadata<InvitationDeliveryJob>,
-  'id' | 'data' | 'retryCount' | 'retryLimit'
->;
 
 type DeliverableRow = {
   invitationId: string;
@@ -84,11 +97,10 @@ async function rollback(client: pg.PoolClient): Promise<void> {
 
 export function createInvitationDeliveryHandler(
   deps: InvitationDeliveryHandlerDeps,
-): (jobs: InvitationDeliveryJobView[]) => Promise<void> {
+): (jobs: HandledJob[]) => Promise<void> {
   const publicBaseUrl = new URL(deps.publicBaseUrl);
 
-  const deliver = async (job: InvitationDeliveryJobView): Promise<void> => {
-    const { deliveryId } = job.data;
+  const deliver = async (job: HandledJob): Promise<void> => {
     // pg-boss counts retries from zero; the row counts attempts from one.
     const attempt = job.retryCount + 1;
     const finalAttempt = job.retryCount >= job.retryLimit;
@@ -98,15 +110,32 @@ export function createInvitationDeliveryHandler(
     ) =>
       logJobOutcome({ queue: QUEUE, jobId: job.id, outcome, attempt, error });
 
+    let deliveryId: string;
+    try {
+      // Parsed rather than cast, as in handlers/sign-in-email.ts: `data` is
+      // whatever JSON the job row holds, and the enqueue path validating it on
+      // the way in says nothing about a row written by an older release or by
+      // hand. Without this an absent `deliveryId` would reach `WHERE id = $1`
+      // as null and the handler would report the delivery already settled.
+      ({ deliveryId } = InvitationDeliveryJobSchema.parse(job.data));
+    } catch (error) {
+      record(finalAttempt ? 'failed' : 'retrying', error);
+      throw error;
+    }
+
     /**
      * The row's half of an attempt that failed. `last_error` every time, and
      * `failed_at` only on the attempt pg-boss will not retry — which is what
      * makes the row and the dead-letter copy agree about how the delivery
-     * ended. Its own statement, never inside the send's transaction: the
-     * invitation lock is released before this runs.
+     * ended. Takes the transaction's client, not the pool: `failed_at` is a
+     * terminal stamp, so it is written while this attempt still holds the
+     * invitation.
      */
-    const recordFailure = (error: unknown): Promise<unknown> =>
-      deps.maintenancePool.query(
+    const recordFailure = (
+      client: pg.PoolClient,
+      error: unknown,
+    ): Promise<unknown> =>
+      client.query(
         `UPDATE team_invitation_deliveries
             SET last_error = $2,
                 failed_at = CASE
@@ -118,45 +147,41 @@ export function createInvitationDeliveryHandler(
       );
 
     /**
-     * Someone else holds the invitation: an earlier attempt still inside its
-     * SMTP call, or an acceptance, which takes the same row and waits for it.
-     * Nothing is written while the job has attempts left — whoever holds the
-     * row is the one entitled to record how the delivery ended, and they may
-     * yet succeed. On the last attempt there is no one behind this to write
-     * anything, so the row records the refusal rather than staying blank
-     * beside a dead-lettered job.
+     * The invitation could not be taken: an earlier attempt still inside its
+     * SMTP call, or a command holding the row. No attempt waits — waiting would
+     * sit behind another attempt's whole SMTP call and then send a second copy
+     * of the same mail — and nothing is written. Whoever holds the invitation
+     * is the one entitled to record how the delivery ended, and on the last
+     * attempt they still are: this attempt dead-letters with the row pending,
+     * which is exactly its state, and the line above says so at error level.
      */
-    const lockRefusal = async (): Promise<Error> => {
-      const inProgress = new Error(
-        'invitation row is locked by an earlier attempt or another command; retrying later',
+    const lockUnavailable = (): Error => {
+      const refused = new Error(
+        finalAttempt ? LOCK_HELD_ON_LAST_ATTEMPT : LOCK_HELD_ELSEWHERE,
       );
-      if (finalAttempt) await recordFailure(inProgress);
-      record(finalAttempt ? 'failed' : 'retrying', inProgress);
-      return inProgress;
+      record(finalAttempt ? 'failed' : 'retrying', refused);
+      return refused;
     };
 
     /**
-     * SMTP has accepted the message and Studio could not record that it did.
-     * Terminal for automatic dispatch (#1305, #1307): another attempt could
-     * duplicate the mail, so the job completes and a person decides. Only a
-     * failure to record even that is worth rethrowing.
+     * SMTP has accepted the message and the row has to say so. Terminal for
+     * automatic dispatch (#1305, #1307): another attempt could duplicate the
+     * mail, so the job completes and a person decides. `STILL_PENDING` is what
+     * makes it safe to run from a pool connection as well as from inside the
+     * send's transaction — an outcome already recorded is left standing.
      */
-    const recordUncertain = async (reason: string): Promise<void> => {
-      try {
-        await deps.maintenancePool.query(
-          `UPDATE team_invitation_deliveries
-              SET uncertain_at = clock_timestamp(),
-                  last_error = $2
-            WHERE id = $1
-              AND ${STILL_PENDING}`,
-          [deliveryId, reason.slice(0, MAX_ERROR_LENGTH)],
-        );
-      } catch (error) {
-        record('uncertain', error);
-        throw error;
-      }
-      record('uncertain', reason);
-    };
+    const stampUncertain = (
+      executor: pg.Pool | pg.PoolClient,
+      reason: string,
+    ): Promise<unknown> =>
+      executor.query(
+        `UPDATE team_invitation_deliveries
+            SET uncertain_at = clock_timestamp(),
+                last_error = $2
+          WHERE id = $1
+            AND ${STILL_PENDING}`,
+        [deliveryId, reason.slice(0, MAX_ERROR_LENGTH)],
+      );
 
     const client = await deps.maintenancePool.connect();
     try {
@@ -180,7 +205,7 @@ export function createInvitationDeliveryHandler(
       } catch (error) {
         await rollback(client);
         if (!isLockUnavailableError(error)) throw error;
-        throw await lockRefusal();
+        throw lockUnavailable();
       }
 
       let stamped;
@@ -223,10 +248,9 @@ export function createInvitationDeliveryHandler(
       try {
         // `FOR UPDATE OF i` locks the invitation and not the delivery: the
         // delivery's own writes are short, and the invitation is what a
-        // cancellation contends for. NOWAIT because an attempt that waited
-        // would sit behind another attempt's whole SMTP call and then send a
-        // second copy of the same mail. Taken again because the lock above
-        // ended with the transaction that counted the attempt.
+        // cancellation contends for. Taken again because the lock above ended
+        // with the transaction that counted the attempt, and taken the same
+        // way: without waiting.
         locked = await client.query<DeliverableRow>(
           `SELECT d.invitation_id AS "invitationId",
                   d.email,
@@ -251,7 +275,7 @@ export function createInvitationDeliveryHandler(
         if (!isLockUnavailableError(error)) throw error;
         // Taken between the two transactions, by a cancellation or by an
         // attempt this one overtook.
-        throw await lockRefusal();
+        throw lockUnavailable();
       }
 
       const delivery = locked.rows[0];
@@ -305,11 +329,20 @@ export function createInvitationDeliveryHandler(
           teamLabel: delivery.teamLabel,
         });
       } catch (error) {
-        // The lock is released before the record is written, so a transport
-        // that hung until the job expired does not keep the invitation locked
-        // while this attempt tidies up.
-        await rollback(client);
-        await recordFailure(error);
+        // Written inside the send's own transaction, while the invitation is
+        // still held: `failed_at` is a terminal stamp, and only the attempt
+        // holding the invitation may write one. The send has already returned,
+        // so what the lock is held for now is a single statement and a commit.
+        try {
+          await recordFailure(client, error);
+          await client.query('COMMIT');
+        } catch (unrecorded) {
+          // Two things failed and an operator needs both lines: the row could
+          // not be told how this attempt ended, which leaves it pending —
+          // which is what it is, the rollback having undone nothing else.
+          await rollback(client);
+          record(finalAttempt ? 'failed' : 'retrying', unrecorded);
+        }
         record(finalAttempt ? 'failed' : 'retrying', error);
         // pg-boss retries, or fails the job and copies it to the dead letter
         // queue. Stamping `failed_at` first is what makes the row and that
@@ -327,25 +360,38 @@ export function createInvitationDeliveryHandler(
               AND ${STILL_PENDING}`,
           [deliveryId],
         );
-        await client.query('COMMIT');
         recorded = sent.rowCount;
+        if (recorded !== 1) {
+          // The mail is gone and the row says something else ended it. Nothing
+          // can un-send it, so it is recorded the way an uncommitted send is:
+          // terminal, and never retried. From inside this transaction, because
+          // `uncertain_at` is a terminal stamp like any other and the
+          // invitation is still held — `STILL_PENDING` then leaves whatever
+          // outcome is already on the row standing.
+          await stampUncertain(client, ENDED_MID_SEND);
+        }
+        await client.query('COMMIT');
       } catch (error) {
-        // Narrow on purpose: only the write and its commit are guarded here,
-        // so a failure to record `uncertain` is not caught by the handler that
-        // exists to record it.
         await rollback(client);
-        await recordUncertain(errorMessage(error));
+        // The one terminal stamp that cannot be written under the invitation
+        // lock, because the transaction holding it is the thing that failed.
+        // SMTP has the message either way, so the row has to say so from a
+        // fresh connection; rethrowing instead would hand the job back to
+        // pg-boss and risk a second copy (#1305, #1307). Its own try, so a
+        // failure to record `uncertain` is not swallowed by the code that
+        // exists to record it.
+        try {
+          await stampUncertain(deps.maintenancePool, errorMessage(error));
+        } catch (unrecorded) {
+          record('uncertain', unrecorded);
+          throw unrecorded;
+        }
+        record('uncertain', errorMessage(error));
         return;
       }
-      if (recorded === 1) {
-        record('completed');
-        return;
-      }
-      // The mail is gone and the row says something else ended it. Nothing can
-      // un-send it, so this is recorded the way an uncommitted send is:
-      // terminal, and never retried.
-      await recordUncertain(
-        'the delivery had already ended when its send completed',
+      record(
+        recorded === 1 ? 'completed' : 'uncertain',
+        recorded === 1 ? undefined : ENDED_MID_SEND,
       );
     } finally {
       client.release();

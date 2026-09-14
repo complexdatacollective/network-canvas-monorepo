@@ -2063,6 +2063,9 @@ importers:
       pg-boss:
         specifier: 12.31.1
         version: 12.31.1
+      pg-connection-string:
+        specifier: ^2.14.0
+        version: 2.14.0
       ws:
         specifier: 'catalog:'
         version: 8.21.2

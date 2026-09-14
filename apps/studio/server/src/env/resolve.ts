@@ -1,3 +1,5 @@
+import { parse as parseConnectionString } from 'pg-connection-string';
+
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import type { RawEnv } from './variables.ts';
@@ -113,19 +115,29 @@ export function isLocalDatabase(url: string): boolean {
  * `DATABASE_URL` wins: every pool in both processes would connect as the
  * login, and nothing else in the system would notice.
  *
- * Read the way `isLocalDatabase` reads it, and for the same reason: a DSN pg
- * accepts but `new URL` cannot parse is left alone rather than refused, so
- * this only refuses a string the parameter can positively be seen in. The name
- * is matched exactly, because that is the only spelling node-postgres reads.
+ * Read with `pg-connection-string`, which is the parser node-postgres itself
+ * hands the string to: what it calls `options` is exactly what pg will send as
+ * the startup parameter, so the guard and the pool cannot disagree about which
+ * strings carry one. It is a ranged dependency rather than a pinned one for
+ * that reason — pnpm then keeps the single copy `pg` already resolves, and the
+ * guard cannot end up reading with a different version of the parser than the
+ * pool it guards. `new URL` could disagree: it rejects the host-less form
+ * `postgres://user:pass@/db?options=…` — a connection string pg accepts, and
+ * one a hosting provider's socket configuration produces — which the guard
+ * used to tolerate rather than refuse.
+ *
+ * Two formats carry no `options` by construction, and are accepted for that
+ * reason rather than by an exception: the bare socket form
+ * (`/var/run/postgresql studio_dev`), whose whole grammar is a path and a
+ * database name, and a libpq keyword DSN (`host=… dbname=… options=…`), which
+ * the parser reads as one long database name because node-postgres does not
+ * accept keyword DSNs at all — pg would never honour an `options` written
+ * that way.
  */
 function assertPinnedRoleSurvives(url: string): void {
-  let parameters: URLSearchParams;
-  try {
-    parameters = new URL(url).searchParams;
-  } catch {
-    return;
-  }
-  if (!parameters.has('options')) return;
+  // Not caught: a string this throws on is one pg would throw on too, at the
+  // first connection instead of at boot. The error redacts the input itself.
+  if (!('options' in parseConnectionString(url))) return;
   throw new Error(
     'DATABASE_URL must not carry an `options` parameter: it overrides the ' +
       '`role=` startup parameter every Studio pool pins its identity with, so ' +

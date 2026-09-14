@@ -362,16 +362,41 @@ describe('the pinned role', () => {
     expect(readEnv().db?.url).toContain('application_name=studio');
   });
 
-  it('leaves a DSN it cannot parse to pg rather than refusing it', () => {
-    // pg accepts connection strings `new URL` does not — a Unix socket host,
-    // for one. Refusing what cannot be read would refuse those, so the check
-    // only answers for a string the parameter is visible in.
+  it('refuses it in a connection string with no host', () => {
+    // The form that says "the default Unix socket", which a hosting provider's
+    // socket configuration produces. `new URL` rejects it outright, so reading
+    // the string that way left this one through — pg reads it perfectly well,
+    // and would have sent the `options` it carries.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
-    vi.stubEnv('DATABASE_URL', 'host=/var/run/postgresql dbname=studio_dev');
-    expect(readEnv().db?.url).toBe(
-      'host=/var/run/postgresql dbname=studio_dev',
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@/studio_dev?options=-crole%3Dpostgres',
     );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts the two formats that cannot carry the parameter', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+
+    // The bare socket form: its whole grammar is a socket directory and a
+    // database name, so there is nowhere in it to write a parameter.
+    vi.stubEnv('DATABASE_URL', '/var/run/postgresql studio_dev');
+    expect(readEnv().db?.url).toBe('/var/run/postgresql studio_dev');
+
+    // A libpq keyword DSN, which node-postgres does not accept at all: its
+    // parser reads the whole string as one long database name, so the
+    // `options=` written here is inert rather than tolerated. Asserting the
+    // `options` spelling specifically, because the review that asked for this
+    // guard believed pg honoured it.
+    vi.stubEnv(
+      'DATABASE_URL',
+      'host=/var/run/postgresql dbname=studio_dev options=-crole%3Dpostgres',
+    );
+    expect(readEnv().db?.url).toContain('options=');
   });
 });
 

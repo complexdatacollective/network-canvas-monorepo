@@ -8,6 +8,7 @@
 // in-flight and the bounded-attempt cases below.
 import { randomUUID } from 'node:crypto';
 
+import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -23,9 +24,9 @@ import type { SessionPrincipal } from '../../auth/service.ts';
 import type { JobClient } from '../../jobs/client.ts';
 import {
   createInvitationDeliveryHandler,
-  type InvitationDeliveryJobView,
   registerInvitationDelivery,
 } from '../../jobs/handlers/invitation-delivery.ts';
+import type { HandledJob } from '../../jobs/handlers/job.ts';
 import { cancelTeamInvitation, createTeamInvitation } from '../commands.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
 
@@ -50,6 +51,14 @@ const WORKED_JOB_TIMEOUT_MS = 20_000;
  */
 const LOCKED_BY_SOMEONE_ELSE =
   'invitation row is locked by an earlier attempt or another command; retrying later';
+
+/**
+ * What the last attempt fails with when it is refused the invitation. A
+ * different message because it is a different finding: nothing runs behind
+ * it, and the row is left to whoever has it.
+ */
+const LOCK_HELD_ON_LAST_ATTEMPT =
+  'invitation row is locked by an earlier attempt or another command on the last attempt; how this delivery ended is for the holder to record';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -197,11 +206,37 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
     });
   }
 
+  /**
+   * Holds the invitation the way an earlier attempt inside its SMTP call does,
+   * and hands back the means to let go. The lock is taken on the maintenance
+   * pool because that is the role the holder would be — a delivery attempt —
+   * and because the same transaction settles the delivery row in one case,
+   * which no other role may do.
+   */
+  async function holdInvitation(invitationId: string): Promise<{
+    client: pg.PoolClient;
+    release: () => Promise<void>;
+  }> {
+    const client = await scratch.maintenance.connect();
+    await client.query('BEGIN');
+    await client.query(
+      `SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`,
+      [invitationId],
+    );
+    return {
+      client,
+      release: async () => {
+        await client.query('COMMIT').catch(() => undefined);
+        client.release();
+      },
+    };
+  }
+
   function jobFor(
     deliveryId: string,
     retryCount = 0,
     retryLimit = RETRY_LIMIT,
-  ): InvitationDeliveryJobView {
+  ): HandledJob {
     return { id: randomUUID(), data: { deliveryId }, retryCount, retryLimit };
   }
 
@@ -463,6 +498,69 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
     });
   });
 
+  it('stamps a failed send before it lets go of the invitation', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    let failSend!: (error: Error) => void;
+    const sending = new Promise<void>((_, reject) => {
+      failSend = reject;
+    });
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValue(sending);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    const attempt = handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]);
+    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
+
+    // Whoever is next in line for the invitation, as one statement: taking the
+    // lock and settling the row cannot be interleaved from here, so what this
+    // finds the instant the invitation is released is exactly what the handler
+    // had written before letting go. A `failed_at` written after the release
+    // would arrive second and be refused, leaving the row suppressed.
+    const contender = scratch.maintenance.query(
+      `/* lock-contender */
+       WITH taken AS (
+         SELECT i.id
+           FROM team_invitations i
+           JOIN team_invitation_deliveries d
+             ON d.invitation_id = i.id AND d.team_id = i.team_id
+          WHERE d.id = $1
+            FOR UPDATE OF i
+       )
+       UPDATE team_invitation_deliveries
+          SET suppressed_at = clock_timestamp(),
+              last_error = 'cancelled while the attempt was failing'
+        WHERE id = $1
+          AND (SELECT count(*) FROM taken) = 1
+          AND sent_at IS NULL AND failed_at IS NULL
+          AND suppressed_at IS NULL AND uncertain_at IS NULL`,
+      [deliveryId],
+    );
+    // It has to be waiting on the lock before the send fails, or it would
+    // simply arrive after the handler and prove nothing.
+    await vi.waitFor(async () => {
+      const blocked = await scratch.pool.query(
+        `select 1 from pg_stat_activity
+          where datname = current_database()
+            and wait_event_type = 'Lock'
+            and query like '%lock-contender%'`,
+      );
+      expect(blocked.rowCount).toBe(1);
+    });
+
+    failSend(new Error('permanent SMTP failure'));
+    await expect(attempt).rejects.toThrow('permanent SMTP failure');
+
+    expect((await contender).rowCount).toBe(0);
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: RETRY_LIMIT + 1,
+      failed_at: expect.any(Date),
+      last_error: 'permanent SMTP failure',
+      suppressed_at: null,
+    });
+  });
+
   it('dead-letters a delivery whose attempts are exhausted', async () => {
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
@@ -620,7 +718,7 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
     });
   });
 
-  it('records the delivery failed when the last attempt cannot take the invitation', async () => {
+  it('leaves the row to its holder when the last attempt is refused the invitation', async () => {
     const invitation = await seedInvitation();
     const deliveryId = await seedDelivery(invitation);
     const sendTeamInvitation = vi
@@ -628,31 +726,66 @@ describe.skipIf(!db)('invitation delivery on the queue', () => {
       .mockResolvedValue(undefined);
     const handler = handlerWith(mailerThat(sendTeamInvitation));
 
-    await createTenantDb(scratch.app, TEAM_ID).transaction(async (client) => {
-      // An acceptance holds the invitation and waits for it, which is what an
-      // attempt overtaken by its own expiry looks like from here.
-      await client.query(
-        `SELECT id FROM team_invitations
-         WHERE team_id = $1 AND id = $2
-         FOR UPDATE`,
-        [TEAM_ID, invitation.invitationId],
-      );
-      // The last attempt pg-boss will make: it dead-letters the job after
-      // this one, and nothing runs behind it to record how the delivery
-      // ended.
+    const holder = await holdInvitation(invitation.invitationId);
+    try {
+      // The last attempt pg-boss will make, refused like any other — and
+      // refused writing nothing: the holder may be mid-send, and a
+      // `failed_at` here would contradict the `sent_at` it is about to write.
       await expect(
         handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]),
-      ).rejects.toThrow(LOCKED_BY_SOMEONE_ELSE);
-    });
+      ).rejects.toThrow(LOCK_HELD_ON_LAST_ATTEMPT);
+    } finally {
+      await holder.release();
+    }
 
     expect(sendTeamInvitation).not.toHaveBeenCalled();
-    expect(await deliveryState(deliveryId)).toMatchObject({
-      // Still nothing counted — but the row says what ended it rather than
-      // sitting blank and pending beside a dead-lettered job.
+    // Every column, not a subset: the whole point is that this attempt wrote
+    // nothing at all.
+    expect(await deliveryState(deliveryId)).toEqual({
       attempt_count: 0,
-      failed_at: expect.any(Date),
-      last_error: LOCKED_BY_SOMEONE_ELSE,
+      failed_at: null,
+      last_error: null,
       sent_at: null,
+      suppressed_at: null,
+      uncertain_at: null,
+    });
+  });
+
+  it('refuses a job whose payload is not one this queue declares', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    // Nothing this server enqueues looks like either of these — `enqueueJob`
+    // validates on the way in — so what they stand for is a row written by an
+    // older release or by hand. The second carries a real delivery id beside a
+    // field the schema does not declare, which is the one that proves the
+    // parse happens before the handler touches a row rather than after.
+    await expect(
+      handler([{ id: randomUUID(), data: {}, retryCount: 0, retryLimit: 7 }]),
+    ).rejects.toThrow(/deliveryId/);
+    await expect(
+      handler([
+        {
+          id: randomUUID(),
+          data: { deliveryId, teamId: TEAM_ID },
+          retryCount: 0,
+          retryLimit: 7,
+        },
+      ]),
+    ).rejects.toThrow(/teamId/);
+
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    expect(await deliveryState(deliveryId)).toEqual({
+      attempt_count: 0,
+      failed_at: null,
+      last_error: null,
+      sent_at: null,
+      suppressed_at: null,
+      uncertain_at: null,
     });
   });
 

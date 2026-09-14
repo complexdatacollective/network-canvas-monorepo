@@ -1,4 +1,8 @@
-import { getConstructionPlans, type Queue } from 'pg-boss';
+import {
+  getConstructionPlans,
+  type Queue,
+  type UpdateQueueOptions,
+} from 'pg-boss';
 
 import {
   JOB_QUEUES,
@@ -27,6 +31,40 @@ export type JobQueueOptionDrift = Exclude<
   keyof JobQueueOptions,
   keyof Omit<Queue, 'name'>
 >;
+
+/**
+ * What pg-boss writes for an option a `createQueue` call leaves out, read off
+ * `create_queue` in its own construction plan (pg-boss/dist/plans.js), and
+ * asserted against a real queue row by the schema suite so that an upgrade
+ * which moves one of these fails a test rather than a deployment.
+ *
+ * Reconciliation sends the whole table with a declaration spread over it,
+ * rather than the declaration alone: `updateQueue` leaves an option it was not
+ * given exactly as it is, so an option dropped from a declaration would
+ * otherwise keep its last applied value until the database was recreated.
+ * Which is to say the installed row equals the declaration, never contains it.
+ *
+ * Typed `Required<…>` so that every updatable option has to appear: a pg-boss
+ * release that adds one fails the typecheck here instead of adding an option
+ * nothing reconciles. `policy` and `partition` are absent because they are the
+ * two `updateQueue` refuses — a queue with either of those changed has to be
+ * recreated, and `syncJobQueues` says so rather than sending them.
+ */
+export const QUEUE_OPTION_DEFAULTS: Required<UpdateQueueOptions> = {
+  retryLimit: 2,
+  retryDelay: 0,
+  retryBackoff: false,
+  retryDelayMax: null,
+  expireInSeconds: 900,
+  retentionSeconds: 1_209_600,
+  deleteAfterSeconds: 604_800,
+  deadLetter: null,
+  heartbeatSeconds: null,
+  // 0 rather than null: `create_queue` coalesces an absent warningQueueSize to
+  // zero, which is the column's "never warn" value.
+  warningQueueSize: 0,
+  notify: false,
+};
 
 /** The declarations in the order they must be created (dead letters first). */
 export function jobQueueDefinitions(): {

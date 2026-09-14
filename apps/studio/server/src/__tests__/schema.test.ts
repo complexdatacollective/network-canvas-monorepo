@@ -30,7 +30,11 @@ import {
 import type { DbEnv } from '../env.ts';
 import { createJobClient } from '../jobs/client.ts';
 import { JOB_SCHEMA_VERSION } from '../jobs/queues.ts';
-import { declaredQueueRows, installedQueueRows } from './support/job-queues.ts';
+import {
+  declaredQueueRows,
+  installedQueueRows,
+  queueRowFor,
+} from './support/job-queues.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -721,10 +725,47 @@ describe.skipIf(!db)('schema application', () => {
          set retry_limit = 99, expire_seconds = 123, notify = not notify
          where name = 'sign-in-email'`,
       );
+      // The other half of "equal to the declaration": every option below is
+      // one `protocol-store-gc` does not declare, so reconciliation has to
+      // send pg-boss the default for it. An update carrying only the
+      // declaration would leave all of these exactly as they are — a queue
+      // still notifying, still dead-lettering and still retrying because some
+      // earlier deployment said so.
+      await pool.query(
+        `update ${JOB_SCHEMA}.queue
+         set retry_delay = 42, retry_backoff = true, retention_seconds = 60,
+             deletion_seconds = 60, warning_queued = 5, heartbeat_seconds = 30,
+             notify = true, dead_letter = 'invitation-delivery-dead-letter'
+         where name = 'protocol-store-gc'`,
+      );
 
       await applySchema(pool);
 
       expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+    });
+  });
+
+  it('keeps the defaults it reconciles against level with pg-boss', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // pg-boss's own `create_queue`, given the options `createQueue(name, {})`
+      // passes it: the manager defaults `policy` in JavaScript and leaves every
+      // other option to the function, so this row is what a queue with nothing
+      // declared about it looks like. Called directly rather than through a
+      // PgBoss instance because a test constructing one of those is what
+      // src/jobs/__tests__/source-policy.test.ts refuses.
+      //
+      // Reconciliation is only "equal to the declaration" if the values it
+      // sends for the undeclared options are these, so an upgrade that moves a
+      // default has to be noticed here rather than in a deployment.
+      await pool.query(
+        `select ${JOB_SCHEMA}.create_queue($1, '{"policy":"standard"}'::jsonb)`,
+        ['pg-boss-defaults'],
+      );
+
+      expect(
+        await installedQueueRows(pool, JOB_SCHEMA, ['pg-boss-defaults']),
+      ).toEqual([queueRowFor('pg-boss-defaults')]);
     });
   });
 
@@ -795,10 +836,10 @@ describe.skipIf(!db)('schema application', () => {
   it('replaces a pg-boss schema that lost its version row', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
-      // An interrupted install leaves the tables and the `job_state` enum
-      // behind with nothing to say what they are. Treating that as "not
-      // installed" would re-run the construction plan over them, which fails
-      // on CREATE TYPE (42710) and leaves the database unstampable.
+      // A version table with nothing in it says nothing about what the tables
+      // beside it are. Treating that as "not installed" would re-run the
+      // construction plan over them, which fails on CREATE TYPE (42710) and
+      // leaves the database unstampable.
       await pool.query(`delete from ${JOB_SCHEMA}.version`);
 
       await expect(applySchema(pool)).resolves.toBeDefined();

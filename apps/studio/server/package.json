@@ -51,6 +51,7 @@
     "nodemailer": "9.0.5",
     "pg": "^8.23.0",
     "pg-boss": "12.31.1",
+    "pg-connection-string": "^2.14.0",
     "ws": "catalog:",
     "zod": "catalog:"
   },

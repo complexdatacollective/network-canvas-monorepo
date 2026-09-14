@@ -23,6 +23,7 @@ import { jobDatabaseForPool } from '../src/jobs/database.ts';
 import {
   JOB_SCHEMA_VERSION,
   jobQueueDefinitions,
+  QUEUE_OPTION_DEFAULTS,
   renderJobStatements,
 } from '../src/jobs/queues.ts';
 
@@ -130,9 +131,13 @@ async function installJobSchema(
 
 /**
  * Brings every declared queue into being, or up to date. A queue's options are
- * data in its row, so this is the queue equivalent of drizzle-kit's push, and
- * an option dropped from a declaration keeps its last applied value until the
- * database is recreated — pg-boss's update leaves unnamed columns alone.
+ * data in its row, so this is the queue equivalent of drizzle-kit's push: the
+ * installed row is made to equal the declaration rather than to contain it.
+ *
+ * That equality is what `QUEUE_OPTION_DEFAULTS` is for. pg-boss's update
+ * leaves an option it was not given alone, so an option dropped from a
+ * declaration would otherwise keep the value the deployment before this one
+ * applied — a queue quietly retrying seven times because it used to.
  */
 async function syncJobQueues(pool: pg.Pool, schema: string): Promise<void> {
   const boss = new PgBoss({
@@ -155,14 +160,19 @@ async function syncJobQueues(pool: pg.Pool, schema: string): Promise<void> {
       }
       // pg-boss refuses a policy change outright: the policy decides which
       // unique indexes the queue's jobs are held under, so an existing job
-      // could not satisfy the new one.
-      const { policy = 'standard', ...updatable } = options;
+      // could not satisfy the new one. `partition` is refused for the same
+      // reason and is declared nowhere, so it is dropped rather than checked.
+      const {
+        policy = 'standard',
+        partition: _partition,
+        ...declared
+      } = options;
       if (existing.policy !== policy) {
         throw new Error(
           `queue ${name} is installed with policy ${existing.policy} and is now declared ${policy}; a policy cannot be changed after creation. Recreate the database: pnpm --filter @codaco/studio-server db:reset`,
         );
       }
-      await boss.updateQueue(name, updatable);
+      await boss.updateQueue(name, { ...QUEUE_OPTION_DEFAULTS, ...declared });
     }
   } finally {
     await boss.stop({ graceful: false });
