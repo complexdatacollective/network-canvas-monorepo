@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { getAssetManifest } from '~/selectors/protocol';
-import { getUnresolvedAssetIds } from '~/utils/assetUtils';
+import {
+  getAssetStoreVersion,
+  getUnresolvedAssetIds,
+  subscribeToAssetStore,
+} from '~/utils/assetUtils';
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -15,13 +19,20 @@ const NONE: ReadonlySet<string> = new Set();
  * work is usable, and this is what tells the researcher which resources still
  * need supplying.
  *
- * Recomputed whenever the manifest changes, which covers the replacement: the
- * import writes the blob and then rewrites the entry, so the answer here moves
- * with it and nothing has to remember to clear a flag.
+ * Recomputed whenever the manifest changes or the store is written. The store
+ * is the one that has to be watched: supplying a file under the name the
+ * manifest already records changes no field, so the reducer returns the same
+ * state and a manifest-only dependency would leave the card calling a resource
+ * missing that export can already read.
  */
 export const useUnresolvedAssetIds = (): ReadonlySet<string> => {
   const assetManifest = useAppSelector(getAssetManifest);
   const protocolId = useAppSelector(getActiveProtocolId);
+  const storeVersion = useSyncExternalStore(
+    subscribeToAssetStore,
+    getAssetStoreVersion,
+    getAssetStoreVersion,
+  );
   const [unresolved, setUnresolved] = useState<ReadonlySet<string>>(NONE);
 
   useEffect(() => {
@@ -41,7 +52,9 @@ export const useUnresolvedAssetIds = (): ReadonlySet<string> => {
     return () => {
       cancelled = true;
     };
-  }, [assetManifest, protocolId]);
+    // `storeVersion` is a dependency, not a value this reads: a write to the
+    // store can change the answer without changing the manifest.
+  }, [assetManifest, protocolId, storeVersion]);
 
   return unresolved;
 };

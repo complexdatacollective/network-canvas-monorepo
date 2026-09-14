@@ -15,7 +15,7 @@ import {
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
 import { getArchitectIntl } from '~/i18n/imperative';
-import { saveAssetWithFallback } from '~/utils/assetUtils';
+import { deleteStoredAsset, saveAssetWithFallback } from '~/utils/assetUtils';
 import type { LocalizedText } from '~/utils/protocolImportErrors';
 import {
   refusedCommitDescriptor,
@@ -280,8 +280,20 @@ export const importAssetAsync = createAsyncThunk<
       // leaves it behind — but an unreferenced blob is collected by the durable
       // save path, whereas a manifest entry added in a tab whose writes are
       // dropped is a resource the researcher can see and never save.
+      //
+      // A repair is the exception: its blob lands under an id the manifest
+      // already carries, so it is referenced, never collected, and leaves the
+      // resource reading as resolved while the entry still names the old file.
+      // Remove it rather than leave that behind. If the tab that took the
+      // protocol has since repaired the same resource this discards its bytes
+      // too — but that resource then reads as missing, which is visible and
+      // repairable, where the state this avoids is silent and exports the
+      // wrong file under the old extension.
       const refusedBeforeCommit = refuseIfNotOwned();
       if (refusedBeforeCommit) {
+        if (replaceAssetId) {
+          await deleteStoredAsset(replaceAssetId);
+        }
         return rejectWithValue(refusedBeforeCommit);
       }
 

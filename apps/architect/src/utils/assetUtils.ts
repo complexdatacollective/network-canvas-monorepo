@@ -6,6 +6,7 @@ import type {
 import { getActiveProtocolScope } from './activeProtocolScope';
 import { assetDb, assetKey, type StoredAsset } from './assetDB';
 import {
+  deleteMemoryAsset,
   getMemoryAsset,
   getMemoryAssetsForScope,
   putMemoryAsset,
@@ -17,6 +18,31 @@ import { isStorageUnavailableError } from './storageErrors';
 // writes require one.
 const resolveScope = (protocolId?: string): string | null =>
   protocolId ?? getActiveProtocolScope();
+
+/**
+ * Bumped whenever a resource's stored bytes change.
+ *
+ * The resources list derives "missing" from the store, and most repairs also
+ * edit the manifest, so watching the manifest nearly always works — but a file
+ * supplied under the name the manifest already records changes no field, the
+ * reducer returns the same state, and the list would go on calling a resource
+ * missing that is now readable. What actually changed is the store, so that is
+ * what is published.
+ */
+let storeVersion = 0;
+const storeListeners = new Set<() => void>();
+
+export const subscribeToAssetStore = (listener: () => void): (() => void) => {
+  storeListeners.add(listener);
+  return () => storeListeners.delete(listener);
+};
+
+export const getAssetStoreVersion = (): number => storeVersion;
+
+const publishAssetStoreChange = (): void => {
+  storeVersion += 1;
+  for (const listener of storeListeners) listener();
+};
 
 const toExtractedAsset = (row: StoredAsset): ExtractedAsset => ({
   id: row.assetId,
@@ -55,14 +81,38 @@ export const saveAssetWithFallback = async (
   }
   try {
     await saveAssetToDb(asset, scope);
+    publishAssetStoreChange();
     return { persisted: true };
   } catch (error) {
     if (!isStorageUnavailableError(error)) {
       throw error;
     }
     putMemoryAsset(asset, scope);
+    publishAssetStoreChange();
     return { persisted: false };
   }
+};
+
+/**
+ * Remove one resource's stored bytes.
+ *
+ * Used to undo a write this tab was not entitled to make. Ordinary deletes go
+ * through the manifest and are collected by the durable save path, which is
+ * why nothing else needs this.
+ */
+export const deleteStoredAsset = async (
+  assetId: string,
+  protocolId?: string,
+): Promise<void> => {
+  const scope = resolveScope(protocolId);
+  if (!scope) return;
+  try {
+    await assetDb.assets.delete(assetKey(scope, assetId));
+  } catch {
+    // Storage unavailable: the memory store below is where it landed.
+  }
+  deleteMemoryAsset(scope, assetId);
+  publishAssetStoreChange();
 };
 
 export const saveProtocolAssets = async (
@@ -179,20 +229,25 @@ export const getUnresolvedAssetIds = async (
     return fileAssetIds;
   }
 
+  // A row whose data is a string is not a file. Only apikey entries legitimately
+  // carry one, and those never reach here — so a string under a file entry is a
+  // row `bundleProtocol` already refuses to write, and calling it resolved would
+  // leave the resources list showing nothing wrong while the download refuses
+  // and names it.
   const stored = new Set<string>();
   try {
     await assetDb.assets
       .where('protocolId')
       .equals(scope)
       .each((row) => {
-        stored.add(row.assetId);
+        if (typeof row.data !== 'string') stored.add(row.assetId);
       });
   } catch {
     // IndexedDB unavailable (e.g. private browsing) — the memory store below
     // is the whole answer, exactly as it is in `getAssetById`.
   }
   for (const row of getMemoryAssetsForScope(scope)) {
-    stored.add(row.assetId);
+    if (typeof row.data !== 'string') stored.add(row.assetId);
   }
 
   return fileAssetIds.filter((assetId) => !stored.has(assetId));

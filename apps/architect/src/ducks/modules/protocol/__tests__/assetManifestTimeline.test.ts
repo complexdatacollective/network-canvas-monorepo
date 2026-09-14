@@ -23,12 +23,24 @@ vi.mock('~/utils/protocols/importAsset', () => ({
 
 vi.mock('~/utils/assetUtils', () => ({
   saveAssetWithFallback: vi.fn(() => Promise.resolve({ persisted: true })),
+  deleteStoredAsset: vi.fn(() => Promise.resolve()),
+}));
+
+// Refusals are driven from here rather than from lock state, so a test can put
+// the refusal exactly where it needs it — the post-write check is the one whose
+// blob has to be rolled back.
+const refusedCommitMessage = vi.fn(() => null as string | null);
+vi.mock('~/utils/protocolLockMessages', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/protocolLockMessages')>()),
+  refusedCommitMessage: () => refusedCommitMessage(),
 }));
 
 const { validateAsset } = await import('~/utils/protocols/assetTools');
 const mockedValidateAsset = vi.mocked(validateAsset);
-const { saveAssetWithFallback } = await import('~/utils/assetUtils');
+const { saveAssetWithFallback, deleteStoredAsset } =
+  await import('~/utils/assetUtils');
 const mockedSaveAsset = vi.mocked(saveAssetWithFallback);
+const mockedDeleteStoredAsset = vi.mocked(deleteStoredAsset);
 const { getSupportedAssetType } = await import('~/utils/protocols/importAsset');
 const mockedGetSupportedAssetType = vi.mocked(getSupportedAssetType);
 
@@ -84,8 +96,46 @@ describe('a refused resource import and the protocol timeline', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // `mockReturnValue` survives `clearAllMocks`, and one test makes this
+    // refuse — without resetting it, every later import in the file is refused.
+    refusedCommitMessage.mockReset().mockReturnValue(null);
     store = makeStore();
     store.dispatch(setActiveProtocol(protocol()));
+  });
+
+  it('removes a repair’s bytes when the protocol is taken mid-write', async () => {
+    store.dispatch(
+      setActiveProtocol(
+        protocol({
+          'photo-1': { type: 'image', name: 'Portrait', source: 'old.png' },
+        } as CurrentProtocol['assetManifest']),
+      ),
+    );
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('image');
+    // Owned on entry and before the write; taken by the time the blob has
+    // landed and the manifest is about to be committed.
+    refusedCommitMessage
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(null)
+      .mockReturnValue('Another tab has this protocol');
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['bytes'], 'new.png'),
+        name: 'Portrait',
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
+    // A repair writes under an id the manifest already carries, so the blob is
+    // referenced and the durable save path never collects it. Left behind, the
+    // resource reads as resolved while the entry still names the old file.
+    expect(mockedDeleteStoredAsset).toHaveBeenCalledWith('photo-1');
+    const entry = manifestOf(store)?.['photo-1'];
+    expect(entry && 'source' in entry ? entry.source : null).toBe('old.png');
   });
 
   it('does not record a repair as an undo step', async () => {
