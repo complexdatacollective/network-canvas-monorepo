@@ -23,10 +23,13 @@ function Probe({
   text,
   enabled,
   steps = STEPS,
+  lineHeight,
 }: {
   text: string;
   enabled?: boolean;
   steps?: readonly string[];
+  /** Resolvable line-height, so the per-line height budget has lines to count. */
+  lineHeight?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { ref, stepIndex, isTruncated } = useFitText<HTMLSpanElement>({
@@ -38,7 +41,9 @@ function Probe({
 
   return (
     <div ref={containerRef}>
-      <span ref={ref}>{text}</span>
+      <span ref={ref} style={lineHeight ? { lineHeight } : undefined}>
+        {text}
+      </span>
       <output data-testid="state">{`${stepIndex}:${isTruncated}`}</output>
     </div>
   );
@@ -118,7 +123,101 @@ describe('useFitText', () => {
     await waitFor(() => expect(state()).toBe('0:true'));
   });
 
-  it('steps down for any width excess but tolerates line-rounding in height', async () => {
+  it('scales its height slack to the line box, not to a fixed number of pixels', async () => {
+    // A box sized by a grid track rather than by whole lines can hide a third of
+    // its last line inside a fixed six-pixel budget, while a single 42px line
+    // that fits exactly still measures two pixels over from integer scroll
+    // metrics. So the slack is the leading under the last line, floored at the
+    // rounding error: three pixels of a 15px line is clipping, and must step
+    // down.
+    uninstallLabelMetrics();
+    const defineMetric = (
+      metric: string,
+      get: (this: HTMLElement) => number,
+    ) => {
+      Object.defineProperty(HTMLSpanElement.prototype, metric, {
+        configurable: true,
+        get,
+      });
+    };
+    defineMetric('clientWidth', () => 100);
+    defineMetric('scrollWidth', () => 100);
+    defineMetric('clientHeight', () => 30);
+    defineMetric('scrollHeight', function (this: HTMLElement) {
+      // 34 is four pixels over a 15px line box (slack 2.25) — real clipping.
+      return this.className.includes('text-base') ? 34 : 30;
+    });
+
+    render(<Probe text="x" lineHeight="15px" />);
+
+    await waitFor(() => expect(state()).toBe('1:false'));
+  });
+
+  it('keeps a rung whose only excess is integer rounding', async () => {
+    // A line that fits exactly still measures a pixel or two over, because
+    // scrollHeight and clientHeight are each one rounding of a fractional
+    // height. Stepping down there is what makes a one-line label render smaller
+    // than the long label beside it — so the slack never falls below that,
+    // however tight the leading.
+    //
+    // The ladder starts at the floor and has to climb back, so reaching the
+    // largest rung is a result the fitter produced rather than the state it
+    // started in.
+    uninstallLabelMetrics();
+    let excess = 40;
+    const defineMetric = (
+      metric: string,
+      get: (this: HTMLElement) => number,
+    ) => {
+      Object.defineProperty(HTMLSpanElement.prototype, metric, {
+        configurable: true,
+        get,
+      });
+    };
+    defineMetric('clientWidth', () => 100);
+    defineMetric('scrollWidth', () => 100);
+    defineMetric('clientHeight', () => 12);
+    defineMetric('scrollHeight', () => 12 + excess);
+
+    render(<Probe text="x" lineHeight="12px" />);
+    await waitFor(() => expect(state()).toBe('2:true'));
+
+    excess = 2;
+    fireEvent.resize(window);
+
+    await waitFor(() => expect(state()).toBe('0:false'));
+  });
+
+  it('lets a tall line spend its own leading before stepping down', async () => {
+    // The slack is the leading under the last line, so a 40px line box absorbs
+    // several pixels that would be real clipping on a 12px one. A flat
+    // pixel budget would send this rung down for nothing.
+    uninstallLabelMetrics();
+    let excess = 200;
+    const defineMetric = (
+      metric: string,
+      get: (this: HTMLElement) => number,
+    ) => {
+      Object.defineProperty(HTMLSpanElement.prototype, metric, {
+        configurable: true,
+        get,
+      });
+    };
+    defineMetric('clientWidth', () => 100);
+    defineMetric('scrollWidth', () => 100);
+    defineMetric('clientHeight', () => 40);
+    defineMetric('scrollHeight', () => 40 + excess);
+
+    render(<Probe text="x" lineHeight="40px" />);
+    await waitFor(() => expect(state()).toBe('2:true'));
+
+    excess = 5;
+    fireEvent.resize(window);
+
+    await waitFor(() => expect(state()).toBe('0:false'));
+  });
+
+  it('steps down for any width excess, and falls back to a fixed height budget without a line height', async () => {
     // A pixel of hidden width is a clipped letter stroke; a few pixels of
     // scroll height are fractional line boxes rounding up — four visible
     // lines on a 13.8px leading can measure that far "over" with nothing

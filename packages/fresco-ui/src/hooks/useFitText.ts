@@ -3,21 +3,32 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 /**
- * Fractional line boxes make integer scroll metrics lie a little: each line
- * set on a non-integer line-height (the ladder floor's `leading-[1.15]` is
- * 13.8px) can round scrollHeight up ~1px against clientHeight, so a clamp of
- * four fully visible lines can measure several pixels "over". A genuinely
- * hidden line contributes at least a full line box (≥12px at the smallest
- * rung), so anything under half of that is rounding, not clipping. Width has
- * no such slack: a single hidden pixel is the upright stroke of a final
- * letter ("Mohammad" clipped to "Mohammac"), so any measured width excess
- * must step the ladder down.
+ * `scrollHeight` and `clientHeight` are each one rounding of a fractional
+ * height, so a line that fits exactly can still measure a pixel or two "over".
+ * Anything beyond that is real, up to the leading under the last line — which is
+ * why the slack is a fraction of the line box and not a fixed number of pixels:
+ * a budget large enough for a 42px line hides a third of a 16px one.
+ *
+ * Width has no such slack — a single hidden pixel is the upright stroke of a
+ * final letter ("Mohammad" clipped to "Mohammac").
  */
-const HEIGHT_TOLERANCE = 6;
+const ROUNDING_SLACK = 2;
+const LEADING_FRACTION = 0.15;
+const NO_LINE_HEIGHT_SLACK = 6;
+
+const overflowsHeight = (element: HTMLElement) => {
+  const excess = element.scrollHeight - element.clientHeight;
+  if (excess <= 0) return false;
+  const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+  // `normal`, or no layout at all, leaves nothing to measure the leading with.
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+    return excess > NO_LINE_HEIGHT_SLACK;
+  }
+  return excess > Math.max(ROUNDING_SLACK, lineHeight * LEADING_FRACTION);
+};
 
 const overflows = (element: HTMLElement) =>
-  element.scrollHeight - element.clientHeight > HEIGHT_TOLERANCE ||
-  element.scrollWidth > element.clientWidth;
+  overflowsHeight(element) || element.scrollWidth > element.clientWidth;
 
 type Fitter = {
   element: HTMLElement;
