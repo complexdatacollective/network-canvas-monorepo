@@ -48,6 +48,7 @@
   },
   "scripts": {
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=units",

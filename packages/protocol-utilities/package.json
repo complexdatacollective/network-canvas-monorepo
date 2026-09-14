@@ -40,7 +40,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf .turbo node_modules dist",
-    "i18n:extract": "node scripts/extract-i18n.mjs"
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs"
   },
   "dependencies": {
     "@codaco/network-query": "workspace:^",

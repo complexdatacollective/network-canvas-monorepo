@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,9 +10,15 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  formatStampReport,
   messageTokens,
+  readTranslationSources,
+  stampTranslationSources,
 } from '../catalog-guards.ts';
-import type { ExtractedCatalog } from '../catalog-guards.ts';
+import type {
+  ExtractedCatalog,
+  TranslationSources,
+} from '../catalog-guards.ts';
 
 const source: ExtractedCatalog = {
   'app.plain': { defaultMessage: 'Save', description: 'd' },
@@ -29,6 +35,19 @@ const source: ExtractedCatalog = {
     description: 'd',
   },
 };
+
+/** Provenance for a catalog translated from exactly today's English. */
+const sources: TranslationSources = Object.fromEntries(
+  Object.entries(source).map(([id, entry]) => [id, entry.defaultMessage]),
+);
+
+/**
+ * The provenance a sparse override carries: a record for each id it overrides
+ * and nothing more, so the override checks below assert token parity without
+ * also tripping the unused-record check.
+ */
+const pick = (ids: readonly string[]): TranslationSources =>
+  Object.fromEntries(ids.map((id) => [id, sources[id] ?? '']));
 
 describe('messageTokens', () => {
   it('collects argument, tag, and plural tokens, including nested ones', () => {
@@ -98,60 +117,90 @@ describe('messageTokens', () => {
 describe('checkFullLocale', () => {
   it('passes a complete, token-faithful catalog', () => {
     expect(
-      checkFullLocale(source, {
-        'app.plain': 'Guardar',
-        'app.rich': 'Lee <docs>la guía</docs> de {name}',
-        // Spanish needs no `one` arm of its own here, and adding `many` would
-        // be equally fine: arm structure belongs to the target language.
-        'app.count': '{count, plural, other {# elementos}}',
-        'app.price': 'Cuesta {price, number, ::currency/GBP}',
-      }),
+      checkFullLocale(
+        source,
+        {
+          'app.plain': 'Guardar',
+          'app.rich': 'Lee <docs>la guía</docs> de {name}',
+          // Spanish needs no `one` arm of its own here, and adding `many` would
+          // be equally fine: arm structure belongs to the target language.
+          'app.count': '{count, plural, other {# elementos}}',
+          'app.price': 'Cuesta {price, number, ::currency/GBP}',
+        },
+        sources,
+      ),
     ).toEqual([]);
   });
 
   it('fails on missing, blank, unknown, token-broken, and invalid entries', () => {
-    const issues = checkFullLocale(source, {
-      'app.plain': ' ',
-      'app.rich': 'Lee la guía de {nombre}',
-      'app.extra': 'x',
-    });
+    const issues = checkFullLocale(
+      source,
+      {
+        'app.plain': ' ',
+        'app.rich': 'Lee la guía de {nombre}',
+        'app.extra': 'x',
+      },
+      sources,
+    );
     expect(issues).toContain('untranslated id: app.count');
     expect(issues).toContain('blank translation: app.plain');
     expect(issues).toContain('token mismatch: app.rich');
     expect(issues).toContain('unknown id: app.extra');
     expect(
-      checkFullLocale(source, {
-        'app.plain': 'ok',
-        'app.rich': '{broken',
-        'app.count': '{count, plural, one {#} other {#}}',
-        'app.price': 'x {price, number, ::currency/GBP}',
-      }),
+      checkFullLocale(
+        source,
+        {
+          'app.plain': 'ok',
+          'app.rich': '{broken',
+          'app.count': '{count, plural, one {#} other {#}}',
+          'app.price': 'x {price, number, ::currency/GBP}',
+        },
+        sources,
+      ),
     ).toContain('invalid ICU syntax: app.rich');
   });
 
   it('fails a translation that keeps the argument but drops its formatting', () => {
     expect(
-      checkFullLocale(source, {
-        'app.plain': 'Guardar',
-        'app.rich': 'Lee <docs>la guía</docs> de {name}',
-        'app.count': '{count, plural, other {# elementos}}',
-        'app.price': 'Cuesta {price}',
-      }),
+      checkFullLocale(
+        source,
+        {
+          'app.plain': 'Guardar',
+          'app.rich': 'Lee <docs>la guía</docs> de {name}',
+          'app.count': '{count, plural, other {# elementos}}',
+          'app.price': 'Cuesta {price}',
+        },
+        sources,
+      ),
     ).toEqual(['token mismatch: app.price']);
   });
 });
 
 describe('checkOverrideLocale', () => {
   it('accepts a sparse subset and rejects unknown or token-broken entries', () => {
-    expect(checkOverrideLocale(source, { 'app.plain': 'Save' })).toEqual([]);
-    expect(checkOverrideLocale(source, { 'app.missing': 'x' })).toEqual([
-      'unknown id: app.missing',
-    ]);
-    expect(checkOverrideLocale(source, { 'app.rich': 'no tokens' })).toEqual([
-      'token mismatch: app.rich',
-    ]);
     expect(
-      checkOverrideLocale(source, { 'app.price': 'Costs {price}' }),
+      checkOverrideLocale(source, { 'app.plain': 'Save' }, pick(['app.plain'])),
+    ).toEqual([]);
+    expect(
+      checkOverrideLocale(
+        source,
+        { 'app.missing': 'x' },
+        pick(['app.missing']),
+      ),
+    ).toEqual(['unknown id: app.missing']);
+    expect(
+      checkOverrideLocale(
+        source,
+        { 'app.rich': 'no tokens' },
+        pick(['app.rich']),
+      ),
+    ).toEqual(['token mismatch: app.rich']);
+    expect(
+      checkOverrideLocale(
+        source,
+        { 'app.price': 'Costs {price}' },
+        pick(['app.price']),
+      ),
     ).toEqual(['token mismatch: app.price']);
   });
 
@@ -164,10 +213,156 @@ describe('checkOverrideLocale', () => {
       },
     };
     expect(
-      checkOverrideLocale(withSelect, {
-        'app.gender': '{g, select, other {They}} answered',
-      }),
+      checkOverrideLocale(
+        withSelect,
+        { 'app.gender': '{g, select, other {They}} answered' },
+        { 'app.gender': withSelect['app.gender']?.defaultMessage ?? '' },
+      ),
     ).toEqual(['token mismatch: app.gender']);
+  });
+});
+
+describe('translation provenance', () => {
+  const complete = {
+    'app.plain': 'Guardar',
+    'app.rich': 'Lee <docs>la guía</docs> de {name}',
+    'app.count': '{count, plural, other {# elementos}}',
+    'app.price': 'Cuesta {price, number, ::currency/GBP}',
+  };
+
+  it('fails a translation whose English has since been reworded', () => {
+    // The regression this guard exists for: the English sentence changed
+    // meaning, the Spanish still says the old thing, and every other check
+    // here passes — the catalog is complete, the tokens match, nothing is
+    // blank. Only the recorded source knows.
+    const issues = checkFullLocale(source, complete, {
+      ...sources,
+      'app.plain': 'Download',
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toContain('translated from older English: app.plain');
+    // Both sentences and the translation, so the reader can tell a reworded
+    // meaning from a capitalisation fix without opening another file.
+    expect(issues[0]).toContain('"Download"');
+    expect(issues[0]).toContain('"Save"');
+    expect(issues[0]).toContain('"Guardar"');
+  });
+
+  it('fails a translation carrying no record of what it was made from', () => {
+    const { 'app.price': _dropped, ...incomplete } = sources;
+    expect(checkFullLocale(source, complete, incomplete)).toEqual([
+      'no recorded English source: app.price',
+    ]);
+  });
+
+  it('fails a record stamped ahead of the translation it vouches for', () => {
+    // Otherwise a sidecar could be stamped for an id nobody has translated,
+    // and the record would go green the moment a translation appeared —
+    // whatever it said.
+    expect(
+      checkOverrideLocale(source, { 'app.plain': 'Save' }, sources),
+    ).toEqual([
+      'recorded English source for an untranslated id: app.rich',
+      'recorded English source for an untranslated id: app.count',
+      'recorded English source for an untranslated id: app.price',
+    ]);
+  });
+
+  it('holds an override locale to the same record as a full one', () => {
+    // An override drifts more quietly than a full translation: it exists
+    // because its wording differs from the base, so nothing about it looking
+    // different from English is evidence that it is current.
+    expect(
+      checkOverrideLocale(
+        source,
+        { 'app.plain': 'Save changes' },
+        { 'app.plain': 'Store' },
+      ),
+    ).toEqual([
+      `translated from older English: app.plain — was "Store", now "Save", translation says "Save changes"`,
+    ]);
+  });
+
+  it('accepts exactly what the stamping tool writes, and reports what moved', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-stamp-'));
+    writeFileSync(
+      join(dir, 'en.json'),
+      JSON.stringify({
+        'app.plain': { defaultMessage: 'Save', description: 'd' },
+      }),
+    );
+    writeFileSync(join(dir, 'es.json'), JSON.stringify({ 'app.plain': 'Ya' }));
+    // Never a catalog, so it is neither stamped nor read as one; the same
+    // rule keeps the sidecars out of every bundle.
+    writeFileSync(join(dir, 'es.source.json'), JSON.stringify({}));
+
+    const first = stampTranslationSources(dir);
+    expect(first.map(({ locale }) => locale)).toEqual(['es']);
+    expect(first[0]?.recorded).toEqual([
+      {
+        id: 'app.plain',
+        previous: undefined,
+        current: 'Save',
+        translation: 'Ya',
+      },
+    ]);
+    expect(readTranslationSources(dir, 'es')).toEqual({ 'app.plain': 'Save' });
+
+    const committed = JSON.parse(
+      readFileSync(join(dir, 'en.json'), 'utf8'),
+    ) as ExtractedCatalog;
+    expect(
+      checkFullLocale(
+        committed,
+        { 'app.plain': 'Ya' },
+        readTranslationSources(dir, 'es'),
+      ),
+    ).toEqual([]);
+
+    // Reword the English: the guard fails, and re-stamping reports the pair a
+    // reviewer needs to judge whether re-translating was skipped.
+    writeFileSync(
+      join(dir, 'en.json'),
+      JSON.stringify({
+        'app.plain': { defaultMessage: 'Save changes', description: 'd' },
+      }),
+    );
+    expect(
+      checkFullLocale(
+        { 'app.plain': { defaultMessage: 'Save changes', description: 'd' } },
+        { 'app.plain': 'Ya' },
+        readTranslationSources(dir, 'es'),
+      ),
+    ).toHaveLength(1);
+
+    const second = stampTranslationSources(dir);
+    expect(second[0]?.recorded).toEqual([
+      {
+        id: 'app.plain',
+        previous: 'Save',
+        current: 'Save changes',
+        translation: 'Ya',
+      },
+    ]);
+    expect(formatStampReport(second)).toContain('English was : "Save"');
+    expect(formatStampReport(second)).toContain('English now : "Save changes"');
+  });
+
+  it('leaves a translation whose English was deleted unstamped', () => {
+    // Stamping must not paper over a translation for an id that no longer
+    // exists; it stays reportable as an unknown id.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-stamp-'));
+    writeFileSync(join(dir, 'en.json'), JSON.stringify({}));
+    writeFileSync(join(dir, 'es.json'), JSON.stringify({ 'app.gone': 'Ya' }));
+
+    expect(stampTranslationSources(dir)[0]?.recorded).toEqual([]);
+    expect(
+      checkFullLocale(
+        {},
+        { 'app.gone': 'Ya' },
+        readTranslationSources(dir, 'es'),
+      ),
+    ).toEqual(['unknown id: app.gone']);
   });
 });
 
