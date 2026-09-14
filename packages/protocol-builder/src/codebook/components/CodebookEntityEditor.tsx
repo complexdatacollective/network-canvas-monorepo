@@ -13,7 +13,7 @@ import {
   defineMessages,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -30,8 +30,6 @@ import Section from '@codaco/fresco-ui/Section';
 import {
   EdgeColorSequence,
   NodeColorSequence,
-  type NodeShape,
-  NodeShapes,
 } from '@codaco/protocol-validation';
 import {
   normalizeForComparison,
@@ -47,37 +45,16 @@ import {
   documentWithEntityProperties,
   type CodebookEntityDraft,
 } from '../editing.ts';
+import {
+  isNodeShape,
+  shapeMappingDraft,
+  shapeMappingIssue,
+  shapeMappingVariables,
+  shapeOptions,
+  type ShapeMappingDraft,
+} from '../shapeMapping.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
-
-/**
- * The names of the shapes a node type can be drawn as.
- *
- * One descriptor per shape rather than start-casing the schema's own token:
- * `circle` is a stored value, not copy, and upper-casing its first letter is
- * an English rule that produces an English word. The record stays exhaustive
- * over the schema union, so a shape added there fails to compile until it is
- * named here.
- */
-const NODE_SHAPE_LABELS = defineMessages({
-  circle: {
-    id: 'protocolBuilder.codebookEntity.nodeShapeCircle',
-    defaultMessage: 'Circle',
-    description:
-      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
-  },
-  square: {
-    id: 'protocolBuilder.codebookEntity.nodeShapeSquare',
-    defaultMessage: 'Square',
-    description:
-      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
-  },
-  diamond: {
-    id: 'protocolBuilder.codebookEntity.nodeShapeDiamond',
-    defaultMessage: 'Diamond',
-    description:
-      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
-  },
-}) satisfies Record<NodeShape, MessageDescriptor>;
+import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
 const messages = defineMessages({
   nameRequired: {
@@ -165,16 +142,15 @@ const messages = defineMessages({
   },
   shapeLabel: {
     id: 'protocolBuilder.codebookEntity.shapeLabel',
-    defaultMessage: 'Default shape',
+    defaultMessage: 'Shape',
     description:
       'Label of the field choosing the shape a node type is drawn as when nothing overrides it.',
   },
   shapeHint: {
     id: 'protocolBuilder.codebookEntity.shapeHint',
-    defaultMessage:
-      'Choose the shape used when no dynamic shape mapping applies.',
+    defaultMessage: 'Choose a default shape for this node type.',
     description:
-      'Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes.',
+      'Guidance under the shape field. A node is a member of the interview network.',
   },
   shapePlaceholder: {
     id: 'protocolBuilder.codebookEntity.shapePlaceholder',
@@ -292,12 +268,6 @@ const colorOptions = (
   ];
 };
 
-const shapeOptions = (intl: IntlShape) =>
-  NodeShapes.map((value) => ({
-    value,
-    label: intl.formatMessage(NODE_SHAPE_LABELS[value]),
-  }));
-
 /**
  * What is wrong with each field, encoded rather than formatted.
  *
@@ -309,7 +279,7 @@ const shapeOptions = (intl: IntlShape) =>
  * renders them, so they follow the formatter while they wait.
  */
 type EntityFieldErrors = Readonly<
-  Partial<Record<'name' | 'color' | 'shape' | 'icon', string>>
+  Partial<Record<'name' | 'color' | 'shape' | 'shape.dynamic' | 'icon', string>>
 >;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -337,6 +307,25 @@ const replaceDefaultShape = (
   return replaceDraftProperty(draft, 'shape', {
     ...structuredClone(currentShape),
     default: value,
+  });
+};
+
+/**
+ * The draft with its shape mapping replaced, or — given nothing — removed.
+ *
+ * `shape` is rewritten whole rather than patched, because the entity form owns
+ * it whole: an absent `dynamic` has to reach the saved document as a key that
+ * is not there, which is what switching the feature off means.
+ */
+const replaceShapeMapping = (
+  draft: CodebookEntityDraft,
+  mapping: ShapeMappingDraft | undefined,
+): CodebookEntityDraft => {
+  const currentShape = isRecord(draft.shape) ? draft.shape : {};
+  const { dynamic: _dropped, ...rest } = structuredClone(currentShape);
+  return replaceDraftProperty(draft, 'shape', {
+    ...rest,
+    ...(mapping === undefined ? {} : { dynamic: mapping }),
   });
 };
 
@@ -372,6 +361,15 @@ const validateFields = (
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
     if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
+    const mapping = isRecord(draft.shape) ? draft.shape.dynamic : undefined;
+    const mappingIssue =
+      mapping === undefined
+        ? undefined
+        : shapeMappingIssue(
+            shapeMappingDraft(mapping),
+            shapeMappingVariables(draft.variables),
+          );
+    if (mappingIssue !== undefined) errors['shape.dynamic'] = mappingIssue;
     const icon = stringValue(draft.icon);
     if (icon === '') errors.icon = createMessageError(messages.iconRequired);
     else if (!isInterviewerIconName(icon)) {
@@ -408,6 +406,16 @@ export function CodebookEntityFields({
       </Alert>
     );
   }
+
+  const storedShape = isRecord(draft.shape) ? draft.shape : {};
+  const storedDefaultShape = storedShape.default;
+  const currentDefaultShape = isNodeShape(storedDefaultShape)
+    ? storedDefaultShape
+    : undefined;
+  const currentMapping =
+    storedShape.dynamic === undefined
+      ? undefined
+      : shapeMappingDraft(storedShape.dynamic);
 
   const currentColor = stringValue(draft.color);
   const colors =
@@ -486,6 +494,23 @@ export function CodebookEntityFields({
               disabled={disabled}
               errors={errors.shape === undefined ? undefined : [errors.shape]}
               showErrors
+            />
+
+            <NodeShapeMappingFields
+              variables={shapeMappingVariables(draft.variables)}
+              {...(currentDefaultShape === undefined
+                ? {}
+                : { defaultShape: currentDefaultShape })}
+              {...(currentMapping === undefined
+                ? {}
+                : { value: currentMapping })}
+              onChange={(mapping) =>
+                onChange(replaceShapeMapping(draft, mapping))
+              }
+              {...(errors['shape.dynamic'] === undefined
+                ? {}
+                : { error: errors['shape.dynamic'] })}
+              disabled={disabled}
             />
           </Section>
 

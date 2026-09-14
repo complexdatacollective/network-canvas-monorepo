@@ -33,5 +33,135 @@
     "en": "Type identity",
     "es": "Identidad del tipo",
     "from": "74a07e626 architect.typeEditor.typeEditor.typeIdentity"
+  },
+  "protocolBuilder.codebookEntity.nodeShapeCircle": {
+    "en": "Circle",
+    "es": "Círculo",
+    "from": "74a07e626 architect.typeEditor.shapePicker.config.circle"
+  },
+  "protocolBuilder.codebookEntity.nodeShapeDiamond": {
+    "en": "Diamond",
+    "es": "Rombo",
+    "from": "74a07e626 architect.typeEditor.shapePicker.config.diamond"
+  },
+  "protocolBuilder.codebookEntity.nodeShapeSquare": {
+    "en": "Square",
+    "es": "Cuadrado",
+    "from": "74a07e626 architect.typeEditor.shapePicker.config.square"
+  },
+  "protocolBuilder.codebookEntity.shapeAddThreshold": {
+    "en": "Add threshold",
+    "es": "Añadir umbral",
+    "from": "74a07e626 architect.additional.typeEditor.shapeVariableMapping.addThreshold"
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerFalse": {
+    "en": "False",
+    "es": "Falso",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.false"
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerTrue": {
+    "en": "True",
+    "es": "Verdadero",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.true"
+  },
+  "protocolBuilder.codebookEntity.shapeAtThreshold": {
+    "en": "Shape at threshold {value}",
+    "es": "Forma en el umbral {value}",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeAtThreshold"
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThreshold": {
+    "en": "Below first threshold",
+    "es": "Por debajo del primer umbral",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThreshold"
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
+    "en": "Below first threshold cannot be removed",
+    "es": "No se puede eliminar la opción por debajo del primer umbral",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved"
+  },
+  "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
+    "en": "Default shape",
+    "es": "Forma predeterminada",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.defaultShape"
+  },
+  "protocolBuilder.codebookEntity.shapeForEachValue": {
+    "en": "Shape for each value",
+    "es": "Forma para cada valor",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeForEachValue"
+  },
+  "protocolBuilder.codebookEntity.shapeForValue": {
+    "en": "Shape for {value1}",
+    "es": "Forma para {value1}",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeFor"
+  },
+  "protocolBuilder.codebookEntity.shapeHint": {
+    "en": "Choose a default shape for this node type.",
+    "es": "Elige una forma predeterminada para este tipo de nodo.",
+    "from": "74a07e626 architect.typeEditor.typeEditor.chooseADefaultShapeForThis"
+  },
+  "protocolBuilder.codebookEntity.shapeLabel": {
+    "en": "Shape",
+    "es": "Forma",
+    "from": "74a07e626 architect.typeEditor.typeEditor.shape"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingAttribute": {
+    "en": "Attribute",
+    "es": "Atributo",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.attribute"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingDescription": {
+    "en": "Override the default shape based on the value of a node's attribute.",
+    "es": "Sustituir la forma predeterminada según el valor de un atributo del nodo.",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsAttribute": {
+    "en": "Select an attribute to map to a shape, or turn off shape mapping.",
+    "es": "Selecciona un atributo para asignarlo a una forma, o desactiva la asignación de formas.",
+    "from": "74a07e626 architect.constants.components.typeeditor.validateentitytype.selectVariableMessage"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsThreshold": {
+    "en": "Add at least one threshold, or turn off shape mapping.",
+    "es": "Añade al menos un umbral, o desactiva la asignación de formas.",
+    "from": "74a07e626 architect.constants.components.typeeditor.validateentitytype.thresholdsMinMessage"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingThresholdsAscending": {
+    "en": "Thresholds must increase in value, with no duplicates.",
+    "es": "Los umbrales deben aumentar de valor, sin duplicados.",
+    "from": "74a07e626 architect.constants.components.typeeditor.validateentitytype.thresholdsAscendingMessage"
+  },
+  "protocolBuilder.codebookEntity.shapeMappingToggle": {
+    "en": "Map attribute to shape",
+    "es": "Asignar formas según un atributo",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.mapAttributeToShape"
+  },
+  "protocolBuilder.codebookEntity.shapeNoThresholds": {
+    "en": "No thresholds yet — every value uses the default shape.",
+    "es": "Todavía no hay umbrales: todos los valores usan la forma predeterminada.",
+    "from": "74a07e626 architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue"
+  },
+  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
+    "en": "Remove threshold {value1, number}",
+    "es": "Eliminar umbral {value1, number}",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.removeThreshold"
+  },
+  "protocolBuilder.codebookEntity.shapeThresholdValue": {
+    "en": "Threshold {value1, number} value",
+    "es": "Valor del umbral {value1, number}",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.thresholdValue"
+  },
+  "protocolBuilder.codebookEntity.shapeThresholds": {
+    "en": "Thresholds",
+    "es": "Umbrales",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.thresholds"
+  },
+  "protocolBuilder.codebookEntity.shapeUsesDefault": {
+    "en": "uses default shape",
+    "es": "usa la forma predeterminada",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.usesDefaultShape"
+  },
+  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
+    "en": "Some values are unmapped and will use the default shape.",
+    "es": "Algunos valores no tienen una forma asignada y usarán la predeterminada.",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill"
   }
 }

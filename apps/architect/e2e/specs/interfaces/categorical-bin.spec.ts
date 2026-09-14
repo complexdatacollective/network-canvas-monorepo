@@ -2,7 +2,10 @@ import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
-import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
+import {
+  mapNodeShapeToAttribute,
+  selectOrCreateNodeType,
+} from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import {
   authorOptions,
@@ -112,6 +115,19 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     // `color` field on CategoricalBin at all (unlike OrdinalBin).
   });
 
+  // The node type this stage is about can also draw itself from that same
+  // attribute — the "Node appearance" group of its own dialog, which Architect
+  // carried and this package had not. Done here rather than in a spec of its
+  // own because the mapping needs an attribute a shape can follow, and this is
+  // where one exists.
+  await mapNodeShapeToAttribute(architectPage, {
+    attribute: 'group',
+    shapes: [
+      { value: 'Family', shape: 'Square' },
+      { value: 'Friends', shape: 'Diamond' },
+    ],
+  });
+
   await editor.expectNoIssues();
   await editor.save();
 
@@ -149,6 +165,23 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     'Family',
     'Friends',
   ]);
+
+  // And the shape mapping reached the codebook, as the mapping variant the
+  // runtime reads for a categorical answer.
+  const personType = Object.values(
+    (protocol.codebook as Record<string, Record<string, unknown>>).node,
+  ).find((type) => isRecord(type) && isRecord(type.variables));
+  if (!isRecord(personType) || !isRecord(personType.shape)) {
+    throw new Error('the node type has no shape definition');
+  }
+  expect(personType.shape.dynamic).toEqual({
+    variable: prompt.variable,
+    type: 'discrete',
+    map: [
+      { value: 'family', shape: 'square' },
+      { value: 'friends', shape: 'diamond' },
+    ],
+  });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'categorical-bin-stage.json',

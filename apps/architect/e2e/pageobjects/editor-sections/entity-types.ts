@@ -106,3 +106,40 @@ export async function selectOrCreateEdgeType(
 ): Promise<void> {
   await selectOrCreateEntityType(page, 'edge', name);
 }
+
+/**
+ * Makes the held node type draw itself as a different shape depending on one
+ * of its attributes.
+ *
+ * The mapping lives in the same dialog the type's name and colour do
+ * (`@codaco/protocol-builder`'s `CodebookEntityEditor`, "Node appearance"), is
+ * switched on by the "Map attribute to shape" toggle, and follows one
+ * attribute chosen through the shared attribute window — which opens OVER this
+ * dialog, so its rows are looked up on the page rather than inside it. Saving
+ * writes the codebook section immediately; it is not part of the stage's own
+ * save.
+ */
+export async function mapNodeShapeToAttribute(
+  page: Page,
+  options: {
+    attribute: string;
+    /** One value label of that attribute, and the shape it is drawn as. */
+    shapes: { value: string; shape: string }[];
+  },
+): Promise<void> {
+  const edit = 'Edit this node type';
+  await page.getByRole('button', { name: edit, exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: edit });
+  await dialog.getByRole('switch', { name: 'Map attribute to shape' }).click();
+  await dialog.getByRole('button', { name: 'Select attribute' }).click();
+  await page
+    .getByRole('option', { name: options.attribute, exact: true })
+    .click();
+  for (const { value, shape } of options.shapes) {
+    await dialog
+      .getByRole('combobox', { name: `Shape for ${value}`, exact: true })
+      .selectOption({ label: shape });
+  }
+  await dialog.getByRole('button', { name: 'Save entity' }).click();
+  await dialog.waitFor({ state: 'detached' });
+}

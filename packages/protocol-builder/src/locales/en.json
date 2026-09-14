@@ -995,21 +995,105 @@
     "defaultMessage": "Node types",
     "description": "Heading over the codebook’s node types. A node is a member of the interview network."
   },
+  "protocolBuilder.codebookEntity.shapeAddThreshold": {
+    "defaultMessage": "Add threshold",
+    "description": "Button that adds one more threshold row to the list."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerFalse": {
+    "defaultMessage": "False",
+    "description": "Stands for the negative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerTrue": {
+    "defaultMessage": "True",
+    "description": "Stands for the affirmative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAtThreshold": {
+    "defaultMessage": "Shape at threshold {value}",
+    "description": "Label of the control choosing the shape used from one threshold upwards. value is the threshold number itself, already formatted for the reader."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThreshold": {
+    "defaultMessage": "Below first threshold",
+    "description": "Name of the fixed first row of the threshold list, covering every value under the lowest threshold."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
+    "defaultMessage": "Below first threshold cannot be removed",
+    "description": "Accessible name of the unavailable remove button on the fixed first threshold row, saying why nothing happens."
+  },
+  "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
+    "defaultMessage": "Default shape",
+    "description": "Label of the read-only control on the fixed first threshold row, showing the shape chosen as this type’s default."
+  },
+  "protocolBuilder.codebookEntity.shapeForEachValue": {
+    "defaultMessage": "Shape for each value",
+    "description": "Heading over the rows that give one shape to each answer the chosen attribute can take."
+  },
+  "protocolBuilder.codebookEntity.shapeForValue": {
+    "defaultMessage": "Shape for {value1}",
+    "description": "Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one."
+  },
   "protocolBuilder.codebookEntity.shapeHint": {
-    "defaultMessage": "Choose the shape used when no dynamic shape mapping applies.",
-    "description": "Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes."
+    "defaultMessage": "Choose a default shape for this node type.",
+    "description": "Guidance under the shape field. A node is a member of the interview network."
   },
   "protocolBuilder.codebookEntity.shapeLabel": {
-    "defaultMessage": "Default shape",
+    "defaultMessage": "Shape",
     "description": "Label of the field choosing the shape a node type is drawn as when nothing overrides it."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingAttribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the field choosing which of the type’s attributes the shape follows."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingDescription": {
+    "defaultMessage": "Override the default shape based on the value of a node's attribute.",
+    "description": "Guidance under the shape mapping switch, saying what turning it on does. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsAttribute": {
+    "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping of the node type editor when the mapping is switched on but names no attribute to follow."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsThreshold": {
+    "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping when it follows a numeric attribute but no threshold has been set. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingThresholdsAscending": {
+    "defaultMessage": "Thresholds must increase in value, with no duplicates.",
+    "description": "Refusal shown under the shape mapping when its thresholds do not rise. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingToggle": {
+    "defaultMessage": "Map attribute to shape",
+    "description": "Switch that turns on drawing a node as a different shape depending on one of its attributes. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeNoThresholds": {
+    "defaultMessage": "No thresholds yet — every value uses the default shape.",
+    "description": "Shown in place of the threshold list while no threshold has been set."
   },
   "protocolBuilder.codebookEntity.shapePlaceholder": {
     "defaultMessage": "Choose a shape…",
     "description": "Placeholder shown in the shape field of the node type editor before a choice is made."
   },
+  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
+    "defaultMessage": "Remove threshold {value1, number}",
+    "description": "Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one."
+  },
   "protocolBuilder.codebookEntity.shapeRequired": {
     "defaultMessage": "Choose a default shape.",
     "description": "Refusal shown under the shape field of the node type editor when the researcher has chosen none."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholdValue": {
+    "defaultMessage": "Threshold {value1, number} value",
+    "description": "Label of the number field holding one threshold. value1 is the threshold’s own position in the list, counting from one, not the number the researcher typed."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholds": {
+    "defaultMessage": "Thresholds",
+    "description": "Heading over the rows that change the shape at a numeric value. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeUsesDefault": {
+    "defaultMessage": "uses default shape",
+    "description": "Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence."
+  },
+  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
+    "defaultMessage": "Some values are unmapped and will use the default shape.",
+    "description": "Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own."
   },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",

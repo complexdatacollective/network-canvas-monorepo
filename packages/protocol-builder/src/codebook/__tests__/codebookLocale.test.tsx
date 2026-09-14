@@ -13,6 +13,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import {
+  attributeField,
+  chooseAttribute,
+} from '../../testing/attributePicker.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import {
   expectNoLocaleLeaks,
@@ -228,7 +232,20 @@ const PERSON_DOCUMENT: SectionDoc = {
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
-  variables: {},
+  variables: {
+    // One attribute of each shape-mapping kind, so the mapping below this type
+    // is something the sweep can actually open.
+    ethnicity: {
+      name: 'Ethnicity',
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      options: [
+        { label: 'Asian', value: 'asian' },
+        { label: 'White', value: 'white' },
+      ],
+    },
+    age: { name: 'Age', type: 'number', component: 'Number' },
+  },
 };
 
 /** A refusal that names no holder, so the editor reads the package's words. */
@@ -265,6 +282,26 @@ describe('the codebook editors swept for English', () => {
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
     expect(screen.getByRole('option', { name: 'Círculo' })).toBeInTheDocument();
     expectNoLocaleLeaks('the entity editor', protocolStrings(PERSON_DOCUMENT));
+
+    // The shape mapping is behind a switch, so nothing above has read a word
+    // of it. Both branches are opened, because each has copy of its own.
+    await user.click(
+      screen.getByRole('switch', { name: 'Asignar formas según un atributo' }),
+    );
+    await chooseAttribute(user, attributeField('Atributo'), 'Ethnicity');
+    expect(screen.getByText('Forma para cada valor')).toBeVisible();
+    expectNoLocaleLeaks(
+      'the entity editor mapping one answer at a time',
+      protocolStrings(PERSON_DOCUMENT),
+    );
+
+    await chooseAttribute(user, attributeField('Atributo'), 'Age');
+    expect(screen.getByText('Umbrales')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Añadir umbral' }));
+    expectNoLocaleLeaks(
+      'the entity editor mapping by threshold',
+      protocolStrings(PERSON_DOCUMENT),
+    );
 
     await user.click(screen.getByRole('button', { name: 'Guardar entidad' }));
 

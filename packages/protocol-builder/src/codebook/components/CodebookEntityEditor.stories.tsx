@@ -14,6 +14,28 @@ const PERSON: SectionDoc = {
   shape: { default: 'circle' },
   variables: {
     name: { name: 'Name', type: 'text', component: 'Text' },
+    ethnicity: {
+      name: 'Ethnicity',
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      options: [
+        { label: 'Asian', value: 'asian' },
+        { label: 'White', value: 'white' },
+      ],
+    },
+  },
+};
+
+/** The same type, already drawing itself from one of its own attributes. */
+const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
+  ...PERSON,
+  shape: {
+    default: 'circle',
+    dynamic: {
+      variable: 'ethnicity',
+      type: 'discrete',
+      map: [{ value: 'asian', shape: 'square' }],
+    },
   },
 };
 
@@ -130,5 +152,50 @@ export const InADialog: Story = {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Cancel', 'Save entity']);
+  },
+};
+
+/**
+ * A node type whose shape follows one of its attributes — Architect's shape
+ * mapping, inside the "Node appearance" group. Opened on a mapping that is
+ * already configured, which is the state a reviewer cannot reach by looking at
+ * a fresh type.
+ */
+export const WithAShapeMapping: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-person-mapping-1"
+      dialog={{ title: 'Edit this node type' }}
+      subject={{ entity: 'node', type: 'person' }}
+      initialDraft={PERSON_WITH_SHAPE_MAPPING}
+      authoritativeDocument={PERSON_WITH_SHAPE_MAPPING}
+      existingEntityNames={['Place']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await expect(
+      dialog.getByRole('switch', { name: 'Map attribute to shape' }),
+    ).toBeChecked();
+    await expect(
+      dialog.getByRole('combobox', { name: 'Shape for Asian' }),
+    ).toHaveValue('square');
+    // The other answer has no shape of its own yet, which the editor says
+    // rather than leaving the researcher to notice.
+    await expect(
+      dialog.getByText(
+        'Some values are unmapped and will use the default shape.',
+      ),
+    ).toBeVisible();
   },
 };
