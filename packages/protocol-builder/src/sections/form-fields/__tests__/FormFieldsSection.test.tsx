@@ -1925,6 +1925,77 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * the attribute in the codebook, and coming back.
    */
   /**
+   * The sections of this dialog, and which of them each control belongs to.
+   *
+   * Architect's own order (`sections/Form/FieldFields.tsx`): the attribute the
+   * answer is recorded under; then the question, in words the participant
+   * reads, ending with how they answer it; then what the answer may be — the
+   * values it is chosen from, and the rules it must satisfy. The input control
+   * had been filed with the attribute, where it read as a fact about the
+   * attribute rather than as part of asking the question.
+   */
+  it('puts the dialog’s controls in Architect’s own sections, in order', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const variableId = seedContactSetting(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
+      variableId,
+    );
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('region', { name: 'Choice values' }),
+      ).toBeInTheDocument(),
+    );
+
+    expect(
+      dialog
+        .getAllByRole('region')
+        .map((region) => within(region).getAllByRole('heading')[0]?.textContent)
+        .filter((heading) => heading !== undefined),
+    ).toEqual([
+      'Attribute selection',
+      'Field configuration',
+      'Choice values',
+      'Validation',
+      // The preview beside the fields, which is the dialog's aside rather than
+      // one of its sections.
+      'Interactive preview',
+    ]);
+
+    // And the control the participant answers with is part of asking the
+    // question, not part of naming the attribute.
+    const configuration = within(
+      dialog.getByRole('region', { name: 'Field configuration' }),
+    );
+    expect(
+      configuration.getByRole('combobox', { name: 'Input control' }),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        dialog.getByRole('region', { name: 'Attribute selection' }),
+      ).queryByRole('combobox', { name: 'Input control' }),
+    ).toBeNull();
+    // Last in its section, after the toggle: how the answer is given follows
+    // what is being asked.
+    const inSection = configuration
+      .getAllByRole('textbox')
+      .concat(configuration.getAllByRole('switch'))
+      .concat(configuration.getAllByRole('combobox'));
+    expect(
+      inSection.indexOf(
+        configuration.getByRole('combobox', { name: 'Input control' }),
+      ),
+    ).toBe(inSection.length - 1);
+  });
+
+  /**
    * A list an interface owns is shown rather than offered.
    *
    * Architect drew the same read-only table for the same reason
