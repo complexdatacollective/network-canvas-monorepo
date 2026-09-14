@@ -63,8 +63,9 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
   so the outcome is read where the choice was made; Escape closes it.
 - **\`side\`** / **\`align\`** — where the popover opens; the Interviewer
   status bar uses \`side="top"\`. An arrow points back at the pill.
-- The pill is an outline \`Button\` in \`color="dynamic"\`, so it takes the
-  colour of the bar it sits on.
+- **\`variant\`** / **\`color\`** / **\`size\`** — the pill's \`Button\`
+  look, so it matches the controls beside it. Defaults to a \`text\` button
+  in \`color="dynamic"\`, which takes the colour of the bar it sits on.
 `;
 
 const meta = {
@@ -80,6 +81,15 @@ const meta = {
     onChange: { control: false },
     display: { control: 'radio', options: ['responsive', 'label', 'icon'] },
     searchable: { control: 'boolean' },
+    variant: {
+      control: 'select',
+      options: ['text', 'outline', 'glass', 'default', 'raised', 'dashed'],
+    },
+    color: {
+      control: 'select',
+      options: ['dynamic', 'default', 'primary', 'secondary', 'accent'],
+    },
+    size: { control: 'radio', options: ['sm', 'md', 'lg'] },
     persistence: { control: 'radio', options: ['device', 'account'] },
     side: { control: 'radio', options: ['top', 'bottom'] },
     align: { control: 'radio', options: ['start', 'center', 'end'] },

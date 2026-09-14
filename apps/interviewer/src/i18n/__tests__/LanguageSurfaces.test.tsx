@@ -7,7 +7,7 @@ import {
   OnboardingScreen,
   OnboardingScreenView,
 } from '~/components/OnboardingScreen';
-import { StatusRowView } from '~/components/StatusRow';
+import { TopActionBarView } from '~/components/TopActionBar';
 
 import { InterviewerI18nProvider } from '../InterviewerI18nProvider';
 import { LOCALE_PREFERENCE_KEY } from '../preference';
@@ -79,23 +79,22 @@ it('offers the device language before starting setup and retains the choice on r
   ).toBeVisible();
 });
 
-it('exposes a keyboard-operated language picker from the home footer', async () => {
+it('exposes a keyboard-operated language picker from the home header', async () => {
   const user = userEvent.setup();
   render(
     <InterviewerI18nProvider>
-      <StatusRowView
-        protocolCount={1}
-        interviewCount={0}
-        mode="none"
-        durability={null}
-        installed={false}
+      <TopActionBarView
+        showLock={false}
+        onLock={() => {}}
+        onOpenSettings={() => {}}
       />
     </InterviewerI18nProvider>,
   );
+  // An icon button: the globe alone, named for the current language.
   const opener = screen.getByRole('combobox', {
     name: 'Interface language: Automatic (English)',
   });
-  expect(opener).toHaveTextContent('Auto · EN');
+  expect(opener).not.toHaveTextContent(/English/);
   opener.focus();
   await user.keyboard('{Enter}');
   const popover = await screen.findByRole('dialog', {
@@ -103,7 +102,6 @@ it('exposes a keyboard-operated language picker from the home footer', async () 
   });
   await user.click(within(popover).getByRole('option', { name: /^Español/ }));
   expect(document.documentElement).toHaveAttribute('lang', 'es');
-  expect(opener).toHaveTextContent('ES');
   expect(popover).toHaveAccessibleName('Idioma de la interfaz');
   expect(within(popover).getAllByRole('status').at(-1)).toHaveTextContent(
     'Guardado en este dispositivo.',

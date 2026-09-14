@@ -1,7 +1,14 @@
 'use client';
 
 import { Combobox } from '@base-ui/react/combobox';
-import { Check, ChevronDown, ChevronUp, SearchIcon, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  SearchIcon,
+  X,
+} from 'lucide-react';
 import {
   type ComponentPropsWithRef,
   useEffect,
@@ -15,7 +22,7 @@ import type { AppLocale } from '@codaco/app-i18n/locales';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { Button, IconButton } from '../Button';
+import { Button, type ButtonProps, IconButton } from '../Button';
 import InputField from '../form/fields/InputField';
 import Surface from '../layout/Surface';
 import { ArrowSvg } from '../Popover';
@@ -106,9 +113,20 @@ export type LocaleSwitcherDisplay = 'responsive' | 'label' | 'icon';
 
 // In `responsive` display the language name is dropped while the nearest
 // `@container` ancestor is narrower than 36em (the threshold
-// `TeamAndStudySwitcher` collapses at), leaving a round icon button.
+// `TeamAndStudySwitcher` collapses at), leaving a round icon button. The
+// explicit width per size mirrors `squareSizeVariants`: Safari computes 0 for
+// a ratio-derived flex-item width inside nested flex rows.
 const RESPONSIVE_ICON_ONLY_TRIGGER =
-  '@max-xl:aspect-square @max-xl:w-10 @max-xl:justify-center @max-xl:p-0!';
+  '@max-xl:aspect-square @max-xl:justify-center @max-xl:p-0!';
+const RESPONSIVE_ICON_ONLY_WIDTH: Record<
+  NonNullable<ButtonProps['size']>,
+  string
+> = {
+  sm: '@max-xl:w-10',
+  md: '@max-xl:w-12',
+  lg: '@max-xl:w-16',
+  xl: '@max-xl:w-20',
+};
 const RESPONSIVE_HIDDEN = '@max-xl:hidden';
 
 type LocaleItem = {
@@ -140,6 +158,16 @@ export type LocaleSwitcherProps = {
   display?: LocaleSwitcherDisplay;
   /** Put a search box above the list, for hosts that offer many languages. */
   searchable?: boolean;
+  /**
+   * The trigger's `Button` look, so it can match the controls beside it. The
+   * `text` default sits quietly in a header or status bar; `color="dynamic"`
+   * takes the colour of the bar it sits on.
+   */
+  variant?: ButtonProps['variant'];
+  color?: ButtonProps['color'];
+  size?: ButtonProps['size'];
+  /** Extra classes for the trigger button. */
+  className?: string;
   side?: 'top' | 'bottom';
   align?: 'start' | 'center' | 'end';
   /** Open on first render; for documentation, hosts never need it. */
@@ -147,9 +175,10 @@ export type LocaleSwitcherProps = {
 };
 
 /**
- * The application language switcher: a globe pill that names the current
+ * The application language switcher: a globe button that names the current
  * language and opens a popover listing every interface language, each under
- * its own `lang`. Hosts own persistence; the chrome copy is shared.
+ * its own `lang`. Hosts own persistence and the button's look; the chrome
+ * copy is shared.
  */
 export default function LocaleSwitcher({
   options,
@@ -160,6 +189,10 @@ export default function LocaleSwitcher({
   persistence = 'device',
   display = 'responsive',
   searchable = false,
+  variant = 'text',
+  color = 'dynamic',
+  size = 'sm',
+  className,
   side = 'bottom',
   align = 'end',
   defaultOpen,
@@ -224,11 +257,7 @@ export default function LocaleSwitcher({
   });
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const responsive = display === 'responsive';
-  const globe = (
-    <span aria-hidden className="leading-none">
-      🌐
-    </span>
-  );
+  const globe = <Globe aria-hidden />;
 
   return (
     <Combobox.Root
@@ -264,11 +293,12 @@ export default function LocaleSwitcher({
         <Combobox.Trigger
           render={
             <IconButton
-              variant="outline"
-              color="dynamic"
-              size="sm"
+              variant={variant}
+              color={color}
+              size={size}
               icon={globe}
               aria-label={triggerName}
+              className={className}
             />
           }
         />
@@ -277,13 +307,15 @@ export default function LocaleSwitcher({
           aria-label={triggerName}
           render={
             <Button
-              variant="outline"
-              color="dynamic"
-              size="sm"
+              variant={variant}
+              color={color}
+              size={size}
               icon={globe}
               className={cx(
                 'shrink-0 rounded-full',
                 responsive && RESPONSIVE_ICON_ONLY_TRIGGER,
+                responsive && RESPONSIVE_ICON_ONLY_WIDTH[size ?? 'sm'],
+                className,
               )}
             />
           }

@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
-import InterviewerLocaleSwitcher from '~/i18n/InterviewerLocaleSwitcher';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -303,7 +302,7 @@ export function StatusRowView({
   return (
     <motion.div
       variants={variants}
-      className="font-monospace text-text/60 laptop:px-11 @container flex items-center justify-between gap-3 px-6 pb-4 text-xs"
+      className="font-monospace text-text/60 laptop:px-11 flex items-center justify-between gap-3 px-6 pb-4 text-xs"
     >
       <Link
         href="/data"
@@ -413,7 +412,6 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
-        <InterviewerLocaleSwitcher />
         {versionSlot ?? (
           <span>
             {intl.formatMessage(messages.interviewerAPPVERSION, {

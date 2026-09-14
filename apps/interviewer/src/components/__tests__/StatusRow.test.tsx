@@ -272,7 +272,7 @@ describe('StatusRow', () => {
       />,
     );
 
-    // Tab order: counts, encryption, storage, then the language picker.
+    // Tab order: counts, encryption, then storage.
     await user.tab();
     await user.tab();
     expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
