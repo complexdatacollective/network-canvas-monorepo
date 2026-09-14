@@ -79,9 +79,7 @@ describe('the questions an ordinal bin asks', () => {
         name: 'Change this attribute’s values',
       }),
     ).toBeInTheDocument();
-    expect(
-      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
-    ).toBeNull();
+    expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
   });
 
   /**

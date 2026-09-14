@@ -2046,14 +2046,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     const dialog = await openField(harness, 'Edit field');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
-    );
-    await screen.findByRole('button', { name: 'Save validation' });
-    await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      dialog.getByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Save validation' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -2190,14 +2186,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     const dialog = await openField(harness, 'Edit field');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
-    );
-    await screen.findByRole('button', { name: 'Save validation' });
-    await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      dialog.getByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Save validation' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -2625,7 +2617,7 @@ describe('a codebook editor open over a row when its section goes', () => {
     harness.receiveCodebookUpdate({ node: { person: null } });
   };
 
-  it('keeps the rules editor on screen, with its draft, and refuses the save', async () => {
+  it('takes the validation section down with the codebook it writes to', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -2633,25 +2625,24 @@ describe('a codebook editor open over a row when its section goes', () => {
 
     const dialog = await openField(harness, 'Edit field');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+      dialog.getByRole('switch', { name: 'Validation' }),
     );
-    await screen.findByRole('button', { name: 'Save validation' });
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
     deleteThePersonType(harness);
 
-    // Unable to write it, which is what the missing section means...
+    // The rules belong to an attribute of a type that is no longer there, so
+    // there is nothing left for the section to be about...
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save validation' }),
-      ).toBeDisabled(),
+      expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull(),
     );
-    // ...and still on screen, still holding what the researcher had chosen.
+    // ...and the row dialog itself stays open, holding what the researcher was
+    // writing, exactly as it does for the editors beside it.
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
-    ).toBeChecked();
+      dialog.getByRole('textbox', { name: 'Question text' }),
+    ).toBeVisible();
   });
 
   it('keeps the attribute editor on screen, with its draft, and refuses the save', async () => {
@@ -2689,16 +2680,16 @@ describe('a codebook editor open over a row when its section goes', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Edit field');
+    const dialog = await openField(harness, 'Edit field', 1);
     expect(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
     ).toBeInTheDocument();
 
     deleteThePersonType(harness);
 
     await waitFor(() =>
       expect(
-        dialog.queryByRole('button', { name: 'Set rules for this answer' }),
+        dialog.queryByRole('button', { name: EDIT_ANSWER_LABELS }),
       ).toBeNull(),
     );
   });
@@ -2996,20 +2987,19 @@ describe('closing a codebook editor whose trigger has gone', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Edit field');
+    const dialog = await openField(harness, 'Edit field', 1);
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
     );
-    await screen.findByRole('button', { name: 'Save validation' });
+    await screen.findByRole('button', { name: 'Save attribute' });
 
-    const { relationship_to_ego: _gone, ...variables } =
-      personVariables(harness);
+    const { flagged: _gone, ...variables } = personVariables(harness);
     harness.receiveCodebookUpdate({
       node: { person: { ...personDocument(harness), variables } },
     });
     await waitFor(() =>
       expect(
-        dialog.queryByRole('button', { name: 'Set rules for this answer' }),
+        dialog.queryByRole('button', { name: EDIT_ANSWER_LABELS }),
       ).toBeNull(),
     );
 
@@ -3312,20 +3302,17 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     // Nothing has been written: there is no attribute to write to yet, and
-    // the row is what creates it.
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Required answer' }),
-      ).toBeNull(),
-    );
+    // the row is what creates it. The rule stays on screen where it was made.
+    expect(
+      screen.getByRole('switch', { name: 'Required answer' }),
+    ).toBeChecked();
     expect(inventedNickname(harness)).toBeUndefined();
 
     await harness.user.type(
@@ -3374,9 +3361,7 @@ describe('rules for the attribute a field is inventing', () => {
         name: 'Create this attribute and its values',
       }),
     ).toBeInTheDocument();
-    expect(
-      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
-    ).toBeNull();
+    expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
   });
 
   /**
@@ -3400,19 +3385,13 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Minimum text length' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
-      ).toBeNull(),
+      screen.getByRole('switch', { name: 'Minimum text length' }),
     );
 
     await harness.user.selectOptions(
@@ -3463,22 +3442,16 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Same as another attribute',
       }),
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Same as another attribute' }),
       'composerName',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Same as another attribute' }),
-      ).toBeNull(),
     );
 
     // And nothing is said about a change of kind the researcher never made.
@@ -3519,16 +3492,10 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
-      ).toBeNull(),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
 
     await harness.user.selectOptions(
@@ -3542,14 +3509,12 @@ describe('rules for the attribute a field is inventing', () => {
     ).toBeInTheDocument();
 
     // Written again, under the kind that takes it: the researcher has now seen
-    // the draft the row holds, so there is nothing left to report.
+    // the draft the row holds, so there is nothing left to report. The section
+    // stays open across the change of kind — only the rules on offer change —
+    // so the rule for a number is already in front of them.
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Minimum value' }),
     );
-    await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum value' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(
         dialog.queryByText(/Changing the kind of answer removed/),
@@ -3584,16 +3549,10 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
-      ).toBeNull(),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
 
     const kind = dialog.getByRole('combobox', { name: 'Kind of answer' });
@@ -3628,12 +3587,8 @@ describe('rules for the attribute a field is inventing', () => {
     // Written again, under the kind that takes it: the researcher has looked
     // at the draft the row holds, so there is nothing left to report.
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Minimum text length' }),
     );
-    await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(
         dialog.queryByText(/Changing the kind of answer removed/),
@@ -3655,16 +3610,10 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
-      ).toBeNull(),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
 
     await harness.user.selectOptions(
@@ -3701,16 +3650,10 @@ describe('rules for the attribute a field is inventing', () => {
 
     const dialog = await startInventing(harness, 'text');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('checkbox', { name: 'Required answer' }),
-      ).toBeNull(),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await harness.user.selectOptions(
@@ -3752,9 +3695,7 @@ describe('rules for the attribute a field is inventing', () => {
     expect(
       await dialog.findByRole('combobox', { name: 'Kind of answer' }),
     ).toHaveValue('');
-    expect(
-      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
-    ).toBeNull();
+    expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
   });
 });
 
@@ -3951,25 +3892,26 @@ describe('a codebook editor open over a row when its attribute is deleted', () =
    * The rules editor answers this for itself (`attributeUnavailableTitle`), so
    * the only thing to check there is that it is not told the same thing twice.
    */
-  it('leaves the rules editor to say it in its own words', async () => {
+  /**
+   * The rules are the attribute's own, so an attribute that is gone has no
+   * rules to show: the section goes with it rather than standing over nothing.
+   * And the row says nothing about it either — the sentence about a deleted
+   * attribute belongs to an editor that is still open on one.
+   */
+  it('takes the validation section down with the attribute it rules', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
 
     const dialog = await openField(harness, 'Edit field', 1);
-    await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
-    );
-    await screen.findByRole('button', { name: 'Save validation' });
+    expect(dialog.getByRole('switch', { name: 'Validation' })).toBeVisible();
 
     deleteFlagged(harness);
 
-    expect(
-      await screen.findByText(
-        'The latest entity data no longer contains this attribute.',
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull(),
+    );
     expect(
       screen.queryByText(
         'This attribute is no longer in the codebook, so these changes cannot be saved.',
@@ -4068,7 +4010,13 @@ describe('dismissing a codebook editor while its save is in flight', () => {
     );
   });
 
-  it('refuses every way out of the rules editor until it answers', async () => {
+  /**
+   * The nested validation section has no dialog of its own to escape, so what
+   * a held write must not do is take the rule off the screen: the switch the
+   * researcher moved stays where they left it, and the write lands when the
+   * host finally answers.
+   */
+  it('keeps a rule on screen while its write is still with the host', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -4077,22 +4025,15 @@ describe('dismissing a codebook editor while its save is in flight', () => {
 
     const dialog = await openField(harness, 'Edit field');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Set rules for this answer' }),
-    );
-    await screen.findByRole('button', { name: 'Save validation' });
-    await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      dialog.getByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Save validation' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
-    await harness.user.keyboard('{Escape}');
-    await harness.user.click(document.body);
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
-    ).toBeInTheDocument();
-    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+      dialog.getByRole('switch', { name: 'Required answer' }),
+    ).toBeChecked();
 
     release();
     await waitFor(() =>

@@ -13,8 +13,6 @@ import * as entityEditorStories from '../codebook/components/CodebookEntityEdito
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import * as variableEditorStories from '../codebook/components/VariableEditor.stories.tsx';
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
-import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
-import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { CodebookWriteOutcome } from '../codebook/writes.ts';
 import * as alterEdgeFormStories from '../editors/alter-edge-form/AlterEdgeFormStageEditor.stories.tsx';
 import * as alterFormStories from '../editors/alter-form/AlterFormStageEditor.stories.tsx';
@@ -194,30 +192,6 @@ describe('an editor opened in a dialog', () => {
     ]);
     await expectHeadingOrder(3);
   });
-
-  it('puts a validation editor under the dialog title and its alerts under itself', async () => {
-    render(
-      <Dialog open title="Edit validation" closeDialog={() => undefined}>
-        <CodebookVariableValidationEditor
-          openId="open-1"
-          subject={SUBJECT}
-          variableId="age"
-          // The attribute the editor was opened for is not in the entity data
-          // it was given, which is the alert this surface raises on its own.
-          authoritativeEntityDocument={personDocument()}
-          allSubjectVariables={{}}
-          onSubmitDocument={REFUSED}
-        />
-      </Dialog>,
-    );
-
-    expect(headingLadder()).toEqual([
-      'h2: Edit validation',
-      'h3: Edit validation for age',
-      'h4: Attribute unavailable',
-    ]);
-    await expectHeadingOrder(3);
-  });
 });
 
 describe('the stage editor shell', () => {
@@ -362,10 +336,6 @@ describe('every story of a surface that writes its own heading', () => {
   const stories = [
     ...from('VariableEditor', composeStories(variableEditorStories)),
     ...from('CodebookEntityEditor', composeStories(entityEditorStories)),
-    ...from(
-      'CodebookVariableValidationEditor',
-      composeStories(validationEditorStories),
-    ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
     // Every stage editor that has landed. An editor writes no heading of its

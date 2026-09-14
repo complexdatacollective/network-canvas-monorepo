@@ -13,14 +13,16 @@ import { type OptionRow } from './variables.js';
 //
 // - A form field row says which attribute it collects and how it asks for it.
 //   Everything ABOUT the attribute — its values, what its control accepts, the
-//   rules an answer must satisfy — belongs to the codebook and is reached
-//   through `AttributeCodebookControls`, rendered inside the row dialog as a
-//   row of buttons named for what they open.
-// - Those buttons are offered against an attribute that EXISTS. While one is
-//   still being invented the row holds a sentinel, so `Set rules for this
-//   answer` and `Set what this field accepts` are not on screen at all — which
-//   is why anything beyond values and scale labels needs the field to be added
-//   first and then reopened. See `addConfiguredFormField`'s two phases.
+//   rules an answer must satisfy — belongs to the codebook. Values and what a
+//   control accepts are reached through `AttributeCodebookControls`, rendered
+//   inside the row dialog as a row of buttons named for what they open; the
+//   rules are a nested "Validation" section at the end of the same dialog.
+// - Both are offered against an attribute that EXISTS. While one is still
+//   being invented the row holds a sentinel, so `Set what this field accepts`
+//   is not on screen at all and the Validation section is the draft one the
+//   row carries — which is why anything beyond values and scale labels needs
+//   the field to be added first and then reopened. See
+//   `addConfiguredFormField`'s two phases.
 // - "Create this attribute and its values" / "Create this attribute and what
 //   it accepts" are the exception: a list of answers and a scale cannot be
 //   made from a name, so those two are authored during creation (forms.ts's
@@ -50,23 +52,26 @@ export type FormFieldSpec = {
 
 /**
  * Open the rules a participant's answer has to satisfy, for the attribute the
- * given form-field dialog collects, and hand back the editor.
+ * given form-field dialog collects, and hand back the section holding them.
  *
- * The rules used to be a section of the field dialog itself. They are the
- * CODEBOOK's — one attribute is checked the same way wherever it is asked for
- * — so they now live behind this button, in an editor of their own
- * (`CodebookVariableValidationEditor`) whose own submit reads "Save
- * validation". The button is offered only for an attribute that already
- * exists, which is what makes this reachable from a reopened field and not
- * from the dialog that invents one.
+ * A nested, toggleable "Validation" section at the end of the field dialog, as
+ * Architect had it (`sections/ValidationSection.tsx`) — not a dialog of its
+ * own, and with no submit: the rules belong to the CODEBOOK attribute and each
+ * answerable change is written to it as the researcher makes it. The section is
+ * rendered only against an attribute that exists, which is what makes this
+ * reachable from a reopened field and not from the dialog that invents one.
+ *
+ * Switched on if it is not already: an attribute that arrives carrying rules
+ * has it open, and clicking then would clear them.
  */
 export async function openValidationSection(dialog: Locator): Promise<Locator> {
-  const label = 'Set rules for this answer';
-  await dialog.getByRole('button', { name: label, exact: true }).click();
-  // The editor takes the button's own words as its title
-  // (`AttributeCodebookControls`'s `editorTitle`), which is what tells it from
-  // the field dialog underneath while both are open.
-  const rules = dialog.page().getByRole('dialog', { name: label, exact: true });
+  const label = 'Validation';
+  const toggle = dialog.getByRole('switch', { name: label, exact: true });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute('aria-checked')) !== 'true') {
+    await toggle.click();
+  }
+  const rules = dialog.getByRole('region', { name: label, exact: true });
   await expect(rules).toBeVisible();
   return rules;
 }
@@ -230,13 +235,15 @@ export async function addConfiguredFormField(
 
   if (spec.required) {
     const rules = await openValidationSection(editDialog);
-    await rules
-      .getByRole('checkbox', { name: 'Required answer', exact: true })
-      .check();
-    await rules
-      .getByRole('button', { name: 'Save validation', exact: true })
-      .click();
-    await rules.waitFor({ state: 'detached' });
+    const required = rules.getByRole('switch', {
+      name: 'Required answer',
+      exact: true,
+    });
+    await required.click();
+    // The switch carries the rule, and the section writes it to the codebook
+    // as it moves — there is no submit to wait for, so what says the gesture
+    // landed is the switch holding it.
+    await expect(required).toBeChecked();
   }
 
   await editDialog.getByRole('button', { name: 'Save', exact: true }).click();

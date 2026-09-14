@@ -61,7 +61,7 @@ const messages = defineMessages({
 // rule at all and the row's labels inherited the page's dark text over a
 // slate-blue row: 2.67:1. Architect's token IS white, so this renders what
 // Architect already renders, and the package stops depending on an app theme.
-const MULTI_SELECT_RULE_CLASSES =
+export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) publish-colors text-white rounded z-1 transition-colors duration-300 ease-in-out';
 const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
 const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';

@@ -389,11 +389,6 @@ function ScaleField({
           variableField={SCALE_FIELD}
           committedVariable={committed}
           componentField={NO_ROW_COMPONENT}
-          // The participant taps a point and the value is written as it is,
-          // with nothing to check it — the schema says so by declaring this
-          // reference `unvalidatedAttribute` — so rules authored here would
-          // never run.
-          offerRules={false}
         />
       ) : (
         <LockedOptions options={locked} />

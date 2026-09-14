@@ -31,6 +31,8 @@ import {
   useCreateCodebookVariable,
   useWhereTheAnswerLands,
 } from '../../codebook/useCodebookVariableEdits.ts';
+import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
+import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
 import {
   type ParameterShape,
   parameterShapeFor,
@@ -722,6 +724,7 @@ function ComposerFieldPreviewPane({ item }: RowAsideProps) {
 function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const { readOnly } = useStageEditorForm();
   const { subject, rows, draftUnvalidated, renderedElsewhere, rowUnderEdit } =
     useComposerFormScope();
   const setRowValue = useFormStore((state) => state.setFieldValue);
@@ -852,6 +855,24 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       ? undefined
       : variables[chosen]?.type;
   const typeLabel = variableTypeLabel(attributeType ?? '');
+  /**
+   * What the validation section judges these rules against.
+   *
+   * This field keeps its own control and settings on the STAGE, and so do its
+   * siblings, so the codebook's renderings are not what the interview will
+   * run: judged by them, a contradiction this form can author goes unreported
+   * and a comparison its own controls make satisfiable is blocked.
+   */
+  const liveParameters = useRowValue(PARAMETERS_FIELD);
+  const stageRendering = useMemo(
+    () => ({
+      component: control,
+      parameters: liveParameters,
+      overlay: siblingRenderings,
+      unknownRenderings,
+    }),
+    [control, liveParameters, siblingRenderings, unknownRenderings],
+  );
   const controlOptions = useMemo(
     () =>
       // Everything a form can collect while the attribute is being invented:
@@ -1140,9 +1161,6 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
-        parametersField={PARAMETERS_FIELD}
-        siblingRenderings={siblingRenderings}
-        unknownRenderings={unknownRenderings}
         offerParameters={false}
         {...(inventing
           ? {
@@ -1197,6 +1215,32 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         inline
         initialValue={item[VALIDATION_HINTS_FIELD] === true}
       />
+      {/* The rules the participant's answer has to satisfy, last, as Architect
+          puts them (`sections/Form/FieldFields.tsx`). Judged against what THIS
+          form renders: the field keeps its own control and settings on the
+          stage, and a rule comparing this answer with another the same form
+          asks for is satisfiable or not in the renderings both arrive with. */}
+      {inventing
+        ? attributeType !== undefined && (
+            <DraftVariableValidationSection
+              entity={subject?.entity ?? 'node'}
+              variableType={attributeType}
+              variableName={inventedName}
+              rulesField={NEW_VARIABLE_VALIDATION}
+              initialValue={item[NEW_VARIABLE_VALIDATION]}
+              allVariables={variables}
+              stageRendering={stageRendering}
+              disabled={readOnly}
+            />
+          )
+        : chosen !== undefined &&
+          chosen !== '' && (
+            <CodebookVariableValidationSection
+              subject={subject}
+              variableId={chosen}
+              stageRendering={stageRendering}
+            />
+          )}
     </>
   );
 }

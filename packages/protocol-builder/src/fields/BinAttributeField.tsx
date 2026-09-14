@@ -287,13 +287,6 @@ export default function BinAttributeField({
           variableField={slot.name}
           committedVariable={committed}
           componentField={NO_ROW_COMPONENT}
-          // The bins themselves are filled by dragging, and the interview
-          // reads no rules on their way in — the schema says so by declaring
-          // this reference `unvalidatedAttribute`, and its own writer
-          // exclusivity then keeps a form from collecting the same attribute
-          // anywhere else. Only the follow-up answer is typed, so only the
-          // follow-up is offered rules to check it against.
-          offerRules={slot.writerClass === 'validated'}
         />
       ) : (
         <LockedOptions options={locked} />

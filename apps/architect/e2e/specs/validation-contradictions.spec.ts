@@ -1,5 +1,7 @@
 import { type Page } from '@playwright/test';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
@@ -14,6 +16,27 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
 // attribute exists and has a name.
 const INVERTED_BOUNDS =
   'The minimum and maximum rules for age leave no permitted answer. Adjust the bounds or the required-answer rule.';
+
+/**
+ * The rules the codebook holds for the `age` attribute, as the protocol has
+ * them right now.
+ *
+ * The attribute is written when the field ROW is saved, so it is there long
+ * before any rule is; `undefined` is "no rules on it", which is what a refused
+ * write leaves behind.
+ */
+function ageValidation(
+  protocol: CurrentProtocol,
+): Record<string, unknown> | undefined {
+  const variables = protocol.codebook.ego?.variables ?? {};
+  const age = Object.values(variables).find(
+    (variable) => variable.name === 'age',
+  );
+  if (!age || age.type !== 'number') {
+    throw new Error('expected a saved number variable named "age"');
+  }
+  return age.validation;
+}
 
 /**
  * An EgoForm carrying one number field on a new `age` attribute, left open.
@@ -45,10 +68,11 @@ async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
 /**
  * Reopen the field just added and open the codebook rules for its attribute.
  *
- * Two steps rather than one because the rules are the CODEBOOK's now: they are
- * offered against an attribute that exists, and while one is still being
- * invented the button that opens them is not on screen at all. So the field is
- * added first — which is what creates the attribute — and reopened.
+ * Two steps rather than one because the rules are the CODEBOOK's: the nested
+ * Validation section is rendered against an attribute that exists, and while
+ * one is still being invented the section the row shows holds a draft written
+ * with the create instead. So the field is added first — which is what creates
+ * the attribute — and reopened.
  */
 async function openAgeRules(editor: StageEditor) {
   const section = editor.section('Form configuration');
@@ -72,9 +96,9 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   const editor = await egoFormWithAgeField(architectPage);
   const { fieldDialog, rules } = await openAgeRules(editor);
 
-  // Each rule is a checkbox that switches it on, with the value beside it in
-  // a number input carrying the same (visually hidden) name — role tells the
-  // two apart (`VariableValidationEditor`).
+  // Each rule is a switch, with the value beside it in a number input carrying
+  // the same (visually hidden) name — role tells the two apart
+  // (`VariableValidationEditor`, `ValidationRule`).
   const minValue = rules.getByRole('spinbutton', {
     name: 'Minimum value',
     exact: true,
@@ -83,22 +107,18 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     name: 'Maximum value',
     exact: true,
   });
-  const saveRules = rules.getByRole('button', {
-    name: 'Save validation',
-    exact: true,
-  });
 
   await rules
-    .getByRole('checkbox', { name: 'Minimum value', exact: true })
-    .check();
+    .getByRole('switch', { name: 'Minimum value', exact: true })
+    .click();
   await minValue.fill('10');
   await minValue.blur();
 
   // Attempt maxValue 2 — the reason must be shown, and the value must be held
   // for correction rather than dropped.
   await rules
-    .getByRole('checkbox', { name: 'Maximum value', exact: true })
-    .check();
+    .getByRole('switch', { name: 'Maximum value', exact: true })
+    .click();
   await maxValue.fill('2');
   // A rule's number is held as typing and commits when the researcher has
   // finished with it — raising a maximum from 5 to 40 passes through 4, and a
@@ -106,19 +126,19 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // blur is what puts 2 into the rule map for the pair to be judged.
   await maxValue.blur();
   await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
-  // The pair being refused is what the editor's own save reports now: it is
-  // held shut for as long as the rule map has an issue. (The old field-level
-  // `aria-invalid` marked a rule switched on with no value at all, which this
-  // is not — both ends carry a number.)
-  await expect(saveRules).toBeDisabled();
+  // The pair being refused is what keeps it out of the codebook: the section
+  // writes each answerable change as it is made and simply does not write one
+  // the attribute cannot carry, so the refusal is the record staying as it was
+  // while both ends are on screen.
   await expect(maxValue).toHaveValue('2');
+  expect(
+    ageValidation(await readProtocolJson(architectPage)),
+  ).not.toMatchObject({ maxValue: 2 });
 
   // Correcting the value clears the complaint and lets the write through.
   await maxValue.fill('20');
   await maxValue.blur();
-  await expect(saveRules).toBeEnabled();
-  await saveRules.click();
-  await rules.waitFor({ state: 'detached' });
+  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeHidden();
 
   await fieldDialog.getByRole('button', { name: 'Save', exact: true }).click();
   await fieldDialog.waitFor({ state: 'detached' });
@@ -129,14 +149,10 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // Confirm the corrected pair (not the rejected 10/2 pair) is what actually
   // persisted, proving the gate didn't just block the UI but let the fixed
   // rule through end-to-end.
-  const protocol = await readProtocolJson(architectPage);
-  const variables = protocol.codebook.ego?.variables ?? {};
-  const ageVariable = Object.values(variables).find((v) => v.name === 'age');
-  if (!ageVariable || ageVariable.type !== 'number') {
-    throw new Error('expected a saved number variable named "age"');
-  }
-  expect(ageVariable.validation?.minValue).toBe(10);
-  expect(ageVariable.validation?.maxValue).toBe(20);
+  expect(ageValidation(await readProtocolJson(architectPage))).toMatchObject({
+    minValue: 10,
+    maxValue: 20,
+  });
 });
 
 // Issue #1383. The spec above only proves the CORRECTED pair saves. The
@@ -163,24 +179,17 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   });
 
   await rules
-    .getByRole('checkbox', { name: 'Minimum value', exact: true })
-    .check();
+    .getByRole('switch', { name: 'Minimum value', exact: true })
+    .click();
   await minValue.fill('100');
   await minValue.blur();
   await rules
-    .getByRole('checkbox', { name: 'Maximum value', exact: true })
-    .check();
+    .getByRole('switch', { name: 'Maximum value', exact: true })
+    .click();
   await maxValue.fill('50');
   await maxValue.blur();
 
-  // Attempt the save without correcting anything.
-  const saveRules = rules.getByRole('button', {
-    name: 'Save validation',
-    exact: true,
-  });
-  await expect(saveRules).toBeDisabled();
-
-  // The editor stays open with both entered values intact, and says why.
+  // The section stays open with both entered values intact, and says why.
   await expect(rules).toBeVisible();
   await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
   await expect(minValue).toHaveValue('100');
@@ -191,14 +200,9 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   // stage that collects it. The refused rule map is not: neither bound reached
   // it, which is exactly the failure #1383 was filed for — the editor closing,
   // the save succeeding, and the offending rule gone without a word.
-  const protocol = await readProtocolJson(architectPage);
-  const variables = protocol.codebook.ego?.variables ?? {};
-  const ageVariable = Object.values(variables).find((v) => v.name === 'age');
-  if (!ageVariable || ageVariable.type !== 'number') {
-    throw new Error('expected a saved number variable named "age"');
-  }
-  expect(ageVariable.validation?.minValue).toBeUndefined();
-  expect(ageVariable.validation?.maxValue).toBeUndefined();
+  const validation = ageValidation(await readProtocolJson(architectPage));
+  expect(validation?.minValue).toBeUndefined();
+  expect(validation?.maxValue).toBeUndefined();
 });
 
 // Issue #1383. `Café` written with the precomposed U+00E9 and `Café` written

@@ -32,6 +32,8 @@ import {
   useSetVariableComponent,
   useWhereTheAnswerLands,
 } from '../../codebook/useCodebookVariableEdits.ts';
+import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
+import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -1329,7 +1331,18 @@ function hasUnvalidatedUseFor(
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
+  const protocolContext = useProtocolContext();
+  const { readOnly } = useStageEditorForm();
   const { subject, rowUnderEdit } = useFormFieldsScope();
+  // The attributes a comparison rule may be pointed at, for the validation
+  // section below.
+  const subjectVariables = useMemo(
+    () =>
+      subject === undefined
+        ? {}
+        : variablesForSubject(protocolContext, subject),
+    [protocolContext, subject],
+  );
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
   const inventedName =
@@ -1446,6 +1459,32 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           initialValue={item.showValidationHints === true}
         />
       </Section>
+      {/* Architect's own last section of this dialog
+          (`sections/Form/FieldFields.tsx`): the rules the participant's answer
+          has to satisfy, authored where the question is rather than behind a
+          button. They belong to the codebook attribute, so a bound attribute's
+          rules commit under the codebook section's own lock; an attribute this
+          row is still inventing has no record to write to, and its rules ride
+          along with the create. */}
+      {inventing
+        ? isCollectableType(newType) &&
+          !inventingInTheEditor && (
+            <DraftVariableValidationSection
+              entity={subject?.entity ?? 'node'}
+              variableType={newType}
+              variableName={inventedName}
+              rulesField={NEW_VARIABLE_VALIDATION}
+              initialValue={item[NEW_VARIABLE_VALIDATION]}
+              allVariables={subjectVariables}
+              disabled={readOnly}
+            />
+          )
+        : control.chosen !== '' && (
+            <CodebookVariableValidationSection
+              subject={subject}
+              variableId={control.chosen}
+            />
+          )}
     </>
   );
 }

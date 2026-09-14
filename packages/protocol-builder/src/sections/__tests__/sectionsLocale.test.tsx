@@ -714,10 +714,10 @@ describe('the form-fields row dialog, read in Spanish', () => {
         name: 'Cambiar los valores de este atributo',
       }),
     ).toBeInTheDocument();
+    // And the rules the answer has to satisfy, in the nested section this
+    // dialog ends with rather than behind a button of their own.
     expect(
-      dialog.getByRole('button', {
-        name: 'Definir reglas para esta respuesta',
-      }),
+      dialog.getByRole('switch', { name: 'Validación' }),
     ).toBeInTheDocument();
   });
 
@@ -733,10 +733,10 @@ describe('the form-fields row dialog, read in Spanish', () => {
         name: 'Cambiar las etiquetas de respuesta de este atributo',
       }),
     ).toBeInTheDocument();
+    // And the rules the answer has to satisfy, in the nested section this
+    // dialog ends with rather than behind a button of their own.
     expect(
-      dialog.getByRole('button', {
-        name: 'Definir reglas para esta respuesta',
-      }),
+      dialog.getByRole('switch', { name: 'Validación' }),
     ).toBeInTheDocument();
   });
 

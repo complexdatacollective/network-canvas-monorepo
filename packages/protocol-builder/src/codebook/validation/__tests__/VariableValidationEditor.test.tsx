@@ -25,7 +25,7 @@ describe('VariableValidationEditor', () => {
       />,
     );
 
-    await user.click(screen.getByRole('checkbox', { name: 'Minimum value' }));
+    await user.click(screen.getByRole('switch', { name: 'Minimum value' }));
     expect(onChange).toHaveBeenLastCalledWith({ minValue: 0 });
 
     rerender(
@@ -55,7 +55,9 @@ describe('VariableValidationEditor', () => {
         onChange={onChange}
       />,
     );
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveAccessibleDescription(
       'Enter a value for "Minimum value", or switch the rule off.',
     );
   });
@@ -82,7 +84,7 @@ describe('VariableValidationEditor', () => {
       }),
     ).toBeInTheDocument();
     expect(target).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(target).toHaveAccessibleDescription(
       'The selected comparison attribute no longer exists.',
     );
   });
@@ -115,7 +117,7 @@ describe('VariableValidationEditor', () => {
       />,
     );
     expect(
-      screen.queryByRole('checkbox', { name: 'Unique value' }),
+      screen.queryByRole('switch', { name: 'Unique value' }),
     ).not.toBeInTheDocument();
   });
 
@@ -125,8 +127,8 @@ describe('VariableValidationEditor', () => {
    * for the outline and for `focusFirstError` and state nothing, and standing
    * the editor down for that would leave a researcher with no sentence at all.
    */
-  it('keeps its verdict when the host marks it invalid but states nothing', () => {
-    const { container } = render(
+  it('names every unanswered rule as soon as the host refuses the map', () => {
+    render(
       <VariableValidationEditor
         entity="node"
         variableType="number"
@@ -138,22 +140,52 @@ describe('VariableValidationEditor', () => {
       />,
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Enter a value for "Minimum value", or switch the rule off.',
-    );
     expect(
-      container.querySelector('[aria-invalid="true"]'),
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
     ).toHaveAccessibleDescription(
       'Enter a value for "Minimum value", or switch the rule off.',
     );
   });
 
   /**
-   * And where the field IS stating one, the editor says nothing of its own —
-   * but the refused control still describes the field's error region, which is
-   * where the sentence a researcher reads now lives.
+   * And until then it says nothing: naming a rule as unanswered the instant it
+   * is switched on scolds the researcher before they have been near its value
+   * control.
    */
-  it('stands its verdict down for the refusal the field states, and describes it', () => {
+  it('says nothing about a rule switched on and not yet answered', async () => {
+    const user = userEvent.setup();
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ minValue: null }}
+        onChange={() => undefined}
+      />,
+    );
+
+    const box = screen.getByRole('spinbutton', { name: 'Minimum value' });
+    expect(box).not.toHaveAccessibleDescription(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
+
+    // Leaving the box empty is the act that reveals it.
+    await user.click(box);
+    await user.tab();
+    expect(box).toHaveAccessibleDescription(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
+  });
+
+  /**
+   * The editor states no verdict of its own over the whole map: each row says
+   * what is wrong with itself, and the sentence about the map as a whole is
+   * the mounting field's, in its own error region. The editor's root carries
+   * both the refusal mark and the reference to that region, so everything that
+   * finds a refused control by `aria-invalid` finds the sentence with it.
+   */
+  it('passes the field’s own error region through on the refused root', () => {
     const { container } = render(
       <>
         <p id="host-error">The rules contradict each other.</p>
@@ -162,19 +194,61 @@ describe('VariableValidationEditor', () => {
           variableType="number"
           currentVariableId="age"
           allVariables={variables}
-          value={{ minValue: null }}
+          value={{ required: true }}
           onChange={() => undefined}
           aria-invalid
-          fieldIssue="The rules contradict each other."
           aria-describedby="host-error"
         />
       </>,
     );
 
-    expect(screen.queryByRole('alert')).toBeNull();
     expect(
       container.querySelector('[aria-invalid="true"]'),
     ).toHaveAccessibleDescription('The rules contradict each other.');
+  });
+
+  /**
+   * Architect names a comparison rule the researcher cannot switch on, and
+   * says which of the two reasons it is: nothing of the same kind to compare
+   * against, or nothing that could satisfy it.
+   */
+  it('says why a comparison rule cannot be switched on', () => {
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{}}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Different from another attribute' }),
+    ).toHaveAccessibleDescription(
+      'No other attribute of this type exists to compare against.',
+    );
+  });
+
+  /** A pair of bounds nothing can satisfy is stated on the row that made it. */
+  it('states a contradiction on the rule that carries it', () => {
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ minValue: 10, maxValue: 2 }}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum value' }),
+    ).toHaveAccessibleDescription(
+      'The minimum and maximum rules for Age leave no permitted answer. Adjust the bounds or the required-answer rule.',
+    );
   });
 
   it('is fully read-only when the host cannot edit the section', async () => {
@@ -192,7 +266,7 @@ describe('VariableValidationEditor', () => {
       />,
     );
 
-    const required = screen.getByRole('checkbox', { name: 'Required answer' });
+    const required = screen.getByRole('switch', { name: 'Required answer' });
     expect(required).toBeDisabled();
     await user.click(required);
     expect(onChange).not.toHaveBeenCalled();
@@ -326,7 +400,7 @@ describe('VariableValidationEditor', () => {
     ).toHaveValue(12);
     // Leaving the box commits it, and then the rule is switched on: neither
     // carries the forty that was typed over the five.
-    await user.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    await user.click(screen.getByRole('switch', { name: 'Required answer' }));
     expect(onChange.mock.calls.map(([map]) => map)).toEqual([
       { maxValue: 12 },
       { maxValue: 12, required: true },
