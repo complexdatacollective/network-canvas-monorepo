@@ -14,12 +14,6 @@ import {
   ProtocolAssemblyError,
 } from '@codaco/studio-sync/protocol-document';
 import {
-  type SectionIssue,
-  SectionValidationFailedError,
-  validateSection,
-  validateStageSectionIdentity,
-} from '@codaco/studio-sync/section-validation';
-import {
   parseSectionId,
   sectionId as makeSectionId,
 } from '@codaco/studio-sync/taxonomy';
@@ -33,6 +27,12 @@ import {
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
+import {
+  type SectionIssue,
+  SectionValidationFailedError,
+  validateSection,
+  validateStageSectionIdentity,
+} from './validate.ts';
 import { versionContentHash } from './version-hash.ts';
 
 /** @public */

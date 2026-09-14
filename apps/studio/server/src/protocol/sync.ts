@@ -1,4 +1,3 @@
-import { assertSectionValid } from '@codaco/studio-sync/section-validation';
 import {
   SyncServer,
   type SyncTransactionExecutor,
@@ -8,6 +7,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { NoAuditTransactionOperation } from '../audit/transaction-policy.ts';
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import { assertSectionValid } from './validate.ts';
 
 export const SYNC_TRANSACTION_POLICIES = {
   createDraft: 'sync.createDraft',
