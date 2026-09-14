@@ -66,6 +66,11 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 - **\`variant\`** / **\`color\`** / **\`size\`** — the pill's \`Button\`
   look, so it matches the controls beside it. Defaults to a \`text\` button
   in \`color="dynamic"\`, which takes the colour of the bar it sits on.
+- **\`renderTrigger\`** — an element to render the trigger as instead of
+  that \`Button\`, for a host whose bar dresses its own controls (Architect's
+  header, where the switcher is one item in a navigation list). It receives
+  the accessible name and combobox state; the globe, and the language name
+  and chevron unless \`display\` is \`icon\`, are its children.
 `;
 
 const meta = {
@@ -309,6 +314,40 @@ export const IconOnly: Story = {
       within(popup).getByRole('option', { name: 'English' }),
     );
     await expect(trigger).toHaveAccessibleName('Interface language: English');
+  },
+};
+
+/**
+ * `renderTrigger`: the host's own element stands in for the `Button`, here a
+ * bare button styled like the links it sits among. The switcher still names
+ * it and puts the globe inside it.
+ */
+export const HostTrigger: Story = {
+  args: {
+    display: 'icon',
+    value: 'es',
+    renderTrigger: (
+      // Named by the switcher at runtime.
+      // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+      <button
+        type="button"
+        className="focusable hover:text-accent inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-base leading-none font-semibold text-current transition-colors [&>.lucide]:size-4"
+      />
+    ),
+  },
+  render: (args) => (
+    <nav aria-label="Example" className="flex items-center gap-7">
+      <a href="#docs" className="text-base leading-none font-semibold">
+        Docs
+      </a>
+      <ControlledSwitcher {...args} />
+    </nav>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await expect(trigger).toHaveAccessibleName('Interface language: Español');
+    await expect(trigger).toHaveClass('font-semibold');
+    await expect(trigger.querySelector('svg.lucide-globe')).toBeVisible();
   },
 };
 

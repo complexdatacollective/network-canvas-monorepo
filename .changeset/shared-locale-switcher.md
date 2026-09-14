@@ -22,4 +22,7 @@ For anyone building on `@codaco/fresco-ui`: `navigation/LocaleSwitcher` is the
 new component. It takes the app's locale registry, the stored preference, the
 locale automatic resolves to, the host's save state and whether it persists
 to a device or an account, and a host-supplied footer note; its own chrome is translated once under `frescoUi.localeSwitcher.*`. A search
-box appears once the list is longer than six entries.
+box appears once the list is longer than six entries. A host whose bar
+dresses its own controls hands the trigger element in as `renderTrigger`;
+Architect's header does, so the pill sits in its navigation list styled like
+the links beside it.

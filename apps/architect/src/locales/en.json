@@ -1911,6 +1911,10 @@
     "defaultMessage": "Mobile navigation",
     "description": "The aria-label text in components / ProjectNav / NavShell."
   },
+  "architect.projectNav.navShell.navigation": {
+    "defaultMessage": "Main navigation",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
   "architect.projectNav.navShell.openMenu": {
     "defaultMessage": "Open menu",
     "description": "The aria-label text in components / ProjectNav / NavShell."

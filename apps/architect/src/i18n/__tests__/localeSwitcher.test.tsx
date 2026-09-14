@@ -35,7 +35,7 @@ const open = async () => {
 const renderAndOpen = async () => {
   render(
     <ArchitectI18nProvider>
-      <ArchitectLocaleSwitcher />
+      <ArchitectLocaleSwitcher className="" />
     </ArchitectI18nProvider>,
   );
   return open();

@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 const openFileDialogMock = vi.hoisted(() => vi.fn());
@@ -27,9 +27,21 @@ vi.mock('~/components/NewProtocolDialog', () => ({
   default: () => null,
 }));
 
-vi.mock('~/components/ProjectNav/NavShell', () => ({
-  default: ({ trailing }: { trailing: ReactNode }) => <nav>{trailing}</nav>,
-}));
+// The items are `NavLink`s, which need the navigation menu around them.
+vi.mock('~/components/ProjectNav/NavShell', async () => {
+  const { NavigationMenu } = await import('@base-ui/react/navigation-menu');
+  return {
+    default: ({ items }: { items: ReactElement[] }) => (
+      <NavigationMenu.Root>
+        <NavigationMenu.List>
+          {items.map((item) => (
+            <NavigationMenu.Item key={item.key}>{item}</NavigationMenu.Item>
+          ))}
+        </NavigationMenu.List>
+      </NavigationMenu.Root>
+    ),
+  };
+});
 
 const showProtocolOpenResultDialogMock = vi.hoisted(() => vi.fn());
 

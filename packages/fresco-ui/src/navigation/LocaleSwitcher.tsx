@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   type ComponentPropsWithRef,
+  type ReactElement,
   useEffect,
   useId,
   useRef,
@@ -168,6 +169,14 @@ export type LocaleSwitcherProps = {
   size?: ButtonProps['size'];
   /** Extra classes for the trigger button. */
   className?: string;
+  /**
+   * The trigger element, in place of the `Button` that `variant`, `color`,
+   * `size` and `className` style: for a host whose bar dresses its own
+   * controls, such as a navigation list the switcher sits in among links. It
+   * receives the accessible name and the combobox state; the globe, and the
+   * language name and chevron unless `display` is `icon`, are its children.
+   */
+  renderTrigger?: ReactElement;
   side?: 'top' | 'bottom';
   align?: 'start' | 'center' | 'end';
   /** Open on first render; for documentation, hosts never need it. */
@@ -193,6 +202,7 @@ export default function LocaleSwitcher({
   color = 'dynamic',
   size = 'sm',
   className,
+  renderTrigger,
   side = 'bottom',
   align = 'end',
   defaultOpen,
@@ -291,35 +301,43 @@ export default function LocaleSwitcher({
     >
       {display === 'icon' ? (
         <Combobox.Trigger
+          aria-label={triggerName}
           render={
-            <IconButton
-              variant={variant}
-              color={color}
-              size={size}
-              icon={globe}
-              aria-label={triggerName}
-              className={className}
-            />
+            renderTrigger ?? (
+              <IconButton
+                variant={variant}
+                color={color}
+                size={size}
+                icon={globe}
+                aria-label={triggerName}
+                className={className}
+              />
+            )
           }
-        />
+        >
+          {renderTrigger ? globe : null}
+        </Combobox.Trigger>
       ) : (
         <Combobox.Trigger
           aria-label={triggerName}
           render={
-            <Button
-              variant={variant}
-              color={color}
-              size={size}
-              icon={globe}
-              className={cx(
-                'shrink-0 rounded-full',
-                responsive && RESPONSIVE_ICON_ONLY_TRIGGER,
-                responsive && RESPONSIVE_ICON_ONLY_WIDTH[size ?? 'sm'],
-                className,
-              )}
-            />
+            renderTrigger ?? (
+              <Button
+                variant={variant}
+                color={color}
+                size={size}
+                icon={globe}
+                className={cx(
+                  'shrink-0 rounded-full',
+                  responsive && RESPONSIVE_ICON_ONLY_TRIGGER,
+                  responsive && RESPONSIVE_ICON_ONLY_WIDTH[size ?? 'sm'],
+                  className,
+                )}
+              />
+            )
           }
         >
+          {renderTrigger ? globe : null}
           <span
             className={cx('min-w-0 truncate', responsive && RESPONSIVE_HIDDEN)}
             lang={selected.value ?? undefined}
