@@ -315,10 +315,18 @@ export function createInvitationDeliveryHandler(
 export function registerInvitationDelivery(
   boss: PgBoss,
   deps: InvitationDeliveryHandlerDeps,
+  options: { pollingIntervalSeconds?: number } = {},
 ): Promise<string> {
   return boss.work(
     QUEUE,
-    { batchSize: 1, includeMetadata: true, pollingIntervalSeconds: 2 },
+    {
+      batchSize: 1,
+      includeMetadata: true,
+      // Polling is the fallback behind LISTEN/NOTIFY, so the cadence is the
+      // worker's to choose; the tests turn it up to prove the notification
+      // path is what delivers.
+      pollingIntervalSeconds: options.pollingIntervalSeconds ?? 2,
+    },
     createInvitationDeliveryHandler(deps),
   );
 }

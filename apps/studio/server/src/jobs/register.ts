@@ -2,6 +2,7 @@ import type { PgBoss } from 'pg-boss';
 
 import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { registerInvitationDelivery } from './handlers/invitation-delivery.ts';
 import { createProtocolStoreGcHandler } from './handlers/protocol-store-gc.ts';
 import { createSignInEmailHandler } from './handlers/sign-in-email.ts';
 import type { JobWorkerDeps } from './worker.ts';
@@ -69,10 +70,17 @@ export async function registerJobs(
     createSignInEmailHandler({ mailer: deps.mailer }),
   );
 
-  // SEAM: invitation delivery registers here, beside the sign-in handler and
-  // inside this same branch — both queues are mail, so both are worked only
-  // when a transport exists, and MAIL_QUEUES above already names them as the
-  // pair that goes unworked without one. Its handler lands in
-  // handlers/invitation-delivery.ts and takes `deps.maintenancePool` and
-  // `deps.publicBaseUrl` beside the mailer; nothing else here has to change.
+  // Both mail queues are worked only when a transport exists — MAIL_QUEUES
+  // above names them as the pair that goes unworked without one. The handler
+  // runs as the maintenance role on `deps.maintenancePool` and mints the
+  // invitation links against `deps.publicBaseUrl`.
+  await registerInvitationDelivery(
+    boss,
+    {
+      maintenancePool: deps.maintenancePool,
+      mailer: deps.mailer,
+      publicBaseUrl: deps.publicBaseUrl,
+    },
+    { pollingIntervalSeconds },
+  );
 }

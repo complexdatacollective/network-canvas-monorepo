@@ -179,20 +179,22 @@ describe.skipIf(!db)('createJobWorker', () => {
   });
 
   it('waits out a hung handler for the scratch window, not the deployed one', async () => {
-    const worker = scratch.createJobWorker({ mailer: silentMailer });
-    await worker.start();
-
     let entered = false;
-    await worker.boss.work(
-      'protocol-store-gc',
-      { pollingIntervalSeconds: 0.5 },
-      () => {
+    // The hang lives in the transport, not in a second handler on the queue:
+    // the worker's own registration already works every queue, and a handler
+    // registered beside it would race it for the job.
+    const hungMailer: StudioMailer = {
+      ...silentMailer,
+      sendMagicLink: () => {
         entered = true;
         // Never settles: the handler a graceful stop has to give up on.
         return new Promise(() => undefined);
       },
-    );
-    await enqueueGc();
+    };
+    const worker = scratch.createJobWorker({ mailer: hungMailer });
+    await worker.start();
+
+    await enqueueSignIn();
     await vi.waitFor(() => expect(entered).toBe(true), {
       timeout: 15_000,
       interval: 25,
@@ -232,12 +234,10 @@ describe.skipIf(!db)('createJobWorker', () => {
     const worker = scratch.createJobWorker({ mailer: silentMailer });
     await worker.start();
     try {
-      await worker.boss.work(
-        'protocol-store-gc',
-        { pollingIntervalSeconds: 0.5 },
-        () => Promise.resolve(),
-      );
-      const jobId = await enqueueGc();
+      // Worked by the handler the worker registers for itself; any queue's
+      // fetch and completion go through pg-boss's own pool, which is the
+      // session under test.
+      const jobId = await enqueueSignIn();
       await vi.waitFor(
         async () => expect(await jobState(jobId)).toBe('completed'),
         { timeout: 15_000, interval: 100 },
@@ -258,39 +258,30 @@ describe.skipIf(!db)('createJobWorker', () => {
   });
 
   it('is woken by a notification rather than its polling interval', async () => {
-    const worker = scratch.createJobWorker({ mailer: silentMailer });
-    await worker.start();
-    try {
-      let picked: number | undefined;
-      // Thirty seconds is longer than this case is allowed to take, so a
-      // pickup inside it can only have come from the NOTIFY the insert fires
-      // for a notify-enabled queue — which is what a sign-in link, valid for
-      // minutes, depends on.
-      await worker.boss.work(
-        'sign-in-email',
-        { pollingIntervalSeconds: 30 },
-        () => {
+    let picked: number | undefined;
+    // Thirty seconds is longer than this case is allowed to take, so a pickup
+    // inside it can only have come from the NOTIFY the insert fires for a
+    // notify-enabled queue — which is what a sign-in link, valid for minutes,
+    // depends on. The cadence goes on the worker, whose own registration is
+    // the only handler on the queue.
+    const worker = scratch.createJobWorker({
+      mailer: {
+        ...silentMailer,
+        sendMagicLink: () => {
           picked = Date.now();
           return Promise.resolve();
         },
-      );
+      },
+      workPollingIntervalSeconds: 30,
+    });
+    await worker.start();
+    try {
       // Past whatever poll registering a worker performs for itself, so the
       // job below is created with no poll of its own coming.
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const client = await scratch.app.connect();
-      let queued: number;
-      try {
-        await client.query('BEGIN');
-        await jobs.enqueue(client, 'sign-in-email', {
-          email: 'researcher@example.org',
-          url: 'https://studio.example.org/api/auth/magic-link/verify?token=t',
-        });
-        await client.query('COMMIT');
-        queued = Date.now();
-      } finally {
-        client.release();
-      }
+      await enqueueSignIn();
+      const queued = Date.now();
 
       await vi.waitFor(() => expect(picked).toBeDefined(), {
         timeout: 10_000,
