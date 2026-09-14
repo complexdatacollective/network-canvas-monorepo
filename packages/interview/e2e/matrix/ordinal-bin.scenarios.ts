@@ -106,14 +106,14 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             'these',
           );
 
-          // Core drag + network write. The "**Very** close" bin's DnD
-          // announcement carries the raw markdown label ("Container for the
-          // value '**Very** close'"), so keyboard-DnD target matching can't
-          // resolve it — bin the node in a plain-label bin instead.
-          await stage.ordinalBin.dragNodeToBin('Alice', 'Close');
-          expect(await stage.ordinalBin.isNodeInBin('Alice', 'Close')).toBe(
-            true,
-          );
+          // Core drag + network write, into the bin whose label carries
+          // markdown. Its DnD announcement names the label's text rather than
+          // its source ("Container for the value 'Very close'"), so keyboard
+          // DnD can resolve the target like any other bin.
+          await stage.ordinalBin.dragNodeToBin('Alice', 'Very close');
+          expect(
+            await stage.ordinalBin.isNodeInBin('Alice', 'Very close'),
+          ).toBe(true);
           expect(await stage.ordinalBin.getUnplacedCount()).toBe(2);
 
           const network = await protocol.getNetworkState(interview.interviewId);
@@ -121,7 +121,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             (n) => n[entityPrimaryKeyProperty] === aliceUid,
           );
           expect(alice?.[entityAttributesProperty][nameVarId]).toBe('Alice');
-          expect(alice?.[entityAttributesProperty][closenessVarId]).toBe(2);
+          expect(alice?.[entityAttributesProperty][closenessVarId]).toBe(3);
 
           // Dead config: label/interviewScript never render in the stage region
           await expect(page.getByText('Rate Closeness')).toHaveCount(0);

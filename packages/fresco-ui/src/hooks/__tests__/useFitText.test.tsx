@@ -23,12 +23,14 @@ function Probe({
   text,
   enabled,
   steps = STEPS,
+  fontSize,
   lineHeight,
 }: {
   text: string;
   enabled?: boolean;
   steps?: readonly string[];
-  /** Resolvable line-height, so the per-line height budget has lines to count. */
+  /** Resolvable type metrics, so the half-leading budget is measurable. */
+  fontSize?: string;
   lineHeight?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,7 +43,7 @@ function Probe({
 
   return (
     <div ref={containerRef}>
-      <span ref={ref} style={lineHeight ? { lineHeight } : undefined}>
+      <span ref={ref} style={lineHeight ? { fontSize, lineHeight } : undefined}>
         {text}
       </span>
       <output data-testid="state">{`${stepIndex}:${isTruncated}`}</output>
@@ -123,13 +125,11 @@ describe('useFitText', () => {
     await waitFor(() => expect(state()).toBe('0:true'));
   });
 
-  it('scales its height slack to the line box, not to a fixed number of pixels', async () => {
-    // A box sized by a grid track rather than by whole lines can hide a third of
-    // its last line inside a fixed six-pixel budget, while a single 42px line
-    // that fits exactly still measures two pixels over from integer scroll
-    // metrics. So the slack is the leading under the last line, floored at the
-    // rounding error: three pixels of a 15px line is clipping, and must step
-    // down.
+  it('takes its height slack from the half-leading, not from the line box', async () => {
+    // 12px type on a 15px line box (`leading-[1.25]`) leaves 1.5px of leading
+    // under the last line, so four pixels hidden is a clipped glyph and must
+    // step the ladder down. A budget taken from the line box would have allowed
+    // it.
     uninstallLabelMetrics();
     const defineMetric = (
       metric: string,
@@ -144,11 +144,10 @@ describe('useFitText', () => {
     defineMetric('scrollWidth', () => 100);
     defineMetric('clientHeight', () => 30);
     defineMetric('scrollHeight', function (this: HTMLElement) {
-      // 34 is four pixels over a 15px line box (slack 2.25) — real clipping.
       return this.className.includes('text-base') ? 34 : 30;
     });
 
-    render(<Probe text="x" lineHeight="15px" />);
+    render(<Probe text="x" fontSize="12px" lineHeight="15px" />);
 
     await waitFor(() => expect(state()).toBe('1:false'));
   });
@@ -176,10 +175,10 @@ describe('useFitText', () => {
     };
     defineMetric('clientWidth', () => 100);
     defineMetric('scrollWidth', () => 100);
-    defineMetric('clientHeight', () => 12);
-    defineMetric('scrollHeight', () => 12 + excess);
+    defineMetric('clientHeight', () => 15);
+    defineMetric('scrollHeight', () => 15 + excess);
 
-    render(<Probe text="x" lineHeight="12px" />);
+    render(<Probe text="x" fontSize="12px" lineHeight="15px" />);
     await waitFor(() => expect(state()).toBe('2:true'));
 
     excess = 2;
@@ -189,9 +188,10 @@ describe('useFitText', () => {
   });
 
   it('lets a tall line spend its own leading before stepping down', async () => {
-    // The slack is the leading under the last line, so a 40px line box absorbs
-    // several pixels that would be real clipping on a 12px one. A flat
-    // pixel budget would send this rung down for nothing.
+    // 32px type on a 40px line box leaves 4px of leading under the last line,
+    // so three pixels hidden is empty space, not a glyph. The same three pixels
+    // on 12px type would be clipping. A flat pixel budget cannot tell them
+    // apart and would send this rung down for nothing.
     uninstallLabelMetrics();
     let excess = 200;
     const defineMetric = (
@@ -208,13 +208,20 @@ describe('useFitText', () => {
     defineMetric('clientHeight', () => 40);
     defineMetric('scrollHeight', () => 40 + excess);
 
-    render(<Probe text="x" lineHeight="40px" />);
+    render(<Probe text="x" fontSize="32px" lineHeight="40px" />);
     await waitFor(() => expect(state()).toBe('2:true'));
 
-    excess = 5;
+    excess = 3;
     fireEvent.resize(window);
 
     await waitFor(() => expect(state()).toBe('0:false'));
+
+    // Five pixels is past that leading, though — and a budget measured as a
+    // fraction of the 40px line box (15% is 6px) would wave it through.
+    excess = 5;
+    fireEvent.resize(window);
+
+    await waitFor(() => expect(state()).toBe('2:true'));
   });
 
   it('steps down for any width excess, and falls back to a fixed height budget without a line height', async () => {

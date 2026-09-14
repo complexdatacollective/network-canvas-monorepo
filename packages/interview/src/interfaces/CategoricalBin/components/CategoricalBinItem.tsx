@@ -90,7 +90,7 @@ export const getCatBinDropTargetId = (
  * fitted to a share of the bin decided by the node count, never by layout, so
  * the leftovers are the label's alone and reading them cannot change them.
  */
-const useSummaryFits = (
+export const useSummaryFits = (
   contentRef: RefObject<HTMLDivElement | null>,
   titleRef: RefObject<HTMLHeadingElement | null>,
   summaryRef: RefObject<HTMLDivElement | null>,
@@ -120,11 +120,16 @@ const useSummaryFits = (
     measure();
 
     if (typeof ResizeObserver === 'undefined') return undefined;
-    // The label's own box is observed too: a label that steps down a rung hands
-    // room back, and the summary should take it.
+    // All three are watched, for three different reasons: the bin resizes, a
+    // label that steps down a rung hands room back, and the summary's own text
+    // changes as people arrive and leave — a name replaced by a longer one can
+    // need a second line without anything else moving. Watching the summary
+    // cannot feed back, because what it is measured against is the room the
+    // other two leave, not its own box.
     const observer = new ResizeObserver(measure);
     observer.observe(content);
     observer.observe(title);
+    observer.observe(summary);
     return () => observer.disconnect();
   }, [contentRef, titleRef, summaryRef, hasSummary]);
 
