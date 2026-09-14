@@ -36,6 +36,7 @@ import {
 import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
 import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
 import {
+  isOptionListToWrite,
   optionsForShape,
   optionsShapeFor,
 } from '../../codebook/variableOptions.ts';
@@ -1126,6 +1127,18 @@ function useCommitFormField(
       // answer is required said it about the attribute being made, and a
       // second write afterwards is a save that can half succeed.
       const validation = value[NEW_VARIABLE_VALIDATION];
+      // And so do the two words a yes-or-no answer offers, for the same
+      // reason: they were written beside the question in the same gesture as
+      // the name, and a second write afterwards is a save that can half
+      // succeed. `optionsForShape` settles the one question the draft cannot —
+      // two blank fields are what a researcher who has written nothing sees,
+      // and an attribute that names neither answer is the one that offers Yes
+      // and No, which the schema spells as no `options` key at all.
+      const invented = optionsForShape(
+        optionsShapeFor(type, component),
+        value[ATTRIBUTE_OPTIONS_FIELD],
+        undefined,
+      );
       const outcome = await createVariable({
         name,
         type,
@@ -1133,6 +1146,7 @@ function useCommitFormField(
         ...(isValidationMap(validation) && Object.keys(validation).length > 0
           ? { validation }
           : {}),
+        ...(isOptionListToWrite(invented) ? { options: invented } : {}),
       });
       if (outcome.status === 'refused') {
         // On the picker, which is where the name was typed and the only
@@ -1521,6 +1535,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
+        {...(inventing && !inventingInTheEditor ? { invented: newType } : {})}
       />
       {/* Architect's own last section of this dialog
           (`sections/Form/FieldFields.tsx`): the rules the participant's answer
