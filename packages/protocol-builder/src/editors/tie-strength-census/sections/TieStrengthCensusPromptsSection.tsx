@@ -35,7 +35,9 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import AttributeCodebookControls from '../../../sections/AttributeCodebookControls.tsx';
+import AttributeCodebookControls, {
+  useRowValue,
+} from '../../../sections/AttributeCodebookControls.tsx';
 import AttributeValueFields, {
   attributeOptionsFieldFor,
 } from '../../../sections/AttributeValueFields.tsx';
@@ -325,12 +327,22 @@ function ScaleField({
     );
   }, [allVariables, identity.id, picked, protocolContext, subject]);
 
-  // Read from the codebook rather than from the row: the values belong to the
-  // attribute, so a collaborator adding a sixth changes what this stage shows.
+  // The list the researcher is LOOKING at. The points are edited inline in
+  // this dialog and saving closes it, so a warning counted from the stored
+  // list would appear only once they can no longer see the list it is about —
+  // which is after the decision it exists to inform.
+  //
+  // The codebook's own list stands in wherever there is no control holding
+  // one: an attribute whose values another interface owns is shown read-only,
+  // and a collaborator adding a sixth still changes what this stage draws.
   const pickedVariable =
     picked === undefined ? undefined : allVariables[picked];
-  const valueCount =
-    pickedVariable?.type === SCALE_TYPE ? pickedVariable.options.length : 0;
+  const draftedPoints = useRowValue(attributeOptionsFieldFor(SCALE_FIELD));
+  const valueCount = Array.isArray(draftedPoints)
+    ? draftedPoints.length
+    : pickedVariable?.type === SCALE_TYPE
+      ? pickedVariable.options.length
+      : 0;
 
   // An attribute whose VALUES another interface owns is still a legitimate
   // scale — a family pedigree's relationship kinds, say — but its points are

@@ -37,6 +37,33 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
       )
     : [];
 
+/**
+ * Adds a value to the attribute where the prompt itself edits it: the inline
+ * list under the picker, which opens each new row for editing and closes it
+ * again.
+ */
+async function addInlineValue(
+  harness: ReturnType<typeof renderStageEditor>,
+  values: ReturnType<typeof within>,
+  label: string,
+  value: number,
+) {
+  await harness.user.click(
+    values.getByRole('button', { name: 'Create new option' }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Label' }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: 'Value' }),
+    String(value),
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
+  );
+}
+
 describe('the questions an ordinal bin asks', () => {
   it('opens a prompt holding the scale and the gradient it was saved with', async () => {
     const harness = renderStageEditor(openSection());
@@ -253,6 +280,39 @@ describe('the questions an ordinal bin asks', () => {
     // The ordering the prompt does NOT have stays switched off, so "already
     // configured" is what opens a group rather than "the prompt was opened".
     expect(screen.getByRole('switch', { name: 'Bin order' })).not.toBeChecked();
+  });
+
+  /**
+   * The warning about more bins than fit is about the list the researcher is
+   * LOOKING at, not the one the codebook last stored.
+   *
+   * The values are edited inline in this very dialog and saving closes it, so
+   * a warning counted from the stored list would appear only after the
+   * researcher can no longer see the list it is about — which is after the
+   * decision it exists to inform.
+   */
+  it('warns about more bins than fit, before the prompt is saved', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const values = within(
+      await screen.findByRole('region', { name: 'Choice values' }),
+    );
+    // The fixture's attribute has three values, so five is still within what
+    // the screen draws and nothing is said yet.
+    await addInlineValue(harness, values, 'Yearly', 4);
+    await addInlineValue(harness, values, 'Never', 5);
+    expect(screen.queryByText('More bins than fit on one screen')).toBeNull();
+
+    await addInlineValue(harness, values, 'Not any more', 6);
+
+    expect(
+      await screen.findByText('More bins than fit on one screen'),
+    ).toBeInTheDocument();
+    // Said while the dialog is still open holding the list it is about.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('saves a gradient and a sort rule the researcher chose', async () => {

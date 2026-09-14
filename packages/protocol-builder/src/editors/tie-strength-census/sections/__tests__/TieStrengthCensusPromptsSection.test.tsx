@@ -65,6 +65,32 @@ async function addOption(
   );
 }
 
+/**
+ * Adds a point to the scale where the prompt itself edits it: the inline list
+ * under the picker, which opens each new row for editing and closes it again.
+ */
+async function addInlinePoint(
+  harness: StageEditorHarness,
+  values: ReturnType<typeof within>,
+  label: string,
+  value: number,
+) {
+  await harness.user.click(
+    values.getByRole('button', { name: 'Create new option' }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Label' }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: 'Value' }),
+    String(value),
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
+  );
+}
+
 describe('the questions a tie-strength census asks about a pair', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openSection());
@@ -342,6 +368,41 @@ describe('the questions a tie-strength census asks about a pair', () => {
         ],
       }),
     );
+  });
+
+  /**
+   * The warning about a scale too long to read is about the list the
+   * researcher is LOOKING at, not the one the codebook last stored.
+   *
+   * The points are edited inline in this very dialog, and saving closes it —
+   * so a warning drawn from the stored list appears only after the researcher
+   * can no longer see it, which is after the decision it exists to inform.
+   */
+  it('warns about a scale grown past what fits, before it is saved', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const values = within(
+      await screen.findByRole('region', { name: 'Choice values' }),
+    );
+    // The fixture's scale has three points, so five is still within what the
+    // screen draws and nothing is said yet.
+    await addInlinePoint(harness, values, 'Very distant', 4);
+    await addInlinePoint(harness, values, 'Distant', 5);
+    expect(
+      screen.queryByText('More answers than fit on one screen'),
+    ).toBeNull();
+
+    await addInlinePoint(harness, values, 'Not at all', 6);
+
+    expect(
+      await screen.findByText('More answers than fit on one screen'),
+    ).toBeInTheDocument();
+    // Said while the dialog is still open holding the list it is about, which
+    // is the whole point of saying it now.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('refuses a prompt with no way to decline, and says which one', async () => {

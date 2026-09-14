@@ -52,9 +52,11 @@ const asString = (value: unknown): string | undefined =>
 const NO_ROW_COMPONENT = 'component';
 
 /**
- * How many values the attribute offers, read from the CODEBOOK rather than
- * from the row: the values belong to the attribute, so a collaborator adding
- * one changes what this stage draws.
+ * How many values the attribute offers, as the CODEBOOK holds them.
+ *
+ * The stand-in for wherever the row has no control holding the list: an
+ * attribute whose values another interface owns is shown read-only, and a
+ * collaborator adding one still changes what this stage draws.
  *
  * The literal type comparisons narrow the variable union far enough for
  * `options` to exist on it, as `lockedVariableOptions` does.
@@ -191,7 +193,15 @@ export default function BinAttributeField({
     );
   }, [allVariables, identity.id, picked, protocolContext, slot, subject]);
 
-  const drawn = valueCount(allVariables, picked) + extraBins;
+  // Counted from the list the researcher is LOOKING at. The values are edited
+  // inline in this dialog and saving closes it, so a warning counted from the
+  // stored list would appear only once they can no longer see the list it is
+  // about — which is after the decision it exists to inform.
+  const draftedValues = useRowValue(attributeOptionsFieldFor(slot.name));
+  const drawn =
+    (Array.isArray(draftedValues)
+      ? draftedValues.length
+      : valueCount(allVariables, picked)) + extraBins;
 
   return (
     <>
