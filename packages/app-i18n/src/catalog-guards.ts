@@ -21,6 +21,29 @@ export type ExtractedMessage = Readonly<{
 
 export type ExtractedCatalog = Readonly<Record<string, ExtractedMessage>>;
 
+/**
+ * A copy of a record safe to index by a message id.
+ *
+ * Ids reach this module out of catalog JSON that no schema has validated — a
+ * translator's file, a merge, a hand edit — and every name on `Object.prototype`
+ * is a legal JSON key. On an ordinary object `record['constructor']` is neither
+ * a message nor `undefined`, so an `=== undefined` guard fails open and a
+ * value-typed use throws on something that is not a string. Copying onto a null
+ * prototype makes every lookup below see own properties only, which is why
+ * those lookups can stay written as plain indexing.
+ *
+ * `__proto__` is handled by the same copy: on a null-prototype target there is
+ * no inherited setter, so it lands as an ordinary property rather than
+ * silently reassigning the object's prototype.
+ */
+const lookupTable = <T>(
+  record: Readonly<Record<string, T>>,
+): Readonly<Record<string, T>> => {
+  const table = Object.create(null) as Record<string, T>;
+  for (const [id, value] of Object.entries(record)) table[id] = value;
+  return table;
+};
+
 const MESSAGE_ID_PATTERN = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$/;
 
 const SOURCE_FILE_PATTERN = /\.(ts|tsx)$/;
@@ -93,7 +116,7 @@ export async function extractMessages(
   );
 
   const declaredIn = new Map<string, string>();
-  const merged: Record<string, Record<string, unknown>> = {};
+  const merged = Object.create(null) as Record<string, Record<string, unknown>>;
   for (const [file, extracted] of perFile) {
     for (const [id, entry] of Object.entries(extracted)) {
       const first = declaredIn.get(id);
@@ -107,7 +130,7 @@ export async function extractMessages(
     }
   }
 
-  const catalog: Record<string, ExtractedMessage> = {};
+  const catalog = Object.create(null) as Record<string, ExtractedMessage>;
   for (const [id, entry] of Object.entries(merged).toSorted(([a], [b]) =>
     a < b ? -1 : 1,
   )) {
@@ -269,9 +292,10 @@ const tokensEqual = (a: readonly string[], b: readonly string[]): boolean =>
 
 /** Issues (empty = pass) for the committed en.json vs a fresh extraction. */
 export function checkCatalogFreshness(
-  committed: ExtractedCatalog,
+  committedCatalog: ExtractedCatalog,
   extracted: ExtractedCatalog,
 ): string[] {
+  const committed = lookupTable(committedCatalog);
   const issues: string[] = [];
   const committedIds = new Set(Object.keys(committed));
   for (const [id, entry] of Object.entries(extracted)) {
@@ -378,10 +402,13 @@ const checkUnusedSources = (
  * indistinguishable from a correct one by every other check here.
  */
 export function checkFullLocale(
-  source: ExtractedCatalog,
-  catalog: Readonly<Record<string, string>>,
-  sources: TranslationSources,
+  sourceCatalog: ExtractedCatalog,
+  translations: Readonly<Record<string, string>>,
+  recordedSources: TranslationSources,
 ): string[] {
+  const source = lookupTable(sourceCatalog);
+  const catalog = lookupTable(translations);
+  const sources = lookupTable(recordedSources);
   const issues: string[] = [];
   for (const id of Object.keys(source)) {
     if (catalog[id] === undefined) issues.push(`untranslated id: ${id}`);
@@ -404,10 +431,13 @@ export function checkFullLocale(
  * comparing the two cannot tell a deliberate divergence from a stale one.
  */
 export function checkOverrideLocale(
-  source: ExtractedCatalog,
-  overrides: Readonly<Record<string, string>>,
-  sources: TranslationSources,
+  sourceCatalog: ExtractedCatalog,
+  overrideCatalog: Readonly<Record<string, string>>,
+  recordedSources: TranslationSources,
 ): string[] {
+  const source = lookupTable(sourceCatalog);
+  const overrides = lookupTable(overrideCatalog);
+  const sources = lookupTable(recordedSources);
   const issues: string[] = [];
   for (const [id, translation] of Object.entries(overrides)) {
     checkEntry(source, sources, id, translation, issues);
@@ -454,7 +484,7 @@ export function readTranslationSources(
   if (!isSources(parsed)) {
     throw new Error(`${path} is not a map of message id to English source`);
   }
-  return parsed;
+  return lookupTable(parsed);
 }
 
 /** One id whose recorded English was written or rewritten by a stamp. */
@@ -484,21 +514,26 @@ export type LocaleStamp = Readonly<{
  * rather than being quietly blessed.
  */
 export function stampTranslationSources(localesDir: string): LocaleStamp[] {
-  const english = JSON.parse(
-    readFileSync(join(localesDir, 'en.json'), 'utf8'),
-  ) as ExtractedCatalog;
+  const english = lookupTable(
+    JSON.parse(
+      readFileSync(join(localesDir, 'en.json'), 'utf8'),
+    ) as ExtractedCatalog,
+  );
 
   const stamps: LocaleStamp[] = [];
   for (const fileName of readdirSync(localesDir).toSorted()) {
     const locale = runtimeCatalogLocale(fileName);
     if (locale === undefined) continue;
 
-    const catalog = JSON.parse(
-      readFileSync(join(localesDir, fileName), 'utf8'),
-    ) as Record<string, string>;
+    const catalog = lookupTable(
+      JSON.parse(readFileSync(join(localesDir, fileName), 'utf8')) as Record<
+        string,
+        string
+      >,
+    );
     const previous = readTranslationSources(localesDir, locale);
 
-    const next: Record<string, string> = {};
+    const next = Object.create(null) as Record<string, string>;
     const recorded: StampedTranslation[] = [];
     for (const id of Object.keys(catalog).toSorted()) {
       const current = english[id]?.defaultMessage;

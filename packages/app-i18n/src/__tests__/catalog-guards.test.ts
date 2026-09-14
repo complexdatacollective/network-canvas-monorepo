@@ -366,6 +366,112 @@ describe('translation provenance', () => {
   });
 });
 
+describe('ids that collide with Object.prototype', () => {
+  // Every name on Object.prototype is a legal JSON key, and catalog JSON is
+  // parsed straight off disk with nothing validating its ids. On an ordinary
+  // object `catalog.constructor` is neither a message nor undefined, so an
+  // `=== undefined` guard fails open and a value-typed use throws on a
+  // function. Parsed from strings rather than written as literals, because an
+  // object literal cannot express an own `__proto__` property.
+  const en = JSON.parse(
+    '{"app.ok": {"defaultMessage": "Save", "description": "d"}}',
+  ) as ExtractedCatalog;
+
+  it('reports a reserved name as an unknown id instead of throwing', () => {
+    const es = JSON.parse(
+      '{"app.ok": "Guardar", "constructor": "Constructor"}',
+    ) as Record<string, string>;
+    const recorded = JSON.parse('{"app.ok": "Save"}') as TranslationSources;
+    expect(checkFullLocale(en, es, recorded)).toEqual([
+      'unknown id: constructor',
+    ]);
+    expect(checkOverrideLocale(en, es, recorded)).toEqual([
+      'unknown id: constructor',
+    ]);
+  });
+
+  it('reports an unused record under a reserved name', () => {
+    // The quieter half: `catalog.toString` is inherited and not undefined, so
+    // without own-property lookup this record went unreported entirely.
+    const recorded = JSON.parse(
+      '{"app.ok": "Save", "toString": "Save"}',
+    ) as TranslationSources;
+    const es = JSON.parse('{"app.ok": "Guardar"}') as Record<string, string>;
+    expect(checkFullLocale(en, es, recorded)).toEqual([
+      'recorded English source for an untranslated id: toString',
+    ]);
+  });
+
+  it('reports a reserved name missing from a committed catalog', () => {
+    const extracted = JSON.parse(
+      '{"valueOf": {"defaultMessage": "Save", "description": "d"}}',
+    ) as ExtractedCatalog;
+    expect(checkCatalogFreshness(en, extracted)).toContain(
+      'missing from committed catalog: valueOf',
+    );
+  });
+
+  it('stamps a reserved name with no prior record as newly recorded', () => {
+    // The sidecar deliberately has no entry for the id, so `previous[id]` is
+    // the inherited value rather than a missing one. Reading it as a recorded
+    // English sentence puts a function into the report, which throws while
+    // formatting — after the sidecar has already been written to disk.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-proto-'));
+    writeFileSync(
+      join(dir, 'en.json'),
+      '{"constructor": {"defaultMessage": "Save", "description": "d"}}',
+    );
+    writeFileSync(join(dir, 'es.json'), '{"constructor": "Guardar"}');
+    writeFileSync(join(dir, 'es.source.json'), '{}');
+
+    const stamps = stampTranslationSources(dir);
+    expect(stamps[0]?.recorded).toEqual([
+      {
+        id: 'constructor',
+        previous: undefined,
+        current: 'Save',
+        translation: 'Guardar',
+      },
+    ]);
+    expect(formatStampReport(stamps)).toContain('1 newly recorded');
+    expect(readTranslationSources(dir, 'es')).toEqual({ constructor: 'Save' });
+
+    // And the round after, where the record does exist, reads it rather than
+    // the inherited value: re-stamping reports nothing moved.
+    writeFileSync(
+      join(dir, 'en.json'),
+      '{"constructor": {"defaultMessage": "Save changes", "description": "d"}}',
+    );
+    const second = stampTranslationSources(dir);
+    expect(second[0]?.recorded).toEqual([
+      {
+        id: 'constructor',
+        previous: 'Save',
+        current: 'Save changes',
+        translation: 'Guardar',
+      },
+    ]);
+    expect(formatStampReport(second)).toContain('English was : "Save"');
+  });
+
+  it('treats an id of __proto__ as an ordinary key', () => {
+    // Assigning it into a plain object reassigns the prototype instead of
+    // storing a property, so the entry would vanish with nothing reported.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-proto-'));
+    writeFileSync(
+      join(dir, 'en.json'),
+      '{"__proto__": {"defaultMessage": "Save", "description": "d"}}',
+    );
+    writeFileSync(join(dir, 'es.json'), '{"__proto__": "Guardar"}');
+
+    const stamps = stampTranslationSources(dir);
+    expect(stamps[0]?.recorded.map(({ id }) => id)).toEqual(['__proto__']);
+    expect(Object.keys(readTranslationSources(dir, 'es'))).toEqual([
+      '__proto__',
+    ]);
+  });
+});
+
 describe('checkCatalogFreshness', () => {
   it('reports added, changed, and removed ids', () => {
     const committed: ExtractedCatalog = {
