@@ -5,9 +5,12 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
+import {
+  validateSection,
+  validateStageSectionIdentity,
+} from '@codaco/studio-sync/section-validation';
 
 import { sectionizeProtocol } from '../sectionize.ts';
-import { validateSection, validateStageSectionIdentity } from '../validate.ts';
 import { baseProtocol } from './helpers.ts';
 
 describe('validateSection', () => {
