@@ -1,10 +1,18 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useContext, type ContextType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import type { OptionValue } from '../Option';
@@ -252,5 +260,117 @@ describe('Options', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove option 2' }));
 
     await waitFor(() => expect(getOptions()).toEqual([TWO_VALID_OPTIONS[0]]));
+  });
+});
+
+/**
+ * The words on one answer, which the interview renders as markdown wherever it
+ * shows them — so they are authored as markdown here, through the one field
+ * every surface in the builder authors an option label with
+ * (`@codaco/protocol-builder`'s `OptionLabelField`).
+ */
+describe('an option label', () => {
+  /** Punctuation chosen so that markdown would READ every character of it. */
+  const PUNCTUATION = '# 5 * a day `tick` and _ this';
+  const EMPHASISED = '**Very** close';
+  const DECOMPOSED = 'Tre\u0301s proche';
+  const COMPOSED = 'Tr\u00e9s proche';
+
+  const openRow = async (position: number) => {
+    fireEvent.click(
+      screen.getByRole('button', { name: `Edit option ${position}` }),
+    );
+    return await screen.findByRole('textbox', { name: 'Label' });
+  };
+
+  const labelOf = (position: number): unknown =>
+    (getOptions()[position] as Record<string, unknown> | undefined)?.label;
+
+  it('offers bold and italic, and nothing a single line cannot hold', async () => {
+    const { container } = setup();
+
+    await openRow(1);
+    const cell = within(
+      container.querySelector<HTMLElement>(
+        '[data-field-name="options[0].label"]',
+      )!,
+    );
+
+    expect(cell.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+    expect(cell.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
+    expect(cell.queryByRole('button', { name: 'Heading 1' })).toBeNull();
+    expect(cell.queryByRole('button', { name: 'Bullet list' })).toBeNull();
+    expect(cell.queryByRole('button', { name: 'Numbered list' })).toBeNull();
+    expect(cell.queryByRole('button', { name: 'Thematic break' })).toBeNull();
+    expect(cell.queryByRole('button', { name: 'Add link' })).toBeNull();
+    expect(cell.getByRole('textbox')).toHaveAttribute(
+      'aria-multiline',
+      'false',
+    );
+  });
+
+  it('leaves punctuation the researcher typed as punctuation', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const box = await openRow(1);
+    await user.clear(box);
+    await user.type(box, PUNCTUATION);
+
+    // Read as the interview reads it — `RenderMarkdown`'s own label dialect —
+    // rather than as bytes, so a label that lost a character on the way
+    // through markdown fails here.
+    await waitFor(() =>
+      expect(getMarkdownLabelText(String(labelOf(0)))).toBe(PUNCTUATION),
+    );
+  });
+
+  it('stores a label in canonical form however it was typed', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const box = await openRow(1);
+    await user.clear(box);
+    await user.type(box, DECOMPOSED);
+
+    await waitFor(() => expect(labelOf(0)).toBe(COMPOSED));
+    expect(labelOf(0)).not.toBe(DECOMPOSED);
+  });
+
+  it('keeps an authored label when a row is only opened and closed', async () => {
+    setup([
+      { label: EMPHASISED, value: 'very' },
+      { label: 'Distant', value: 'distant' },
+    ]);
+
+    const box = await openRow(1);
+    // Shown as the participant will read it, not as its source.
+    expect(box).toHaveTextContent('Very close');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finish editing option' }),
+    );
+
+    await waitFor(() => expect(finishButton()).not.toBeInTheDocument());
+    expect(getOptions()).toEqual([
+      { label: EMPHASISED, value: 'very' },
+      { label: 'Distant', value: 'distant' },
+    ]);
+  });
+
+  it('refuses to submit two labels a participant could not tell apart', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = setup();
+
+    const box = await openRow(2);
+    await user.clear(box);
+    await user.type(box, 'one');
+    await waitFor(() => expect(labelOf(1)).toBe('one'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Every option needs a unique label.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
