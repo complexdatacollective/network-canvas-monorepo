@@ -35,6 +35,7 @@ import {
 import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
 import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
 import {
+  isOptionListToWrite,
   optionsForShape,
   optionsShapeFor,
 } from '../../codebook/variableOptions.ts';
@@ -470,6 +471,16 @@ function ComposerFormRows({
       // attribute being made, and a second write afterwards is a save that can
       // half succeed.
       const validation = row[NEW_VARIABLE_VALIDATION];
+      // And the two words a yes-or-no answer offers, written beside the
+      // question in the same gesture as the name. `optionsForShape` settles
+      // the pair the researcher left blank: an attribute that names neither
+      // answer is the one that offers Yes and No, which the schema spells as
+      // no `options` key at all.
+      const inventedOptions = optionsForShape(
+        optionsShapeFor(type, component),
+        row[ATTRIBUTE_OPTIONS_FIELD],
+        undefined,
+      );
       // The control is written to the codebook only as the attribute is made
       // — a composer field OWNS its control from then on, which is why no
       // later save touches it. Architect writes it on the create for the same
@@ -481,6 +492,9 @@ function ComposerFormRows({
         component,
         ...(isValidationMap(validation) && Object.keys(validation).length > 0
           ? { validation }
+          : {}),
+        ...(isOptionListToWrite(inventedOptions)
+          ? { options: inventedOptions }
           : {}),
       });
       if (outcome.status === 'refused') {
@@ -1226,6 +1240,9 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <AttributeValueFields
         subject={subject}
         variableId={chosen === '' ? undefined : chosen}
+        {...(inventing && attributeType !== undefined
+          ? { invented: attributeType, rowComponent: control }
+          : {})}
       />
       {shape !== null && (
         <Field<typeof ComposerParametersField>

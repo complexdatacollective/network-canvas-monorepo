@@ -73,6 +73,17 @@ export type AttributeValueFieldsProps = Readonly<{
   rowComponent?: unknown;
   /** Where the row keeps the draft list. Defaults to `_options`. */
   optionsField?: string;
+  /**
+   * The kind of answer this row is INVENTING, while it is inventing one.
+   *
+   * There is no codebook record to seed from yet, so the answers start empty
+   * and the row's own create writes them. Only a yes-or-no answer is authored
+   * this way: its two words are the whole of what a name cannot carry. An
+   * attribute that IS a list of answers is created in the codebook's own
+   * editor instead, which authors the list as it makes it — offered here as
+   * well it would be a second place to write the same values.
+   */
+  invented?: string;
 }>;
 
 /**
@@ -100,6 +111,7 @@ export default function AttributeValueFields({
   variableId,
   rowComponent,
   optionsField = ATTRIBUTE_OPTIONS_FIELD,
+  invented,
 }: AttributeValueFieldsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
@@ -130,6 +142,26 @@ export default function AttributeValueFields({
           ),
     [protocolContext, subject, variableId, variables],
   );
+
+  // An attribute being invented: its two answers, on the same terms as an
+  // attribute that exists, because "edited where the question is asked, except
+  // immediately after you invent it" is a rule with a hole in it.
+  if (invented !== undefined) {
+    return optionsShapeFor(invented, rowComponent) === 'boolean' ? (
+      <Section
+        title={intl.formatMessage(variableValuesMessages.answersLegend)}
+        description={intl.formatMessage(variableValuesMessages.answersHint)}
+      >
+        <Field<typeof BooleanAnswersField>
+          name={optionsField}
+          component={BooleanAnswersField}
+          label={intl.formatMessage(variableValuesMessages.answersLegend)}
+          labelHidden
+          readOnly={readOnly}
+        />
+      </Section>
+    ) : null;
+  }
 
   if (picked === undefined || variableId === undefined) return null;
 

@@ -983,6 +983,87 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * And the two words a yes-or-no answer offers, for an attribute this row is
+   * inventing: authored beside the control that decides its kind, and written
+   * with the create.
+   *
+   * The composer takes the kind of answer FROM the control, so choosing the
+   * yes-or-no control is what says the attribute is a boolean — and the words
+   * on its two answers are the whole of what a name cannot carry.
+   */
+  it('writes the answers an invented boolean was given, with the create', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'livesNearby');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Boolean',
+    );
+
+    const answers = within(
+      await dialog.findByRole('region', { name: 'Boolean values' }),
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “true”' }),
+      'Nearby',
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “false”' }),
+      'Further away',
+    );
+
+    // Nothing yet: the row's own save is what creates the attribute.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'livesNearby',
+      ),
+    ).toBe(false);
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.values(variables).find(
+        (variable) => variable.name === 'livesNearby',
+      );
+      if (entry === undefined) {
+        throw new Error('the codebook has no “livesNearby” attribute');
+      }
+      return entry;
+    });
+    expect(created).toMatchObject({
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Nearby', value: true },
+        { label: 'Further away', value: false },
+      ],
+    });
+  });
+
+  /** A control that shows no list is offered none to author. */
+  it('offers no answers for an invented attribute a toggle collects', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'livesNearby');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+
+    await dialog.findByRole('textbox', { name: 'Question' });
+    expect(dialog.queryByRole('region', { name: 'Boolean values' })).toBeNull();
+  });
+
+  /**
    * The rules an invented answer has to satisfy, authored beside the control
    * that decides its kind and written with the create.
    *

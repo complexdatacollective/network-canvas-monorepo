@@ -3603,6 +3603,167 @@ describe('a stored field the schema refuses for its own shape', () => {
  * to the editor that authors both, as it already does for a list of values.
  */
 /**
+ * The two words a yes-or-no answer offers, for an attribute the row is still
+ * inventing.
+ *
+ * Architect rendered its "Boolean values" section for an attribute being
+ * invented as well as for one that exists
+ * (`Form/VariableDefinitionFields.tsx` is the same component either way), and
+ * "edited where the question is asked, except immediately after you invent
+ * it" is a rule with a hole in it. There is no record to write them against
+ * while they are being authored, so they are held on the row and go into the
+ * create — the same shape the rules beside them take.
+ */
+describe('the answers a boolean a field is inventing offers', () => {
+  const inventBoolean = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    kind = 'boolean',
+  ) => {
+    const dialog = await openField(harness, 'Create new form field');
+    await inventThroughThePicker(harness, dialog, 'nickname');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      kind,
+    );
+    return dialog;
+  };
+
+  const addTheRow = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: RowDialog,
+  ) => {
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Do they live nearby?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  it('writes both answers with the create, from the row that asked for them', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await inventBoolean(harness);
+    const answers = within(
+      await dialog.findByRole('region', { name: 'Boolean values' }),
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “true”' }),
+      'Nearby',
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “false”' }),
+      'Further away',
+    );
+
+    // Nothing written yet: the row's own save is what creates the attribute,
+    // and the answers go with it rather than in a second write afterwards.
+    expect(inventedNickname(harness)).toBeUndefined();
+
+    await addTheRow(harness, dialog);
+
+    const created = await waitFor(() => {
+      const entry = inventedNickname(harness);
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created[1]).toMatchObject({
+      name: 'nickname',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Nearby', value: true },
+        { label: 'Further away', value: false },
+      ],
+    });
+  });
+
+  /**
+   * Naming neither answer is a real answer: an attribute that names none is
+   * offered to the participant as Yes and No, which the schema spells as no
+   * `options` key at all — so the create must not stamp a blank pair on it.
+   */
+  it('writes no answers at all when the researcher named neither', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await inventBoolean(harness);
+    const answers = within(
+      await dialog.findByRole('region', { name: 'Boolean values' }),
+    );
+    // Written and then cleared, which is what makes this about the rule rather
+    // than about a control nobody touched: the row is now holding a pair of
+    // blank answers, and a blank pair stamped on the attribute is a control
+    // with two buttons the participant cannot read.
+    const positive = answers.getByRole('textbox', {
+      name: 'Label for “true”',
+    });
+    await harness.user.type(positive, 'Nearby');
+    await harness.user.clear(positive);
+
+    await addTheRow(harness, dialog);
+
+    const created = await waitFor(() => {
+      const entry = inventedNickname(harness);
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(Object.hasOwn(asRecord(created[1]), 'options')).toBe(false);
+  });
+
+  /**
+   * And only a yes-or-no answer: an attribute that IS a list of answers is
+   * authored in the codebook's own editor, which creates it whole, so a second
+   * list beside it would be a second place to write the same values.
+   */
+  it('offers no answers for a kind that is not a yes-or-no question', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await inventBoolean(harness, 'text');
+
+    await dialog.findByRole('textbox', { name: 'Question text' });
+    expect(dialog.queryByRole('region', { name: 'Boolean values' })).toBeNull();
+    expect(dialog.queryByRole('region', { name: 'Choice values' })).toBeNull();
+  });
+
+  /**
+   * A toggle is a switch that is on or off, and its variable schema has no
+   * `options` key at all — so the words go off the screen with the control
+   * that would have shown them.
+   */
+  it('offers no answers once the control is a toggle', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await inventBoolean(harness);
+    await dialog.findByRole('region', { name: 'Boolean values' });
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+
+    await waitFor(() =>
+      expect(
+        dialog.queryByRole('region', { name: 'Boolean values' }),
+      ).toBeNull(),
+    );
+  });
+});
+
+/**
  * The rules for an attribute the row is still inventing.
  *
  * Architect authors them in this same dialog and writes them with the create

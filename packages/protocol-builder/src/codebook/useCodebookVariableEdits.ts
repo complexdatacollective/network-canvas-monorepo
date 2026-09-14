@@ -58,6 +58,19 @@ export type NewCodebookVariable = Readonly<{
    * value, because the interview writes one the moment a node is created.
    */
   validation?: Readonly<Record<string, unknown>>;
+  /**
+   * The answers the attribute offers, where the section asked the researcher
+   * for them before it existed.
+   *
+   * Only a yes-or-no answer reaches this: its two words are the whole of what
+   * a name cannot carry, and they are authored beside the question in the same
+   * gesture as the name (`sections/AttributeValueFields.tsx`), so writing them
+   * afterwards would be a second save for one act. A list of answers is a
+   * different case — the schema refuses fewer than two of them, so an
+   * attribute that IS its list is authored in the codebook's own editor, which
+   * creates it whole.
+   */
+  options?: readonly Readonly<Record<string, unknown>>[];
 }>;
 
 export type CreateCodebookVariableOutcome =
@@ -326,6 +339,9 @@ export function useCreateCodebookVariable(
         ...(variable.validation === undefined
           ? {}
           : { validation: variable.validation }),
+        ...(variable.options === undefined
+          ? {}
+          : { options: variable.options }),
       };
 
       // The builder refuses a duplicate name, an id already in use and a draft
