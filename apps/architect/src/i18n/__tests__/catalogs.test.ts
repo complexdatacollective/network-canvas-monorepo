@@ -85,7 +85,11 @@ describe('Architect catalog contract', () => {
     // one English sentence and left alone while the English changed to say
     // something else is complete, token-faithful and nonblank — and wrong on
     // screen. Rewording the recorded source stands in for the English edit.
-    const id = 'architect.final.utils.downloadActiveProtocol.skippedAssets';
+    // Derived rather than named: a hardcoded id makes this test fail the next
+    // time that message is renamed, which is a fact about the fixture and not
+    // about the guard. It broke exactly that way once already.
+    const id = Object.keys(esSources).find((key) => en[key] !== undefined);
+    if (!id) throw new Error('The fixture needs one translated, recorded id');
     expect(en[id]?.defaultMessage).toBeTruthy();
     const issues = checkFullLocale(en, es, {
       ...esSources,
