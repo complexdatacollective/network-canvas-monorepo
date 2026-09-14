@@ -42,6 +42,18 @@ const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
   'S3_SECRET_ACCESS_KEY',
 ] as const satisfies readonly VariableName[];
 
+/**
+ * The mail transport, which only the worker process sends through (#1895).
+ * Withheld from every other read the same way and for the same reason as the
+ * list above: a process that cannot send mail should not be able to observe
+ * the credentials for it, and a variable withheld here cannot be wired into
+ * the web process by accident later.
+ */
+const MAIL_VARIABLES = [
+  'SMTP_URL',
+  'EMAIL_FROM',
+] as const satisfies readonly VariableName[];
+
 export type ReadEnvOptions = {
   /**
    * Withholds the database and authentication settings from the read entirely,
@@ -56,6 +68,13 @@ export type ReadEnvOptions = {
    * can reach.
    */
   withoutDatabaseOrAuth?: boolean;
+  /**
+   * Reads the mail transport, for the one process that sends mail: the worker
+   * (#1895). Without it `SMTP_URL` and `EMAIL_FROM` are withheld from the read
+   * entirely, so `env.mail` is undefined and a half configuration is neither
+   * resolved nor refused here — the worker's own read is where that is caught.
+   */
+  withMail?: boolean;
 };
 
 /**
@@ -73,11 +92,20 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
 
   /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
   const source = process.env;
-  const runtimeEnv = options.withoutDatabaseOrAuth
+  const selected = options.withoutDatabaseOrAuth
     ? Object.fromEntries(
         VARIABLES_WITHOUT_DATABASE_OR_AUTH.map((name) => [name, source[name]]),
       )
-    : source;
+    : { ...source };
+  // Overwritten rather than filtered out, so this composes with the allow-list
+  // above instead of restating it: whatever the lane above selected, a read
+  // that did not ask for mail never sees these two.
+  const runtimeEnv = options.withMail
+    ? selected
+    : {
+        ...selected,
+        ...Object.fromEntries(MAIL_VARIABLES.map((name) => [name, undefined])),
+      };
 
   const raw = createEnv({
     server: serverSchemas,
@@ -86,5 +114,5 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
     skipValidation,
   });
 
-  return resolve(raw);
+  return resolve(raw, { withMail: options.withMail === true });
 }

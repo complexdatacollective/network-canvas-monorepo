@@ -292,14 +292,11 @@ describe('audit mutation policy', () => {
     const env: AuthEnv = {
       baseUrl: 'http://studio.test',
       secret: randomBytes(32).toString('hex'),
-      mailer: { kind: 'refuse' },
       trustedProxies: undefined,
       socialProviders: {},
     };
     try {
-      const auth = createBetterAuthInstance(env, pool, {
-        sendMagicLink: () => Promise.resolve(),
-      });
+      const auth = createBetterAuthInstance(env, pool, () => Promise.resolve());
       const plugin = auth.options.plugins?.find(
         (candidate) => candidate.id === 'organization',
       );

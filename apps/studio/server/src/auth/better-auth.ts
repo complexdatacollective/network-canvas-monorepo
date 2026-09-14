@@ -9,15 +9,24 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
-import type { MagicLinkMailer } from './email.ts';
 import type { AuthService } from './service.ts';
 
 // The only module that imports 'better-auth' (#1245).
 
+/**
+ * How a magic link leaves this process. Declared here rather than taken from
+ * `email.ts`'s mailer, because this process has no mail transport: sending is
+ * the worker's, and what is passed in queues a job for it (#1895).
+ */
+export type SendMagicLink = (input: {
+  email: string;
+  url: string;
+}) => Promise<void>;
+
 export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
-  mailer: MagicLinkMailer,
+  sendMagicLink: SendMagicLink,
 ) {
   return betterAuth({
     baseURL: env.baseUrl,
@@ -95,7 +104,7 @@ export function createBetterAuthInstance(
       magicLink({
         expiresIn: 300,
         storeToken: 'hashed',
-        sendMagicLink: ({ email, url }) => mailer.sendMagicLink({ email, url }),
+        sendMagicLink: ({ email, url }) => sendMagicLink({ email, url }),
       }),
       // Teams are better-auth organizations (#1249). The tenant boundary
       // tables keep domain names and snake_case: they are domain tables that
@@ -148,9 +157,9 @@ export function createBetterAuthInstance(
 export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
-  mailer: MagicLinkMailer,
+  sendMagicLink: SendMagicLink,
 ): AuthService {
-  const auth = createBetterAuthInstance(env, pool, mailer);
+  const auth = createBetterAuthInstance(env, pool, sendMagicLink);
   const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),

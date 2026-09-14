@@ -27,6 +27,7 @@ import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
 import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
 import { readEnv } from './env.ts';
+import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 
@@ -50,8 +51,12 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 
 type CreateAppDeps = {
   auth?: AuthService;
-  /** True only for an entrypoint that starts a supported outbox dispatcher. */
-  invitationDeliveryAvailable?: boolean;
+  /**
+   * How a request creates background work (#1895). Absent on an entrypoint
+   * with no database — the Netlify lane — where nothing can be queued and
+   * nothing that would queue anything is reachable, because auth is off.
+   */
+  jobs?: JobClient;
   pool?: pg.Pool;
 };
 
@@ -69,13 +74,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool);
+  const auth = deps.auth ?? createAuthService(env, pool, deps.jobs);
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
-    magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
-    // Unlike magicLink, not gated on the mailer: better-auth.ts enables
-    // emailAndPassword unconditionally whenever auth itself is configured.
+    // Not gated on a mail transport: sending is the worker's, and with none
+    // configured a sign-in email waits on the queue rather than being refused
+    // (#1895). What this reports is whether the method exists at all.
+    magicLink: enabled,
     emailAndPassword: enabled,
     socialProviders: enabled
       ? SOCIAL_PROVIDERS.filter(
@@ -143,9 +149,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const rpcRouter = createRpcRouter(authCaps, {
     auth,
     deployment,
-    invitationDeliveryAvailable: Boolean(
-      deps.invitationDeliveryAvailable && authCaps.magicLink,
-    ),
+    jobs: deps.jobs,
     pool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,

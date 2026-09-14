@@ -34,6 +34,7 @@ import {
   type DeploymentStatus,
   getInstanceStatus,
 } from './domain.ts';
+import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
@@ -337,13 +338,14 @@ export function createRpcRouter(
   deps: {
     auth: AuthService;
     deployment: DeploymentStatus;
-    invitationDeliveryAvailable: boolean;
+    /** How a command queues the work it causes (#1895); see CreateAppDeps. */
+    jobs?: JobClient;
     pool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
   },
 ) {
-  const { auth, deployment, invitationDeliveryAvailable, pool } = deps;
+  const { auth, deployment, jobs, pool } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -514,23 +516,25 @@ export function createRpcRouter(
             ),
           ),
         ),
+      // No refusal when nothing can send it: an invitation is queued and goes
+      // out when a worker with mail configured returns (#1895, ruling of
+      // 2026-09-14). Where there is no queue at all — the Netlify lane, which
+      // has no database — the auth gate has already refused this call.
       createInvitation: os.team.createInvitation
         .use(requireTeam)
-        .handler(({ context, input }) => {
-          if (!invitationDeliveryAvailable) {
-            throw new ORPCError('SERVICE_UNAVAILABLE');
-          }
-          return handleTeamCommand(() =>
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
             createTeamInvitation(
               {
                 tenantDb: context.tenantDb,
                 principal: context.principal,
                 requestId: context.requestId,
+                jobs,
               },
               { email: input.email, role: input.role },
             ),
-          );
-        }),
+          ),
+        ),
       cancelInvitation: os.team.cancelInvitation
         .use(requireTeam)
         .handler(({ context, input }) =>

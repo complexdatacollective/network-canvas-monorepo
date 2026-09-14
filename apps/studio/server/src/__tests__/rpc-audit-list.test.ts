@@ -203,7 +203,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     client = createRpcClient(
       createApp(readEnv(), {
         auth,
-        invitationDeliveryAvailable: true,
         pool: appPool,
       }),
     );
@@ -710,7 +709,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const demotedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(demoted),
@@ -787,7 +785,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const promotedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(promoted),
@@ -862,7 +859,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       .mockImplementation(() => undefined);
     const unrecordedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         // One client for the transaction that decides the denial; the append
         // that must record it then cannot acquire one.
         pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),

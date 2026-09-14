@@ -55,13 +55,17 @@ export function createOwnerPool(db: DbEnv): pg.Pool {
 /**
  * A pinned pool against a database whose schema — and so whose roles — was
  * never applied is refused at connect, before any query could tell the
- * schema is absent.
+ * schema is absent. Either pinned role answers for that: the web process
+ * verifies the schema on the application pool and the worker on the
+ * maintenance one (src/boot.ts), and an unapplied database is missing both.
  */
 export function isMissingRoleError(error: unknown): boolean {
   return (
     error instanceof Error &&
     'code' in error &&
     error.code === '22023' &&
-    error.message.includes(TENANT_ROLES.app)
+    [TENANT_ROLES.app, TENANT_ROLES.maintenance].some((role) =>
+      error.message.includes(role),
+    )
   );
 }

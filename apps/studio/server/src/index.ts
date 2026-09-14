@@ -3,142 +3,57 @@ import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
-import { createMailer } from './auth/email.ts';
+import { awaitCurrentSchema } from './boot.ts';
 import { mountClient } from './client-assets.ts';
-import {
-  createMaintenancePool,
-  createPool,
-  isMissingRoleError,
-} from './db/pool.ts';
-import {
-  checkSchema,
-  type SchemaProblem,
-  type SchemaState,
-  schemaProblemMessage,
-} from './db/schema.ts';
+import { createPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
-import {
-  type InvitationDeliveryWorker,
-  startInvitationDeliveryWorker,
-} from './team/invitation-delivery-dispatcher.ts';
+import { createJobClient, type JobClient } from './jobs/client.ts';
 import { STUDIO_VERSION } from './version.ts';
 
-// The server entry, development and production both: one Node process serving
+// The web entry, development and production both: one Node process serving
 // the public API, the internal RPC surface, /healthz, and the app WebSocket
 // endpoint. Static client assets are served only where they exist — the
 // self-host topology (#1245); the managed topology serves them from the CDN,
 // and development serves them from the Vite dev server, which proxies API
 // paths here so both topologies present a single origin.
+//
+// It runs no background work at all (#1895): jobs are created here, inside the
+// transaction that caused them, and executed by the worker process
+// (src/worker.ts) started from the same image. Nothing here sends mail, and
+// the mail variables are not even read — see readEnv's `withMail`.
 
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
-let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
-function startDatabaseWorkers(): void {
-  if (
-    invitationDeliveryWorker ||
-    !maintenancePool ||
-    !env.auth ||
-    env.auth.mailer.kind === 'refuse'
-  ) {
-    return;
-  }
-  invitationDeliveryWorker = startInvitationDeliveryWorker({
-    pool: maintenancePool,
-    mailer: createMailer(env.auth.mailer),
-    publicBaseUrl: env.auth.baseUrl,
-  });
-}
-
-// Outside development a stale or absent schema is a resolved answer, not a
-// transient failure: retrying re-reads the same fingerprint every three
-// seconds. The development lane waits instead, the same way it waits for the
-// container itself: `pnpm dev` finishes its reset before this process starts,
-// but a server started on its own against a database another build applied,
-// or a `db:reset` run beside a running server, should recover by themselves
-// once the schema is current.
-function exitIfFatal(state: SchemaState): void {
-  if (state.kind !== 'current' && !env.devDefaults) {
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.error(schemaProblemMessage(state));
-    process.exit(1);
-  }
-}
-
-// A configured database that cannot be reached is a deployment mistake and
-// fails the boot; only the development lane comes up anyway. Keyed on the
-// development marker rather than `NODE_ENV`, so a deployment that forgot
-// `NODE_ENV=production` does not inherit the retry and boot green with no
-// database.
+// The enqueue-only pg-boss, on the application pool: every job is created by
+// the role that may create one and can do nothing else with it. Started only
+// once the schema is current, because pg-boss verifies its own installed
+// version at start and never migrates (#1895).
+//
+// On the development lane the wait can outlast this boot, and then there is no
+// client to hand over: that is the lane whose warning already says sign-in
+// will fail until the schema is created, and `pnpm dev` applies it before this
+// process starts.
+let jobs: JobClient | undefined;
 if (pool) {
-  // One attempt at a time: an attempt against an unreachable host can
-  // outlive its tick, and stacking them would exhaust the pool. A mismatch
-  // found mid-retry still takes the process down.
-  const waitUntilCurrent = () => {
-    let attempting = false;
-    const retry = setInterval(() => {
-      if (attempting) return;
-      attempting = true;
-      void checkSchema(pool)
-        .then((state) => {
-          exitIfFatal(state);
-          if (state.kind === 'current') {
-            clearInterval(retry);
-            startDatabaseWorkers();
-            // oxlint-disable-next-line no-console -- boot diagnostics
-            console.log('Database schema current.');
-          }
-          return undefined;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          attempting = false;
-        });
-    }, 3000);
-    retry.unref();
-  };
-
-  const waitForSchema = (state: SchemaProblem) => {
-    exitIfFatal(state);
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.warn(
-      state.kind === 'absent'
-        ? 'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset'
-        : 'Database schema is not from this build; waiting for the development reset (pnpm dev runs it on boot; otherwise: pnpm --filter @codaco/studio-server db:reset)',
-    );
-    waitUntilCurrent();
-  };
-
+  let starting: Promise<JobClient> | undefined;
+  await awaitCurrentSchema(pool, env, {
+    onCurrent: () => {
+      starting = createJobClient(pool);
+    },
+  });
   try {
-    const state = await checkSchema(pool);
-    if (state.kind === 'current') {
-      startDatabaseWorkers();
-    } else {
-      waitForSchema(state);
-    }
+    jobs = await starting;
   } catch (error) {
-    // The pool runs as a role the schema apply creates, so a never-applied
-    // database refuses the connection before the fingerprint can be read.
-    if (isMissingRoleError(error)) {
-      waitForSchema({ kind: 'absent' });
-    } else {
-      if (!env.devDefaults) throw error;
-      // oxlint-disable-next-line no-console -- boot diagnostics
-      console.warn(
-        `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
-      );
-      waitUntilCurrent();
-    }
+    // Not fatal. A queue that cannot be reached fails the requests that need
+    // it, with the reason; refusing the boot would take down every surface
+    // that has nothing to do with background work.
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.error('Could not start the job client:', error);
   }
 }
 
-const app = createApp(env, {
-  invitationDeliveryAvailable: Boolean(
-    env.auth && env.auth.mailer.kind !== 'refuse',
-  ),
-  pool,
-});
+const app = createApp(env, { jobs, pool });
 
 mountClient(app, env);
 
@@ -181,13 +96,12 @@ function shutdown() {
     server.close(() => {
       // Suppression summaries use the application pool, so give their
       // bounded flush a chance to become immutable before closing database
-      // resources. The outer ten-second backstop still caps total shutdown.
-      void Promise.all([
-        invitationDeliveryWorker?.stop(),
-        flushDeniedAuditSummaries(),
-      ])
+      // resources. Nothing of ours is ever in flight on the job client, so
+      // stopping it only has to happen before the pool it borrows ends. The
+      // outer ten-second backstop still caps total shutdown.
+      void Promise.all([jobs?.stop(), flushDeniedAuditSummaries()])
         .catch(() => undefined)
-        .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
+        .then(() => pool?.end())
         .finally(() => {
           process.exit(0);
         });

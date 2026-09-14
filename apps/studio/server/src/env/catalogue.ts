@@ -165,13 +165,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.',
+      'Read by the worker process, which sends every message Studio sends; the web process never reads it. Unset ⇒ the worker boots without its mail workers and says so, and sign-in and invitation mail queues until one is configured. In development the worker’s console mailer prints the links instead. A sign-in or invitation link is never written to the log outside development.',
     example: 'smtp://user:password@smtp.example.org:587',
   },
   EMAIL_FROM: {
     group: 'Authentication',
     summary: 'From address on sign-in and team-invitation email.',
-    deployment: 'Required alongside `SMTP_URL`, and refused without it.',
+    deployment:
+      'Read by the worker process alongside `SMTP_URL`: required with it, and refused without it.',
     devDefault: DEV.emailFrom,
     example: 'studio@studio.example.org',
   },

@@ -10,8 +10,6 @@ const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_MAX_ATTEMPTS = 8;
 const DEFAULT_RETRY_BASE_MS = 5_000;
 const DEFAULT_RETRY_MAX_MS = 30 * 60_000;
-const DEFAULT_POLL_INTERVAL_MS = 5_000;
-const DEFAULT_DRAIN_LIMIT = 10;
 const MAX_ERROR_LENGTH = 1_000;
 
 type ClaimedInvitationDelivery = {
@@ -463,59 +461,4 @@ export class InvitationDeliveryDispatcher {
     );
     return { claimed: 1, sent: 0, failed: exhausted, suppressed };
   }
-}
-
-export type InvitationDeliveryWorkerOptions =
-  InvitationDeliveryDispatcherOptions & {
-    pollIntervalMs?: number;
-    drainLimit?: number;
-  };
-
-export type InvitationDeliveryWorker = {
-  stop(): Promise<void>;
-};
-
-export function startInvitationDeliveryWorker(
-  options: InvitationDeliveryWorkerOptions,
-): InvitationDeliveryWorker {
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  const drainLimit = options.drainLimit ?? DEFAULT_DRAIN_LIMIT;
-  requirePositiveFinite('pollIntervalMs', pollIntervalMs);
-  if (!Number.isInteger(drainLimit) || drainLimit < 1) {
-    throw new Error('drainLimit must be a positive integer');
-  }
-
-  const dispatcher = new InvitationDeliveryDispatcher(options);
-  let stopped = false;
-  let timer: NodeJS.Timeout | undefined;
-  let active: Promise<void> = Promise.resolve();
-
-  const schedule = (delayMs: number) => {
-    if (stopped) return;
-    timer = setTimeout(() => {
-      active = (async () => {
-        for (let index = 0; index < drainLimit; index += 1) {
-          if (stopped) break;
-          const result = await dispatcher.runOnce();
-          if (result.claimed === 0) break;
-        }
-      })()
-        .catch((error: unknown) => {
-          // oxlint-disable-next-line no-console -- background worker diagnostics
-          console.error('Invitation delivery worker failed:', error);
-        })
-        .finally(() => schedule(pollIntervalMs));
-    }, delayMs);
-    timer.unref();
-  };
-
-  schedule(0);
-
-  return {
-    stop: async () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      await active;
-    },
-  };
 }

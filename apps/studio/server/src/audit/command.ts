@@ -3,6 +3,7 @@ import type pg from 'pg';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
+import type { JobClient } from '../jobs/client.ts';
 import type { AuditEventInput } from './events.ts';
 import { AuditStore, lockAuditTeam } from './store.ts';
 
@@ -10,6 +11,13 @@ export type AuditedCommandContext = {
   tenantDb: TenantDb;
   principal: Principal;
   requestId: string;
+  /**
+   * Background work this command causes, created on the command's own client
+   * so the job and the change that caused it are one transaction (#1895).
+   * Optional because most commands cause none, and because an entrypoint with
+   * no database has no queue to reach.
+   */
+  jobs?: JobClient;
 };
 
 export type LockedAuditedCommandContext = AuditedCommandContext & {

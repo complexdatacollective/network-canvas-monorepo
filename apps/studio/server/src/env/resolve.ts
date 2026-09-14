@@ -28,7 +28,6 @@ export type AuthEnv = {
   secret: string;
   /** The browser-facing origin; cookies and magic-link URLs are minted against it. */
   baseUrl: string;
-  mailer: MailerEnv;
   trustedProxies: string[] | undefined;
   socialProviders: SocialProvidersEnv;
 };
@@ -42,6 +41,14 @@ export type StudioEnv = {
   s3: S3Env | undefined;
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
+  /**
+   * The mail transport, and only where it was asked for: the worker process
+   * sends every message Studio sends (#1895), so the web process never reads
+   * these variables at all. `undefined` therefore means two different things by
+   * design — "this process does not send mail" for the web process, and "no
+   * transport is configured" for the worker, which is the `refuse` kind.
+   */
+  mail: MailerEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
@@ -179,11 +186,7 @@ function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
   return providers;
 }
 
-function resolveAuth(
-  raw: RawEnv,
-  db: DbEnv | undefined,
-  devDefaults: boolean,
-): AuthEnv | undefined {
+function resolveAuth(raw: RawEnv, db: DbEnv | undefined): AuthEnv | undefined {
   // Validated before the database check so a half-configured provider fails
   // fast even on a deployment where auth is otherwise off.
   const socialProviders = resolveSocialProviders(raw);
@@ -200,7 +203,6 @@ function resolveAuth(
   return {
     secret: raw.BETTER_AUTH_SECRET,
     baseUrl: raw.PUBLIC_URL,
-    mailer: resolveMailer(raw, devDefaults),
     trustedProxies: raw.TRUSTED_PROXIES?.length
       ? raw.TRUSTED_PROXIES
       : undefined,
@@ -208,7 +210,15 @@ function resolveAuth(
   };
 }
 
-export function resolve(raw: RawEnv): StudioEnv {
+/**
+ * `withMail` says the caller read `SMTP_URL` and `EMAIL_FROM` rather than
+ * withholding them (see `readEnv`). Resolution cannot infer it: under the
+ * development defaults an unset `SMTP_URL` means the console mailer, which is
+ * indistinguishable here from the web process never having read the variable.
+ */
+export type ResolveOptions = { withMail?: boolean };
+
+export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
   // Checked against an explicit development or test NODE_ENV rather than
@@ -247,7 +257,8 @@ export function resolve(raw: RawEnv): StudioEnv {
     clientDist: raw.CLIENT_DIST,
     s3: resolveS3(raw),
     db,
-    auth: resolveAuth(raw, db, devDefaults),
+    auth: resolveAuth(raw, db),
+    mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,

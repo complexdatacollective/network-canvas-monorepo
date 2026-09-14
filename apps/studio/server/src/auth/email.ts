@@ -22,7 +22,7 @@ export type InvitationMailer = {
 
 export type StudioMailer = MagicLinkMailer & InvitationMailer;
 
-export function createConsoleMailer(): StudioMailer {
+function createConsoleMailer(): StudioMailer {
   return {
     sendMagicLink: ({ email, url }) => {
       // oxlint-disable-next-line no-console -- the development sign-in loop

@@ -62,7 +62,6 @@ describe.skipIf(!db)('audited team RPC', () => {
     client = createRpcClient(
       createApp(readEnv(), {
         auth,
-        invitationDeliveryAvailable: true,
         pool: scratch.app,
       }),
     );
@@ -134,67 +133,6 @@ describe.skipIf(!db)('audited team RPC', () => {
       }),
     );
     expect(error).toMatchObject({ code: 'FORBIDDEN' });
-  });
-
-  it('refuses to create invitations when this instance cannot deliver email', async () => {
-    const env = readEnv();
-    if (!env.auth) throw new Error('test auth environment is unavailable');
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const unavailableClient = createRpcClient(
-      createApp(
-        { ...env, auth: { ...env.auth, mailer: { kind: 'refuse' } } },
-        { auth, invitationDeliveryAvailable: true, pool },
-      ),
-    );
-
-    const { error } = await safe(
-      unavailableClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'cannot-deliver@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'cannot-deliver@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
-  });
-
-  it('refuses to queue an invitation when the runtime has no dispatcher', async () => {
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const serverlessClient = createRpcClient(
-      createApp(readEnv(), {
-        auth,
-        invitationDeliveryAvailable: false,
-        pool,
-      }),
-    );
-
-    const { error } = await safe(
-      serverlessClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'undrainable@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'undrainable@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
   });
 
   it('lets the authenticated invitee accept without an existing membership', async () => {

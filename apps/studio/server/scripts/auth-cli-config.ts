@@ -6,18 +6,17 @@
 import pg from 'pg';
 
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';
-import { createConsoleMailer } from '../src/auth/email.ts';
 import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
 
 export const auth = createBetterAuthInstance(
   {
     secret: 'schema-generation-only',
     baseUrl: DEV.baseUrl,
-    mailer: { kind: 'console' },
     trustedProxies: undefined,
     socialProviders: {},
   },
   // The dev Postgres from scripts/dev-pg.ts: generate diffs the live schema.
   new pg.Pool({ connectionString: DEV_DATABASE_URL }),
-  createConsoleMailer(),
+  // Nothing is sent from here; the generator only reads the plugin set.
+  () => Promise.resolve(),
 );

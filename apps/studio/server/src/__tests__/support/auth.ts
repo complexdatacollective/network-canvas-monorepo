@@ -35,11 +35,9 @@ export async function signInWithMagicLink(
 ) {
   if (!env.auth) throw new Error('dev env must configure auth');
   const sent: { email: string; url: string }[] = [];
-  const auth = createBetterAuthService(env.auth, pool, {
-    sendMagicLink: (input) => {
-      sent.push(input);
-      return Promise.resolve();
-    },
+  const auth = createBetterAuthService(env.auth, pool, (input) => {
+    sent.push(input);
+    return Promise.resolve();
   });
   // The same pool better-auth writes through, so RPC procedures address the
   // scratch schema too rather than whatever DATABASE_URL points at.
