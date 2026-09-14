@@ -21,6 +21,7 @@
     "./codebook/variableValidation": "./src/codebook/variableValidation.ts",
     "./codebook/writes": "./src/codebook/writes.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",
+    "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",

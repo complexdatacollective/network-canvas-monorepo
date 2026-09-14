@@ -12,6 +12,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
+import { richTextOf } from '../../../testing/text.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import VariableEditor, {
@@ -1824,7 +1825,7 @@ describe('the two answers a boolean offers', () => {
 
     expect(
       screen.getByRole('textbox', { name: 'Label for “false”' }),
-    ).toHaveAttribute('readonly');
+    ).toHaveAttribute('aria-readonly', 'true');
   });
 
   it('leaves a pair of answers nobody touched exactly as it was', async () => {
@@ -1842,8 +1843,8 @@ describe('the two answers a boolean offers', () => {
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     expect(
-      screen.getByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveValue('Yes');
+      richTextOf(screen.getByRole('textbox', { name: 'Label for “true”' })),
+    ).toBe('Yes');
     expect(
       screen.getByRole('switch', { name: 'Style “false” as negative' }),
     ).toBeChecked();
@@ -1885,11 +1886,11 @@ describe('the two answers a boolean offers', () => {
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     expect(
-      screen.getByRole('textbox', { name: 'Label for “false”' }),
-    ).toHaveValue('Never');
+      richTextOf(screen.getByRole('textbox', { name: 'Label for “false”' })),
+    ).toBe('Never');
     expect(
-      screen.getByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveValue('Always');
+      richTextOf(screen.getByRole('textbox', { name: 'Label for “true”' })),
+    ).toBe('Always');
 
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
@@ -2218,8 +2219,8 @@ describe('the two answers a boolean offers', () => {
     );
 
     expect(
-      screen.getByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveValue('Yes');
+      richTextOf(screen.getByRole('textbox', { name: 'Label for “true”' })),
+    ).toBe('Yes');
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));

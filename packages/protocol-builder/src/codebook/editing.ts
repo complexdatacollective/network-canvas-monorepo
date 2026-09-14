@@ -7,6 +7,7 @@ import {
   VariableSchema,
 } from '@codaco/protocol-validation';
 import {
+  hasDuplicateOptionLabels,
   normalizeForComparison,
   VariableNameSchema,
 } from '@codaco/shared-consts';
@@ -337,16 +338,14 @@ const categoricalOptionIssue = (
     seen.add(comparableValue);
   }
 
-  const labels = new Set<string>();
-  for (const { label } of variable.options) {
-    const comparableLabel = normalizeForComparison(label);
-    if (labels.has(comparableLabel)) {
-      return Object.freeze({
-        path: Object.freeze(['options']),
-        message: createMessageError(messages.optionsDuplicateLabel),
-      });
-    }
-    labels.add(comparableLabel);
+  // Asked of the one predicate the editors ask, so the refusal a save makes
+  // and the complaint the row already showed are the same judgement — and a
+  // non-UI caller writing straight to the codebook is held to it too.
+  if (hasDuplicateOptionLabels(variable.options)) {
+    return Object.freeze({
+      path: Object.freeze(['options']),
+      message: createMessageError(messages.optionsDuplicateLabel),
+    });
   }
 
   if (

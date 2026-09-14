@@ -9,10 +9,12 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import {
+  hasDuplicateOptionLabels,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 import {
   isOptionComplete,
-  isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
 import { createValidations } from '~/utils/validations';
@@ -138,16 +140,18 @@ export const uniqueOptionValues = (
     ? intl.formatMessage(messages.uniqueValues)
     : undefined;
 
-/** The label counterpart of `uniqueOptionValues`. */
+/**
+ * The label counterpart of `uniqueOptionValues`, asked of the one predicate
+ * every surface that authors an option label asks — shared-consts'
+ * `hasDuplicateOptionLabels`, which the protocol-builder editors and the
+ * codebook write that records what they author ask as well, so a list this
+ * rule lets through is never refused again further down.
+ */
 export const uniqueOptionLabels = (
   value: unknown,
   intl: IntlShape = defaultIntl,
 ) =>
-  hasDuplicates(
-    readOptions(value)
-      .map((option) => option.label)
-      .filter((label) => !isOptionLabelEmpty(label)),
-  )
+  hasDuplicateOptionLabels(value)
     ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
 

@@ -2,6 +2,10 @@
  * What counts as a missing half of an option, shared by the row that shows the
  * gap and the array rule that refuses to save it. One definition, so the two
  * can never disagree about which option is finished.
+ *
+ * The other thing that can be wrong with a list of options — two of them a
+ * participant would read the same way — is asked of shared-consts'
+ * `hasDuplicateOptionLabels`, which is asked by Architect's own list too.
  */
 export const isOptionLabelEmpty = (label: unknown) =>
   typeof label !== 'string' || label.trim() === '';

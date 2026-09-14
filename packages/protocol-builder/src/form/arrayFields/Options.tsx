@@ -6,6 +6,7 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 
 import {
   invalidVariableName,
@@ -17,11 +18,7 @@ import Option, {
   OptionsContext,
   type OptionValue,
 } from './Option.tsx';
-import {
-  isOptionComplete,
-  isOptionLabelEmpty,
-  isOptionValueEmpty,
-} from './optionCompleteness.ts';
+import { isOptionComplete, isOptionValueEmpty } from './optionCompleteness.ts';
 
 export type { OptionValue } from './Option.tsx';
 
@@ -121,13 +118,14 @@ const uniqueOptionValues = (value: unknown) =>
     ? createMessageError(messages.duplicateValues)
     : undefined;
 
-/** The label counterpart of `uniqueOptionValues`. */
+/**
+ * The label counterpart of `uniqueOptionValues`, asked of the one predicate
+ * every surface and the codebook write itself ask — so a list this rule lets
+ * through is never refused again on the way to the protocol, and a list it
+ * refuses reads the same in both places.
+ */
 const uniqueOptionLabels = (value: unknown) =>
-  hasDuplicates(
-    readOptions(value)
-      .map((option) => option.label)
-      .filter((label) => !isOptionLabelEmpty(label)),
-  )
+  hasDuplicateOptionLabels(value)
     ? createMessageError(messages.duplicateLabels)
     : undefined;
 

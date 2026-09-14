@@ -3,17 +3,19 @@ import type { ComponentType } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 
+import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import type {
   BooleanAnswer,
   BooleanAnswerIssues,
   BooleanAnswers,
 } from '../variableOptions.ts';
 
-const InputControl = InputField as ComponentType<Record<string, unknown>>;
+const OptionLabelControl = OptionLabelField as ComponentType<
+  Record<string, unknown>
+>;
 const ToggleControl = ToggleField as ComponentType<Record<string, unknown>>;
 
 const messages = defineMessages({
@@ -94,7 +96,7 @@ export default function VariableBooleanAnswerFields({
               <UnconnectedField
                 name={`boolean-answer-${records}-label`}
                 label={intl.formatMessage(messages.answerLabel, { records })}
-                component={InputControl}
+                component={OptionLabelControl}
                 // What the interview will actually show for an answer nobody
                 // has named: the participant reads fresco-ui's own boolean
                 // control, which supplies its translated Yes/No when the

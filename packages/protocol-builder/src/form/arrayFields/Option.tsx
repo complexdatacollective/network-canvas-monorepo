@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -23,20 +22,16 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 
-import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '../../markdown/markdownAdapter.ts';
+import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import {
   cellIssues,
   invalidVariableName,
   isDuplicatedInColumn,
+  optionLabelIssues,
   requiredCell,
   variableNameSubjects,
 } from './cellRules.ts';
@@ -63,12 +58,6 @@ export const optionNoun = defineMessage({
 });
 
 const messages = defineMessages({
-  duplicateLabelRow: {
-    id: 'protocolBuilder.option.duplicateLabelRow',
-    defaultMessage: 'Labels must be unique',
-    description:
-      'Shown under one option’s label cell when another option in the same list already reads the same way. Terse because it sits inside a row.',
-  },
   duplicateValueRow: {
     id: 'protocolBuilder.option.duplicateValueRow',
     defaultMessage: 'Values must be unique',
@@ -138,21 +127,9 @@ const messages = defineMessages({
 });
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+const OptionLabelControl = OptionLabelField as ComponentType<
   Record<string, unknown>
 >;
-
-/**
- * What an option's label cell complains about: nothing entered, or another
- * option a participant would read the same way.
- */
-const labelIssues = (value: unknown, rows: readonly OptionValue[]) =>
-  cellIssues(
-    requiredCell(value),
-    isDuplicatedInColumn(rows, 'label', value)
-      ? createMessageError(messages.duplicateLabelRow)
-      : undefined,
-  );
 
 /** What an option's VALUE cell complains about. */
 const valueIssues = (value: unknown, rows: readonly OptionValue[]) =>
@@ -198,14 +175,6 @@ const useOptionsContext = () => {
     throw new Error('Option rows must be rendered inside Options.');
   }
   return context;
-};
-
-const RICH_TEXT_TOOLBAR = {
-  headings: false,
-  history: true,
-  links: false,
-  lists: false,
-  thematicBreak: false,
 };
 
 /**
@@ -254,19 +223,10 @@ export default function Option({
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
 
-  const labelContent = useMemo(
-    () =>
-      markdownToRichTextContent(
-        typeof item.label === 'string' ? item.label : '',
-        true,
-      ),
-    [item.label],
-  );
-
   // A cell complains once the researcher has edited it, or once the row has
   // been asked to finish — which is the only way a blank row hears about
   // itself, since nothing in it has been touched.
-  const labelErrors = labelIssues(item.label, rows);
+  const labelErrors = optionLabelIssues(item.label, rows);
   const valueErrors = valueIssues(item.value, rows);
   const showLabelErrors =
     (hasEdited('label') || forceShowErrors) && labelErrors.length > 0;
@@ -387,27 +347,15 @@ export default function Option({
       <UnconnectedField
         name={`${rowFieldName}.label`}
         label={intl.formatMessage(messages.labelLabel)}
-        component={FrescoRichTextEditorField}
+        component={OptionLabelControl}
         placeholder={intl.formatMessage(messages.labelPlaceholder)}
-        changeMode="input"
-        toolbarOptions={RICH_TEXT_TOOLBAR}
-        value={labelContent}
+        value={typeof item.label === 'string' ? item.label : ''}
         onChange={(value: unknown) => {
-          // Stored canonically so two labels that read identically are also
-          // identical bytes on export — see shared-consts' `canonical-text`.
-          const label = toCanonicalText(
-            richTextContentToMarkdown(
-              value as RichTextContent | undefined,
-              true,
-            ),
-          );
-          // The editor emits a change as it mounts; committing that would
-          // rewrite the whole array, and dirty the stage, merely by opening a
-          // row. The comparison is canonical too, so opening a row whose stored
-          // label predates this normalization is not mistaken for an edit.
-          const stored = toCanonicalText(item.label ?? '');
-          markEdited('label', label, stored);
-          if (label === stored) return;
+          // Canonical, escaped and single-line already: `OptionLabelField`
+          // owns all three, and withholds the change the editor emits as it
+          // mounts — so anything arriving here is an edit the researcher made.
+          const label = typeof value === 'string' ? value : '';
+          markEdited('label', label, item.label ?? '');
           onUpdate?.({ label } as Partial<OptionValue>);
         }}
         errors={labelErrors}
