@@ -65,7 +65,6 @@ describe('shared outbox execution', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    // A disconnected query double; real pool connections use the shared factory.
     pool = new pg.Pool();
     vi.spyOn(pool, 'query').mockImplementation(async () => ({
       rows: [{ role: TENANT_ROLES.maintenance }],
