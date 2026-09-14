@@ -187,12 +187,9 @@ const auditExportJobs = pgTable(
       mode: 'number',
     }).notNull(),
     status: text('status').notNull().default('pending'),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     artifactKey: text('artifact_key'),
     artifactRowCount: integer('artifact_row_count'),
     artifactByteCount: bigint('artifact_byte_count', { mode: 'number' }),
@@ -217,9 +214,6 @@ const auditExportJobs = pgTable(
       table.actorId,
       table.createdAt.desc(),
     ),
-    index('audit_export_jobs_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(sql`status IN ('pending', 'generating')`),
     uniqueIndex('audit_export_jobs_handle_hash_idx')
       .on(table.handleHash)
       .where(sql`handle_hash IS NOT NULL`),
@@ -275,16 +269,6 @@ const auditExportJobs = pgTable(
       sql`${table.handleConsumedAt} IS NULL OR ${table.handleHash} IS NOT NULL`,
     ),
     check(
-      'audit_export_jobs_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
-    // A terminal job holds no lease.
-    check(
-      'audit_export_jobs_terminal_state_check',
-      sql`${table.status} IN ('pending', 'generating')
-          OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)`,
-    ),
-    check(
       'audit_export_jobs_identifier_lengths_check',
       sql`char_length(${table.teamId}) BETWEEN 1 AND 255
           AND char_length(${table.actorId}) BETWEEN 1 AND 255
@@ -309,18 +293,15 @@ const auditAlertOutbox = pgTable(
     auditEventSequence: bigint('audit_event_sequence', {
       mode: 'bigint',
     }).notNull(),
-    // Denormalized so the dispatcher can route, threshold, and rate-limit
+    // Denormalized so the worker can route, threshold, and rate-limit
     // without reading the immutable row — and so policy decides from the
     // server-owned event type, never from rendered text.
     eventType: text('event_type').notNull(),
     eventVersion: smallint('event_version').notNull(),
     alertPolicyKey: text('alert_policy_key').notNull(),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
@@ -356,11 +337,6 @@ const auditAlertOutbox = pgTable(
         auditEvents.eventVersion,
       ],
     }),
-    index('audit_alert_outbox_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(
-        sql`delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL`,
-      ),
     index('audit_alert_outbox_team_id_event_type_created_at_idx').on(
       table.teamId,
       table.eventType,
@@ -378,17 +354,11 @@ const auditAlertOutbox = pgTable(
           AND char_length(${table.alertPolicyKey}) BETWEEN 1 AND 128
           AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
     ),
-    check(
-      'audit_alert_outbox_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // An alert ends once, one way: delivered, given up on, or suppressed by
+    // policy — never two of them at the same time.
     check(
       'audit_alert_outbox_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) <= 1
-          AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) <= 1`,
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the
     // strict audit policy above. See the note on AUDIT_SIDECAR_SQL.
@@ -405,16 +375,16 @@ export const AUDIT_TABLES = { auditEvents, auditExportJobs, auditAlertOutbox };
 //
 // The two outbox tables keep the ordinary `team_isolation` policy rather than
 // inheriting `audit_team_isolation`, and the difference is deliberate. Both are
-// worker-driven: the staged-export generator and the alert dispatcher run as
-// studio_maintenance and must claim work across teams, exactly as the
-// invitation dispatcher does — under the strict policy they would see nothing
-// and report a clean sweep. Neither table carries event content: the outbox
-// holds ids, a machine event type and counters, and the job holds filters,
-// budgets and byte counts, so the readable history the strict policy protects
-// stays behind it. And the dispatcher still re-reads the event under an
-// explicit per-team tenant scope before rendering an alert, which is the only
-// state in which the maintenance role may read audit_events at all: the escape
-// buys the claim scan, not the history.
+// worker-driven: the staged-export generator and the alert sender run as
+// studio_maintenance and reach a row of any team from a queued job that names
+// only its id, with no team to scope to yet — under the strict policy they
+// would find nothing and report a clean sweep. Neither table carries event
+// content: the outbox holds ids, a machine event type and counters, and the job
+// holds filters, budgets and byte counts, so the readable history the strict
+// policy protects stays behind it. And the worker still re-reads the event
+// under an explicit per-team tenant scope before rendering an alert, which is
+// the only state in which the maintenance role may read audit_events at all:
+// the escape buys reaching the row, not the history.
 export const AUDIT_SIDECAR_SQL = `
 CREATE OR REPLACE FUNCTION audit_events_are_immutable() RETURNS trigger AS $$
 BEGIN
