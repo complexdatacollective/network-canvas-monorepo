@@ -15,6 +15,7 @@ import {
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import {
+  shapeMappingDraft,
   shapeMappingIssue,
   shapeMappingVariables,
 } from '../../shapeMapping.ts';
@@ -507,6 +508,42 @@ describe('shapeMappingIssue', () => {
         readVariables,
       ),
     ).toBeUndefined();
+  });
+
+  /**
+   * An attribute a stored mapping followed can be deleted from the type
+   * afterwards, leaving a mapping that names nothing. It is the same fix as a
+   * mapping that names nothing at all, and gets the same sentence.
+   */
+  it('refuses a mapping whose attribute is no longer in the type', () => {
+    expect(
+      shapeMappingIssue(
+        {
+          variable: asEntityAttributeReference('deleted'),
+          type: 'discrete',
+          map: [{ value: 'asian', shape: 'square' }],
+        },
+        readVariables,
+      ),
+    ).toBeDefined();
+  });
+
+  /**
+   * And a mapping whose stored `type` is neither of the two the schema knows
+   * is read as no variant chosen — which is also no attribute usefully
+   * chosen, because the variant is what says how its values are matched.
+   */
+  it('refuses a mapping whose variant is not one the schema knows', () => {
+    expect(
+      shapeMappingIssue(
+        shapeMappingDraft({
+          variable: 'age',
+          type: 'sometimes',
+          thresholds: [{ value: 10, shape: 'square' }],
+        }),
+        readVariables,
+      ),
+    ).toBeDefined();
   });
 });
 
