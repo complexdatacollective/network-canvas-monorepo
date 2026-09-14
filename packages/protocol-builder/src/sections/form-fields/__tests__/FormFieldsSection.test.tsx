@@ -3684,6 +3684,52 @@ describe('the answers a boolean a field is inventing offers', () => {
   });
 
   /**
+   * Which of the two answers is drawn in red is part of what the pair says,
+   * and the switch that decides it is beside the words that name it — so it
+   * has to reach the attribute the same way the words do. Read back off the
+   * create rather than off the switch, because a switch that shows itself on
+   * while the list behind it holds nothing is exactly the failure.
+   */
+  it('writes which answer is styled as the negative one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await inventBoolean(harness);
+    const answers = within(
+      await dialog.findByRole('region', { name: 'Boolean values' }),
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “true”' }),
+      'Nearby',
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “false”' }),
+      'Further away',
+    );
+    const negative = answers.getByRole('switch', {
+      name: 'Style “false” as negative',
+    });
+    await harness.user.click(negative);
+    await waitFor(() => expect(negative).toBeChecked());
+
+    await addTheRow(harness, dialog);
+
+    const created = await waitFor(() => {
+      const entry = inventedNickname(harness);
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created[1]).toMatchObject({
+      options: [
+        { label: 'Nearby', value: true },
+        { label: 'Further away', value: false, negative: true },
+      ],
+    });
+  });
+
+  /**
    * Naming neither answer is a real answer: an attribute that names none is
    * offered to the participant as Yes and No, which the schema spells as no
    * `options` key at all — so the create must not stamp a blank pair on it.

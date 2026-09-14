@@ -59,7 +59,18 @@ export default function BooleanAnswersField({
           if (disabled || readOnly) return;
           const next: OptionList = answers.map((held, heldIndex) => {
             const chosen = heldIndex === index ? answer : held;
-            return { label: chosen.label, value: chosen.value };
+            return {
+              label: chosen.label,
+              value: chosen.value,
+              // Whether this answer is drawn in red is part of what the pair
+              // says, so it is carried rather than rebuilt from the two
+              // fields: dropped here, the switch could be flicked and never
+              // stick, because the next render reads the answers back out of
+              // this list.
+              ...(chosen.negative === undefined
+                ? {}
+                : { negative: chosen.negative }),
+            };
           });
           onChange?.(next);
         }}

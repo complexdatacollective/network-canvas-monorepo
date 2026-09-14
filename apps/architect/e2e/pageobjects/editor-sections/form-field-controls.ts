@@ -1,5 +1,6 @@
 import { expect, type Locator } from '@playwright/test';
 
+import { writeRichText } from '../rich-text.js';
 import { inventAttributeInFieldDialog } from './forms.js';
 import { type OptionRow } from './variables.js';
 
@@ -80,9 +81,13 @@ export async function openValidationSection(dialog: Locator): Promise<Locator> {
  * Fill an attribute editor's list of allowed values.
  *
  * `VariableEditor`'s own rows, not the array field forms use elsewhere: each
- * row is a pair of plain inputs named "Option {n} label" / "Option {n} value"
- * (1-based), and "Create new option" appends an empty one. Nothing is committed until
- * the editor's own submit, so the rows are filled in one pass.
+ * row is named "Option {n} label" / "Option {n} value" (1-based), and "Create
+ * new option" appends an empty one. Nothing is committed until the editor's
+ * own submit, so the rows are filled in one pass.
+ *
+ * The label is a markdown box, not an input — the interview renders an option
+ * label as markdown wherever it shows one — so it is written the way every
+ * markdown value in this suite is written.
  */
 async function fillCodebookOptions(
   editor: Locator,
@@ -95,9 +100,13 @@ async function fillCodebookOptions(
   for (const [index, row] of rows.entries()) {
     await add.click();
     const position = index + 1;
-    await editor
-      .getByRole('textbox', { name: `Option ${position} label`, exact: true })
-      .fill(row.label);
+    await writeRichText(
+      editor.getByRole('textbox', {
+        name: `Option ${position} label`,
+        exact: true,
+      }),
+      row.label,
+    );
     await editor
       .getByRole('textbox', { name: `Option ${position} value`, exact: true })
       .fill(row.value);
@@ -112,18 +121,27 @@ async function fillCodebookOptions(
  * the researcher's to write. The quotation marks in those names are the
  * typographic pair the catalog uses (`VariableBooleanAnswerFields`'s
  * `answerLabel`/`negativeLabel`), not the ASCII one.
+ *
+ * Takes whichever surface holds the pair — the row's own dialog, or the
+ * codebook editor — because the same fieldset is rendered in both.
+ *
+ * The words are markdown, and the sample protocol's consent answers are the
+ * reason it matters: they read `**Yes**. I wish to participate…`, so the
+ * emphasis has to be typed into the box for the protocol to hold a bold run
+ * rather than four escaped asterisks.
  */
 async function setBooleanAnswer(
   editor: Locator,
   records: 'true' | 'false',
   spec: BooleanOptionSpec,
 ): Promise<void> {
-  await editor
-    .getByRole('textbox', {
+  await writeRichText(
+    editor.getByRole('textbox', {
       name: `Label for “${records}”`,
       exact: true,
-    })
-    .fill(spec.label);
+    }),
+    spec.label,
+  );
   if (spec.negative === 'omit') return;
   const negative = editor.getByRole('switch', {
     name: `Style “${records}” as negative`,
@@ -210,14 +228,12 @@ export async function addConfiguredFormField(
 
   const booleanOptions = spec.booleanOptions;
   if (booleanOptions) {
-    await inCodebookEditor(
-      editDialog,
-      'Change this attribute’s answer labels',
-      async (editor) => {
-        await setBooleanAnswer(editor, 'true', booleanOptions.positive);
-        await setBooleanAnswer(editor, 'false', booleanOptions.negative);
-      },
-    );
+    // Authored in the ROW's own dialog rather than through a codebook editor
+    // opened from it: the words on a yes-or-no attribute's two answers are
+    // shown beside the question that asks them (`AttributeValueFields`), and
+    // the row's own save is what records them on the attribute.
+    await setBooleanAnswer(editDialog, 'true', booleanOptions.positive);
+    await setBooleanAnswer(editDialog, 'false', booleanOptions.negative);
   }
 
   const dateMin = spec.dateMin;
