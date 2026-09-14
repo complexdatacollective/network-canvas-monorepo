@@ -16,7 +16,10 @@ import {
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
 import type { JobClient } from '../client.ts';
-import { createProtocolStoreGcHandler } from '../handlers/protocol-store-gc.ts';
+import {
+  createProtocolStoreGcHandler,
+  PROTOCOL_STORE_GC_BOUNDS,
+} from '../handlers/protocol-store-gc.ts';
 import type { JobWorker } from '../worker.ts';
 
 const db = await reachableDb();
@@ -36,28 +39,27 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Waits until the clock is somewhere a short observation window can be read
- * without ambiguity: at least three seconds into a minute and no more than
- * forty, so the window cannot span two occurrences of a per-minute schedule,
- * and not in the first minute of an hour, where the deployment's own hourly
- * schedule is due as well and would contribute a job the count could not tell
- * from the one under test.
- *
- * Worst case about a minute of waiting. That is a real minute boundary being
- * waited for rather than a budget: pg-boss sends what the last sixty seconds
- * of a schedule holds, and nothing makes a boundary arrive sooner.
+ * Waits out the first minute of an hour. `0 * * * *` comes due inside it, so a
+ * worker started there creates a sweep of its own — which would run before the
+ * job a case enqueued and collect the rows it seeded, and would be a second
+ * job in a count that expects one. One minute in sixty, and what is waited for
+ * is that minute passing rather than a budget being spent.
+ */
+async function awayFromTheHourBoundary(): Promise<void> {
+  while (new Date().getUTCMinutes() === 0) await sleep(250);
+}
+
+/**
+ * The above, and a position inside the minute from which a short observation
+ * window cannot span two occurrences of a per-minute schedule: pg-boss sends
+ * what the last sixty seconds holds, so a window that crossed a boundary would
+ * legitimately hold two jobs.
  */
 async function alignToASafeWindow(): Promise<void> {
   for (;;) {
-    const now = new Date();
-    const intoMinute = now.getUTCSeconds() * 1000 + now.getUTCMilliseconds();
-    if (
-      now.getUTCMinutes() !== 0 &&
-      intoMinute >= 3000 &&
-      intoMinute <= 40_000
-    ) {
-      return;
-    }
+    await awayFromTheHourBoundary();
+    const intoMinute = Date.now() % 60_000;
+    if (intoMinute >= 3000 && intoMinute <= 40_000) return;
     await sleep(250);
   }
 }
@@ -119,6 +121,19 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
       `delete from ${scratch.jobSchema}.job_common where name = 'protocol-store-gc'`,
     );
 
+  it('sweeps to bounds no deployment can vary', () => {
+    // The two windows are exercised below by rows that straddle them. The
+    // manifest depth and the retry horizon are not — a thousand manifests is
+    // too many to seed for what it would prove — so this is where they are
+    // pinned, and the bounds are one object because the cron addresses the
+    // sweep at nothing: there is no caller to pass a different set.
+    expect(PROTOCOL_STORE_GC_BOUNDS).toEqual({
+      retainManifestsPerDraft: 1000,
+      sectionGraceMs: 86_400_000,
+      commandRetryHorizonMs: 86_400_000,
+    });
+  });
+
   it('registers the sweep once however many workers boot', async () => {
     const workers = await twoWorkers();
     try {
@@ -144,6 +159,12 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
   });
 
   it('runs one sweep for one job across two workers, and it sweeps', async () => {
+    // The seeded rows below are what this case reads the sweep's counts from,
+    // so no other sweep may run first and collect them: not one an earlier
+    // case left queued, and not one the deployment's own schedule creates.
+    await clearGcQueue();
+    await awayFromTheHourBoundary();
+
     // Collectable by the production bounds: unreferenced for longer than the
     // day of grace, and referenced by no version, template or manifest.
     const collectable = `gc-${randomUUID()}`;
@@ -190,7 +211,8 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
       await stopAll(workers);
       logged.mockRestore();
     }
-  });
+    // Long enough to include waiting out the first minute of an hour.
+  }, 90_000);
 
   it('creates one job for a minute boundary across two workers', async () => {
     await clearGcQueue();
@@ -232,9 +254,7 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
         [TEST_SCHEDULE_KEY],
       );
     }
-  }, // Long enough to include the wait for a safe window, which is a real
-  // minute boundary rather than slack.
-  120_000);
+  }, 120_000); // minute boundary rather than slack. // Long enough to include the wait for a safe window, which is a real
 
   it('reports a sweep that could not run, and fails the job', async () => {
     const errors: string[] = [];
