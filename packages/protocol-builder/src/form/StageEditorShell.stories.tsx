@@ -190,38 +190,38 @@ export const Editing: Story = {
       about the ROOM the heading has rather than about the window: this editor
       is drawn in whatever column a host gives it.
 
-      Architect went two-column at `tablet-landscape` — 1024px of viewport
-      (`StageHeading.tsx:72`) — and from that width up its own column was
-      capped at `max-w-4xl`, so the 20rem rail never took room the stage name
-      had not got: the name block it drew beside the picture was the same width
-      at every viewport above the breakpoint. The container equivalent is
-      therefore the width at which THIS column reaches its cap, and the cap
-      here includes the column's own gutters: 896px of container, 848px of
-      heading, and a name block of 848 − 320 − 32 = 496px, unchanged above.
+      The rail arrives at 56rem of container, which is a floor under the NAME:
+      the gutters sit outside the column's `max-w-4xl` cap (as Architect's
+      did), so 896px of container is 848px of column and 848 − 320 of rail −
+      32 of gap leaves the name block 496px. Narrower than that and the rail
+      would be taking room the name has not got, so the heading stacks and the
+      name field keeps the whole column.
 
-      Below that the column is narrower than its cap, so splitting it would
-      draw a name block narrower than the widest this editor can give it — at
-      the 48rem this used to say, a 768px container left 368px of it. So the
-      heading stacks, and the name field keeps the whole column.
+      Above the cap the column stops growing at 896px and the name block
+      settles at 544px — the width Architect's own heading drew it at, which
+      it could hold because nothing sat beside its column.
 
       Measured by driving the room the editor is given, which is what the
       `@container` on the shell's own root is answered about.
     */
     const nameField = canvas.getByRole('textbox', { name: 'Stage name' });
     const column = heading.parentElement?.parentElement ?? null;
-    const container = column?.parentElement ?? null;
+    const gutterWrapper = column?.parentElement ?? null;
+    const container = gutterWrapper?.parentElement ?? null;
     const host = canvasElement.querySelector('main');
     await expect(container?.parentElement).toBe(host);
 
-    // The gutters are the column's own and sit inside its `max-w-4xl` cap,
-    // which is where the 848 above comes from. Read rather than assumed: the
-    // arithmetic below is only Architect's while this is 48.
-    const gutters =
-      column === null
+    // The gutters belong to the wrapper OUTSIDE the capped column, which is
+    // what lets the column reach its whole 896px. Read rather than assumed:
+    // the arithmetic below is only Architect's while this is 48, and the
+    // column's own padding is what must stay zero.
+    const paddingOf = (element: HTMLElement | null) =>
+      element === null
         ? 0
-        : Number.parseFloat(getComputedStyle(column).paddingLeft) +
-          Number.parseFloat(getComputedStyle(column).paddingRight);
-    await expect(gutters).toBe(48);
+        : Number.parseFloat(getComputedStyle(element).paddingLeft) +
+          Number.parseFloat(getComputedStyle(element).paddingRight);
+    await expect(paddingOf(gutterWrapper)).toBe(48);
+    await expect(paddingOf(column)).toBe(0);
 
     const hostStyle = host === null ? null : getComputedStyle(host);
     const hostInset =
@@ -247,6 +247,7 @@ export const Editing: Story = {
       return {
         heading: getComputedStyle(heading).display,
         name: nameField.getBoundingClientRect().width,
+        column: column?.getBoundingClientRect().width ?? 0,
       };
     };
 
@@ -257,20 +258,24 @@ export const Editing: Story = {
     // Never narrower beside a picture than Architect's own heading drew it.
     await expect(narrow.name).toBeGreaterThanOrEqual(544);
 
-    // One pixel below the cap is still one column: the threshold is the cap.
+    // One pixel below the threshold is still one column.
     await expect((await atContainerWidth(895)).heading).toBe('flex');
 
-    // At the cap, the picture rail arrives and the name block is the widest
-    // this column can give it…
-    const atCap = await atContainerWidth(896);
-    await expect(atCap.heading).toBe('grid');
-    await expect(atCap.name).toBeCloseTo(496, 0);
+    // At the threshold the picture rail arrives and the name block is at its
+    // floor, the column being 848px of the 896px container.
+    const atThreshold = await atContainerWidth(896);
+    await expect(atThreshold.heading).toBe('grid');
+    await expect(atThreshold.name).toBeCloseTo(496, 0);
+    await expect(atThreshold.column).toBeCloseTo(848, 0);
 
-    // …and stays exactly that wide however much room the host has, as
-    // Architect's did above its breakpoint.
+    // Above its cap the column stops at the whole `max-w-4xl`, gutters and
+    // all — which is the width every section beneath it is drawn at, and the
+    // width Architect drew its own. With the gutters spent inside the cap it
+    // was 848 here, and the name block 496.
     const wide = await atContainerWidth(1400);
     await expect(wide.heading).toBe('grid');
-    await expect(wide.name).toBeCloseTo(496, 0);
+    await expect(wide.name).toBeCloseTo(544, 0);
+    await expect(wide.column).toBeCloseTo(896, 0);
 
     // Left as the story draws itself, so what Chromatic photographs is the
     // editor rather than the last width this measured.

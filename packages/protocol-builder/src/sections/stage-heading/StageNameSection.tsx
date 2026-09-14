@@ -133,17 +133,23 @@ export default function StageNameSection({
       // it, and a heading that read the window would go two-column in a narrow
       // pane on a wide screen.
       //
-      // It splits at `56rem` because that is where the column the shell draws
-      // reaches its own `max-w-4xl` cap, which is the state Architect's
-      // heading was always in when it went two-column: Architect split at
-      // `tablet-landscape` (1024px of viewport, `StageHeading.tsx:72`) and its
-      // column was capped from that width up, so the picture rail never took
-      // room the name did not have. The cap here is 896px INCLUDING the
-      // column's own gutters, so from 56rem of container the heading is 848px
-      // and the name block is 848 − 20rem − `gap-8` = 496px, the widest this
-      // column can give it and the same at every width above. Splitting
-      // earlier spends room the name has not got: at the 48rem this used to
-      // say, a 768px container left the name block 368px.
+      // It splits at `56rem` because that is the room the NAME needs, not
+      // because of anything about the column's cap. The shell's gutters sit
+      // outside that cap (as Architect's did), so 56rem of container is 848px
+      // of column, and 848 − 20rem of rail − `gap-8` leaves the name block
+      // 496px. Below that the rail would be taking room the name has not got.
+      //
+      // Stated as a floor under the name rather than as "wherever the column
+      // reaches its 896px cap", which would read better and is what this said
+      // while the gutters were inside the cap. With them outside it that rule
+      // means 944px of container, and the hosts cannot reach it monotonically:
+      // Architect's stage-editor route hands the editor the whole width while
+      // its section list is stacked and only 904px once the list takes its own
+      // 16rem column, so a heading split at the cap would arrive just under
+      // 1008px of window and then stack again above it. Architect's own
+      // heading drew 544px beside the picture because nothing sat beside its
+      // column; a host that draws a list gives the editor less, and this is
+      // the width below which the rail is not worth its room.
       className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[56rem]:grid @min-[56rem]:grid-cols-[20rem_auto] @min-[56rem]:gap-8 @min-[56rem]:pt-10"
     >
       <div className="flex items-center justify-center">

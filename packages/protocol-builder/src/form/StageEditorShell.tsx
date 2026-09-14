@@ -498,40 +498,50 @@ function StageEditorFormBody({
           `@container` stays on the element above rather than here, so a
           section asking about the space it has is answered about the room the
           host gave the editor and not about this column's own cap.
+
+          Two elements, exactly as Architect had them (`StageEditor.tsx:733`):
+          the gutters on this wrapper and the cap on the column inside it.
+          `max-width` is a border-box cap, so both on one element spent the
+          gutters out of the 896px rather than outside it and drew every
+          section 848px wide.
         */}
-        <div className="phone-landscape:px-6 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4">
-          <form
-            id={formId}
-            ref={formRef}
-            noValidate // The form reports its own problems; the browser's differ.
-            aria-busy={isSubmitting}
-            onSubmit={formProps.onSubmit}
-            className="flex min-w-0 flex-col"
-          >
-            <LayoutGroup id={layoutGroupId}>
-              <EnclosingHeadingLevel level={stageTitleLevel}>
-                {access === 'readOnly' && (
-                  <Alert variant="info" density="compact">
-                    {holder === undefined
-                      ? intl.formatMessage(messages.heldByNobodyNamed)
-                      : intl.formatMessage(messages.heldBy, {
-                          holder: holder.displayName,
-                        })}
-                  </Alert>
-                )}
-                {reportedErrors && (
-                  <FormErrorsList key="form-errors" errors={reportedErrors} />
-                )}
-                {/*
+        <div className="phone-landscape:px-6 px-4">
+          <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+            <form
+              id={formId}
+              ref={formRef}
+              noValidate // The form reports its own problems; the browser's differ.
+              aria-busy={isSubmitting}
+              onSubmit={formProps.onSubmit}
+              className="flex min-w-0 flex-col"
+            >
+              <LayoutGroup id={layoutGroupId}>
+                <EnclosingHeadingLevel level={stageTitleLevel}>
+                  {access === 'readOnly' && (
+                    <Alert variant="info" density="compact">
+                      {holder === undefined
+                        ? intl.formatMessage(messages.heldByNobodyNamed)
+                        : intl.formatMessage(messages.heldBy, {
+                            holder: holder.displayName,
+                          })}
+                    </Alert>
+                  )}
+                  {reportedErrors && (
+                    <FormErrorsList key="form-errors" errors={reportedErrors} />
+                  )}
+                  {/*
                   Said once by the form rather than by every control: being
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
-              </EnclosingHeadingLevel>
-            </LayoutGroup>
-          </form>
-          {actions?.({ formId, readOnly, sections })}
+                  <FieldsDisabled disabled={readOnly}>
+                    {children}
+                  </FieldsDisabled>
+                </EnclosingHeadingLevel>
+              </LayoutGroup>
+            </form>
+            {actions?.({ formId, readOnly, sections })}
+          </div>
         </div>
       </div>
     </StageEditorFormContext>
