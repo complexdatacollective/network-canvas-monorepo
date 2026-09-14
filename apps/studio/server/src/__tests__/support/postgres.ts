@@ -85,8 +85,17 @@ export type ScratchSchema = {
   maintenance: pg.Pool;
   /** This scratch schema's pg-boss schema, once provisioned. */
   jobSchema: string;
-  /** The web process's enqueue-only pg-boss, on the application pool. */
-  createJobClient: () => Promise<JobClient>;
+  /**
+   * The web process's enqueue-only pg-boss, against this scratch job schema
+   * and on a pool of its own pinned to the application role — the production
+   * construction, with only the schema changed.
+   *
+   * Started by default, because a case that enqueues wants the connection
+   * failure of a broken client at its `beforeAll` rather than inside its
+   * first assertion. `{ start: false }` leaves the queue cache cold, which is
+   * what the lazy start and the cold-cache enqueue are about.
+   */
+  createJobClient: (options?: { start?: boolean }) => Promise<JobClient>;
   /**
    * A worker pinned to the maintenance role, on this scratch job schema, with
    * every background cadence turned down so a test observes a pass rather than
@@ -96,6 +105,16 @@ export type ScratchSchema = {
   createJobWorker: (overrides?: Partial<JobWorkerDeps>) => JobWorker;
   dispose: () => Promise<void>;
 };
+
+/**
+ * The graceful window a scratch worker's `stop()` waits out. Production gives
+ * a handler 25 seconds, which is most of a container's stop window and nearly
+ * all of this suite's 30-second hook timeout: a case whose handler is
+ * deliberately slow, or one that fails while a job is in flight, would have
+ * `dispose()` sit out the whole window and fail the file at its teardown
+ * rather than at the assertion that went wrong.
+ */
+const SCRATCH_STOP_TIMEOUT_MS = 2000;
 
 // Enough that pg-boss's own polling floor (500ms) is what a test waits on.
 const SCRATCH_WORKER_INTERVALS = {
@@ -150,9 +169,13 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
     app,
     maintenance,
     jobSchema,
-    createJobClient: async () => {
-      const client = await createJobClient(app, { schema: jobSchema });
+    createJobClient: async ({ start = true } = {}) => {
+      // The client builds its own application-role pool from `db`; the search
+      // path the scratch pools carry is not one of its concerns, because every
+      // statement it runs names its schema.
+      const client = createJobClient(db, { schema: jobSchema });
       running.push(client);
+      if (start) await client.start();
       return client;
     },
     createJobWorker: (overrides = {}) => {
@@ -162,6 +185,7 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
         publicBaseUrl: 'http://localhost:3000',
         schema: jobSchema,
         intervals: SCRATCH_WORKER_INTERVALS,
+        stopTimeoutMs: SCRATCH_STOP_TIMEOUT_MS,
         ...overrides,
       });
       running.push(worker);
@@ -222,6 +246,25 @@ async function provisionScratchJobSchema(pool: pg.Pool): Promise<void> {
       JSON.stringify({ policy: 'standard', ...options }),
     ]);
   }
+}
+
+/**
+ * The SQLSTATE a failure carries, wherever it ended up. Drizzle wraps a driver
+ * error, so the code can be a cause or two down, and pg-boss re-emits one from
+ * a worker as a plain object rather than an Error. Read through the chain
+ * rather than off the top: a missing `code` would otherwise read the same as a
+ * privilege error that never happened.
+ */
+export function sqlState(error: unknown): string | undefined {
+  let current: unknown = error;
+  while (typeof current === 'object' && current !== null) {
+    if ('code' in current && typeof current.code === 'string') {
+      return current.code;
+    }
+    if (!('cause' in current)) return undefined;
+    current = current.cause;
+  }
+  return undefined;
 }
 
 export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {

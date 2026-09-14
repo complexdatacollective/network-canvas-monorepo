@@ -1,0 +1,115 @@
+import { spawn, type ChildProcessByStdio } from 'node:child_process';
+import { createConnection, createServer } from 'node:net';
+import { dirname, resolve } from 'node:path';
+import process from 'node:process';
+import type { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
+
+// Running an entrypoint as a deployment runs it: a process of its own, started
+// from one of the image's two commands (#1895). Some properties only exist at
+// that scale — what a process prints at boot, what it binds, whether a
+// container stop ends it — and no in-process test of the module it loads can
+// answer them.
+
+const SERVER_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../..',
+);
+
+/** Enough for a boot that waits on a database and a schema check or two. */
+const DEFAULT_BOOT_TIMEOUT_MS = 30_000;
+
+/** What `spawn` returns for this stdio shape: no stdin, both outputs piped. */
+type EntrypointProcess = ChildProcessByStdio<null, Readable, Readable>;
+
+export type Entrypoint = {
+  child: EntrypointProcess;
+  /** Everything the process has printed, both streams, in arrival order. */
+  output: () => string;
+  waitForOutput: (pattern: RegExp, timeoutMs?: number) => Promise<void>;
+  exited: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
+};
+
+/**
+ * @param entry a path under the server package, e.g. `src/worker.ts`.
+ * @param env variables layered over this process's own, which carry the
+ * committed development defaults the suite runs under. A case whose subject is
+ * the deployment lane overrides those deliberately.
+ */
+export function startEntrypoint(
+  entry: string,
+  env: Record<string, string>,
+): Entrypoint {
+  const child: EntrypointProcess = spawn(
+    process.execPath,
+    [resolve(SERVER_ROOT, entry)],
+    {
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+
+  let output = '';
+  const listeners: (() => void)[] = [];
+  const record = (chunk: Buffer) => {
+    output += chunk.toString();
+    for (const notify of listeners) notify();
+  };
+  child.stdout.on('data', record);
+  child.stderr.on('data', record);
+
+  const exited = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((done) => {
+    child.on('exit', (code, signal) => done({ code, signal }));
+  });
+
+  return {
+    child,
+    output: () => output,
+    waitForOutput: (pattern, timeoutMs = DEFAULT_BOOT_TIMEOUT_MS) =>
+      new Promise<void>((settled, failed) => {
+        const check = () => {
+          if (!pattern.test(output)) return;
+          clearTimeout(timer);
+          settled();
+        };
+        const timer = setTimeout(() => {
+          failed(
+            new Error(
+              `${entry} never printed ${String(pattern)}; it printed:\n${output}`,
+            ),
+          );
+        }, timeoutMs);
+        listeners.push(check);
+        // The line may already have arrived before this call.
+        check();
+      }),
+    exited,
+  };
+}
+
+/** A port nothing is using, so that a refused connection means nobody bound it. */
+export async function freePort(): Promise<number> {
+  const server = createServer();
+  const port = await new Promise<number>((settled) => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      settled(typeof address === 'object' && address ? address.port : 0);
+    });
+  });
+  await new Promise<void>((settled) => server.close(() => settled()));
+  return port;
+}
+
+export function connectionRefused(port: number): Promise<boolean> {
+  return new Promise((settled) => {
+    const socket = createConnection({ host: '127.0.0.1', port });
+    socket.on('connect', () => {
+      socket.destroy();
+      settled(false);
+    });
+    socket.on('error', () => settled(true));
+  });
+}

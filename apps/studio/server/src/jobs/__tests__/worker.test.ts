@@ -1,6 +1,9 @@
 // The worker process's pg-boss: that it never installs or migrates a schema,
+// which role it runs as, that a notify-enabled queue does not wait out a poll,
 // and that SIGTERM lets an in-flight job finish.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import {
   createScratchSchema,
@@ -8,10 +11,14 @@ import {
   reachableDb,
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
+import { settlesWithin } from '../../__tests__/support/timing.ts';
 import type { StudioMailer } from '../../auth/email.ts';
 import type { JobClient } from '../client.ts';
 
 const db = await reachableDb();
+
+/** Long enough for a graceful stop the scratch worker asks for (2 s). */
+const STOP_BUDGET_MS = 10_000;
 
 const silentMailer: StudioMailer = {
   sendMagicLink: () => Promise.resolve(),
@@ -150,5 +157,143 @@ describe.skipIf(!db)('createJobWorker', () => {
     expect(stopReturned - stopBegan).toBeGreaterThan(500);
     expect(stopReturned).toBeGreaterThanOrEqual(left!);
     expect(await jobState(jobId)).toBe('completed');
+  });
+
+  it('stops when pg-boss has already stopped', async () => {
+    const worker = scratch.createJobWorker({ mailer: silentMailer });
+    await worker.start();
+
+    // Something else stopped the instance first: a second SIGTERM, a
+    // supervisor, or a case that stopped the boss to make a point. pg-boss
+    // returns from `stop()` without emitting `stopped` when it has nothing
+    // left to shut down, so a shutdown that only waited for the event would
+    // never return — and `dispose()` would hang behind it.
+    await worker.boss.stop({ graceful: false });
+
+    await settlesWithin(worker.stop(), STOP_BUDGET_MS, 'a repeated stop');
+  });
+
+  it('waits out a hung handler for the scratch window, not the deployed one', async () => {
+    const worker = scratch.createJobWorker({ mailer: silentMailer });
+    await worker.start();
+
+    let entered = false;
+    await worker.boss.work(
+      'protocol-store-gc',
+      { pollingIntervalSeconds: 0.5 },
+      () => {
+        entered = true;
+        // Never settles: the handler a graceful stop has to give up on.
+        return new Promise(() => undefined);
+      },
+    );
+    await enqueueGc();
+    await vi.waitFor(() => expect(entered).toBe(true), {
+      timeout: 15_000,
+      interval: 25,
+    });
+
+    const began = Date.now();
+    await worker.stop();
+    const elapsed = Date.now() - began;
+
+    // It did wait — the graceful window is what lets a real handler finish...
+    expect(elapsed).toBeGreaterThan(1000);
+    // ...and the suites ask for a short one. Production's 25 seconds here
+    // would spend most of a 30-second hook timeout on teardown, so a case that
+    // failed with a job in flight would report the timeout instead.
+    expect(elapsed).toBeLessThan(10_000);
+  }, 20_000);
+
+  it('runs pg-boss as the maintenance role', async () => {
+    // Read from inside the statements pg-boss runs on its own pool, because
+    // that is the session whose role is in question: the handler's own queries
+    // go to the maintenance pool, which is pinned elsewhere. A job's fetch and
+    // completion are both UPDATEs, so a trigger on the job table sees the role
+    // pg-boss connected as.
+    await scratch.pool.query(`
+      create table ${scratch.jobSchema}.role_probe (who text not null);
+      grant insert on ${scratch.jobSchema}.role_probe to ${TENANT_ROLES.maintenance};
+      create function ${scratch.jobSchema}.record_role() returns trigger
+        language plpgsql as $$
+        begin
+          insert into ${scratch.jobSchema}.role_probe (who) values (current_user);
+          return null;
+        end $$;
+      create trigger record_role after update on ${scratch.jobSchema}.job_common
+        for each row execute function ${scratch.jobSchema}.record_role();
+    `);
+
+    const worker = scratch.createJobWorker({ mailer: silentMailer });
+    await worker.start();
+    try {
+      await worker.boss.work(
+        'protocol-store-gc',
+        { pollingIntervalSeconds: 0.5 },
+        () => Promise.resolve(),
+      );
+      const jobId = await enqueueGc();
+      await vi.waitFor(
+        async () => expect(await jobState(jobId)).toBe('completed'),
+        { timeout: 15_000, interval: 100 },
+      );
+
+      const roles = await scratch.pool.query<{ who: string }>(
+        `select distinct who from ${scratch.jobSchema}.role_probe`,
+      );
+      // The login the URL carries is the schema's owner — a superuser in
+      // development — so an unpinned worker would read as that instead.
+      expect(roles.rows).toEqual([{ who: TENANT_ROLES.maintenance }]);
+    } finally {
+      await worker.stop();
+      await scratch.pool.query(
+        `drop trigger record_role on ${scratch.jobSchema}.job_common`,
+      );
+    }
+  });
+
+  it('is woken by a notification rather than its polling interval', async () => {
+    const worker = scratch.createJobWorker({ mailer: silentMailer });
+    await worker.start();
+    try {
+      let picked: number | undefined;
+      // Thirty seconds is longer than this case is allowed to take, so a
+      // pickup inside it can only have come from the NOTIFY the insert fires
+      // for a notify-enabled queue — which is what a sign-in link, valid for
+      // minutes, depends on.
+      await worker.boss.work(
+        'sign-in-email',
+        { pollingIntervalSeconds: 30 },
+        () => {
+          picked = Date.now();
+          return Promise.resolve();
+        },
+      );
+      // Past whatever poll registering a worker performs for itself, so the
+      // job below is created with no poll of its own coming.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const client = await scratch.app.connect();
+      let queued: number;
+      try {
+        await client.query('BEGIN');
+        await jobs.enqueue(client, 'sign-in-email', {
+          email: 'researcher@example.org',
+          url: 'https://studio.example.org/api/auth/magic-link/verify?token=t',
+        });
+        await client.query('COMMIT');
+        queued = Date.now();
+      } finally {
+        client.release();
+      }
+
+      await vi.waitFor(() => expect(picked).toBeDefined(), {
+        timeout: 10_000,
+        interval: 25,
+      });
+      expect(picked! - queued).toBeLessThan(2000);
+    } finally {
+      await worker.stop();
+    }
   });
 });

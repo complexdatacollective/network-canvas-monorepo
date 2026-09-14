@@ -93,7 +93,13 @@ async function installJobSchema(
   const installed = await db.query<{ present: boolean }>(
     `select to_regclass('${schema}.version') is not null as present`,
   );
-  const version = installed.rows[0]?.present
+  const present = installed.rows[0]?.present === true;
+  // `null` where the schema is there but says nothing about its version: an
+  // interrupted install, or a migration that emptied the table. It is not the
+  // absent case — the tables and the enum are there, and re-running the
+  // construction plan over them fails on `CREATE TYPE` (42710) — so it is
+  // treated as the mismatch it is and the schema is replaced.
+  const version = present
     ? ((
         await db.query<{ version: number }>(
           `select version from ${schema}.version`,
@@ -101,8 +107,8 @@ async function installJobSchema(
       ).rows[0]?.version ?? null)
     : null;
 
-  if (version !== JOB_SCHEMA_VERSION) {
-    if (version !== null) {
+  if (!present || version !== JOB_SCHEMA_VERSION) {
+    if (present) {
       const queued = await db
         .query<{ count: string }>(`select count(*)::text from ${schema}.job`)
         .then((result) => result.rows[0]?.count ?? 'an unknown number of')
@@ -110,7 +116,7 @@ async function installJobSchema(
         // for; not being able to count it is not a reason to refuse.
         .catch(() => 'an unknown number of');
       console.warn(
-        `Replacing pg-boss schema ${schema} (version ${version}) with version ${JOB_SCHEMA_VERSION}; ${queued} job(s) are discarded.`,
+        `Replacing pg-boss schema ${schema} (version ${version ?? 'unknown'}) with version ${JOB_SCHEMA_VERSION}; ${queued} job(s) are discarded.`,
       );
       await db.query(`drop schema ${schema} cascade`);
     }
@@ -166,6 +172,12 @@ async function syncJobQueues(pool: pg.Pool, schema: string): Promise<void> {
 /**
  * Not transactional — a push failure partway leaves an unstamped database,
  * which checkSchema reports as stale and db:reset remedies.
+ *
+ * The pool needs at least two free connections: this holds one for the whole
+ * apply (the advisory lock is session-scoped, so releasing it would release
+ * the lock) while drizzle-kit's push and the queue reconciliation check out
+ * their own. A single-connection pool deadlocks here until its connection
+ * timeout, not at the first statement.
  */
 export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const fingerprint = await computeSchemaFingerprint();

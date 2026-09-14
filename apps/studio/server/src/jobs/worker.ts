@@ -55,24 +55,25 @@ export type JobWorker = {
 };
 
 /**
- * pg-boss builds its own pool and its options carry no equivalent of pg's
- * `options` startup parameter, so the role is pinned through the connection
- * string, where node-postgres reads it from the query. Pinned at connect for
- * the reason src/db/pool.ts gives: a startup parameter survives RESET ROLE,
- * where a `SET ROLE` the worker issued itself would not.
+ * pg-boss hands its whole configuration to `new pg.Pool(...)`, so pg's own
+ * `options` startup parameter pins the role here exactly as src/db/pool.ts
+ * pins it on the server's pools — and for the same reason: a startup parameter
+ * survives RESET ROLE, where a `SET ROLE` the worker issued itself would not.
+ *
+ * Named in a type of its own because pg-boss's typings list the pg fields it
+ * expects rather than extending `pg.PoolConfig`, and `options` is not among
+ * them. Rewriting the connection string instead would have to re-implement
+ * what pg already does with it — a DSN carrying its own `options`, or one pg
+ * accepts that `new URL` does not parse, such as a Unix socket host.
  */
-function connectionStringAsRole(url: string, role: string): string {
-  const pinned = new URL(url);
-  pinned.searchParams.set('options', `-c role=${role}`);
-  return pinned.toString();
-}
+type JobWorkerConfig = NonNullable<ConstructorParameters<typeof PgBoss>[0]> & {
+  options?: string;
+};
 
 export function createJobWorker(deps: JobWorkerDeps): JobWorker {
-  const boss = new PgBoss({
-    connectionString: connectionStringAsRole(
-      deps.db.url,
-      TENANT_ROLES.maintenance,
-    ),
+  const config: JobWorkerConfig = {
+    connectionString: deps.db.url,
+    options: `-c role=${TENANT_ROLES.maintenance}`,
     schema: deps.schema ?? JOB_SCHEMA,
     // The schema is applied once, by apply-schema, and verified by every
     // process at boot: a worker that migrated at start could move the database
@@ -88,7 +89,8 @@ export function createJobWorker(deps: JobWorkerDeps): JobWorker {
     persistWarnings: false,
     persistQueueStats: false,
     ...deps.intervals,
-  });
+  };
+  const boss = new PgBoss(config);
 
   // An `error` event with no listener is an uncaught exception, which would
   // take the worker down over a transient maintenance failure that pg-boss
@@ -115,24 +117,26 @@ export function createJobWorker(deps: JobWorkerDeps): JobWorker {
     // arrive, and a test stops a worker a failing case left running.
     stop: () => {
       stopping ??= (async () => {
-        // pg-boss emits nothing when it was never started — it has nothing to
-        // shut down — so waiting for the event would wait forever.
-        if (starting === undefined) {
-          await boss.stop({ graceful: false });
-          return;
-        }
-        // `boss.stop()` already resolves after the event, but the graceful
-        // wait is the contract SIGTERM depends on, so it is waited on
-        // explicitly rather than inferred. Not `events.once`, which would
-        // turn a transient pg-boss error during shutdown into a rejection.
+        // The graceful wait is the contract SIGTERM depends on, so the event
+        // is waited on explicitly rather than inferred from the call. Not
+        // `events.once`, which would turn a transient pg-boss error during
+        // shutdown into a rejection.
         const stopped = new Promise<void>((resolve) => {
           boss.once('stopped', () => resolve());
         });
-        await boss.stop({
+        const halted = boss.stop({
           graceful: true,
           timeout: deps.stopTimeoutMs ?? DEFAULT_STOP_TIMEOUT_MS,
         });
-        await stopped;
+        // An instance that is already stopped — never started, or stopped by
+        // something else — returns from `stop()` without emitting anything, so
+        // the event alone would wait forever. `stop()` resolves after the
+        // event when there was something to shut down, and immediately when
+        // there was not; racing the two is the wait in both cases.
+        await Promise.race([stopped, halted]);
+        // Awaited after the race so a failed stop is reported rather than
+        // dropped: SIGTERM's handler logs it.
+        await halted;
       })();
       return stopping;
     },

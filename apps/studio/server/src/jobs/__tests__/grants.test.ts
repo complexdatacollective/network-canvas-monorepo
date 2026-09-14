@@ -9,6 +9,7 @@ import {
   provisionScratchSchema,
   reachableDb,
   type ScratchSchema,
+  sqlState,
 } from '../../__tests__/support/postgres.ts';
 import type { StudioMailer } from '../../auth/email.ts';
 import type { JobClient } from '../client.ts';
@@ -17,24 +18,6 @@ import type { JobWorker } from '../worker.ts';
 const db = await reachableDb();
 
 const INSUFFICIENT_PRIVILEGE = '42501';
-
-/**
- * Drizzle wraps a driver error, so the SQLSTATE can be a cause or two down,
- * and pg-boss re-emits one from a worker as a plain object rather than an
- * Error. Read through the chain rather than off the top: a missing `code`
- * would otherwise read the same as a privilege error that never happened.
- */
-function sqlState(error: unknown): string | undefined {
-  let current: unknown = error;
-  while (typeof current === 'object' && current !== null) {
-    if ('code' in current && typeof current.code === 'string') {
-      return current.code;
-    }
-    if (!('cause' in current)) return undefined;
-    current = current.cause;
-  }
-  return undefined;
-}
 
 async function expectRefused(work: Promise<unknown>): Promise<void> {
   const refusal = await work.then(
@@ -80,17 +63,22 @@ describe.skipIf(!db)('pg-boss grants', () => {
     it('creates a job and reads back only its id', async () => {
       const jobId = await enqueueGc();
 
-      // The three columns the insert's RETURNING and notify clause read.
+      // The two columns the insert's RETURNING and notify clause read.
       const readable = await scratch.app.query<{ id: string }>(
-        `select id, name, start_after from ${scratch.jobSchema}.job_common where id = $1`,
+        `select id, start_after from ${scratch.jobSchema}.job_common where id = $1`,
         [jobId],
       );
       expect(readable.rows).toHaveLength(1);
     });
 
-    it('cannot read a job payload', async () => {
+    it('cannot read a job payload or which queue it is on', async () => {
       await expectRefused(
         scratch.app.query(`select data from ${scratch.jobSchema}.job_common`),
+      );
+      // The queue name says which kind of work is waiting for which team, and
+      // the insert never reads it back: it is written, not selected.
+      await expectRefused(
+        scratch.app.query(`select name from ${scratch.jobSchema}.job_common`),
       );
     });
 

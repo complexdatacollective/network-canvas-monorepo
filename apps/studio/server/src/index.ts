@@ -23,34 +23,35 @@ import { STUDIO_VERSION } from './version.ts';
 // the mail variables are not even read — see readEnv's `withMail`.
 
 const env = readEnv();
-const pool = env.db ? createPool(env.db) : undefined;
+const { db } = env;
+const pool = db ? createPool(db) : undefined;
 
-// The enqueue-only pg-boss, on the application pool: every job is created by
-// the role that may create one and can do nothing else with it. Started only
-// once the schema is current, because pg-boss verifies its own installed
-// version at start and never migrates (#1895).
+// The enqueue-only pg-boss, on a small pool of its own pinned to the
+// application role: every job is created by the role that may create one and
+// can do nothing else with it. It exists from the moment there is a database
+// to reach, and connects when the schema is current — pg-boss verifies its own
+// installed version at start and never migrates (#1895).
 //
-// On the development lane the wait can outlast this boot, and then there is no
-// client to hand over: that is the lane whose warning already says sign-in
-// will fail until the schema is created, and `pnpm dev` applies it before this
-// process starts.
-let jobs: JobClient | undefined;
+// The development lane is why the two are separate. There the wait can outlast
+// this boot, and a client that was only built once the schema arrived would
+// leave every surface that enqueues without a queue for the life of the
+// process. This one starts from `onCurrent` instead, and a start that failed
+// is retried by the next enqueue rather than needing a restart.
+const jobs: JobClient | undefined = db ? createJobClient(db) : undefined;
+
 if (pool) {
-  let starting: Promise<JobClient> | undefined;
   await awaitCurrentSchema(pool, env, {
     onCurrent: () => {
-      starting = createJobClient(pool);
+      void jobs?.start().catch((error: unknown) => {
+        // Not fatal. A queue that cannot be reached fails the requests that
+        // need it, with the reason, and the next one tries again; refusing the
+        // boot would take down every surface that has nothing to do with
+        // background work.
+        // oxlint-disable-next-line no-console -- boot diagnostics
+        console.error('Could not start the job client:', error);
+      });
     },
   });
-  try {
-    jobs = await starting;
-  } catch (error) {
-    // Not fatal. A queue that cannot be reached fails the requests that need
-    // it, with the reason; refusing the boot would take down every surface
-    // that has nothing to do with background work.
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.error('Could not start the job client:', error);
-  }
 }
 
 const app = createApp(env, { jobs, pool });
@@ -96,9 +97,9 @@ function shutdown() {
     server.close(() => {
       // Suppression summaries use the application pool, so give their
       // bounded flush a chance to become immutable before closing database
-      // resources. Nothing of ours is ever in flight on the job client, so
-      // stopping it only has to happen before the pool it borrows ends. The
-      // outer ten-second backstop still caps total shutdown.
+      // resources. Nothing of ours is ever in flight on the job client;
+      // stopping it ends the pool it owns. The outer ten-second backstop
+      // still caps total shutdown.
       void Promise.all([jobs?.stop(), flushDeniedAuditSummaries()])
         .catch(() => undefined)
         .then(() => pool?.end())

@@ -23,9 +23,13 @@ export function jobDatabaseFor(client: pg.PoolClient): Db {
 }
 
 /**
- * The instance connection for a pg-boss that owns no pool of its own: the
+ * The instance connection for a pg-boss that opens no pool of its own: the
  * queue cache it reads at start, and nothing transactional. Enqueues still
  * pass their own client through `jobDatabaseFor`.
+ *
+ * The pool behind it is the job client's own (src/jobs/client.ts) and never
+ * the one serving requests — the cache read is a second connection, taken
+ * while a caller is holding one inside its transaction.
  */
 export function jobDatabaseForPool(pool: pg.Pool): Db {
   return fromDrizzle(drizzle({ client: pool }), sql);

@@ -204,11 +204,12 @@ const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
  * maintenance, which owns the schema's use outright because pg-boss's fetch,
  * completion and supervision paths write to every table in it.
  *
- * The column list on `job_common` is exactly what the insert hands back:
- * pg-boss returns the new id, and a notify-enabled queue also reads
- * `start_after` to decide whether to fire the NOTIFY. `name` is there because
- * the same statement's ON CONFLICT arbitration and the queue foreign key read
- * it. Hashed into the schema fingerprint, so widening this is a schema change.
+ * The column list on `job_common` is the two columns the insert reads back
+ * rather than writes: `id` for its RETURNING, and `start_after` for the notify
+ * clause a notify-enabled queue appends. Nothing else needs a SELECT — a
+ * column a statement only writes is covered by the INSERT above, and ON
+ * CONFLICT arbitration reads the index rather than the column. Hashed into the
+ * schema fingerprint, so widening this is a schema change.
  */
 export function jobGrantsSql(schema: string): string {
   if (!SCHEMA_NAME.test(schema)) {
@@ -219,7 +220,7 @@ export function jobGrantsSql(schema: string): string {
     `GRANT USAGE ON SCHEMA ${schema} TO ${app}, ${maintenance};`,
     `GRANT SELECT ON ${schema}.queue, ${schema}.version TO ${app};`,
     `GRANT INSERT ON ${schema}.job, ${schema}.job_common TO ${app};`,
-    `GRANT SELECT (id, name, start_after) ON ${schema}.job_common TO ${app};`,
+    `GRANT SELECT (id, start_after) ON ${schema}.job_common TO ${app};`,
     `GRANT ALL ON ALL TABLES IN SCHEMA ${schema} TO ${maintenance};`,
     `GRANT ALL ON ALL SEQUENCES IN SCHEMA ${schema} TO ${maintenance};`,
     `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA ${schema} TO ${maintenance};`,
