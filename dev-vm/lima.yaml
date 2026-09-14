@@ -22,7 +22,7 @@ vmType: vz
 # workers that the guest (and vitest's `cores - 1` default) would treat as full
 # cores.
 cpus: 12
-memory: 32GiB
+memory: 48GiB
 
 # Primary (OS) disk. Disposable: `dev-vm/vm rebuild` recreates it from this
 # file. ASIF is Apple's sparse VM image format (macOS 26+); Lima only supports
