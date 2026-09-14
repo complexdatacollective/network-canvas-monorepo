@@ -5,8 +5,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // `String.split` returns the delimiters as their own segments) and a matching
 // anchored test — deliberately NOT one global regex, whose `lastIndex` would
 // carry between calls.
-export const EMPHASIS_SPLIT = /(\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)/;
-export const EMPHASIS_TEST = /^(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)$/;
+const EMPHASIS_SPLIT = /(\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)/;
+const EMPHASIS_TEST = /^(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)$/;
 
 // One line of inline markdown. Only the emphasis markers need to arrive as
 // real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`

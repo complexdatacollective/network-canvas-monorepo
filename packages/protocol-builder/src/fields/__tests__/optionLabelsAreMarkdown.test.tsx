@@ -474,6 +474,29 @@ describe('the two answers of a yes-or-no attribute', () => {
   });
 
   /**
+   * Emphasis a researcher types becomes emphasis, not four asterisks.
+   *
+   * The editor's own input rules convert `**Very**` as it is typed, so what the
+   * protocol holds is a bold run — and the serializer writes it back as the
+   * markdown it came from rather than escaping the characters. This is the
+   * claim the sample protocol depends on: its consent answers read
+   * `**Yes**. I wish to participate…`, and a surface that escaped them would
+   * put four literal asterisks in front of the participant.
+   */
+  it('turns emphasis the researcher types into the markdown it holds', async () => {
+    const { user, labels } = renderBooleanAnswers([
+      { label: 'Related', value: true },
+      { label: 'Not related', value: false },
+    ]);
+
+    await screen.findByRole('textbox', { name: 'Label for “true”' });
+    await user.clear(answerBox('true'));
+    await user.type(answerBox('true'), EMPHASISED);
+
+    await waitFor(() => expect(labels()[0]).toBe(EMPHASISED));
+  });
+
+  /**
    * The pair keeps its OWN uniqueness rule rather than the option list's.
    *
    * Two buttons with the same words cannot be told apart, which is the same
