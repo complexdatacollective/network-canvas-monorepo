@@ -113,17 +113,16 @@ export const shapeOptions = (intl: IntlShape) =>
   }));
 
 /** The kinds of answer a shape can be chosen for, one value at a time. */
-const DISCRETE_SHAPE_TYPES: ReadonlySet<VariableType> = new Set([
+const DISCRETE_SHAPE_TYPES: ReadonlySet<VariableType> = new Set<VariableType>([
   'categorical',
   'ordinal',
   'boolean',
 ]);
 
 /** The kinds of answer a shape can be chosen for by numeric threshold. */
-const BREAKPOINT_SHAPE_TYPES: ReadonlySet<VariableType> = new Set([
-  'number',
-  'scalar',
-]);
+const BREAKPOINT_SHAPE_TYPES: ReadonlySet<VariableType> = new Set<VariableType>(
+  ['number', 'scalar'],
+);
 
 const isEligible = (type: VariableType): boolean =>
   DISCRETE_SHAPE_TYPES.has(type) || BREAKPOINT_SHAPE_TYPES.has(type);

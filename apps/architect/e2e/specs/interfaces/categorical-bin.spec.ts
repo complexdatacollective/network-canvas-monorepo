@@ -70,6 +70,35 @@ function findNodeCodebookVariable(
   throw new Error(`no codebook.node variable found with id "${variableId}"`);
 }
 
+/**
+ * The `shape` of the node type that owns the given attribute.
+ *
+ * Walked the same way its variables are, because the type id is minted by the
+ * create row and is not a fact this spec knows.
+ */
+function findNodeShape(
+  protocol: Record<string, unknown>,
+  variableId: string,
+): Record<string, unknown> {
+  const { codebook } = protocol;
+  if (!isRecord(codebook) || !isRecord(codebook.node)) {
+    throw new Error('protocol JSON has no codebook.node object');
+  }
+  for (const nodeType of Object.values(codebook.node)) {
+    if (
+      isRecord(nodeType) &&
+      isRecord(nodeType.variables) &&
+      variableId in nodeType.variables
+    ) {
+      if (!isRecord(nodeType.shape)) {
+        throw new Error('the node type has no shape definition');
+      }
+      return nodeType.shape;
+    }
+  }
+  throw new Error(`no codebook.node type found owning "${variableId}"`);
+}
+
 test('creates a valid CategoricalBin stage from scratch', async ({
   architectPage,
   seed,
@@ -168,13 +197,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
 
   // And the shape mapping reached the codebook, as the mapping variant the
   // runtime reads for a categorical answer.
-  const personType = Object.values(
-    (protocol.codebook as Record<string, Record<string, unknown>>).node,
-  ).find((type) => isRecord(type) && isRecord(type.variables));
-  if (!isRecord(personType) || !isRecord(personType.shape)) {
-    throw new Error('the node type has no shape definition');
-  }
-  expect(personType.shape.dynamic).toEqual({
+  expect(findNodeShape(protocol, prompt.variable).dynamic).toEqual({
     variable: prompt.variable,
     type: 'discrete',
     map: [
