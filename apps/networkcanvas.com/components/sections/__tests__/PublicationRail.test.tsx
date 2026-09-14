@@ -252,7 +252,7 @@ describe('PublicationRail', () => {
     expect(viewport.scrollLeft).toBe(0);
   });
 
-  it('keeps the native fallback below the pinned-rail viewport breakpoint', async () => {
+  it('keeps the native fallback below the flowing-rail viewport breakpoint', async () => {
     flowingViewportMatches = false;
     renderRail();
 
