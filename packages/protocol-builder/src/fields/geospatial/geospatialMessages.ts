@@ -457,7 +457,7 @@ export const geospatialMessages = defineMessages({
     id: 'protocolBuilder.geospatial.previewLoading',
     defaultMessage: 'Loading the map.',
     description:
-      'Announced to screen readers only, while the host is asked for a map that can be drawn for the stored API key. Never shown on screen.',
+      'Announced to screen readers only, while the host is asked for the API key the map is drawn with. Never shown on screen.',
   },
   previewMissingKey: {
     id: 'protocolBuilder.geospatial.previewMissingKey',
@@ -466,12 +466,12 @@ export const geospatialMessages = defineMessages({
     description:
       'Shown in the starting-view dialog when the stage has no API key yet, so no map can be drawn. The coordinates can still be typed in the section behind the dialog.',
   },
-  previewUnavailable: {
-    id: 'protocolBuilder.geospatial.previewUnavailable',
+  previewUnreadableKey: {
+    id: 'protocolBuilder.geospatial.previewUnreadableKey',
     defaultMessage:
-      'This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.',
+      'The map could not be drawn because the chosen API key could not be read. Choose a different key, or type the coordinates instead.',
     description:
-      'Shown in the starting-view dialog when the host refuses to resolve a map for the stored key. Says why — the key is write-only to this editor — and what to do instead, which is the pair of coordinate boxes in the section behind the dialog.',
+      'Shown in the starting-view dialog when the stage names an API key the protocol holds no value for, so there is nothing to draw a map with. Says what to do instead, which is choosing another key or using the pair of coordinate boxes in the section behind the dialog.',
   },
   previewLoadFailure: {
     id: 'protocolBuilder.geospatial.previewLoadFailure',

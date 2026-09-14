@@ -55,11 +55,7 @@ function host(): InMemoryHost {
 async function submitHeld(
   subject: InMemoryHost,
   section: ReturnType<typeof sectionId>,
-  promote?: Readonly<{
-    editId: string;
-    resourceIds: string[];
-    secretHandles?: string[];
-  }>,
+  promote?: Readonly<{ editId: string; resourceIds: string[] }>,
   requestId = nextRequestId(),
 ) {
   const held = await subject.client.acquireLock({
@@ -713,7 +709,13 @@ describe('the in-memory host', () => {
     ).toBe(0n);
   });
 
-  it('promotes a staged secret only for the handle staging answered with', async () => {
+  /**
+   * A promotion names resource ids and nothing else, and the key's value is
+   * what the manifest ends up holding — which is the file the researcher sends
+   * on, and where both interview runtimes read it from to build the map. The
+   * editor reads it back the same way, through `inspect`.
+   */
+  it('writes a staged secret’s value into the manifest, and reads it back', async () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
@@ -724,38 +726,32 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
     const resourceId = staged.data.descriptor.id;
 
-    const held = await subject.client.acquireLock({
+    const stagedInspection = await subject.client.resources.inspect({
       protocolId: subject.protocolId,
-      sectionId: INFORMATION,
+      editId: EDIT,
+      resourceId,
     });
-    const withoutHandle = await safe(
-      subject.client.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: held.document,
-        revision: held.revision,
-        promote: { editId: EDIT, resourceIds: [resourceId] },
-      }),
-    );
-
-    expect(withoutHandle.definedError?.code).toBe('PROMOTION_FAILED');
     expect(
-      subject.store.read(sectionId({ kind: 'assets' })).document[resourceId],
-    ).toBeUndefined();
+      stagedInspection.status === 'ok' && stagedInspection.data.value,
+    ).toBe('pk.secret');
 
-    const withHandle = await submitHeld(subject, INFORMATION, {
+    const promoted = await submitHeld(subject, INFORMATION, {
       editId: EDIT,
       resourceIds: [resourceId],
-      ...(staged.data.handle === undefined
-        ? {}
-        : { secretHandles: [staged.data.handle] }),
     });
 
-    expect(withHandle.promoted).toHaveLength(1);
+    expect(promoted.promoted).toHaveLength(1);
     expect(
       subject.store.read(sectionId({ kind: 'assets' })).document[resourceId],
     ).toMatchObject({ type: 'apikey', value: 'pk.secret' });
+
+    const committedInspection = await subject.client.resources.inspect({
+      protocolId: subject.protocolId,
+      resourceId,
+    });
+    expect(
+      committedInspection.status === 'ok' && committedInspection.data.value,
+    ).toBe('pk.secret');
   });
 
   it('answers a repeated promotion with the one it committed', async () => {
@@ -1262,10 +1258,8 @@ describe('the in-memory host', () => {
     });
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
 
-    // Neither half of what promoting somebody else's secret would take is
-    // reachable from another session: staging is that edit's, so a
-    // collaborator is not shown the resource id, and the handle is minted
-    // independently of that id, so it cannot be worked out from one either.
+    // A collaborator is not shown the resource id at all: staging belongs to
+    // the edit that made it, in the session that made it.
     const collaborator = subject.asCollaborator(COLLABORATOR);
     const listed = await collaborator.resources.list({
       protocolId: subject.protocolId,
@@ -1274,7 +1268,6 @@ describe('the in-memory host', () => {
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
     expect(listed.data.resources).toEqual([]);
-    expect(staged.data.handle).not.toContain(staged.data.descriptor.id);
 
     // The session that staged it still has it: this is scoping, not hiding.
     const mine = await subject.client.resources.list({
@@ -1298,11 +1291,8 @@ describe('the in-memory host', () => {
         sectionId: INFORMATION,
         document: held.document,
         revision: held.revision,
-        promote: {
-          editId: EDIT,
-          resourceIds: [staged.data.descriptor.id],
-          secretHandles: [`staged-secret:${staged.data.descriptor.id}`],
-        },
+        // Naming the id is not enough: the staging is another session's.
+        promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
     );
 

@@ -23,12 +23,12 @@ import {
 } from './mapView.ts';
 
 export type MapPreviewDialogProps = Readonly<{
-  /** The stored key this map is drawn with. The VALUE never comes here. */
+  /** The stored key this map is drawn with, by the id the stage holds. */
   tokenAssetId: string | undefined;
   /**
    * The basemap the STAGE is configured to show, which is what the framing is
    * being done against. Absent while the researcher has chosen none, and the
-   * preview then stays on whatever the host resolved.
+   * map is then drawn on Mapbox's own street map, as Architect's was.
    */
   style: string | undefined;
   center: unknown;
@@ -40,31 +40,25 @@ export type MapPreviewDialogProps = Readonly<{
 /** Whether the map itself has finished drawing, once there is one to draw. */
 type MapStatus = 'loading' | 'ready' | 'error';
 
+/** Mapbox's own street map, which Architect drew a stage with no basemap on. */
+const DEFAULT_MAP_STYLE = 'mapbox://styles/mapbox/streets-v12';
+
 /**
  * Sets a stage's starting view by panning and zooming a real map.
  *
- * The key itself never reaches this component and cannot: the contract's
- * resource procedures consume secret material and hand back only an asset id.
- * What a host CAN answer with for that id is the URL a preview renders from —
- * a style it has credentialled on its own side — and that is what the map is
- * built with. A host that will not do that answers `unsupported-kind`, as the
- * package's in-memory host does: the researcher is told the map is unavailable
- * here and sets the same two numbers by hand in the section behind this
- * dialog, which is why those boxes are the control and this is the
- * convenience.
+ * Built exactly as Architect built it and as the interview runtime builds the
+ * map the participant will see: the chosen key's own value as the access
+ * token, and the basemap the stage is configured to show as the style. The
+ * framing is the whole purpose of this dialog, and a view framed on a
+ * satellite basemap is a different decision from the same view framed on a
+ * street map — so the map has to be the participant's map from the first
+ * frame, not a substitute the editor swaps afterwards.
  *
- * ## What a host has to do for a map to appear here at all
- *
- * `resolvePreview` has to answer for an `apikey` resource with a style URL the
- * host has credentialled itself — a tile-serving endpoint carrying the stored
- * key, or a signed style URL. Every host today answers `unsupported-kind` for
- * a secret (`testing/host/resourceStore.ts`, and Architect's own
- * `resourceBridge.ts`), so the researcher is told the map is unavailable and
- * sets the starting view by hand. The style the researcher chose is passed in
- * either way and applied as soon as a map exists, so the framing is done on
- * the basemap the participant will see rather than on whatever the host
- * happened to credential — which is what Architect does by building its map
- * with the chosen style and the key it holds.
+ * The value is read back through `inspect`, which is where a resource says
+ * what it is. There is nothing to keep from the editor: every host writes a
+ * promoted key into the asset manifest, which is the file the researcher sends
+ * to other people, and the runtime reads it from there. It reaches the map
+ * constructor and nowhere else — never a log, never the DOM.
  */
 export default function MapPreviewDialog({
   tokenAssetId,
@@ -78,7 +72,13 @@ export default function MapPreviewDialog({
   const resources = useResourceClient();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  const [styleUrl, setStyleUrl] = useState<string | undefined>(undefined);
+  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+  /**
+   * Whether the host answered for the key but had no value to give — a stage
+   * naming a manifest entry the protocol holds no key in. Told apart from a
+   * call that has not come back, which is still loading.
+   */
+  const [keyUnreadable, setKeyUnreadable] = useState(false);
   const [status, setStatus] = useState<MapStatus>('loading');
   const [viewCenter, setViewCenter] = useState<MapCenter>(() =>
     resolveCenter(center),
@@ -88,45 +88,42 @@ export default function MapPreviewDialog({
 
   useEffect(() => {
     if (tokenAssetId === undefined || tokenAssetId === '') {
-      setStyleUrl(undefined);
+      setAccessToken(undefined);
+      setKeyUnreadable(false);
       clear();
       return;
     }
     run(
-      () => resources.resolvePreview(tokenAssetId),
-      (resolved) => {
+      () => resources.inspect(tokenAssetId),
+      (inspection) => {
         setStatus('loading');
-        setStyleUrl(resolved.url);
+        setKeyUnreadable(inspection.value === undefined);
+        setAccessToken(inspection.value);
       },
     );
   }, [clear, resources, run, tokenAssetId]);
 
   useEffect(() => {
-    if (container === null || styleUrl === undefined) return undefined;
+    if (container === null || accessToken === undefined) return undefined;
 
     let disposed = false;
     let map: MapboxMap | null = null;
 
     try {
-      // No `accessToken`: the style URL the host resolved is already
-      // credentialled on its side, and a token has no way of reaching here.
+      // The key's own value and the stage's own basemap, which is the pair
+      // Architect built its map from and the pair the interview runtime builds
+      // the participant's map from.
       map = new mapboxgl.Map({
         container,
-        style: styleUrl,
+        style: chosenStyle ?? DEFAULT_MAP_STYLE,
         center: [viewCenter[0], viewCenter[1]],
         zoom: viewZoom,
+        accessToken,
       });
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
       map.on('load', () => {
         if (disposed) return;
         setStatus((current) => (current === 'error' ? current : 'ready'));
-        // The host's URL is what CREDENTIALS the map; the researcher's choice
-        // is what it should be showing. Swapped once the credentialled style
-        // has loaded rather than built from, because the chosen style is a
-        // bare `mapbox://` value with no key of its own — and swapped rather
-        // than left alone, or the starting view would be framed on a basemap
-        // the participant never sees.
-        if (chosenStyle !== undefined) map?.setStyle(chosenStyle);
       });
       map.on('error', () => {
         if (disposed) return;
@@ -159,14 +156,10 @@ export default function MapPreviewDialog({
     // map moves would rebuild the map under the researcher's hand on every
     // pan.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenStyle, container, styleUrl]);
+  }, [accessToken, chosenStyle, container]);
 
   const missingKey = tokenAssetId === undefined || tokenAssetId === '';
   const moved = hasMapViewChanged(viewCenter, viewZoom, center, zoom);
-  // The one thing that cannot be recovered from here: a host that will never
-  // resolve a map for a stored key. Every other failure is transient and the
-  // notice below offers its own retry.
-  const refusedOutright = failure?.reason === 'unsupported-kind';
 
   return (
     <Dialog
@@ -197,11 +190,7 @@ export default function MapPreviewDialog({
     >
       <div className="flex flex-col gap-3">
         <Paragraph margin="none" emphasis="muted">
-          {intl.formatMessage(
-            refusedOutright
-              ? geospatialMessages.previewUnavailable
-              : geospatialMessages.previewInstructions,
-          )}
+          {intl.formatMessage(geospatialMessages.previewInstructions)}
         </Paragraph>
 
         {busy && (
@@ -218,6 +207,14 @@ export default function MapPreviewDialog({
           </Alert>
         )}
 
+        {keyUnreadable && (
+          <Alert variant="warning" density="compact">
+            <AlertDescription>
+              {intl.formatMessage(geospatialMessages.previewUnreadableKey)}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {failure !== undefined && (
           <ResourceFailureNotice
             failure={failure}
@@ -229,7 +226,7 @@ export default function MapPreviewDialog({
           />
         )}
 
-        {status === 'error' && styleUrl !== undefined && (
+        {status === 'error' && accessToken !== undefined && (
           <Alert variant="warning" density="compact">
             <AlertDescription>
               {intl.formatMessage(geospatialMessages.previewLoadFailure)}
@@ -237,7 +234,7 @@ export default function MapPreviewDialog({
           </Alert>
         )}
 
-        {styleUrl !== undefined && (
+        {accessToken !== undefined && (
           <section
             ref={setContainer}
             aria-label={intl.formatMessage(geospatialMessages.previewMapLabel)}

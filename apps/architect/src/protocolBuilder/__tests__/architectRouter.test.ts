@@ -1265,7 +1265,6 @@ describe("Architect's in-process protocol-builder host", () => {
 
     expect(listed.status).toBe('ok');
     if (listed.status !== 'ok') return;
-    expect(listed.data.secretStorage).toBe('plaintext');
     expect(
       listed.data.resources.map(({ id, kind, status }) => ({
         id,
@@ -1280,10 +1279,9 @@ describe("Architect's in-process protocol-builder host", () => {
   });
 
   /**
-   * A handle authorises the secret it stands for; `resourceIds` is what a
-   * write promotes. Taken together, the handle for a named secret would
-   * promote it twice, and a handle for one the write did not name would
-   * commit that secret behind the edit's back.
+   * `resourceIds` is the whole of what a write promotes, so a second secret
+   * staged in the same edit and not named is still that edit's to take back —
+   * which is what stops a cancelled edit leaving a credential behind.
    */
   it('promotes a staged secret once, and only what the write names', async () => {
     const { store, client } = openProtocol();
@@ -1302,10 +1300,6 @@ describe("Architect's in-process protocol-builder host", () => {
     if (named.status !== 'ok' || unnamed.status !== 'ok') {
       throw new Error('staging failed');
     }
-    const handles = [named.data.handle, unnamed.data.handle];
-    if (handles[0] === undefined || handles[1] === undefined) {
-      throw new Error('a staged secret has no handle');
-    }
 
     const held = await client.acquireLock({
       protocolId: PROTOCOL_ID,
@@ -1317,11 +1311,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Names one of two secrets' },
       revision: held.revision,
-      promote: {
-        editId: EDIT,
-        resourceIds: [named.data.descriptor.id],
-        secretHandles: [handles[0], handles[1]],
-      },
+      promote: { editId: EDIT, resourceIds: [named.data.descriptor.id] },
     });
 
     expect(written.promoted?.map((entry) => entry.id)).toEqual([
@@ -1341,7 +1331,17 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(manifest[named.data.descriptor.id]).toMatchObject({
       type: 'apikey',
       name: 'Mapbox token',
+      value: 'pk.named',
     });
+
+    // And the editor can read the promoted key back, which is how the map
+    // preview draws the map the participant will see.
+    const inspected = await client.resources.inspect({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      resourceId: named.data.descriptor.id,
+    });
+    expect(inspected.status === 'ok' && inspected.data.value).toBe('pk.named');
   });
 
   it('takes nothing from the last protocol into the next one opened', async () => {

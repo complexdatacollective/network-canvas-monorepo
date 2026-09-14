@@ -93,15 +93,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *    unchanged-pick escape, because re-saving such a prompt would go on
  *    overwriting the marker.
  *
- * The escape for rule 1 is anchored to the stage's own COMMITTED prompts,
- * found BY ROW ID rather than by the row the dialog opened on. The two differ
- * once a prompt has been edited more than once in a single unsaved session,
- * and only the committed anchor keeps an attribute the protocol ALREADY binds
- * here saveable.
+ * The escape for rule 1 is anchored to the stage's own SAVED prompts, found BY
+ * ROW ID rather than by the row the dialog opened on. The two differ once a
+ * prompt has been edited more than once in a single unsaved session, and only
+ * the saved anchor keeps an attribute the protocol ALREADY binds here
+ * saveable.
  */
 export default function NominationPromptsSection() {
   const intl = useAppIntl();
-  const { committedFields } = useStageEditorForm();
+  const { savedFields } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const nodeType = useStageValue(NODE_TYPE_FIELD);
@@ -129,18 +129,25 @@ export default function NominationPromptsSection() {
     [protocolContext, subject],
   );
 
-  /** This row's own saved attribute, found by the row's stable id. */
-  const committedVariableFor = useCallback(
+  /**
+   * This row's own saved attribute, found by the row's stable id.
+   *
+   * The stage as the protocol last STORED it, not the document the form is
+   * working on: what this answers is whether the protocol ALREADY binds the
+   * attribute here, and a structural write moves the working document without
+   * anything being stored.
+   */
+  const savedVariableFor = useCallback(
     (id: unknown): string => {
-      const committed: unknown = get(committedFields, PROMPTS_FIELD);
-      if (!Array.isArray(committed) || typeof id !== 'string') return '';
-      const row = committed.find(
+      const saved: unknown = get(savedFields, PROMPTS_FIELD);
+      if (!Array.isArray(saved) || typeof id !== 'string') return '';
+      const row = saved.find(
         (candidate) => isRecord(candidate) && candidate.id === id,
       );
       const variable = isRecord(row) ? row.variable : undefined;
       return typeof variable === 'string' ? variable : '';
     },
-    [committedFields],
+    [savedFields],
   );
 
   const beforeSave = useCallback(
@@ -165,13 +172,13 @@ export default function NominationPromptsSection() {
         return { refused: { fieldErrors: { variable: [ownedIssue] } } };
       }
 
-      const committed = committedVariableFor(value.id);
+      const saved = savedVariableFor(value.id);
       // The form on the same screen, in its own words: told the attribute is
       // "collected by a form elsewhere in this protocol", a researcher goes
       // looking through their other stages for a field one section above.
       if (
         variable !== '' &&
-        variable !== committed &&
+        variable !== saved &&
         draftFormVariables.includes(variable)
       ) {
         return {
@@ -189,7 +196,7 @@ export default function NominationPromptsSection() {
 
       const issue = crossClassPickIssue({
         variableId: variable,
-        originalVariableId: committed,
+        originalVariableId: saved,
         hasConflictingUse: (variableId) =>
           hasValidatedUse(roleMap, subject, variableId),
         allVariables,
@@ -202,7 +209,7 @@ export default function NominationPromptsSection() {
     },
     [
       allVariables,
-      committedVariableFor,
+      savedVariableFor,
       draftFormVariables,
       draftSlotMap,
       roleMap,

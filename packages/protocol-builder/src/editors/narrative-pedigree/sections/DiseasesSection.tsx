@@ -85,7 +85,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
-  const { committedFields, storeApi } = useStageEditorForm();
+  const { savedFields, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const { roleMap, slotMap } = useDiseaseVariableIndexes();
   const subject = useDiseaseSubject();
@@ -101,18 +101,25 @@ export default function DiseasesSection() {
     [protocolContext, sourceStageId],
   );
 
-  /** This row's own saved attribute, found by the row's stable id. */
-  const committedVariableFor = useCallback(
+  /**
+   * This row's own saved attribute, found by the row's stable id.
+   *
+   * The stage as the protocol last STORED it, not the document the form is
+   * working on: what this answers is whether the protocol ALREADY binds the
+   * attribute here, and a structural write moves the working document without
+   * anything being stored.
+   */
+  const savedVariableFor = useCallback(
     (id: unknown): string => {
-      const committed: unknown = committedFields[DISEASES_FIELD];
-      if (!Array.isArray(committed) || typeof id !== 'string') return '';
-      const row = committed.find(
+      const saved: unknown = savedFields[DISEASES_FIELD];
+      if (!Array.isArray(saved) || typeof id !== 'string') return '';
+      const row = saved.find(
         (candidate) => isRecord(candidate) && candidate.id === id,
       );
       const variable = isRecord(row) ? row.variable : undefined;
       return typeof variable === 'string' ? variable : '';
     },
-    [committedFields],
+    [savedFields],
   );
 
   const beforeSave = useCallback(
@@ -140,7 +147,7 @@ export default function DiseasesSection() {
             subject,
             sourceStageId,
             variableId: row.variable,
-            committedVariable: committedVariableFor(row.id),
+            committedVariable: savedVariableFor(row.id),
           });
       if (pickIssue !== undefined) fieldErrors.variable = [pickIssue];
 
@@ -170,7 +177,7 @@ export default function DiseasesSection() {
         : { refused: { fieldErrors } };
     },
     [
-      committedVariableFor,
+      savedVariableFor,
       protocolContext,
       roleMap,
       rows,

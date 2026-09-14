@@ -44,6 +44,17 @@ export type AttributePillProps = Readonly<{
    * question-mark mark, neither of which claims one of the nine kinds.
    */
   type?: VariableType;
+  /**
+   * Whether the codebook no longer describes this attribute.
+   *
+   * A rule that names one still has to read it back — the researcher cannot
+   * repair what the editor will not show them — so the pill is drawn, in the
+   * destructive accent rather than the neutral one an unknown kind takes: not
+   * knowing the kind of answer and the attribute being gone are different
+   * facts, and only the second is something to fix. The words for it are the
+   * caller's, because the caller knows what it is a missing attribute OF.
+   */
+  missing?: boolean;
   className?: string;
 }>;
 
@@ -105,13 +116,18 @@ type AttributePillStyle = CSSProperties & {
 export default function AttributePill({
   name,
   type,
+  missing = false,
   className,
 }: AttributePillProps) {
   const accentToken =
     type === undefined ? DEFAULT_ACCENT_TOKEN : ACCENT_TOKENS[type];
   const iconUrl = type === undefined ? DEFAULT_ICON_URL : ICON_URLS[type];
   const style: AttributePillStyle = {
-    '--variable-pill-accent': `oklch(var(${accentToken}))`,
+    // `--destructive` is already a colour rather than one of the theme's raw
+    // triplets, so it is taken whole where the others are wrapped in `oklch`.
+    '--variable-pill-accent': missing
+      ? 'var(--destructive)'
+      : `oklch(var(${accentToken}))`,
   };
 
   return (
@@ -122,6 +138,7 @@ export default function AttributePill({
       // can assert on without asserting a colour, which is a design decision
       // rather than behaviour.
       data-attribute-type={type}
+      data-attribute-missing={missing ? '' : undefined}
       className={cx(
         // `variable-pill` is Architect's marker class, the hook its own
         // same-area cascades key on (the printable summary scales it, the rule

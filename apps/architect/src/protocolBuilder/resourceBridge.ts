@@ -6,7 +6,6 @@ import type {
   ResourceInspectionSchema,
   ResourceListInputSchema,
   ResourcePreviewSchema,
-  ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import { getActiveProtocolId } from '~/ducks/modules/app';
@@ -40,18 +39,7 @@ export type DiscardOutcome =
   | Readonly<{ status: 'ok' }>
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
-export type StagedResource = Readonly<{
-  descriptor: Descriptor;
-  handle?: string;
-}>;
-
-/**
- * Architect writes an API key's value into the manifest, which is the file the
- * researcher sends to other people. Only the host knows that, which is why the
- * contract asks.
- */
-const SECRET_STORAGE: z.output<typeof ResourceSecretStorageSchema> =
-  'plaintext';
+export type StagedResource = Readonly<{ descriptor: Descriptor }>;
 
 function failed(
   reason: Failure['reason'],
@@ -104,21 +92,15 @@ export class ResourceBridge {
    * them in can still take them back, so they are no more part of this
    * protocol than the draft that will name them.
    */
-  list(input: ListInput): ResourceOutcome<
-    Readonly<{
-      secretStorage: typeof SECRET_STORAGE;
-      resources: Descriptor[];
-    }>
-  > {
+  list(
+    input: ListInput,
+  ): ResourceOutcome<Readonly<{ resources: Descriptor[] }>> {
     const resources = this.#descriptors(input.editId).filter(
       (descriptor) =>
         (input.kinds === undefined || input.kinds.includes(descriptor.kind)) &&
         (input.status === undefined || descriptor.status === input.status),
     );
-    return {
-      status: 'ok',
-      data: { secretStorage: SECRET_STORAGE, resources },
-    };
+    return { status: 'ok', data: { resources } };
   }
 
   async stage(
@@ -135,7 +117,7 @@ export class ResourceBridge {
     if (alreadyStaged !== undefined) {
       const descriptor = this.#descriptor(alreadyStaged, editId);
       if (descriptor !== undefined) {
-        return { status: 'ok', data: this.#stagedResource(descriptor) };
+        return { status: 'ok', data: { descriptor } };
       }
     }
 
@@ -186,17 +168,10 @@ export class ResourceBridge {
    *
    * A promotion takes the naming edit's own imports and no others — the file
    * another edit is still composing around is not this write's to commit.
-   *
-   * `resourceIds` is the whole of what is promoted. A handle authorises the
-   * secret it stands for and adds nothing: a handle for a resource the write
-   * did not name would otherwise commit that secret and stop the edit's
-   * cancel taking it back, and the handle for one it did name would promote
-   * it twice.
    */
   planPromotion(
     editId: string,
     resourceIds: readonly string[],
-    secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<Readonly<{ promoted: Descriptor[]; ids: string[] }>> {
     const ids = [...resourceIds];
     const promoted: Descriptor[] = [];
@@ -204,16 +179,6 @@ export class ResourceBridge {
       const descriptor = this.#descriptor(id, editId);
       if (descriptor === undefined || this.#staged.get(id) !== editId) {
         return failed('not-found', 'no such staged resource', id);
-      }
-      if (
-        descriptor.kind === 'apikey' &&
-        secretHandles?.includes(secretHandle(id)) !== true
-      ) {
-        return failed(
-          'invalid-request',
-          'promoting a staged secret needs the handle staging returned',
-          id,
-        );
       }
       promoted.push({ ...descriptor, status: 'committed' });
     }
@@ -261,6 +226,17 @@ export class ResourceBridge {
     if (descriptor === undefined) {
       return failed('not-found', 'no such resource', resourceId);
     }
+    if (descriptor.kind === 'apikey') {
+      // The value the manifest already holds. Architect writes it there when
+      // the key is staged, and the interview runtime reads it back from the
+      // published protocol to build the same map.
+      const entry = getAssetManifest(this.#store.getState())[resourceId];
+      const value = entry?.type === 'apikey' ? entry.value : undefined;
+      return {
+        status: 'ok',
+        data: { descriptor, ...(value === undefined ? {} : { value }) },
+      };
+    }
     if (descriptor.kind !== 'network' && descriptor.kind !== 'geojson') {
       return { status: 'ok', data: { descriptor } };
     }
@@ -293,9 +269,6 @@ export class ResourceBridge {
     if (descriptor === undefined) {
       return failed('not-found', 'no such resource', resourceId);
     }
-    if (descriptor.kind === 'apikey') {
-      return failed('unsupported-kind', 'a secret has no preview', resourceId);
-    }
     const url = await getAssetBlobUrl(resourceId);
     if (url === null) {
       return failed(
@@ -314,12 +287,7 @@ export class ResourceBridge {
     if (descriptor === undefined) {
       throw new Error(`the manifest has no entry for ${resourceId}`);
     }
-    return this.#stagedResource(descriptor);
-  }
-
-  #stagedResource(descriptor: Descriptor): StagedResource {
-    if (descriptor.kind !== 'apikey') return { descriptor };
-    return { descriptor, handle: secretHandle(descriptor.id) };
+    return { descriptor };
   }
 
   /**
@@ -354,15 +322,6 @@ export class ResourceBridge {
   ): Descriptor | undefined {
     return this.#descriptors(editId).find(({ id }) => id === resourceId);
   }
-}
-
-/**
- * What staging answers with for a secret, and the only thing that authorises
- * promoting it. Derived from the asset id rather than remembered, so a host
- * restarted mid-edit still recognises the handle the picker is holding.
- */
-function secretHandle(resourceId: string): string {
-  return `staged-secret:${resourceId}`;
 }
 
 /** Everything one edit's staging requests are keyed under. */

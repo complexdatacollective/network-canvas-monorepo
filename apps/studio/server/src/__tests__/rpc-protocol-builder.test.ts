@@ -610,8 +610,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
 
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
@@ -623,11 +621,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Names a secret' },
       revision: held.revision,
-      promote: {
-        editId: EDIT,
-        resourceIds: [staged.data.descriptor.id],
-        secretHandles: [handle],
-      },
+      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
     });
 
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
@@ -696,46 +690,52 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
   });
 
-  it('promotes a staged secret only for the handle staging answered with', async () => {
-    const stage = await createStage(ADA, 'Promotes a secret it cannot name');
+  /**
+   * A promoted key's value is in the manifest, which is where the interview
+   * runtime reads it from to build the participant's map — and where the stage
+   * editor's own map preview reads it from through `inspect`, so the view is
+   * framed on that same map.
+   */
+  it('hands a staged and a promoted API key back through inspect', async () => {
+    const stage = await createStage(ADA, 'Reads its key back');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
       editId: EDIT,
-      requestId: 'unhandled-secret',
-      request: { kind: 'secret', name: 'Another token', value: 'pk.other' },
+      requestId: 'readable-secret',
+      request: { kind: 'secret', name: 'Readable token', value: 'pk.readable' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    const whileStaged = await asClient(ADA).protocolBuilder.resources.inspect({
+      protocolId,
+      editId: EDIT,
+      resourceId,
+    });
+    expect(whileStaged.status === 'ok' && whileStaged.data.value).toBe(
+      'pk.readable',
+    );
+
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
       sectionId: stage.sectionId,
     });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.submit({
-        protocolId,
-        requestId: randomUUID(),
-        sectionId: stage.sectionId,
-        document: held.document,
-        revision: held.revision,
-        promote: {
-          editId: EDIT,
-          resourceIds: [staged.data.descriptor.id],
-        },
-      }),
-    );
-
-    // The staged id is listed to everyone in the protocol; the value it stands
-    // for is not, and writing it into the manifest is what puts a credential
-    // into the file the researcher sends on.
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.data.failure.reason).toBe('invalid-request');
-    const assets = await asClient(ADA).protocolBuilder.getSection({
+    await asClient(ADA).protocolBuilder.submit({
       protocolId,
-      sectionId: 'assets',
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Reads its key back' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
     });
-    expect(assets.document[staged.data.descriptor.id]).toBeUndefined();
+
+    const committed = await asClient(ADA).protocolBuilder.resources.inspect({
+      protocolId,
+      resourceId,
+    });
+    expect(committed.status === 'ok' && committed.data.value).toBe(
+      'pk.readable',
+    );
     await asClient(ADA).protocolBuilder.releaseLock({
       protocolId,
       sectionId: stage.sectionId,
@@ -922,8 +922,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const manifest = await asClient(GRACE).protocolBuilder.acquireLock({
       protocolId,
       sectionId: 'assets',
@@ -945,7 +943,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
           promote: {
             editId: EDIT,
             resourceIds: [staged.data.descriptor.id],
-            secretHandles: [handle],
           },
         }),
       );
@@ -1032,8 +1029,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
 
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId,
@@ -1045,11 +1040,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         title: 'Carries a secret',
         items: [],
       },
-      promote: {
-        editId: EDIT,
-        resourceIds: [staged.data.descriptor.id],
-        secretHandles: [handle],
-      },
+      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
     });
 
     expect(created.promoted?.map((entry) => entry.status)).toEqual([
@@ -1118,8 +1109,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const document = {
       type: 'Information',
       label: 'Made once',
@@ -1129,7 +1118,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const promote = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
-      secretHandles: [handle],
     };
     // The id the retry repeats: one intent, asked twice, because the answer
     // to the first attempt can be lost on its way back.
@@ -1174,8 +1162,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Resubmitted', value: 'pk.resubmitted' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
       sectionId: stage.sectionId,
@@ -1183,7 +1169,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const promote = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
-      secretHandles: [handle],
     };
     const requestId = randomUUID();
     const written = await asClient(ADA).protocolBuilder.submit({
@@ -1297,9 +1282,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         promote: {
           editId: OTHER_EDIT,
           resourceIds: [staged.data.descriptor.id],
-          ...(staged.data.handle === undefined
-            ? {}
-            : { secretHandles: [staged.data.handle] }),
         },
       }),
     );

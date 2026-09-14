@@ -468,7 +468,20 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     );
   });
 
-  it('never hands a staged or promoted secret back', async () => {
+  /**
+   * An API key comes back the way every other resource fact does — through
+   * `inspect`, both while it is staged and once it is promoted.
+   *
+   * There is nothing to keep from the editor: promotion writes the value into
+   * the asset manifest, which is the file the researcher sends to other
+   * people, and the interview runtime reads it from there to build the map.
+   * The stage editor's own map preview reads it for the same reason, so an
+   * editor that could not would only be able to draw a map the participant
+   * will never see. Asserted over both transports, because a value that
+   * survives an in-process call and not a serialized one is the same bug
+   * either way.
+   */
+  it('hands an API key back through inspect, staged and promoted alike', async () => {
     const { host, client } = await open();
     const value = 'pk.a-key-a-researcher-pasted';
 
@@ -479,8 +492,19 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       request: { kind: 'secret', name: 'Mapbox token', value },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
-    expect(staged.data.handle).toBeDefined();
+    const resourceId = staged.data.descriptor.id;
+    // Staging answers with the descriptor alone: what a stage field stores is
+    // the id, and a picker has no use for the value.
     expect(wholeAnswer(staged)).not.toContain(value);
+
+    const stagedInspection = await client.resources.inspect({
+      protocolId: host.protocolId,
+      editId: EDIT,
+      resourceId,
+    });
+    expect(
+      stagedInspection.status === 'ok' && stagedInspection.data.value,
+    ).toBe(value);
 
     const held = await client.acquireLock({
       protocolId: host.protocolId,
@@ -492,26 +516,31 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       sectionId: INFORMATION,
       document: held.document,
       revision: held.revision,
-      promote: {
-        editId: EDIT,
-        resourceIds: [staged.data.descriptor.id],
-        ...(staged.data.handle === undefined
-          ? {}
-          : { secretHandles: [staged.data.handle] }),
-      },
+      promote: { editId: EDIT, resourceIds: [resourceId] },
     });
-    expect(wholeAnswer(promoted)).not.toContain(value);
+    // A promotion needs nothing but the resource ids the write names.
+    expect(promoted.promoted).toHaveLength(1);
 
     const listed = await client.resources.list({ protocolId: host.protocolId });
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
     expect(listed.data.resources).toContainEqual(
       expect.objectContaining({
-        id: staged.data.descriptor.id,
+        id: resourceId,
         kind: 'apikey',
         name: 'Mapbox token',
         status: 'committed',
       }),
     );
+    // The library listing is a catalogue and stays one: a value nobody asked
+    // for is not carried to every picker that lists the protocol's resources.
     expect(wholeAnswer(listed)).not.toContain(value);
+
+    const committedInspection = await client.resources.inspect({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    expect(
+      committedInspection.status === 'ok' && committedInspection.data.value,
+    ).toBe(value);
   });
 });

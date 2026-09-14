@@ -185,7 +185,6 @@ function buildRouter(
         const manifest = resources.manifestFor(
           scopeOf(context, promotion.editId),
           promotion.resourceIds,
-          promotion.secretHandles,
         );
         if (manifest.status === 'failed') {
           throw errors.PROMOTION_FAILED({
@@ -267,7 +266,6 @@ function buildRouter(
         const manifest = resources.manifestFor(
           scopeOf(context, promotion.editId),
           promotion.resourceIds,
-          promotion.secretHandles,
         );
         if (manifest.status === 'failed') {
           throw errors.PROMOTION_FAILED({
@@ -417,7 +415,7 @@ function buildRouter(
         );
         return {
           status: 'ok' as const,
-          data: { secretStorage: resources.secretStorage, resources: all },
+          data: { resources: all },
         };
       }),
 
