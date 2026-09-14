@@ -896,6 +896,7 @@
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist",
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "sync-exports": "node scripts/generate-publish-exports.mjs"
   },
   "dependencies": {

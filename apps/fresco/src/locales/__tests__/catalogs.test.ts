@@ -9,6 +9,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
   type ExtractedCatalog,
 } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -32,6 +33,9 @@ const sourceDirectories = [
 const en = JSON.parse(
   readFileSync(resolve(root, 'src/locales/en.json'), 'utf8'),
 ) as ExtractedCatalog;
+const localesDir = resolve(root, 'src/locales');
+const esSources = readTranslationSources(localesDir, 'es');
+const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Fresco researcher message catalogs', () => {
   it('extracts all researcher source directories without stale, missing, or duplicate descriptors', async () => {
@@ -58,11 +62,11 @@ describe('Fresco researcher message catalogs', () => {
   });
 
   it('requires complete Spanish and matching ICU arguments and rich text tags', () => {
-    expect(checkFullLocale(en, es)).toEqual([]);
+    expect(checkFullLocale(en, es, esSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {
-    expect(checkOverrideLocale(en, enGb)).toEqual([]);
+    expect(checkOverrideLocale(en, enGb, enGbSources)).toEqual([]);
     expect(Object.keys(enGb).length).toBeGreaterThan(0);
     expect(Object.keys(enGb).length).toBeLessThan(Object.keys(en).length);
     for (const [id, message] of Object.entries(enGb))

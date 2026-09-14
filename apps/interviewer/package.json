@@ -12,6 +12,7 @@
   "type": "module",
   "scripts": {
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",

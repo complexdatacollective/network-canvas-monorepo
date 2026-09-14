@@ -17,7 +17,8 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "i18n:extract": "node scripts/extract-i18n.mjs"
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs"
   },
   "devDependencies": {
     "@codaco/app-i18n": "workspace:^",
