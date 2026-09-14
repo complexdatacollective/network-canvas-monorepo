@@ -321,6 +321,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           variant="circle"
           containerRef={contentRef}
           elementRef={titleRef}
+          // The bin reserves part of itself the moment it holds anyone, which
+          // changes the label's cap without changing the box it is fitted in.
+          refitOn={hasSummary ? 'reserved' : 'whole-bin'}
         />
         <AnimatePresence>
           {hasSummary && (

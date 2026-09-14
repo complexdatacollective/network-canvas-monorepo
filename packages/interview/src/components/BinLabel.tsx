@@ -85,6 +85,13 @@ type BinLabelProps = {
    * whatever the caller does with it.
    */
   elementRef?: RefObject<HTMLHeadingElement | null>;
+  /**
+   * Anything that changes the label's box without changing the size of the box
+   * it is fitted inside — a bin reserving part of itself for a summary, say.
+   * The fitter watches the container for changes, so one it cannot see there
+   * has to be declared here or the label keeps a rung it no longer fits.
+   */
+  refitOn?: string;
 };
 
 /**
@@ -97,13 +104,18 @@ const BinLabel = ({
   containerRef,
   variant,
   elementRef,
+  refitOn,
 }: BinLabelProps) => {
   const steps = STEPS[variant];
   const {
     ref: fitRef,
     stepIndex,
     isTruncated,
-  } = useFitText<HTMLHeadingElement>({ steps, containerRef, watch: label });
+  } = useFitText<HTMLHeadingElement>({
+    steps,
+    containerRef,
+    watch: refitOn === undefined ? label : `${label}\u0000${refitOn}`,
+  });
 
   const mergedRef = useCallback(
     (element: HTMLHeadingElement | null) => {
