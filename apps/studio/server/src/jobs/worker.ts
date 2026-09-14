@@ -43,6 +43,13 @@ export type JobWorkerDeps = {
   publicBaseUrl: string;
   /** The suites provision a job schema per scratch database. */
   schema?: string;
+  /**
+   * What the registered handlers poll at. Production leaves it at the floor
+   * `registerJobs` chooses; a suite that has to prove delivery came from
+   * LISTEN/NOTIFY rather than from a poll turns it up so that polling could
+   * not have been what delivered the job.
+   */
+  workPollingIntervalSeconds?: number;
   intervals?: JobWorkerIntervals;
   stopTimeoutMs?: number;
 };

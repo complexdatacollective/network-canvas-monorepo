@@ -1,13 +1,15 @@
 import type { PgBoss } from 'pg-boss';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { createProtocolStoreGcHandler } from './handlers/protocol-store-gc.ts';
+import { createSignInEmailHandler } from './handlers/sign-in-email.ts';
 import type { JobWorkerDeps } from './worker.ts';
 
-// Which queues this worker actually works. Registration is separated from the
-// instance so a deployment's capabilities are one readable list, and so the
-// tests can start a worker that supervises and schedules without registering
-// any handler.
+// Which queues this worker actually works, and what recurring work it asks
+// pg-boss to create. Registration is separated from the instance so a
+// deployment's capabilities are one readable list, and so the tests can start
+// a worker and observe exactly what it registered.
 
 /**
  * The queues that need a mail transport. Unset SMTP is a supported state
@@ -20,17 +22,57 @@ const MAIL_QUEUES = [
 ] as const satisfies readonly JobQueueName[];
 
 /**
- * `boss` is what the handlers register against; none exist yet. They arrive
- * with their consumers: invitation delivery and sign-in email in #1895's own
- * steps, the protocol-store sweep with the cron registration, and the runners
- * of #1521, #1291, #1305, #1520 and #1268 in their own issues.
+ * pg-boss's floor is 0.5 s, and LISTEN/NOTIFY is what actually delivers a job
+ * (measured at ~10 ms on a local database), so polling is the fallback for a
+ * notification that was missed rather than the delivery path. Half a second
+ * keeps that fallback quick enough that a person waiting on a sign-in email
+ * cannot tell the difference.
  */
-export function registerJobs(boss: PgBoss, deps: JobWorkerDeps): Promise<void> {
+const DEFAULT_WORK_POLLING_INTERVAL_SECONDS = 0.5;
+
+/** Every handler takes one job at a time and needs its retry counters. */
+const WORK_OPTIONS = { batchSize: 1, includeMetadata: true } as const;
+
+export async function registerJobs(
+  boss: PgBoss,
+  deps: JobWorkerDeps,
+): Promise<void> {
+  const pollingIntervalSeconds =
+    deps.workPollingIntervalSeconds ?? DEFAULT_WORK_POLLING_INTERVAL_SECONDS;
+
+  // An upsert on (queue, key), so every worker replica registers the same row
+  // and the last one to boot wins — which is how a changed cron expression
+  // reaches a running deployment without anything having to unschedule the old
+  // one. pg-boss coordinates the firing itself: one job per schedule per
+  // minute across every replica, whatever the cadence they poll at.
+  for (const { queue, cron, tz } of JOB_SCHEDULES) {
+    await boss.schedule(queue, cron, {}, { tz });
+  }
+
+  await boss.work(
+    'protocol-store-gc',
+    { ...WORK_OPTIONS, pollingIntervalSeconds },
+    createProtocolStoreGcHandler({ maintenancePool: deps.maintenancePool }),
+  );
+
   if (!deps.mailer) {
     // oxlint-disable-next-line no-console -- background worker diagnostics
     console.error(
       `No mail transport is configured: ${MAIL_QUEUES.join(' and ')} jobs will queue until one is. Set SMTP_URL and EMAIL_FROM on the worker.`,
     );
+    return;
   }
-  return Promise.resolve();
+
+  await boss.work(
+    'sign-in-email',
+    { ...WORK_OPTIONS, pollingIntervalSeconds },
+    createSignInEmailHandler({ mailer: deps.mailer }),
+  );
+
+  // SEAM: invitation delivery registers here, beside the sign-in handler and
+  // inside this same branch — both queues are mail, so both are worked only
+  // when a transport exists, and MAIL_QUEUES above already names them as the
+  // pair that goes unworked without one. Its handler lands in
+  // handlers/invitation-delivery.ts and takes `deps.maintenancePool` and
+  // `deps.publicBaseUrl` beside the mailer; nothing else here has to change.
 }

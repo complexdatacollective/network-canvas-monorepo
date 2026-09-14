@@ -163,29 +163,34 @@ describe.skipIf(!db)('pg-boss grants', () => {
     });
 
     it('works a job through to completion', async () => {
-      const handled: string[] = [];
-      await worker.boss.work(
-        'protocol-store-gc',
-        { pollingIntervalSeconds: 0.5 },
-        (batch) => {
-          handled.push(...batch.map((job) => job.id));
-          return Promise.resolve();
-        },
-      );
-      const jobId = await enqueueGc();
+      // Through the handler the worker registered, not one registered beside
+      // it: two workers on one queue race for the job, and the outcome line is
+      // how a deployment knows the registered one ran.
+      const lines: string[] = [];
+      const logged = vi.spyOn(console, 'log').mockImplementation((...args) => {
+        lines.push(String(args[0]));
+      });
+      try {
+        const jobId = await enqueueGc();
 
-      await vi.waitFor(
-        async () => {
-          const state = await scratch.pool.query<{ state: string }>(
-            `select state from ${scratch.jobSchema}.job_common where id = $1`,
-            [jobId],
-          );
-          expect(state.rows[0]?.state).toBe('completed');
-        },
-        { timeout: 15_000, interval: 100 },
-      );
-      expect(handled).toContain(jobId);
-      await worker.boss.offWork('protocol-store-gc');
+        await vi.waitFor(
+          async () => {
+            const state = await scratch.pool.query<{ state: string }>(
+              `select state from ${scratch.jobSchema}.job_common where id = $1`,
+              [jobId],
+            );
+            expect(state.rows[0]?.state).toBe('completed');
+          },
+          { timeout: 15_000, interval: 100 },
+        );
+        expect(
+          lines.filter(
+            (line) => line.includes(jobId) && line.includes('completed'),
+          ),
+        ).toHaveLength(1);
+      } finally {
+        logged.mockRestore();
+      }
     });
 
     it('supervises the schema without a privilege error', async () => {

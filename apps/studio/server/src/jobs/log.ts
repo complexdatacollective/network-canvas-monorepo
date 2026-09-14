@@ -28,6 +28,13 @@ export type JobOutcomeRecord = {
   outcome: JobOutcome;
   /** 1 on the first try; pg-boss counts retries from 0. */
   attempt: number;
+  /**
+   * What this job did, for the handlers whose outcome is a quantity rather
+   * than a yes: the sweep's counts are the only evidence a deployment has that
+   * it is keeping up. Still one line per outcome — this is part of that line,
+   * not a second one.
+   */
+  detail?: string;
   error?: unknown;
 };
 
@@ -40,10 +47,12 @@ export function logJobOutcome({
   jobId,
   outcome,
   attempt,
+  detail,
   error,
 }: JobOutcomeRecord): void {
   const line = [
     `job ${queue} ${jobId} ${outcome} (attempt ${attempt})`,
+    detail === undefined ? '' : ` ${detail}`,
     error === undefined ? '' : `: ${describe(error)}`,
   ].join('');
 
