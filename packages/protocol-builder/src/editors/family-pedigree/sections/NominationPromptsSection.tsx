@@ -236,6 +236,7 @@ export default function NominationPromptsSection() {
       Editor: NominationPromptEditor,
       addTitle: pedigreeMessages.nominationAddTitle,
       editTitle: pedigreeMessages.nominationEditTitle,
+      description: pedigreeMessages.nominationDetailsDescription,
       formId: 'nomination-prompt-editor',
       name: PROMPTS_FIELD,
       beforeSave,

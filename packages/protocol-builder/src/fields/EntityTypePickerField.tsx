@@ -14,7 +14,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon from '@codaco/fresco-ui/Icon';
@@ -661,13 +660,6 @@ function EntityTypeCodebookControls({
   const createEntity = useCreateCodebookEntity();
   const writeSection = useCodebookSectionWrite();
   const [session, setSession] = useState<EditorSession | null>(null);
-  /**
-   * Whether the write is with the host right now, which is a fact this host
-   * has for itself: the editor owns the draft and this owns request execution,
-   * so the request passes through here on its way out and its answer on the
-   * way back.
-   */
-  const [submitting, setSubmitting] = useState(false);
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
 
@@ -770,117 +762,93 @@ function EntityTypeCodebookControls({
           )}
         </div>
       )}
-      {session !== null && (
-        <Dialog
-          open
-          title={session.mode === 'create' ? createLabel : editLabel}
-          size="readable"
-          // A request in flight refuses every way out, because the dialog is
-          // about to show what the host made of it. Escape, a press outside
-          // and the close button all arrive at `closeDialog`, so refusing
-          // there covers all three — and `dismissible` takes the close button
-          // away rather than leaving a control on screen that does nothing.
-          // Dismissed mid-flight, the handler awaiting the request stays alive
-          // and a success arriving afterwards still selects the new type on
-          // the stage: the researcher would watch everything describing the
-          // old type disappear, for a type they never saw arrive.
-          dismissible={!submitting}
-          closeDialog={() => {
-            if (submitting) return;
-            setSession(null);
-          }}
-          finalFocus={() =>
-            session.mode === 'create'
-              ? createTrigger.current
-              : editTrigger.current
-          }
-        >
-          {session.mode === 'create' ? (
+      {session !== null &&
+        (session.mode === 'create' ? (
+          <CodebookEntityEditor
+            mode="create"
+            sessionKey={session.key}
+            /*
+              The editor opens its own dialog, because the two controls that
+              commit it belong in that dialog's footer and only their owner can
+              put them there. It holds its own draft, so it also knows whether
+              a write is in flight — which is what refuses every way out while
+              one is: dismissed mid-flight, the handler awaiting the request
+              stays alive and a success arriving afterwards still selects the
+              new type on the stage, so the researcher would watch everything
+              describing the old type disappear for a type they never saw
+              arrive.
+            */
+            dialog={{
+              title: createLabel,
+              finalFocus: () => createTrigger.current,
+            }}
+            subject={{ entity: entityType, type: session.typeId }}
+            initialDraft={newEntityDraft(
+              entityType,
+              Object.keys(codebook[entityType] ?? {}).length,
+            )}
+            readOnly={readOnly}
+            existingEntityNames={existingEntityNames}
+            onSubmit={(document) => createEntity(entityType, document)}
+            onApplied={(outcome) => {
+              // The id the HOST minted, read off the write: it is the host's
+              // to issue, and the stage has to name the type it created.
+              const ref = parseSectionId(outcome.sectionId);
+              if (ref.kind !== 'codebookNode' && ref.kind !== 'codebookEdge') {
+                setSession(null);
+                return;
+              }
+              // Asked while this dialog is still open, and it closes on
+              // either answer: the type has been created and there is
+              // nothing left to do in here, and the dialog outliving the
+              // question is what keeps focus on a live control — the
+              // confirm returns focus to the Save it was raised from, and
+              // this dialog then returns it to its own trigger.
+              void select(ref.typeId).finally(() => setSession(null));
+            }}
+            onCancel={() => setSession(null)}
+          />
+        ) : (
+          editedDocument !== undefined && (
             <CodebookEntityEditor
-              mode="create"
+              mode="update"
               sessionKey={session.key}
+              dialog={{
+                title: editLabel,
+                finalFocus: () => editTrigger.current,
+              }}
               subject={{ entity: entityType, type: session.typeId }}
-              initialDraft={newEntityDraft(
-                entityType,
-                Object.keys(codebook[entityType] ?? {}).length,
-              )}
+              initialDraft={editedDocument}
+              authoritativeDocument={editedDocument}
               readOnly={readOnly}
               existingEntityNames={existingEntityNames}
-              onSubmit={async (document) => {
-                setSubmitting(true);
-                try {
-                  return await createEntity(entityType, document);
-                } finally {
-                  setSubmitting(false);
-                }
+              onSubmit={(document) => {
+                const subject = {
+                  entity: entityType,
+                  type: session.typeId,
+                } as const;
+                // Laid over the document the LOCK hands back, not over the
+                // one the editor read: `variables` is the half of a type
+                // this form does not own, and writing the form's copy of
+                // it whole would delete an attribute a collaborator added
+                // while this save was taking the lock. The editor has
+                // already rebased once, on the document it last rendered;
+                // this is the same rebase re-asked at the only moment the
+                // answer is authoritative, and the helper keeps `variables`
+                // for exactly this reason.
+                return writeSection(subject, (authoritativeDocument) =>
+                  documentWithEntityProperties({
+                    subject,
+                    authoritativeDocument,
+                    draft: document,
+                  }),
+                );
               }}
-              onApplied={(outcome) => {
-                // The id the HOST minted, read off the write: it is the host's
-                // to issue, and the stage has to name the type it created.
-                const ref = parseSectionId(outcome.sectionId);
-                if (
-                  ref.kind !== 'codebookNode' &&
-                  ref.kind !== 'codebookEdge'
-                ) {
-                  setSession(null);
-                  return;
-                }
-                // Asked while this dialog is still open, and it closes on
-                // either answer: the type has been created and there is
-                // nothing left to do in here, and the dialog outliving the
-                // question is what keeps focus on a live control — the
-                // confirm returns focus to the Save it was raised from, and
-                // this dialog then returns it to its own trigger.
-                void select(ref.typeId).finally(() => setSession(null));
-              }}
+              onApplied={() => setSession(null)}
               onCancel={() => setSession(null)}
             />
-          ) : (
-            editedDocument !== undefined && (
-              <CodebookEntityEditor
-                mode="update"
-                sessionKey={session.key}
-                subject={{ entity: entityType, type: session.typeId }}
-                initialDraft={editedDocument}
-                authoritativeDocument={editedDocument}
-                readOnly={readOnly}
-                existingEntityNames={existingEntityNames}
-                onSubmit={async (document) => {
-                  const subject = {
-                    entity: entityType,
-                    type: session.typeId,
-                  } as const;
-                  setSubmitting(true);
-                  try {
-                    // Laid over the document the LOCK hands back, not over the
-                    // one the editor read: `variables` is the half of a type
-                    // this form does not own, and writing the form's copy of
-                    // it whole would delete an attribute a collaborator added
-                    // while this save was taking the lock. The editor has
-                    // already rebased once, on the document it last rendered;
-                    // this is the same rebase re-asked at the only moment the
-                    // answer is authoritative, and the helper keeps `variables`
-                    // for exactly this reason.
-                    return await writeSection(
-                      subject,
-                      (authoritativeDocument) =>
-                        documentWithEntityProperties({
-                          subject,
-                          authoritativeDocument,
-                          draft: document,
-                        }),
-                    );
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-                onApplied={() => setSession(null)}
-                onCancel={() => setSession(null)}
-              />
-            )
-          )}
-        </Dialog>
-      )}
+          )
+        ))}
     </>
   );
 }

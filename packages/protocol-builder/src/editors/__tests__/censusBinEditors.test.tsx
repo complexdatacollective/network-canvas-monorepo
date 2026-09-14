@@ -936,16 +936,20 @@ describe('the family’s editors, swept under es', () => {
  * no, and "Edge type" in the one answered on a scale. The package rendered one
  * heading, one description and one label for all five, which is what this
  * pins.
+ *
+ * A `title` of `undefined` means the dialog is the group: Dyad Census asks
+ * about one topic, so its own title names it and its description says what it
+ * decides, rather than a group inside it restating the title.
  */
 const PROMPT_GROUPS = [
   {
     interfaceName: 'DyadCensus',
     stageId: 'dyad-census-1',
     editor: dyadCensusStageEditor,
-    title: 'Prompt configuration',
+    title: undefined,
     description:
       'Write the participant prompt and select the edge type created by an affirmative response.',
-    edgeGroup: 'Prompt configuration',
+    edgeGroup: undefined,
     edgeLabel: 'Created edge type',
   },
   {
@@ -992,12 +996,13 @@ const PROMPT_GROUPS = [
   interfaceName: StageType;
   stageId: FixtureStageId;
   editor: Partial<StageEditorRegistry>;
-  title: string;
+  /** Absent where the dialog itself is the group — see above. */
+  title: string | undefined;
   description: string;
   /**
-   * The group the connection control is rendered in, where the family has
-   * one — the prompt group itself in the two censuses answered yes or no, and
-   * a group of its own in the one answered on a scale.
+   * The group the connection control is rendered in, where the family renders
+   * it in one of its own — a group beside the prompt in the census answered on
+   * a scale, and none at all where it sits with the question.
    */
   edgeGroup: string | undefined;
   edgeLabel: string | undefined;
@@ -1015,21 +1020,33 @@ describe('the group a census or bin prompt is written in', () => {
       await harness.user.click(
         screen.getByRole('button', { name: 'Edit prompt' }),
       );
-      const dialog = within(await screen.findByRole('dialog'));
+      const dialogEl = await screen.findByRole('dialog');
+      const dialog = within(dialogEl);
 
-      expect(dialog.getByRole('heading', { name: title })).toBeInTheDocument();
-      // Scoped to the group itself rather than to the dialog around it: WHICH
-      // group holds the connection control is the thing Architect differs on,
-      // so a search of the whole dialog would pass just as well with the
-      // control moved back out of the prompt group again.
-      const promptGroup = within(dialog.getByRole('region', { name: title }));
-      expect(promptGroup.getByText(description)).toBeInTheDocument();
-      if (edgeGroup !== undefined && edgeLabel !== undefined) {
+      // Scoped to the group the description belongs to rather than to the
+      // dialog around it: WHICH group holds the connection control is the
+      // thing Architect differs on, so a search of the whole dialog would pass
+      // just as well with the control moved back out of the prompt group.
+      let promptGroup;
+      if (title === undefined) {
+        promptGroup = dialog;
+        expect(dialogEl).toHaveAccessibleDescription(description);
+        // The dialog IS the group, so there is no group inside it at all.
+        expect(dialog.queryAllByRole('region')).toEqual([]);
+      } else {
         expect(
-          within(dialog.getByRole('region', { name: edgeGroup })).getByRole(
-            'radiogroup',
-            { name: edgeLabel },
-          ),
+          dialog.getByRole('heading', { name: title }),
+        ).toBeInTheDocument();
+        promptGroup = within(dialog.getByRole('region', { name: title }));
+        expect(promptGroup.getByText(description)).toBeInTheDocument();
+      }
+      if (edgeLabel !== undefined) {
+        const holder =
+          edgeGroup === undefined
+            ? promptGroup
+            : within(dialog.getByRole('region', { name: edgeGroup }));
+        expect(
+          holder.getByRole('radiogroup', { name: edgeLabel }),
         ).toBeInTheDocument();
       }
       // The outer group is the tie-strength dialog's alone: the two dyad

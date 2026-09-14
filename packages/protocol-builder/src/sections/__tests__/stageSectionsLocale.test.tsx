@@ -14,9 +14,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import ContentBlockEditor from '../content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../content-blocks/contentBlockTypes.ts';
+import { contentBlocks } from '../content-blocks/contentBlocks.tsx';
 import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
@@ -151,23 +149,18 @@ describe('the shared stage sections, read in Spanish', () => {
   });
 });
 
-/** The blocks as both of their consumers mount them. */
-const pageOfBlocks = (
-  <PageContentSection
-    ItemEditor={ContentBlockEditor}
-    ItemPreview={ContentBlockPreview}
-    slots={contentBlockSlots}
-  />
-);
+/**
+ * The blocks exactly as an interface composes them.
+ *
+ * Through `contentBlocks` rather than by mounting the shared page section with
+ * this family's parts by hand: what a block editor is paired with — its
+ * preview, its slots, the sentence its dialog says — is that function's
+ * business, and a fixture that re-pairs them stops testing what ships the
+ * moment the pairing gains a part.
+ */
+const pageOfBlocks = contentBlocks()();
 
-const introScreenOfBlocks = (
-  <PageContentSection
-    variant="introScreen"
-    ItemEditor={ContentBlockEditor}
-    ItemPreview={ContentBlockPreview}
-    slots={contentBlockSlots}
-  />
-);
+const introScreenOfBlocks = contentBlocks({ variant: 'introScreen' })();
 
 /** A page holding one passage of prose and one picture. */
 const mediaPage = () => ({
@@ -217,14 +210,13 @@ describe('the content-block dialog, read in Spanish', () => {
     );
     const dialog = await screen.findByRole('dialog');
 
-    expect(
-      within(dialog).getByText('Detalles del elemento'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
-      ),
-    ).toBeInTheDocument();
+    // The dialog's own title and the sentence under it — said once now that
+    // the fields are the dialog's only topic, rather than restated by a group
+    // inside it.
+    expect(dialog).toHaveAccessibleName('Crear elemento');
+    expect(dialog).toHaveAccessibleDescription(
+      'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
+    );
     expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
     expect(
       within(dialog).getByText(

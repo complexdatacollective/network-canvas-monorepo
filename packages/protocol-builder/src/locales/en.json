@@ -533,7 +533,7 @@
   },
   "protocolBuilder.censusPrompts.dyadPromptTextDescription": {
     "defaultMessage": "Write the participant prompt and select the edge type created by an affirmative response.",
-    "description": "Description of the group holding a Dyad Census prompt’s question and the kind of connection an affirmative answer records."
+    "description": "Said under the title of a Dyad Census prompt’s own dialog, which holds its question and the kind of connection an affirmative answer records."
   },
   "protocolBuilder.censusPrompts.edgeGoneRefusal": {
     "defaultMessage": "The connection type this prompt records is no longer in the codebook. Choose another one.",
@@ -807,6 +807,14 @@
     "defaultMessage": "Add ego attributes",
     "description": "Button that adds the ego definition to a codebook that has none. The ego is the interview participant themselves."
   },
+  "protocolBuilder.codebookEntity.appearanceSectionDescription": {
+    "defaultMessage": "Choose a default shape and optionally map shapes from an attribute.",
+    "description": "Description of the appearance group of the node type editor, saying that the shape a node is drawn as can also follow one of its attributes."
+  },
+  "protocolBuilder.codebookEntity.appearanceSectionTitle": {
+    "defaultMessage": "Node appearance",
+    "description": "Heading of the group of the node type editor holding how a node of this type is drawn. A node is a member of the interview network."
+  },
   "protocolBuilder.codebookEntity.attributeListLabel": {
     "defaultMessage": "{name} attributes",
     "description": "Accessible name of the list of one entity’s attributes (its codebook variables). name is the researcher’s own name for the node or edge type, or the word for the ego."
@@ -839,6 +847,10 @@
     "defaultMessage": "Choose a color.",
     "description": "Refusal shown under the colour field of the entity editor when the researcher has chosen none."
   },
+  "protocolBuilder.codebookEntity.colorSectionTitle": {
+    "defaultMessage": "Type color",
+    "description": "Heading of the group of the entity editor holding the colour this type is drawn in."
+  },
   "protocolBuilder.codebookEntity.createAttribute": {
     "defaultMessage": "Create attribute",
     "description": "Visible label of the button that adds a new attribute (a codebook variable) to the entity this card is about."
@@ -859,10 +871,6 @@
     "defaultMessage": "Create node type",
     "description": "Button that adds a new node type to the codebook. A node is a member of the interview network."
   },
-  "protocolBuilder.codebookEntity.createTitle": {
-    "defaultMessage": "{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}",
-    "description": "Heading of the editor while a new codebook entity is being added. entity is node, edge or ego."
-  },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
     "description": "Heading over the codebook’s edge types. An edge is a relationship between two network members."
@@ -878,10 +886,6 @@
   "protocolBuilder.codebookEntity.editSubjectLabel": {
     "defaultMessage": "{entity, select, node {Edit Node type: {name}} edge {Edit Edge type: {name}} other {Edit Ego attributes}}",
     "description": "Accessible name of the button that opens one codebook card for editing. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card."
-  },
-  "protocolBuilder.codebookEntity.editTitle": {
-    "defaultMessage": "{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}",
-    "description": "Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego."
   },
   "protocolBuilder.codebookEntity.editType": {
     "defaultMessage": "Edit type",
@@ -904,16 +908,28 @@
     "description": "Guidance under the icon field. \"Lucide\" is an icon library and \"Network Canvas\" the product; both are names and stay as they are. An interface is one kind of interview step."
   },
   "protocolBuilder.codebookEntity.iconLabel": {
-    "defaultMessage": "Interface icon",
-    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step."
+    "defaultMessage": "Icon",
+    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type."
   },
   "protocolBuilder.codebookEntity.iconRequired": {
     "defaultMessage": "Enter an icon name.",
     "description": "Refusal shown under the icon field of the node type editor when the researcher has left it empty."
   },
+  "protocolBuilder.codebookEntity.iconSectionTitle": {
+    "defaultMessage": "Interface icon",
+    "description": "Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step."
+  },
   "protocolBuilder.codebookEntity.iconUnsupported": {
     "defaultMessage": "Choose an icon supported by Network Canvas.",
     "description": "Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. \"Network Canvas\" is the product name and stays as it is."
+  },
+  "protocolBuilder.codebookEntity.identitySectionDescription": {
+    "defaultMessage": "Name this type for the codebook and exported data.",
+    "description": "Description of the identity group of the entity editor. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+  },
+  "protocolBuilder.codebookEntity.identitySectionTitle": {
+    "defaultMessage": "Type identity",
+    "description": "Heading of the group of the entity editor holding the name this type is known by."
   },
   "protocolBuilder.codebookEntity.issuesListLabel": {
     "defaultMessage": "Codebook issues",
@@ -979,21 +995,105 @@
     "defaultMessage": "Node types",
     "description": "Heading over the codebook’s node types. A node is a member of the interview network."
   },
+  "protocolBuilder.codebookEntity.shapeAddThreshold": {
+    "defaultMessage": "Add threshold",
+    "description": "Button that adds one more threshold row to the list."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerFalse": {
+    "defaultMessage": "False",
+    "description": "Stands for the negative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerTrue": {
+    "defaultMessage": "True",
+    "description": "Stands for the affirmative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAtThreshold": {
+    "defaultMessage": "Shape at threshold {value}",
+    "description": "Label of the control choosing the shape used from one threshold upwards. value is the threshold number itself, already formatted for the reader."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThreshold": {
+    "defaultMessage": "Below first threshold",
+    "description": "Name of the fixed first row of the threshold list, covering every value under the lowest threshold."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
+    "defaultMessage": "Below first threshold cannot be removed",
+    "description": "Accessible name of the unavailable remove button on the fixed first threshold row, saying why nothing happens."
+  },
+  "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
+    "defaultMessage": "Default shape",
+    "description": "Label of the read-only control on the fixed first threshold row, showing the shape chosen as this type’s default."
+  },
+  "protocolBuilder.codebookEntity.shapeForEachValue": {
+    "defaultMessage": "Shape for each value",
+    "description": "Heading over the rows that give one shape to each answer the chosen attribute can take."
+  },
+  "protocolBuilder.codebookEntity.shapeForValue": {
+    "defaultMessage": "Shape for {value1}",
+    "description": "Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one."
+  },
   "protocolBuilder.codebookEntity.shapeHint": {
-    "defaultMessage": "Choose the shape used when no dynamic shape mapping applies.",
-    "description": "Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes."
+    "defaultMessage": "Choose a default shape for this node type.",
+    "description": "Guidance under the shape field. A node is a member of the interview network."
   },
   "protocolBuilder.codebookEntity.shapeLabel": {
-    "defaultMessage": "Default shape",
+    "defaultMessage": "Shape",
     "description": "Label of the field choosing the shape a node type is drawn as when nothing overrides it."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingAttribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the field choosing which of the type’s attributes the shape follows."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingDescription": {
+    "defaultMessage": "Override the default shape based on the value of a node's attribute.",
+    "description": "Guidance under the shape mapping switch, saying what turning it on does. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsAttribute": {
+    "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping of the node type editor when the mapping is switched on but names no attribute to follow."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsThreshold": {
+    "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping when it follows a numeric attribute but no threshold has been set. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingThresholdsAscending": {
+    "defaultMessage": "Thresholds must increase in value, with no duplicates.",
+    "description": "Refusal shown under the shape mapping when its thresholds do not rise. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingToggle": {
+    "defaultMessage": "Map attribute to shape",
+    "description": "Switch that turns on drawing a node as a different shape depending on one of its attributes. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeNoThresholds": {
+    "defaultMessage": "No thresholds yet — every value uses the default shape.",
+    "description": "Shown in place of the threshold list while no threshold has been set."
   },
   "protocolBuilder.codebookEntity.shapePlaceholder": {
     "defaultMessage": "Choose a shape…",
     "description": "Placeholder shown in the shape field of the node type editor before a choice is made."
   },
+  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
+    "defaultMessage": "Remove threshold {value1, number}",
+    "description": "Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one."
+  },
   "protocolBuilder.codebookEntity.shapeRequired": {
     "defaultMessage": "Choose a default shape.",
     "description": "Refusal shown under the shape field of the node type editor when the researcher has chosen none."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholdValue": {
+    "defaultMessage": "Threshold {value1, number} value",
+    "description": "Label of the number field holding one threshold. value1 is the threshold’s own position in the list, counting from one, not the number the researcher typed."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholds": {
+    "defaultMessage": "Thresholds",
+    "description": "Heading over the rows that change the shape at a numeric value. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeUsesDefault": {
+    "defaultMessage": "uses default shape",
+    "description": "Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence."
+  },
+  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
+    "defaultMessage": "Some values are unmapped and will use the default shape.",
+    "description": "Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own."
   },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",
@@ -1313,11 +1413,7 @@
   },
   "protocolBuilder.contentBlock.sectionDescription": {
     "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "description": "Description under the block-details heading."
-  },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "defaultMessage": "Item details",
-    "description": "Heading of the dialog where a researcher says what one piece of a page holds and provides it."
+    "description": "Description under the item dialog’s title."
   },
   "protocolBuilder.contentBlock.sizeFull": {
     "defaultMessage": "Full size",
@@ -1497,11 +1593,7 @@
   },
   "protocolBuilder.familyPedigree.nominationDetailsDescription": {
     "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
-    "description": "Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
-  },
-  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
-    "defaultMessage": "Nomination details",
-    "description": "Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology."
+    "description": "Said under the title of a nomination prompt’s own dialog. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
   },
   "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
     "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
@@ -2337,11 +2429,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
     "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
-    "description": "Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
-  },
-  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
-    "defaultMessage": "Disease details",
-    "description": "Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology."
+    "description": "Said under the title of a disease’s own dialog. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",

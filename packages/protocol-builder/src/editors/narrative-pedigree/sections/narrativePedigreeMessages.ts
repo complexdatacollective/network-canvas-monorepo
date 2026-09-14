@@ -216,18 +216,12 @@ export const narrativePedigreeMessages = defineMessages({
   },
 
   // ── One disease: name, colour, attribute, inheritance ─────────────────────
-  diseaseDetailsTitle: {
-    id: 'protocolBuilder.narrativePedigree.diseaseDetailsTitle',
-    defaultMessage: 'Disease details',
-    description:
-      'Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology.',
-  },
   diseaseDetailsDescription: {
     id: 'protocolBuilder.narrativePedigree.diseaseDetailsDescription',
     defaultMessage:
       "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
     description:
-      'Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in.',
+      'Said under the title of a disease’s own dialog. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in.',
   },
   diseaseNameLabel: {
     id: 'protocolBuilder.narrativePedigree.diseaseNameLabel',

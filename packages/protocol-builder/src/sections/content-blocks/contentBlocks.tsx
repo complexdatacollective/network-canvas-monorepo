@@ -2,7 +2,9 @@ import type { StageSection } from '../../editors/defineStageEditor.tsx';
 import PageContentSection, {
   type PageContentVariant,
 } from '../page-content/PageContentSection.tsx';
-import ContentBlockEditor from './ContentBlockEditor.tsx';
+import ContentBlockEditor, {
+  contentBlockDescription,
+} from './ContentBlockEditor.tsx';
 import ContentBlockPreview from './ContentBlockPreview.tsx';
 import { contentBlockSlots } from './contentBlockTypes.ts';
 
@@ -28,6 +30,7 @@ export const contentBlocks =
     <PageContentSection
       variant={variant}
       ItemEditor={ContentBlockEditor}
+      itemDescription={contentBlockDescription}
       ItemPreview={ContentBlockPreview}
       slots={contentBlockSlots}
     />

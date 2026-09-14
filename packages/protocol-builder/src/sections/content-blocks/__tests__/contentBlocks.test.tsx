@@ -6,15 +6,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import PageContentSection, {
-  type PageContentVariant,
-} from '../../page-content/PageContentSection.tsx';
-import ContentBlockEditor from '../ContentBlockEditor.tsx';
-import ContentBlockPreview from '../ContentBlockPreview.tsx';
-import {
-  contentBlockSlots,
-  pageBlocksCarrySize,
-} from '../contentBlockTypes.ts';
+import type { PageContentVariant } from '../../page-content/PageContentSection.tsx';
+import { contentBlocks } from '../contentBlocks.tsx';
+import { pageBlocksCarrySize } from '../contentBlockTypes.ts';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -46,18 +40,15 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 }));
 
 /**
- * The blocks, as both of their consumers mount them: the shared page section,
- * given this family's row editor, preview, and the pair of functions that
- * expand a saved block onto its own kind's control and collapse it back.
+ * The blocks exactly as an interface composes them.
+ *
+ * Through `contentBlocks` rather than by mounting the shared page section with
+ * this family's parts by hand: which row editor is paired with which preview,
+ * slots and dialog sentence is that function's business, and a fixture that
+ * re-pairs them stops testing what ships the moment the pairing gains a part.
  */
-const pageOfBlocks = (variant?: PageContentVariant) => (
-  <PageContentSection
-    ItemEditor={ContentBlockEditor}
-    ItemPreview={ContentBlockPreview}
-    slots={contentBlockSlots}
-    {...(variant === undefined ? {} : { variant })}
-  />
-);
+const pageOfBlocks = (variant?: PageContentVariant) =>
+  contentBlocks(variant === undefined ? {} : { variant })();
 
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const items = document.items;

@@ -124,11 +124,6 @@
     "es": "Editar elemento",
     "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem, sentence case"
   },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "en": "Item details",
-    "es": "Detalles del elemento",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.itemDetails"
-  },
   "protocolBuilder.contentBlock.sectionDescription": {
     "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
     "es": "Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.",

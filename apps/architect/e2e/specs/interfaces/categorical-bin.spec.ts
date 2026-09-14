@@ -2,7 +2,10 @@ import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
-import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
+import {
+  mapNodeShapeToAttribute,
+  selectOrCreateNodeType,
+} from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import {
   authorOptions,
@@ -67,6 +70,35 @@ function findNodeCodebookVariable(
   throw new Error(`no codebook.node variable found with id "${variableId}"`);
 }
 
+/**
+ * The `shape` of the node type that owns the given attribute.
+ *
+ * Walked the same way its variables are, because the type id is minted by the
+ * create row and is not a fact this spec knows.
+ */
+function findNodeShape(
+  protocol: Record<string, unknown>,
+  variableId: string,
+): Record<string, unknown> {
+  const { codebook } = protocol;
+  if (!isRecord(codebook) || !isRecord(codebook.node)) {
+    throw new Error('protocol JSON has no codebook.node object');
+  }
+  for (const nodeType of Object.values(codebook.node)) {
+    if (
+      isRecord(nodeType) &&
+      isRecord(nodeType.variables) &&
+      variableId in nodeType.variables
+    ) {
+      if (!isRecord(nodeType.shape)) {
+        throw new Error('the node type has no shape definition');
+      }
+      return nodeType.shape;
+    }
+  }
+  throw new Error(`no codebook.node type found owning "${variableId}"`);
+}
+
 test('creates a valid CategoricalBin stage from scratch', async ({
   architectPage,
   seed,
@@ -112,6 +144,19 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     // `color` field on CategoricalBin at all (unlike OrdinalBin).
   });
 
+  // The node type this stage is about can also draw itself from that same
+  // attribute — the "Node appearance" group of its own dialog, which Architect
+  // carried and this package had not. Done here rather than in a spec of its
+  // own because the mapping needs an attribute a shape can follow, and this is
+  // where one exists.
+  await mapNodeShapeToAttribute(architectPage, {
+    attribute: 'group',
+    shapes: [
+      { value: 'Family', shape: 'Square' },
+      { value: 'Friends', shape: 'Diamond' },
+    ],
+  });
+
   await editor.expectNoIssues();
   await editor.save();
 
@@ -149,6 +194,17 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     'Family',
     'Friends',
   ]);
+
+  // And the shape mapping reached the codebook, as the mapping variant the
+  // runtime reads for a categorical answer.
+  expect(findNodeShape(protocol, prompt.variable).dynamic).toEqual({
+    variable: prompt.variable,
+    type: 'discrete',
+    map: [
+      { value: 'family', shape: 'square' },
+      { value: 'friends', shape: 'diamond' },
+    ],
+  });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'categorical-bin-stage.json',
