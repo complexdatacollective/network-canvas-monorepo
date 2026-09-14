@@ -37,7 +37,6 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   suppressClaim(claim: Claim, lease: OutboxLease): Promise<boolean>;
   renewLease(claim: Claim, lease: OutboxLease): Promise<boolean>;
   deliver(claim: Claim): Promise<void>;
-  failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
   recordFailure(
     claim: Claim,
     lease: OutboxLease,
@@ -142,9 +141,8 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
             return undefined;
           })
           .catch(() => {
-            // A provider call cannot necessarily be canceled. Ordinary outcomes
-            // require confirmed ownership; uncertain delivery may still use its
-            // finalizer's lease-owner CAS to prevent an unsafe automatic retry.
+            // A provider call cannot necessarily be canceled. Leave the row
+            // reclaimable and never persist an outcome under uncertain ownership.
             ownsLease = false;
             observeOutbox(this.observer, {
               queue: this.adapter.queue,
@@ -203,23 +201,12 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
     try {
       await this.adapter.deliver(claim);
     } catch (error) {
-      const ownsLease = await heartbeat.stop();
-      const disposition = this.adapter.failureDisposition(error);
-      if (disposition === 'uncertain') {
-        // A failed renewal does not prove another worker owns the row. This
-        // compare-and-set cannot overwrite a replacement owner and can retain
-        // ambiguity after a transient database error has recovered.
-        if (await this.adapter.recordUncertain(claim, this.lease, error))
-          result.uncertain = 1;
-        else result.leaseLost = 1;
-        return result;
-      }
-      if (!ownsLease) {
+      if (!(await heartbeat.stop())) {
         result.leaseLost = 1;
         return result;
       }
       const retryDelay =
-        disposition === 'permanent' || claim.attemptCount >= this.maxAttempts
+        claim.attemptCount >= this.maxAttempts
           ? null
           : this.retryDelayMs(claim.attemptCount);
       if (
@@ -233,10 +220,11 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
       return result;
     }
 
-    await heartbeat.stop();
+    if (!(await heartbeat.stop())) {
+      result.leaseLost = 1;
+      return result;
+    }
 
-    // A renewal error does not establish that ownership changed. Always try
-    // the ownership CAS after acceptance, without overwriting a new owner.
     // The provider accepted, but a failed commit must never become a normal
     // retry. A process crash still leaves the lease reclaimable: this retains
     // the invitation outbox's at-least-once crash semantics.
