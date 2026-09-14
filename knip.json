@@ -27,7 +27,6 @@
     ".": {
       "entry": [
         "scripts/release-test/interviewer-*-walker.mjs",
-        "apps/studio/deployment/managed/generate-subprocessor-inventory.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/build/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
