@@ -6,7 +6,7 @@ import {
   type Variants,
 } from 'motion/react';
 import type React from 'react';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -18,6 +18,7 @@ import Brand from '~/components/Brand';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import LanguageSettings from '~/i18n/LanguageSettings';
 import { cx } from '~/utils/cva';
+import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 const messages = defineMessages({
   openMenu: {
     id: 'architect.projectNav.navShell.openMenu',
@@ -69,6 +70,58 @@ type NavShellProps = {
   trailing?: React.ReactNode;
 };
 
+/**
+ * Publishes the bar's own height on the document root, for everything that has
+ * to stay clear of it: the stage editor's sticky section list sits directly
+ * underneath it, and anything scrolled into view lands beneath it.
+ *
+ * Measured rather than declared, because the bar has no fixed height: its pill
+ * wraps at narrow widths, what it holds changes from screen to screen, and the
+ * type scale is responsive. A `ResizeObserver` rather than a mount-time
+ * reading alone, because every one of those changes the height without
+ * remounting anything.
+ *
+ * A measurement of zero is never published. A header that has not been laid
+ * out yet — hidden, or measured in an environment that lays nothing out —
+ * would otherwise put everything anchored to the bar back underneath it, which
+ * is the fault this exists to fix; the stylesheet's starting value stands
+ * until a real one arrives.
+ */
+function usePublishedNavHeight(): React.RefObject<HTMLElement | null> {
+  const header = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const element = header.current;
+    if (!element) return;
+
+    const root = document.documentElement;
+    const publish = (height: number) => {
+      if (height <= 0) return;
+      root.style.setProperty(NAV_HEIGHT_VARIABLE, `${height}px`);
+    };
+
+    publish(element.getBoundingClientRect().height);
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // The border box, not `contentRect`: the bar's own vertical padding is
+        // part of what covers the page, and the content box leaves it out.
+        publish(
+          entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height ?? 0,
+        );
+      }
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty(NAV_HEIGHT_VARIABLE);
+    };
+  }, []);
+
+  return header;
+}
+
 const NavShell = ({ leading, trailing }: NavShellProps) => {
   const intl = useAppIntl();
   const shouldReduceMotion = useReducedMotion();
@@ -89,6 +142,8 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
 
+  const navHeight = usePublishedNavHeight();
+
   const isAtStart = location === '/';
   const handleReturnToStart = useCallback(
     () => setLocation('/'),
@@ -96,7 +151,10 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
   );
 
   return (
-    <header className="phone-landscape:px-6 pointer-events-none sticky top-0 z-20 w-full px-4 py-5 print:static print:hidden">
+    <header
+      ref={navHeight}
+      className="phone-landscape:px-6 pointer-events-none sticky top-0 z-20 w-full px-4 py-5 print:static print:hidden"
+    >
       <motion.div
         className={cx(
           NAV_SURFACE,

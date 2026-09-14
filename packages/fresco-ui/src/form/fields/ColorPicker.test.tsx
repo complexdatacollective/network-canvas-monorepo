@@ -151,6 +151,55 @@ describe('ColorPickerField', () => {
     );
   });
 
+  it('marks the chosen swatch with the theme’s selection colour, and offers it faded under the pointer', () => {
+    renderInForm(
+      <Field
+        name="color"
+        label="Node color"
+        component={ColorPickerField}
+        initialValue="node-color-seq-1"
+        options={palette}
+      />,
+    );
+
+    const chosen = screen.getByRole('radio', { name: 'Neon Coral' });
+    const unchosen = screen.getByRole('radio', { name: 'Sea Serpent' });
+
+    // Being chosen is an outline standing off the swatch in `selected`, the
+    // token the rest of the system marks a chosen thing with. Never the
+    // swatch's own colour: a colour cannot say of itself that it is the chosen
+    // one, and a swatch filled with the group's background has none to draw
+    // with.
+    expect(chosen).toHaveClass(
+      'outline-2',
+      'outline-offset-2',
+      'outline-selected',
+    );
+    expect(chosen.className).not.toContain('outline-(--swatch-color)');
+
+    // Idle: nothing stands off an unchosen swatch, so the two states differ in
+    // shape and not only in strength.
+    expect(unchosen).not.toHaveClass('outline-selected');
+    expect(unchosen).not.toHaveClass('outline-2');
+
+    // Pointed at, an unchosen swatch previews the same cue faded, so hovering
+    // is not mistaken for having chosen. The chosen one is not offered it
+    // again: at equal specificity the hover rule would otherwise repaint the
+    // answer as the offer.
+    expect(unchosen).toHaveClass(
+      'hover:outline-2',
+      'hover:outline-offset-2',
+      'hover:outline-selected/70',
+    );
+    expect(chosen).not.toHaveClass('hover:outline-selected/70');
+
+    // The swatch's edge, in the group's foreground rather than in its fill, so
+    // a swatch painted the colour of the ground is still a disc.
+    for (const swatch of screen.getAllByRole('radio')) {
+      expect(swatch).toHaveClass('border', 'border-current', 'rounded-full');
+    }
+  });
+
   it('works through UnconnectedField, taking its name from the field’s label', () => {
     function Standalone() {
       const [color, setColor] = useState<string | undefined>(

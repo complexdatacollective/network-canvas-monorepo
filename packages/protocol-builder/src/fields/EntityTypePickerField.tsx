@@ -740,7 +740,6 @@ function EntityTypeCodebookControls({
             ref={createTrigger}
             type="button"
             color="primary"
-            size="sm"
             icon={<Plus aria-hidden="true" />}
             onClick={() =>
               setSession({ key: uuid(), typeId: uuid(), mode: 'create' })
@@ -757,7 +756,6 @@ function EntityTypeCodebookControls({
               ref={editTrigger}
               type="button"
               color="primary"
-              size="sm"
               onClick={() =>
                 setSession({
                   key: uuid(),

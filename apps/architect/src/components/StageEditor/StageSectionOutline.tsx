@@ -135,7 +135,14 @@ export default function StageSectionOutline({
       // strip of sections below the two-column breakpoint makes this column as
       // wide as the whole list — and the list's `overflow-x-auto` never has
       // anything to scroll, while the page does.
-      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:max-h-dvh @min-[60rem]:overflow-y-auto @min-[60rem]:py-14"
+      //
+      // It sticks to the bottom of Architect's navigation bar rather than to
+      // the top of the viewport, and takes its height from what the bar leaves:
+      // the bar is sticky too and paints above this, so a list stuck at `top-0`
+      // loses its first rows behind it, and one measured against the whole
+      // viewport runs its scroll off the bottom of the screen by the same
+      // amount. `NavShell` measures the bar and publishes the height.
+      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto @min-[60rem]:pt-2 @min-[60rem]:pb-14"
     >
       <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
         {entries.map((section) => (

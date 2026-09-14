@@ -174,6 +174,80 @@ test('the stage editor lists its sections beside the form at desktop width', asy
 });
 
 /**
+ * The list stays where the researcher can read it while the form scrolls past
+ * it.
+ *
+ * Both the navigation bar and the list are sticky inside the same scroll port,
+ * and the bar paints above the list — so a list stuck to the top of that port
+ * has its first rows covered by the bar the moment the page moves, which is
+ * what shipped. The bar has no fixed height (its pill wraps, and what it holds
+ * changes from screen to screen), so it measures itself and the list is
+ * offset by what it measured.
+ */
+test('the stage editor’s section list stays below the navigation bar once the page scrolls', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.setViewportSize({ width: 1280, height: 900 });
+  await gotoProtocol(architectPage);
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+  const outline = architectPage.getByRole('navigation', {
+    name: 'Stage sections',
+  });
+  const firstSection = outline.getByRole('listitem').first();
+  await expect(firstSection).toBeVisible();
+
+  // The bar itself, by its landmark role rather than by the element it is
+  // built from: what this is about is the chrome the researcher sees pinned
+  // to the top of every project screen.
+  const bar = architectPage.getByRole('banner');
+  await expect(bar).toHaveCount(1);
+
+  // Both stick inside the app's own scroll port rather than inside the
+  // window, so the page is moved by scrolling that port — found the same way
+  // `readScrollMetrics` finds it, by behaviour.
+  const scrolled = await architectPage.evaluate(() => {
+    const ports = Array.from(document.querySelectorAll('*')).filter(
+      (element): element is HTMLElement => {
+        if (!(element instanceof HTMLElement)) return false;
+        const { overflowY } = getComputedStyle(element);
+        if (overflowY !== 'auto' && overflowY !== 'scroll') return false;
+        return element.clientHeight >= window.innerHeight * 0.5;
+      },
+    );
+    const [port] = ports.filter(
+      (element) =>
+        !ports.some((other) => other !== element && other.contains(element)),
+    );
+    if (!port) throw new Error('the app has no scroll port to scroll');
+    port.scrollTop = port.scrollHeight;
+    return port.scrollTop;
+  });
+  // Non-vacuity: a page that never moved would clear the assertion below for
+  // free, because nothing would have scrolled under the bar.
+  expect(scrolled).toBeGreaterThan(0);
+
+  const gap = async () => {
+    const [section, banner] = await Promise.all([
+      firstSection.boundingBox(),
+      bar.boundingBox(),
+    ]);
+    if (!section || !banner) throw new Error('nothing to measure');
+    return Math.round(section.y - (banner.y + banner.height));
+  };
+
+  // At or below the bar's bottom edge: the first section the researcher can
+  // choose is never behind the chrome. Polled because the scroll settles on
+  // the next frame.
+  await expect.poll(gap).toBeGreaterThanOrEqual(0);
+});
+
+/**
  * The band no other case in this file covers.
  *
  * The grid asks its container for 60rem before it splits, and the container
