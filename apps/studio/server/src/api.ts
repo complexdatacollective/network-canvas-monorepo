@@ -100,14 +100,12 @@ export function createApiV1(
   auth: AuthCapabilities,
   deployment: DeploymentStatus,
 ) {
-  // The public API exposes only name/version. Auth capabilities, deployment
-  // and the runtime telemetry decision belong to the SPA's status RPC; the
-  // placeholder decision here is never serialized or consumed by the client.
+  // The domain's status includes auth capabilities and the deployment block
+  // for the SPA; this surface's Status schema deliberately names neither, so
+  // both are stripped from the published API (output schemas are the
+  // serialization allowlist).
   const apiRouter = {
-    status: os.status.handler(() => {
-      const { name, version } = getInstanceStatus(auth, deployment, false);
-      return { name, version };
-    }),
+    status: os.status.handler(() => getInstanceStatus(auth, deployment)),
   };
 
   const handler = new OpenAPIHandler(apiRouter, {

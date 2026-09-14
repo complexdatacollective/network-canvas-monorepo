@@ -36,7 +36,6 @@ vi.mock('../../lib/auth.ts', () => ({
 
 type Status = InferContractRouterOutputs<typeof contract>['status'];
 const STATUS: Status = {
-  telemetry: false,
   name: 'Network Canvas Studio',
   version: '0.1.0',
   auth: {

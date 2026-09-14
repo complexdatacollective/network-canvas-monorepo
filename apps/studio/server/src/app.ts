@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
-import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
 import { type Context, Hono } from 'hono';
@@ -44,7 +43,6 @@ import {
 } from './observability/runtime.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
-import type { ServerTelemetry } from './telemetry.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
 // path (with `ws: true`) alongside /api and /rpc, so the browser sees one
@@ -65,7 +63,6 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
-  telemetry?: ServerTelemetry;
   mailer?: StudioMailer;
   auth?: AuthService;
   assetStore?: AssetStore;
@@ -82,8 +79,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
   // text/plain default.
-  app.onError((error, c) => {
-    deps.telemetry?.capture('server_request', error);
+  app.onError((_error, c) => {
     return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
     });
@@ -189,7 +185,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const rpcRouter = createRpcRouter(authCaps, {
     auth,
     deployment,
-    telemetry: env.telemetry,
     invitationDeliveryAvailable: Boolean(
       deps.invitationDeliveryAvailable && authCaps.magicLink,
     ),
@@ -197,25 +192,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
   });
-  const captureRpcError = (error: unknown) => {
-    if (
-      !(error instanceof ORPCError) ||
-      !Object.hasOwn(COMMON_ERROR_STATUS_MAP, error.code) ||
-      COMMON_ERROR_STATUS_MAP[
-        error.code as keyof typeof COMMON_ERROR_STATUS_MAP
-      ] >= 500
-    )
-      deps.telemetry?.capture('server_rpc', error);
-  };
-  const rpcHandler = new RPCHandler(rpcRouter, {
-    interceptors: [onError(captureRpcError)],
-  });
+  const rpcHandler = new RPCHandler(rpcRouter);
   // The same router over the socket: unary calls keep working on /rpc, and
   // the streaming procedure the fetch transport cannot serve — the protocol
   // builder's `watchProtocol` — is served here.
-  const socketHandler = new WebSocketRPCHandler(rpcRouter, {
-    interceptors: [onError(captureRpcError)],
-  });
+  const socketHandler = new WebSocketRPCHandler(rpcRouter);
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',

@@ -17,7 +17,6 @@ import {
   type SchemaState,
 } from './db/schema.ts';
 import { readEnv } from './env.ts';
-import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { logOperational } from './observability/logger.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
@@ -25,16 +24,15 @@ import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
 } from './team/invitation-delivery-dispatcher.ts';
-import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
-import { STUDIO_VERSION } from './version.ts';
 
-// Process policy is installed before configuration or SDK loading can fail.
-let telemetry: ServerTelemetry | undefined;
-let stopServing = () => {};
-installFatalErrorHandlers({
-  telemetry: () => telemetry,
-  stopServing: () => stopServing(),
-});
+// The executable owns process failure policy. Imported app modules never
+// install process hooks, and a fatal error never continues serving requests.
+function failProcess(): never {
+  logOperational('STUDIO_PROCESS_FAILED');
+  process.exit(1);
+}
+process.on('uncaughtException', failProcess);
+process.on('unhandledRejection', failProcess);
 
 // The server entry, development and production both: one Node process serving
 // the public API, the internal RPC surface, /healthz, and the app WebSocket
@@ -59,17 +57,6 @@ const { env, mailer } = (() => {
     return process.exit(1);
   }
 })();
-if (env.telemetry) {
-  try {
-    telemetry = await createServerTelemetry(true, {
-      mode: env.deploymentMode,
-      runtime: 'both',
-      version: STUDIO_VERSION,
-    });
-  } catch {
-    /* SDK availability cannot prevent Studio from starting. */
-  }
-}
 const pool = env.db ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
@@ -94,7 +81,6 @@ function startDatabaseWorkers(): void {
   invitationDeliveryWorker = startInvitationDeliveryWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
-    reportError: (error) => telemetry?.capture('server_worker', error),
     mailer,
     publicBaseUrl: env.auth.baseUrl,
   });
@@ -177,7 +163,6 @@ if (pool) {
 }
 
 const app = createApp(env, {
-  telemetry,
   mailer,
   assetStore,
   observability,
@@ -201,15 +186,6 @@ const server = serve(
   },
   () => logOperational('STUDIO_SERVER_STARTED'),
 );
-
-stopServing = () => {
-  server.close();
-  if ('closeAllConnections' in server) server.closeAllConnections();
-  for (const socket of wsServer.clients) socket.terminate();
-  void invitationDeliveryWorker?.stop();
-  mailer?.close();
-  observability.stop();
-};
 
 // Graceful shutdown is a requirement, not a nicety (#1247): every backend
 // deploy drops live sync sessions, so connections are told to go away (1001)
@@ -249,7 +225,6 @@ function shutdown() {
       const ended = await Promise.allSettled([
         pool?.end(),
         maintenancePool?.end(),
-        telemetry?.close(),
       ]);
       if (ended.some((result) => result.status === 'rejected')) {
         logOperational('STUDIO_SHUTDOWN_FAILED');

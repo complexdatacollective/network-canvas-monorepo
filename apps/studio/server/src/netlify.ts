@@ -1,7 +1,5 @@
 import { createApp } from './app.ts';
 import { readEnv } from './env.ts';
-import { createServerTelemetry } from './telemetry.ts';
-import { STUDIO_VERSION } from './version.ts';
 
 // Deliberately NOT ported from src/index.ts:
 //   - mountClient — serveStatic, the SPA fallback, and the deployment-mode
@@ -54,19 +52,10 @@ import { STUDIO_VERSION } from './version.ts';
 // Serving auth from this lane needs the origin derived from the request, which
 // netlify.toml assigns to the real topology work — not a site-level variable.
 const env = readEnv({ withoutDatabaseOrAuth: true });
-const telemetry = await createServerTelemetry(env.telemetry, {
-  mode: env.deploymentMode,
-  runtime: 'function',
-  version: STUDIO_VERSION,
-}).catch(() => undefined);
-const app = createApp(env, { invitationDeliveryAvailable: false, telemetry });
+const app = createApp(env, { invitationDeliveryAvailable: false });
 
 export default async function handler(request: Request): Promise<Response> {
-  try {
-    return await app.fetch(request);
-  } finally {
-    await telemetry?.flush();
-  }
+  return app.fetch(request);
 }
 
 // URLPattern, so `/api/*` matches `/api/` and below but not the bare `/api`.

@@ -46,7 +46,6 @@ export const StatusSchema = z.object({
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
   deployment: DeploymentSchema,
-  telemetry: z.boolean(),
 });
 
 export const MeSchema = z.object({

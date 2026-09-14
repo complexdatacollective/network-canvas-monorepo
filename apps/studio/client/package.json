@@ -17,8 +17,7 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "i18n:extract": "node scripts/extract-i18n.mjs",
-    "test:telemetry": "node scripts/telemetry-egress.mjs"
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "devDependencies": {
     "@codaco/app-i18n": "workspace:^",
@@ -35,7 +34,6 @@
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
     "@orpc/tanstack-query": "catalog:",
-    "@playwright/test": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "^1.170.0",
@@ -48,7 +46,6 @@
     "jsdom": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
-    "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
