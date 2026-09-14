@@ -18,7 +18,13 @@ function ValidationEditorProof({ seed }: Readonly<{ seed?: ValidationMap }>) {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-4 text-2xl font-bold text-current">Age validation</h1>
+      {/* The ladder the editor really sits in: a row dialog's title, then the
+          nested Validation section's own heading, then each rule group's
+          legend — which is a `Heading level="label"`, an `h4`. Without the two
+          rungs above it a standalone host jumps from `h1` to `h4`, which is a
+          heading-order violation in a page nothing else is wrong with. */}
+      <h2 className="mb-4 text-2xl font-bold text-current">Edit form field</h2>
+      <h3 className="mb-4 text-xl font-bold text-current">Validation</h3>
       <VariableValidationEditor
         entity="node"
         variableType="number"
