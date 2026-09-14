@@ -9,9 +9,9 @@ import { expect, type Page } from '@playwright/test';
 // that has both.
 //
 // "Create a new {node|edge} type" opens the package's `CodebookEntityEditor`,
-// whose name field is labelled "{Node|Edge} type name", whose icon is a text
-// field named "Icon" inside its "Interface icon" group, and whose submit
-// reads "Save entity" from the dialog's footer.
+// whose name field is labelled "{Node|Edge} type name", whose icon is a
+// searchable combobox named "Icon" inside its "Interface icon" group, and
+// whose submit reads "Save entity" from the dialog's footer.
 async function selectOrCreateEntityType(
   page: Page,
   entityType: 'node' | 'edge',
@@ -55,9 +55,18 @@ async function selectOrCreateEntityType(
     .getByRole('textbox', { name: `${entityLabel} type name` })
     .fill(name);
   if (opts.icon) {
-    // The icon is named rather than picked from a gallery: the editor takes
-    // the icon's own name and refuses one no interface can draw.
-    await dialog.getByRole('textbox', { name: 'Icon' }).fill(opts.icon);
+    // The icon is picked from the icons themselves, so the name is typed into
+    // the picker's SEARCH and the match is clicked. The popup portals out of
+    // the dialog, so its options are looked up on the page.
+    await dialog.getByRole('combobox', { name: 'Icon' }).click();
+    await page.getByPlaceholder('Search icons…').fill(opts.icon);
+    await page
+      .getByRole('option', { name: opts.icon, exact: true })
+      .first()
+      .click();
+    await expect(dialog.getByRole('combobox', { name: 'Icon' })).toHaveText(
+      new RegExp(opts.icon),
+    );
   }
   await dialog.getByRole('button', { name: 'Save entity' }).click();
   // Answered BEFORE the dialog is waited out: a type created here is chosen

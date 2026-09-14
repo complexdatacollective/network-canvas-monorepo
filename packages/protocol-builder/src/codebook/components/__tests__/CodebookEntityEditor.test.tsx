@@ -100,7 +100,7 @@ describe('CodebookEntityEditor', () => {
       <CodebookEntityEditor
         mode="update"
         sessionKey="topics"
-        dialog={{ title: 'Edit this node type' }}
+        dialog={{ title: 'Edit this node type', open: true }}
         subject={NODE_SUBJECT}
         initialDraft={NODE_DOCUMENT}
         authoritativeDocument={NODE_DOCUMENT}
@@ -131,7 +131,7 @@ describe('CodebookEntityEditor', () => {
       <CodebookEntityEditor
         mode="update"
         sessionKey="footer"
-        dialog={{ title: 'Edit this node type' }}
+        dialog={{ title: 'Edit this node type', open: true }}
         subject={NODE_SUBJECT}
         initialDraft={NODE_DOCUMENT}
         authoritativeDocument={NODE_DOCUMENT}
@@ -162,7 +162,7 @@ describe('CodebookEntityEditor', () => {
       <CodebookEntityEditor
         mode="update"
         sessionKey="footer-submits"
-        dialog={{ title: 'Edit this node type' }}
+        dialog={{ title: 'Edit this node type', open: true }}
         subject={NODE_SUBJECT}
         initialDraft={NODE_DOCUMENT}
         authoritativeDocument={NODE_DOCUMENT}
@@ -311,21 +311,74 @@ describe('CodebookEntityEditor', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  /**
+   * The icon is chosen from the renderer's own two sets, so an unrenderable
+   * name can only ARRIVE in a type — authored elsewhere, or by a schema the
+   * app has since moved on from. The refusal is what tells the researcher
+   * their type carries one, and the picker is how they replace it.
+   */
   it('rejects an icon the Fresco renderer cannot display', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
-    renderUpdateEditor(onSubmit);
+    const carriesUnknownIcon: SectionDoc = {
+      ...NODE_DOCUMENT,
+      icon: 'not-a-rendered-icon',
+    };
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="unknown-icon"
+        subject={NODE_SUBJECT}
+        initialDraft={carriesUnknownIcon}
+        authoritativeDocument={carriesUnknownIcon}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />,
+    );
 
-    const icon = screen.getByRole('textbox', { name: 'Icon' });
-    await user.clear(icon);
-    await user.type(icon, 'not-a-rendered-icon');
+    // Nothing the picker can show, so it offers the choice rather than
+    // claiming the type has an icon it does not.
+    const icon = screen.getByRole('combobox', { name: 'Icon' });
+    expect(icon).toHaveTextContent('Select an icon…');
+
+    await user.type(screen.getByRole('textbox', { name: /name/i }), '!');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
       screen.getByText('Choose an icon supported by Network Canvas.'),
     ).toBeInTheDocument();
-    expect(icon).toHaveValue('not-a-rendered-icon');
+  });
+
+  /** The regression the researcher reported: a name to type, not icons to see. */
+  it('chooses the icon from the icons themselves, and stores the one picked', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    const icon = screen.getByRole('combobox', { name: 'Icon' });
+    expect(icon).toHaveTextContent('add-a-person');
+
+    await user.click(icon);
+    await user.type(
+      screen.getByPlaceholderText('Search icons…'),
+      'add-a-place',
+    );
+    await user.click(screen.getByRole('option', { name: /add-a-place/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
+        'add-a-place',
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: 'add-a-place' }),
+      );
+    });
   });
 
   it('reacts to live read-only access without losing the draft', async () => {
@@ -351,7 +404,7 @@ describe('CodebookEntityEditor', () => {
 
     expect(name).toHaveValue('Unsaved local name');
     expect(name).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'Icon' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Icon' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
     const form = container.querySelector('form');
     if (form === null) throw new Error('expected entity editor form');
@@ -536,7 +589,7 @@ describe('CodebookEntityEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Node type name' })).toHaveValue(
       'Place',
     );
-    expect(screen.getByRole('textbox', { name: 'Icon' })).toHaveValue(
+    expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
       'add-a-place',
     );
   });

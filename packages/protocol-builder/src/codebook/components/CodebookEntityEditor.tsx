@@ -22,6 +22,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ColorPickerField, {
   type ColorSwatchOption,
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
+import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -90,15 +91,15 @@ const messages = defineMessages({
   },
   iconRequired: {
     id: 'protocolBuilder.codebookEntity.iconRequired',
-    defaultMessage: 'Enter an icon name.',
+    defaultMessage: 'Choose an icon.',
     description:
-      'Refusal shown under the icon field of the node type editor when the researcher has left it empty.',
+      'Refusal shown under the icon field of the node type editor when the researcher has chosen no icon.',
   },
   iconUnsupported: {
     id: 'protocolBuilder.codebookEntity.iconUnsupported',
     defaultMessage: 'Choose an icon supported by Network Canvas.',
     description:
-      'Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. "Network Canvas" is the product name and stays as it is.',
+      'Refusal shown under the icon field when the icon this type already carries is not one the interview can draw. "Network Canvas" is the product name and stays as it is.',
   },
   egoHasNoProperties: {
     id: 'protocolBuilder.codebookEntity.egoHasNoProperties',
@@ -161,9 +162,9 @@ const messages = defineMessages({
   iconHint: {
     id: 'protocolBuilder.codebookEntity.iconHint',
     defaultMessage:
-      'Enter the Lucide or Network Canvas icon name shown by interfaces that create this type.',
+      'Choose the icon shown by interfaces that create this type.',
     description:
-      'Guidance under the icon field. "Lucide" is an icon library and "Network Canvas" the product; both are names and stay as they are. An interface is one kind of interview step.',
+      'Guidance under the icon field, which offers the icons to choose from. An interface is one kind of interview step.',
   },
   identitySectionTitle: {
     id: 'protocolBuilder.codebookEntity.identitySectionTitle',
@@ -521,7 +522,7 @@ export function CodebookEntityFields({
               name="icon"
               label={intl.formatMessage(messages.iconLabel)}
               hint={intl.formatMessage(messages.iconHint)}
-              component={InputField}
+              component={IconPicker}
               value={stringValue(draft.icon)}
               onChange={(value) =>
                 onChange(replaceDraftProperty(draft, 'icon', value ?? ''))
@@ -555,6 +556,18 @@ export function CodebookEntityFields({
 export type CodebookEntityEditorDialogProps = Readonly<{
   /** The dialog's own heading; also the label of the trigger that opened it. */
   title: string;
+  /**
+   * Whether the dialog is open.
+   *
+   * A host closes it by turning this false and keeping the editor mounted,
+   * NOT by unmounting the editor: the exit animation belongs to the dialog,
+   * and an editor dropped the moment it closes takes the animation with it —
+   * the dialog vanishes rather than closing. `onExitComplete` says when the
+   * editor may go.
+   */
+  open: boolean;
+  /** Called once the dialog has finished animating out — see `open`. */
+  onExitComplete?: () => void;
   /** Where focus returns when the dialog closes — see `Dialog.finalFocus`. */
   finalFocus?: DialogProps['finalFocus'];
 }>;
@@ -784,7 +797,8 @@ export default function CodebookEntityEditor({
   if (dialog !== undefined) {
     return (
       <Dialog
-        open
+        open={dialog.open}
+        onExitComplete={dialog.onExitComplete}
         title={dialog.title}
         size="readable"
         // A save in flight refuses every way out, because the dialog is about

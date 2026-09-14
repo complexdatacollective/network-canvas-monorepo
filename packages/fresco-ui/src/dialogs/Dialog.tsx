@@ -30,6 +30,17 @@ export type DialogProps = {
   closeDialog?: () => void;
   footer?: React.ReactNode;
   open?: boolean;
+  /**
+   * Called once the close animation has finished and the dialog has left the
+   * DOM.
+   *
+   * A dialog whose CONTENT belongs to what it is editing must stay mounted
+   * with `open={false}` for the exit to run at all — rendering it only while
+   * there is something to edit takes the animation away with it, and the
+   * dialog vanishes instead of closing. Hold that state until this fires, then
+   * drop it.
+   */
+  onExitComplete?: () => void;
   children?: ReactNode;
   /** Supplementary controls rendered below the title in the fixed header. */
   header?: ReactNode;
@@ -92,6 +103,7 @@ export default function Dialog({
   accent,
   footer,
   open = false,
+  onExitComplete,
   className,
   size = 'readable',
   dismissible = true,
@@ -104,6 +116,7 @@ export default function Dialog({
     <Modal
       open={open}
       dismissible={dismissible}
+      onExitComplete={onExitComplete}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();

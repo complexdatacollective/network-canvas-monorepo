@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -138,7 +139,13 @@ export default function MapViewField({
   const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const controlId = useId();
-  const [mapOpen, setMapOpen] = useState(false);
+  // Kept through the close so the dialog animates out rather than vanishing.
+  const {
+    session: mapSession,
+    openSession: openMap,
+    closeSession: closeMap,
+    onSessionExited: mapExited,
+  } = useDialogSession<Record<string, never>>();
   const [draft, setDraft] = useState<CenterDraft | undefined>(undefined);
   const locked = disabled || readOnly;
 
@@ -255,13 +262,15 @@ export default function MapViewField({
         color="primary"
         className="self-start"
         disabled={locked}
-        onClick={() => setMapOpen(true)}
+        onClick={() => openMap({})}
       >
         {intl.formatMessage(geospatialMessages.openPreviewLabel)}
       </Button>
 
-      {mapOpen && (
+      {mapSession !== null && (
         <MapPreviewDialog
+          open={mapSession.open}
+          onExitComplete={mapExited}
           tokenAssetId={tokenAssetId}
           style={style}
           center={value}
@@ -276,7 +285,7 @@ export default function MapViewField({
             onChange?.([nextCenter[0], nextCenter[1]]);
             storeApi.getState().setFieldValue(zoomFieldName, nextZoom);
           }}
-          onClose={() => setMapOpen(false)}
+          onClose={closeMap}
         />
       )}
     </fieldset>

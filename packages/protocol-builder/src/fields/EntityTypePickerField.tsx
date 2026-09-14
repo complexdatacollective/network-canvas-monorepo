@@ -1,12 +1,5 @@
 import { Plus } from 'lucide-react';
-import {
-  type CSSProperties,
-  useCallback,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type CSSProperties, useCallback, useId, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -15,6 +8,7 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
@@ -659,7 +653,8 @@ function EntityTypeCodebookControls({
   const codebook = useProtocolContext().codebook;
   const createEntity = useCreateCodebookEntity();
   const writeSection = useCodebookSectionWrite();
-  const [session, setSession] = useState<EditorSession | null>(null);
+  const { session, openSession, closeSession, onSessionExited } =
+    useDialogSession<EditorSession>();
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
 
@@ -734,7 +729,7 @@ function EntityTypeCodebookControls({
             color="primary"
             icon={<Plus aria-hidden="true" />}
             onClick={() =>
-              setSession({ key: uuid(), typeId: uuid(), mode: 'create' })
+              openSession({ key: uuid(), typeId: uuid(), mode: 'create' })
             }
           >
             {createLabel}
@@ -749,7 +744,7 @@ function EntityTypeCodebookControls({
               type="button"
               color="primary"
               onClick={() =>
-                setSession({
+                openSession({
                   key: uuid(),
                   typeId: heldType,
                   mode: 'edit',
@@ -762,6 +757,12 @@ function EntityTypeCodebookControls({
           )}
         </div>
       )}
+      {/* A CLOSED session is still rendered, until its dialog reports that it
+          has finished animating out. Rendering the editor only while there is
+          something to edit is what made both of these dialogs disappear
+          instead of closing: the exit animation is run by the
+          `AnimatePresence` inside the dialog, so unmounting the editor on
+          close takes the animation away with it. */}
       {session !== null &&
         (session.mode === 'create' ? (
           <CodebookEntityEditor
@@ -780,6 +781,8 @@ function EntityTypeCodebookControls({
             */
             dialog={{
               title: createLabel,
+              open: session.open,
+              onExitComplete: onSessionExited,
               finalFocus: () => createTrigger.current,
             }}
             subject={{ entity: entityType, type: session.typeId }}
@@ -795,7 +798,7 @@ function EntityTypeCodebookControls({
               // to issue, and the stage has to name the type it created.
               const ref = parseSectionId(outcome.sectionId);
               if (ref.kind !== 'codebookNode' && ref.kind !== 'codebookEdge') {
-                setSession(null);
+                closeSession();
                 return;
               }
               // Asked while this dialog is still open, and it closes on
@@ -804,9 +807,9 @@ function EntityTypeCodebookControls({
               // question is what keeps focus on a live control — the
               // confirm returns focus to the Save it was raised from, and
               // this dialog then returns it to its own trigger.
-              void select(ref.typeId).finally(() => setSession(null));
+              void select(ref.typeId).finally(closeSession);
             }}
-            onCancel={() => setSession(null)}
+            onCancel={closeSession}
           />
         ) : (
           editedDocument !== undefined && (
@@ -815,6 +818,8 @@ function EntityTypeCodebookControls({
               sessionKey={session.key}
               dialog={{
                 title: editLabel,
+                open: session.open,
+                onExitComplete: onSessionExited,
                 finalFocus: () => editTrigger.current,
               }}
               subject={{ entity: entityType, type: session.typeId }}
@@ -844,8 +849,8 @@ function EntityTypeCodebookControls({
                   }),
                 );
               }}
-              onApplied={() => setSession(null)}
-              onCancel={() => setSession(null)}
+              onApplied={closeSession}
+              onCancel={closeSession}
             />
           )
         ))}

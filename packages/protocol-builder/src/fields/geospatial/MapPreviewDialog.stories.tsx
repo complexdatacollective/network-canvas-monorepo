@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Button from '@codaco/fresco-ui/Button';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
@@ -42,7 +43,15 @@ function PreviewOn({
   center: unknown;
   zoom: unknown;
 }>) {
-  const [open, setOpen] = useState(true);
+  // As a host uses it: the session outlives the close, so the dialog animates
+  // out instead of vanishing.
+  const {
+    session: map,
+    openSession: openMap,
+    closeSession: closeMap,
+    onSessionExited: mapExited,
+  } = useDialogSession<Record<string, never>>();
+  useEffect(() => openMap({}), []);
   const [accepted, setAccepted] = useState('Nothing accepted yet.');
 
   return (
@@ -51,15 +60,17 @@ function PreviewOn({
         type="button"
         color="default"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => openMap({})}
       >
         Set the starting view on a map
       </Button>
       <p role="status" aria-label="Accepted view">
         {accepted}
       </p>
-      {open && (
+      {map !== null && (
         <MapPreviewDialog
+          open={map.open}
+          onExitComplete={mapExited}
           tokenAssetId={tokenAssetId}
           style={style}
           center={center}
@@ -69,7 +80,7 @@ function PreviewOn({
               `Accepted ${nextCenter[0]}, ${nextCenter[1]} at zoom ${nextZoom}.`,
             );
           }}
-          onClose={() => setOpen(false)}
+          onClose={closeMap}
         />
       )}
     </div>

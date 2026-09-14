@@ -9,7 +9,9 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 vi.mock('~/components/Form/Fields/ColorPicker', () => ({
   default: () => null,
 }));
-vi.mock('../IconPicker', () => ({ default: () => null }));
+vi.mock('@codaco/fresco-ui/form/fields/IconPicker', () => ({
+  default: () => null,
+}));
 vi.mock('../ShapePicker', () => ({ ShapePickerControl: () => null }));
 vi.mock('../ShapeVariableMapping', () => ({ default: () => null }));
 

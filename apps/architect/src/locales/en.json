@@ -2939,18 +2939,6 @@
     "defaultMessage": "Has skip logic",
     "description": "The alt text in components / Timeline / TimelineStageRow."
   },
-  "architect.typeEditor.iconPicker.noIconsFound": {
-    "defaultMessage": "No icons found",
-    "description": "Visible text in components / TypeEditor / IconPicker."
-  },
-  "architect.typeEditor.iconPicker.searchIcons": {
-    "defaultMessage": "Search icons…",
-    "description": "The placeholder text in components / TypeEditor / IconPicker."
-  },
-  "architect.typeEditor.iconPicker.selectAnIcon": {
-    "defaultMessage": "Select an icon…",
-    "description": "Visible text in components / TypeEditor / IconPicker."
-  },
   "architect.typeEditor.shapePicker.config.circle": {
     "defaultMessage": "Circle",
     "description": "Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated."

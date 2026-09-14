@@ -93,6 +93,7 @@
     "./dialogs/DialogProvider": "./src/dialogs/DialogProvider.tsx",
     "./dialogs/DialogTrigger": "./src/dialogs/DialogTrigger.tsx",
     "./dialogs/useDialog": "./src/dialogs/useDialog.tsx",
+    "./dialogs/useDialogSession": "./src/dialogs/useDialogSession.ts",
     "./dialogs/useWizard": "./src/dialogs/useWizard.tsx",
     "./dnd/DndStoreProvider": "./src/dnd/DndStoreProvider.tsx",
     "./dnd/dnd": "./src/dnd/dnd.ts",
@@ -124,6 +125,7 @@
     "./form/fields/Combobox/Combobox": "./src/form/fields/Combobox/Combobox.tsx",
     "./form/fields/Combobox/shared": "./src/form/fields/Combobox/shared.ts",
     "./form/fields/DatePicker": "./src/form/fields/DatePicker.tsx",
+    "./form/fields/IconPicker": "./src/form/fields/IconPicker.tsx",
     "./form/fields/InputField": "./src/form/fields/InputField.tsx",
     "./form/fields/LikertScale": "./src/form/fields/LikertScale.tsx",
     "./form/fields/LocaleSelect": "./src/form/fields/LocaleSelect.tsx",
@@ -501,6 +503,10 @@
         "types": "./dist/dialogs/useDialog.d.ts",
         "default": "./dist/dialogs/useDialog.js"
       },
+      "./dialogs/useDialogSession": {
+        "types": "./dist/dialogs/useDialogSession.d.ts",
+        "default": "./dist/dialogs/useDialogSession.js"
+      },
       "./dialogs/useWizard": {
         "types": "./dist/dialogs/useWizard.d.ts",
         "default": "./dist/dialogs/useWizard.js"
@@ -624,6 +630,10 @@
       "./form/fields/DatePicker": {
         "types": "./dist/form/fields/DatePicker.d.ts",
         "default": "./dist/form/fields/DatePicker.js"
+      },
+      "./form/fields/IconPicker": {
+        "types": "./dist/form/fields/IconPicker.d.ts",
+        "default": "./dist/form/fields/IconPicker.js"
       },
       "./form/fields/InputField": {
         "types": "./dist/form/fields/InputField.d.ts",
