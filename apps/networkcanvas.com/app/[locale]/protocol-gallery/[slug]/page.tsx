@@ -90,7 +90,7 @@ export default async function ProtocolDetailPage({
 
       <div className="type-scale-product">
         <Container maxWidth="ultrawide" margin="none" className="mt-12">
-          <div className="tablet-landscape:max-w-none mx-auto max-w-[70ch]">
+          <div className="tablet-landscape:max-w-none mx-auto max-w-[44rem]">
             <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
               <Button
                 asChild
@@ -103,7 +103,7 @@ export default async function ProtocolDetailPage({
             </div>
 
             <div className="tablet-landscape:grid-cols-[auto_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
-              <div className="max-w-[70ch] min-w-0 space-y-8">
+              <div className="max-w-[44rem] min-w-0 space-y-8">
                 <div>
                   {protocol.featured ? (
                     <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
