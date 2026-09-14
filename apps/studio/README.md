@@ -309,6 +309,13 @@ A database carrying the tables but no fingerprint is refused rather than
 adopted by boot — the SQL that built it is unknown — and `db:reset` (or a
 deliberate `apply-schema`, which reconciles whatever it finds) is the remedy.
 
+A database built by the versioned migration system this repository used to
+carry — recognisable by a `studio_migrations` schema — is not one
+`apply-schema` can reconcile. It would stamp the current fingerprint and leave
+the migration schema, and the roles and grants that came with it, standing
+behind it, so `db:reset` is the remedy. Only developer databases can be in
+that state, because that system was never deployed.
+
 The fingerprint compares the database against the DDL this build renders. It
 cannot tell you that a `better-auth` upgrade expects a shape these definitions
 no longer describe — the regeneration procedure in `auth-schema.ts` remains
