@@ -354,8 +354,9 @@ const messageTemplates = pgTable(
   ],
 );
 
-// The send outbox, copying `team_invitation_deliveries`' lease/attempt/
-// terminal-timestamp shape exactly.
+// The send outbox, copying `team_invitation_deliveries`' attempt/terminal-
+// timestamp shape exactly. It records what was asked for and how it ended;
+// scheduling the attempts is the job queue's, not the row's.
 //
 // The recipient address is deliberately absent. `team_invitation_deliveries`
 // snapshots an email because an invitation's address *is* its identity and no
@@ -363,7 +364,7 @@ const messageTemplates = pgTable(
 // is encrypted PII (#1258, #1263) that "never leaves the PII boundary
 // unaudited" (#1305), and snapshotting it into a long-lived operational table
 // would put plaintext PII in the outbox, in backups, and in every operator's
-// reach. The dispatcher resolves the address from the participant record inside
+// reach. The worker resolves the address from the participant record inside
 // the send, under the audited PII-read path.
 const messageDeliveries = pgTable(
   'message_deliveries',
@@ -387,12 +388,9 @@ const messageDeliveries = pgTable(
     renderedBodyHash: text('rendered_body_hash').notNull(),
     provider: text('provider'),
     providerMessageId: text('provider_message_id'),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
@@ -446,11 +444,6 @@ const messageDeliveries = pgTable(
       columns: [table.templateId, table.teamId],
       foreignColumns: [messageTemplates.id, messageTemplates.teamId],
     }),
-    index('message_deliveries_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(
-        sql`sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL`,
-      ),
     index('message_deliveries_team_id_study_id_created_at_idx').on(
       table.teamId,
       table.studyId,
@@ -482,17 +475,11 @@ const messageDeliveries = pgTable(
       sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
           AND ${table.recipientBlindIndex} ~ '^[0-9a-f]{64}$'`,
     ),
-    check(
-      'message_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // A delivery ends once, one way: sent, failed, suppressed or uncertain —
+    // never two of them at the same time.
     check(
       'message_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
-          AND (
-            num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1`,
     ),
     check(
       'message_deliveries_lengths_check',
@@ -828,7 +815,7 @@ ${tenantTablesSql([
 ])}
 
 -- Commands enqueue inside their audited transaction; only the maintenance
--- dispatcher advances send state, exactly as for invitation delivery.
+-- worker advances send state, exactly as for invitation delivery.
 --
 -- DELETE is NOT revoked, and must not be: the participant foreign key is NO
 -- ACTION, so an erasure that cannot delete a participant's deliveries cannot

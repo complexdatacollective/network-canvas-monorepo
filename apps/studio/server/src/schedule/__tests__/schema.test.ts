@@ -1017,20 +1017,17 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   });
 
   describe('message_deliveries', () => {
-    it('applies the lease and attempt defaults', async () => {
+    it('applies the attempt and terminal-state defaults', async () => {
       const deliveryId = await newDelivery();
 
       const row = await pool.query<Row>(
-        `SELECT attempt_count, lease_owner, lease_expires_at, sent_at,
-                failed_at, suppressed_at, uncertain_at, provider,
-                provider_message_id, last_error
+        `SELECT attempt_count, sent_at, failed_at, suppressed_at,
+                uncertain_at, provider, provider_message_id, last_error
          FROM message_deliveries WHERE id = $1`,
         [deliveryId],
       );
       expect(row.rows[0]).toEqual({
         attempt_count: 0,
-        lease_owner: null,
-        lease_expires_at: null,
         sent_at: null,
         failed_at: null,
         suppressed_at: null,
@@ -1073,27 +1070,8 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         'message_deliveries_hash_check',
       ],
       [
-        'a lease owner with no expiry',
-        { lease_owner: randomUUID() },
-        'message_deliveries_lease_check',
-      ],
-      [
-        'a lease expiry with no owner',
-        { lease_expires_at: new Date() },
-        'message_deliveries_lease_check',
-      ],
-      [
         'two terminal timestamps at once',
         { sent_at: new Date(), failed_at: new Date() },
-        'message_deliveries_terminal_state_check',
-      ],
-      [
-        'a terminal delivery still holding its lease',
-        {
-          sent_at: new Date(),
-          lease_owner: randomUUID(),
-          lease_expires_at: new Date(),
-        },
         'message_deliveries_terminal_state_check',
       ],
       [
@@ -1113,16 +1091,12 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toMatchObject({ constraint });
     });
 
-    it('accepts a held lease and a single terminal timestamp', async () => {
+    it('accepts a retried delivery and a single terminal timestamp', async () => {
       const templateId = await newTemplate();
       await expect(
         insert(
           'message_deliveries',
-          deliveryRow(templateId, {
-            attempt_count: 2,
-            lease_owner: randomUUID(),
-            lease_expires_at: new Date('2026-09-10T18:05:00Z'),
-          }),
+          deliveryRow(templateId, { attempt_count: 2 }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
       await expect(
@@ -1262,25 +1236,24 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       }
     });
 
-    it('lets dispatch state move', async () => {
+    it('lets send state move', async () => {
       const deliveryId = await newDelivery();
 
       await expect(
         pool.query(
           `UPDATE message_deliveries
            SET attempt_count = attempt_count + 1,
-               lease_owner = $2, lease_expires_at = now() + interval '5 minutes'
+               last_error = 'provider timed out'
            WHERE id = $1`,
-          [deliveryId, randomUUID()],
+          [deliveryId],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
 
       await expect(
         pool.query(
           `UPDATE message_deliveries
-           SET lease_owner = NULL, lease_expires_at = NULL,
-               provider = 'postmark', provider_message_id = 'pm-2',
-               sent_at = now()
+           SET provider = 'postmark', provider_message_id = 'pm-2',
+               sent_at = now(), last_error = NULL
            WHERE id = $1`,
           [deliveryId],
         ),

@@ -359,15 +359,13 @@ describe.skipIf(!db)('webhook schema', () => {
       const id = await newDelivery(subscriptionOf[TEAM_A] as string);
 
       const row = await pool.query<Row>(
-        `SELECT attempt_count, lease_owner, lease_expires_at, delivered_at,
-                failed_at, last_status_code, last_error
+        `SELECT attempt_count, delivered_at, failed_at, last_status_code,
+                last_error
          FROM webhook_deliveries WHERE id = $1`,
         [id],
       );
       expect(row.rows[0]).toEqual({
         attempt_count: 0,
-        lease_owner: null,
-        lease_expires_at: null,
         delivered_at: null,
         failed_at: null,
         last_status_code: null,
@@ -427,27 +425,8 @@ describe.skipIf(!db)('webhook schema', () => {
         'webhook_deliveries_lengths_check',
       ],
       [
-        'a lease owner with no expiry',
-        { lease_owner: randomUUID() },
-        'webhook_deliveries_lease_check',
-      ],
-      [
-        'a lease expiry with no owner',
-        { lease_expires_at: new Date() },
-        'webhook_deliveries_lease_check',
-      ],
-      [
         'both terminal timestamps at once',
         { delivered_at: new Date(), failed_at: new Date() },
-        'webhook_deliveries_terminal_state_check',
-      ],
-      [
-        'a terminal row still holding a lease',
-        {
-          delivered_at: new Date(),
-          lease_owner: randomUUID(),
-          lease_expires_at: new Date(),
-        },
         'webhook_deliveries_terminal_state_check',
       ],
     ])('rejects %s', async (_label, overrides, constraint) => {
@@ -516,35 +495,30 @@ describe.skipIf(!db)('webhook schema', () => {
       ).rejects.toThrow('webhook delivery payload is immutable');
     });
 
-    it('leaves the dispatcher free to advance delivery state', async () => {
+    it('leaves the worker free to advance delivery state', async () => {
       const id = await newDelivery(subscriptionOf[TEAM_A] as string);
 
-      const owner = randomUUID();
       await expect(
         pool.query(
           `UPDATE webhook_deliveries
            SET attempt_count = attempt_count + 1,
-               lease_owner = $2,
-               lease_expires_at = now() + interval '1 minute',
-               available_at = now() + interval '30 seconds',
                last_status_code = 503,
                last_error = 'upstream unavailable'
            WHERE id = $1`,
-          [id, owner],
+          [id],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
       await expect(
         pool.query(
           `UPDATE webhook_deliveries
-           SET delivered_at = now(), lease_owner = NULL, lease_expires_at = NULL,
-               last_status_code = 200, last_error = NULL
+           SET delivered_at = now(), last_status_code = 200, last_error = NULL
            WHERE id = $1`,
           [id],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
-    it('lets the maintenance dispatcher claim work without team context', async () => {
+    it('lets the maintenance worker advance a delivery without team context', async () => {
       const teamBDelivery = randomUUID();
       await insert(
         'webhook_deliveries',
