@@ -69,10 +69,18 @@ const isUnwrittenLabel = (label: unknown): boolean =>
  * two words on screen, and so the same answer here.
  *
  * Takes the options rather than their labels so no caller can reach a
- * different reading of what an option's label IS, and judges a label after
- * trimming for the same reason: a label of nothing but spaces is a choice a
- * participant cannot read, not one they cannot tell from another. Which leaves
- * an unwritten label to the rules about an unfinished list.
+ * different reading of what an option's label IS.
+ *
+ * Trimming settles one question only, and it is not the comparison: whether
+ * anybody has WRITTEN this label. A label of nothing but spaces is a choice a
+ * participant cannot read rather than one they cannot tell from another, so it
+ * is passed over here and left to the rules about an unfinished list. Every
+ * label that IS written is then compared as it was typed, padding and all —
+ * `Close` and `Close ` are two options as far as this rule is concerned. That
+ * is deliberate, and `canonical-text.test.ts` says why: the rule is asked by
+ * four surfaces at once, one of them the row cell that tells the researcher
+ * WHICH two options clash, and a rule that trimmed only here would refuse a
+ * save with nothing on screen saying what to fix.
  */
 export const hasDuplicateOptionLabels = (options: unknown): boolean => {
   const seen = new Set<string>();

@@ -55,6 +55,17 @@ const refusal = (options: readonly unknown[]): string | undefined => {
 
 const DUPLICATE = 'Every option needs a unique label.';
 
+/**
+ * One label written the two ways Unicode allows: `é` as the single
+ * precomposed character, and `e` followed by a combining acute accent.
+ *
+ * Written as escapes rather than as accented characters, so an editor or a
+ * formatter that normalises this file cannot quietly turn the pair into two
+ * copies of the same string and leave the test asserting nothing.
+ */
+const PRECOMPOSED = 'Tr\u00e9s proche';
+const DECOMPOSED = 'Tre\u0301s proche';
+
 describe('the write that records the answers an attribute offers', () => {
   it('accepts two labels a participant can tell apart', () => {
     expect(refusal(SOUND)).toBeUndefined();
@@ -70,14 +81,21 @@ describe('the write that records the answers an attribute offers', () => {
   });
 
   it('refuses two labels differing only in how the accent is composed', () => {
-    // `é` precomposed and `e` plus a combining acute are the same two words on
-    // screen, so they are the same choice — which is why the labels are stored
-    // canonically in the first place, and why a list that arrived from
+    // The same two words on screen, written the two ways different keyboards,
+    // input methods and paste sources produce — which is why the labels are
+    // stored canonically in the first place, and why a list that arrived from
     // somewhere else is still compared canonically here.
+    //
+    // Spelled out and asserted, because a pair of labels typed identically
+    // into this file would refuse for being the same STRING and the test would
+    // go on passing with the canonical comparison taken out.
+    expect(PRECOMPOSED).not.toBe(DECOMPOSED);
+    expect(PRECOMPOSED.normalize('NFC')).toBe(DECOMPOSED.normalize('NFC'));
+
     expect(
       refusal([
-        { label: 'Trés proche', value: 'very' },
-        { label: 'Trés proche', value: 'close' },
+        { label: PRECOMPOSED, value: 'very' },
+        { label: DECOMPOSED, value: 'close' },
       ]),
     ).toBe(DUPLICATE);
   });
