@@ -15,13 +15,6 @@ import { version } from './package.json';
 // agree: give the server the same port through `PORT`.
 const SERVER_ORIGIN =
   process.env.STUDIO_SERVER_ORIGIN ?? 'http://localhost:3000';
-// Matches the committed server development default. It is intentionally a
-// public local-only value; real managed credentials are runtime secrets.
-const DEV_INGRESS_PROOF = 'studio-dev-ingress-proof-not-for-production';
-const serverProxy = {
-  target: SERVER_ORIGIN,
-  headers: { 'x-studio-managed-ingress-proof': DEV_INGRESS_PROOF },
-};
 
 // Client SPA. In development the Vite dev server plays the role the CDN plays
 // in the managed topology (#1245): it serves the SPA and routes the server's
@@ -60,13 +53,13 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     proxy: {
-      '/api': { ...serverProxy },
-      '/rpc': { ...serverProxy },
-      '/storage': { ...serverProxy },
-      '/healthz': { ...serverProxy },
-      '/readyz': { ...serverProxy },
-      '/metrics': { ...serverProxy },
-      '/ws': { ...serverProxy, ws: true },
+      '/api': SERVER_ORIGIN,
+      '/rpc': SERVER_ORIGIN,
+      '/storage': SERVER_ORIGIN,
+      '/healthz': SERVER_ORIGIN,
+      '/readyz': SERVER_ORIGIN,
+      '/metrics': SERVER_ORIGIN,
+      '/ws': { target: SERVER_ORIGIN, ws: true },
     },
   },
   build: {

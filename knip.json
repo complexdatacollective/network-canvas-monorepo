@@ -268,10 +268,6 @@
       "ignoreBinaries": ["Rscript"]
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {},
-    "workers/studio-ingress": {
-      "entry": ["src/index.mjs!"],
-      "project": ["src/**/*.mjs"]
-    }
+    "workers/posthog-proxy": {}
   }
 }
