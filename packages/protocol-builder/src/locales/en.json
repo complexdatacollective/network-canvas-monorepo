@@ -1056,8 +1056,8 @@
     "description": "Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
-    "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
-    "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step."
+    "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Reopen this row to start from the current options.",
+    "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step. A row is one entry of a list the researcher is editing, such as one field of a form."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
