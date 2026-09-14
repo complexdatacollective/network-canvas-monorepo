@@ -88,6 +88,42 @@ describe('a refused resource import and the protocol timeline', () => {
     store.dispatch(setActiveProtocol(protocol()));
   });
 
+  it('does not record a repair as an undo step', async () => {
+    store.dispatch(
+      setActiveProtocol(
+        protocol({
+          'photo-1': { type: 'image', name: 'Portrait', source: 'old.png' },
+        } as CurrentProtocol['assetManifest']),
+      ),
+    );
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('image');
+    const before = history(store);
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['bytes'], 'new.png'),
+        name: 'Portrait',
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/fulfilled');
+    const repaired = manifestOf(store)?.['photo-1'];
+    expect(repaired && 'source' in repaired ? repaired.source : null).toBe(
+      'new.png',
+    );
+
+    // Supplying a missing file writes a blob that no undo can un-write, and
+    // the entry keeps its id, so the blob stays referenced and is never
+    // collected. An undo step here would restore a manifest describing the old
+    // file on top of bytes that are the new one — and for a network resource
+    // that is not cosmetic, because .csv and .json are both `network` and the
+    // reader picks its parser from the extension.
+    expect(history(store)).toEqual(before);
+  });
+
   it('writes no bytes when a replacement is the wrong kind of resource', async () => {
     // The picker's `accept` filter is advisory — a researcher can choose any
     // file — so this has to hold on the write path, not just in the dialog.

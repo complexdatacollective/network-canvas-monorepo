@@ -285,7 +285,25 @@ export const importAssetAsync = createAsyncThunk<
         return rejectWithValue(refusedBeforeCommit);
       }
 
-      dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
+      const completed =
+        assetManifestSlice.actions.importAssetComplete(importPayload);
+
+      // A repair is not an undoable edit. The blob it writes lands under an id
+      // the manifest already carries, so it stays referenced and the durable
+      // save path never collects it — an undo would restore an entry naming
+      // the old file on top of bytes that are the new one. That is not
+      // cosmetic for a network resource: `.csv` and `.json` are both
+      // `network`, so the type check above admits the swap and the reader
+      // picks its parser from the extension the manifest was rolled back to.
+      //
+      // There is also nothing to roll back to. Replace is offered only for a
+      // resource whose file is missing, so the state before the repair is the
+      // broken one.
+      dispatch(
+        replaceAssetId
+          ? { ...completed, meta: { skipTimeline: true } }
+          : completed,
+      );
       return importPayload;
     } catch (error) {
       // Deliberately dispatches nothing. A refused import changed no resource,
