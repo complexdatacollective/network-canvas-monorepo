@@ -231,6 +231,74 @@ describe('VariableValidationEditor', () => {
     );
   });
 
+  /**
+   * The other of Architect's two reasons: there IS something of the same kind
+   * to compare against, and none of it could satisfy the rule as the rest of
+   * the map stands.
+   */
+  it('tells the two reasons a comparison cannot be switched on apart', () => {
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={{
+          age: { name: 'Age', type: 'number', component: 'Number' },
+          // The same kind, so there is a candidate — and pinned below the
+          // floor this attribute already carries, so nothing can equal it.
+          height: {
+            name: 'Height',
+            type: 'number',
+            component: 'Number',
+            validation: { maxValue: 1 },
+          },
+        }}
+        value={{ minValue: 100 }}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Same as another attribute' }),
+    ).toHaveAccessibleDescription(
+      'Every comparable attribute would make this rule impossible to satisfy.',
+    );
+  });
+
+  /**
+   * Architect warns under "must be unique" when the attribute offers too few
+   * answers for every network member to hold a different one
+   * (`Validations/Validations.tsx`'s `uniqueValueCount`), because the preview
+   * then refuses to generate data for the stage.
+   */
+  it('warns when too few answers exist for a unique rule', () => {
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="ordinal"
+        currentVariableId="rank"
+        allVariables={{
+          rank: {
+            name: 'Rank',
+            type: 'ordinal',
+            options: [
+              { label: 'First', value: 1 },
+              { label: 'Second', value: 2 },
+            ],
+          },
+        }}
+        value={{}}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Unique value' }),
+    ).toHaveAccessibleDescription(
+      'This attribute has only 2 possible values. Interview preview will refuse to generate synthetic data if more than 2 entities can hold a value while ‘Must be unique’ is enabled.',
+    );
+  });
+
   /** A pair of bounds nothing can satisfy is stated on the row that made it. */
   it('states a contradiction on the rule that carries it', () => {
     render(
