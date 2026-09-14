@@ -24,8 +24,6 @@ import { ModalOpenerContext } from './ModalOpener';
  * @param onOpenChange Callback when the open state changes.
  * @param dismissible Whether the user may dismiss this modal by pressing
  * outside it or pressing Escape. See the prop's own note below.
- * @param forceBackdrop Whether to render the backdrop when this modal is nested
- * within another dialog.
  * @param backdropClassName Additional classes for the modal backdrop.
  * @param children The content of the modal.
  *
@@ -35,7 +33,6 @@ export default function Modal({
   open,
   onOpenChange,
   dismissible = true,
-  forceBackdrop = false,
   backdropClassName,
   children,
 }: {
@@ -55,7 +52,6 @@ export default function Modal({
    * @default true
    */
   dismissible?: boolean;
-  forceBackdrop?: boolean;
   backdropClassName?: string;
   children: ReactNode;
 }) {
@@ -153,10 +149,16 @@ export default function Modal({
               container={portalContainer ?? undefined}
               keepMounted
             >
-              <ModalBackdrop
-                forceRender={forceBackdrop}
-                className={backdropClassName}
-              />
+              {/*
+                `forceRender`, always: Base UI suppresses a backdrop whose
+                dialog is nested inside another open one, and nesting is React
+                context, so a portalled overlay opened from inside a dialog
+                counts as nested and would come up with no dimmed layer at all.
+                A nested surface dims what is behind it like any other, which
+                stacks the dim and the blur — the deeper the stack, the more
+                the page recedes, which is what the stack means.
+              */}
+              <ModalBackdrop forceRender className={backdropClassName} />
               {children}
             </BaseDialog.Portal>
           )}

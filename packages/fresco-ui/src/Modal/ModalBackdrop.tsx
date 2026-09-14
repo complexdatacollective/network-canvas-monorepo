@@ -14,10 +14,15 @@ const backdropVariants: Variants = {
 /**
  * A simple backdrop component for modals and dialogs using Base-UI's Dialog
  * system. Fades in and out using motion.
+ *
+ * `data-modal-backdrop` marks it in the DOM: the backdrop carries no role and
+ * no name, so counting the dimmed layers a stack of modals has put up is the
+ * only way a test can state that a nested surface dims what is behind it.
  */
 export function ModalBackdrop(props: Dialog.Backdrop.Props) {
   return (
     <Dialog.Backdrop
+      data-modal-backdrop=""
       render={
         <motion.div
           variants={backdropVariants}
