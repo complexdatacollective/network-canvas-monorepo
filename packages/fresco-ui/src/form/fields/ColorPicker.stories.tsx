@@ -5,7 +5,6 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
 import {
   contrastRatio,
-  insetShadowColor,
   opacityOf,
 } from '../../storybook-support/colorContrast';
 import Paragraph from '../../typography/Paragraph';
@@ -118,12 +117,13 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
   (\`node-\`/\`edge-\`/\`ord-\`/\`cat-color-seq-N\`) paints with that sequence's
   design token, so it re-resolves inside a themed region. Any other value is
   used as a CSS colour verbatim.
-- The chosen swatch is marked by an outline ring standing off it — a change of
-  shape, so the selection is legible without perceiving the colour at all.
-- Every swatch also carries a hairline in the group's foreground, and the
-  chosen one a ring in it, so a swatch filled with the colour the group is
-  painted in — white, transparent — is still visibly a swatch, and visibly the
-  chosen one.
+- The chosen swatch is marked by an outline standing off it in the theme's
+  \`selected\` colour — a change of shape in a colour that is not the swatch's,
+  so the selection is legible without perceiving the swatch's colour at all.
+  Hovering an unchosen swatch previews the same outline at reduced strength.
+- Every swatch is bordered in the group's foreground, so a swatch filled with
+  the colour the group is painted in — white, transparent — is still visibly a
+  swatch.
 - A see-through fill — \`transparent\`, or any colour carrying an alpha channel
   — shows the chequerboard every swatch is painted on, so it is never the same
   disc as an opaque swatch of the colour behind it.
@@ -190,9 +190,9 @@ export const CssColors: Story = {
 
 /**
  * A palette is free to hand a swatch the colour the group is painted in —
- * white, transparent, anything near `--input`. The swatch's edge and its
- * chosen state are drawn in the group's foreground rather than in the swatch's
- * own colour, so neither can be a colour that vanishes.
+ * white, transparent, anything near `--input`. The swatch's edge is drawn in
+ * the group's foreground and its chosen state in the theme's `selected`
+ * colour, so neither can be a colour that vanishes.
  */
 export const ColorsCloseToTheBackground: Story = {
   args: {
@@ -213,31 +213,35 @@ export const ColorsCloseToTheBackground: Story = {
       canvas.getByRole('radiogroup', { name: 'Brand color' }),
     ).backgroundColor;
 
-    // Where the swatch is: a hairline inside its edge, in neither the colour
-    // it is filled with nor the colour it sits on.
-    const unchosen = getComputedStyle(white).boxShadow;
-    await expect(unchosen).toContain('inset');
-    await expect(unchosen).not.toContain(fill);
-    await expect(unchosen).not.toContain(ground);
+    // Where the swatch is: a border round its edge, in neither the colour it
+    // is filled with nor the colour it sits on.
+    const edge = getComputedStyle(white);
+    await expect(edge.borderTopStyle).toBe('solid');
+    await expect(edge.borderTopWidth).not.toBe('0px');
+    await expect(edge.borderTopColor).not.toBe(fill);
+    await expect(edge.borderTopColor).not.toBe(ground);
 
     // Being a different colour is not enough to be a boundary. When the fill
-    // is the colour the group is painted in, this hairline is the whole of the
+    // is the colour the group is painted in, this border is the whole of the
     // swatch's edge, so it is held to the 3:1 that telling a control from its
     // background asks for — measured as painted, which is what a faded ring
     // fails: the group's foreground at 30% over white came to 1.84:1.
     await expect(
-      contrastRatio(insetShadowColor(unchosen), ground),
+      contrastRatio(edge.borderTopColor, ground),
     ).toBeGreaterThanOrEqual(3);
 
-    // Choosing it changes the swatch in that same colour-independent way.
-    // Focus moves off afterwards, so what is read is the chosen state and not
-    // a focus ring.
+    // Unchosen and unhovered, there is nothing standing off the swatch.
+    await expect(edge.outlineStyle).toBe('none');
+
+    // Choosing it changes the swatch in a colour-independent way. Focus moves
+    // off afterwards, so what is read is the chosen state and not a focus
+    // ring.
     await userEvent.tab();
     await expect(white).toHaveFocus();
 
-    // Focus is the same promise. `waitFor` because `transition-all` eases the
-    // outline in from the swatch's own colour: the settled value is the one
-    // the reader sees.
+    // Focus is the reader's cue rather than the palette's, so it is never the
+    // swatch's own colour either. `waitFor` because `transition-all` eases the
+    // outline in: the settled value is the one the reader sees.
     await waitFor(async () => {
       await expect(getComputedStyle(white).outlineColor).not.toBe(fill);
     });
@@ -247,10 +251,108 @@ export const ColorsCloseToTheBackground: Story = {
     await userEvent.tab();
     await expect(white).not.toHaveFocus();
 
-    const chosen = getComputedStyle(white).boxShadow;
-    await expect(chosen).not.toBe(unchosen);
-    await expect(chosen).not.toContain(fill);
-    await expect(chosen).not.toContain(ground);
+    const chosen = getComputedStyle(white);
+    await expect(chosen.outlineStyle).toBe('solid');
+    await expect(chosen.outlineColor).not.toBe(fill);
+    await expect(chosen.outlineColor).not.toBe(ground);
+  },
+};
+
+/** The colour the theme marks a chosen thing with, as this document paints it. */
+const selectedColor = (canvasElement: HTMLElement): string => {
+  const probe = canvasElement.appendChild(document.createElement('div'));
+  probe.style.backgroundColor = 'var(--selected)';
+  const color = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+
+  if (color === 'rgba(0, 0, 0, 0)') {
+    throw new Error('The theme paints nothing for `--selected`.');
+  }
+
+  return color;
+};
+
+/**
+ * What being chosen, and being pointed at, look like.
+ *
+ * Both are an outline standing off the swatch in the theme's own `selected`
+ * colour, so the cue is the same one the rest of the system uses for a chosen
+ * thing and never the swatch's own colour — which says nothing about a colour
+ * being the chosen one, and which a swatch filled with the group's background
+ * has none of to draw with. Hover shows it faded, so pointing at a swatch is
+ * not mistaken for having chosen it.
+ */
+export const SelectionAndHover: Story = {
+  args: {
+    value: 'node-color-seq-3',
+  },
+  // Hover is a state Chromatic's capture has no pointer to produce, and the
+  // chosen swatch is already in `WithSelection`'s snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const selected = selectedColor(canvasElement);
+    const chosen = canvas.getByRole('radio', { name: 'Purple Pizazz' });
+    const unchosen = canvas.getByRole('radio', { name: 'Kiwi' });
+
+    await expect(chosen).toHaveAttribute('aria-checked', 'true');
+
+    // The chosen swatch: an outline standing off it, at full strength, in the
+    // theme's selection colour rather than in its own fill.
+    await waitFor(async () => {
+      const style = getComputedStyle(chosen);
+      await expect(style.outlineStyle).toBe('solid');
+      await expect(style.outlineWidth).toBe('2px');
+      await expect(style.outlineOffset).toBe('2px');
+      await expect(style.outlineColor).toBe(selected);
+      await expect(style.outlineColor).not.toBe(style.backgroundColor);
+    });
+
+    // Untouched, an unchosen swatch has no outline at all: the two states are
+    // told apart by shape, not only by strength.
+    await expect(getComputedStyle(unchosen).outlineStyle).toBe('none');
+
+    await userEvent.hover(unchosen);
+
+    // Pointed at, it previews the same cue — the same colour, let through at
+    // reduced strength, so it reads as an offer rather than as the answer.
+    //
+    // Only Chromium's runner routes the synthetic pointer into `:hover`;
+    // Firefox's leaves the rule unmatched, so there the cue is read off the
+    // rule the swatch carries rather than off a state the engine will not
+    // enter. Which is checked is decided by asking the engine, never assumed:
+    // a silent fallback in the browser that CAN hover would leave the measured
+    // colour unproven everywhere.
+    if (unchosen.matches(':hover')) {
+      await waitFor(async () => {
+        const style = getComputedStyle(unchosen);
+        await expect(style.outlineStyle).toBe('solid');
+        await expect(style.outlineWidth).toBe('2px');
+        await expect(style.outlineColor).not.toBe(selected);
+        await expect(opacityOf(style.outlineColor)).toBeLessThan(1);
+        await expect(opacityOf(style.outlineColor)).toBeGreaterThan(0.4);
+        await expect(contrastRatio(style.outlineColor, selected)).toBeLessThan(
+          1.5,
+        );
+      });
+    } else {
+      await expect(unchosen).toHaveClass(
+        'hover:outline-2',
+        'hover:outline-offset-2',
+        'hover:outline-selected/70',
+      );
+    }
+
+    // Hovering never makes a swatch the chosen one.
+    await expect(unchosen).toHaveAttribute('aria-checked', 'false');
+    await expect(chosen).toHaveAttribute('aria-checked', 'true');
+
+    await userEvent.unhover(unchosen);
+
+    await waitFor(async () => {
+      await expect(getComputedStyle(unchosen).outlineStyle).toBe('none');
+    });
   },
 };
 

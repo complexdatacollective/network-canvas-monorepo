@@ -272,13 +272,14 @@ const colorPickerVariants = compose(
  *
  * A colour is a value with a name, not a decoration: every swatch carries its
  * own accessible name from `options`, and the chosen one is marked by an
- * outline ring standing off the swatch — a change of shape, so the selection
- * is legible without perceiving the colour at all. Every swatch also carries a
- * hairline in the group's foreground, and the chosen one a ring in it, so a
- * swatch filled with the group's own background colour is still a swatch and
- * can still be seen to be the chosen one. A swatch whose fill is see-through
- * shows the chequerboard it is painted on, so `transparent` is never the same
- * disc as the colour the group is painted in.
+ * outline standing off the swatch in the theme's selection colour — a change
+ * of shape in a colour that is not the swatch's, so the selection is legible
+ * without perceiving the swatch's colour at all. Hovering an unchosen swatch
+ * previews that same outline at reduced strength. Every swatch is bordered in
+ * the group's foreground, so a swatch filled with the group's own background
+ * colour — white, transparent — is still a disc. A swatch whose fill is
+ * see-through shows the chequerboard it is painted on, so `transparent` is
+ * never the same disc as the colour the group is painted in.
  *
  * The labelling belongs to the surrounding field: use it as the `component` of
  * a `<Field>`, or of an `UnconnectedField` when the value is not the form's.
@@ -371,30 +372,27 @@ export default function ColorPickerField({
                 }
                 className={cx(
                   'focusable relative block size-full rounded-full',
-                  // The selection ring is the design system's focus outline in
-                  // the swatch's own colour (never a generic primary border),
-                  // so the cue reads as "this colour". Hover previews it at a
-                  // tighter offset.
-                  'bg-(--swatch-color) outline-(--swatch-color) transition-all',
+                  'bg-(--swatch-color) transition-all',
                   // A swatch may be filled with any CSS colour a caller has,
                   // including the group's own background — white, transparent,
                   // anything near `--input`. Such a swatch is an invisible disc
-                  // on an invisible ground, and a ring in its own colour cannot
-                  // say it is the chosen one. So the group's foreground draws a
-                  // hairline round every swatch and a full ring round the
-                  // chosen one: neither the swatch nor its chosen state is ever
-                  // left to a colour that can vanish. At full strength, because
-                  // the hairline is the whole of the swatch's edge whenever the
-                  // fill is the ground, and a boundary a reader has to hunt for
-                  // is not one — faded, it clears none of the 3:1 that telling
-                  // a control from its background asks for.
-                  'inset-ring-input-contrast inset-ring-1',
-                  // Focus is the same promise, and belongs to the reader rather
-                  // than to the palette: never the swatch's colour.
+                  // on an invisible ground, so the group's foreground draws the
+                  // edge of every swatch: the disc is never left to a colour
+                  // that can vanish. At full strength, because whenever the
+                  // fill is the ground this border is the whole of the swatch's
+                  // edge, and a boundary a reader has to hunt for is not one.
+                  'border border-current',
+                  // Being chosen is a change of shape in the theme's own
+                  // selection colour, standing off the swatch — never the
+                  // swatch's own colour, which says nothing about a colour
+                  // being the chosen one, and which a swatch filled with the
+                  // ground has none of to draw with. Hover previews the same
+                  // cue, faded, so pointing at a swatch is not mistaken for
+                  // having chosen it.
                   'focus-visible:outline-input-contrast',
                   state.checked
-                    ? 'ring-input-contrast ring-2 outline-2 outline-offset-3'
-                    : 'hover:outline-2 hover:outline-offset-2',
+                    ? 'outline-selected outline-2 outline-offset-2'
+                    : 'hover:outline-selected/70 hover:outline-2 hover:outline-offset-2',
                   readOnly && 'pointer-events-none',
                 )}
                 style={
