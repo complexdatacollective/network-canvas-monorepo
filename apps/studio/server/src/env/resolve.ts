@@ -102,6 +102,39 @@ export function isLocalDatabase(url: string): boolean {
   }
 }
 
+/**
+ * Refuses a connection string that would unpin the role Studio's pools run as.
+ *
+ * Every pool sets pg's `options` startup parameter to `-c role=…`
+ * (src/db/pool.ts), which is what keeps the server off the connecting login —
+ * in development the container's superuser, which row-level security does not
+ * apply to at all. node-postgres merges a connection string's parameters over
+ * the configuration it was given rather than under it, so an `options` in
+ * `DATABASE_URL` wins: every pool in both processes would connect as the
+ * login, and nothing else in the system would notice.
+ *
+ * Read the way `isLocalDatabase` reads it, and for the same reason: a DSN pg
+ * accepts but `new URL` cannot parse is left alone rather than refused, so
+ * this only refuses a string the parameter can positively be seen in. The name
+ * is matched exactly, because that is the only spelling node-postgres reads.
+ */
+function assertPinnedRoleSurvives(url: string): void {
+  let parameters: URLSearchParams;
+  try {
+    parameters = new URL(url).searchParams;
+  } catch {
+    return;
+  }
+  if (!parameters.has('options')) return;
+  throw new Error(
+    'DATABASE_URL must not carry an `options` parameter: it overrides the ' +
+      '`role=` startup parameter every Studio pool pins its identity with, so ' +
+      'the web process and the worker would both run as the connecting login ' +
+      'instead of studio_app and studio_maintenance, bypassing row-level ' +
+      'security. Remove `options` from the connection string.',
+  );
+}
+
 function resolveS3(raw: RawEnv): S3Env | undefined {
   const values = {
     endpoint: raw.S3_ENDPOINT,
@@ -236,6 +269,7 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
   }
 
   const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
+  if (db) assertPinnedRoleSurvives(db.url);
 
   // The marker travels with a publicly-known signing secret, a console mailer,
   // and a boot that applies the schema to whatever DATABASE_URL names. An

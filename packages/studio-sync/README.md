@@ -20,6 +20,14 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   pending queue, suffix rollback on rejection, reconnect with retransmission.
 - `@codaco/studio-sync/schema` — the Postgres schema (drafts, immutable
   content-addressed sections, manifests, leases, command log).
+- `@codaco/studio-sync/jobs` — Studio's background-job declarations (#1895):
+  every queue and how it retries, expires and dead-letters, the cron schedules
+  the worker registers, the payload schema and payload policy per queue, and
+  the SQL granting the two database roles their access to pg-boss's schema.
+  Plain data and SQL — it imports no pg-boss, and the server checks the queue
+  options against pg-boss's own type at compile time. A queue is part of the
+  schema, so it lives beside the roles and is installed once by the server's
+  `apply-schema`.
 
 The server/schema modules depend on `pg`; client code must import only
 `./apply` and `./client`.

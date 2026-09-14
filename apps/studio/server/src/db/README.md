@@ -1,12 +1,16 @@
 # Studio's schema and its sidecars
 
-Studio's database is defined in two halves. Drizzle defines the tables,
+Studio's database is defined in three parts. Drizzle defines the tables,
 columns, indexes, CHECK constraints, foreign keys and row-level security
 policies. Everything else Postgres needs — the roles the application runs as,
 `FORCE ROW LEVEL SECURITY`, the `GRANT`/`REVOKE` pairs, and the plpgsql trigger
-functions that enforce transitions — is written as raw SQL in **sidecars**.
+functions that enforce transitions — is written as raw SQL in **sidecars**. The
+third part is not Studio's to define: pg-boss owns the `pgboss` schema, which
+`scripts/apply.ts` installs from pg-boss's own construction plan, with a grants
+sidecar and the queue declarations beside it in `@codaco/studio-sync/jobs`
+(#1895).
 
-Both halves are hashed into one fingerprint and applied together. A sidecar is
+All three are hashed into one fingerprint and applied together. A sidecar is
 not a migration, an afterthought, or an escape hatch: it is the part of the
 schema that Drizzle has no vocabulary for, and it carries most of the rules
 that make a row safe to trust.
@@ -124,13 +128,26 @@ verifies.
 
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
-- `computeSchemaFingerprint()` is a SHA-256 over those statements joined.
+- `renderJobStatements()` = pg-boss's construction plan for the `pgboss`
+  schema, the job grants from `@codaco/studio-sync/jobs`, and the queue
+  declarations. They are rendered separately because the first list is the DDL
+  the suites execute into a scratch schema by setting `search_path`, and these
+  statements name a schema of their own instead.
+- `computeSchemaFingerprint()` is a SHA-256 over both lists joined.
   **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
   changes the fingerprint, which is why every sidecar change needs
-  `pnpm --filter @codaco/studio-server sync-fingerprint`.
+  `pnpm --filter @codaco/studio-server sync-fingerprint`. So is pg-boss's plan:
+  upgrading the dependency, changing a grant, or changing a queue's retry,
+  expiry or dead-letter settings moves the fingerprint too, and every process
+  refuses the database until `apply-schema` has been run against it.
 - `applySchema()` takes an advisory lock, clears the stamp (so a failure
   part-way cannot leave a drifted database reading as current), runs
-  `drizzle-kit push`, executes the sidecars, and stamps the fingerprint.
+  `drizzle-kit push`, executes the sidecars, installs the `pgboss` schema and
+  re-runs its grants, reconciles every declared queue, and stamps the
+  fingerprint. A database whose installed pg-boss version is not this build's
+  is dropped and reinstalled rather than migrated — the same pre-release
+  posture the public schema takes, and it discards whatever was queued, which
+  is why the count is logged first. No process migrates pg-boss at start.
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
   `mismatch` or `unstamped`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.

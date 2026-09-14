@@ -325,6 +325,56 @@ describe('the deployment mode', () => {
   });
 });
 
+// Every Studio pool runs as a role it pins through pg's `options` startup
+// parameter, and node-postgres lets a connection string's own `options`
+// override it — which would run the web process and the worker as the
+// connecting login, in development the superuser that row-level security does
+// not apply to.
+describe('the pinned role', () => {
+  it('refuses a DATABASE_URL that would override it', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?options=-c%20role%3Dpostgres',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+    // The message has to say what to take out, because the parameter is more
+    // often inherited from a hosting provider's string than typed by hand.
+    expect(() => readEnv()).toThrow(/Remove `options` from the connection/);
+  });
+
+  it('refuses it among other connection parameters', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio&options=-csearch_path%3Dpublic',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts a connection string that leaves the parameter alone', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio',
+    );
+    expect(readEnv().db?.url).toContain('application_name=studio');
+  });
+
+  it('leaves a DSN it cannot parse to pg rather than refusing it', () => {
+    // pg accepts connection strings `new URL` does not — a Unix socket host,
+    // for one. Refusing what cannot be read would refuse those, so the check
+    // only answers for a string the parameter is visible in.
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv('DATABASE_URL', 'host=/var/run/postgresql dbname=studio_dev');
+    expect(readEnv().db?.url).toBe(
+      'host=/var/run/postgresql dbname=studio_dev',
+    );
+  });
+});
+
 describe('the local-database judgement', () => {
   it('names this machine by the effective host, not the authority alone', () => {
     expect(isLocalDatabase('postgres://u:p@localhost:5432/db')).toBe(true);
