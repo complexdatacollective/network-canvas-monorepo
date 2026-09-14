@@ -39,6 +39,7 @@ type OwnProps = {
   assetType: string | null;
   selected: string | null;
   type?: string | null;
+  onReplace?: (id: string) => void;
 };
 
 const mapStateToProps = (

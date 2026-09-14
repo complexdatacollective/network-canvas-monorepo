@@ -28,7 +28,10 @@ import {
   armInMemoryUnloadGuard,
   disarmInMemoryUnloadGuard,
 } from '~/utils/beforeUnloadGuard';
-import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import {
+  downloadProtocolAsNetcanvas,
+  UnresolvedAssetsError,
+} from '~/utils/bundleProtocol';
 import {
   setExportInProgress,
   setImportInProgress,
@@ -102,7 +105,19 @@ const extraMessages = defineMessages({
 type ImportSource = 'local' | 'bundled';
 
 export type ProtocolOpenResult =
-  | { status: 'opened' }
+  | {
+      status: 'opened';
+      /**
+       * Resources the archive declared but did not contain, by the name the
+       * researcher gave them.
+       *
+       * The protocol opens anyway. Refusing it would leave them with a file
+       * only the tool that broke it can repair, when everything except those
+       * files is intact and re-supplying one is a drag-and-drop away. The
+       * names are here so the open can say which.
+       */
+      unresolvedAssetNames?: string[];
+    }
   | {
       status: 'error';
       title: string;
@@ -327,8 +342,17 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         ReturnType<typeof extractProtocolFromZip>
       >['protocol'];
       let assets: Awaited<ReturnType<typeof extractProtocolFromZip>>['assets'];
+      // A manifest entry whose file is absent from the archive. Architect
+      // opens the protocol without it rather than refusing the whole file:
+      // everything else is intact, and the researcher can supply the file
+      // again from Resources. Export refuses until they do, so an incomplete
+      // protocol cannot travel any further.
+      let missingAssets: Awaited<
+        ReturnType<typeof extractProtocolFromZip>
+      >['missingAssets'];
       try {
-        ({ protocol, assets } = await extractProtocolFromZip(guardedZip));
+        ({ protocol, assets, missingAssets } =
+          await extractProtocolFromZip(guardedZip));
       } catch (error) {
         if (error instanceof NetcanvasInflationLimitError) {
           return {
@@ -380,6 +404,13 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         },
         storeDispatch,
       );
+
+      if (missingAssets.length > 0) {
+        return {
+          status: 'opened',
+          unresolvedAssetNames: missingAssets.map((asset) => asset.name),
+        };
+      }
       return openedResult;
     } catch (error) {
       trackImportFailure('local', error);
@@ -636,13 +667,21 @@ export const exportNetcanvas = createAppAsyncThunk(
     // rather than interrupting the download.
     setExportInProgress(true);
     try {
-      const skippedAssets = await downloadProtocolAsNetcanvas(
+      await downloadProtocolAsNetcanvas(
         protocol as CurrentProtocol,
         protocol.name,
         getActiveProtocolId(state) ?? undefined,
       );
-
-      return { skippedAssets };
+      return { status: 'exported' } as const;
+    } catch (error) {
+      // Returned rather than rethrown because `.unwrap()` gives the caller a
+      // serialized copy of the error, not the instance — the class is gone by
+      // the time a dialog could ask about it. The resource names are what the
+      // researcher needs, so they travel as data.
+      if (error instanceof UnresolvedAssetsError) {
+        return { status: 'unresolved-assets', assetNames: error.assetNames };
+      }
+      throw error;
     } finally {
       setExportInProgress(false);
     }

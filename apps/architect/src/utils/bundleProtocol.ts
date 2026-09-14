@@ -4,13 +4,33 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { getAssetById } from './assetUtils';
 
-// An asset that could not be included in the export (unresolvable scope or a
-// stranded manifest entry). Reported back to the caller so it can warn the
-// author rather than shipping a broken .netcanvas or aborting the whole export.
-type SkippedAsset = {
-  id: string;
-  name: string;
-};
+/**
+ * A resource the protocol declares but whose bytes Architect could not read.
+ *
+ * There is no benign route to this. Assets resolve from IndexedDB and fall
+ * back to the in-memory store, so even a private window with no durable
+ * storage answers; the editing scope is kept in sync with the active protocol;
+ * the blob GC retains everything reachable through undo and redo; and an
+ * import that cannot store its assets deletes the library row rather than
+ * leaving one behind. Reaching this means one of those broke.
+ *
+ * So the export fails. It used to omit the asset and its manifest entry and
+ * warn — which left the stages that referenced it pointing at nothing, and the
+ * schema rejects a dangling asset reference, so the file the researcher was
+ * handed as a backup would not open anywhere. A refusal costs them nothing:
+ * the protocol is still in the library, exactly as it was.
+ */
+export class UnresolvedAssetsError extends Error {
+  readonly assetNames: string[];
+
+  constructor(assetNames: string[]) {
+    super(
+      `Protocol assets could not be read for export: ${assetNames.join(', ')}`,
+    );
+    this.name = 'UnresolvedAssetsError';
+    this.assetNames = assetNames;
+  }
+}
 
 type ResolvedAsset = {
   id: string;
@@ -55,14 +75,14 @@ const entryNameFor = (
 const getAllProtocolAssets = async (
   protocol: CurrentProtocol,
   protocolId?: string,
-): Promise<{ resolved: ResolvedAsset[]; skipped: SkippedAsset[] }> => {
+): Promise<ResolvedAsset[]> => {
   const resolved: ResolvedAsset[] = [];
-  const skipped: SkippedAsset[] = [];
+  const unresolved: string[] = [];
   // Guards against two distinct ids sanitising to the same zip entry name.
   const usedEntryNames = new Set<string>();
 
   if (!protocol.assetManifest) {
-    return { resolved, skipped };
+    return resolved;
   }
 
   for (const [assetId, assetDefinition] of Object.entries(
@@ -75,21 +95,16 @@ const getAllProtocolAssets = async (
 
     const assetData = await getAssetById(assetId, protocolId);
 
-    // A missing asset means an unresolvable scope or stranded manifest entry.
-    // Skip it (and drop its manifest entry, see `bundleProtocol`) so one broken
-    // reference can't block the whole export — the exact scenario the storage-
-    // unavailable rescue export exists for.
     if (!assetData) {
-      skipped.push({ id: assetId, name: assetDefinition.name });
+      unresolved.push(assetDefinition.name);
       continue;
     }
 
-    // Only apikey assets carry string data, and those are handled above; any
-    // other string-data entry is anomalous — leave it out of the zip (and so out
-    // of the exported manifest) rather than writing an unreadable file, but
-    // record it as skipped so the author is warned rather than losing it silently.
+    // Only apikey assets carry string data, and those are handled above, so any
+    // other string-data entry is a stored asset of the wrong shape — as
+    // unwritable as one that is missing, and refused on the same terms.
     if (typeof assetData.data === 'string') {
-      skipped.push({ id: assetId, name: assetDefinition.name });
+      unresolved.push(assetDefinition.name);
       continue;
     }
 
@@ -100,19 +115,23 @@ const getAllProtocolAssets = async (
     });
   }
 
-  return { resolved, skipped };
-};
+  // Collected rather than thrown on the first one, so the researcher is told
+  // about every resource they need to restore instead of one per attempt.
+  if (unresolved.length > 0) {
+    throw new UnresolvedAssetsError(unresolved);
+  }
 
-type BundleResult = {
-  blob: Blob;
-  skippedAssets: SkippedAsset[];
+  return resolved;
 };
 
 type AssetManifest = NonNullable<CurrentProtocol['assetManifest']>;
 
 // Produce the manifest to write into the exported protocol.json: point each
-// resolved asset's `source` at its collision-free zip entry name, and omit
-// entries whose file couldn't be resolved so the file re-imports cleanly.
+// resolved asset's `source` at its collision-free zip entry name.
+//
+// Every file entry is present in `resolved` — `getAllProtocolAssets` refuses
+// the export otherwise — so nothing is dropped here and the manifest and the
+// zip cannot disagree.
 const rewriteManifest = (
   manifest: AssetManifest,
   resolved: ResolvedAsset[],
@@ -125,11 +144,10 @@ const rewriteManifest = (
       rewritten[assetId] = asset;
       continue;
     }
-    const entryName = entryNamesById.get(assetId);
-    if (entryName === undefined) {
-      continue;
-    }
-    rewritten[assetId] = { ...asset, source: entryName };
+    rewritten[assetId] = {
+      ...asset,
+      source: entryNamesById.get(assetId) ?? asset.source,
+    };
   }
 
   return rewritten;
@@ -138,17 +156,15 @@ const rewriteManifest = (
 export const bundleProtocol = async (
   protocol: CurrentProtocol,
   protocolId?: string,
-): Promise<BundleResult> => {
+): Promise<Blob> => {
   const zip = new JSZip();
 
-  const { resolved, skipped } = protocol.assetManifest
+  const resolved = protocol.assetManifest
     ? await getAllProtocolAssets(protocol, protocolId)
-    : { resolved: [], skipped: [] };
+    : [];
 
   // The exported protocol.json must stay self-consistent with the zip: rewrite
-  // each resolved asset's `source` to its collision-free entry name, and drop
-  // manifest entries whose file couldn't be resolved so re-import doesn't fail
-  // on a missing asset file.
+  // each resolved asset's `source` to its collision-free entry name.
   const sourceManifest = protocol.assetManifest;
   const exportedProtocol = sourceManifest
     ? { ...protocol, assetManifest: rewriteManifest(sourceManifest, resolved) }
@@ -165,21 +181,19 @@ export const bundleProtocol = async (
     }
   }
 
-  const blob = await zip.generateAsync({
+  return zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
   });
-
-  return { blob, skippedAssets: skipped };
 };
 
 export async function downloadProtocolAsNetcanvas(
   protocol: CurrentProtocol,
   protocolName?: string,
   protocolId?: string,
-): Promise<SkippedAsset[]> {
+): Promise<void> {
   try {
-    const { blob, skippedAssets } = await bundleProtocol(protocol, protocolId);
+    const blob = await bundleProtocol(protocol, protocolId);
 
     // build local timestamp YYYY-MM-DD_HH-MM
     const now = new Date();
@@ -201,9 +215,13 @@ export async function downloadProtocolAsNetcanvas(
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    return skippedAssets;
   } catch (error) {
+    // Passed through rather than wrapped: the caller describes this one to the
+    // researcher by naming the resources, and wrapping would hide the type
+    // behind a message no dialog should ever show.
+    if (error instanceof UnresolvedAssetsError) {
+      throw error;
+    }
     throw new Error(
       `Failed to download protocol: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { cause: error },

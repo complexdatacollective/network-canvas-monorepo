@@ -230,7 +230,10 @@ const ValidationErrorContent = ({
     </>
   );
 };
-const getAccepts = (type?: string): string[] => {
+// Exported so the resources list can scope a replacement's file picker to the
+// same extensions the drop zone accepts, rather than keeping a second copy of
+// the map that could disagree with it.
+export const getAccepts = (type?: string): string[] => {
   if (!type || !has(SUPPORTED_EXTENSION_TYPE_MAP, type)) {
     return Object.values(SUPPORTED_EXTENSION_TYPE_MAP).flat();
   }

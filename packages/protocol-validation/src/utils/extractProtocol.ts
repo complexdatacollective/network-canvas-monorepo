@@ -170,12 +170,54 @@ export type ExtractedAsset = {
   data: Blob | string; // The actual file data
 };
 
+/**
+ * A manifest entry whose file is not in the archive.
+ *
+ * Reported rather than thrown, because the right answer differs by host. An
+ * authoring tool can open the protocol and let the researcher re-supply the
+ * file; a runtime about to show the resource to a participant cannot. Only the
+ * host knows which it is, so extraction states the fact and leaves the policy
+ * alone — see `missingAssetsError` for the refusal every runtime shares.
+ */
+export type MissingAsset = {
+  /** The manifest key, which is what stages reference. */
+  id: string;
+  /** What the researcher named the resource. */
+  name: string;
+  /** The archive entry the manifest pointed at. */
+  source: string;
+};
+
+export type ExtractedAssets = {
+  assets: Array<ExtractedAsset>;
+  missingAssets: Array<MissingAsset>;
+};
+
+/**
+ * The refusal a host raises when it cannot proceed without the missing files.
+ *
+ * Shared so every runtime refuses in the same words. `assetName` carries the
+ * first resource because the researcher-facing sentence names one; the full
+ * list stays on `message`, for the console and a technical-details disclosure.
+ */
+export const missingAssetsError = (
+  missingAssets: ReadonlyArray<MissingAsset>,
+): MalformedNetcanvasError =>
+  new MalformedNetcanvasError(
+    'missing-asset',
+    `Asset ${missingAssets.length === 1 ? 'file' : 'files'} ${missingAssets
+      .map((asset) => `"${asset.source}"`)
+      .join(', ')} not found in zip`,
+    { assetName: missingAssets[0]?.name },
+  );
+
 const extractProtocolAssets = async (
   protocol: VersionedProtocol,
   zip: Zip,
   budget: InflationBudget,
-) => {
+): Promise<ExtractedAssets> => {
   const assets: Array<ExtractedAsset> = [];
+  const missingAssets: Array<MissingAsset> = [];
 
   // Inflate assets sequentially so the shared budget is enforced deterministically
   // and a bomb aborts before later entries begin inflating.
@@ -199,13 +241,16 @@ const extractProtocolAssets = async (
 
       const entry = zip.file(`assets/${assetDefinition.source}`);
       if (!entry) {
-        throw new MalformedNetcanvasError(
-          'missing-asset',
-          `Asset file "${assetDefinition.source}" not found in zip for asset ID "${assetId}"`,
-          // The manifest's own display name, not the zip path: it is what the
-          // researcher named the resource in the protocol.
-          { assetName: assetDefinition.name },
-        );
+        // Recorded, not thrown: one absent file must not decide for the host
+        // whether the other twenty are worth having. Carries the manifest's
+        // own display name, not the zip path, because that is what the
+        // researcher called the resource.
+        missingAssets.push({
+          id: assetId,
+          name: assetDefinition.name,
+          source: assetDefinition.source,
+        });
+        continue;
       }
 
       const fileData = await inflateEntryToBlob(
@@ -216,13 +261,15 @@ const extractProtocolAssets = async (
       assets.push({ id: assetId, name: assetDefinition.name, data: fileData });
       continue;
     }
+    // Still fatal, unlike a missing file: the manifest itself is a shape this
+    // version cannot read, so there is no protocol to open with a gap in it.
     throw new MalformedNetcanvasError(
       'invalid-asset-definition',
       `Invalid asset definition for asset ID "${assetId}"`,
     );
   }
 
-  return assets;
+  return { assets, missingAssets };
 };
 
 /**
@@ -251,7 +298,7 @@ export const loadNetcanvasArchive = async (
 export const extractProtocol = async (
   protocolBuffer: Buffer,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
-): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
+): Promise<ExtractedAssets & { protocol: VersionedProtocol }> => {
   const zip = await loadNetcanvasArchive(protocolBuffer);
   return extractProtocolFromZip(zip, maxInflatedBytes);
 };
@@ -279,7 +326,7 @@ export const extractProtocol = async (
  */
 export type NetcanvasReader = {
   readProtocol: () => Promise<VersionedProtocol>;
-  readAssets: (protocol: VersionedProtocol) => Promise<Array<ExtractedAsset>>;
+  readAssets: (protocol: VersionedProtocol) => Promise<ExtractedAssets>;
 };
 
 export const createNetcanvasReader = (
@@ -301,13 +348,14 @@ export const createNetcanvasReader = (
 export const extractProtocolFromZip = async (
   zip: Zip,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
-): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
+): Promise<ExtractedAssets & { protocol: VersionedProtocol }> => {
   const reader = createNetcanvasReader(zip, maxInflatedBytes);
   const protocol = await reader.readProtocol();
-  const assets = await reader.readAssets(protocol);
+  const { assets, missingAssets } = await reader.readAssets(protocol);
 
   return {
     assets,
+    missingAssets,
     protocol,
   };
 };

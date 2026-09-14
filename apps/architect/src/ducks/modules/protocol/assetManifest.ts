@@ -107,7 +107,9 @@ const getImportAssetErrorInfo = (
           ? errorMessages.columns
           : code === 'UNSUPPORTED_TYPE'
             ? errorMessages.unsupported
-            : errorMessages.generic;
+            : code === 'REPLACEMENT_TYPE_MISMATCH'
+              ? errorMessages.replacementType
+              : errorMessages.generic;
   return {
     filename,
     code,
@@ -131,6 +133,26 @@ const getImportAssetErrorInfo = (
 export type AssetImport = {
   file: File;
   name?: string;
+  /**
+   * Write this file as the resource that already has this id, instead of
+   * adding a new one.
+   *
+   * Used to supply a file that an imported `.netcanvas` declared but did not
+   * contain. Every stage that refers to the resource refers to it by this id,
+   * so minting a new one would leave all of them pointing at the entry that is
+   * still empty — the researcher would appear to have fixed it and nothing
+   * would change.
+   */
+  replaceAssetId?: string;
+  /**
+   * The type the replaced entry must keep.
+   *
+   * The schema types asset references — a canvas background must name an
+   * `image`, a roster must name a `network` — so accepting a file of another
+   * type would swap a working reference for one that fails validation, on a
+   * protocol the researcher is in the middle of repairing.
+   */
+  expectedType?: AssetType;
 };
 
 export const importAssetAsync = createAsyncThunk<
@@ -140,11 +162,11 @@ export const importAssetAsync = createAsyncThunk<
 >(
   'assetManifest/importAssetAsync',
   async (
-    { file, name: displayName },
+    { file, name: displayName, replaceAssetId, expectedType },
     { dispatch, getState, rejectWithValue },
   ) => {
     const name = displayName ?? file.name;
-    const assetId = uuid();
+    const assetId = replaceAssetId ?? uuid();
 
     // The asset blob is written into a store keyed by protocol id, with no
     // exclusivity check of its own, so a tab that no longer owns the protocol
@@ -229,6 +251,15 @@ export const importAssetAsync = createAsyncThunk<
 
       if (!assetType) {
         throw new Error(`Unsupported asset type for file: ${file.name}`);
+      }
+
+      if (expectedType && assetType !== expectedType) {
+        throw Object.assign(
+          new Error(
+            `Replacement for asset ${assetId} is a ${assetType}, expected ${expectedType}`,
+          ),
+          { code: 'REPLACEMENT_TYPE_MISMATCH' },
+        );
       }
 
       const importPayload: ImportAssetCompletePayload = {
@@ -375,6 +406,12 @@ const errorMessages = defineMessages({
   generic: {
     id: 'architect.resourceImport.generic',
     defaultMessage: 'Check that it is a supported file type, and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  replacementType: {
+    id: 'architect.resourceImport.replacementType',
+    defaultMessage:
+      'This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.',
     description: 'Researcher-facing Architect control or feedback.',
   },
 });

@@ -99,6 +99,14 @@
     "defaultMessage": "Protocol Validation Failed",
     "description": "The title text in components / protocolOpenDialogs."
   },
+  "architect.additional.protocolOpenDialogs.resourcesMissingDescription": {
+    "defaultMessage": "This protocol refers to files that were not included in it: {assetList}. Everything else opened normally. Add the files again in Resources — until you do, the protocol cannot be downloaded.",
+    "description": "The description text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.resourcesMissingTitle": {
+    "defaultMessage": "Some resources are missing",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
   "architect.additional.protocolOpenDialogs.theProtocolCouldNotBeOpened": {
     "defaultMessage": "The protocol could not be opened due to validation errors:",
     "description": "Visible text in components / protocolOpenDialogs."
@@ -151,6 +159,14 @@
     "defaultMessage": "Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.",
     "description": "The description text in components / AssetBrowser / AssetBrowser."
   },
+  "architect.assetBrowser.assetBrowser.chooseTheMissingFile": {
+    "defaultMessage": "Choose the missing file for this resource",
+    "description": "The aria-label text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.couldNotAddTheFile": {
+    "defaultMessage": "Could not add the file",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
   "architect.assetBrowser.assetBrowser.deleteResource": {
     "defaultMessage": "Delete Resource?",
     "description": "The title text in components / AssetBrowser / AssetBrowser."
@@ -191,12 +207,24 @@
     "defaultMessage": "{name} is in use and cannot be deleted",
     "description": "The aria-label text in components / AssetBrowser / AssetCard."
   },
+  "architect.assetBrowser.assetCard.missing": {
+    "defaultMessage": "File missing",
+    "description": "Visible text in components / AssetBrowser / AssetCard."
+  },
   "architect.assetBrowser.assetCard.preview": {
     "defaultMessage": "Preview {name}",
     "description": "The aria-label text in components / AssetBrowser / AssetCard."
   },
   "architect.assetBrowser.assetCard.previewResource": {
     "defaultMessage": "Preview resource",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replace": {
+    "defaultMessage": "Add the file for {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replaceResource": {
+    "defaultMessage": "Add the missing file",
     "description": "The title text in components / AssetBrowser / AssetCard."
   },
   "architect.assetBrowser.assetCard.thisResourceIsInUseBy": {
@@ -952,7 +980,7 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.StorageUnavailableBanner.skippedAssets": {
-    "defaultMessage": "Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.Timeline.Timeline.untitledStage": {
@@ -987,8 +1015,8 @@
     "defaultMessage": "Minimum passphrase length",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.final.utils.downloadActiveProtocol.skippedAssets": {
-    "defaultMessage": "Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+  "architect.final.utils.downloadActiveProtocol.unresolvedAssets": {
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.form.arrayFields.option.areYouSureYouWantTo": {
@@ -1324,7 +1352,7 @@
     "description": "Visible text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.someAssetsCouldNotBeIncluded": {
-    "defaultMessage": "Some assets could not be included",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.stages": {
@@ -1344,7 +1372,7 @@
     "description": "Column heading for protocol metadata values."
   },
   "architect.home.libraryPanel.wasDownloadedButThese": {
-    "defaultMessage": "\"{value1}\" was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+    "defaultMessage": "These resources could not be read, so \"{value1}\" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.",
     "description": "The description text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.whereYourProtocolsAreStored": {
@@ -2367,6 +2395,10 @@
     "defaultMessage": "Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.resourceImport.replacementType": {
+    "defaultMessage": "This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
   "architect.resourceImport.unsupported": {
     "defaultMessage": "That file type is not supported as a resource.",
     "description": "Researcher-facing Architect control or feedback."
@@ -2540,7 +2572,7 @@
     "description": "The label text in components / StorageUnavailableBanner."
   },
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": {
-    "defaultMessage": "Some assets could not be exported",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in components / StorageUnavailableBanner."
   },
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": {
@@ -3200,7 +3232,7 @@
     "description": "The label text in utils / downloadActiveProtocol."
   },
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": {
-    "defaultMessage": "Some assets could not be exported",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in utils / downloadActiveProtocol."
   },
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": {

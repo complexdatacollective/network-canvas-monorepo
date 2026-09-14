@@ -1,8 +1,15 @@
-import type { ExtractedAsset } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  ExtractedAsset,
+} from '@codaco/protocol-validation';
 
 import { getActiveProtocolScope } from './activeProtocolScope';
 import { assetDb, assetKey, type StoredAsset } from './assetDB';
-import { getMemoryAsset, putMemoryAsset } from './inMemoryAssetStore';
+import {
+  getMemoryAsset,
+  getMemoryAssetsForScope,
+  putMemoryAsset,
+} from './inMemoryAssetStore';
 import { isStorageUnavailableError } from './storageErrors';
 
 // Resolve the protocol to operate on: an explicit id wins, otherwise fall back
@@ -112,6 +119,83 @@ export const getAssetById = async (
   }
   const memoryRow = getMemoryAsset(scope, assetId);
   return memoryRow ? toExtractedAsset(memoryRow) : undefined;
+};
+
+/**
+ * A resource the protocol declares, read at a point where its bytes are
+ * required, with nothing stored for it.
+ *
+ * A distinct type because this is a state the researcher can see and fix — an
+ * archive arrived without the file, and Resources offers to add it — not a
+ * defect. Callers use it to tell "this resource is missing" apart from "the
+ * read failed", and to keep the first out of exception reporting.
+ */
+export class MissingAssetDataError extends Error {
+  readonly assetId: string;
+
+  constructor(assetId: string) {
+    super(`No stored file for asset "${assetId}"`);
+    this.name = 'MissingAssetDataError';
+    this.assetId = assetId;
+  }
+}
+
+/**
+ * Which of a protocol's resources have no stored bytes.
+ *
+ * Derived on demand rather than recorded on the protocol, because a recorded
+ * list is wrong the moment a researcher replaces the file — and the cost of
+ * being wrong is either a resource flagged as broken when it is not, or an
+ * export allowed when it should be refused. Presence in the store is the same
+ * question `getAssetById` asks, so the answer cannot disagree with it.
+ *
+ * apikey entries carry their value in the manifest and have no bytes to store,
+ * so they are never unresolved.
+ *
+ * Returns manifest keys, which is what stages reference and what the resources
+ * list is keyed by.
+ */
+export const getUnresolvedAssetIds = async (
+  assetManifest: CurrentProtocol['assetManifest'],
+  protocolId?: string,
+): Promise<string[]> => {
+  if (!assetManifest) {
+    return [];
+  }
+
+  const fileAssetIds = Object.entries(assetManifest)
+    .filter(([, asset]) => asset.type !== 'apikey')
+    .map(([assetId]) => assetId);
+
+  if (fileAssetIds.length === 0) {
+    return [];
+  }
+
+  const scope = resolveScope(protocolId);
+  if (!scope) {
+    // No scope means nothing can be read, so every file resource is
+    // unresolved. Saying "all of them" is the honest answer and is what stops
+    // an export writing a manifest with no files behind it.
+    return fileAssetIds;
+  }
+
+  const stored = new Set<string>();
+  try {
+    await assetDb.assets
+      .where('protocolId')
+      .equals(scope)
+      .each((row) => {
+        stored.add(row.assetId);
+      });
+  } catch {
+    // IndexedDB unavailable (e.g. private browsing) — the memory store below
+    // is the whole answer, exactly as it is in `getAssetById`.
+  }
+  for (const row of getMemoryAssetsForScope(scope)) {
+    stored.add(row.assetId);
+  }
+
+  return fileAssetIds.filter((assetId) => !stored.has(assetId));
 };
 
 export const deleteProtocolAssets = async (

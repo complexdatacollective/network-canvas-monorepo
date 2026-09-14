@@ -192,10 +192,13 @@ describe('userActions', () => {
     };
 
     it('records the kind of file failure without reporting an exception', async () => {
-      // The manifest's display name is whatever the researcher called the
-      // resource, so it must not reach analytics.
-      const researcherAuthoredName = 'Clinic Intake Photo';
-      const file = await netcanvasMissingItsAsset(researcherAuthoredName);
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      zip.file('notes.txt', 'no protocol in here');
+      const file = new File(
+        [await zip.generateAsync({ type: 'arraybuffer' })],
+        'My Study.netcanvas',
+      );
 
       const result = await openLocalNetcanvas({ file })(
         dispatch,
@@ -205,21 +208,47 @@ describe('userActions', () => {
 
       expect(result.payload).toMatchObject({ status: 'error' });
 
-      // A file the researcher chose being incomplete is an answer about that
+      // A file the researcher chose being unreadable is an answer about that
       // file. Reporting it as an exception buries Architect's own bugs.
       expect(reportError).not.toHaveBeenCalled();
 
       const failureCall = capture.mock.calls.find(
         ([event]) => event === 'protocol_import_failed',
       );
+      // A fixed vocabulary, carrying nothing from inside the researcher's file.
       expect(failureCall?.[1]).toEqual({
         source: 'local',
         reason: 'file',
-        error_kind: 'missingNamedAsset',
+        error_kind: 'missingProtocol',
       });
-      expect(JSON.stringify(failureCall?.[1])).not.toContain(
-        researcherAuthoredName,
+    });
+
+    it('opens a protocol whose archive was missing a file, naming the resource', async () => {
+      const researcherAuthoredName = 'Clinic Intake Photo';
+      const file = await netcanvasMissingItsAsset(researcherAuthoredName);
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
       );
+
+      const result = await openLocalNetcanvas({ file })(
+        dispatch,
+        () => ({}) as never,
+        undefined,
+      );
+
+      // Refusing the whole protocol would leave the researcher with a file
+      // only the tool that broke it can repair, when everything else is
+      // intact. Export refuses until they supply the file, so an incomplete
+      // protocol still cannot travel any further.
+      expect(result.payload).toEqual({
+        status: 'opened',
+        unresolvedAssetNames: [researcherAuthoredName],
+      });
+      expect(setActiveProtocol).toHaveBeenCalled();
+      expect(reportError).not.toHaveBeenCalled();
     });
 
     it('still reports a failure it cannot describe', async () => {

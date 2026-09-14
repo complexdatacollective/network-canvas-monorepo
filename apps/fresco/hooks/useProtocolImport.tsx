@@ -17,6 +17,7 @@ import {
   getProtocolFileErrorKind,
   hashProtocol,
   loadNetcanvasArchive,
+  missingAssetsError,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
@@ -299,7 +300,18 @@ export const useProtocolImport = () => {
       // values are the only ones that describe entries in this zip; the
       // validated document supplies what gets stored against them.
       updateToastPhase(toastId, 'extracting-assets');
-      const extractedAssets = await reader.readAssets(protocolJson);
+      const { assets: extractedAssets, missingAssets } =
+        await reader.readAssets(protocolJson);
+
+      // Extraction reports a manifest entry with no file rather than refusing,
+      // leaving the policy to the host. Fresco serves these resources to
+      // participants, so an incomplete protocol must not be installed: a
+      // missing stimulus would surface mid-interview, to the one person who
+      // can do nothing about it.
+      if (missingAssets.length > 0) {
+        throw missingAssetsError(missingAssets);
+      }
+
       const { fileAssets, apikeyAssets } = partitionProtocolAssets(
         validatedProtocol,
         extractedAssets,

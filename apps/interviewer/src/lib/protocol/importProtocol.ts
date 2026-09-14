@@ -10,6 +10,7 @@ import {
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
+  missingAssetsError,
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
@@ -134,7 +135,18 @@ async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
   const zip = await loadNetcanvasArchive(buffer);
-  return extractProtocolFromZip(zip);
+  const { protocol, assets, missingAssets } = await extractProtocolFromZip(zip);
+
+  // Extraction reports a manifest entry with no file rather than refusing, so
+  // that an authoring tool can open the protocol and let the researcher
+  // re-supply it. Interviewer has no such move: the next thing it does with a
+  // resource is show it to a participant mid-interview, where a stimulus that
+  // never loads is worse than an import that never happened.
+  if (missingAssets.length > 0) {
+    throw missingAssetsError(missingAssets);
+  }
+
+  return { protocol, assets };
 }
 
 // Retain message identity for the host to choose a language at render time.

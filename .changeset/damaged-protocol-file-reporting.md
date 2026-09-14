@@ -1,28 +1,46 @@
 ---
-'@codaco/protocol-validation': minor
-'@codaco/architect': patch
+'@codaco/protocol-validation': major
+'@codaco/architect': minor
 '@codaco/interviewer': patch
 'fresco': patch
 ---
 
-Say what is wrong with a damaged protocol file, and stop treating those files as app faults
+Open a protocol whose resources are missing, and never write one that is
 
-A protocol archive whose compressed data will not inflate is now described as
-damaged, rather than falling through to "could not open this protocol". The
-message a researcher sees when a protocol refers to a file it does not contain
-now names the resource as they named it, instead of the internal filename.
+A protocol whose archive was missing one of its files could not be opened at
+all, in any version of Architect. Architect now opens it, says which resources
+are missing, and offers to add the files from Resources — every stage, prompt
+and variable in it stays exactly as it was. Interviewer and Fresco still refuse
+such a protocol, because a resource that never loads would surface to a
+participant mid-interview.
 
-Opening a protocol that turns out to be damaged, incomplete, too large, or too
-old to upgrade is an answer about that file, so Architect and Fresco no longer
-record it as an application error. They record which kind of problem it was,
-which also keeps researcher-authored resource names out of analytics entirely.
+Downloading a protocol whose resources cannot all be read is now refused rather
+than quietly producing a file without them. That file could not be opened
+anywhere: dropping a resource left the stages that used it pointing at nothing.
+Nothing is lost by refusing — the protocol stays in your library exactly as it
+was, and the message names the files to restore.
 
-Fresco now reads archives through the shared reader, so the size limit that
-protects against a maliciously compressed protocol applies to its imports too,
-and its media is resolved against the manifest that shipped inside the archive.
+A protocol archive whose contents are damaged is now described as damaged,
+instead of falling back to "could not be opened". The message shown when a
+protocol refers to a file it does not contain names the resource as you named
+it, rather than its internal filename.
+
+Opening a protocol that turns out to be damaged, unreadable, or too old to
+upgrade is no longer recorded as an application error by Architect or Fresco.
+Those are answers about the file, and recording them buried the failures that
+are real faults; the kind of problem is recorded instead, which also keeps your
+own resource names out of analytics.
+
+Fresco now reads archives through the shared reader, so the limit that protects
+against a maliciously compressed protocol applies to its imports too, and its
+media is resolved against the manifest that shipped inside the archive.
 Interviewer reads a pending protocol's name under the same limit.
 
-`@codaco/protocol-validation` gains `createNetcanvasReader`, for hosts that
-need to read `protocol.json` and the media separately under one shared limit,
-and exports `getProtocolFileErrorKind` for classifying a failure without
-formatting a message for it. `MalformedNetcanvasReason` gains `unreadable-entry`.
+**Breaking (`@codaco/protocol-validation`):** `extractProtocol` and
+`extractProtocolFromZip` no longer throw when the manifest names a file the
+archive does not contain. They return it in a new `missingAssets` array and
+leave the policy to the host; call `missingAssetsError` to raise the refusal
+runtimes share. Also adds `createNetcanvasReader`, for hosts that read
+`protocol.json` and the media separately under one shared inflation limit,
+exports `getProtocolFileErrorKind` for classifying a failure without formatting
+a message, and adds `unreadable-entry` to `MalformedNetcanvasReason`.
