@@ -4435,10 +4435,6 @@ describe('a codebook editor open over a row when its attribute is deleted', () =
   });
 
   /**
-   * The rules editor answers this for itself (`attributeUnavailableTitle`), so
-   * the only thing to check there is that it is not told the same thing twice.
-   */
-  /**
    * The rules are the attribute's own, so an attribute that is gone has no
    * rules to show: the section goes with it rather than standing over nothing.
    * And the row says nothing about it either — the sentence about a deleted

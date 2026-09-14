@@ -338,9 +338,13 @@ const categoricalOptionIssue = (
     seen.add(comparableValue);
   }
 
-  // Asked of the one predicate the editors ask, so the refusal a save makes
-  // and the complaint the row already showed are the same judgement — and a
-  // non-UI caller writing straight to the codebook is held to it too.
+  // The write's own reading of the same question the row cell asks while the
+  // researcher is typing. Not the same code — the cell compares one row
+  // against its siblings (`isDuplicatedInColumn`), this compares a whole list
+  // — and they agree for every label a protocol can hold, which is what makes
+  // the refusal here the one the row already showed rather than a second
+  // surprise. Asked here as well as there because a caller writing straight to
+  // the codebook never met the cell.
   if (hasDuplicateOptionLabels(variable.options)) {
     return Object.freeze({
       path: Object.freeze(['options']),

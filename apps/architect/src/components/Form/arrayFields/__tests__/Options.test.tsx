@@ -272,6 +272,18 @@ describe('Options', () => {
 describe('an option label', () => {
   /** Punctuation chosen so that markdown would READ every character of it. */
   const PUNCTUATION = '# 5 * a day `tick` and _ this';
+  /**
+   * The same characters in the form markdown actually READS — a pair around a
+   * word — and a hyphen mid-word.
+   *
+   * Space-flanked, as they are above, `*` and `_` are literal to CommonMark
+   * whether they are escaped or not, so a fixture of those alone leaves the
+   * escaping unasserted. The pair cannot be typed in (the input rule turns it
+   * into the emphasis the researcher asked for) or pasted (a paste is read as
+   * markdown), so this stands for a label that arrived from somewhere else,
+   * and what is at stake is the round trip an edit puts it through.
+   */
+  const PAIRED_SOURCE = '\\*stars\\* and \\_lines\\_ and 18-24';
   const EMPHASISED = '**Very** close';
   const DECOMPOSED = 'Tre\u0301s proche';
   const COMPOSED = 'Tr\u00e9s proche';
@@ -325,6 +337,31 @@ describe('an option label', () => {
     );
   });
 
+  it('carries a markdown pair, and a hyphen, through an edit unchanged', async () => {
+    const user = userEvent.setup();
+    setup([
+      { label: PAIRED_SOURCE, value: 'starred' },
+      { label: 'Distant', value: 'distant' },
+    ]);
+
+    const box = await openRow(1);
+    // The characters, not emphasis.
+    expect(box).toHaveTextContent('*stars* and _lines_ and 18-24');
+
+    await user.click(box);
+    await user.type(box, '65+');
+
+    await waitFor(() => expect(String(labelOf(0))).toContain('65+'));
+    const stored = String(labelOf(0));
+    // The escape that holds the pair apart from emphasis nobody asked for
+    // survives the round trip; the hyphen markdown reads as nothing is stored
+    // as itself, rather than as `18\\-24` for every read-only list to show.
+    expect(stored).toContain('\\*stars\\*');
+    expect(stored).toContain('\\_lines\\_');
+    expect(stored).toContain('18-24');
+    expect(stored).not.toContain('18\\-24');
+  });
+
   it('stores a label in canonical form however it was typed', async () => {
     const user = userEvent.setup();
     setup();
@@ -355,6 +392,37 @@ describe('an option label', () => {
       { label: EMPHASISED, value: 'very' },
       { label: 'Distant', value: 'distant' },
     ]);
+  });
+
+  /**
+   * The row's own cell says what is wrong with the row's own label.
+   *
+   * The array-level rule refuses the SAVE and says so above the list, which is
+   * the right place for "this list cannot be saved" and the wrong one for
+   * "this box is the problem": the researcher has to be told which of a dozen
+   * rows to fix, beside the box they fix it in. Both rules run, and this is
+   * the half no other test here reaches.
+   */
+  it('says under the label box that it is empty, and that it repeats another', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const empty = await openRow(1);
+    await user.clear(empty);
+
+    const labelField = () =>
+      document.querySelector<HTMLElement>(
+        '[data-field-name="options[0].label"]',
+      )!;
+    await waitFor(() => expect(labelField()).toHaveTextContent('Required'));
+
+    await user.type(empty, 'Two');
+
+    await waitFor(() =>
+      expect(labelField()).toHaveTextContent(
+        'This value is already in use. Enter a different value.',
+      ),
+    );
   });
 
   it('refuses to submit two labels a participant could not tell apart', async () => {

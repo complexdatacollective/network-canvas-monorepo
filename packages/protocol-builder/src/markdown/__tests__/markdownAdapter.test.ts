@@ -134,8 +134,31 @@ describe('RichText markdown adapter', () => {
     };
 
     expect(richTextContentToMarkdown(content)).toBe(
-      '1\\. \\# Heading \\*bold\\* \\_em\\_ \\- dash \\`code\\` \\[link\\] \\\\ slash',
+      '1\\. \\# Heading \\*bold\\* \\_em\\_ - dash \\`code\\` \\[link\\] \\\\ slash',
     );
+  });
+
+  /**
+   * A hyphen is a hyphen, except where a line begins with one.
+   *
+   * CommonMark reads a run of dashes at the start of a line as a bullet, a
+   * thematic break or a heading underline, and nowhere else — so escaping
+   * every one of them stored `18\\-24` for an age band and `Part\\-time` for a
+   * category, which the read-only lists that show the stored source then
+   * showed to the researcher exactly like that.
+   */
+  it('escapes a dash only where a line starts with one', () => {
+    const paragraph = (text: string): RichTextContent => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+
+    expect(richTextContentToMarkdown(paragraph('18-24'))).toBe('18-24');
+    expect(richTextContentToMarkdown(paragraph('Part-time'))).toBe('Part-time');
+    // And still escaped where markdown would read it: a bullet, and the run
+    // that is a thematic break or a heading underline on its own.
+    expect(richTextContentToMarkdown(paragraph('- dash'))).toBe('\\- dash');
+    expect(richTextContentToMarkdown(paragraph('---'))).toBe('\\-\\-\\-');
   });
 
   it('keeps a link spanning mixed formatting as a single link', () => {

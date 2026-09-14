@@ -32,6 +32,26 @@ import BooleanAnswersField from '../BooleanAnswersField.tsx';
  */
 const PUNCTUATION = '# 5 * a day `tick` and _ this';
 
+/**
+ * A stored label whose punctuation is in the form markdown actually READS: a
+ * pair around a word, which is emphasis the moment the escape stops being
+ * written.
+ *
+ * Space-flanked, as the characters are above, `*` and `_` are literal to
+ * CommonMark whether they are escaped or not — so a fixture of those alone
+ * leaves the escape unasserted, and taking it out of the adapter passed every
+ * test in this file. The pair cannot be TYPED into the editor (the input rule
+ * turns it into the emphasis the researcher asked for) or pasted (a paste is
+ * read as markdown), so this is a label that arrived from somewhere else — a
+ * protocol written before these boxes existed, or by hand — and what is at
+ * stake is the round trip that opening the row puts it through.
+ *
+ * The hyphen rides along: markdown reads it as nothing at all in the middle of
+ * a word, so its source is the character itself.
+ */
+const PAIRED_SOURCE = '\\*stars\\* and \\_lines\\_ and 18-24';
+const PAIRED_AS_READ = '*stars* and _lines_ and 18-24';
+
 /** A label whose emphasis is authored, so a round trip has something to lose. */
 const EMPHASISED = '**Very** close';
 
@@ -171,6 +191,47 @@ describe('the codebook’s own attribute editor', () => {
 
     const written = await saved();
     expect(readByTheParticipant(written[0]?.label)).toBe(PUNCTUATION);
+  });
+
+  /**
+   * The characters markdown would read as emphasis, pasted whole.
+   *
+   * And the hyphen beside them, which markdown reads as nothing at all in the
+   * middle of a word: escaped there, an age band was stored as `18\\-24` and
+   * shown that way by every read-only list that displays the stored source.
+   */
+  it('carries a markdown pair, and a hyphen, through the round trip unchanged', async () => {
+    const { user, saved } = renderAttributeEditor([
+      { label: PAIRED_SOURCE, value: 'starred' },
+      { label: 'Close', value: 'close' },
+    ]);
+
+    // What the participant reads, before anything is saved: the characters,
+    // not emphasis.
+    expect(richTextOf(attributeLabelBox(1))).toBe(PAIRED_AS_READ);
+
+    // Typed INTO rather than merely looked at, because a label nobody edited
+    // is carried through as it arrived — it is the re-serialisation of an
+    // edited one that has to put every escape back. Where in the line the
+    // typing lands is jsdom's business, so what is asserted is the
+    // punctuation around it rather than the whole string.
+    await user.click(attributeLabelBox(1));
+    await user.type(attributeLabelBox(1), '65+');
+
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    const written = await saved();
+    const stored = String(written[0]?.label ?? '');
+    // The stored source keeps the escape that holds the pair apart from
+    // emphasis the researcher never asked for, and does NOT escape a hyphen
+    // markdown reads as nothing — which is what stored `18\\-24` and showed it
+    // that way in every read-only list.
+    expect(stored).toContain('\\*stars\\*');
+    expect(stored).toContain('\\_lines\\_');
+    expect(stored).toContain('18-24');
+    expect(stored).not.toContain('18\\-24');
+    // And the participant still reads the characters rather than emphasis.
+    expect(readByTheParticipant(stored)).toContain(PAIRED_AS_READ);
   });
 
   it('saves a label authored elsewhere exactly as it was written', async () => {

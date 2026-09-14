@@ -996,10 +996,10 @@ export default function AttributeCodebookControls({
         >
           {/* Said here rather than left to the editor, and only on THIS
               surface. `VariableEditor` reads an absent attribute as a retyped
-              one and has no wording for a deleted one; the rules editor has
-              its own (`variableValidation.attributeUnavailableTitle`), and a
-              second sentence over the top of it would say the same thing
-              twice. */}
+              one and has no wording for a deleted one; the validation section
+              says nothing because it goes away with the attribute it rules,
+              which leaves this the only place a researcher would learn that
+              the thing they have open is no longer there. */}
           {editedAttributeDeleted && (
             <Alert variant="destructive" appearance="soft" density="compact">
               <AlertTitle>
