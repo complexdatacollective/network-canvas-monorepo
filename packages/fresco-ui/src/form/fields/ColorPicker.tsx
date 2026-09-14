@@ -352,6 +352,17 @@ export default function ColorPickerField({
           key={option.value}
           className={cx(
             'relative block size-12 shrink-0 rounded-full',
+            // Pointing at a swatch grows it. The cue is the swatch's own size,
+            // not a faded copy of the chosen-ring, so an offer can never be
+            // read as an answer. It scales here rather than on the control so
+            // the chequerboard ground grows with the disc: a see-through fill
+            // would otherwise overhang the only thing that makes it legible.
+            // Hover on the control reaches this ground, which encloses it, so
+            // the growth is written here; it is withheld from a group that
+            // cannot be chosen from, which would otherwise answer a pointer it
+            // does nothing for.
+            'transition-transform duration-150 ease-out motion-reduce:transition-none',
+            !disabled && !readOnly && 'hover:scale-110',
             'bg-input [--swatch-check:color-mix(in_oklab,var(--input-contrast)_60%,transparent)]',
             '[background-image:conic-gradient(var(--swatch-check)_0_25%,transparent_0_50%,var(--swatch-check)_0_75%,transparent_0)]',
             'bg-size-[--spacing(3)_--spacing(3)]',
@@ -372,7 +383,13 @@ export default function ColorPickerField({
                 }
                 className={cx(
                   'focusable relative block size-full rounded-full',
-                  'bg-(--swatch-color) transition-all',
+                  // No transition. The cue below is an outline, and an
+                  // outline's colour starts at `currentColor` — the group's
+                  // dark foreground — so easing it swept every swatch from
+                  // dark to the selection colour on hover, reading as a
+                  // flash rather than as feedback. Pointer feedback here is
+                  // immediate, as it is everywhere else in the system.
+                  'bg-(--swatch-color)',
                   // A swatch may be filled with any CSS colour a caller has,
                   // including the group's own background — white, transparent,
                   // anything near `--input`. Such a swatch is an invisible disc
@@ -386,20 +403,23 @@ export default function ColorPickerField({
                   // selection colour, standing off the swatch — never the
                   // swatch's own colour, which says nothing about a colour
                   // being the chosen one, and which a swatch filled with the
-                  // ground has none of to draw with. Hover previews the same
-                  // cue, faded, so pointing at a swatch is not mistaken for
-                  // having chosen it.
-                  'focus-visible:outline-input-contrast',
-                  state.checked
-                    ? 'outline-selected outline-2 outline-offset-2'
-                    : cx(
-                        'hover:outline-selected/70 hover:outline-2 hover:outline-offset-2',
-                        // Forced colours discards the 70% that separates the
-                        // offer from the answer — both resolve to the same
-                        // solid outline at the same offset — so under it the
-                        // offer is told apart by being dashed instead.
-                        'forced-colors:hover:outline-dashed',
-                      ),
+                  // ground has none of to draw with. It is drawn thick because
+                  // the selection colour is a light one: against a pale ground
+                  // it carries little contrast, so the cue is made of the
+                  // amount of it rather than of its colour alone.
+                  //
+                  // Keyboard focus draws the SAME ring, not a competing one.
+                  // Arrowing a radio group moves the choice with the focus, so
+                  // the two states name one thing here; left to the system
+                  // default they disagreed on colour, width and offset, and a
+                  // chosen swatch changed shape merely by being focused.
+                  // `--focus-color` also colours the outline while it has no
+                  // width, so nothing sweeps from `currentColor` when it gains
+                  // one.
+                  '[--focus-color:var(--color-selected)]',
+                  'focus-visible:outline-4 focus-visible:outline-offset-2',
+                  state.checked &&
+                    'outline-selected outline-4 outline-offset-2',
                   readOnly && 'pointer-events-none',
                 )}
                 style={

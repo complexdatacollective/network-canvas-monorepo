@@ -303,7 +303,7 @@ export const SelectionAndHover: Story = {
     await waitFor(async () => {
       const style = getComputedStyle(chosen);
       await expect(style.outlineStyle).toBe('solid');
-      await expect(style.outlineWidth).toBe('2px');
+      await expect(style.outlineWidth).toBe('4px');
       await expect(style.outlineOffset).toBe('2px');
       await expect(style.outlineColor).toBe(selected);
       await expect(style.outlineColor).not.toBe(style.backgroundColor);
@@ -315,34 +315,55 @@ export const SelectionAndHover: Story = {
 
     await userEvent.hover(unchosen);
 
-    // Pointed at, it previews the same cue — the same colour, let through at
-    // reduced strength, so it reads as an offer rather than as the answer.
+    // Pointed at, a swatch GROWS. The offer is a different kind of cue from
+    // the answer — size against outline — so pointing can never be read as
+    // having chosen, and it needs no second colour to tell the two apart.
     //
     // Only Chromium's runner routes the synthetic pointer into `:hover`;
     // Firefox's leaves the rule unmatched, so there the cue is read off the
     // rule the swatch carries rather than off a state the engine will not
     // enter. Which is checked is decided by asking the engine, never assumed:
     // a silent fallback in the browser that CAN hover would leave the measured
-    // colour unproven everywhere.
-    if (unchosen.matches(':hover')) {
+    // growth unproven everywhere.
+    const ground = unchosen.parentElement;
+    await expect(ground).not.toBeNull();
+    const idleWidth = ground!.getBoundingClientRect().width;
+    if (ground?.matches(':hover')) {
+      // Measured as the box the researcher sees, not as the property that
+      // carries it: Tailwind writes this growth to CSS `scale`, leaving
+      // `transform` at `none`, so a transform reading would call a working
+      // cue broken.
       await waitFor(async () => {
-        const style = getComputedStyle(unchosen);
-        await expect(style.outlineStyle).toBe('solid');
-        await expect(style.outlineWidth).toBe('2px');
-        await expect(style.outlineColor).not.toBe(selected);
-        await expect(opacityOf(style.outlineColor)).toBeLessThan(1);
-        await expect(opacityOf(style.outlineColor)).toBeGreaterThan(0.4);
-        await expect(contrastRatio(style.outlineColor, selected)).toBeLessThan(
-          1.5,
+        await expect(ground.getBoundingClientRect().width).toBeGreaterThan(
+          idleWidth,
         );
       });
+      // Growing is not choosing: the offer never borrows the answer's ring.
+      // Unless the pointer also moved focus here — a ring then says "focused",
+      // which since this change is the same ring as "chosen", so the check is
+      // asked only of a swatch the keyboard is not on.
+      if (document.activeElement !== unchosen) {
+        await expect(getComputedStyle(unchosen).outlineStyle).toBe('none');
+      }
     } else {
-      await expect(unchosen).toHaveClass(
-        'hover:outline-2',
-        'hover:outline-offset-2',
-        'hover:outline-selected/70',
-      );
+      await expect(ground).toHaveClass('hover:scale-110');
     }
+
+    // Focus draws the ring the chosen swatch already wears, rather than a
+    // second cue in another colour at another width. Read off the engine: the
+    // unified treatment is the whole point of the change, so a class check
+    // would not prove it.
+    unchosen.focus();
+    await waitFor(async () => {
+      const focused = getComputedStyle(unchosen);
+      await expect(focused.outlineStyle).toBe('solid');
+      await expect(focused.outlineWidth).toBe('4px');
+      await expect(focused.outlineOffset).toBe('2px');
+      await expect(focused.outlineColor).toBe(selected);
+    });
+    // Put the keyboard back where it was: the ring this leaves behind is the
+    // focus ring, and the assertions below are about the pointer's cue.
+    unchosen.blur();
 
     // Hovering never makes a swatch the chosen one.
     await expect(unchosen).toHaveAttribute('aria-checked', 'false');

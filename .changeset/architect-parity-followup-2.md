@@ -35,11 +35,13 @@ tells you when an attribute it was pointing at is no longer one shapes can be
 mapped to.
 
 The colour picker shows which colour is chosen. Each colour is a circle of
-itself outlined in the ink around it; the chosen one carries the selection
-outline the rest of the interface uses for the same purpose, and hovering an
-unchosen one previews that outline at less than full strength. Previously the
-chosen colour was ringed in its own colour, which is the one outline it cannot
-be told apart from.
+itself outlined in the ink around it, and the chosen one carries a thick ring in
+the selection colour the rest of the interface marks a chosen thing with —
+previously it was ringed in its own colour, which is the one outline it cannot
+be told apart from. Keyboard focus draws that same ring rather than a second one
+of its own, so a chosen swatch no longer changes shape merely by being focused.
+Pointing at a swatch grows it instead of drawing a faint copy of the chosen
+ring, so an offer can never be mistaken for an answer.
 
 The buttons that create and edit a node type are the size every other button is.
 They were drawn small, which read as a lesser action than the one they perform.

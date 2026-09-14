@@ -171,7 +171,7 @@ describe('ColorPickerField', () => {
     // one, and a swatch filled with the group's background has none to draw
     // with.
     expect(chosen).toHaveClass(
-      'outline-2',
+      'outline-4',
       'outline-offset-2',
       'outline-selected',
     );
@@ -180,26 +180,33 @@ describe('ColorPickerField', () => {
     // Idle: nothing stands off an unchosen swatch, so the two states differ in
     // shape and not only in strength.
     expect(unchosen).not.toHaveClass('outline-selected');
-    expect(unchosen).not.toHaveClass('outline-2');
+    expect(unchosen).not.toHaveClass('outline-4');
 
-    // Pointed at, an unchosen swatch previews the same cue faded, so hovering
-    // is not mistaken for having chosen. The chosen one is not offered it
-    // again: at equal specificity the hover rule would otherwise repaint the
-    // answer as the offer.
-    expect(unchosen).toHaveClass(
-      'hover:outline-2',
-      'hover:outline-offset-2',
-      'hover:outline-selected/70',
+    // Pointing at a swatch grows it instead of drawing a faint copy of the
+    // chosen ring: an offer is a different KIND of cue from an answer, so the
+    // two can never be confused at a glance. The growth is carried by the
+    // ground the swatch is painted on, so a see-through fill keeps its
+    // chequerboard, and it is offered only while the control can be chosen.
+    // Asserted on the utility rather than a computed style: jsdom loads no
+    // stylesheet, so a transform can only be read in a browser (the
+    // `SelectionAndHover` play does read it).
+    const ground = chosen.parentElement;
+    expect(ground).toHaveClass('hover:scale-110');
+    expect(ground).toHaveClass('transition-transform');
+    expect(ground).toHaveClass('motion-reduce:transition-none');
+    expect(chosen.className).not.toContain('hover:outline');
+
+    // Keyboard focus draws the same ring as being chosen, rather than a
+    // competing one in another colour at another width: arrowing a radio group
+    // carries the choice with the focus, so the two name one thing here.
+    expect(chosen).toHaveClass(
+      '[--focus-color:var(--color-selected)]',
+      'focus-visible:outline-4',
+      'focus-visible:outline-offset-2',
     );
-    expect(chosen).not.toHaveClass('hover:outline-selected/70');
-
-    // Under forced colours the faded outline is not faded — the system's own
-    // palette replaces it — so the offer differs from the answer by being
-    // dashed rather than by being weaker. Asserted on the utility rather than
-    // on a computed style: jsdom loads no stylesheet, so there is nothing to
-    // compute, and a forced-colours reading can only be taken in a browser.
-    expect(unchosen).toHaveClass('forced-colors:hover:outline-dashed');
-    expect(chosen).not.toHaveClass('forced-colors:hover:outline-dashed');
+    expect(chosen.className).not.toContain(
+      'focus-visible:outline-input-contrast',
+    );
 
     // The swatch's edge, in the group's foreground rather than in its fill, so
     // a swatch painted the colour of the ground is still a disc.
