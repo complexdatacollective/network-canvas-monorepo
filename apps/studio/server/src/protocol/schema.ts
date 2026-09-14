@@ -11,10 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 import { drafts, sections } from '@codaco/studio-sync/schema';
 
 import { teams } from '../db/auth-schema.ts';
@@ -40,7 +37,7 @@ const protocols = pgTable(
   (table) => [
     unique().on(table.id, table.teamId),
     index('protocols_team_id_idx').on(table.teamId),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -75,7 +72,7 @@ const protocolVersions = pgTable(
       columns: [table.migratedFromVersionId, table.teamId],
       foreignColumns: [table.id, table.teamId],
     }),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -103,7 +100,7 @@ const versionSections = pgTable(
       table.teamId,
       table.sectionHash,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -131,7 +128,7 @@ const protocolDrafts = pgTable(
       columns: [table.basedOnVersionId, table.teamId],
       foreignColumns: [protocolVersions.id, protocolVersions.teamId],
     }),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

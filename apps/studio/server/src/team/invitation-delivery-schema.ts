@@ -12,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicies,
+  teamIsolationPolicy,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
@@ -88,7 +88,7 @@ const invitationDeliveries = pgTable(
             OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
           )`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

@@ -4,11 +4,6 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
-import type { EncryptionKeys } from '../../pii/keys.ts';
-import {
-  createDataProtection,
-  ProtectedDataError,
-} from '../../pii/protection.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededSession } from './network.ts';
 import {
@@ -220,8 +215,8 @@ type WebhookDisablement = {
  *
  * The signing secret is stored as ciphertext because Standard Webhooks
  * requires the server to reproduce it on every send. The seed has no key
- * management of its own; its caller supplies the registered deployment keys
- * (or the explicit public development key for synthetic fixtures).
+ * management, so it writes opaque bytes under a placeholder key id: nothing
+ * can sign with them, which is the honest state for synthetic data.
  */
 export async function seedWebhooks(
   client: pg.PoolClient,
@@ -229,16 +224,7 @@ export async function seedWebhooks(
   studies: SeedStudy[],
   sessions: SeededSession[],
   withdrawals: SeedWithdrawal[],
-  encryptionKeys: EncryptionKeys,
 ): Promise<void> {
-  const protection = createDataProtection(encryptionKeys, {
-    participant: async () => {
-      throw new ProtectedDataError();
-    },
-    integration: async () => {
-      throw new ProtectedDataError();
-    },
-  });
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
   const disablements: WebhookDisablement[] = [];
@@ -274,17 +260,8 @@ export async function seedWebhooks(
         ? 'Retired endpoint, kept for the failure history'
         : faker.lorem.sentence(),
       eventTypes,
-      protection.encryptIntegration(
-        {
-          kind: 'webhook',
-          teamId: team.id,
-          subscriptionId: id,
-          column: 'secret_ciphertext',
-        },
-        seedBytes(48),
-      ).envelope,
-      encryptionKeys.currentId('integration-enc'),
-      'aes-256-gcm.v1',
+      seedBytes(48),
+      `dev-integration-key-1`,
       'active',
       0,
       null,
@@ -362,7 +339,6 @@ export async function seedWebhooks(
       'event_types',
       'secret_ciphertext',
       'secret_key_id',
-      'secret_algorithm',
       'state',
       'consecutive_failures',
       'last_failure_at',

@@ -167,7 +167,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   /** Set while a test needs the object store to be the thing that is down. */
   let storeUnreachable = false;
   const assetStore: AssetStore = {
-    checkHealth: () => Promise.resolve(),
     put: (bytes, mediaType) => {
       if (storeUnreachable) {
         return Promise.reject(new Error('the object store is unreachable'));
@@ -290,7 +289,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         {
           auth: stubAuthService({ listMemberships: memberships }),
           deployment: { mode: 'self-hosted', billing: false },
-          telemetry: false,
           invitationDeliveryAvailable: false,
           pool: scratch.app,
           protocolBuilder: createProtocolBuilderRuntime(() => now),
@@ -307,7 +305,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       {
         auth: stubAuthService({ listMemberships: memberships }),
         deployment: { mode: 'self-hosted', billing: false },
-        telemetry: false,
         invitationDeliveryAvailable: false,
         pool: scratch.app,
         protocolBuilder: runtime,

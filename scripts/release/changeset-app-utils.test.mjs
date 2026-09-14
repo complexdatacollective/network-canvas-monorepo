@@ -332,7 +332,6 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
     // main are the record of those deploys.
     'posthog-proxy-worker',
     'development-protocol-worker',
-    'studio-managed-ingress-worker',
   ]) {
     assert.ok(
       !UNRELEASED_PACKAGES.includes(name),

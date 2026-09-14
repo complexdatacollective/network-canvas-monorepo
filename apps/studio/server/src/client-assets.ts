@@ -1,19 +1,14 @@
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  serveStatic,
-  type ServeStaticOptions,
-} from '@hono/node-server/serve-static';
-import type { Context, Hono, MiddlewareHandler } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
+import type { Context, Hono } from 'hono';
 
 import { gatedSurfacePaths } from '@codaco/studio-rpc/surfaces';
 
 import type { PrincipalVariables } from './auth/principal.ts';
 import type { StudioEnv } from './env.ts';
-import { logOperational } from './observability/logger.ts';
 
 // Serving the built client, and refusing the paths this deployment's topology
 // does not have. Extracted from src/index.ts because that module cannot be
@@ -99,28 +94,12 @@ async function readShell(clientRoot: string): Promise<string | undefined> {
 export function mountClient(
   app: Hono<PrincipalVariables>,
   env: StudioEnv,
-  setupComplete?: () => Promise<boolean>,
 ): void {
   // Default matches the Docker image layout: dist/index.js next to a client/
   // directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
   const clientRoot = env.clientDist
     ? resolve(process.cwd(), env.clientDist)
     : fileURLToPath(new URL('../client', import.meta.url));
-
-  if (!existsSync(clientRoot))
-    logOperational('STUDIO_CLIENT_ASSETS_UNAVAILABLE');
-  const serveWhenPresent = (
-    options: ServeStaticOptions<PrincipalVariables>,
-  ): MiddlewareHandler<PrincipalVariables> => {
-    let serve: MiddlewareHandler<PrincipalVariables> | undefined;
-    return (c, next) => {
-      // The adapter otherwise prints the configured path at construction.
-      // Defer construction until a development build appears, retaining the
-      // existing ability to serve a client built after the server starts.
-      if (!serve && existsSync(clientRoot)) serve = serveStatic(options);
-      return serve ? serve(c, next) : next();
-    };
-  };
 
   // The deployment-mode gate, registered BEFORE both serveStatic mounts,
   // which would otherwise answer these with the shell at 200 — the SPA
@@ -137,14 +116,17 @@ export function mountClient(
   // handler and dropping the body, so a probe sees the status the gate set.
   app.on('GET', '*', async (c, next) => {
     const path = normaliseForGate(c.req.path);
-    const gated = gatedMatchers.some((matcher) => matcher.test(path));
-    const completedSetup =
-      !gated && path === '/setup' && setupComplete && (await setupComplete());
-    if (!gated && !completedSetup) return next();
+    if (!gatedMatchers.some((matcher) => matcher.test(path))) return next();
 
     // The body is the shell rather than a page of this module's own, so the
-    // refusal is rendered in the app's own not-found design. The client
-    // independently checks topology and completion during SPA navigation.
+    // refusal can be rendered in the app's own design. That last step is the
+    // client's, and it is not written yet: no route carries a topology guard
+    // and the client has no not-found state at all, so the SPA boots under
+    // this 404 and renders the gated route's own component. The status line
+    // here is honest; the screen is not yet. It has to be fixed on the client
+    // rather than by serving some other document, because the client is also
+    // the only layer that covers the managed Netlify lane — there the CDN
+    // answers a page path before any of this runs (see netlify.toml).
     //
     // no-store because a corrected variable — or the same image deployed in
     // the other topology — turns this into a page.
@@ -153,12 +135,12 @@ export function mountClient(
     return shell === undefined ? c.body(null, 404) : c.html(shell, 404);
   });
 
-  app.use('*', serveWhenPresent({ root: clientRoot, onFound: setCacheHeader }));
+  app.use('*', serveStatic({ root: clientRoot, onFound: setCacheHeader }));
   // SPA fallback: unmatched GET paths serve the app shell so client-side
   // routes deep-link correctly.
   app.get(
     '*',
-    serveWhenPresent({
+    serveStatic({
       root: clientRoot,
       path: 'index.html',
       onFound: setCacheHeader,

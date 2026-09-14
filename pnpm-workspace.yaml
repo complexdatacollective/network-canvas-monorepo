@@ -194,6 +194,13 @@ overrides:
   # and fresco-ui's declaration emit (vite-plugin-dts) can bind inferred types
   # to the wrong instance (TS2883) depending on hoisting (broke Netlify).
   '@types/react': 'catalog:'
+  # A single workspace-wide zod instance, for the same reason. Published
+  # externals (better-auth, better-call, @codaco/network-exporters, knip) still
+  # ask for 4.4.x, which splits drizzle-orm into two peer-resolved copies; the
+  # one pnpm hoists for drizzle-kit's own types is then not the one
+  # apps/studio/server resolves, and `pushSchema` stops accepting the database
+  # handle it is handed (TS2345).
+  zod: 'catalog:'
   '@types/react-dom': 'catalog:'
   '@microsoft/api-extractor>typescript': npm:@typescript/typescript6@^6.0.2
   'slate>immer': '^5.3.0'
@@ -267,5 +274,3 @@ minimumReleaseAgeExclude:
   - '@formatjs/cli-native-win32-x64@1.1.18'
   - babel-plugin-formatjs@13.0.3
   - react-intl@10.1.26
-patchedDependencies:
-  drizzle-kit@1.0.0-rc.4: patches/drizzle-kit@1.0.0-rc.4.patch

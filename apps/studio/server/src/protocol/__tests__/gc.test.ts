@@ -297,7 +297,6 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 });
 
 describe('gcProtocolStore bounds', () => {
-  // Bounds reject before connecting; this pool intentionally has no database.
   const unconnected = new pg.Pool();
 
   it('rejects negative or non-finite bounds', async () => {
