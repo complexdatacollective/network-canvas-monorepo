@@ -322,6 +322,28 @@ describe('the inline list a row mounts', () => {
     expect(labels()).toEqual([EMPHASISED, 'Distant']);
   });
 
+  /**
+   * A label authored before labels were stored canonically is not an edit.
+   *
+   * The value is read canonically as well as written canonically, so opening a
+   * row holding a decomposed accent does not rewrite the whole list — which
+   * would dirty the stage, and add a draft timeline entry, for a row the
+   * researcher only looked at.
+   */
+  it('does not rewrite a label whose accent was composed differently', async () => {
+    const { user, labels } = renderInlineList([
+      { label: DECOMPOSED, value: 'very' },
+      { label: 'Distant', value: 'distant' },
+    ]);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    await screen.findByRole('textbox', { name: 'Label' });
+
+    expect(labels()).toEqual([DECOMPOSED, 'Distant']);
+  });
+
   it('stores a label in canonical form however it was typed', async () => {
     const { user, labels } = renderInlineList([
       { label: 'Close', value: 'close' },
