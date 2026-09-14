@@ -888,13 +888,11 @@ jobs:
         #
         # What the suite costs, measured on this job: vitest's two phases sum
         # to the work, and the workers divide it, down to a floor set by the
-        # longest single file. That floor is
-        # src/db/migrations/__tests__/security.test.ts, which spends 91% of
-        # every deployment cycle inside the real `migrateDatabase` it exists
-        # to exercise (1901ms of 2084ms; the database it creates and drops
-        # around that costs 99ms and 45ms). It cannot be shortened without
-        # deleting coverage and a single file cannot span workers, so it
-        # bounds this job until it is split. Shortening the suite means
+        # longest single file. The file that set that floor was the versioned
+        # migration security suite, which this branch's revert of #1700
+        # deletes along with the migration runner it exercised, so the floor
+        # is now whichever integration file is longest and the measurement
+        # wants repeating before it is quoted again. Shortening the suite means
         # removing work — see the fingerprint-addressed DDL cache in
         # src/__tests__/support/schema-ddl.ts, which took the import phase
         # from ~310s to ~110s by keeping drizzle-kit out of the module graph

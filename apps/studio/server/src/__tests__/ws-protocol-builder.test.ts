@@ -62,14 +62,8 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   let origin: string;
   let url: string;
 
-  /** The proof the managed ingress boundary requires of every request. */
   function handshake(from: string) {
-    return {
-      origin: from,
-      headers: {
-        'x-studio-managed-ingress-proof': env.managedIngressSecret ?? '',
-      },
-    };
+    return { origin: from };
   }
 
   /**

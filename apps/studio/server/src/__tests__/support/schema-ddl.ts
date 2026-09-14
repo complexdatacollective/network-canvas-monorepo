@@ -16,10 +16,8 @@ const CI = process.env.CI === 'true';
  * diffing an empty catalogue against `SCHEMA`. drizzle-kit is memoised inside
  * a process, but vitest gives each test file its own module registry, so the
  * suite paid that import once per file to obtain a string that never varies
- * within a run. Only three files (`src/__tests__/schema.test.ts`,
- * `src/db/migrations/__tests__/migrate.test.ts`,
- * `src/db/migrations/__tests__/artifact.test.ts`) exercise drizzle-kit's own
- * behaviour and still import it directly.
+ * within a run. Only `src/__tests__/schema.test.ts` exercises drizzle-kit's
+ * own behaviour and still imports it directly.
  *
  * Whoever renders first checks the result against `SCHEMA_FINGERPRINT` — the
  * committed sha256 of exactly these bytes, the same equality `applySchema`

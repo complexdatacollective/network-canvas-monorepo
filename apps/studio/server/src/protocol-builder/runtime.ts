@@ -7,7 +7,6 @@
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { SyncServer } from '@codaco/studio-sync/server';
 
-import { logOperational } from '../observability/logger.ts';
 import { ProtocolEventPublisher } from './events.ts';
 
 /** A third of the lease TTL: two renewals may be lost before one expires. */
@@ -223,8 +222,9 @@ export class LeaseKeeper {
         // has nobody to report to and must not take the process down with an
         // unhandled rejection. The leases it was giving back are already out
         // of this keeper, so they lapse on their own expiry instead.
-        await end().catch(() => {
-          logOperational('STUDIO_PROTOCOL_LEASE_RELEASE_FAILED');
+        await end().catch((error: unknown) => {
+          // oxlint-disable-next-line no-console -- server-side failure diagnostics
+          console.error(error);
         });
       }
     }
