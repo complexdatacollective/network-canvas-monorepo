@@ -3015,6 +3015,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.1
       ohash:
         specifier: ^2.0.11
         version: 2.0.11
@@ -3043,9 +3046,6 @@ importers:
       gunzip-maybe:
         specifier: ^1.4.2
         version: 1.4.2
-      jszip:
-        specifier: 'catalog:'
-        version: 3.10.1
       tar-stream:
         specifier: ^3.2.0
         version: 3.2.0
