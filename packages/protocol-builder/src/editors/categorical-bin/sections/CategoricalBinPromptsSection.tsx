@@ -362,7 +362,7 @@ export default function CategoricalBinPromptsSection() {
    * sentence about where its answers are stored would say nothing the
    * researcher can act on yet.
    */
-  const commitBinOptions = useOptionsRowCommit(
+  const binOptions = useOptionsRowCommit(
     BINS_SLOT.name,
     // The bins are the node type's own attribute, which the stage names.
     () => subject,
@@ -389,9 +389,9 @@ export default function CategoricalBinPromptsSection() {
       // prompt refused for naming an attribute it cannot draw has no list to
       // write anywhere. The follow-up answer is typed rather than chosen, so
       // only the bins carry one.
-      return await commitBinOptions(row);
+      return await binOptions.commit(row, context);
     },
-    [commitBinOptions, identity.id, protocolContext, subject],
+    [binOptions, identity.id, protocolContext, subject],
   );
 
   return (
@@ -399,6 +399,7 @@ export default function CategoricalBinPromptsSection() {
       PromptEditor={CategoricalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
+      expand={binOptions.expand}
     />
   );
 }

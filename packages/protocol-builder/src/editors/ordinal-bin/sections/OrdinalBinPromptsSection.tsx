@@ -209,7 +209,7 @@ export default function OrdinalBinPromptsSection() {
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
 
-  const commitScaleOptions = useOptionsRowCommit(
+  const scaleOptions = useOptionsRowCommit(
     SCALE_FIELD,
     // The scale is the node type's own attribute, which the stage names.
     () => subject,
@@ -233,9 +233,9 @@ export default function OrdinalBinPromptsSection() {
       // After the pick, because the values are the picked attribute's: a
       // prompt refused for naming an attribute it cannot draw has no list to
       // write anywhere.
-      return await commitScaleOptions(row);
+      return await scaleOptions.commit(row, context);
     },
-    [commitScaleOptions, identity.id, protocolContext, subject],
+    [identity.id, protocolContext, scaleOptions, subject],
   );
 
   return (
@@ -243,6 +243,7 @@ export default function OrdinalBinPromptsSection() {
       PromptEditor={OrdinalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
+      expand={scaleOptions.expand}
       /*
         A new prompt arrives already shaded, as Architect's does. The gradient
         is required and there is no unset state to offer, so a researcher who

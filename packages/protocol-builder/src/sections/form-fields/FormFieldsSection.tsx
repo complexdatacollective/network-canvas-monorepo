@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import {
   type ComponentType,
   createContext,
@@ -831,6 +832,7 @@ export default function FormFieldsSection({
     rowUnderEdit,
     intl,
   );
+  const expandFormField = useExpandFormField(codebookSubject);
   const refuseRowIssue = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
@@ -852,14 +854,18 @@ export default function FormFieldsSection({
       editTitle: messages.editTitle,
       formId: 'form-field-editor',
       name: fieldsPath,
+      // The answers the attribute already offers, so the save can tell a list
+      // the researcher WROTE from the one the control was seeded with — see
+      // `useCommitFormField`.
+      expand: expandFormField,
       beforeSave: async (row, context) => {
         const issues = refuseRowIssue(row, context);
         if (issues !== undefined) return { refused: { fieldErrors: issues } };
-        return commitCodebookHalf(row);
+        return commitCodebookHalf(row, context);
       },
       normalize: normalizeFormField,
     }),
-    [commitCodebookHalf, fieldsPath, refuseRowIssue],
+    [commitCodebookHalf, expandFormField, fieldsPath, refuseRowIssue],
   );
   const scope = useMemo(
     () => ({
@@ -943,6 +949,43 @@ function normalizeFormField(value: RowValues): RowValues {
 }
 
 /**
+ * The row as its dialog opens on it, carrying the answers its attribute holds.
+ *
+ * `AttributeValueFields` seeds the answers control from the codebook, so the
+ * row ends up holding the attribute's whole list whether or not the researcher
+ * touched it. Recorded here, the list is handed back to the save as
+ * `openedOn`, which is the only way that save can tell a list somebody WROTE
+ * from one they were merely shown — and a save about the question's wording
+ * that wrote the seeded snapshot back would take away an answer a collaborator
+ * had added in the meantime. `useOptionsRowCommit` does the same for the
+ * prompt families that author a list the same way.
+ */
+function useExpandFormField(
+  codebookSubject: CodebookSubject | undefined,
+): (row: RowValues) => RowValues {
+  const protocolContext = useProtocolContext();
+
+  return useCallback(
+    (row: RowValues): RowValues => {
+      const variableId = typeof row.variable === 'string' ? row.variable : '';
+      if (codebookSubject === undefined || variableId === '') return row;
+      const held = variablesForSubject(protocolContext, codebookSubject)[
+        variableId
+      ];
+      const asOpened =
+        held === undefined ? undefined : Reflect.get(held, 'options');
+      // Absent stays absent: a yes-or-no attribute that names no answers
+      // carries no `options` key at all, and a row holding the key with
+      // nothing under it is not the same row.
+      return asOpened === undefined
+        ? row
+        : { ...row, [ATTRIBUTE_OPTIONS_FIELD]: asOpened };
+    },
+    [codebookSubject, protocolContext],
+  );
+}
+
+/**
  * Writes the codebook half of a row, before the row that depends on it is
  * committed.
  *
@@ -957,7 +1000,7 @@ function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
   rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
-): (row: RowValues) => Promise<RowSaveOutcome> {
+): (row: RowValues, context: RowSaveContext) => Promise<RowSaveOutcome> {
   const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
@@ -972,7 +1015,10 @@ function useCommitFormField(
   );
 
   return useCallback(
-    async (value: RowValues): Promise<RowSaveOutcome> => {
+    async (
+      value: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       // An attribute the codebook editor has to author is only ever made
       // there, so nothing here can create one from a name and a type. Said in
       // its own words rather than left to the schema, which would answer a
@@ -1043,25 +1089,43 @@ function useCommitFormField(
           const held = variablesForSubject(protocolContext, codebookSubject)[
             variableId
           ];
-          const written = await setOptions(
-            codebookSubject,
-            variableId,
-            // Two blank answers are what a researcher who has written nothing
-            // sees AND what one who has just cleared both sees, and those save
-            // differently — so the list the row opened on settles it, the same
-            // way the codebook's own editor settles it.
-            optionsForShape(
-              optionsShapeFor(held?.type, component),
-              draftOptions,
-              held === undefined ? undefined : Reflect.get(held, 'options'),
-            ),
+          // The list this row opened holding, and only while it still collects
+          // the attribute it opened on: a picker moved elsewhere re-seeds the
+          // control from THAT attribute, and what the row opened on says
+          // nothing about the list on screen.
+          const boundAsOpened = context.openedOn.variable === variableId;
+          const asOpened = boundAsOpened
+            ? context.openedOn[ATTRIBUTE_OPTIONS_FIELD]
+            : held === undefined
+              ? undefined
+              : Reflect.get(held, 'options');
+          // Two blank answers are what a researcher who has written nothing
+          // sees AND what one who has just cleared both sees, and those save
+          // differently — so the list the row opened on settles it, the same
+          // way the codebook's own editor settles it.
+          const writing = optionsForShape(
+            optionsShapeFor(held?.type, component),
+            draftOptions,
+            asOpened,
           );
-          if (written.status === 'refused') {
-            return {
-              refused: {
-                fieldErrors: { [ATTRIBUTE_OPTIONS_FIELD]: written.message },
-              },
-            };
+          // Nothing the researcher wrote, so nothing to write: the control was
+          // showing them the codebook's own answers and they left them alone.
+          // A write of the same list is still a revision a collaborator has to
+          // merge — and one made from a stale seed would take away an answer
+          // they had added since this dialog opened.
+          if (!boundAsOpened || !isEqual(writing, asOpened)) {
+            const written = await setOptions(
+              codebookSubject,
+              variableId,
+              writing,
+            );
+            if (written.status === 'refused') {
+              return {
+                refused: {
+                  fieldErrors: { [ATTRIBUTE_OPTIONS_FIELD]: written.message },
+                },
+              };
+            }
           }
         }
         // The control belongs to the attribute rather than to the field, so

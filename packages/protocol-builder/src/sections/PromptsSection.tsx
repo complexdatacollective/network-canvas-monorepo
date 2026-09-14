@@ -142,6 +142,16 @@ export type PromptsSectionProps = Readonly<{
    */
   beforeSave?: RowListConfig['beforeSave'];
   /**
+   * What a prompt's dialog opens holding beyond the row itself.
+   *
+   * For working state a control is seeded with from somewhere other than the
+   * row — the answers a bound codebook attribute offers, which the prompt
+   * edits inline. `beforeSave` is handed the expanded row back as `openedOn`,
+   * which is how its gate tells a list the researcher wrote from one the
+   * control merely showed them. See `useOptionsRowCommit`.
+   */
+  expand?: RowListConfig['expand'];
+  /**
    * What a prompt this interface is adding starts out holding.
    *
    * For the parts of a row the researcher never chooses and no control in the
@@ -243,6 +253,7 @@ export default function PromptsSection({
   PromptPreview,
   requiresSubject = true,
   beforeSave,
+  expand,
   itemTemplate,
   collapseRow,
   description = messages.description,
@@ -269,6 +280,7 @@ export default function PromptsSection({
       formId: 'prompt-editor',
       name: PROMPTS_FIELD,
       ...(beforeSave === undefined ? {} : { beforeSave }),
+      ...(expand === undefined ? {} : { expand }),
       // The family's collapse runs FIRST, for the reason `PageContentSection`
       // gives: it decides what each key becomes, and an emptied one has to be
       // able to clear it.
@@ -277,7 +289,14 @@ export default function PromptsSection({
           collapseRow === undefined ? row : collapseRow(row),
         ) as RowValues,
     }),
-    [PromptEditor, PromptPreview, beforeSave, collapseRow, rowDescription],
+    [
+      PromptEditor,
+      PromptPreview,
+      beforeSave,
+      collapseRow,
+      expand,
+      rowDescription,
+    ],
   );
 
   return (

@@ -466,7 +466,7 @@ export default function TieStrengthCensusPromptsSection() {
    * The connection type is asked about first: the scale hangs off it, so with
    * the type gone there is no codebook to judge the attribute against.
    */
-  const commitScaleOptions = useOptionsRowCommit(SCALE_FIELD, (row) =>
+  const scaleOptions = useOptionsRowCommit(SCALE_FIELD, (row) =>
     edgeSubjectOf(row[CREATE_EDGE_FIELD]),
   );
   const beforeSave = useCallback(
@@ -524,9 +524,9 @@ export default function TieStrengthCensusPromptsSection() {
       // Last, because the response options are the picked attribute's: a
       // prompt refused for naming an attribute it cannot scale has no list to
       // write anywhere.
-      return await commitScaleOptions(row);
+      return await scaleOptions.commit(row, context);
     },
-    [commitScaleOptions, identity.id, protocolContext],
+    [identity.id, protocolContext, scaleOptions],
   );
 
   return (
@@ -534,6 +534,7 @@ export default function TieStrengthCensusPromptsSection() {
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
+      expand={scaleOptions.expand}
     />
   );
 }
