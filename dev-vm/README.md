@@ -205,3 +205,25 @@ their upstream apt repositories at provisioning time.
   other.
 - **Lima state**: `~/.lima/nc/` (instance), `~/.lima/_disks/nc-data/` (data
   disk), `~/.lima/nc/serial*.log` (console).
+- **`Target crashed` in a Playwright test that shows a video**: expected in
+  this VM, and not a fault in the app or the test. Playwright's arm64 Linux
+  Chromium crashes with `SIGILL` the moment a decoded video frame reaches the
+  graphics pipeline. Decoding is fine — a `<video>` that is detached, or
+  `display: none`, or asked only for metadata, reaches `readyState=4` with no
+  error — but making it visible, or drawing one of its frames onto a canvas,
+  kills the renderer, with `SharedImageManager::ProduceMemory … non-existent
+mailbox` in the browser log just before. It is not memory (it happens on an
+  idle VM with 23 GB free and logs no OOM kill), not the file (a 2.7 KB
+  fixture and a real H.264 `.mp4` both do it), not the codec (VP8 does it too;
+  audio is fine), and not the guest's CPU (`udot`, `smmla` and `bfdot` all
+  execute, so `HWCAP` is honest). Firefox and WebKit render the same file in
+  this VM, and `chrome-headless-shell`, full `chromium`, `--disable-gpu`,
+  `--disable-gpu-compositing`, `--disable-gpu-memory-buffer-video-frames`,
+  `--use-gl=disabled`, `--in-process-gpu`, `--single-process` and
+  `--disable-features=UseMultiPlaneFormatForSoftwareVideo` all still crash.
+  Matches the unresolved https://github.com/microsoft/playwright/issues/30409;
+  there is no flag or newer build to adopt (1.63.0 is current), and the guest's
+  apt has no chromium of its own. Consequence: `apps/architect`'s
+  `00-sample-protocol.spec.ts` stops at step 04, where it uploads `01.mov`, so
+  steps 04-17 cannot run here. CI runs the whole spec on x86_64 and passes it,
+  so leave it alone rather than re-investigating or weakening the spec.
