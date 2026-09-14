@@ -28,6 +28,7 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe.skipIf(!db)('audited team RPC', () => {
   let pool: pg.Pool;
+  let jobSchema: string;
   let dispose: () => Promise<void>;
   let membershipRole: string;
   let client: ReturnType<typeof createRpcClient>;
@@ -36,6 +37,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
+    jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, 'rpc-audit-team');
@@ -63,6 +65,9 @@ describe.skipIf(!db)('audited team RPC', () => {
       createApp(readEnv(), {
         auth,
         pool: scratch.app,
+        // What the web process hands the router: creating an invitation queues
+        // its delivery in the same transaction (#1895).
+        jobs: await scratch.createJobClient(),
       }),
     );
   });
@@ -101,6 +106,19 @@ describe.skipIf(!db)('audited team RPC', () => {
       invitationId: invitation.invitationId,
       status: 'canceled',
     });
+
+    const queued = await pool.query<{ name: string; data: unknown }>(
+      `select job.name, job.data
+       from ${jobSchema}.job_common job
+       join team_invitation_deliveries delivery
+         on delivery.id = (job.data->>'deliveryId')::uuid
+       where delivery.invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    // Exactly one, carrying the delivery id alone: the command's transaction
+    // creates the invitation, its delivery row and its job together.
+    expect(queued.rows).toHaveLength(1);
+    expect(queued.rows[0]?.name).toBe('invitation-delivery');
 
     const events = await pool.query<{
       event_type: string;

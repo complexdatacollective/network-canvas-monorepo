@@ -2,7 +2,6 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   foreignKey,
-  index,
   integer,
   pgTable,
   text,
@@ -30,12 +29,9 @@ const invitationDeliveries = pgTable(
     teamLabel: text('team_label').notNull(),
     inviterLabel: text('inviter_label').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // What the handler has already tried. Which attempt runs next, and when,
+    // is the job queue's (#1895); this counter is the row's own record.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
@@ -57,10 +53,6 @@ const invitationDeliveries = pgTable(
         AUTH_TABLES.team_invitations.team_id,
       ],
     }).onDelete('cascade'),
-    index('team_invitation_deliveries_dispatch_idx').on(
-      table.availableAt,
-      table.leaseExpiresAt,
-    ),
     check(
       'team_invitation_deliveries_attempt_count_check',
       sql`${table.attemptCount} >= 0`,
@@ -76,17 +68,11 @@ const invitationDeliveries = pgTable(
           AND char_length(${table.teamLabel}) BETWEEN 1 AND 320
           AND char_length(${table.inviterLabel}) BETWEEN 1 AND 320`,
     ),
-    check(
-      'team_invitation_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // A delivery ends once, one way: sent, given up on, suppressed or
+    // uncertain, never two of them.
     check(
       'team_invitation_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
-          AND (
-            num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1`,
     ),
     teamIsolationPolicy(),
   ],
@@ -120,8 +106,8 @@ CREATE OR REPLACE TRIGGER invitation_delivery_payload_immutable
 ${tenantTablesSql(['team_invitation_deliveries'])}
 
 -- Commands may enqueue inside their audited transaction, but only the
--- maintenance dispatcher can advance delivery state. The trigger keeps the
--- snapshotted recipient, role, labels, invitation, and expiry immutable even
--- for that cross-team role and privileged connections.
+-- maintenance worker that runs the delivery job can advance delivery state.
+-- The trigger keeps the snapshotted recipient, role, labels, invitation, and
+-- expiry immutable even for that cross-team role and privileged connections.
 REVOKE UPDATE, DELETE ON team_invitation_deliveries FROM ${TENANT_ROLES.app};
 `;

@@ -29,6 +29,7 @@ import {
   AUDIT_TEAM_LOCK_KEY_SQL,
 } from '../../audit/store.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import type { JobClient } from '../../jobs/client.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -161,11 +162,17 @@ describe.skipIf(!db)('audited team commands', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
   let dispose: () => Promise<void>;
+  // Creating an invitation queues its delivery in the command's own
+  // transaction (#1895), so the command needs the queue a running process
+  // always has.
+  let jobs: JobClient;
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    const scratch = await createScratchSchema(db);
+    ({ pool, app, dispose } = scratch);
     await provisionScratchSchema(pool);
+    jobs = await scratch.createJobClient();
   });
 
   afterAll(async () => {
@@ -673,6 +680,7 @@ describe.skipIf(!db)('audited team commands', () => {
 
     await createTeamInvitation(
       {
+        jobs,
         tenantDb: createTenantDb(app, teamId),
         principal: principal(owner),
         requestId: randomUUID(),
@@ -784,6 +792,7 @@ describe.skipIf(!db)('audited team commands', () => {
       );
       const command = createTeamInvitation(
         {
+          jobs,
           tenantDb,
           principal: principal(admin),
           requestId: randomUUID(),
@@ -948,6 +957,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await expect(
       createTeamInvitation(
         {
+          jobs,
           tenantDb: createTenantDb(app, teamId),
           principal: principal(ordinaryMember),
           requestId: randomUUID(),
@@ -1049,6 +1059,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await expect(
       createTeamInvitation(
         {
+          jobs,
           tenantDb: createTenantDb(app, teamId),
           principal: principal(admin),
           requestId,
@@ -1122,6 +1133,7 @@ describe.skipIf(!db)('audited team commands', () => {
       await expect(
         createTeamInvitation(
           {
+            jobs,
             tenantDb,
             principal: principal(admin),
             requestId: randomUUID(),
@@ -1167,7 +1179,7 @@ describe.skipIf(!db)('audited team commands', () => {
     const results = await Promise.all(
       Array.from({ length: 6 }, (_, attempt) =>
         createTeamInvitation(
-          { ...context, requestId: randomUUID() },
+          { jobs, ...context, requestId: randomUUID() },
           {
             email: `authorized-burst-${attempt}@example.com`,
             role: 'member',
@@ -1310,7 +1322,7 @@ describe.skipIf(!db)('audited team commands', () => {
     ).rejects.toMatchObject({ code: 'NO_CHANGE' });
 
     const positive = await createTeamInvitation(
-      { ...context, requestId: randomUUID() },
+      { jobs, ...context, requestId: randomUUID() },
       { email: 'positive-oracle@example.com', role: 'member' },
     );
     expect(positive.status).toBe('pending');
@@ -1473,7 +1485,7 @@ describe.skipIf(!db)('audited team commands', () => {
     const tenantDb = createTenantDb(app, teamId);
 
     const created = await createTeamInvitation(
-      { tenantDb, principal: principal(owner), requestId: randomUUID() },
+      { jobs, tenantDb, principal: principal(owner), requestId: randomUUID() },
       { email: 'Invitee@Example.com', role: 'admin' },
     );
     expect(created).toMatchObject({
@@ -1509,7 +1521,12 @@ describe.skipIf(!db)('audited team commands', () => {
     ]);
     await expect(
       createTeamInvitation(
-        { tenantDb, principal: principal(owner), requestId: randomUUID() },
+        {
+          jobs,
+          tenantDb,
+          principal: principal(owner),
+          requestId: randomUUID(),
+        },
         { email: 'invitee@example.com', role: 'member' },
       ),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
@@ -1755,6 +1772,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await seedIdentity(pool, teamId, owner);
     await createTeamInvitation(
       {
+        jobs,
         tenantDb: createTenantDb(app, teamId),
         principal: principal(owner),
         requestId: randomUUID(),

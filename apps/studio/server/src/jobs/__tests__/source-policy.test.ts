@@ -88,6 +88,7 @@ describe('job source policy', () => {
       'apps/studio/server/src/jobs/client.ts',
       'apps/studio/server/src/jobs/database.ts',
       'apps/studio/server/src/jobs/enqueue.ts',
+      'apps/studio/server/src/jobs/handlers/invitation-delivery.ts',
       'apps/studio/server/src/jobs/queues.ts',
       'apps/studio/server/src/jobs/register.ts',
       'apps/studio/server/src/jobs/worker.ts',
