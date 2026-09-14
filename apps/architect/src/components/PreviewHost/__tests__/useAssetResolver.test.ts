@@ -1,6 +1,8 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MissingAssetDataError } from '~/utils/assetUtils';
+
 import { useAssetResolver } from '../useAssetResolver';
 
 const getAssetByIdMock = vi.fn();
@@ -10,7 +12,8 @@ const SCOPE = 'p1';
 // getAssetById already reads IndexedDB with an in-memory fallback; mocking it
 // (rather than the raw Dexie table) verifies the resolver goes through the same
 // path the editor uses, so Safari-private in-memory assets resolve in preview.
-vi.mock('~/utils/assetUtils', () => ({
+vi.mock('~/utils/assetUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/assetUtils')>()),
   getAssetById: (assetId: string, protocolId?: string) =>
     getAssetByIdMock(assetId, protocolId),
 }));
@@ -113,7 +116,11 @@ describe('useAssetResolver', () => {
   it('rejects when getAssetById returns no entry', async () => {
     getAssetByIdMock.mockResolvedValueOnce(undefined);
     const { result } = renderHook(() => useAssetResolver(SCOPE));
-    await expect(result.current('missing')).rejects.toThrow(/missing/);
+    // Typed so the preview can tell a resource the protocol arrived without
+    // apart from a preview that failed.
+    await expect(result.current('missing')).rejects.toBeInstanceOf(
+      MissingAssetDataError,
+    );
   });
 
   it('rejects when there is no active protocol scope', async () => {

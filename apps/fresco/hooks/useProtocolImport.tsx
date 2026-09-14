@@ -13,8 +13,12 @@ import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import {
-  MalformedNetcanvasError,
+  createNetcanvasReader,
+  getProtocolFileErrorKind,
   hashProtocol,
+  isProtocolFileFault,
+  loadNetcanvasArchive,
+  missingAssetsError,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
@@ -43,8 +47,7 @@ import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
 import {
   fileAsArrayBuffer,
-  getProtocolAssets,
-  getProtocolJson,
+  partitionProtocolAssets,
 } from '~/utils/protocolImport';
 import { getProtocolSizeError } from '~/utils/protocolSize';
 
@@ -250,17 +253,12 @@ export const useProtocolImport = () => {
       updateToastPhase(toastId, 'parsing');
       const fileArrayBuffer = await fileAsArrayBuffer(file, createMessageError);
 
-      const JSZip = (await import('jszip')).default;
-      const zip = await JSZip.loadAsync(fileArrayBuffer).catch(
-        (cause: unknown) => {
-          throw new MalformedNetcanvasError(
-            'not-an-archive',
-            'Protocol archive could not be read',
-            { cause },
-          );
-        },
-      );
-      const protocolJson = await getProtocolJson(zip, createMessageError);
+      // One reader for the whole archive: it holds a single inflation budget
+      // across both reads below, so a deflate bomb split between
+      // `protocol.json` and the media cannot spend the allowance twice.
+      const zip = await loadNetcanvasArchive(new Uint8Array(fileArrayBuffer));
+      const reader = createNetcanvasReader(zip);
+      const protocolJson = await reader.readProtocol();
 
       // Phase: Validating
       updateToastPhase(toastId, 'validating');
@@ -294,11 +292,30 @@ export const useProtocolImport = () => {
       }
 
       // Phase: Extracting assets
+      //
+      // Deliberately after the duplicate check: re-importing a protocol that
+      // is already installed should cost the researcher the hash, not the
+      // inflation of every video in it.
+      //
+      // The archive's own manifest resolves the media, because its `source`
+      // values are the only ones that describe entries in this zip; the
+      // validated document supplies what gets stored against them.
       updateToastPhase(toastId, 'extracting-assets');
-      const { fileAssets, apikeyAssets } = await getProtocolAssets(
+      const { assets: extractedAssets, missingAssets } =
+        await reader.readAssets();
+
+      // Extraction reports a manifest entry with no file rather than refusing,
+      // leaving the policy to the host. Fresco serves these resources to
+      // participants, so an incomplete protocol must not be installed: a
+      // missing stimulus would surface mid-interview, to the one person who
+      // can do nothing about it.
+      if (missingAssets.length > 0) {
+        throw missingAssetsError(missingAssets);
+      }
+
+      const { fileAssets, apikeyAssets } = partitionProtocolAssets(
         validatedProtocol,
-        zip,
-        createMessageError,
+        extractedAssets,
       );
 
       const newAssets: typeof fileAssets = [];
@@ -418,8 +435,24 @@ export const useProtocolImport = () => {
     } catch (e) {
       const error = ensureError(e);
       const protocolFileError = describeProtocolFileErrorMessage(error);
-
-      captureClientException(error);
+      // A file the researcher chose being damaged, truncated, or too old to
+      // upgrade is an answer about that file, not a defect in Fresco. Sending
+      // it to exception tracking buries the failures that are defects, and the
+      // message carries researcher-authored resource names. Record the kind
+      // instead, which is a fixed vocabulary and holds nothing from the file.
+      //
+      // `isProtocolFileFault`, not merely "can this be described": a migration
+      // step that throws because of a bug in it is re-raised as
+      // `MigrationStepError` and describes itself as a protocol that cannot be
+      // upgraded, so treating every describable failure as the file's fault
+      // would hide our own migration defects.
+      if (isProtocolFileFault(error)) {
+        captureClientEvent('ProtocolImportFailed', {
+          reason: getProtocolFileErrorKind(error),
+        });
+      } else {
+        captureClientException(error);
+      }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a
       // failed import doesn't leave orphaned files in storage.
