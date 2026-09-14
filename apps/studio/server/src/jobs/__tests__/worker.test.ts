@@ -40,11 +40,14 @@ describe.skipIf(!db)('createJobWorker', () => {
     await scratch.dispose();
   });
 
-  const enqueueGc = async (): Promise<string> => {
+  const enqueueSignIn = async (): Promise<string> => {
     const client = await scratch.app.connect();
     try {
       await client.query('BEGIN');
-      const jobId = await jobs.enqueue(client, 'protocol-store-gc', {});
+      const jobId = await jobs.enqueue(client, 'sign-in-email', {
+        email: 'researcher@example.org',
+        url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+      });
       await client.query('COMMIT');
       return jobId;
     } finally {
@@ -124,24 +127,26 @@ describe.skipIf(!db)('createJobWorker', () => {
   });
 
   it('lets an in-flight job finish before stopping', async () => {
-    const worker = scratch.createJobWorker({ mailer: silentMailer });
-    await worker.start();
-
     let entered: number | undefined;
     let left: number | undefined;
-    await worker.boss.work(
-      'protocol-store-gc',
-      { pollingIntervalSeconds: 0.5 },
-      async () => {
+    // The slowness goes in the transport rather than in a handler registered
+    // beside the worker's own: a second `work()` on the same queue would race
+    // the registered one for the job, and half the time the job would be
+    // finished by the handler this case is not watching.
+    const slowMailer: StudioMailer = {
+      ...silentMailer,
+      sendMagicLink: async () => {
         entered = Date.now();
         // Long enough that a stop which did not wait would return first, and
         // short enough to stay well inside the suite's timeout.
         await new Promise((resolve) => setTimeout(resolve, 1000));
         left = Date.now();
       },
-    );
+    };
+    const worker = scratch.createJobWorker({ mailer: slowMailer });
+    await worker.start();
 
-    const jobId = await enqueueGc();
+    const jobId = await enqueueSignIn();
     await vi.waitFor(() => expect(entered).toBeDefined(), {
       timeout: 15_000,
       interval: 25,
