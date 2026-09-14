@@ -4,12 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier, escapeLiteral, Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import {
-  jsonHash,
-  readMigrations,
-  sha256,
-  type Migration,
-} from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
@@ -21,7 +15,14 @@ import {
   reachableDb,
 } from '../../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
-import { migrateDatabase, enforceMigrationSecurity } from '../migrate.ts';
+import {
+  jsonHash,
+  readMigrations,
+  sha256,
+  type Migration,
+} from '../artifact.ts';
+import { migrateDatabase } from '../migrate.ts';
+import { enforceMigrationSecurity } from '../security.ts';
 
 const database = await reachableDb();
 const shipped = await readMigrations(

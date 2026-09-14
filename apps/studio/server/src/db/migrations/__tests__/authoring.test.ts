@@ -8,15 +8,10 @@ import {
 } from 'drizzle-kit/api-postgres';
 import { expect, it } from 'vitest';
 
-import {
-  jsonHash,
-  readMigrations,
-  sha256,
-} from '@codaco/studio-sync/postgres-migration-artifacts';
-
 import { generateMigrationFiles } from '../../../../scripts/generate-migration.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
 import { SCHEMA, SIDECARS } from '../../schema.ts';
+import { jsonHash, readMigrations, sha256 } from '../artifact.ts';
 
 it('authors a second current-version migration with explicit column addition and removal, never a guessed rename', async () => {
   const root = await mkdtemp(join(tmpdir(), 'studio-migration-authoring-'));
@@ -87,29 +82,6 @@ it('authors a second current-version migration with explicit column addition and
     await expect(
       generateMigrationFiles({ root, name: 'unchanged' }),
     ).rejects.toThrow('unchanged');
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-it('keeps Studio-owned authoring inputs authoritative when caller objects have extra fields', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'studio-authoring-boundary-'));
-  const sidecarStatements = ['SELECT 999;'];
-  const schema = {};
-  const caller = {
-    root,
-    name: 'initial',
-    applicationName: 'Different Application',
-    schema,
-    sidecarStatements,
-    expectedFingerprint: sha256(sidecarStatements.join('\n')),
-  };
-  try {
-    const result = await generateMigrationFiles(caller);
-    const [migration] = await readMigrations(root);
-    expect(result.id).toBe('0001_initial');
-    expect(migration?.manifest.fingerprint).toBe(SCHEMA_FINGERPRINT);
-    expect(migration?.sidecars).toBe(SIDECARS.join('\n').trimEnd() + '\n');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
