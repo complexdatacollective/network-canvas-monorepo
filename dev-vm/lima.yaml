@@ -1,0 +1,80 @@
+# Network Canvas development VM.
+#
+# A Linux guest on Apple's Virtualization.framework that holds the repository,
+# the toolchain and every process an agent spawns, so that the host's
+# endpoint-security agents never see them. See dev-vm/README.md for the why,
+# the daily workflow and the design notes; drive it through `dev-vm/vm`.
+#
+# Provisioning scripts live next to this file (dev-vm/provision/) and are
+# copied into the instance when it is created; after editing them run
+# `dev-vm/vm rebuild` (the data disk survives).
+
+minimumLimaVersion: 2.2.0
+
+base:
+  - template:_images/ubuntu-26.04
+
+vmType: vz
+
+# Twelve vCPUs — the M5 Max's performance-core count. Virtualization.framework
+# exposes no core topology to the guest, and macOS places busy vCPU threads on
+# performance cores itself; asking for all 18 would mostly add efficiency-core
+# workers that the guest (and vitest's `cores - 1` default) would treat as full
+# cores.
+cpus: 12
+memory: 32GiB
+
+# Primary (OS) disk. Disposable: `dev-vm/vm rebuild` recreates it from this
+# file. ASIF is Apple's sparse VM image format (macOS 26+); Lima only supports
+# it for the primary disk, so the data disk below is raw.
+disk: 100GiB
+vmOpts:
+  vz:
+    diskImageFormat: asif
+
+# Nothing from the host is shared into the guest. Every host file the guest
+# touched through virtiofs would be opened by a host-side process and inspected
+# by the endpoint-security agents this VM exists to bypass — and virtiofs is
+# slower than the guest's own ext4 anyway. The repository lives on `nc-data`.
+mounts: []
+
+# Persistent data disk (created by `dev-vm/vm up`, kept across rebuilds).
+# Lima mounts it at /mnt/lima-nc-data; provision/system.sh lays out the home
+# directory, the projects directory and the pnpm store on it.
+additionalDisks:
+  - name: nc-data
+    format: true
+    fsType: ext4
+
+# The guest user mirrors the host user, including the home directory path, so
+# that absolute paths — and Claude Code's per-project state, which is keyed by
+# the repository path — are identical on both sides.
+user:
+  home: /Users/{{.User}}
+
+# Docker (rootful docker-ce) is installed by provision/system.sh; Lima's own
+# containerd is not wanted.
+containerd:
+  system: false
+  user: false
+
+ssh:
+  # The host's ssh-agent (1Password etc.) is reachable inside the guest.
+  forwardAgent: true
+
+provision:
+  - mode: system
+    file: provision/system.sh
+  - mode: user
+    file: provision/user.sh
+
+probes:
+  - description: docker is running
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 60s bash -c "until command -v docker >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "docker is not running yet"
+        exit 1
+      fi
+    hint: See "/var/log/cloud-init-output.log" in the guest.
