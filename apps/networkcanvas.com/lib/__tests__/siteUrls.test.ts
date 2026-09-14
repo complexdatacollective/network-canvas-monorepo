@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   documentationUrl,
   protocolGalleryHref,
+  protocolGalleryPreviewHref,
   protocolGalleryUrl,
   isSameSiteNavigationUrl,
   resolveWebsiteNavigationUrl,
@@ -58,6 +59,12 @@ describe('website site URLs', () => {
     expect(protocolGalleryHref('es', 'gate')).toBe(
       '/es/protocol-gallery/gate/',
     );
+    expect(protocolGalleryPreviewHref('es', 'gate')).toBe(
+      '/es/protocol-gallery/gate/preview/',
+    );
+    expect(protocolGalleryPreviewHref('es', 'sixhumene', 2)).toBe(
+      '/es/protocol-gallery/sixhumene/preview/?wave=2',
+    );
     expect(protocolGalleryUrl('en-GB', 'gate')).toBe(
       'https://networkcanvas.com/en-GB/protocol-gallery/gate/',
     );
@@ -71,6 +78,9 @@ describe('website site URLs', () => {
     it('drops the route prefix from same-host gallery links', () => {
       expect(protocolGalleryHref('en-US')).toBe('/en-US/');
       expect(protocolGalleryHref('es', 'gate')).toBe('/es/gate/');
+      expect(protocolGalleryPreviewHref('es', 'gate')).toBe(
+        '/es/gate/preview/',
+      );
     });
 
     it('builds canonicals against the gallery origin', () => {

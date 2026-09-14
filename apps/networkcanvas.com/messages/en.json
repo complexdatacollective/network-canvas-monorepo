@@ -164,7 +164,7 @@
     },
     "intro": {
       "heading": "Protocol Gallery",
-      "introduction": "Explore protocols shared by researchers using Network Canvas. Review how each study was designed, download its codebook and protocol, or open it in Fresco.",
+      "introduction": "Explore protocols shared by researchers using Network Canvas. Review how each study was designed, download its codebook and protocol, or preview the interview in your browser.",
       "featured": "Featured protocol"
     },
     "collection": {
@@ -249,9 +249,28 @@
       "dateAdded": "Date added",
       "viewPublication": "View publication",
       "wave": "Wave {wave}",
-      "openSandbox": "Preview in Fresco",
+      "preview": "Preview protocol",
       "downloadProtocol": "Download protocol",
       "viewCodebook": "Codebook summary"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Preview: {name}"
+      },
+      "loading": "Preparing the preview…",
+      "finishConfirmation": "This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.",
+      "finishedHeading": "Preview finished",
+      "finishedDescription": "The interview finished just as it would for a participant. Nothing was saved.",
+      "restart": "Start the preview again",
+      "backToProtocol": "Back to the protocol",
+      "errorHeading": "This protocol can't be previewed",
+      "errors": {
+        "unavailable": "The protocol file could not be downloaded. Check your connection and try again.",
+        "unreadable": "The protocol file could not be opened. It may be corrupt.",
+        "unsupported-version": "This protocol uses a schema version the interview engine cannot run.",
+        "invalid": "The protocol failed validation, so the interview engine cannot run it."
+      },
+      "retry": "Try again"
     },
     "submit": {
       "heading": "Submit your protocol",

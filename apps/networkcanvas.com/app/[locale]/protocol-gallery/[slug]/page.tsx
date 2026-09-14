@@ -135,9 +135,10 @@ export default async function ProtocolDetailPage({
                   </Paragraph>
                   <div className="mt-6">
                     <ProtocolDownloads
+                      locale={locale}
+                      slug={protocol.slug}
                       downloads={protocol.downloads}
                       supplementaryMaterials={protocol.supplementaryMaterials}
-                      sandboxUrl={protocol.sandboxUrl}
                     />
                   </div>
                   <Paragraph margin="none" className="mt-8">

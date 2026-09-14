@@ -57,7 +57,6 @@ describe('loadProtocolGallery', () => {
     ).toEqual([1, 2, 3]);
     expect(protocols.find(({ slug }) => slug === 'snaaps')).toMatchObject({
       dateAdded: '2026-06-12',
-      sandboxUrl: undefined,
       usesRosters: true,
       fields: ['Social work', 'Aging'],
       edgeGeneration: ['Sociogram'],

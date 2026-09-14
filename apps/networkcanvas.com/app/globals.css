@@ -12,6 +12,8 @@
    against packages/fresco-ui/src, not this app's node_modules, so point
    Tailwind at the source tree directly. */
 @source '../node_modules/@codaco/fresco-ui/src/**/*.{ts,tsx}';
+/* The interview Shell (protocol gallery preview) is consumed from source too. */
+@source '../node_modules/@codaco/interview/src/**/*.{ts,tsx}';
 
 /* The Fresco theme resets the text scale; re-add the slightly-smaller-than
    -base size used for secondary and meta copy. */

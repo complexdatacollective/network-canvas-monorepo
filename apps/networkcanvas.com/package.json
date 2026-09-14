@@ -16,6 +16,7 @@
     "@codaco/art": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
+    "@codaco/interview": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",

@@ -57,7 +57,6 @@ export type GalleryProtocol = {
   usesRosters: boolean;
   summary: string;
   description: string;
-  sandboxUrl: string | undefined;
   featured: boolean;
   dateAdded: string;
   searchText: string;
@@ -103,7 +102,6 @@ const codebookFilename = filename.refine(
 const optionalProtocolFilename = z.union([protocolFilename, z.literal('')]);
 const optionalCodebookFilename = z.union([codebookFilename, z.literal('')]);
 const optionalText = z.string().trim().optional().default('');
-const optionalHttpsUrl = z.union([httpsUrl, z.literal('')]);
 const yesNo = z.enum(['yes', 'no']);
 const integer = z.string().trim().regex(/^\d+$/, 'must be a whole number');
 const optionalInteger = z.union([integer, z.literal('')]);
@@ -131,7 +129,6 @@ const authoredRowShape = {
   'Codebook Summary (original)': requiredText,
   'Protocol File (asset)': protocolFilename,
   'Codebook Summary (asset)': codebookFilename,
-  'Fresco': optionalHttpsUrl,
   'Featured': yesNo,
   'Supplementary Material Label': optionalText,
   'Supplementary Material (asset)': optionalCodebookFilename
@@ -523,7 +520,6 @@ async function readProtocolGallery(
         usesRosters: row['Uses Rosters'] === 'yes',
         summary: normalizeText(row['Qualitative Summary']),
         description,
-        sandboxUrl: row.Fresco || undefined,
         featured: row.Featured === 'yes',
         dateAdded: parseDateAdded(row['Date Added']),
         searchText: [

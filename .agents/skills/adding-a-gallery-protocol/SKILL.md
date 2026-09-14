@@ -92,7 +92,6 @@ study almost always changes the stage list.
 | `Codebook Summary (original)`                                      | required; likewise                                                                                                                                                                              |
 | `Protocol File (asset)`                                            | required; bare filename ending `.netcanvas`                                                                                                                                                     |
 | `Codebook Summary (asset)`                                         | required; bare filename ending `.pdf`                                                                                                                                                           |
-| `Fresco`                                                           | empty, or an `https://` sandbox URL — presence is what renders the "open in Fresco" action                                                                                                      |
 | `Featured`                                                         | exactly `yes` or `no`; featured rows sort first under every sort option                                                                                                                         |
 | `Protocol File (asset) Wave N` / `Codebook Summary (asset) Wave N` | optional, but must be filled or empty **as a pair**                                                                                                                                             |
 | `Date Added`                                                       | `Mon. D,YYYY` — an English three-letter month, optional period, then day, comma, year (`Oct. 22,2025`). Drives the newest/oldest sort.                                                          |
@@ -120,6 +119,13 @@ csv().fromString(fs.readFileSync('content/protocol-gallery.csv','utf8')).then(ro
   exists only if the row does).
 - **Filters and sorting.** Facet options and their counts are computed from the
   loaded rows in `lib/galleryFacets.ts`.
+- **The in-browser preview.** Every wave's `.netcanvas` gets a "Preview in
+  browser" action that opens the study page's `preview/` route in a popup,
+  fetches the file, migrates it to the interview engine's schema version in
+  memory, and runs it in the interview Shell (`lib/protocolPreview.ts`,
+  `components/protocol-gallery/preview/`). Nothing is deployed anywhere for a
+  protocol to be previewable; a file the engine cannot migrate shows an error
+  in the preview window instead.
 - **Translations**, for the row itself: authored cells are rendered as written
   and are not translated. The one exception is stage-type names, which come from
   `ProtocolGallery.stageTypes.<StageType>` in `messages/en.json` and
