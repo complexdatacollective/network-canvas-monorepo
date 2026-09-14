@@ -37,33 +37,27 @@ export type OptionLabelFieldProps = CreateFormFieldProps<
  * a single-line document can even hold. Exactly the toolbar Architect withheld
  * for the same field.
  *
- * The label is stored canonically (NFC). Two labels that read identically are
- * then also identical bytes — which is what the uniqueness rules compare, what
- * a GraphML or CSV export carries, and what makes two protocols that look the
- * same be the same. See shared-consts' `canonical-text`. The incoming value is
- * canonicalised too, so a label authored before this rule existed is not
- * mistaken for an edit the moment its row is opened.
+ * The label is written canonically (NFC), on the way out and nowhere else.
+ * Two labels that read identically are then also identical bytes — which is
+ * what the uniqueness rules compare, what a GraphML or CSV export carries, and
+ * what makes two protocols that look the same be the same. See shared-consts'
+ * `canonical-text`. A label the protocol already holds is handed to the editor
+ * exactly as it was stored, so opening a row is not a repair the researcher
+ * never asked for; the next edit they DO make is written canonically like any
+ * other. `RichTextField` is what withholds the change the editor emits as it
+ * mounts, so nothing here needs to ask whether this is an edit at all.
  */
 export default function OptionLabelField({
   value,
   onChange,
   ...props
 }: OptionLabelFieldProps) {
-  const canonical = typeof value === 'string' ? toCanonicalText(value) : '';
-
   return (
     <RichTextField
       {...props}
       singleLine
-      value={canonical}
-      onChange={(next) => {
-        const label = toCanonicalText(next ?? '');
-        // `RichTextField` already withholds the change the editor emits as it
-        // mounts; this withholds the one canonicalisation itself makes moot, so
-        // opening a decomposed label does not report an edit either.
-        if (label === canonical) return;
-        onChange?.(label);
-      }}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(next) => onChange?.(toCanonicalText(next ?? ''))}
     />
   );
 }
