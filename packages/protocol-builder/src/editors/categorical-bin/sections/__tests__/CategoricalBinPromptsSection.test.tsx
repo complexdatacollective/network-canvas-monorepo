@@ -403,9 +403,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     expect(
       group.getByRole('switch', { name: 'Validation' }),
     ).toBeInTheDocument();
-    expect(
-      group.queryByRole('button', { name: 'Change this attribute’s values' }),
-    ).toBeNull();
+    expect(group.queryByRole('region', { name: 'Choice values' })).toBeNull();
   });
 
   /**
@@ -437,7 +435,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     // The values behind the bins stay editable: those the interview does read.
     expect(
-      bins.getByRole('button', { name: 'Change this attribute’s values' }),
+      bins.getByRole('region', { name: 'Choice values' }),
     ).toBeInTheDocument();
     expect(bins.queryByRole('switch', { name: 'Validation' })).toBeNull();
     // Both attributes are picked in this one dialog, so counting is what says
@@ -669,7 +667,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     // And still read-only: the list is shown INSTEAD of the control that would
     // edit it, rather than beside it.
     expect(
-      screen.queryByRole('button', { name: 'Change this attribute’s values' }),
+      screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
   });
 });

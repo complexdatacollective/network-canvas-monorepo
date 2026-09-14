@@ -73,3 +73,45 @@ export const validationSectionMessages = defineMessages({
       'Hint under the label of the control holding the validation rules, saying what the switches beneath it do.',
   },
 });
+
+/**
+ * The answers an attribute offers, named once.
+ *
+ * Two surfaces put these words over the same list: the codebook's own
+ * attribute editor, and the inline section a stage row edits them in
+ * (`sections/AttributeValueFields.tsx`, which is where Architect edited them).
+ * They are the same list to a researcher, so the wording is declared once.
+ */
+export const variableValuesMessages = defineMessages({
+  optionsLegend: {
+    id: 'protocolBuilder.codebookVariable.optionsLegend',
+    defaultMessage: 'Choice values',
+    description:
+      'Heading over the list of answers a participant may choose from for this attribute. A required marker follows it.',
+  },
+  optionsHint: {
+    id: 'protocolBuilder.codebookVariable.optionsHint',
+    defaultMessage:
+      'Define the values participants can choose for this categorical or ordinal attribute.',
+    description:
+      'Guidance under the choice values heading. Categorical and ordinal are two kinds of attribute.',
+  },
+  answersLegend: {
+    id: 'protocolBuilder.codebookVariable.answersLegend',
+    defaultMessage: 'Boolean values',
+    description:
+      'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
+  },
+  answersHint: {
+    id: 'protocolBuilder.codebookVariable.answersHint',
+    defaultMessage: 'Define the values stored for the on and off states.',
+    description:
+      'Guidance under the heading over a yes/no attribute’s two answers.',
+  },
+  addOption: {
+    id: 'protocolBuilder.codebookVariable.addOption',
+    defaultMessage: 'Create new option',
+    description:
+      'Button that adds an empty row to the list of answers a participant may choose from.',
+  },
+});

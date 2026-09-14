@@ -311,20 +311,25 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await findScaleField();
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Change this attribute’s values',
-      }),
+    // Inline under the picker, as Architect had it: the list is part of the
+    // prompt being written rather than something behind a button.
+    const values = within(
+      await screen.findByRole('region', { name: 'Choice values' }),
     );
-    const label = await screen.findByRole('textbox', {
-      name: 'Option 1 label',
-    });
-    expect(label).toHaveValue('Very close');
+    await harness.user.click(
+      values.getByRole('button', { name: 'Edit option 1' }),
+    );
+    const label = await screen.findByRole('textbox', { name: 'Label' });
+    expect(label).toHaveTextContent('Very close');
     await harness.user.clear(label);
     await harness.user.type(label, 'Inseparable');
     await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
+      screen.getByRole('button', { name: 'Finish editing option' }),
     );
+    // The row's own save is what writes it, which is Architect's write model
+    // too: the list belongs to the codebook attribute and commits under that
+    // section's lock, from the prompt the researcher was writing.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(

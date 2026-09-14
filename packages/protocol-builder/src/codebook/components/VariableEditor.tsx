@@ -37,6 +37,7 @@ import {
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { variableValuesMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
@@ -140,31 +141,6 @@ const messages = defineMessages({
     description:
       'Refusal shown under the attribute type field when someone else changed the type while this editor was open, which the draft in front of the researcher no longer matches.',
   },
-  optionsLegend: {
-    id: 'protocolBuilder.codebookVariable.optionsLegend',
-    defaultMessage: 'Choice values',
-    description:
-      'Heading over the list of answers a participant may choose from for this attribute. A required marker follows it.',
-  },
-  optionsHint: {
-    id: 'protocolBuilder.codebookVariable.optionsHint',
-    defaultMessage:
-      'Define the values participants can choose for this categorical or ordinal attribute.',
-    description:
-      'Guidance under the choice values heading. Categorical and ordinal are two kinds of attribute.',
-  },
-  answersLegend: {
-    id: 'protocolBuilder.codebookVariable.answersLegend',
-    defaultMessage: 'Boolean values',
-    description:
-      'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
-  },
-  answersHint: {
-    id: 'protocolBuilder.codebookVariable.answersHint',
-    defaultMessage: 'Define the values stored for the on and off states.',
-    description:
-      'Guidance under the heading over a yes/no attribute’s two answers.',
-  },
   heldAnswersLegend: {
     id: 'protocolBuilder.codebookVariable.heldAnswersLegend',
     defaultMessage: 'The answers this attribute offers',
@@ -213,12 +189,6 @@ const messages = defineMessages({
     defaultMessage: 'Remove option {index}',
     description:
       'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
-  },
-  addOption: {
-    id: 'protocolBuilder.codebookVariable.addOption',
-    defaultMessage: 'Create new option',
-    description:
-      'Button that adds an empty row to the list of answers a participant may choose from.',
   },
   createSubmit: {
     id: 'protocolBuilder.codebookVariable.createSubmit',
@@ -841,11 +811,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                {intl.formatMessage(messages.optionsLegend)}{' '}
+                {intl.formatMessage(variableValuesMessages.optionsLegend)}{' '}
                 <span className="text-destructive">*</span>
               </legend>
               <p className="text-muted mb-4 text-sm">
-                {intl.formatMessage(messages.optionsHint)}
+                {intl.formatMessage(variableValuesMessages.optionsHint)}
               </p>
               {optionsLocked ? (
                 <LockedOptions
@@ -959,7 +929,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       replaceOptions([...options, { label: '', value: '' }]);
                     }}
                   >
-                    {intl.formatMessage(messages.addOption)}
+                    {intl.formatMessage(variableValuesMessages.addOption)}
                   </Button>
                 </div>
               )}
@@ -985,10 +955,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           {optionsShape === 'boolean' && booleanAnswersEditable && (
             <fieldset className="mb-8 min-w-0">
               <legend className="font-heading mb-2 font-bold">
-                {intl.formatMessage(messages.answersLegend)}
+                {intl.formatMessage(variableValuesMessages.answersLegend)}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                {intl.formatMessage(messages.answersHint)}
+                {intl.formatMessage(variableValuesMessages.answersHint)}
               </p>
               <VariableBooleanAnswerFields
                 answers={booleanAnswers}

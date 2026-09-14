@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { useCallback, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -11,9 +12,10 @@ import {
 import { VariableNameSchema } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type {
-  CodebookSubject,
-  ProtocolBuilderProtocolContext,
+import {
+  variablesForSubject,
+  type CodebookSubject,
+  type ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { codebookRefusalMessage } from './compoundFailureCopy.ts';
@@ -28,6 +30,10 @@ import {
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
+import {
+  buildInterfaceOwnedOptionMap,
+  interfaceOwnedOptionsIssue,
+} from './variableRoles.ts';
 import {
   useCodebookSectionWrite,
   type CodebookWriteOutcome,
@@ -86,6 +92,13 @@ const messages = defineMessages({
       'This attribute could not be created, so nothing was changed. Try again.',
     description:
       'Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own.',
+  },
+  refusedOptionsUnchanged: {
+    id: 'protocolBuilder.codebookEditing.setOptionsRefused',
+    defaultMessage:
+      'This attribute’s values could not be changed, so nothing was changed. Try again.',
+    description:
+      'Refusal shown on the list of values a participant chooses between, in a stage editor, when recording them on the attribute failed for a reason with no explanation of its own.',
   },
   refusedControlUnchanged: {
     id: 'protocolBuilder.codebookEditing.setComponentRefused',
@@ -467,6 +480,122 @@ export function useSetVariableComponent(
       };
     },
     [intl, protocolContext, subject, write],
+  );
+}
+
+export type SetVariableOptions = (
+  /**
+   * Whose codebook holds the attribute — per call rather than per hook,
+   * because one caller's subject is the ROW's: a tie-strength prompt names
+   * the connection type it is about, and the scale it rules belongs to that
+   * type rather than to the stage.
+   */
+  subject: CodebookSubject | undefined,
+  variableId: string,
+  options: unknown,
+) => Promise<SetVariableComponentOutcome>;
+
+/**
+ * Records the answers an existing attribute offers.
+ *
+ * Architect edited these where the question is asked — inline, under the
+ * picker that binds the attribute — and wrote them in the ROW's own save
+ * (`sections/Form/fieldCommit.ts`, `sections/useVariableOptionsCommit.ts`).
+ * They still belong to the codebook variable rather than to the field that
+ * renders it: one attribute offers the same answers wherever it is asked for,
+ * or an export would hold two different lists under one name. So a row
+ * authoring them is a codebook edit, and commits on its own like the input
+ * control beside it.
+ *
+ * A list that already matches is not written, for the reason the control's own
+ * write is not: an unchanged save must not put a revision on the codebook
+ * section that a collaborator has to merge.
+ *
+ * A list an INTERFACE owns is refused rather than written. Sorting family
+ * members by sex is legitimate authoring, but the interface that both writes
+ * the attribute and branches on its exact values owns that list; Architect
+ * refused the same write for the same reason
+ * (`sections/useVariableOptionsCommit.ts`'s interface-owned refusal), and
+ * until now the package carried the refusal with nothing calling it.
+ */
+export function useSetVariableOptions(): SetVariableOptions {
+  const write = useCodebookSectionWrite();
+  const protocolContext = useProtocolContext();
+  const intl = useAppIntl();
+
+  return useCallback(
+    async (subject, variableId, options) => {
+      if (subject === undefined) {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.noSubject),
+        };
+      }
+      const held = variablesForSubject(protocolContext, subject)[variableId];
+      // The only reading of the cache here, and only to skip a write that has
+      // nothing to say. A cache that has not arrived yet is not an answer, so
+      // it goes on and asks the host.
+      if (
+        held !== undefined &&
+        isEqual(Reflect.get(held, 'options'), options)
+      ) {
+        return { status: 'unchanged' };
+      }
+
+      const ownedIssue = interfaceOwnedOptionsIssue(
+        buildInterfaceOwnedOptionMap(protocolContext),
+        subject,
+        variableId,
+        options,
+      );
+      if (ownedIssue !== undefined) {
+        return { status: 'refused', message: ownedIssue };
+      }
+
+      let refusal: string | undefined;
+      const outcome = await write(subject, (authoritativeDocument) => {
+        const variables = authoritativeDocument.variables;
+        const current =
+          typeof variables === 'object' && variables !== null
+            ? Reflect.get(variables, variableId)
+            : undefined;
+        if (typeof current !== 'object' || current === null) {
+          refusal = intl.formatMessage(messages.missingVariable);
+          throw new MissingVariableError(variableId);
+        }
+
+        try {
+          return documentWithUpdatedVariable({
+            subject,
+            authoritativeDocument,
+            variableId,
+            draft: { options },
+            // Replaced rather than merged: a value the researcher removed is
+            // gone, and a list merged key by key would put it back.
+            replaceProperties: ['options'],
+          });
+        } catch (error: unknown) {
+          refusal = refusalMessage(
+            error,
+            {
+              name: Reflect.get(current, 'name'),
+              type: Reflect.get(current, 'type'),
+              component: Reflect.get(current, 'component'),
+            },
+            intl.formatMessage(messages.refusedOptionsUnchanged),
+            intl,
+          );
+          throw error;
+        }
+      });
+
+      if (outcome.status === 'applied') return { status: 'written' };
+      return {
+        status: 'refused',
+        message: refusal ?? rowRefusal(outcome, intl),
+      };
+    },
+    [intl, protocolContext, write],
   );
 }
 

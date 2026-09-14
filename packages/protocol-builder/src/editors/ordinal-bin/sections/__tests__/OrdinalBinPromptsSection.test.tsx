@@ -74,11 +74,17 @@ describe('the questions an ordinal bin asks', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
 
+    // The values are edited where the prompt is written, as Architect had them
+    // ("Attribute options"), rather than behind a button that opens a dialog
+    // over this one.
     expect(
-      await dialog.findByRole('button', {
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('button', {
         name: 'Change this attribute’s values',
       }),
-    ).toBeInTheDocument();
+    ).toBeNull();
     expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
   });
 

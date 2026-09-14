@@ -288,22 +288,27 @@ const savedAttribute = (harness: Harness, subject: SectionRef, name: string) =>
  * editor opens on the values the attribute already has, so a new one lands in
  * the row past them.
  */
-const addOption = async (
-  harness: Harness,
-  position: number,
-  label: string,
-  value: string,
-) => {
+/**
+ * Adds one answer to the inline list under the row's attribute picker.
+ *
+ * A new row opens straight into its own editor, so its two cells are the only
+ * ones on screen while it is being written — which is what lets them be
+ * reached by their plain names.
+ */
+const addOption = async (harness: Harness, label: string, value: string) => {
   await harness.user.click(
     screen.getByRole('button', { name: 'Create new option' }),
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    await screen.findByRole('textbox', { name: 'Label' }),
     label,
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    screen.getByRole('textbox', { name: 'Value' }),
     value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
   );
 };
 
@@ -397,15 +402,17 @@ export const authorsValuesFromField = async (
   const creating = await openField(harness, 'Create new form field');
   await collectAttribute(harness, creating, categoricalId);
 
-  await harness.user.click(
-    await creating.findByRole('button', {
-      name: 'Change this attribute’s values',
-    }),
+  // Inline under the picker, as Architect had it, and written by the ROW's own
+  // save — so the journey each editor proves is the whole one: type a value
+  // where the question is, press the row's own button, and the codebook for
+  // THIS editor's subject holds it.
+  await addOption(harness, 'Somewhere else', 'elsewhere');
+  await harness.user.type(
+    creating.getByRole('textbox', { name: 'Question text' }),
+    'Where do you usually meet?',
   );
-  await addOption(harness, 3, 'Somewhere else', 'elsewhere');
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Save attribute' }),
-  );
+  await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
 
   await waitFor(() =>
     expect(

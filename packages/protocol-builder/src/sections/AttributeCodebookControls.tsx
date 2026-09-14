@@ -28,7 +28,6 @@ import {
   useCodebookSectionDocument,
   useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
-import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
   getValidationLabel,
@@ -76,18 +75,6 @@ const messages = defineMessages({
     defaultMessage: 'Create this attribute and its values',
     description:
       'Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member.',
-  },
-  editValues: {
-    id: 'protocolBuilder.attributeCodebookControls.editValues',
-    defaultMessage: 'Change this attribute’s values',
-    description:
-      'Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens.',
-  },
-  editAnswerLabels: {
-    id: 'protocolBuilder.attributeCodebookControls.editAnswerLabels',
-    defaultMessage: 'Change this attribute’s answer labels',
-    description:
-      'The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens.',
   },
   editParameters: {
     id: 'protocolBuilder.attributeCodebookControls.editParameters',
@@ -462,29 +449,6 @@ export default function AttributeCodebookControls({
   // The row's own choice while it is being made, falling back to the codebook
   // for the render before the control has registered.
   const pickedComponent = asString(liveComponent) ?? codebookComponent;
-  /**
-   * The control whose choice decides what the CODEBOOK holds.
-   *
-   * The row's, wherever the row's control is the one being written to the
-   * codebook: it was chosen a moment ago, and the editor writes it alongside
-   * whatever depends on it. But a caller that keeps its control on the stage
-   * (`offerParameters` false) never writes it, so the codebook's own control
-   * is the only one its schema is keyed on — and judging by the row's would
-   * offer a boolean's answer labels for an attribute the codebook records as a
-   * toggle, whose schema has no `options` key to put them in.
-   */
-  const decidingComponent = offerParameters
-    ? pickedComponent
-    : codebookComponent;
-  // Which list of answers the attribute holds — a list the researcher adds to,
-  // or the two a boolean choice names. Asked of a control for the reason the
-  // settings are: a boolean moved to a toggle holds no list at all.
-  const optionsShape =
-    picked === undefined
-      ? null
-      : optionsShapeFor(pickedType, decidingComponent);
-  const canEditValues = optionsShape === 'choice';
-  const canEditAnswers = optionsShape === 'boolean';
   const canEditParameters =
     offerParameters &&
     picked !== undefined &&
@@ -615,11 +579,7 @@ export default function AttributeCodebookControls({
   const createNeeds = creatingValues
     ? messages.createNeedsValues
     : messages.createNeedsSettings;
-  const definesLabel = canEditValues
-    ? messages.editValues
-    : canEditAnswers
-      ? messages.editAnswerLabels
-      : messages.editParameters;
+  const definesLabel = messages.editParameters;
 
   /**
    * Whether another editor may be STARTED from here.
@@ -634,9 +594,7 @@ export default function AttributeCodebookControls({
    * own save refused — which is what `readOnly` does to both of them.
    */
   const offerLaunch =
-    sectionIsLive &&
-    !readOnly &&
-    (canCreate || canEditValues || canEditAnswers || canEditParameters);
+    sectionIsLive && !readOnly && (canCreate || canEditParameters);
   // The notice below counts too: it is the only record of an attribute the
   // researcher created and this row did not take, and a component that
   // vanished at the moment it had something to say would take the sentence
@@ -851,18 +809,17 @@ export default function AttributeCodebookControls({
             {intl.formatMessage(createLabel)}
           </Button>
         )}
-        {offerLaunch &&
-          (canEditValues || canEditAnswers || canEditParameters) && (
-            <Button
-              ref={definesTrigger}
-              type="button"
-              color="primary"
-              size="sm"
-              onClick={() => open('defines', definesLabel)}
-            >
-              {intl.formatMessage(definesLabel)}
-            </Button>
-          )}
+        {offerLaunch && canEditParameters && (
+          <Button
+            ref={definesTrigger}
+            type="button"
+            color="primary"
+            size="sm"
+            onClick={() => open('defines', definesLabel)}
+          >
+            {intl.formatMessage(definesLabel)}
+          </Button>
+        )}
       </div>
       {/* Always mounted, so a screen reader is watching this region before the
           notice appears: a live region added to the page at the same moment as

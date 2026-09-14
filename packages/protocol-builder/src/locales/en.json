@@ -299,17 +299,9 @@
     "defaultMessage": "Create this attribute and its values",
     "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
   },
-  "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
-    "defaultMessage": "Change this attribute’s answer labels",
-    "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
-  },
   "protocolBuilder.attributeCodebookControls.editParameters": {
     "defaultMessage": "Set what this field accepts",
     "description": "The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens."
-  },
-  "protocolBuilder.attributeCodebookControls.editValues": {
-    "defaultMessage": "Change this attribute’s values",
-    "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
   "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
@@ -794,6 +786,10 @@
   "protocolBuilder.codebookEditing.setComponentRefused": {
     "defaultMessage": "This attribute’s input control could not be changed, so nothing was changed. Try again.",
     "description": "Refusal shown on the input-control dropdown of a stage editor when recording which control an attribute is collected with failed for a reason with no explanation of its own."
+  },
+  "protocolBuilder.codebookEditing.setOptionsRefused": {
+    "defaultMessage": "This attribute’s values could not be changed, so nothing was changed. Try again.",
+    "description": "Refusal shown on the list of values a participant chooses between, in a stage editor, when recording them on the attribute failed for a reason with no explanation of its own."
   },
   "protocolBuilder.codebookEditing.unsupportedControl": {
     "defaultMessage": "This attribute cannot be collected with that input control.",

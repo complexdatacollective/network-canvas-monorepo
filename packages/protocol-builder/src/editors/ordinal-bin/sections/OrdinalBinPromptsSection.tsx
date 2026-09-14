@@ -24,6 +24,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
@@ -208,8 +209,16 @@ export default function OrdinalBinPromptsSection() {
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
 
+  const commitScaleOptions = useOptionsRowCommit(
+    SCALE_FIELD,
+    // The scale is the node type's own attribute, which the stage names.
+    () => subject,
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       const issue = binAttributePickIssue({
         protocolContext,
         excludedStageId: identity.id,
@@ -218,11 +227,15 @@ export default function OrdinalBinPromptsSection() {
         variableId: asString(row[SCALE_FIELD]) ?? '',
         openedOnVariableId: asString(context.openedOn[SCALE_FIELD]) ?? '',
       });
-      return issue === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [SCALE_FIELD]: [issue] } } };
+      if (issue !== undefined) {
+        return { refused: { fieldErrors: { [SCALE_FIELD]: [issue] } } };
+      }
+      // After the pick, because the values are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot draw has no list to
+      // write anywhere.
+      return await commitScaleOptions(row);
     },
-    [identity.id, protocolContext, subject],
+    [commitScaleOptions, identity.id, protocolContext, subject],
   );
 
   return (

@@ -929,6 +929,60 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * The answers a composer field's attribute offers, edited under the picker
+   * that binds it and written by the row's own save.
+   *
+   * Architect rendered the same inline list here as in a form-field row
+   * (`EditableAttributesList/ComposerAttributeFields.tsx` mounts the same
+   * `VariableDefinitionFields`), and the panel the participant edits in is
+   * exactly where a value thought of a moment later has to be addable.
+   */
+  it('changes the values a composer field’s attribute offers', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: { fields: [{ id: 'field-1', variable: 'contactType' }] },
+      }),
+    );
+
+    const dialog = await openRow(harness, 'Edit form field');
+    const values = within(
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    );
+    await harness.user.click(
+      values.getByRole('button', { name: 'Create new option' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Label' }),
+      'Letter',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Value' }),
+      'letter',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Finish editing option' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    // On the codebook attribute, which is where the values live — and which is
+    // why every other stage collecting it gains them too.
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.contactType,
+      ).toEqual(
+        expect.objectContaining({
+          options: [
+            { label: 'In person', value: 'in_person' },
+            { label: 'Phone or video call', value: 'call' },
+            { label: 'Text or messaging', value: 'text' },
+            { label: 'Letter', value: 'letter' },
+          ],
+        }),
+      ),
+    );
+  });
+
+  /**
    * The rules an invented answer has to satisfy, authored beside the control
    * that decides its kind and written with the create.
    *
