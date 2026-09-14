@@ -615,10 +615,6 @@
     "defaultMessage": "Select value on scale",
     "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
   },
-  "frescoUi.localeSwitcher.automaticCode": {
-    "defaultMessage": "AUTO",
-    "description": "Short badge shown beside the automatic entry, where other entries show a language code such as EN."
-  },
   "frescoUi.localeSwitcher.automaticCurrent": {
     "defaultMessage": "Automatic ({language})",
     "description": "The automatic entry and the switcher button’s accessible name while it is chosen; {language} is the own name of the language the browser resolves to."
@@ -652,8 +648,8 @@
     "description": "Placeholder of the search box that filters the list of interface languages."
   },
   "frescoUi.localeSwitcher.triggerAutomatic": {
-    "defaultMessage": "Auto · {code}",
-    "description": "Visible label of the switcher button while the automatic entry is chosen; {code} is the resolved language code such as EN."
+    "defaultMessage": "Auto · {language}",
+    "description": "Visible label of the switcher button while the automatic entry is chosen; {language} is the own name of the language the browser resolves to."
   },
   "frescoUi.localeSwitcher.triggerName": {
     "defaultMessage": "Interface language: {current}",

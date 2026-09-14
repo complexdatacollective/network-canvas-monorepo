@@ -395,10 +395,6 @@
     "defaultMessage": "Use a different account",
     "description": "Button signing out so the invitation can be accepted from another account."
   },
-  "studio.localeSwitcher.description": {
-    "defaultMessage": "Interface only. Your choice follows your account to your other devices; protocol content and collected data are unaffected.",
-    "description": "Note under the interface-language list: the choice is stored on the account and never touches protocol content or research data."
-  },
   "studio.lockup.allStudies": {
     "defaultMessage": "All studies in this team",
     "description": "Link beneath the study switcher's list back to the owning team's study list."

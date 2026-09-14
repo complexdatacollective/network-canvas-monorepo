@@ -303,7 +303,7 @@ export function StatusRowView({
   return (
     <motion.div
       variants={variants}
-      className="font-monospace text-text/60 laptop:px-11 flex items-center justify-between gap-3 px-6 pb-4 text-xs"
+      className="font-monospace text-text/60 laptop:px-11 @container flex items-center justify-between gap-3 px-6 pb-4 text-xs"
     >
       <Link
         href="/data"

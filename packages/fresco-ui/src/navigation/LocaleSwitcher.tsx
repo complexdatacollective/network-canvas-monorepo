@@ -1,17 +1,9 @@
 'use client';
 
 import { Combobox } from '@base-ui/react/combobox';
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Languages,
-  SearchIcon,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, SearchIcon, X } from 'lucide-react';
 import {
   type ComponentPropsWithRef,
-  type ReactNode,
   useEffect,
   useId,
   useRef,
@@ -23,10 +15,14 @@ import type { AppLocale } from '@codaco/app-i18n/locales';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { Button } from '../Button';
+import { Button, IconButton } from '../Button';
 import InputField from '../form/fields/InputField';
 import Surface from '../layout/Surface';
-import Pill from '../Pill';
+import { ArrowSvg } from '../Popover';
+import {
+  POPOVER_ARROW_CLASS_NAME,
+  POPOVER_ARROW_PADDING,
+} from '../popoverArrow';
 import { usePortalContainer } from '../PortalContainer';
 import { ScrollArea } from '../ScrollArea';
 import Spinner from '../Spinner';
@@ -51,17 +47,11 @@ const messages = defineMessages({
     description:
       'Placeholder of the search box that filters the list of interface languages.',
   },
-  automaticCode: {
-    id: 'frescoUi.localeSwitcher.automaticCode',
-    defaultMessage: 'AUTO',
-    description:
-      'Short badge shown beside the automatic entry, where other entries show a language code such as EN.',
-  },
   triggerAutomatic: {
     id: 'frescoUi.localeSwitcher.triggerAutomatic',
-    defaultMessage: 'Auto · {code}',
+    defaultMessage: 'Auto · {language}',
     description:
-      'Visible label of the switcher button while the automatic entry is chosen; {code} is the resolved language code such as EN.',
+      'Visible label of the switcher button while the automatic entry is chosen; {language} is the own name of the language the browser resolves to.',
   },
   triggerName: {
     id: 'frescoUi.localeSwitcher.triggerName',
@@ -107,18 +97,23 @@ const messages = defineMessages({
   },
 });
 
-/** How long the "saved" status stays before the footer note returns. */
+/** How long the "saved" status stays before the footer goes away. */
 const SAVED_NOTICE_MS = 3000;
 
 export type LocaleSwitcherSaveState = 'idle' | 'saving' | 'saved' | 'failed';
 
-/** Above this many entries (the automatic one included) the list gets a search box. */
-const SEARCH_THRESHOLD = 6;
+export type LocaleSwitcherDisplay = 'responsive' | 'label' | 'icon';
+
+// In `responsive` display the language name is dropped while the nearest
+// `@container` ancestor is narrower than 36em (the threshold
+// `TeamAndStudySwitcher` collapses at), leaving a round icon button.
+const RESPONSIVE_ICON_ONLY_TRIGGER =
+  '@max-xl:aspect-square @max-xl:w-10 @max-xl:justify-center @max-xl:p-0!';
+const RESPONSIVE_HIDDEN = '@max-xl:hidden';
 
 type LocaleItem = {
   value: string | null;
   autonym: string;
-  code: string;
 };
 
 export type LocaleSwitcherProps = {
@@ -129,40 +124,42 @@ export type LocaleSwitcherProps = {
   /** The tag the automatic entry resolves to right now. */
   automaticLocale: string;
   onChange: (value: string | null) => void;
-  /** Host-supplied note under the list: what the choice applies to. */
-  description?: ReactNode;
   /**
    * Where the host's persistence stands. `saving` shows a spinner, `saved` a
-   * check mark that gives way to the note after a moment, `failed` a retry
-   * button that calls `onChange` again with the current value.
+   * check mark that goes away after a moment, `failed` a retry button that
+   * calls `onChange` again with the current value.
    */
   saveState?: LocaleSwitcherSaveState;
   /** Which "saved" wording applies: stored in this browser, or on an account. */
   persistence?: 'device' | 'account';
+  /**
+   * What the trigger shows beside the globe. `label` always names the current
+   * language, `icon` never does (an icon button), and `responsive` names it
+   * only while the nearest `@container` ancestor is at least 36em wide.
+   */
+  display?: LocaleSwitcherDisplay;
+  /** Put a search box above the list, for hosts that offer many languages. */
+  searchable?: boolean;
   side?: 'top' | 'bottom';
   align?: 'start' | 'center' | 'end';
   /** Open on first render; for documentation, hosts never need it. */
   defaultOpen?: boolean;
 };
 
-function codeOf(tag: string): string {
-  return tag.toUpperCase();
-}
-
 /**
- * The application language switcher: a pill that names the current language
- * and opens a popover listing every interface language, each under its own
- * `lang`. Hosts own persistence and the note about what the choice applies
- * to; the chrome copy is shared.
+ * The application language switcher: a globe pill that names the current
+ * language and opens a popover listing every interface language, each under
+ * its own `lang`. Hosts own persistence; the chrome copy is shared.
  */
 export default function LocaleSwitcher({
   options,
   value,
   automaticLocale,
   onChange,
-  description,
   saveState = 'idle',
   persistence = 'device',
+  display = 'responsive',
+  searchable = false,
   side = 'bottom',
   align = 'end',
   defaultOpen,
@@ -206,38 +203,32 @@ export default function LocaleSwitcher({
   const autonymOf = (tag: string) =>
     options.find((entry) => entry.locale === tag)?.label ?? tag;
 
+  const automaticAutonym = intl.formatMessage(messages.automaticCurrent, {
+    language: autonymOf(automaticLocale),
+  });
   const items: LocaleItem[] = [
-    {
-      value: null,
-      autonym: intl.formatMessage(messages.automaticCurrent, {
-        language: autonymOf(automaticLocale),
-      }),
-      code: intl.formatMessage(messages.automaticCode),
-    },
-    ...options.map((entry) => ({
-      value: entry.locale,
-      autonym: entry.label,
-      code: codeOf(entry.locale),
-    })),
+    { value: null, autonym: automaticAutonym },
+    ...options.map((entry) => ({ value: entry.locale, autonym: entry.label })),
   ];
 
   const selected = items.find((item) => item.value === value) ?? items[0]!;
   const automatic = selected.value === null;
-  const showSearch = items.length > SEARCH_THRESHOLD;
 
   const triggerLabel = automatic
     ? intl.formatMessage(messages.triggerAutomatic, {
-        code: codeOf(automaticLocale),
+        language: autonymOf(automaticLocale),
       })
-    : selected.code;
+    : selected.autonym;
   const triggerName = intl.formatMessage(messages.triggerName, {
-    current: automatic
-      ? intl.formatMessage(messages.automaticCurrent, {
-          language: autonymOf(automaticLocale),
-        })
-      : selected.autonym,
+    current: selected.autonym,
   });
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
+  const responsive = display === 'responsive';
+  const globe = (
+    <span aria-hidden className="leading-none">
+      🌐
+    </span>
+  );
 
   return (
     <Combobox.Root
@@ -248,8 +239,9 @@ export default function LocaleSwitcher({
         if (next !== null) choose(next.value);
       }}
       isItemEqualToValue={(a, b) => a.value === b.value}
+      // The tag is not shown but still matches a search, so "de" finds Deutsch.
       itemToStringLabel={(item) =>
-        [item.autonym, item.code].filter((part) => part !== undefined).join(' ')
+        item.value === null ? item.autonym : `${item.autonym} ${item.value}`
       }
       inputValue={query}
       onInputValueChange={(next, details) => {
@@ -268,46 +260,79 @@ export default function LocaleSwitcher({
         }
       }}
     >
-      <Combobox.Trigger
-        aria-label={triggerName}
-        render={
-          <Button
-            variant="outline"
-            color="dynamic"
-            size="sm"
-            icon={<Languages aria-hidden />}
-            className="shrink-0 rounded-full"
+      {display === 'icon' ? (
+        <Combobox.Trigger
+          render={
+            <IconButton
+              variant="outline"
+              color="dynamic"
+              size="sm"
+              icon={globe}
+              aria-label={triggerName}
+            />
+          }
+        />
+      ) : (
+        <Combobox.Trigger
+          aria-label={triggerName}
+          render={
+            <Button
+              variant="outline"
+              color="dynamic"
+              size="sm"
+              icon={globe}
+              className={cx(
+                'shrink-0 rounded-full',
+                responsive && RESPONSIVE_ICON_ONLY_TRIGGER,
+              )}
+            />
+          }
+        >
+          <span
+            className={cx('min-w-0 truncate', responsive && RESPONSIVE_HIDDEN)}
+            lang={selected.value ?? undefined}
+            dir={automatic ? undefined : 'auto'}
+          >
+            {triggerLabel}
+          </span>
+          <Chevron
+            aria-hidden
+            className={cx(
+              'size-[1em] shrink-0',
+              responsive && RESPONSIVE_HIDDEN,
+            )}
           />
-        }
-      >
-        <span className="tabular-nums">{triggerLabel}</span>
-        <Chevron aria-hidden className="size-[1em] shrink-0" />
-      </Combobox.Trigger>
+        </Combobox.Trigger>
+      )}
       <Combobox.Portal container={portalContainer ?? undefined}>
         <Combobox.Positioner
           side={side}
           align={align}
-          sideOffset={8}
+          sideOffset={10}
+          arrowPadding={POPOVER_ARROW_PADDING}
           className="z-3000"
         >
           <Combobox.Popup
             aria-labelledby={headingId}
-            initialFocus={showSearch ? undefined : listRef}
+            initialFocus={searchable ? undefined : listRef}
             render={
               <Surface
                 floating
                 shadow="lg"
                 noContainer
                 spacing="none"
-                className="flex w-96 max-w-(--available-width) flex-col"
+                className="flex w-96 max-w-(--available-width) flex-col overflow-visible"
               />
             }
           >
+            <Combobox.Arrow className={POPOVER_ARROW_CLASS_NAME}>
+              <ArrowSvg />
+            </Combobox.Arrow>
             <div className="flex flex-col gap-2 px-4 pt-3 pb-2">
               <Heading level="label" margin="none" id={headingId}>
                 {intl.formatMessage(messages.heading)}
               </Heading>
-              {showSearch && (
+              {searchable && (
                 <Combobox.Input
                   placeholder={intl.formatMessage(messages.searchPlaceholder)}
                   aria-label={intl.formatMessage(commonMessages.search)}
@@ -352,7 +377,7 @@ export default function LocaleSwitcher({
                   key={item.value ?? 'automatic'}
                   value={item}
                   className={dropdownItemVariants({
-                    className: 'group gap-3 text-start',
+                    className: 'gap-3 text-start',
                   })}
                 >
                   <span
@@ -372,75 +397,53 @@ export default function LocaleSwitcher({
                   >
                     {item.autonym}
                   </span>
-                  <Pill
-                    size="sm"
-                    variant="filled"
-                    className="shrink-0 uppercase group-data-selected:bg-transparent"
-                  >
-                    {item.code}
-                  </Pill>
                 </Combobox.Item>
               )}
             </Combobox.List>
-            {(description != null || notice !== null) && (
-              <div className="bg-surface-1 text-surface-1-contrast border-outline border-t px-4 py-3 text-xs leading-tight">
-                {notice === null && (
-                  <Paragraph intent="smallText" emphasis="muted" margin="none">
-                    {description}
-                  </Paragraph>
-                )}
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className={
-                    notice === null
-                      ? 'sr-only'
-                      : 'flex min-h-6 items-center gap-2'
-                  }
-                >
-                  {notice?.state === 'saving' && (
-                    <>
-                      <Spinner size="xs" />
-                      <span>{intl.formatMessage(messages.saving)}</span>
-                    </>
-                  )}
-                  {notice?.state === 'saved' && (
-                    <>
-                      <Check
-                        aria-hidden
-                        className="text-success size-4 shrink-0"
-                      />
-                      <span>
-                        {intl.formatMessage(
-                          persistence === 'account'
-                            ? messages.savedOnAccount
-                            : messages.savedOnDevice,
-                        )}
-                      </span>
-                    </>
-                  )}
-                  {notice?.state === 'failed' && (
-                    <>
-                      <X
-                        aria-hidden
-                        className="text-destructive size-4 shrink-0"
-                      />
-                      <span className="flex-1">
-                        {intl.formatMessage(messages.saveFailed)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="text"
-                        color="dynamic"
-                        onClick={() => choose(value)}
-                      >
-                        {intl.formatMessage(commonMessages.retry)}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+            <div
+              role="status"
+              aria-live="polite"
+              className={
+                notice === null
+                  ? 'sr-only'
+                  : 'bg-surface-1 text-surface-1-contrast border-outline flex min-h-6 items-center gap-2 rounded-b-[inherit] border-t px-4 py-3 text-xs leading-tight'
+              }
+            >
+              {notice?.state === 'saving' && (
+                <>
+                  <Spinner size="xs" />
+                  <span>{intl.formatMessage(messages.saving)}</span>
+                </>
+              )}
+              {notice?.state === 'saved' && (
+                <>
+                  <Check aria-hidden className="text-success size-4 shrink-0" />
+                  <span>
+                    {intl.formatMessage(
+                      persistence === 'account'
+                        ? messages.savedOnAccount
+                        : messages.savedOnDevice,
+                    )}
+                  </span>
+                </>
+              )}
+              {notice?.state === 'failed' && (
+                <>
+                  <X aria-hidden className="text-destructive size-4 shrink-0" />
+                  <span className="flex-1">
+                    {intl.formatMessage(messages.saveFailed)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="text"
+                    color="dynamic"
+                    onClick={() => choose(value)}
+                  >
+                    {intl.formatMessage(commonMessages.retry)}
+                  </Button>
+                </>
+              )}
+            </div>
           </Combobox.Popup>
         </Combobox.Positioner>
       </Combobox.Portal>

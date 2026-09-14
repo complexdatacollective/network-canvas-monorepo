@@ -401,7 +401,6 @@
   "architect.jsonPreviewOverlay.closePreview": "Cerrar vista previa",
   "architect.jsonPreviewOverlay.copied": "¡Copiado!",
   "architect.jsonPreviewOverlay.copy": "Copiar",
-  "architect.language.description": "Solo la interfaz y los controles de la vista previa, en este dispositivo. El contenido del protocolo no cambia.",
   "architect.library.metadata.justNow": "Hace menos de 1 min",
   "architect.library.metadata.protocolMeta": "{count, plural, one {# etapa} other {# etapas}} · Añadido {created} · Editado {updated}",
   "architect.library.metadata.templateMeta": "{stages, plural, one {# etapa} other {# etapas}} · {nodes, plural, one {# tipo de nodo} other {# tipos de nodo}} · {edges, plural, one {# tipo de vínculo} other {# tipos de vínculo}}",

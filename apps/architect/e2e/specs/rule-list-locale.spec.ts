@@ -77,7 +77,7 @@ for (const { kind, label } of [
     });
     const optionNames = {
       'es': /^Español/,
-      'en': /^English\s+EN$/,
+      'en': /^English$/,
       'en-GB': /^English \(UK\)/,
     } as const;
     for (const [locale, expected] of [

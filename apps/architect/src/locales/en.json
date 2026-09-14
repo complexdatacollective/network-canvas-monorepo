@@ -1607,10 +1607,6 @@
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
   },
-  "architect.language.description": {
-    "defaultMessage": "Interface and preview controls only, on this device. Protocol content is unaffected.",
-    "description": "Note under the interface-language list: the choice applies to Architect and its preview controls on this device, never to authored protocol content."
-  },
   "architect.library.metadata.justNow": {
     "defaultMessage": "< 1 min ago",
     "description": "Researcher-facing Architect control or feedback."

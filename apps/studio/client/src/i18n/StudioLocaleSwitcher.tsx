@@ -1,5 +1,4 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
+import { useAppLocale } from '@codaco/app-i18n/react';
 import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 
 import { useStudioLocale } from './StudioI18nProvider.tsx';
@@ -15,18 +14,7 @@ import { useStudioLocale } from './StudioI18nProvider.tsx';
  * locale is reachable by eye.
  */
 
-const messages = defineMessages({
-  description: {
-    id: 'studio.localeSwitcher.description',
-    defaultMessage:
-      'Interface only. Your choice follows your account to your other devices; protocol content and collected data are unaffected.',
-    description:
-      'Note under the interface-language list: the choice is stored on the account and never touches protocol content or research data.',
-  },
-});
-
 export default function StudioLocaleSwitcher() {
-  const intl = useAppIntl();
   const { locales } = useAppLocale();
   const { preference, automaticLocale, saveState, setLocale } =
     useStudioLocale();
@@ -41,7 +29,6 @@ export default function StudioLocaleSwitcher() {
       onChange={setLocale}
       saveState={saveState === 'error' ? 'failed' : saveState}
       persistence="account"
-      description={intl.formatMessage(messages.description)}
     />
   );
 }

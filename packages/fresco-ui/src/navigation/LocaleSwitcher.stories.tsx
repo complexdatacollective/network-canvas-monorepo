@@ -27,10 +27,9 @@ const manyLocales: AppLocale[] = [
 
 const documentation = `
 The application language switcher shared by Architect, Interviewer and Studio:
-a pill naming the current language, opening a popover that lists every
-interface language under its own \`lang\`. Hosts own persistence and the note
-about what the choice applies to; the chrome copy is shared and translated
-once.
+a globe pill naming the current language in its own name, opening a popover
+that lists every interface language under its own \`lang\`. Hosts own
+persistence; the chrome copy is shared and translated once.
 
 \`\`\`tsx
 import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
@@ -40,27 +39,31 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
   value={preference}
   automaticLocale={resolveDeviceLocale(null)}
   onChange={setPreference}
-  description="Interface only, on this device."
 />
 \`\`\`
 
-- **\`options\`** — \`readonly AppLocale[]\`. Autonyms render under each
-  entry's own \`lang\`, with the tag as an uppercase code beside them.
+- **\`options\`** — \`readonly AppLocale[]\`. Each entry's autonym renders
+  under its own \`lang\`; the tag is never shown.
 - **\`value\`** / **\`onChange\`** — controlled \`string | null\`. \`null\` is
   the automatic entry, which follows the browser.
 - **\`automaticLocale\`** — the tag automatic resolves to right now, named on
-  the automatic entry ("Automatic (English)") and in the trigger ("Auto · EN").
-- **\`description\`** — host-supplied footer note.
+  the automatic entry ("Automatic (English)") and in the pill ("Auto ·
+  English").
+- **\`display\`** — what the pill shows beside the globe. \`label\` always
+  names the current language, \`icon\` never does (an \`IconButton\`), and
+  \`responsive\` (the default) names it only while the nearest \`@container\`
+  ancestor is at least 36em wide, so a host bar declares \`@container\` to
+  let the pill collapse.
+- **\`searchable\`** — puts a search box above the list that filters by
+  autonym or tag. Off by default; for hosts that offer many languages.
 - **\`saveState\`** / **\`persistence\`** — the host's persistence outcome,
-  shown in the footer in place of the note: a spinner while \`saving\`, a
-  check mark for \`saved\` ("Saved on this device." or "Saved to your
-  account.") that gives way to the note after a moment, and a retry button
-  for \`failed\`. Choosing keeps the popover open so the outcome is read
-  where the choice was made; Escape closes it.
+  shown in a footer: a spinner while \`saving\`, a check mark for \`saved\`
+  ("Saved on this device." or "Saved to your account.") that goes away after
+  a moment, and a retry button for \`failed\`. Choosing keeps the popover open
+  so the outcome is read where the choice was made; Escape closes it.
 - **\`side\`** / **\`align\`** — where the popover opens; the Interviewer
-  status bar uses \`side="top"\`.
-- A search box appears once the list is longer than six entries.
-- The trigger is an outline \`Button\` in \`color="dynamic"\`, so it takes the
+  status bar uses \`side="top"\`. An arrow points back at the pill.
+- The pill is an outline \`Button\` in \`color="dynamic"\`, so it takes the
   colour of the bar it sits on.
 `;
 
@@ -75,7 +78,9 @@ const meta = {
     options: { control: false },
     value: { control: false },
     onChange: { control: false },
-    description: { control: 'text' },
+    display: { control: 'radio', options: ['responsive', 'label', 'icon'] },
+    searchable: { control: 'boolean' },
+    persistence: { control: 'radio', options: ['device', 'account'] },
     side: { control: 'radio', options: ['top', 'bottom'] },
     align: { control: 'radio', options: ['start', 'center', 'end'] },
   },
@@ -84,8 +89,8 @@ const meta = {
     value: null,
     automaticLocale: 'en',
     onChange: () => undefined,
-    description:
-      'Interface only, on this device. Protocol content and collected data are unaffected.',
+    display: 'responsive',
+    searchable: false,
   },
   render: (args) => <ControlledSwitcher {...args} />,
 } satisfies Meta<typeof LocaleSwitcher>;
@@ -126,11 +131,11 @@ const openSwitcher = async (canvasElement: HTMLElement) => {
 export const Default: Story = {};
 
 /**
- * Past the threshold the popover gains a search box that filters by autonym
- * and code.
+ * `searchable` puts a search box above the list. It filters by autonym, and
+ * by the tag even though the tag is not shown, so "de" still finds Deutsch.
  */
 export const WithSearch: Story = {
-  args: { options: manyLocales },
+  args: { options: manyLocales, searchable: true },
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
     const search = within(popup).getByRole('combobox', { name: 'Search' });
@@ -144,14 +149,23 @@ export const WithSearch: Story = {
       expect(within(popup).getAllByRole('option')).toHaveLength(1),
     );
     await expect(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
+    ).toBeVisible();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'de');
+    await waitFor(() =>
+      expect(within(popup).getAllByRole('option')).toHaveLength(1),
+    );
+    await expect(
+      within(popup).getByRole('option', { name: 'Deutsch' }),
     ).toBeVisible();
 
     // An autonym sets its own base direction: Arabic reads right-to-left
     // inside this left-to-right list.
     await userEvent.clear(search);
     const arabic = within(popup)
-      .getByRole('option', { name: /^العربية/ })
+      .getByRole('option', { name: 'العربية' })
       .querySelector('[lang="ar"]');
     await expect(arabic).not.toBeNull();
     await expect(getComputedStyle(arabic!).direction).toBe('rtl');
@@ -164,7 +178,7 @@ export const WithSearch: Story = {
 };
 
 /**
- * Choosing an entry reports the tag, moves the check mark and updates the
+ * Choosing an entry reports the tag, moves the check mark and renames the
  * pill while the popover stays open; Escape closes it and returns focus to
  * the pill.
  */
@@ -172,20 +186,21 @@ export const OpensAndSelects: Story = {
   args: { value: 'en' },
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
-    await expect(trigger).toHaveTextContent('EN');
+    await expect(trigger).toHaveTextContent('English');
 
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
-    await expect(trigger).toHaveTextContent('ES');
+    await expect(trigger).toHaveTextContent('Español');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
     await expect(popup).toBeVisible();
     await expect(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     ).toHaveAttribute('aria-selected', 'true');
     await expect(
-      within(popup).getByRole('option', { name: 'English EN' }),
+      within(popup).getByRole('option', { name: 'English' }),
     ).toHaveAttribute('aria-selected', 'false');
+    await expect(within(popup).queryByText('ES')).not.toBeInTheDocument();
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(popup).not.toBeInTheDocument());
@@ -215,7 +230,7 @@ export const KeyboardWithoutSearch: Story = {
     await expect(within(popup).queryByRole('textbox')).not.toBeInTheDocument();
 
     await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
-    await expect(trigger).toHaveTextContent('EN-GB');
+    await expect(trigger).toHaveTextContent('English (UK)');
   },
 };
 
@@ -226,29 +241,96 @@ export const KeyboardWithoutSearch: Story = {
 export const AutomaticEntry: Story = {
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
-    await expect(trigger).toHaveTextContent('Auto · EN');
+    await expect(trigger).toHaveTextContent('Auto · English');
     await expect(trigger).toHaveAccessibleName(
       'Interface language: Automatic (English)',
     );
 
     const options = within(popup).getAllByRole('option');
     await expect(options[0]).toHaveTextContent('Automatic (English)');
-    await expect(options[0]).toHaveTextContent('AUTO');
     await expect(options[0]).toHaveAttribute('aria-selected', 'true');
 
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
-    await expect(trigger).toHaveTextContent('ES');
+    await expect(trigger).toHaveTextContent('Español');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
 
     await userEvent.click(
       within(popup).getByRole('option', { name: /^Automatic/ }),
     );
-    await expect(trigger).toHaveTextContent('Auto · EN');
+    await expect(trigger).toHaveTextContent('Auto · English');
     await expect(trigger).toHaveAccessibleName(
       'Interface language: Automatic (English)',
     );
+  },
+};
+
+/** `display="label"`: the pill always names the language, however narrow its bar. */
+export const AlwaysLabelled: Story = {
+  args: { display: 'label', value: 'es' },
+  render: (args) => (
+    <div className="@container w-60">
+      <ControlledSwitcher {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await expect(within(trigger).getByText('Español')).toBeVisible();
+  },
+};
+
+/**
+ * `display="icon"`: an `IconButton` showing the globe alone. The accessible
+ * name still says which language is current.
+ */
+export const IconOnly: Story = {
+  args: { display: 'icon', value: 'es' },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await expect(trigger).toHaveAccessibleName('Interface language: Español');
+    await expect(trigger).not.toHaveTextContent('Español');
+
+    await userEvent.click(trigger);
+    const popup = await screen.findByRole('dialog', {
+      name: 'Interface language',
+    });
+    await userEvent.click(
+      within(popup).getByRole('option', { name: 'English' }),
+    );
+    await expect(trigger).toHaveAccessibleName('Interface language: English');
+  },
+};
+
+/**
+ * `display="responsive"` (the default) reads the nearest `@container`: a bar
+ * at least 36em wide shows the name, a narrower one shows the globe alone.
+ */
+export const Responsive: Story = {
+  args: { display: 'responsive', value: 'es' },
+  render: (args) => (
+    <div className="flex flex-col items-start gap-6">
+      <div
+        data-testid="wide"
+        className="border-outline @container flex w-[40rem] max-w-full justify-end rounded-full border p-2"
+      >
+        <ControlledSwitcher {...args} />
+      </div>
+      <div
+        data-testid="narrow"
+        className="border-outline @container flex w-80 justify-end rounded-full border p-2"
+      >
+        <ControlledSwitcher {...args} />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const wide = within(canvas.getByTestId('wide')).getByRole('combobox');
+    const narrow = within(canvas.getByTestId('narrow')).getByRole('combobox');
+    await expect(within(wide).getByText('Español')).toBeVisible();
+    await expect(within(narrow).getByText('Español')).not.toBeVisible();
+    await expect(narrow).toHaveAccessibleName('Interface language: Español');
   },
 };
 
@@ -262,8 +344,8 @@ export const RightToLeft: Story = {
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
     await expect(getComputedStyle(trigger).direction).toBe('rtl');
-    await expect(trigger).toHaveTextContent('AR');
-    const option = within(popup).getByRole('option', { name: /^العربية/ });
+    await expect(trigger).toHaveTextContent('العربية');
+    const option = within(popup).getByRole('option', { name: 'العربية' });
     await expect(option.querySelector('[lang="ar"]')).toBeTruthy();
   },
 };
@@ -299,41 +381,37 @@ function SavingHost({
     if (scenario === 'saving') return;
     const outcome: LocaleSwitcherSaveState =
       scenario === 'failed' && attempts.current === 1 ? 'failed' : 'saved';
-    timer.current = setTimeout(() => setSaveState(outcome), 800);
+    timer.current = setTimeout(() => setSaveState(outcome), 600);
   };
 
   return (
     <LocaleSwitcher
       {...rest}
-      persistence={scenario === 'account' ? 'account' : 'device'}
       value={value}
       onChange={onChange}
       saveState={saveState}
+      persistence={scenario === 'account' ? 'account' : 'device'}
     />
   );
 }
 
 /**
  * Device storage answers at once: the check mark and "Saved on this device."
- * replace the note, then the note returns.
+ * appear in the footer, then the footer goes away.
  */
 export const SavesOnDevice: Story = {
   render: (args) => <SavingHost {...args} scenario="device" />,
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
     const status = within(popup).getByRole('status');
     await expect(status).toHaveTextContent('Saved on this device.');
-    await expect(popup).not.toHaveTextContent(
-      'Interface only, on this device.',
-    );
-    await waitFor(
-      () => expect(popup).toHaveTextContent('Interface only, on this device.'),
-      { timeout: 5000 },
-    );
-    await expect(status).toBeEmptyDOMElement();
+    await expect(status).toBeVisible();
+    await waitFor(() => expect(status).toBeEmptyDOMElement(), {
+      timeout: 5000,
+    });
   },
 };
 
@@ -342,15 +420,11 @@ export const SavesOnDevice: Story = {
  * the check mark and "Saved to your account."
  */
 export const SavesToAccount: Story = {
-  args: {
-    description:
-      'Interface only. Your choice follows your account to your other devices.',
-  },
   render: (args) => <SavingHost {...args} scenario="account" />,
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
     const status = within(popup).getByRole('status');
     await expect(status).toHaveTextContent('Saving…');
@@ -366,7 +440,7 @@ export const Saving: Story = {
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
     await expect(within(popup).getByRole('status')).toHaveTextContent(
       'Saving…',
@@ -384,9 +458,9 @@ export const SaveFails: Story = {
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
     await userEvent.click(
-      within(popup).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: 'Español' }),
     );
-    await expect(trigger).toHaveTextContent('ES');
+    await expect(trigger).toHaveTextContent('Español');
     const status = within(popup).getByRole('status');
     await waitFor(() =>
       expect(status).toHaveTextContent(
@@ -410,16 +484,14 @@ export const SaveFails: Story = {
 /**
  * Every footer status at once, each popover open from the start. The two
  * "saved" instances are re-triggered every few seconds, since a saved status
- * gives way to the note after a moment.
+ * goes away after a moment.
  */
 function PinnedStatus({
   saveState,
   persistence,
-  description,
 }: {
   saveState: Exclude<LocaleSwitcherSaveState, 'idle'>;
   persistence: 'device' | 'account';
-  description: string;
 }) {
   const [state, setState] = useState<LocaleSwitcherSaveState>(saveState);
   useEffect(() => {
@@ -438,7 +510,7 @@ function PinnedStatus({
       onChange={() => undefined}
       saveState={state}
       persistence={persistence}
-      description={description}
+      display="label"
       defaultOpen
     />
   );
@@ -449,32 +521,16 @@ export const AllStatuses: Story = {
   render: () => (
     <div className="grid grid-cols-2 gap-6 p-6 [&>div]:h-[26rem]">
       <div>
-        <PinnedStatus
-          saveState="saving"
-          persistence="device"
-          description="Interface only, on this device."
-        />
+        <PinnedStatus saveState="saving" persistence="device" />
       </div>
       <div>
-        <PinnedStatus
-          saveState="failed"
-          persistence="device"
-          description="Interface only, on this device."
-        />
+        <PinnedStatus saveState="failed" persistence="device" />
       </div>
       <div>
-        <PinnedStatus
-          saveState="saved"
-          persistence="device"
-          description="Interface only, on this device."
-        />
+        <PinnedStatus saveState="saved" persistence="device" />
       </div>
       <div>
-        <PinnedStatus
-          saveState="saved"
-          persistence="account"
-          description="Interface only. Your choice follows your account."
-        />
+        <PinnedStatus saveState="saved" persistence="account" />
       </div>
     </div>
   ),

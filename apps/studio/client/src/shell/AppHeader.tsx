@@ -95,7 +95,7 @@ export default function AppHeader() {
   const home = homeDestination(teams.data, activeTeam.data?.id);
 
   return (
-    <div className="border-surface-2 flex flex-wrap items-center gap-4 border-b px-4 py-2">
+    <div className="border-surface-2 @container flex flex-wrap items-center gap-4 border-b px-4 py-2">
       <Wordmark home={home} />
       {/*
         A width the lockup does not derive from its contents, which is what

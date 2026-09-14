@@ -57,7 +57,7 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
   await renderAndOpen();
   choose(/^English \(UK\)/);
   expect(status()).toHaveTextContent('Saved on this device.');
-  expect(trigger()).toHaveTextContent('EN-GB');
+  expect(trigger()).toHaveTextContent('English (UK)');
   expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBe('en-GB');
   act(() => {
@@ -69,7 +69,7 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
       }),
     );
   });
-  expect(trigger()).toHaveTextContent('ES');
+  expect(trigger()).toHaveTextContent('Español');
   expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español');
   expect(document.documentElement).toHaveAttribute('lang', 'es');
 });
@@ -77,7 +77,7 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
 it('never persists the development locale', async () => {
   await renderAndOpen();
   choose(/^Þséûðö Éñglîsh/);
-  expect(trigger()).toHaveTextContent('EN-XA');
+  expect(trigger()).toHaveTextContent('Þséûðö Éñglîsh (en-XA)');
   expect(document.documentElement).toHaveAttribute('lang', PSEUDO_LOCALE);
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
   expect(status()).toBeEmptyDOMElement();
@@ -91,7 +91,7 @@ it('still applies the selected language when storage refuses the write, and offe
       throw new DOMException('blocked', 'SecurityError');
     });
   choose(/^English \(UK\)/);
-  expect(trigger()).toHaveTextContent('EN-GB');
+  expect(trigger()).toHaveTextContent('English (UK)');
   expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
   expect(status()).toHaveTextContent(
@@ -106,7 +106,7 @@ it('still applies the selected language when storage refuses the write, and offe
 it('names the language automatic resolves to and returns to it', async () => {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-MX']);
   await renderAndOpen();
-  expect(trigger()).toHaveTextContent('Auto · ES');
+  expect(trigger()).toHaveTextContent('Auto · Español');
   expect(
     screen.getByRole('option', { name: /^Automático \(Español\)/ }),
   ).toBeInTheDocument();

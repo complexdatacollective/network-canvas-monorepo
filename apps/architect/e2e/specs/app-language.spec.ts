@@ -24,10 +24,10 @@ function languagePopover(page: Page) {
   });
 }
 
-// Each option's accessible name is its autonym followed by its code.
+// Each option's accessible name is its autonym.
 const OPTION_NAMES: Record<string, RegExp> = {
   '__automatic': /^(Automático|Automatic)\b/,
-  'en': /^English\s+EN$/,
+  'en': /^English$/,
   'en-GB': /^English \(UK\)/,
   'es': /^Español/,
 };
@@ -50,7 +50,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   const switcher = languageSwitcher(page);
-  await expect(switcher).toHaveText(/Auto · ES/);
+  await expect(switcher).toHaveText(/Auto · Español/);
   await expect(switcher).toHaveAccessibleName(
     'Idioma de la interfaz: Automático (Español)',
   );
@@ -58,10 +58,10 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   const popover = languagePopover(page);
   const options = popover.getByRole('option');
   await expect(options).toHaveText([
-    /^Automático \(Español\)\s*AUTO$/,
-    /^English\s*EN$/,
-    /^English \(UK\)\s*EN-GB$/,
-    /^Español\s*ES$/,
+    /^Automático \(Español\)$/,
+    /^English$/,
+    /^English \(UK\)$/,
+    /^Español$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(
@@ -76,7 +76,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   );
   await page.keyboard.press('Escape');
   await expect(popover).toBeHidden();
-  await expect(switcher).toHaveText(/EN-GB/);
+  await expect(switcher).toHaveText(/English \(UK\)/);
   await expect(switcher).toHaveAccessibleName(
     'Interface language: English (UK)',
   );
@@ -88,7 +88,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await selectLanguage(page, '__automatic');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(languageSwitcher(page)).toHaveText(/Auto · ES/);
+  await expect(languageSwitcher(page)).toHaveText(/Auto · Español/);
 });
 
 test('authors an Information stage in Spanish and changes built-in preview language without changing research data', async ({
