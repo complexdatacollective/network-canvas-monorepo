@@ -272,13 +272,14 @@ const colorPickerVariants = compose(
  *
  * A colour is a value with a name, not a decoration: every swatch carries its
  * own accessible name from `options`, and the chosen one is marked by an
- * outline ring standing off the swatch — a change of shape, so the selection
- * is legible without perceiving the colour at all. Every swatch also carries a
- * hairline in the group's foreground, and the chosen one a ring in it, so a
- * swatch filled with the group's own background colour is still a swatch and
- * can still be seen to be the chosen one. A swatch whose fill is see-through
- * shows the chequerboard it is painted on, so `transparent` is never the same
- * disc as the colour the group is painted in.
+ * outline standing off the swatch in the theme's selection colour — a change
+ * of shape in a colour that is not the swatch's, so the selection is legible
+ * without perceiving the swatch's colour at all. Hovering an unchosen swatch
+ * previews that same outline at reduced strength. Every swatch is bordered in
+ * the group's foreground, so a swatch filled with the group's own background
+ * colour — white, transparent — is still a disc. A swatch whose fill is
+ * see-through shows the chequerboard it is painted on, so `transparent` is
+ * never the same disc as the colour the group is painted in.
  *
  * The labelling belongs to the surrounding field: use it as the `component` of
  * a `<Field>`, or of an `UnconnectedField` when the value is not the form's.
@@ -351,6 +352,17 @@ export default function ColorPickerField({
           key={option.value}
           className={cx(
             'relative block size-12 shrink-0 rounded-full',
+            // Pointing at a swatch grows it. The cue is the swatch's own size,
+            // not a faded copy of the chosen-ring, so an offer can never be
+            // read as an answer. It scales here rather than on the control so
+            // the chequerboard ground grows with the disc: a see-through fill
+            // would otherwise overhang the only thing that makes it legible.
+            // Hover on the control reaches this ground, which encloses it, so
+            // the growth is written here; it is withheld from a group that
+            // cannot be chosen from, which would otherwise answer a pointer it
+            // does nothing for.
+            'transition-transform duration-150 ease-out motion-reduce:transition-none',
+            !disabled && !readOnly && 'hover:scale-110',
             'bg-input [--swatch-check:color-mix(in_oklab,var(--input-contrast)_60%,transparent)]',
             '[background-image:conic-gradient(var(--swatch-check)_0_25%,transparent_0_50%,var(--swatch-check)_0_75%,transparent_0)]',
             'bg-size-[--spacing(3)_--spacing(3)]',
@@ -371,30 +383,43 @@ export default function ColorPickerField({
                 }
                 className={cx(
                   'focusable relative block size-full rounded-full',
-                  // The selection ring is the design system's focus outline in
-                  // the swatch's own colour (never a generic primary border),
-                  // so the cue reads as "this colour". Hover previews it at a
-                  // tighter offset.
-                  'bg-(--swatch-color) outline-(--swatch-color) transition-all',
+                  // No transition. The cue below is an outline, and an
+                  // outline's colour starts at `currentColor` — the group's
+                  // dark foreground — so easing it swept every swatch from
+                  // dark to the selection colour on hover, reading as a
+                  // flash rather than as feedback. Pointer feedback here is
+                  // immediate, as it is everywhere else in the system.
+                  'bg-(--swatch-color)',
                   // A swatch may be filled with any CSS colour a caller has,
                   // including the group's own background — white, transparent,
                   // anything near `--input`. Such a swatch is an invisible disc
-                  // on an invisible ground, and a ring in its own colour cannot
-                  // say it is the chosen one. So the group's foreground draws a
-                  // hairline round every swatch and a full ring round the
-                  // chosen one: neither the swatch nor its chosen state is ever
-                  // left to a colour that can vanish. At full strength, because
-                  // the hairline is the whole of the swatch's edge whenever the
-                  // fill is the ground, and a boundary a reader has to hunt for
-                  // is not one — faded, it clears none of the 3:1 that telling
-                  // a control from its background asks for.
-                  'inset-ring-input-contrast inset-ring-1',
-                  // Focus is the same promise, and belongs to the reader rather
-                  // than to the palette: never the swatch's colour.
-                  'focus-visible:outline-input-contrast',
-                  state.checked
-                    ? 'ring-input-contrast ring-2 outline-2 outline-offset-3'
-                    : 'hover:outline-2 hover:outline-offset-2',
+                  // on an invisible ground, so the group's foreground draws the
+                  // edge of every swatch: the disc is never left to a colour
+                  // that can vanish. At full strength, because whenever the
+                  // fill is the ground this border is the whole of the swatch's
+                  // edge, and a boundary a reader has to hunt for is not one.
+                  'border border-current',
+                  // Being chosen is a change of shape in the theme's own
+                  // selection colour, standing off the swatch — never the
+                  // swatch's own colour, which says nothing about a colour
+                  // being the chosen one, and which a swatch filled with the
+                  // ground has none of to draw with. It is drawn thick because
+                  // the selection colour is a light one: against a pale ground
+                  // it carries little contrast, so the cue is made of the
+                  // amount of it rather than of its colour alone.
+                  //
+                  // Keyboard focus draws the SAME ring, not a competing one.
+                  // Arrowing a radio group moves the choice with the focus, so
+                  // the two states name one thing here; left to the system
+                  // default they disagreed on colour, width and offset, and a
+                  // chosen swatch changed shape merely by being focused.
+                  // `--focus-color` also colours the outline while it has no
+                  // width, so nothing sweeps from `currentColor` when it gains
+                  // one.
+                  '[--focus-color:var(--color-selected)]',
+                  'focus-visible:outline-4 focus-visible:outline-offset-2',
+                  state.checked &&
+                    'outline-selected outline-4 outline-offset-2',
                   readOnly && 'pointer-events-none',
                 )}
                 style={

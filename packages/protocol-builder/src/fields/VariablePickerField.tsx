@@ -9,8 +9,15 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';
 
-import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
+import {
+  createVariableRefused,
+  useRenameCodebookVariable,
+  useSubjectForVariable,
+} from '../codebook/useCodebookVariableEdits.ts';
+import { useSubjectVariableNames } from '../sections/canvas/codebookChoices.ts';
+import { useHasProtocolBuilderHost } from '../state/context.ts';
 import AttributePill from './AttributePill.tsx';
+import { variableNameRefusal } from './variableNameRules.ts';
 import VariableSpotlight, {
   type CreateRowOutcome,
 } from './VariableSpotlight.tsx';
@@ -228,16 +235,16 @@ export type CreateOptionOutcome =
   | Readonly<{ status: 'refused'; message?: string }>;
 
 /**
- * What this control has left to say once a create has ended.
+ * What this control has left to say once an act made through it has ended.
  *
- * Only the two events nobody else says anything about, and both are said on
- * the FIELD rather than in the window, because the window has closed by the
- * time either is true. A `refused` outcome is not among them: it is a sentence
- * the CALLER already has — it knows what the codebook would not take — and the
- * window stays open with the name to correct, which is where the researcher is
- * looking.
+ * Only the events nobody else says anything about, and all of them are said on
+ * the FIELD rather than in the window or the editor they were made in, because
+ * that has closed by the time any of them is true. A create the codebook
+ * `refused` is not among them: it is a sentence the CALLER already has — it
+ * knows what the codebook would not take — and the window stays open with the
+ * name to correct, which is where the researcher is looking.
  */
-type CreateNotice =
+type FieldNotice =
   /** The attribute exists, and nothing here was given it. */
   | Readonly<{ kind: 'unassigned'; variableName: string }>
   /**
@@ -245,7 +252,113 @@ type CreateNotice =
    * `onCreateOption` makes, so nothing is known to exist and nobody has told
    * the researcher anything.
    */
-  | Readonly<{ kind: 'failed' }>;
+  | Readonly<{ kind: 'failed' }>
+  /**
+   * The codebook would not rename the attribute, so it still goes by the name
+   * the pill shows.
+   *
+   * `held` carries whether the only thing in the way is a collaborator, which
+   * decides the register: that is not a fault, and the rename will work once
+   * they have finished.
+   */
+  | Readonly<{ kind: 'renameRefused'; message: string; held: boolean }>;
+
+/**
+ * The held attribute's pill, wired to the codebook so the researcher can
+ * rename it from the pill itself.
+ *
+ * A component rather than a few more hooks in the field, because the codebook
+ * it writes to is only there some of the time: this is the one part of the
+ * picker that needs a protocol host, and the field is also rendered with a
+ * plain list of attributes and nothing behind it.
+ *
+ * What it adds to the pill is the two things the pill deliberately does not
+ * know — which codebook section the attribute lives in, and what that section
+ * will accept as a name — and nothing else. The editor, the validation order,
+ * the announcements and the focus handling are the pill's, ported whole from
+ * Architect's own.
+ */
+function RenameableAttributePill({
+  option,
+  onRefusal,
+}: Readonly<{
+  option: VariablePickerOption;
+  onRefusal: (
+    refusal: Readonly<{ message: string; held: boolean }> | undefined,
+  ) => void;
+}>) {
+  const intl = useAppIntl();
+  /**
+   * Which codebook section the held attribute lives in, resolved from its
+   * record id rather than passed in.
+   *
+   * The sections that render this picker each narrow a pool for their own
+   * purpose and hand over the result; what they do not all know is the TYPE
+   * the chosen attribute belongs to — a rule's operand and a pedigree slot's
+   * attribute both arrive as bare ids. So the one fact a rename needs is read
+   * where it is unambiguous: a record id belongs to exactly one section.
+   */
+  const subject = useSubjectForVariable(option.value);
+  const namesInThisType = useSubjectVariableNames(subject);
+  const renameVariable = useRenameCodebookVariable(subject);
+
+  /**
+   * Why the name typed into the pill's editor cannot be used.
+   *
+   * The same two rules the window's create row asks of a typed name, in the
+   * same words and against the same helpers, because the codebook is what
+   * refuses the write: a control judging a name by a second opinion would
+   * either spend a round trip to say what it could have said here, or offer a
+   * rename the write then refuses.
+   */
+  const validateName = useCallback(
+    (next: string): string | undefined =>
+      variableNameRefusal(next, {
+        intl,
+        namesInUse: namesInThisType,
+        // Self-excluded by NAME rather than by record id, which here is the
+        // same exclusion: `assertVariableNameAvailable` compares normalised
+        // names, so no two attributes of one type can share one and an
+        // attribute is the only holder of its own. It is what lets a
+        // researcher change the case or the Unicode form of a name without
+        // being told it is already taken.
+        excluding: option.label,
+      }),
+    [intl, namesInThisType, option.label],
+  );
+
+  /**
+   * Asks the codebook for the rename, and answers the editor with whether it
+   * was taken.
+   *
+   * A refusal leaves the editor open on what the researcher typed — the thing
+   * there is to change — and is also said beside the field, where it is read
+   * once the editor has gone and where its register can be the one the refusal
+   * deserves: a colleague holding the codebook section is not a mistake.
+   */
+  const handleRename = useCallback(
+    async (name: string): Promise<boolean> => {
+      onRefusal(undefined);
+      const outcome = await renameVariable(option.value, name);
+      if (outcome.status !== 'refused') return true;
+      onRefusal({ message: outcome.message, held: outcome.held });
+      return false;
+    },
+    [onRefusal, option.value, renameVariable],
+  );
+
+  return (
+    <AttributePill
+      name={option.label}
+      type={option.type}
+      // No section holds the id, so there is nothing to rename: the same
+      // answer the pill gives for a reference the codebook has lost.
+      editable={subject !== undefined}
+      onRename={handleRename}
+      validateName={validateName}
+    />
+  );
+}
 
 /**
  * Chooses one codebook attribute, and — where the caller allows it — invents
@@ -322,7 +435,7 @@ export default function VariablePickerField({
    * window has closed by the time it appears. `failed` carries none, because
    * there is no attribute to name.
    */
-  const [notice, setNotice] = useState<CreateNotice | undefined>(undefined);
+  const [notice, setNotice] = useState<FieldNotice | undefined>(undefined);
 
   const selected = options.find((option) => option.value === value);
   const held = value !== undefined && value !== '';
@@ -359,6 +472,54 @@ export default function VariablePickerField({
    * offering a create beside it.
    */
   const canCreate = onCreateOption !== undefined && !disabled && !readOnly;
+
+  /**
+   * The attribute the researcher may rename from the pill, if any.
+   *
+   * The one mount in this package where the pill is a control rather than a
+   * statement, which is the one mount it was in Architect: the field's held
+   * value, and only where the value is a live codebook attribute this field
+   * can write to. The fallbacks are not — a reference the codebook has lost
+   * has no name to change, and an attribute ruled out by whatever the choice
+   * is for is still exactly where the researcher left it, so offering a rename
+   * from the sentence explaining why it cannot be used here would answer a
+   * question they did not ask.
+   *
+   * Read-only and disabled are the same gate `handleSelect` applies: a field
+   * that refuses a pick has nothing to gain from offering a codebook write
+   * beside it.
+   */
+  const renameable =
+    isMissing || isUnusable || disabled || readOnly ? undefined : selected;
+  /**
+   * Whether there is a protocol to rename the attribute IN.
+   *
+   * The rename is a codebook write, and this control is also rendered with a
+   * list of attributes and no host behind it — a story of the field itself, a
+   * test of what the window offers. There the pill is the statement it has
+   * always been, which is the same answer it gives for a reference the
+   * codebook has lost.
+   */
+  const hasProtocolHost = useHasProtocolBuilderHost();
+
+  /**
+   * What the field has left to say about a rename the codebook would not make,
+   * and `undefined` as each attempt begins.
+   *
+   * The sentence lands here rather than in the editor because the editor has
+   * closed by the time there is one — and it clears whatever the field was
+   * saying about an earlier act, which a new one supersedes.
+   */
+  const reportRenameRefusal = useCallback(
+    (refusal: Readonly<{ message: string; held: boolean }> | undefined) => {
+      setNotice(
+        refusal === undefined
+          ? undefined
+          : { kind: 'renameRefused', ...refusal },
+      );
+    },
+    [],
+  );
 
   /**
    * Whether the act now closing the window was made with the KEYBOARD.
@@ -495,6 +656,14 @@ export default function VariablePickerField({
             })
           }
           type={selected.type}
+        />
+      );
+    }
+    if (renameable !== undefined && hasProtocolHost) {
+      return (
+        <RenameableAttributePill
+          option={renameable}
+          onRefusal={reportRenameRefusal}
         />
       );
     }
@@ -638,6 +807,18 @@ export default function VariablePickerField({
                 <AlertDescription>
                   {intl.formatMessage(createVariableRefused)}
                 </AlertDescription>
+              </Alert>
+            )}
+            {notice?.kind === 'renameRefused' && (
+              <Alert
+                // A collaborator holding the section is not a fault: the
+                // rename is fine and will work once they are finished, so it
+                // is said in the register of a notice. Same reading the
+                // codebook's own editors make of the same refusal.
+                variant={notice.held ? 'warning' : 'destructive'}
+                role="presentation"
+              >
+                <AlertDescription>{notice.message}</AlertDescription>
               </Alert>
             )}
           </div>

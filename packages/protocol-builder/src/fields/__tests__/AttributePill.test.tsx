@@ -2,8 +2,15 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { VariableType } from '@codaco/protocol-validation';
 
@@ -140,5 +147,310 @@ describe('AttributePill', () => {
     // accessible name "number attribute age_at_interview".
     expect(container.querySelector('img')).toHaveAttribute('alt', '');
     expect(pillOf(container)).toHaveTextContent('age_at_interview');
+  });
+});
+
+/**
+ * Renaming an attribute from the pill that shows it.
+ *
+ * Architect's own interaction (`components/VariablePill.tsx`'s `editable`
+ * branch), and the ONLY way it offered to rename an existing attribute: its
+ * codebook screen had no row editor, so a researcher who mistyped a name met
+ * it here or not at all.
+ */
+describe('renaming an attribute from its pill', () => {
+  const takeIt = () => Promise.resolve(true);
+
+  const openTheEditor = async (
+    props: Partial<Parameters<typeof AttributePill>[0]> = {},
+  ) => {
+    const user = userEvent.setup();
+    render(
+      <AttributePill
+        name="age"
+        type="number"
+        editable
+        onRename={takeIt}
+        {...props}
+      />,
+    );
+    const trigger = screen.getByRole('button', {
+      name: 'Edit attribute name: age',
+    });
+    await user.click(trigger);
+    return { user, trigger };
+  };
+
+  it('offers no button at all where nothing may be written', () => {
+    render(<AttributePill name="age" type="number" />);
+    expect(screen.queryByRole('button')).toBeNull();
+    // Still the statement it was: a `<data>` carrying the name.
+    expect(screen.getByText('age')).toBeInTheDocument();
+  });
+
+  /**
+   * Every reader of a pill finds which attribute it is in the same place,
+   * whether or not this mount offers a rename: the package's own tests read a
+   * `<data value>`, and so does the end-to-end suite's reading of what a field
+   * holds (`e2e/pageobjects/editor-sections/variables.ts`). A mount that
+   * became a control must not be a mount where that reading finds nothing.
+   */
+  it('still states which attribute it is, inside the button', async () => {
+    const { container } = render(
+      <AttributePill name="age" type="number" editable onRename={takeIt} />,
+    );
+
+    const statements = container.querySelectorAll('data[value]');
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toHaveAttribute('value', 'age');
+    expect(statements[0]).toHaveAttribute('data-attribute-type', 'number');
+    expect(
+      screen
+        .getByRole('button', { name: 'Edit attribute name: age' })
+        .contains(statements[0] ?? null),
+    ).toBe(true);
+  });
+
+  it('opens the editor on the name it already holds, and says so', async () => {
+    await openTheEditor();
+
+    const box = await screen.findByRole('textbox', {
+      name: 'Attribute name',
+    });
+    expect(box).toHaveValue('age');
+    expect(box).toHaveFocus();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit attribute name' }),
+    ).toBeInTheDocument();
+    // Said aloud, because the pill has become an editor over the page.
+    expect(screen.getByText('Editing attribute age')).toBeInTheDocument();
+  });
+
+  it('holds its save until the name has actually changed', async () => {
+    const { user } = await openTheEditor();
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+    const save = screen.getByRole('button', { name: 'Save Changes' });
+
+    expect(save).toBeDisabled();
+    await user.type(box, '_at_interview');
+    expect(save).toBeEnabled();
+    // And back again: a name typed and untyped is the name it started as.
+    await user.clear(box);
+    await user.type(box, 'age');
+    expect(save).toBeDisabled();
+  });
+
+  it('refuses an empty name where it was typed', async () => {
+    const { user } = await openTheEditor();
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+
+    expect(
+      await screen.findByText('You must enter an attribute name'),
+    ).toBeInTheDocument();
+    expect(box).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+  });
+
+  it('states the caller’s own rule about the name, and blocks the save', async () => {
+    const { user } = await openTheEditor({
+      validateName: (typed) =>
+        typed === 'height'
+          ? 'this type already has an attribute called that'
+          : undefined,
+    });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+    await user.type(box, 'height');
+
+    expect(
+      await screen.findByText('this type already has an attribute called that'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+  });
+
+  it('writes the new name and says it was renamed, once', async () => {
+    const onRename = vi.fn(takeIt);
+    const { user, trigger } = await openTheEditor({ onRename });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+    await user.type(box, 'age_at_interview');
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    expect(onRename).toHaveBeenCalledExactlyOnceWith('age_at_interview');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
+    // The one sentence there is to say. A close is one act however it was
+    // asked for, and the dismissal the save's own close provokes must not add
+    // "cancelled" after it.
+    expect(
+      screen.getByText('Attribute renamed to age_at_interview'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Attribute name edit cancelled'),
+    ).not.toBeInTheDocument();
+    // And focus is back where the researcher left it.
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('leaves the name alone when the editor is dismissed, and says so', async () => {
+    const onRename = vi.fn(takeIt);
+    const { user, trigger } = await openTheEditor({ onRename });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+    await user.type(box, 'something_else');
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
+    expect(onRename).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Attribute name edit cancelled'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
+    // And the pill still shows the name the codebook holds, so reopening it
+    // starts from there rather than from the abandoned draft.
+    await user.click(trigger);
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('age');
+  });
+
+  it('keeps a refused rename on screen, with what the researcher typed', async () => {
+    const onRename = vi.fn(() => Promise.resolve(false));
+    const { user } = await openTheEditor({ onRename });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+    await user.type(box, 'age_at_interview');
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'age_at_interview',
+    );
+    expect(
+      screen.queryByText('Attribute renamed to age_at_interview'),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * A write that is out cannot be taken back, so nothing may say it was.
+   *
+   * Cancel is disabled from the moment Save is pressed. Escape and a press
+   * outside are the same act by another route, and while they were still
+   * accepted the researcher who gave up on a slow write was told the edit was
+   * cancelled — while the rename landed anyway, and the pill went on to show
+   * the new name under a "cancelled" announcement. The editor now holds until
+   * the write answers, and says what actually happened.
+   */
+  it('refuses to be dismissed while the write is out, and says what landed', async () => {
+    let taken: ((value: boolean) => void) | undefined;
+    const onRename = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          taken = resolve;
+        }),
+    );
+    const { user } = await openTheEditor({ onRename });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.clear(box);
+    await user.type(box, 'age_at_interview');
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(onRename).toHaveBeenCalledExactlyOnceWith('age_at_interview');
+
+    // Neither way out is offered while the write is with the codebook, and
+    // neither button can ask for a second write.
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+
+    await user.keyboard('{Escape}');
+    expect(
+      screen.getByRole('textbox', { name: 'Attribute name' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Attribute name edit cancelled'),
+    ).not.toBeInTheDocument();
+
+    // And then the write lands: the editor closes on what actually happened.
+    await act(async () => {
+      taken?.(true);
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
+    expect(
+      screen.getByText('Attribute renamed to age_at_interview'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Attribute name edit cancelled'),
+    ).not.toBeInTheDocument();
+    expect(onRename).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The pill gets focus back, whatever had it when the editor opened.
+   *
+   * `Modal` returns focus to whatever `document.activeElement` was when it
+   * opened, which is the pill only when the click that opened it also focused
+   * it — and a mouse click on a `<button>` does not move focus in Safari or
+   * Firefox on macOS. A researcher using one of those browsers, with focus
+   * left on another control, was returned to that other control after every
+   * close, one pill away from where they were working. So the pill puts focus
+   * back itself, as Architect's own `restoreFocusRef` effect did.
+   */
+  it('returns focus to the pill even when the click never focused it', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Somewhere else</button>
+        <AttributePill name="age" type="number" editable onRename={takeIt} />
+      </>,
+    );
+    const elsewhere = screen.getByRole('button', { name: 'Somewhere else' });
+    const trigger = screen.getByRole('button', {
+      name: 'Edit attribute name: age',
+    });
+
+    // The state those browsers leave behind: the researcher is working in
+    // another control, and the press on the pill moves no focus.
+    elsewhere.focus();
+    fireEvent.click(trigger);
+    await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  /** Enter is the keyboard's Save, and only where there is something to save. */
+  it('saves on Enter, and does nothing on Enter with no change', async () => {
+    const onRename = vi.fn(takeIt);
+    const { user } = await openTheEditor({ onRename });
+    const box = await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.type(box, '{Enter}');
+    expect(onRename).not.toHaveBeenCalled();
+
+    await user.type(box, '_at_interview{Enter}');
+    expect(onRename).toHaveBeenCalledExactlyOnceWith('age_at_interview');
   });
 });

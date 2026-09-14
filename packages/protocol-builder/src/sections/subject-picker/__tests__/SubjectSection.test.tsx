@@ -348,12 +348,17 @@ describe('creating the type a stage needs without leaving it', () => {
       );
     }
     expect(screen.getByRole('radio', { name: hueName })).toBeChecked();
-    expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
-      shape,
-    );
-    expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
-      icon,
-    );
+    // The shape is chosen from the shapes themselves, so the swatch named for
+    // the one the draft arrives with is the one marked.
+    expect(
+      within(screen.getByRole('radiogroup', { name: 'Shape' })).getByRole(
+        'radio',
+        {
+          name: `Select shape ${shape[0]?.toUpperCase() ?? ''}${shape.slice(1)}`,
+        },
+      ),
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('textbox', { name: 'Icon' })).toHaveValue(icon);
   });
 
   it('puts the new type in the codebook and selects it here', async () => {

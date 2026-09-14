@@ -91,10 +91,10 @@ export const NoRulesYet: Story = {
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
+      await canvas.findByRole('switch', { name: 'Minimum text length' }),
     ).not.toBeChecked();
     await expect(
-      canvas.getByRole('checkbox', { name: 'Maximum text length' }),
+      canvas.getByRole('switch', { name: 'Maximum text length' }),
     ).not.toBeChecked();
     await expect(canvas.queryAllByRole('spinbutton')).toHaveLength(0);
   },
@@ -110,7 +110,7 @@ export const TheLengthsAStageHolds: Story = {
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
+      await canvas.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeChecked();
     await expect(
       canvas.getByRole('spinbutton', { name: 'Minimum text length' }),
@@ -133,7 +133,7 @@ export const SwitchingARuleOn: Story = {
     await awaitPassiveEffects();
 
     await userEvent.click(
-      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
+      await canvas.findByRole('switch', { name: 'Minimum text length' }),
     );
 
     await expect(
@@ -161,13 +161,13 @@ export const ASpectator: Story = {
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
+      await canvas.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeDisabled();
     await expect(
       canvas.getByRole('spinbutton', { name: 'Minimum text length' }),
     ).toBeDisabled();
     await expect(
-      canvas.getByRole('checkbox', { name: 'Maximum text length' }),
+      canvas.getByRole('switch', { name: 'Maximum text length' }),
     ).toBeDisabled();
   },
 };

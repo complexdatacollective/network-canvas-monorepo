@@ -151,6 +151,70 @@ describe('ColorPickerField', () => {
     );
   });
 
+  it('marks the chosen swatch with the theme’s selection colour, and offers it faded under the pointer', () => {
+    renderInForm(
+      <Field
+        name="color"
+        label="Node color"
+        component={ColorPickerField}
+        initialValue="node-color-seq-1"
+        options={palette}
+      />,
+    );
+
+    const chosen = screen.getByRole('radio', { name: 'Neon Coral' });
+    const unchosen = screen.getByRole('radio', { name: 'Sea Serpent' });
+
+    // Being chosen is an outline standing off the swatch in `selected`, the
+    // token the rest of the system marks a chosen thing with. Never the
+    // swatch's own colour: a colour cannot say of itself that it is the chosen
+    // one, and a swatch filled with the group's background has none to draw
+    // with.
+    expect(chosen).toHaveClass(
+      'outline-4',
+      'outline-offset-2',
+      'outline-selected',
+    );
+    expect(chosen.className).not.toContain('outline-(--swatch-color)');
+
+    // Idle: nothing stands off an unchosen swatch, so the two states differ in
+    // shape and not only in strength.
+    expect(unchosen).not.toHaveClass('outline-selected');
+    expect(unchosen).not.toHaveClass('outline-4');
+
+    // Pointing at a swatch grows it instead of drawing a faint copy of the
+    // chosen ring: an offer is a different KIND of cue from an answer, so the
+    // two can never be confused at a glance. The growth is carried by the
+    // ground the swatch is painted on, so a see-through fill keeps its
+    // chequerboard, and it is offered only while the control can be chosen.
+    // Asserted on the utility rather than a computed style: jsdom loads no
+    // stylesheet, so a transform can only be read in a browser (the
+    // `SelectionAndHover` play does read it).
+    const ground = chosen.parentElement;
+    expect(ground).toHaveClass('hover:scale-110');
+    expect(ground).toHaveClass('transition-transform');
+    expect(ground).toHaveClass('motion-reduce:transition-none');
+    expect(chosen.className).not.toContain('hover:outline');
+
+    // Keyboard focus draws the same ring as being chosen, rather than a
+    // competing one in another colour at another width: arrowing a radio group
+    // carries the choice with the focus, so the two name one thing here.
+    expect(chosen).toHaveClass(
+      '[--focus-color:var(--color-selected)]',
+      'focus-visible:outline-4',
+      'focus-visible:outline-offset-2',
+    );
+    expect(chosen.className).not.toContain(
+      'focus-visible:outline-input-contrast',
+    );
+
+    // The swatch's edge, in the group's foreground rather than in its fill, so
+    // a swatch painted the colour of the ground is still a disc.
+    for (const swatch of screen.getAllByRole('radio')) {
+      expect(swatch).toHaveClass('border', 'border-current', 'rounded-full');
+    }
+  });
+
   it('works through UnconnectedField, taking its name from the field’s label', () => {
     function Standalone() {
       const [color, setColor] = useState<string | undefined>(

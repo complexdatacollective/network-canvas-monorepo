@@ -324,7 +324,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       'Different from another attribute',
       'Same as another attribute',
     ]) {
-      expect(screen.getByRole('checkbox', { name: rule })).toBeInTheDocument();
+      expect(screen.getByRole('switch', { name: rule })).toBeInTheDocument();
     }
     for (const heading of [
       'Requirements',
@@ -342,7 +342,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     });
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     // Merged over the rules the attribute already had rather than replacing
     // them: the researcher added one rule, not a rule map.
@@ -354,7 +354,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     );
 
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      screen.getByRole('switch', { name: 'Required answer' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({ unique: true }),
@@ -374,7 +374,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     // Switching the rule on writes a length the attribute can satisfy, so the
     // map is never half-set by the act of switching it on.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({
@@ -453,7 +453,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       await screen.findByRole('switch', { name: 'Validation' }),
     ).toHaveAttribute('aria-checked', 'false');
     expect(
-      screen.queryByRole('checkbox', { name: 'Required answer' }),
+      screen.queryByRole('switch', { name: 'Required answer' }),
     ).not.toBeInTheDocument();
   });
 
@@ -468,7 +468,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     });
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({

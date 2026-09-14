@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { useCallback, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -11,9 +12,11 @@ import {
 import { VariableNameSchema } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type {
-  CodebookSubject,
-  ProtocolBuilderProtocolContext,
+import {
+  variableForSubject,
+  variablesForSubject,
+  type CodebookSubject,
+  type ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { codebookRefusalMessage } from './compoundFailureCopy.ts';
@@ -28,6 +31,10 @@ import {
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
+import {
+  buildInterfaceOwnedOptionMap,
+  interfaceOwnedOptionsIssue,
+} from './variableRoles.ts';
 import {
   useCodebookSectionWrite,
   type CodebookWriteOutcome,
@@ -52,6 +59,19 @@ export type NewCodebookVariable = Readonly<{
    * value, because the interview writes one the moment a node is created.
    */
   validation?: Readonly<Record<string, unknown>>;
+  /**
+   * The answers the attribute offers, where the section asked the researcher
+   * for them before it existed.
+   *
+   * Only a yes-or-no answer reaches this: its two words are the whole of what
+   * a name cannot carry, and they are authored beside the question in the same
+   * gesture as the name (`sections/AttributeValueFields.tsx`), so writing them
+   * afterwards would be a second save for one act. A list of answers is a
+   * different case — the schema refuses fewer than two of them, so an
+   * attribute that IS its list is authored in the codebook's own editor, which
+   * creates it whole.
+   */
+  options?: readonly Readonly<Record<string, unknown>>[];
 }>;
 
 export type CreateCodebookVariableOutcome =
@@ -79,6 +99,31 @@ export type SetVariableComponent = (
   component: string,
 ) => Promise<SetVariableComponentOutcome>;
 
+export type RenameCodebookVariableOutcome =
+  /** The codebook already calls the attribute that, so nothing was written. */
+  | Readonly<{ status: 'unchanged' }>
+  /** The codebook now calls it that. */
+  | Readonly<{ status: 'written' }>
+  | Readonly<{
+      status: 'refused';
+      message: string;
+      /**
+       * Whether the only thing in the way is a collaborator.
+       *
+       * Read by the surface showing it to choose the register: a held section
+       * is not a fault — the rename is fine and will work once they are
+       * finished — so it is said as a notice rather than as an error. Same
+       * reading `EncryptedAttributesSection` and the codebook's own editors
+       * make of `CodebookRefusal`.
+       */
+      held: boolean;
+    }>;
+
+export type RenameCodebookVariable = (
+  variableId: string,
+  name: string,
+) => Promise<RenameCodebookVariableOutcome>;
+
 const messages = defineMessages({
   refusedUnchanged: {
     id: 'protocolBuilder.codebookEditing.createVariableRefused',
@@ -86,6 +131,13 @@ const messages = defineMessages({
       'This attribute could not be created, so nothing was changed. Try again.',
     description:
       'Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own.',
+  },
+  refusedOptionsUnchanged: {
+    id: 'protocolBuilder.codebookEditing.setOptionsRefused',
+    defaultMessage:
+      'This attribute’s values could not be changed, so nothing was changed. Try again.',
+    description:
+      'Refusal shown on the list of values a participant chooses between, in a stage editor, when recording them on the attribute failed for a reason with no explanation of its own.',
   },
   refusedControlUnchanged: {
     id: 'protocolBuilder.codebookEditing.setComponentRefused',
@@ -313,6 +365,9 @@ export function useCreateCodebookVariable(
         ...(variable.validation === undefined
           ? {}
           : { validation: variable.validation }),
+        ...(variable.options === undefined
+          ? {}
+          : { options: variable.options }),
       };
 
       // The builder refuses a duplicate name, an id already in use and a draft
@@ -468,6 +523,251 @@ export function useSetVariableComponent(
     },
     [intl, protocolContext, subject, write],
   );
+}
+
+export type SetVariableOptions = (
+  /**
+   * Whose codebook holds the attribute — per call rather than per hook,
+   * because one caller's subject is the ROW's: a tie-strength prompt names
+   * the connection type it is about, and the scale it rules belongs to that
+   * type rather than to the stage.
+   */
+  subject: CodebookSubject | undefined,
+  variableId: string,
+  options: unknown,
+) => Promise<SetVariableComponentOutcome>;
+
+/**
+ * Records the answers an existing attribute offers.
+ *
+ * Architect edited these where the question is asked — inline, under the
+ * picker that binds the attribute — and wrote them in the ROW's own save
+ * (`sections/Form/fieldCommit.ts`, `sections/useVariableOptionsCommit.ts`).
+ * They still belong to the codebook variable rather than to the field that
+ * renders it: one attribute offers the same answers wherever it is asked for,
+ * or an export would hold two different lists under one name. So a row
+ * authoring them is a codebook edit, and commits on its own like the input
+ * control beside it.
+ *
+ * A list that already matches is not written, for the reason the control's own
+ * write is not: an unchanged save must not put a revision on the codebook
+ * section that a collaborator has to merge.
+ *
+ * A list an INTERFACE owns is refused rather than written. Sorting family
+ * members by sex is legitimate authoring, but the interface that both writes
+ * the attribute and branches on its exact values owns that list; Architect
+ * refused the same write for the same reason
+ * (`sections/useVariableOptionsCommit.ts`'s interface-owned refusal), and
+ * until now the package carried the refusal with nothing calling it.
+ */
+export function useSetVariableOptions(): SetVariableOptions {
+  const write = useCodebookSectionWrite();
+  const protocolContext = useProtocolContext();
+  const intl = useAppIntl();
+
+  return useCallback(
+    async (subject, variableId, options) => {
+      if (subject === undefined) {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.noSubject),
+        };
+      }
+      const held = variablesForSubject(protocolContext, subject)[variableId];
+      // The only reading of the cache here, and only to skip a write that has
+      // nothing to say. A cache that has not arrived yet is not an answer, so
+      // it goes on and asks the host.
+      if (
+        held !== undefined &&
+        isEqual(Reflect.get(held, 'options'), options)
+      ) {
+        return { status: 'unchanged' };
+      }
+
+      const ownedIssue = interfaceOwnedOptionsIssue(
+        buildInterfaceOwnedOptionMap(protocolContext),
+        subject,
+        variableId,
+        options,
+      );
+      if (ownedIssue !== undefined) {
+        return { status: 'refused', message: ownedIssue };
+      }
+
+      let refusal: string | undefined;
+      const outcome = await write(subject, (authoritativeDocument) => {
+        const variables = authoritativeDocument.variables;
+        const current =
+          typeof variables === 'object' && variables !== null
+            ? Reflect.get(variables, variableId)
+            : undefined;
+        if (typeof current !== 'object' || current === null) {
+          refusal = intl.formatMessage(messages.missingVariable);
+          throw new MissingVariableError(variableId);
+        }
+
+        try {
+          return documentWithUpdatedVariable({
+            subject,
+            authoritativeDocument,
+            variableId,
+            draft: { options },
+            // Replaced rather than merged: a value the researcher removed is
+            // gone, and a list merged key by key would put it back.
+            replaceProperties: ['options'],
+          });
+        } catch (error: unknown) {
+          refusal = refusalMessage(
+            error,
+            {
+              name: Reflect.get(current, 'name'),
+              type: Reflect.get(current, 'type'),
+              component: Reflect.get(current, 'component'),
+            },
+            intl.formatMessage(messages.refusedOptionsUnchanged),
+            intl,
+          );
+          throw error;
+        }
+      });
+
+      if (outcome.status === 'applied') return { status: 'written' };
+      return {
+        status: 'refused',
+        message: refusal ?? rowRefusal(outcome, intl),
+      };
+    },
+    [intl, protocolContext, write],
+  );
+}
+
+/**
+ * Renames an existing attribute.
+ *
+ * The whole of what a rename writes is the `name`: everything in a protocol
+ * that refers to an attribute refers to it by its record id, which is exactly
+ * why that id is minted rather than taken from the name. So nothing else moves
+ * — no prompt, no rule and no form field is rewritten — and `documentWithUpdatedVariable`
+ * lays the one property over the section the host holds NOW, leaving a
+ * collaborator's edit to the same attribute's values or rules alone.
+ *
+ * A name the codebook already holds is refused by the write itself
+ * (`assertVariableNameAvailable`, which excludes the attribute being renamed,
+ * so a change of case or of Unicode form is not a duplicate of itself). The
+ * control asks the same rule as the researcher types; this is the answer that
+ * counts, because the name can be taken by a collaborator inside the round
+ * trip.
+ *
+ * A name that already matches is not written: an unchanged save must not put a
+ * revision on the codebook section that a collaborator has to merge.
+ */
+export function useRenameCodebookVariable(
+  subject: CodebookSubject | undefined,
+): RenameCodebookVariable {
+  const write = useCodebookSectionWrite();
+  const protocolContext = useProtocolContext();
+  const intl = useAppIntl();
+
+  return useCallback(
+    async (variableId, name) => {
+      if (subject === undefined) {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.noSubject),
+          held: false,
+        };
+      }
+      // The only reading of the cache here, and only to skip a write with
+      // nothing to say. A cache that has not arrived yet is not an answer, so
+      // it goes on and asks the host.
+      if (
+        variableForSubject(protocolContext, subject, variableId)?.name === name
+      ) {
+        return { status: 'unchanged' };
+      }
+
+      let refusal: string | undefined;
+      const outcome = await write(subject, (authoritativeDocument) => {
+        const variables = authoritativeDocument.variables;
+        const current =
+          typeof variables === 'object' && variables !== null
+            ? Reflect.get(variables, variableId)
+            : undefined;
+        if (typeof current !== 'object' || current === null) {
+          refusal = intl.formatMessage(messages.missingVariable);
+          throw new MissingVariableError(variableId);
+        }
+
+        try {
+          return documentWithUpdatedVariable({
+            subject,
+            authoritativeDocument,
+            variableId,
+            draft: { name },
+          });
+        } catch (error: unknown) {
+          refusal = refusalMessage(
+            error,
+            {
+              name,
+              type: Reflect.get(current, 'type'),
+              component: Reflect.get(current, 'component'),
+            },
+            // Every refusal a rename draft can raise has its own sentence —
+            // the name is taken, the attribute has gone, the name is not one
+            // the codebook can carry — so this is the last resort rather than
+            // a sentence about renaming: it is reached only by a throw with
+            // nothing in it a researcher could act on.
+            readRefusal(codebookRefusalMessage({ kind: 'unexplained' }), intl),
+            intl,
+          );
+          throw error;
+        }
+      });
+
+      if (outcome.status === 'applied') return { status: 'written' };
+      return {
+        status: 'refused',
+        message: refusal ?? rowRefusal(outcome, intl),
+        held: refusal === undefined && outcome.refusal.kind === 'held',
+      };
+    },
+    [intl, protocolContext, subject, write],
+  );
+}
+
+/**
+ * Which codebook section one attribute lives in, or `undefined` where no
+ * section of the protocol holds it.
+ *
+ * Asked of the record id rather than taken as a parameter, because a control
+ * handed an attribute is often not handed the type it belongs to: a rule's
+ * operand and a form field's attribute both arrive as an id, and the section
+ * that offered them narrowed a pool it built for its own purpose. A record id
+ * belongs to exactly one section — `documentWithCreatedVariable` refuses one
+ * any other section already holds — so this is a reading rather than a guess.
+ *
+ * `undefined` is the answer for an id the protocol has lost, which is the one
+ * fact a control offering to EDIT the attribute has to be gated on.
+ */
+export function useSubjectForVariable(
+  variableId: string | undefined,
+): CodebookSubject | undefined {
+  const protocolContext = useProtocolContext();
+  return useMemo(() => {
+    if (variableId === undefined) return undefined;
+    const { codebook } = protocolContext;
+    for (const entity of ['node', 'edge'] as const) {
+      for (const [type, definition] of Object.entries(codebook[entity] ?? {})) {
+        if (Object.hasOwn(definition.variables ?? {}, variableId)) {
+          return { entity, type };
+        }
+      }
+    }
+    return Object.hasOwn(codebook.ego?.variables ?? {}, variableId)
+      ? { entity: 'ego' }
+      : undefined;
+  }, [protocolContext, variableId]);
 }
 
 /**

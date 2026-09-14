@@ -287,6 +287,7 @@ export default function DiseasesSection() {
       Editor: DiseaseEditor,
       addTitle: narrativePedigreeMessages.diseasesAddTitle,
       editTitle: narrativePedigreeMessages.diseasesEditTitle,
+      description: narrativePedigreeMessages.diseaseDetailsDescription,
       formId: 'disease-editor',
       name: DISEASES_FIELD,
       beforeSave,

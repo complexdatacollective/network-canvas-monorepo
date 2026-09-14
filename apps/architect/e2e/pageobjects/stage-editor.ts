@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+import { typeInlineRun } from './rich-text.js';
+
 // Verified against real source (not just the task brief's guesses):
 // - `createNew`'s URL/query params match exactly how NewStageScreen.tsx
 //   navigates (`params.set('type', ...)`, `params.set('insertAtIndex', ...)`,
@@ -27,14 +29,6 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   editor navigates to `/protocol` only once the form's validators all pass
 //   and the host has accepted the write — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
-// Inline emphasis spans, longest-delimiter first so `**bold**` is never read
-// as two adjacent `*italic*` markers. Kept as a split pattern (capturing, so
-// `String.split` returns the delimiters as their own segments) and a matching
-// anchored test — deliberately NOT one global regex, whose `lastIndex` would
-// carry between calls.
-const EMPHASIS_SPLIT = /(\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)/;
-const EMPHASIS_TEST = /^(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)$/;
-
 type MarkdownBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'bullet' | 'ordered'; items: string[] };
@@ -62,30 +56,6 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
       }
       return { kind: 'paragraph', text: block };
     });
-}
-
-// One line of inline markdown. Only the emphasis markers need to arrive as
-// real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`
-// through ProseMirror input rules, which fire on the closing character and
-// are invisible to bulk insertion. Everything between them is plain prose
-// that `insertText` places in one call.
-//
-// This is the difference between ~15,000 keystroke round trips across the
-// spec and a few hundred: the whole-protocol build types 15kB of canonical
-// copy, of which under 5% carries emphasis. It is also SAFER than typing
-// everything, because bulk-inserted prose cannot trip an input rule it was
-// never meant to (a sentence that happens to start `1. `, say). Correctness
-// is not assumed — the final comparison re-parses every string, so a
-// mis-typed mark fails the run loudly.
-async function typeInlineRun(page: Page, text: string): Promise<void> {
-  for (const segment of text.split(EMPHASIS_SPLIT)) {
-    if (!segment) continue;
-    if (EMPHASIS_TEST.test(segment)) {
-      await page.keyboard.type(segment);
-    } else {
-      await page.keyboard.insertText(segment);
-    }
-  }
 }
 
 export class StageEditor {

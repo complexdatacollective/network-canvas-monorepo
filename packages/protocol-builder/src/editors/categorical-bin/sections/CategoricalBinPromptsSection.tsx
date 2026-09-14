@@ -25,6 +25,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
@@ -361,8 +362,16 @@ export default function CategoricalBinPromptsSection() {
    * sentence about where its answers are stored would say nothing the
    * researcher can act on yet.
    */
+  const binOptions = useOptionsRowCommit(
+    BINS_SLOT.name,
+    // The bins are the node type's own attribute, which the stage names.
+    () => subject,
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       for (const slot of [BINS_SLOT, OTHER_SLOT]) {
         const issue = binAttributePickIssue({
           protocolContext,
@@ -376,9 +385,13 @@ export default function CategoricalBinPromptsSection() {
           return { refused: { fieldErrors: { [slot.name]: [issue] } } };
         }
       }
-      return { row };
+      // After the picks, because the values are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot draw has no list to
+      // write anywhere. The follow-up answer is typed rather than chosen, so
+      // only the bins carry one.
+      return await binOptions.commit(row, context);
     },
-    [identity.id, protocolContext, subject],
+    [binOptions, identity.id, protocolContext, subject],
   );
 
   return (
@@ -386,6 +399,7 @@ export default function CategoricalBinPromptsSection() {
       PromptEditor={CategoricalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
+      expand={binOptions.expand}
     />
   );
 }

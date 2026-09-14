@@ -30,9 +30,9 @@ export type PassphraseRulesFieldProps = CreateFormFieldProps<
  *
  * The package's own validation-rule editor, pointed at the passphrase rule
  * catalogue. It is reused rather than reimplemented because a rule is a rule:
- * the same checkbox-plus-value control, the same "enter a value or switch it
- * off" refusal, and the same incomplete-rule handling that keeps a half-set
- * rule visible instead of silently discarding it.
+ * the same switch-plus-value row, the same "enter a value or switch it off"
+ * refusal, and the same incomplete-rule handling that keeps a half-set rule
+ * visible instead of silently discarding it.
  *
  * There is deliberately nothing to compare a passphrase against — it is not a
  * codebook attribute and there are no sibling attributes in scope — so the
@@ -53,12 +53,6 @@ export default function PassphraseRulesField({
   // `aria-invalid` describing nothing.
   'aria-describedby': ariaDescribedBy,
 }: PassphraseRulesFieldProps) {
-  // The refusal the field is stating, rather than the bare fact that it is
-  // refusing: the field shows its error region exactly when `aria-invalid`
-  // holds, and this is the message in it.
-  const fieldIssue =
-    ariaInvalid === true ? passphraseRulesIssue(value) : undefined;
-
   return (
     <VariableValidationEditor
       entity={ENTITY}
@@ -75,7 +69,6 @@ export default function PassphraseRulesField({
       {...(ariaDescribedBy === undefined
         ? {}
         : { 'aria-describedby': ariaDescribedBy })}
-      {...(fieldIssue === undefined ? {} : { fieldIssue })}
       {...(className === undefined ? {} : { className })}
     />
   );

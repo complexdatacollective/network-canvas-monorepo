@@ -11,6 +11,7 @@ import type {
   StageSectionsStore,
   StageSectionStatus,
 } from '@codaco/protocol-builder/stage-editor-contract';
+import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 import StageSectionOutline from '../StageSectionOutline';
 
@@ -201,6 +202,35 @@ describe('the list of a stage’s sections', () => {
     // Focus rather than a scroll alone, so a keyboard or screen-reader user
     // actually arrives: the section is a region named by its own heading.
     expect(document.activeElement).toHaveAccessibleName('Interviewer guidance');
+  });
+
+  /**
+   * Where the list stops while the form beside it scrolls.
+   *
+   * Architect's navigation bar is sticky too and paints above this column, so
+   * a list stuck to the top of the viewport loses its first rows behind the
+   * bar — which is what shipped — and one given the whole viewport's height to
+   * scroll in runs the same distance off the bottom of the screen. Both are
+   * measured from the bar's own published height rather than from a number
+   * written here: the bar's height changes with the width of the window and
+   * with what is on the screen.
+   */
+  it('starts and ends clear of the navigation bar', () => {
+    render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+
+    expect(outline.className).toContain(
+      `@min-[60rem]:top-(${NAV_HEIGHT_VARIABLE})`,
+    );
+    expect(outline.className).toContain(
+      `@min-[60rem]:max-h-[calc(100dvh-var(${NAV_HEIGHT_VARIABLE}))]`,
+    );
+    expect(outline.className).not.toContain('@min-[60rem]:top-0');
+    expect(outline.className).not.toContain('@min-[60rem]:max-h-dvh');
+    // The 56px of top padding that stood in for the bar's height is gone with
+    // it: kept alongside the offset it would be a second, unrelated gap.
+    expect(outline.className).not.toContain('@min-[60rem]:py-14');
   });
 
   it('is not there at all before the editor has any sections to list', () => {

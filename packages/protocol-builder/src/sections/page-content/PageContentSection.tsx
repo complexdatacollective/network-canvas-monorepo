@@ -318,6 +318,14 @@ export type PageContentSectionProps = Readonly<{
    * blocks, and that is all this section owns.
    */
   ItemEditor: RowEditorComponent;
+  /**
+   * What the item's own dialog says under its title.
+   *
+   * The family's, because what an item may be is the family's: the dialog says
+   * it once, above the fields, instead of a group inside it restating the
+   * title it was opened under.
+   */
+  itemDescription?: MessageDescriptor;
   /** How one block reads in the list when its dialog is closed. */
   ItemPreview: RowPreviewComponent;
   variant?: PageContentVariant;
@@ -377,6 +385,7 @@ export type PageContentSectionProps = Readonly<{
  */
 export default function PageContentSection({
   ItemEditor,
+  itemDescription,
   ItemPreview,
   variant = 'page',
   slots,
@@ -402,6 +411,9 @@ export default function PageContentSection({
       Editor: ItemEditor,
       addTitle: words.addTitle,
       editTitle: words.editTitle,
+      ...(itemDescription === undefined
+        ? {}
+        : { description: itemDescription }),
       formId: 'content-block-editor',
       name: placement.itemsField,
       ...(expand === undefined
@@ -415,6 +427,7 @@ export default function PageContentSection({
     [
       ItemEditor,
       ItemPreview,
+      itemDescription,
       collapse,
       expand,
       placement.itemsField,

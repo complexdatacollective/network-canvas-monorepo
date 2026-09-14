@@ -707,17 +707,16 @@ describe('the form-fields row dialog, read in Spanish', () => {
       screen.getByRole('button', { name: 'Crear atributo' }),
     );
 
-    // The attribute now exists, so the row offers the two things that belong
-    // to it rather than the one that makes it.
+    // The attribute now exists, so the row shows the two things that belong to
+    // it rather than the one that makes it: its values, inline under the
+    // picker...
     expect(
-      await dialog.findByRole('button', {
-        name: 'Cambiar los valores de este atributo',
-      }),
+      await dialog.findByRole('region', { name: 'Valores de las opciones' }),
     ).toBeInTheDocument();
+    // And the rules the answer has to satisfy, in the nested section this
+    // dialog ends with rather than behind a button of their own.
     expect(
-      dialog.getByRole('button', {
-        name: 'Definir reglas para esta respuesta',
-      }),
+      dialog.getByRole('switch', { name: 'Validación' }),
     ).toBeInTheDocument();
   });
 
@@ -729,14 +728,17 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(screen.getByText('Editar campo de formulario')).toBeInTheDocument();
     expect(
-      await dialog.findByRole('button', {
-        name: 'Cambiar las etiquetas de respuesta de este atributo',
-      }),
+      await dialog.findByRole('region', { name: 'Valores booleanos' }),
     ).toBeInTheDocument();
     expect(
-      dialog.getByRole('button', {
-        name: 'Definir reglas para esta respuesta',
-      }),
+      within(
+        dialog.getByRole('region', { name: 'Valores booleanos' }),
+      ).getByRole('textbox', { name: 'Etiqueta de «true»' }),
+    ).toBeInTheDocument();
+    // And the rules the answer has to satisfy, in the nested section this
+    // dialog ends with rather than behind a button of their own.
+    expect(
+      dialog.getByRole('switch', { name: 'Validación' }),
     ).toBeInTheDocument();
   });
 
@@ -759,9 +761,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      dialog.queryByRole('button', {
-        name: 'Cambiar los valores de este atributo',
-      }),
+      dialog.queryByRole('region', { name: 'Valores de las opciones' }),
     ).toBeNull();
   });
 
@@ -889,6 +889,10 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         name: 'lugar_de_contacto',
         type: 'categorical',
         component: 'CheckboxGroup',
+        // Not the researcher's to change, so the values are shown rather than
+        // offered — which is what leaves the control the only thing this row
+        // writes, and its write the only thing that can be refused.
+        readOnly: true,
         options: [
           { label: 'En casa', value: 'en casa' },
           { label: 'En el trabajo', value: 'trabajo' },

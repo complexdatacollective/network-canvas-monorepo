@@ -295,6 +295,20 @@ export const optionsForShape = (
   return booleanOptionsFrom(options, storedOptions);
 };
 
+/**
+ * Whether `optionsForShape` came back with a list to write.
+ *
+ * It answers `undefined` for an attribute that carries no `options` key at
+ * all, and a caller assembling a CREATE has to leave the key out rather than
+ * send it empty. Nothing is asked about the entries: a list that reaches here
+ * was authored by controls that already hold the schema's shape, and anything
+ * wrong with it is the document builder's to refuse.
+ */
+export const isOptionListToWrite = (
+  value: unknown,
+): value is readonly Readonly<Record<string, unknown>>[] =>
+  Array.isArray(value);
+
 export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
 
 /**

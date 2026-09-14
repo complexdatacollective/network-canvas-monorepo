@@ -103,10 +103,10 @@ async function reopenStage(
 }
 
 /**
- * Open the committed field's dialog, set its attribute's Required rule through
- * the codebook editor behind it, and close the field dialog WITHOUT saving the
- * row — so the only thing that could have reached the protocol is the codebook
- * write the rules editor made on its own submit.
+ * Open the committed field's dialog, set its attribute's Required rule in the
+ * nested Validation section, and close the field dialog WITHOUT saving the row
+ * — so the only thing that could have reached the protocol is the codebook
+ * write that section made as the switch moved.
  */
 async function requireAnAnswerFromTheCodebookEditor(
   editor: StageEditor,
@@ -121,15 +121,15 @@ async function requireAnAnswerFromTheCodebookEditor(
     exact: true,
   });
   const rules = await openValidationSection(fieldDialog);
-  await rules
-    .getByRole('checkbox', { name: 'Required answer', exact: true })
-    .check();
-  await rules
-    .getByRole('button', { name: 'Save validation', exact: true })
-    .click();
-  // Detached rather than hidden: the editor closes only once the codebook
-  // write has been accepted, so this is the write landing, not an animation.
-  await rules.waitFor({ state: 'detached' });
+  const required = rules.getByRole('switch', {
+    name: 'Required answer',
+    exact: true,
+  });
+  await required.click();
+  // The section has no submit: the rule is written to the codebook as the
+  // switch moves, and the switch holding it is what says the gesture was
+  // taken. The read below polls for the write itself.
+  await expect(required).toBeChecked();
 
   await fieldDialog
     .getByRole('button', { name: 'Cancel', exact: true })

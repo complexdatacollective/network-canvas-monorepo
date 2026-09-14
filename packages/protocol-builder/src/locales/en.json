@@ -299,21 +299,9 @@
     "defaultMessage": "Create this attribute and its values",
     "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
   },
-  "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
-    "defaultMessage": "Change this attribute’s answer labels",
-    "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
-  },
   "protocolBuilder.attributeCodebookControls.editParameters": {
     "defaultMessage": "Set what this field accepts",
     "description": "The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens."
-  },
-  "protocolBuilder.attributeCodebookControls.editRules": {
-    "defaultMessage": "Set rules for this answer",
-    "description": "Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens."
-  },
-  "protocolBuilder.attributeCodebookControls.editValues": {
-    "defaultMessage": "Change this attribute’s values",
-    "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
   "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
@@ -533,7 +521,7 @@
   },
   "protocolBuilder.censusPrompts.dyadPromptTextDescription": {
     "defaultMessage": "Write the participant prompt and select the edge type created by an affirmative response.",
-    "description": "Description of the group holding a Dyad Census prompt’s question and the kind of connection an affirmative answer records."
+    "description": "Said under the title of a Dyad Census prompt’s own dialog, which holds its question and the kind of connection an affirmative answer records."
   },
   "protocolBuilder.censusPrompts.edgeGoneRefusal": {
     "defaultMessage": "The connection type this prompt records is no longer in the codebook. Choose another one.",
@@ -799,6 +787,10 @@
     "defaultMessage": "This attribute’s input control could not be changed, so nothing was changed. Try again.",
     "description": "Refusal shown on the input-control dropdown of a stage editor when recording which control an attribute is collected with failed for a reason with no explanation of its own."
   },
+  "protocolBuilder.codebookEditing.setOptionsRefused": {
+    "defaultMessage": "This attribute’s values could not be changed, so nothing was changed. Try again.",
+    "description": "Refusal shown on the list of values a participant chooses between, in a stage editor, when recording them on the attribute failed for a reason with no explanation of its own."
+  },
   "protocolBuilder.codebookEditing.unsupportedControl": {
     "defaultMessage": "This attribute cannot be collected with that input control.",
     "description": "Refusal shown on the input-control dropdown when the control chosen cannot collect the kind of answer this attribute holds."
@@ -806,6 +798,14 @@
   "protocolBuilder.codebookEntity.addEgoAttributes": {
     "defaultMessage": "Add ego attributes",
     "description": "Button that adds the ego definition to a codebook that has none. The ego is the interview participant themselves."
+  },
+  "protocolBuilder.codebookEntity.appearanceSectionDescription": {
+    "defaultMessage": "Choose a default shape and optionally map shapes from an attribute.",
+    "description": "Description of the appearance group of the node type editor, saying that the shape a node is drawn as can also follow one of its attributes."
+  },
+  "protocolBuilder.codebookEntity.appearanceSectionTitle": {
+    "defaultMessage": "Node appearance",
+    "description": "Heading of the group of the node type editor holding how a node of this type is drawn. A node is a member of the interview network."
   },
   "protocolBuilder.codebookEntity.attributeListLabel": {
     "defaultMessage": "{name} attributes",
@@ -839,6 +839,10 @@
     "defaultMessage": "Choose a color.",
     "description": "Refusal shown under the colour field of the entity editor when the researcher has chosen none."
   },
+  "protocolBuilder.codebookEntity.colorSectionTitle": {
+    "defaultMessage": "Type color",
+    "description": "Heading of the group of the entity editor holding the colour this type is drawn in."
+  },
   "protocolBuilder.codebookEntity.createAttribute": {
     "defaultMessage": "Create attribute",
     "description": "Visible label of the button that adds a new attribute (a codebook variable) to the entity this card is about."
@@ -859,10 +863,6 @@
     "defaultMessage": "Create node type",
     "description": "Button that adds a new node type to the codebook. A node is a member of the interview network."
   },
-  "protocolBuilder.codebookEntity.createTitle": {
-    "defaultMessage": "{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}",
-    "description": "Heading of the editor while a new codebook entity is being added. entity is node, edge or ego."
-  },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
     "description": "Heading over the codebook’s edge types. An edge is a relationship between two network members."
@@ -878,10 +878,6 @@
   "protocolBuilder.codebookEntity.editSubjectLabel": {
     "defaultMessage": "{entity, select, node {Edit Node type: {name}} edge {Edit Edge type: {name}} other {Edit Ego attributes}}",
     "description": "Accessible name of the button that opens one codebook card for editing. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card."
-  },
-  "protocolBuilder.codebookEntity.editTitle": {
-    "defaultMessage": "{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}",
-    "description": "Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego."
   },
   "protocolBuilder.codebookEntity.editType": {
     "defaultMessage": "Edit type",
@@ -904,16 +900,28 @@
     "description": "Guidance under the icon field. \"Lucide\" is an icon library and \"Network Canvas\" the product; both are names and stay as they are. An interface is one kind of interview step."
   },
   "protocolBuilder.codebookEntity.iconLabel": {
-    "defaultMessage": "Interface icon",
-    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step."
+    "defaultMessage": "Icon",
+    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type."
   },
   "protocolBuilder.codebookEntity.iconRequired": {
     "defaultMessage": "Enter an icon name.",
     "description": "Refusal shown under the icon field of the node type editor when the researcher has left it empty."
   },
+  "protocolBuilder.codebookEntity.iconSectionTitle": {
+    "defaultMessage": "Interface icon",
+    "description": "Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step."
+  },
   "protocolBuilder.codebookEntity.iconUnsupported": {
     "defaultMessage": "Choose an icon supported by Network Canvas.",
     "description": "Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. \"Network Canvas\" is the product name and stays as it is."
+  },
+  "protocolBuilder.codebookEntity.identitySectionDescription": {
+    "defaultMessage": "Name this type for the codebook and exported data.",
+    "description": "Description of the identity group of the entity editor. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+  },
+  "protocolBuilder.codebookEntity.identitySectionTitle": {
+    "defaultMessage": "Type identity",
+    "description": "Heading of the group of the entity editor holding the name this type is known by."
   },
   "protocolBuilder.codebookEntity.issuesListLabel": {
     "defaultMessage": "Codebook issues",
@@ -979,21 +987,101 @@
     "defaultMessage": "Node types",
     "description": "Heading over the codebook’s node types. A node is a member of the interview network."
   },
+  "protocolBuilder.codebookEntity.shapeAddThreshold": {
+    "defaultMessage": "Add threshold",
+    "description": "Button that adds one more threshold row to the list."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerFalse": {
+    "defaultMessage": "False",
+    "description": "Stands for the negative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAnswerTrue": {
+    "defaultMessage": "True",
+    "description": "Stands for the affirmative answer of a yes/no attribute that carries no labels of its own, in the list of answers a shape can be chosen for."
+  },
+  "protocolBuilder.codebookEntity.shapeAtThreshold": {
+    "defaultMessage": "Shape at threshold {value}",
+    "description": "Label of the control choosing the shape used from one threshold upwards. value is the threshold number itself, already formatted for the reader."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThreshold": {
+    "defaultMessage": "Below first threshold",
+    "description": "Name of the fixed first row of the threshold list, covering every value under the lowest threshold."
+  },
+  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
+    "defaultMessage": "Below first threshold cannot be removed",
+    "description": "Accessible name of the unavailable remove button on the fixed first threshold row, saying why nothing happens."
+  },
+  "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
+    "defaultMessage": "Default shape",
+    "description": "Label of the read-only control on the fixed first threshold row, showing the shape chosen as this type’s default."
+  },
+  "protocolBuilder.codebookEntity.shapeForEachValue": {
+    "defaultMessage": "Shape for each value",
+    "description": "Heading over the rows that give one shape to each answer the chosen attribute can take."
+  },
+  "protocolBuilder.codebookEntity.shapeForValue": {
+    "defaultMessage": "Shape for {value1}",
+    "description": "Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one."
+  },
   "protocolBuilder.codebookEntity.shapeHint": {
-    "defaultMessage": "Choose the shape used when no dynamic shape mapping applies.",
-    "description": "Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes."
+    "defaultMessage": "Choose a default shape for this node type.",
+    "description": "Guidance under the shape field. A node is a member of the interview network."
   },
   "protocolBuilder.codebookEntity.shapeLabel": {
-    "defaultMessage": "Default shape",
+    "defaultMessage": "Shape",
     "description": "Label of the field choosing the shape a node type is drawn as when nothing overrides it."
   },
-  "protocolBuilder.codebookEntity.shapePlaceholder": {
-    "defaultMessage": "Choose a shape…",
-    "description": "Placeholder shown in the shape field of the node type editor before a choice is made."
+  "protocolBuilder.codebookEntity.shapeMappingAttribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the field choosing which of the type’s attributes the shape follows."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingDescription": {
+    "defaultMessage": "Override the default shape based on the value of a node's attribute.",
+    "description": "Guidance under the shape mapping switch, saying what turning it on does. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsAttribute": {
+    "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping of the node type editor when the mapping is switched on but names no attribute to follow."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingNeedsThreshold": {
+    "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
+    "description": "Refusal shown under the shape mapping when it follows a numeric attribute but no threshold has been set. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingThresholdsAscending": {
+    "defaultMessage": "Thresholds must increase in value, with no duplicates.",
+    "description": "Refusal shown under the shape mapping when its thresholds do not rise. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingToggle": {
+    "defaultMessage": "Map attribute to shape",
+    "description": "Switch that turns on drawing a node as a different shape depending on one of its attributes. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeNoThresholds": {
+    "defaultMessage": "No thresholds yet — every value uses the default shape.",
+    "description": "Shown in place of the threshold list while no threshold has been set."
+  },
+  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
+    "defaultMessage": "Remove threshold {value1, number}",
+    "description": "Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one."
   },
   "protocolBuilder.codebookEntity.shapeRequired": {
     "defaultMessage": "Choose a default shape.",
     "description": "Refusal shown under the shape field of the node type editor when the researcher has chosen none."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholdValue": {
+    "defaultMessage": "Threshold {value1, number} value",
+    "description": "Label of the number field holding one threshold. value1 is the threshold’s own position in the list, counting from one, not the number the researcher typed."
+  },
+  "protocolBuilder.codebookEntity.shapeThresholds": {
+    "defaultMessage": "Thresholds",
+    "description": "Heading over the rows that change the shape at a numeric value. A threshold is the value at which the shape changes."
+  },
+  "protocolBuilder.codebookEntity.shapeUsesDefault": {
+    "defaultMessage": "uses default shape",
+    "description": "Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence."
+  },
+  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
+    "defaultMessage": "Some values are unmapped and will use the default shape.",
+    "description": "Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own."
   },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",
@@ -1064,8 +1152,8 @@
     "description": "Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
-    "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
-    "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step."
+    "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Reopen this row to start from the current options.",
+    "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step. A row is one entry of a list the researcher is editing, such as one field of a form."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
@@ -1313,11 +1401,7 @@
   },
   "protocolBuilder.contentBlock.sectionDescription": {
     "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "description": "Description under the block-details heading."
-  },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "defaultMessage": "Item details",
-    "description": "Heading of the dialog where a researcher says what one piece of a page holds and provides it."
+    "description": "Description under the item dialog’s title."
   },
   "protocolBuilder.contentBlock.sizeFull": {
     "defaultMessage": "Full size",
@@ -1497,11 +1581,7 @@
   },
   "protocolBuilder.familyPedigree.nominationDetailsDescription": {
     "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
-    "description": "Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
-  },
-  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
-    "defaultMessage": "Nomination details",
-    "description": "Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology."
+    "description": "Said under the title of a nomination prompt’s own dialog. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
   },
   "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
     "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
@@ -2337,11 +2417,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
     "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
-    "description": "Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
-  },
-  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
-    "defaultMessage": "Disease details",
-    "description": "Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology."
+    "description": "Said under the title of a disease’s own dialog. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
@@ -5527,6 +5603,10 @@
     "defaultMessage": "Select a roster data source before configuring search.",
     "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
   },
+  "protocolBuilder.shapePicker.selectShape": {
+    "defaultMessage": "Select shape {value1}",
+    "description": "Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network."
+  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
@@ -6067,6 +6147,42 @@
     "defaultMessage": "There are no attributes to choose from here, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
     "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and this control does not allow one to be created."
   },
+  "protocolBuilder.variablePicker.renameCancelled": {
+    "defaultMessage": "Attribute name edit cancelled",
+    "description": "Said aloud when the researcher leaves the attribute-name editor without saving."
+  },
+  "protocolBuilder.variablePicker.renameDialogName": {
+    "defaultMessage": "Edit attribute name",
+    "description": "Accessible name of the small editor that opens over the attribute pill for renaming the attribute."
+  },
+  "protocolBuilder.variablePicker.renameEditing": {
+    "defaultMessage": "Editing attribute {name}",
+    "description": "Said aloud when the editor for an attribute’s name opens. name is the researcher’s own name for it and is not translated."
+  },
+  "protocolBuilder.variablePicker.renameFieldLabel": {
+    "defaultMessage": "Attribute name",
+    "description": "Accessible name of the box the attribute’s new name is typed into."
+  },
+  "protocolBuilder.variablePicker.renamePlaceholder": {
+    "defaultMessage": "Enter an attribute name...",
+    "description": "Placeholder in the box the attribute’s new name is typed into, shown while it is empty."
+  },
+  "protocolBuilder.variablePicker.renameRequired": {
+    "defaultMessage": "You must enter an attribute name",
+    "description": "Refusal shown in the attribute-name editor when the box has been emptied. An attribute must be called something."
+  },
+  "protocolBuilder.variablePicker.renameSubmit": {
+    "defaultMessage": "Save Changes",
+    "description": "Button that writes the attribute’s new name."
+  },
+  "protocolBuilder.variablePicker.renameTrigger": {
+    "defaultMessage": "Edit attribute name: {label}",
+    "description": "Accessible name and tooltip of the attribute pill when pressing it opens the editor for the attribute’s name. label is the researcher’s own name for it and is not translated."
+  },
+  "protocolBuilder.variablePicker.renamed": {
+    "defaultMessage": "Attribute renamed to {name}",
+    "description": "Said aloud once an attribute has been renamed. name is the researcher’s own new name for it and is not translated."
+  },
   "protocolBuilder.variablePicker.resultsLabel": {
     "defaultMessage": "Attribute results",
     "description": "Accessible name of the list of attributes under the attribute window’s search box."
@@ -6103,18 +6219,6 @@
     "defaultMessage": "{attributeName} — cannot be used in a rule",
     "description": "Name of the one option standing for an attribute that is still in the protocol’s codebook and still cannot carry a rule, such as one answered with a map position. attributeName is the researcher’s own name for it, from the codebook, and is not translated."
   },
-  "protocolBuilder.variableValidation.attributeMissingIssue": {
-    "defaultMessage": "The attribute no longer exists in this entity.",
-    "description": "Why the validation rules in front of the researcher cannot be saved: the attribute they belong to has been deleted from the codebook."
-  },
-  "protocolBuilder.variableValidation.attributeUnavailableDescription": {
-    "defaultMessage": "The latest entity data no longer contains this attribute.",
-    "description": "Shown in place of the validation rules when the attribute they belong to has been deleted from the codebook."
-  },
-  "protocolBuilder.variableValidation.attributeUnavailableTitle": {
-    "defaultMessage": "Attribute unavailable",
-    "description": "Heading of the alert shown in place of the rules when the attribute they belong to has been deleted from the codebook."
-  },
   "protocolBuilder.variableValidation.codebookRenderingContradiction": {
     "defaultMessage": "These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}",
     "description": "Refusal shown in a stage’s rules editor when a comparison the form’s own input controls would allow cannot be saved, because the rules are stored on the codebook attribute and the controls the codebook gives those attributes cannot satisfy the comparison. contradiction is the sentence the protocol’s own validation writes about it, already translated."
@@ -6131,10 +6235,6 @@
     "defaultMessage": "Deleted attribute ({id})",
     "description": "Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id."
   },
-  "protocolBuilder.variableValidation.description": {
-    "defaultMessage": "Configure requirements, limits, and comparisons for this attribute.",
-    "description": "Sentence under the heading naming the three groups of validation rules the surface offers. \"Attribute\" is a codebook variable."
-  },
   "protocolBuilder.variableValidation.draftUnvalidatedElsewhere": {
     "defaultMessage": "\"{variableName}\" is assigned without validation by a prompt in this stage, so it cannot be used as a form field",
     "description": "The same refusal as unvalidatedElsewhere, when the writer without validation is a prompt in the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads."
@@ -6143,9 +6243,9 @@
     "defaultMessage": "\"{variableName}\" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)",
     "description": "The same refusal as validatedElsewhere, when the form doing the collecting belongs to the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads."
   },
-  "protocolBuilder.variableValidation.failureTitle": {
-    "defaultMessage": "Could not save validation",
-    "description": "Heading of the alert shown when saving an attribute’s validation rules was refused. The reason follows underneath."
+  "protocolBuilder.variableValidation.everyComparableAttributeWouldMakeThis": {
+    "defaultMessage": "Every comparable attribute would make this rule impossible to satisfy.",
+    "description": "Shown beneath a comparison rule the researcher cannot switch on, because every attribute it could be judged against would contradict the rules already set."
   },
   "protocolBuilder.variableValidation.incompleteReferenceRule": {
     "defaultMessage": "Choose a comparison attribute for \"{label}\", or switch the rule off.",
@@ -6167,9 +6267,9 @@
     "defaultMessage": "The selected comparison attribute no longer exists.",
     "description": "Why a validation rule cannot be saved: it compares this attribute against another one that has since been deleted from the codebook. \"Attribute\" is a codebook variable."
   },
-  "protocolBuilder.variableValidation.noCompatibleTarget": {
-    "defaultMessage": "No compatible attribute can satisfy this comparison.",
-    "description": "Shown beneath a comparison rule the researcher cannot switch on, because no other attribute of the same kind could satisfy it without contradicting the rules already set. \"Attribute\" is a codebook variable."
+  "protocolBuilder.variableValidation.noOtherAttributeOfThisType": {
+    "defaultMessage": "No other attribute of this type exists to compare against.",
+    "description": "Shown beneath a comparison rule the researcher cannot switch on, because the type holds no other attribute of the same kind. \"Attribute\" is a codebook variable."
   },
   "protocolBuilder.variableValidation.requirementsHeading": {
     "defaultMessage": "Requirements",
@@ -6178,6 +6278,14 @@
   "protocolBuilder.variableValidation.ruleFloor": {
     "defaultMessage": "{rule} must be at least {floor, number}",
     "description": "Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts."
+  },
+  "protocolBuilder.variableValidation.rulesHint": {
+    "defaultMessage": "Enable one or more validation rules to apply to this attribute.",
+    "description": "Hint under the label of the control holding the validation rules, saying what the switches beneath it do."
+  },
+  "protocolBuilder.variableValidation.rulesLabel": {
+    "defaultMessage": "Validation rules",
+    "description": "Label of the control holding every rule an answer to one attribute has to satisfy."
   },
   "protocolBuilder.variableValidation.sectionDescription": {
     "defaultMessage": "Enable to add validation rules to the attribute.",
@@ -6191,29 +6299,13 @@
     "defaultMessage": "Select an attribute",
     "description": "The unchosen entry of the control naming which other attribute a comparison rule judges this one against."
   },
-  "protocolBuilder.variableValidation.submit": {
-    "defaultMessage": "Save validation",
-    "description": "Button that saves the rules an answer to this attribute must satisfy."
-  },
   "protocolBuilder.variableValidation.thisAttribute": {
     "defaultMessage": "this attribute",
     "description": "Stands in for an attribute’s name inside a refusal about it, while the attribute is still being drafted and has not been named. Spliced mid-sentence into the repair guidance for a contradiction between rules, so it is lower case."
   },
-  "protocolBuilder.variableValidation.title": {
-    "defaultMessage": "Edit validation for {name}",
-    "description": "Heading of the surface where a researcher sets the rules an answer to one attribute must satisfy. name is the researcher’s own name for that attribute."
-  },
-  "protocolBuilder.variableValidation.typeChangedDescription": {
-    "defaultMessage": "The attribute type changed while this validation draft was open. Your draft is still visible, but it cannot be saved. Close and reopen this editor to configure validation for the new attribute type.",
-    "description": "The same refusal as typeChangedIssue, said at length in the warning above the rules, with what to do about it."
-  },
-  "protocolBuilder.variableValidation.typeChangedIssue": {
-    "defaultMessage": "The attribute type changed while this validation draft was open.",
-    "description": "Why the validation rules in front of the researcher cannot be saved: the kind of answer the attribute records was changed elsewhere, and these rules were written for the old one."
-  },
-  "protocolBuilder.variableValidation.typeChangedTitle": {
-    "defaultMessage": "Attribute type changed",
-    "description": "Heading of the warning shown when someone else changed what kind of answer this attribute records while its validation was being edited."
+  "protocolBuilder.variableValidation.uniqueValueCount": {
+    "defaultMessage": "{uniqueValueCount, plural, one {This attribute has only # possible value. Interview preview will refuse to generate synthetic data if more than # entity can hold a value while ‘Must be unique’ is enabled.} other {This attribute has only # possible values. Interview preview will refuse to generate synthetic data if more than # entities can hold a value while ‘Must be unique’ is enabled.}}",
+    "description": "Shown beneath the \"must be unique\" rule when the attribute offers few enough answers that not every participant could hold a different one. uniqueValueCount is how many distinct answers it offers."
   },
   "protocolBuilder.variableValidation.unvalidatedElsewhere": {
     "defaultMessage": "\"{variableName}\" is written without validation by another stage, so it cannot be used as a form field",

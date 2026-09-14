@@ -41,7 +41,7 @@ const messages = defineMessages({
     defaultMessage:
       'Write the participant prompt and select the edge type created by an affirmative response.',
     description:
-      'Description of the group holding a Dyad Census prompt’s question and the kind of connection an affirmative answer records.',
+      'Said under the title of a Dyad Census prompt’s own dialog, which holds its question and the kind of connection an affirmative answer records.',
   },
 });
 
@@ -68,28 +68,21 @@ function DyadCensusGuidance() {
 function DyadCensusPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
 
+  // The question and the connection a yes records are one topic, which is the
+  // dialog's own: it is titled for the prompt and described by
+  // `rowDescription` below, so neither a group around the pair nor a heading
+  // over the connection control says anything the title has not.
   return (
-    <>
-      {/*
-        The connection type sits INSIDE the prompt group, as Architect's does:
-        the group's own description is what says an affirmative answer creates
-        one, so a second heading over the control would say it twice.
-      */}
-      <PromptTextField
-        item={item}
-        guidance={<DyadCensusGuidance />}
-        placeholder={intl.formatMessage(messages.placeholder)}
-        title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
-        description={intl.formatMessage(messages.promptTextDescription)}
-      >
-        <EdgeTypeSection
-          label={intl.formatMessage(censusMessages.edgeLabel)}
-          requiredMessage={intl.formatMessage(
-            censusMessages.affirmativeRequired,
-          )}
-        />
-      </PromptTextField>
-    </>
+    <PromptTextField
+      item={item}
+      guidance={<DyadCensusGuidance />}
+      placeholder={intl.formatMessage(messages.placeholder)}
+    >
+      <EdgeTypeSection
+        label={intl.formatMessage(censusMessages.edgeLabel)}
+        requiredMessage={intl.formatMessage(censusMessages.affirmativeRequired)}
+      />
+    </PromptTextField>
   );
 }
 
@@ -125,6 +118,7 @@ export default function DyadCensusPromptsSection() {
     <PromptsSection
       PromptEditor={DyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
+      rowDescription={messages.promptTextDescription}
       beforeSave={beforeSave}
     />
   );

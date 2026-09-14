@@ -1,17 +1,24 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { compose, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { missingComparisonTargetMessage } from '../codebookMessages.ts';
 import {
   completeRuleValues,
   findOfferableReferenceTargets,
+  floorIssue,
   formatCommitted,
   getGroupedValidationsForVariableType,
+  incompleteRuleIssue,
+  isRuleValueComplete,
   isValidationWithListValue,
   isValidationWithNumberValue,
   isValidationWithoutValue,
@@ -21,6 +28,7 @@ import {
   type ValidationMap,
   type ValidationValue,
 } from '../variableValidation.ts';
+import ValidationRule, { type TargetOption } from './ValidationRule.tsx';
 
 type VariableValidationEditorProps = Readonly<{
   'entity': 'node' | 'edge' | 'ego';
@@ -41,35 +49,19 @@ type VariableValidationEditorProps = Readonly<{
    * finds a refused field by looking for `aria-invalid` (the stage outline's
    * observer, `focusFirstError`).
    *
-   * It says only that: what the field is refusing, and whether it is stating a
-   * sentence about it, is `fieldIssue`.
+   * It is also what a save's objection reads as: a rule switched on and left
+   * unanswered says so on its own row from the moment the host refuses the
+   * map, rather than waiting for the researcher to visit the box first — see
+   * `revealedIncomplete`.
    */
   'aria-invalid'?: boolean;
-  /**
-   * The refusal the field mounting this editor is stating for this rule map,
-   * when it is stating one.
-   *
-   * The editor's own `role="alert"` paragraph stands down for it: the field
-   * announces its refusal in an `aria-live` error region beside the control,
-   * that region's message is written in the reader's language, and a second
-   * sentence at the rules about the same rule map would say it twice. A caller
-   * with no error region of its own — the codebook dialog — passes nothing and
-   * keeps the editor's alert.
-   *
-   * Keyed on the refusal rather than on `aria-invalid` because they are not
-   * the same fact: a host may mark this control invalid — for the outline, for
-   * `focusFirstError` — without stating anything, and the editor going silent
-   * there would leave a researcher with no sentence at all.
-   */
-  'fieldIssue'?: string;
   /**
    * The description list the mounting field injects into its control, naming
    * the field's own hint and error region.
    *
    * Passed through to the editor's root — the element the field's
    * `aria-invalid` lands on — rather than dropped, so the refused control
-   * still describes the sentence a researcher can read. The editor's own
-   * message is added to it while the editor is stating one.
+   * still describes the sentence a researcher can read.
    */
   'aria-describedby'?: string;
   /**
@@ -77,43 +69,40 @@ type VariableValidationEditorProps = Readonly<{
    * codebook does not decide it — see `StageRendering`.
    *
    * Judged against the codebook's renderings instead, a contradiction this one
-   * dialog is able to author went unreported, and a comparison the form's own
+   * surface is able to author went unreported, and a comparison the form's own
    * renderings make satisfiable was blocked. Omitted wherever the codebook's
-   * own control is what the interview renders, which is every other caller.
+   * own control is what the interview renders, which is most callers.
    */
   'stageRendering'?: StageRendering;
 }>;
 
 const messages = defineMessages({
-  noCompatibleTarget: {
-    id: 'protocolBuilder.variableValidation.noCompatibleTarget',
-    defaultMessage: 'No compatible attribute can satisfy this comparison.',
+  noOtherAttributeOfThisType: {
+    id: 'protocolBuilder.variableValidation.noOtherAttributeOfThisType',
+    defaultMessage:
+      'No other attribute of this type exists to compare against.',
     description:
-      'Shown beneath a comparison rule the researcher cannot switch on, because no other attribute of the same kind could satisfy it without contradicting the rules already set. "Attribute" is a codebook variable.',
+      'Shown beneath a comparison rule the researcher cannot switch on, because the type holds no other attribute of the same kind. "Attribute" is a codebook variable.',
   },
-  selectTarget: {
-    id: 'protocolBuilder.variableValidation.selectTarget',
-    defaultMessage: 'Select an attribute',
+  everyComparableAttributeWouldMakeThis: {
+    id: 'protocolBuilder.variableValidation.everyComparableAttributeWouldMakeThis',
+    defaultMessage:
+      'Every comparable attribute would make this rule impossible to satisfy.',
     description:
-      'The unchosen entry of the control naming which other attribute a comparison rule judges this one against.',
+      'Shown beneath a comparison rule the researcher cannot switch on, because every attribute it could be judged against would contradict the rules already set.',
+  },
+  thisAttributeHasOnlyPossibleValues: {
+    id: 'protocolBuilder.variableValidation.uniqueValueCount',
+    defaultMessage:
+      '{uniqueValueCount, plural, one {This attribute has only # possible value. Interview preview will refuse to generate synthetic data if more than # entity can hold a value while ‘Must be unique’ is enabled.} other {This attribute has only # possible values. Interview preview will refuse to generate synthetic data if more than # entities can hold a value while ‘Must be unique’ is enabled.}}',
+    description:
+      'Shown beneath the "must be unique" rule when the attribute offers few enough answers that not every participant could hold a different one. uniqueValueCount is how many distinct answers it offers.',
   },
   deletedTarget: {
     id: 'protocolBuilder.variableValidation.deletedTarget',
     defaultMessage: 'Deleted attribute ({id})',
     description:
       'Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id.',
-  },
-  increase: {
-    id: 'protocolBuilder.variableValidation.increaseRuleValue',
-    defaultMessage: 'Increase {label}',
-    description:
-      'Accessible name of the button raising one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
-  },
-  decrease: {
-    id: 'protocolBuilder.variableValidation.decreaseRuleValue',
-    defaultMessage: 'Decrease {label}',
-    description:
-      'Accessible name of the button lowering one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
   },
 });
 
@@ -136,6 +125,8 @@ const OPPOSITE_BOUND: Readonly<Record<string, string>> = {
   minSelected: 'maxSelected',
   maxSelected: 'minSelected',
 };
+
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
 
 const isVariableMetadata = (value: unknown): value is VariableMetadata =>
   typeof value === 'object' &&
@@ -166,12 +157,6 @@ const withoutRule = (
   return next;
 };
 
-const readIssue = (
-  issue: string | undefined,
-  intl: IntlShape,
-): string | undefined =>
-  issue === undefined ? undefined : (formatMessageError(issue, intl) ?? issue);
-
 const initialNumericValue = (
   validation: Readonly<ValidationMap>,
   ruleKey: string,
@@ -183,11 +168,50 @@ const initialNumericValue = (
 };
 
 /**
+ * How many distinct answers the attribute offers, for the `unique` warning.
+ *
+ * Only for the two kinds whose domain is finite and small enough to run out:
+ * an absent list on a boolean is the unrestricted yes/no pair, while an
+ * ordinal with no options configured yet has no domain to report at all.
+ * Distinct VALUES rather than entries, because two options may carry the same
+ * stored value and the runtime keeps one answer per value.
+ */
+const uniqueValueCountFor = (
+  variableType: string,
+  variable: unknown,
+): number | undefined => {
+  if (variableType !== 'boolean' && variableType !== 'ordinal') {
+    return undefined;
+  }
+  const options =
+    typeof variable === 'object' && variable !== null
+      ? Reflect.get(variable, 'options')
+      : undefined;
+  if (!Array.isArray(options)) {
+    return variableType === 'boolean' ? 2 : undefined;
+  }
+  return new Set(
+    options
+      .map((option) =>
+        typeof option === 'object' && option !== null
+          ? Reflect.get(option, 'value')
+          : undefined,
+      )
+      .filter((optionValue) => optionValue !== undefined),
+  ).size;
+};
+
+/**
  * Host-neutral editor for one variable's validation map.
  *
  * The map is controlled as one value. A value-taking rule remains present as
  * `null` while incomplete, so a save gate can reject it and the researcher can
  * correct it instead of the rule being silently discarded.
+ *
+ * Architect's own rule editor (`components/Validations/Validations.tsx`) as it
+ * stood: fieldset groups with a floating legend, one `ValidationRule` row per
+ * rule, and each row saying what is wrong with itself rather than one verdict
+ * over the whole editor.
  */
 export default function VariableValidationEditor({
   entity,
@@ -199,7 +223,6 @@ export default function VariableValidationEditor({
   readOnly = false,
   className,
   'aria-invalid': ariaInvalid,
-  fieldIssue,
   'aria-describedby': fieldDescribedBy,
   stageRendering,
 }: VariableValidationEditorProps) {
@@ -217,6 +240,18 @@ export default function VariableValidationEditor({
    */
   const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
   /**
+   * Rules the researcher has already been TOLD are unanswered.
+   *
+   * Naming a rule as unanswered the instant it is switched on would scold them
+   * before they have interacted with its value control. A row only says so
+   * once that control has been left empty, or the host has refused the map
+   * while the row was unanswered. Membership is per rule, not a single
+   * editor-wide flag: a rule switched on AFTER a refusal has not been objected
+   * to yet, and must not inherit the standing complaint about a different one.
+   */
+  const [revealedIncomplete, setRevealedIncomplete] =
+    useState<ReadonlySet<string>>(EMPTY_KEYS);
+  /**
    * The map these boxes are typing over.
    *
    * Every commit this editor makes clears the drafts before it hands the map
@@ -226,15 +261,45 @@ export default function VariableValidationEditor({
    * place it shows text the map does not hold, and the next commit writes it
    * over the replacement.
    *
-   * Cleared during render rather than in an effect, for the reason the section
-   * above resets its own draft during render: a frame of the old text over the
-   * new value is a frame of something untrue.
+   * Cleared during render rather than in an effect: a frame of the old text
+   * over the new value is a frame of something untrue.
    */
   const seenValue = useRef(value);
   if (seenValue.current !== value) {
     seenValue.current = value;
     setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
   }
+  /**
+   * The host's refusal, as the one fact this editor can read about it.
+   *
+   * A host objects by marking the control invalid and withdraws the objection
+   * by unmarking it, so it is the mark CHANGING that reveals whichever rules
+   * are unanswered at that moment — compared during render, because a prop
+   * change is not an external system to synchronise with and revealing from an
+   * effect showed the row's silent state for a frame first. The seed is `null`
+   * rather than the first value so that an editor mounted under a standing
+   * objection still reveals.
+   */
+  const [seenInvalid, setSeenInvalid] = useState<{
+    value: boolean | undefined;
+  } | null>(null);
+  if (seenInvalid === null || seenInvalid.value !== ariaInvalid) {
+    setSeenInvalid({ value: ariaInvalid });
+    if (ariaInvalid === true) {
+      setRevealedIncomplete((current) => {
+        const next = new Set(current);
+        for (const [ruleKey, ruleValue] of Object.entries(value)) {
+          if (!isRuleValueComplete(ruleKey, ruleValue)) next.add(ruleKey);
+        }
+        return next.size === current.size ? current : next;
+      });
+    } else {
+      setRevealedIncomplete((current) =>
+        current.size === 0 ? current : EMPTY_KEYS,
+      );
+    }
+  }
+
   const groups = useMemo(
     () => getGroupedValidationsForVariableType(variableType, entity, intl),
     [entity, intl, variableType],
@@ -262,7 +327,7 @@ export default function VariableValidationEditor({
   // offering either made the researcher pick it to be told so.
   const legalTargets = useMemo(() => {
     const completeValidation = completeRuleValues(value);
-    return new Map(
+    return new Map<string, ReadonlySet<string>>(
       groups
         .flatMap(({ rules }) => rules)
         .filter(({ value: ruleKey }) => isValidationWithListValue(ruleKey))
@@ -291,40 +356,10 @@ export default function VariableValidationEditor({
     variableType,
   ]);
 
-  const missingTargetRule = Object.entries(value).find(
-    ([ruleKey, target]) =>
-      isValidationWithListValue(ruleKey) &&
-      typeof target === 'string' &&
-      !Object.hasOwn(allVariables, target),
-  )?.[0];
-  // A rule map's verdict is a plain string carrying either this package's own
-  // encoded descriptor or a wording the contradiction analyser wrote, and the
-  // paragraph below is our own markup rather than a field's error region, so
-  // it is decoded here and passed through untouched when it is not one of ours.
-  const issue =
-    missingTargetRule === undefined
-      ? readIssue(
-          ruleMapIssueForWrite(
-            value,
-            {
-              allVariables: { ...allVariables },
-              currentVariableId,
-              variableType,
-            },
-            stageRendering,
-          ),
-          intl,
-        )
-      : intl.formatMessage(missingComparisonTargetMessage);
-  // Not while the field mounting this editor is stating a refusal of this same
-  // rule map: see the `fieldIssue` prop.
-  const announceIssue = issue !== undefined && fieldIssue === undefined;
-  const issueId = announceIssue ? `${editorId}-issue` : undefined;
-  // Whatever the field named, plus this editor's own message while it is
-  // stating one — so the element the field's `aria-invalid` lands on always
-  // describes the sentence on screen rather than nothing at all.
-  const describedBy =
-    [fieldDescribedBy, issueId].filter(Boolean).join(' ') || undefined;
+  const uniqueValueCount = uniqueValueCountFor(
+    variableType,
+    allVariables[currentVariableId],
+  );
 
   /**
    * Every number row's typed-but-uncommitted text, applied to the map.
@@ -361,23 +396,38 @@ export default function VariableValidationEditor({
       : formatCommitted(value[ruleKey]);
 
   /**
-   * Writes one number row's value into the map, keeping it even when it is
-   * empty or contradictory: a value discarded because it failed a check takes
-   * the researcher's typing off the screen and leaves a map that is trivially
+   * Writes one row's value into the map, keeping it even when it is empty or
+   * contradictory: a value discarded because it failed a check takes the
+   * researcher's typing off the screen and leaves a map that is trivially
    * consistent, so nothing downstream ever objects to it.
    */
-  const commitValue = (ruleKey: string, text?: string) => {
-    const settled = text ?? textFor(ruleKey);
+  const commitValue = (ruleKey: string, text: string) => {
     commit((base) =>
       Object.hasOwn(base, ruleKey)
-        ? withRule(base, ruleKey, parseForRule(ruleKey, settled))
+        ? withRule(base, ruleKey, parseForRule(ruleKey, text))
         : base,
+    );
+  };
+
+  const handleValueExit = (ruleKey: string, text: string) => {
+    commitValue(ruleKey, text);
+    if (isRuleValueComplete(ruleKey, parseForRule(ruleKey, text))) return;
+    setRevealedIncomplete((current) =>
+      current.has(ruleKey) ? current : new Set(current).add(ruleKey),
     );
   };
 
   const toggleRule = (ruleKey: string, enabled: boolean) => {
     if (readOnly) return;
     if (!enabled) {
+      // Switching a rule off answers the complaint about it, so switching it
+      // back on later starts from silence again.
+      setRevealedIncomplete((current) => {
+        if (!current.has(ruleKey)) return current;
+        const next = new Set(current);
+        next.delete(ruleKey);
+        return next;
+      });
       commit((base) => withoutRule(base, ruleKey));
       return;
     }
@@ -394,152 +444,150 @@ export default function VariableValidationEditor({
     commit((base) => withRule(base, ruleKey, null));
   };
 
+  /**
+   * What is wrong with one rule, in the order a researcher can act on it.
+   *
+   * An unanswered row first, and only once they have been told about it; then
+   * a value the rule itself cannot take; then the comparison target that is no
+   * longer there; and last the contradiction the whole map would carry with
+   * this row's value in it — which is judged over the map's COMPLETE rules, so
+   * a half-set row elsewhere does not make every row state its complaint.
+   */
+  const issuesFor = (ruleKey: string): readonly string[] => {
+    if (!holdsRule(value, ruleKey)) return [];
+    const parsed = parseForRule(ruleKey, textFor(ruleKey));
+    if (!isRuleValueComplete(ruleKey, parsed)) {
+      if (!revealedIncomplete.has(ruleKey)) return [];
+      const incomplete = incompleteRuleIssue({ [ruleKey]: parsed });
+      return incomplete === undefined ? [] : [incomplete];
+    }
+    const floor = floorIssue(ruleKey, parsed);
+    if (floor !== undefined) return [floor];
+    if (
+      isValidationWithListValue(ruleKey) &&
+      typeof parsed === 'string' &&
+      !Object.hasOwn(allVariables, parsed)
+    ) {
+      return [intl.formatMessage(missingComparisonTargetMessage)];
+    }
+    const contradiction = ruleMapIssueForWrite(
+      completeRuleValues({ ...value, [ruleKey]: parsed }),
+      {
+        allVariables: { ...allVariables },
+        currentVariableId,
+        variableType,
+      },
+      stageRendering,
+    );
+    return contradiction === undefined ? [] : [contradiction];
+  };
+
+  const hintFor = (
+    ruleKey: string,
+    isUnavailable: boolean,
+  ): string | undefined => {
+    if (isUnavailable) {
+      return candidateIds.length === 0
+        ? intl.formatMessage(messages.noOtherAttributeOfThisType)
+        : intl.formatMessage(messages.everyComparableAttributeWouldMakeThis);
+    }
+    if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
+      return intl.formatMessage(messages.thisAttributeHasOnlyPossibleValues, {
+        uniqueValueCount,
+      });
+    }
+    return undefined;
+  };
+
+  const targetOptionsFor = (ruleKey: string): TargetOption[] => {
+    const legal = legalTargets.get(ruleKey);
+    const selected = textFor(ruleKey);
+    const offered = candidates
+      .filter(({ id }) => id === selected || legal?.has(id) !== false)
+      .map(({ id, name }) => ({ value: id, label: name }));
+    // The target a rule still points at after it was deleted from the
+    // codebook: shown so the researcher can see what the rule refers to rather
+    // than a control that has silently fallen back to its placeholder.
+    return selected !== '' && !Object.hasOwn(allVariables, selected)
+      ? [
+          ...offered,
+          {
+            value: selected,
+            label: intl.formatMessage(messages.deletedTarget, { id: selected }),
+          },
+        ]
+      : offered;
+  };
+
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+  );
+
   return (
     <div
-      className={className}
-      aria-describedby={describedBy}
+      className={cx(
+        'flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0',
+        className,
+      )}
+      aria-describedby={fieldDescribedBy}
       aria-invalid={ariaInvalid}
     >
       {groups.map((group) => (
         <fieldset
           key={group.id}
           disabled={readOnly}
-          className="border-border mb-4 flex min-w-0 flex-col gap-3 rounded border-2 p-4 last:mb-0"
+          className={cx(
+            variants(),
+            'relative my-4 flex w-full min-w-0 flex-col overflow-visible whitespace-normal',
+            // When last item, remove bottom margin to avoid double spacing
+            // with whatever follows the editor.
+            'last:mb-0',
+          )}
         >
-          <legend className="font-semibold text-current">
-            {group.heading}
+          <legend
+            className={cx(
+              'bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1',
+              "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']",
+            )}
+          >
+            <Heading level="label">{group.heading}</Heading>
           </legend>
-          {group.rules.map((rule) => {
-            const enabled = holdsRule(value, rule.value);
-            const ruleId = `${editorId}-${rule.value}`;
-            const targetSet = legalTargets.get(rule.value);
-            const unavailable =
-              isValidationWithListValue(rule.value) &&
-              !enabled &&
-              (targetSet?.size ?? 0) === 0;
-            const selected = value[rule.value];
-            const selectedMissing =
-              typeof selected === 'string' &&
-              !Object.hasOwn(allVariables, selected);
+          <div className="flex w-full flex-col gap-4 pt-4">
+            {group.rules.map((rule) => {
+              const isOn = holdsRule(value, rule.value);
+              const isUnavailable =
+                !isOn &&
+                isValidationWithListValue(rule.value) &&
+                (legalTargets.get(rule.value)?.size ?? 0) === 0;
 
-            return (
-              <div key={rule.value} className="flex flex-col gap-2">
-                <label className="flex items-center gap-3" htmlFor={ruleId}>
-                  <input
-                    id={ruleId}
-                    type="checkbox"
-                    checked={enabled}
-                    disabled={readOnly || unavailable}
-                    onChange={(event) =>
-                      toggleRule(rule.value, event.currentTarget.checked)
-                    }
-                  />
-                  <span>{rule.label}</span>
-                </label>
-                {unavailable && (
-                  <p className="text-sm text-current/70">
-                    {intl.formatMessage(messages.noCompatibleTarget)}
-                  </p>
-                )}
-                {enabled && isValidationWithNumberValue(rule.value) && (
-                  <UnconnectedField
-                    name={`${ruleId}-value`}
-                    // The checkbox beside it already says which rule this is,
-                    // so the field is named for assistive technology only.
-                    label={rule.label}
-                    labelHidden
-                    component={InputField}
-                    type="number"
-                    step={1}
-                    stepperLabels={{
-                      increase: intl.formatMessage(messages.increase, {
-                        label: rule.label,
-                      }),
-                      decrease: intl.formatMessage(messages.decrease, {
-                        label: rule.label,
-                      }),
-                    }}
-                    value={textFor(rule.value)}
-                    disabled={readOnly}
-                    aria-invalid={
-                      selected === null || selected === undefined
-                        ? true
-                        : undefined
-                    }
-                    onChange={(text: string | undefined) =>
-                      setDrafts((current) => ({
-                        ...current,
-                        [rule.value]: text ?? '',
-                      }))
-                    }
-                    onBlur={() => commitValue(rule.value)}
-                    // A step always settles a complete number, and clicking a
-                    // stepper button moves focus out of the box — so the blur
-                    // that follows carries the value from BEFORE the step.
-                    onStep={(stepped: string) =>
-                      commitValue(rule.value, stepped)
-                    }
-                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                      if (event.key !== 'Enter') return;
-                      // Never the enclosing form's submit: this box is a rule
-                      // about an attribute, and Enter in it means "I have
-                      // finished typing this number".
-                      event.preventDefault();
-                      commitValue(rule.value);
-                    }}
-                  />
-                )}
-                {enabled && isValidationWithListValue(rule.value) && (
-                  <select
-                    aria-label={rule.label}
-                    aria-invalid={selectedMissing || selected === null}
-                    aria-describedby={describedBy}
-                    value={typeof selected === 'string' ? selected : ''}
-                    disabled={readOnly}
-                    className="border-input bg-input text-input-contrast focusable w-full rounded border-2 px-3 py-2"
-                    onChange={(event) => {
-                      const chosen = event.currentTarget.value;
-                      commit((base) =>
-                        withRule(
-                          base,
-                          rule.value,
-                          parseForRule(rule.value, chosen),
-                        ),
-                      );
-                    }}
-                  >
-                    <option value="">
-                      {intl.formatMessage(messages.selectTarget)}
-                    </option>
-                    {selectedMissing && (
-                      <option value={selected}>
-                        {intl.formatMessage(messages.deletedTarget, {
-                          id: selected,
-                        })}
-                      </option>
-                    )}
-                    {candidates
-                      .filter(
-                        ({ id }) =>
-                          id === selected || targetSet?.has(id) !== false,
-                      )
-                      .map(({ id, name }) => (
-                        <option key={id} value={id}>
-                          {name}
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </div>
-            );
-          })}
+              return (
+                <ValidationRule
+                  key={`${editorId}-${rule.value}`}
+                  ruleKey={rule.value}
+                  label={rule.label}
+                  isOn={isOn}
+                  isUnavailable={isUnavailable}
+                  {...(() => {
+                    const hint = hintFor(rule.value, isUnavailable);
+                    return hint === undefined ? {} : { hint };
+                  })()}
+                  text={textFor(rule.value)}
+                  issues={issuesFor(rule.value)}
+                  targetOptions={targetOptionsFor(rule.value)}
+                  onToggle={toggleRule}
+                  onTextChange={(ruleKey, text) =>
+                    setDrafts((current) => ({ ...current, [ruleKey]: text }))
+                  }
+                  onCommit={commitValue}
+                  onValueExit={handleValueExit}
+                />
+              );
+            })}
+          </div>
         </fieldset>
       ))}
-      {announceIssue && (
-        <p id={issueId} role="alert" className="text-destructive mt-2 text-sm">
-          {issue}
-        </p>
-      )}
     </div>
   );
 }

@@ -36,6 +36,7 @@ import {
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { ATTRIBUTE_OPTIONS_FIELD } from '../AttributeValueFields.tsx';
 import { asText } from '../canvas/rowValues.ts';
 import {
   controlsForType,
@@ -110,6 +111,10 @@ const PREVIEW_DRAFT_FIELDS = [
   '_component',
   'component',
   'parameters',
+  // The answers the row is authoring inline for the attribute it binds. The
+  // preview is what the participant will be shown, and a researcher writing
+  // the words on two buttons is looking at those buttons.
+  '_options',
   'prompt',
   'label',
   'hint',
@@ -347,10 +352,12 @@ export default function FieldPreviewPane({
   // Whatever the attribute offers, on the interview's own terms: it keeps a
   // boolean's two labels under the same key as a list's values, and decides
   // for itself which of them a swapped control still answers with.
-  const attributeOptions: unknown = Reflect.get(
-    codebookVariable ?? {},
-    'options',
-  );
+  // The row's own draft first, where it holds one: these are written to the
+  // attribute by the row's save, so until then the draft is what the interview
+  // would be given. Same order the `parameters` above are read in.
+  const attributeOptions: unknown =
+    draft[ATTRIBUTE_OPTIONS_FIELD] ??
+    Reflect.get(codebookVariable ?? {}, 'options');
 
   const field = useMemo<ProtocolFieldDefinition | null>(() => {
     // `isCollectableType` is the same question the row's own type picker asks:

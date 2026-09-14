@@ -43,9 +43,15 @@ export type PromptTextFieldProps = Readonly<{
    * three of the five families and the question plus the connection an answer
    * records in the other two, so Architect names and explains it differently
    * in each.
+   *
+   * Both absent where the question is the dialog's ONLY topic: the dialog's
+   * own title names it and its description says what it decides, so a group
+   * around the whole body would restate the title above the only group there
+   * is. The family says it through `PromptsSection`'s `rowDescription`
+   * instead.
    */
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   /**
    * Anything else the group holds — the connection type, where the family
    * keeps it inside this group rather than beside it.
@@ -73,8 +79,8 @@ export function PromptTextField({
 }: PromptTextFieldProps) {
   const intl = useAppIntl();
 
-  return (
-    <Section title={title} description={description}>
+  const fields = (
+    <>
       {guidance}
       <Field<typeof RichTextField>
         name="text"
@@ -87,6 +93,16 @@ export function PromptTextField({
         required={WRITE_THE_QUESTION}
       />
       {children}
+    </>
+  );
+
+  if (title === undefined) return fields;
+  return (
+    <Section
+      title={title}
+      {...(description === undefined ? {} : { description })}
+    >
+      {fields}
     </Section>
   );
 }

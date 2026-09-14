@@ -46,9 +46,9 @@ const messages = defineMessages({
   interfaceOwnedOptions: {
     id: 'protocolBuilder.codebookVariable.interfaceOwnedOptions',
     defaultMessage:
-      'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+      'These options are set by the interface that uses this attribute and cannot be changed here. Reopen this row to start from the current options.',
     description:
-      'Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step.',
+      'Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step. A row is one entry of a list the researcher is editing, such as one field of a form.',
   },
 });
 

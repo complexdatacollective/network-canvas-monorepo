@@ -1,4 +1,3 @@
-import { Lock } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -11,7 +10,6 @@ import type { VariableType, Variables } from '@codaco/protocol-validation';
 
 import {
   buildExclusiveVariableSlotMap,
-  buildInterfaceOwnedOptionMap,
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeUnvalidatedUses,
@@ -19,10 +17,7 @@ import {
   hasUnvalidatedUse,
   hasValidatedUse,
   interfaceOwnedPickIssue,
-  type LockedOptionList,
-  lockedVariableOptions,
   type WriterClass,
-  variableRoleKey,
 } from '../codebook/variableRoles.ts';
 import {
   crossClassConflictMessage,
@@ -38,6 +33,9 @@ import { variablesForSubject } from '../protocol-context.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../sections/AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  attributeOptionsFieldFor,
+} from '../sections/AttributeValueFields.tsx';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import VariablePickerField from './VariablePickerField.tsx';
@@ -54,9 +52,11 @@ const asString = (value: unknown): string | undefined =>
 const NO_ROW_COMPONENT = 'component';
 
 /**
- * How many values the attribute offers, read from the CODEBOOK rather than
- * from the row: the values belong to the attribute, so a collaborator adding
- * one changes what this stage draws.
+ * How many values the attribute offers, as the CODEBOOK holds them.
+ *
+ * The stand-in for wherever the row has no control holding the list: an
+ * attribute whose values another interface owns is shown read-only, and a
+ * collaborator adding one still changes what this stage draws.
  *
  * The literal type comparisons narrow the variable union far enough for
  * `options` to exist on it, as `lockedVariableOptions` does.
@@ -71,58 +71,6 @@ const valueCount = (
     ? variable.options.length
     : 0;
 };
-
-/**
- * The values a bin will offer, shown rather than edited.
- *
- * An interface that both writes an attribute and branches on its exact values
- * owns that list however the attribute is reached. Shown INSTEAD of the
- * control that would edit them, as Architect does.
- *
- * The values as well as the labels, because a researcher who reads only the
- * labels cannot tell what this prompt records. The reason is the table's
- * CAPTION, so it reaches a screen reader as the table's own name rather than
- * through the padlock and the dimmed background alone.
- *
- * Exported because a tie-strength census prompt binds an ordinal attribute the
- * same way and shows the same list beside it, on the same terms this family
- * shares `BinAttributeField` itself: the first editor of the family owns what
- * its siblings also need, so the words are declared once.
- */
-export function LockedOptions({
-  options,
-}: Readonly<{ options: LockedOptionList }>) {
-  const intl = useAppIntl();
-
-  return (
-    <div className="bg-surface-2 text-text relative mb-8 rounded p-4">
-      <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
-      <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left text-sm">
-          {intl.formatMessage(binMessages.lockedOptions)}
-        </caption>
-        <thead>
-          <tr className="text-left">
-            <th className="pb-2 font-bold">
-              {intl.formatMessage(binMessages.lockedOptionsLabelColumn)}
-            </th>
-            <th className="pb-2 font-bold">
-              {intl.formatMessage(binMessages.lockedOptionsValueColumn)}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {options.map((option) => (
-            <tr key={String(option.value)}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 export type BinAttributeSlot = Readonly<{
   /** Where the prompt keeps this attribute. */
@@ -245,21 +193,15 @@ export default function BinAttributeField({
     );
   }, [allVariables, identity.id, picked, protocolContext, slot, subject]);
 
-  const locked = useMemo(
-    () =>
-      subject === undefined || picked === undefined
-        ? undefined
-        : lockedVariableOptions(
-            allVariables,
-            picked,
-            buildInterfaceOwnedOptionMap(protocolContext)[
-              variableRoleKey(subject, picked)
-            ],
-          ),
-    [allVariables, picked, protocolContext, subject],
-  );
-
-  const drawn = valueCount(allVariables, picked) + extraBins;
+  // Counted from the list the researcher is LOOKING at. The values are edited
+  // inline in this dialog and saving closes it, so a warning counted from the
+  // stored list would appear only once they can no longer see the list it is
+  // about — which is after the decision it exists to inform.
+  const draftedValues = useRowValue(attributeOptionsFieldFor(slot.name));
+  const drawn =
+    (Array.isArray(draftedValues)
+      ? draftedValues.length
+      : valueCount(allVariables, picked)) + extraBins;
 
   return (
     <>
@@ -281,23 +223,22 @@ export default function BinAttributeField({
         than two.
       */}
       {editor}
-      {locked === undefined ? (
-        <AttributeCodebookControls
-          subject={subject}
-          variableField={slot.name}
-          committedVariable={committed}
-          componentField={NO_ROW_COMPONENT}
-          // The bins themselves are filled by dragging, and the interview
-          // reads no rules on their way in — the schema says so by declaring
-          // this reference `unvalidatedAttribute`, and its own writer
-          // exclusivity then keeps a form from collecting the same attribute
-          // anywhere else. Only the follow-up answer is typed, so only the
-          // follow-up is offered rules to check it against.
-          offerRules={slot.writerClass === 'validated'}
-        />
-      ) : (
-        <LockedOptions options={locked} />
-      )}
+      <AttributeCodebookControls
+        subject={subject}
+        variableField={slot.name}
+        committedVariable={committed}
+        componentField={NO_ROW_COMPONENT}
+      />
+      {/* The values this prompt will draw as bins, edited where the prompt is
+          written, as Architect had them
+          (`sections/OrdinalBinPrompts/PromptFields.tsx`'s "Attribute options").
+          Read-only where an interface owns the list. Written to the codebook
+          attribute by this row's own save. */}
+      <AttributeValueFields
+        subject={subject}
+        variableId={picked}
+        optionsField={attributeOptionsFieldFor(slot.name)}
+      />
       {optionLimit !== undefined &&
         optionLimitDescription !== undefined &&
         drawn > optionLimit && (

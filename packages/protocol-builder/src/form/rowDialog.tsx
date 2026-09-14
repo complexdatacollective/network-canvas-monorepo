@@ -208,6 +208,16 @@ export type RowListConfig = Readonly<{
   dialogSize?: DialogProps['size'];
   addTitle: MessageDescriptor;
   editTitle: MessageDescriptor;
+  /**
+   * What the dialog says under its title about the row as a whole.
+   *
+   * Here rather than inside the editor, so a row whose fields are one topic
+   * says it once: a `Section` around the whole body would restate the dialog's
+   * own title above the only group it has, which is the restatement Josh
+   * reported. A row with more than one topic keeps its sections and says
+   * nothing here.
+   */
+  description?: MessageDescriptor;
   /** Stable, human-readable stem for the dialog form's DOM id. */
   formId: string;
   /**
@@ -432,6 +442,7 @@ export function RowDialog({
   const {
     addTitle,
     editTitle,
+    description,
     formId,
     name,
     expand,
@@ -457,6 +468,9 @@ export function RowDialog({
       open={session.open}
       onClose={onCancel}
       title={intl.formatMessage(session.isNewItem ? addTitle : editTitle)}
+      {...(description === undefined
+        ? {}
+        : { description: intl.formatMessage(description) })}
       formId={formId}
       document={session.row}
       /**

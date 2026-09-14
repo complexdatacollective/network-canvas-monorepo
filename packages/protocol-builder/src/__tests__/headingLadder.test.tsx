@@ -2,7 +2,7 @@ import { composeStories } from '@storybook/react-vite';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -13,11 +13,10 @@ import * as entityEditorStories from '../codebook/components/CodebookEntityEdito
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import * as variableEditorStories from '../codebook/components/VariableEditor.stories.tsx';
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
-import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
-import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { CodebookWriteOutcome } from '../codebook/writes.ts';
 import * as alterEdgeFormStories from '../editors/alter-edge-form/AlterEdgeFormStageEditor.stories.tsx';
 import * as alterFormStories from '../editors/alter-form/AlterFormStageEditor.stories.tsx';
+import { dyadCensusStageEditor } from '../editors/dyad-census/DyadCensusStageEditor.ts';
 import * as egoFormStories from '../editors/ego-form/EgoFormStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/family-pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as informationStories from '../editors/information/InformationStageEditor.stories.tsx';
@@ -27,10 +26,7 @@ import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
-import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
-import PageContentSection from '../sections/page-content/PageContentSection.tsx';
+import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
 import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
@@ -118,37 +114,66 @@ async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
   ).toBeGreaterThanOrEqual(judgedAtLeast);
 }
 
+/**
+ * A dialog that lends its footer to the editor inside it, as the package's own
+ * hosts do: the editor's actions are its own state, so it paints them into a
+ * slot rather than handing them up.
+ */
+function DialogWithAFooterSlot({
+  title,
+  children,
+}: Readonly<{
+  title: string;
+  children: (footerSlot: HTMLElement | null) => ReactNode;
+}>) {
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
+  return (
+    <Dialog
+      open
+      title={title}
+      closeDialog={() => undefined}
+      footer={<div ref={setFooterSlot} className="contents" />}
+    >
+      {children(footerSlot)}
+    </Dialog>
+  );
+}
+
 describe('an editor opened in a dialog', () => {
   /**
-   * The dialog's title is the heading above the editor's own, and the editor's
-   * own is the heading above every alert it raises. Read from the enclosing
-   * statement rather than written out, because a hand-written level is only
-   * ever right in one of the places a reusable editor is opened: an `h3` here
-   * was a peer of the alerts below it, and an `h2` in the two editors beside
-   * it was a peer of the dialog's own title.
+   * Inside a dialog the variable editor writes NO heading of its own: the
+   * dialog's title already says what the surface is, and a second heading
+   * repeating it is Josh's D2. So the alerts it raises count from the dialog's
+   * title, read from the enclosing statement rather than written out — a
+   * hand-written level is only ever right in one of the places a reusable
+   * editor is opened.
    */
-  it('puts a variable editor under the dialog title and its alerts under itself', async () => {
+  it('puts a variable editor’s alerts under the dialog title', async () => {
     const user = userEvent.setup();
 
     render(
-      <Dialog open title="Create attribute" closeDialog={() => undefined}>
-        <VariableEditor
-          openId="open-1"
-          mode="create"
-          subject={SUBJECT}
-          authoritativeDocument={personDocument()}
-          variableId="new-variable"
-          initialDraft={{
-            name: 'choice',
-            type: 'categorical',
-            options: [{ label: 'Yes', value: 'yes' }],
-          }}
-          protocolContext={EMPTY_CONTEXT}
-          title="Define allowed values"
-          onSubmitDocument={REFUSED}
-          onComplete={() => undefined}
-        />
-      </Dialog>,
+      <DialogWithAFooterSlot title="Create attribute">
+        {(footerSlot) => (
+          <VariableEditor
+            openId="open-1"
+            mode="create"
+            subject={SUBJECT}
+            authoritativeDocument={personDocument()}
+            variableId="new-variable"
+            initialDraft={{
+              name: 'choice',
+              type: 'categorical',
+              options: [{ label: 'Yes', value: 'yes' }],
+            }}
+            protocolContext={EMPTY_CONTEXT}
+            chrome="dialog"
+            footerSlot={footerSlot}
+            onCancel={() => undefined}
+            onSubmitDocument={REFUSED}
+            onComplete={() => undefined}
+          />
+        )}
+      </DialogWithAFooterSlot>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
@@ -156,32 +181,71 @@ describe('an editor opened in a dialog', () => {
 
     expect(headingLadder()).toEqual([
       'h2: Create attribute',
-      'h3: Define allowed values',
-      'h4: Attribute not saved',
+      'h3: Attribute not saved',
     ]);
-    await expectHeadingOrder(3);
+    await expectHeadingOrder(2);
   });
 
-  it('puts an entity editor under the dialog title and its alerts under itself', async () => {
+  /**
+   * And the page host keeps its own: mounted on a screen of its own there is
+   * nothing above it to name the surface, so the editor's heading is what does
+   * — and its alerts count from that.
+   */
+  it('keeps a page-hosted variable editor’s own heading', async () => {
     const user = userEvent.setup();
 
     render(
-      <Dialog open title="Create node type" closeDialog={() => undefined}>
-        <CodebookEntityEditor
-          mode="create"
-          sessionKey="open-1"
-          subject={SUBJECT}
-          initialDraft={{
-            name: 'Person',
-            color: 'node-color-seq-1',
-            icon: 'add-a-person',
-            shape: { default: 'circle' },
-          }}
-          existingEntityNames={[]}
-          onSubmit={REFUSED}
-          onApplied={() => undefined}
-        />
-      </Dialog>,
+      <VariableEditor
+        openId="open-1"
+        mode="create"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument()}
+        variableId="new-variable"
+        initialDraft={{
+          name: 'choice',
+          type: 'categorical',
+          options: [{ label: 'Yes', value: 'yes' }],
+        }}
+        protocolContext={EMPTY_CONTEXT}
+        title="Define allowed values"
+        onSubmitDocument={REFUSED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+    await screen.findByRole('alert');
+
+    expect(headingLadder()).toEqual([
+      'h3: Define allowed values',
+      'h4: Attribute not saved',
+    ]);
+  });
+
+  /**
+   * The entity editor writes no heading of its own: the dialog's title already
+   * names it, so its four topic sections — Architect's — start one below that
+   * title, and the alert it raises is their peer rather than their child.
+   */
+  it('puts the entity editor’s sections and alert under the dialog title', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CodebookEntityEditor
+        mode="create"
+        sessionKey="open-1"
+        dialog={{ title: 'Create node type' }}
+        subject={SUBJECT}
+        initialDraft={{
+          name: 'Person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+        }}
+        existingEntityNames={[]}
+        onSubmit={REFUSED}
+        onApplied={() => undefined}
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
@@ -189,34 +253,13 @@ describe('an editor opened in a dialog', () => {
 
     expect(headingLadder()).toEqual([
       'h2: Create node type',
-      'h3: Create node type',
-      'h4: Could not save this entity',
+      'h3: Could not save this entity',
+      'h3: Type identity',
+      'h3: Type color',
+      'h3: Node appearance',
+      'h3: Interface icon',
     ]);
-    await expectHeadingOrder(3);
-  });
-
-  it('puts a validation editor under the dialog title and its alerts under itself', async () => {
-    render(
-      <Dialog open title="Edit validation" closeDialog={() => undefined}>
-        <CodebookVariableValidationEditor
-          openId="open-1"
-          subject={SUBJECT}
-          variableId="age"
-          // The attribute the editor was opened for is not in the entity data
-          // it was given, which is the alert this surface raises on its own.
-          authoritativeEntityDocument={personDocument()}
-          allSubjectVariables={{}}
-          onSubmitDocument={REFUSED}
-        />
-      </Dialog>,
-    );
-
-    expect(headingLadder()).toEqual([
-      'h2: Edit validation',
-      'h3: Edit validation for age',
-      'h4: Attribute unavailable',
-    ]);
-    await expectHeadingOrder(3);
+    await expectHeadingOrder(6);
   });
 });
 
@@ -229,11 +272,9 @@ describe('the stage editor shell', () => {
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
             <StageEditorShell actions={actions}>
               <StageNameSection />
-              <PageContentSection
-                ItemEditor={ContentBlockEditor}
-                ItemPreview={ContentBlockPreview}
-                slots={contentBlockSlots}
-              />
+              {/* The production pairing, not a hand-mount of its parts: what a
+                  block editor is paired with is `contentBlocks`' business. */}
+              {contentBlocks()()}
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -336,6 +377,31 @@ describe('a row of a stage editor list, opened in its dialog', () => {
     ]);
     await expectHeadingOrder(3);
   });
+
+  /**
+   * A row whose fields are ONE topic writes no heading below the dialog title
+   * at all: the title names the row and the dialog's description says what the
+   * fields decide, so a group around the whole body would only restate the
+   * title it was opened under (Josh, follow-up 2). Dyad Census is that shape —
+   * a question and the connection an affirmative answer records.
+   */
+  it('leaves a single-topic row dialog with only its title', async () => {
+    const harness = renderStageEditor({
+      stageId: 'dyad-census-1',
+      registry: dyadCensusStageEditor,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(headingLadder(dialog)).toEqual(['h2: Edit prompt']);
+    expect(dialog).toHaveAccessibleDescription(
+      'Write the participant prompt and select the edge type created by an affirmative response.',
+    );
+    await expectHeadingOrder(1);
+  });
 });
 
 /**
@@ -362,10 +428,6 @@ describe('every story of a surface that writes its own heading', () => {
   const stories = [
     ...from('VariableEditor', composeStories(variableEditorStories)),
     ...from('CodebookEntityEditor', composeStories(entityEditorStories)),
-    ...from(
-      'CodebookVariableValidationEditor',
-      composeStories(validationEditorStories),
-    ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
     // Every stage editor that has landed. An editor writes no heading of its

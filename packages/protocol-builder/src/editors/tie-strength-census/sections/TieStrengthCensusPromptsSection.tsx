@@ -11,16 +11,12 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import {
   buildExclusiveVariableSlotMap,
-  buildInterfaceOwnedOptionMap,
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
   hasValidatedUse,
   interfaceOwnedPickIssue,
-  lockedVariableOptions,
-  variableRoleKey,
 } from '../../../codebook/variableRoles.ts';
-import { LockedOptions } from '../../../fields/BinAttributeField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -39,9 +35,15 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import AttributeCodebookControls from '../../../sections/AttributeCodebookControls.tsx';
+import AttributeCodebookControls, {
+  useRowValue,
+} from '../../../sections/AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  attributeOptionsFieldFor,
+} from '../../../sections/AttributeValueFields.tsx';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import EdgeTypeSection, {
@@ -325,30 +327,27 @@ function ScaleField({
     );
   }, [allVariables, identity.id, picked, protocolContext, subject]);
 
-  // Read from the codebook rather than from the row: the values belong to the
-  // attribute, so a collaborator adding a sixth changes what this stage shows.
+  // The list the researcher is LOOKING at. The points are edited inline in
+  // this dialog and saving closes it, so a warning counted from the stored
+  // list would appear only once they can no longer see the list it is about —
+  // which is after the decision it exists to inform.
+  //
+  // The codebook's own list stands in wherever there is no control holding
+  // one: an attribute whose values another interface owns is shown read-only,
+  // and a collaborator adding a sixth still changes what this stage draws.
   const pickedVariable =
     picked === undefined ? undefined : allVariables[picked];
-  const valueCount =
-    pickedVariable?.type === SCALE_TYPE ? pickedVariable.options.length : 0;
+  const draftedPoints = useRowValue(attributeOptionsFieldFor(SCALE_FIELD));
+  const valueCount = Array.isArray(draftedPoints)
+    ? draftedPoints.length
+    : pickedVariable?.type === SCALE_TYPE
+      ? pickedVariable.options.length
+      : 0;
 
   // An attribute whose VALUES another interface owns is still a legitimate
   // scale — a family pedigree's relationship kinds, say — but its points are
   // that interface's to decide, so they are shown rather than offered for
   // editing.
-  const locked = useMemo(
-    () =>
-      subject === undefined || picked === undefined
-        ? undefined
-        : lockedVariableOptions(
-            allVariables,
-            picked,
-            buildInterfaceOwnedOptionMap(protocolContext)[
-              variableRoleKey(subject, picked)
-            ],
-          ),
-    [allVariables, picked, protocolContext, subject],
-  );
 
   // The scale belongs to the connection, so there is nothing to choose from
   // until the connection type is known — and it is that type's own attributes
@@ -383,21 +382,17 @@ function ScaleField({
         codebook edit in this package is — the attribute lives in another
         section of the protocol and commits on its own.
       */}
-      {locked === undefined ? (
-        <AttributeCodebookControls
-          subject={subject}
-          variableField={SCALE_FIELD}
-          committedVariable={committed}
-          componentField={NO_ROW_COMPONENT}
-          // The participant taps a point and the value is written as it is,
-          // with nothing to check it — the schema says so by declaring this
-          // reference `unvalidatedAttribute` — so rules authored here would
-          // never run.
-          offerRules={false}
-        />
-      ) : (
-        <LockedOptions options={locked} />
-      )}
+      <AttributeCodebookControls
+        subject={subject}
+        variableField={SCALE_FIELD}
+        committedVariable={committed}
+        componentField={NO_ROW_COMPONENT}
+      />
+      <AttributeValueFields
+        subject={subject}
+        variableId={picked}
+        optionsField={attributeOptionsFieldFor(SCALE_FIELD)}
+      />
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
           <AlertTitle>
@@ -483,8 +478,14 @@ export default function TieStrengthCensusPromptsSection() {
    * The connection type is asked about first: the scale hangs off it, so with
    * the type gone there is no codebook to judge the attribute against.
    */
+  const scaleOptions = useOptionsRowCommit(SCALE_FIELD, (row) =>
+    edgeSubjectOf(row[CREATE_EDGE_FIELD]),
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       const edgeIssue = missingEdgeTypeIssue(
         protocolContext.codebook.edge ?? {},
         row[CREATE_EDGE_FIELD],
@@ -528,11 +529,16 @@ export default function TieStrengthCensusPromptsSection() {
         subject,
         variableId,
       );
-      return owned === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      if (owned !== undefined) {
+        return { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      }
+
+      // Last, because the response options are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot scale has no list to
+      // write anywhere.
+      return await scaleOptions.commit(row, context);
     },
-    [identity.id, protocolContext],
+    [identity.id, protocolContext, scaleOptions],
   );
 
   return (
@@ -540,6 +546,7 @@ export default function TieStrengthCensusPromptsSection() {
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
+      expand={scaleOptions.expand}
     />
   );
 }

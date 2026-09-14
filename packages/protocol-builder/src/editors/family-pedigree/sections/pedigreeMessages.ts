@@ -620,18 +620,12 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown above the nomination prompt list when a researcher saves a pedigree whose nomination section is switched on and empty. Switching the section off is the other way out, and is offered beside the list.',
   },
-  nominationDetailsTitle: {
-    id: 'protocolBuilder.familyPedigree.nominationDetailsTitle',
-    defaultMessage: 'Nomination details',
-    description:
-      'Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology.',
-  },
   nominationDetailsDescription: {
     id: 'protocolBuilder.familyPedigree.nominationDetailsDescription',
     defaultMessage:
       'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
     description:
-      'Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names.',
+      'Said under the title of a nomination prompt’s own dialog. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names.',
   },
   familyMemberAttributesTitle: {
     id: 'protocolBuilder.familyPedigree.familyMemberAttributesTitle',

@@ -23,13 +23,11 @@ import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import {
-  normalizeForComparison,
-  VariableNameSchema,
-} from '@codaco/shared-consts';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import AttributePill from './AttributePill.tsx';
+import { variableNameRefusal } from './variableNameRules.ts';
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 
 const messages = defineMessages({
@@ -113,19 +111,6 @@ const messages = defineMessages({
       'No attribute matches what you typed, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.',
     description:
       'Shown in the attribute window when what the researcher typed in the search box matches none of the attributes offered and this control does not allow one to be created.',
-  },
-  nameTaken: {
-    id: 'protocolBuilder.variablePicker.nameTaken',
-    defaultMessage: 'this type already has an attribute called that',
-    description:
-      'Reason given on the switched-off create row of the attribute list. Reads after a colon, so it is a clause rather than a sentence: “Cannot create attribute named “age”: this type already has an attribute called that”.',
-  },
-  nameInvalid: {
-    id: 'protocolBuilder.variablePicker.nameInvalid',
-    defaultMessage:
-      'only letters, numbers and the symbols ._-: can be used in a name',
-    description:
-      'Reason given on the switched-off create row of the attribute list when the name typed holds characters the export formats cannot carry. Reads after a colon, so it is a clause rather than a sentence. The listed symbols are literal characters and must not be translated.',
   },
 });
 
@@ -312,27 +297,20 @@ export default function VariableSpotlight({
    * is what refuses the write, and a row that offered a create the codebook
    * would refuse would spend a round trip to say so.
    *
-   * Which is why the names are compared through `normalizeForComparison`, the
-   * helper `assertVariableNameAvailable` judges a write with: it case-folds
-   * and canonicalises, so `AGE` is the name `age` and a decomposed `café` is
-   * the precomposed one. A raw comparison here would offer to create a name
-   * the codebook holds, and answer with a duplicate-name refusal about a name
-   * the researcher believed was free.
+   * The rule itself is `variableNameRefusal`, shared with the editor the held
+   * pill opens: two controls that judged a name differently would offer a name
+   * the other refuses.
    */
-  const refusal = useMemo(() => {
-    if (term === '') return undefined;
-    const typed = normalizeForComparison(term);
-    if (
-      namesInUse?.some((held) => normalizeForComparison(held) === typed) ===
-      true
-    ) {
-      return intl.formatMessage(messages.nameTaken);
-    }
-    if (!VariableNameSchema.safeParse(term).success) {
-      return intl.formatMessage(messages.nameInvalid);
-    }
-    return undefined;
-  }, [intl, namesInUse, term]);
+  const refusal = useMemo(
+    () =>
+      term === ''
+        ? undefined
+        : variableNameRefusal(term, {
+            intl,
+            ...(namesInUse === undefined ? {} : { namesInUse }),
+          }),
+    [intl, namesInUse, term],
+  );
 
   /**
    * Whether an attribute on offer already goes by the typed name — asked the

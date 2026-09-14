@@ -22,6 +22,7 @@ import {
   makeFieldEditorValidate,
   parseForRule,
   ruleMapIssue,
+  ruleMapIssueForWrite,
   ruleMapPrecheck,
   validatedElsewhereMessage,
   type RuleMapContext,
@@ -458,6 +459,94 @@ describe('draft writer roles and cross-class picks', () => {
           category: { name: 'Category', type: 'categorical' },
         },
       }),
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * The two readings a rule authored on a stage has to pass before it is
+ * written: the form's own controls, and the codebook record it is saved on.
+ *
+ * Every surface that writes a rule map asks this one function
+ * (`VariableValidationEditor`'s per-row verdict, `CodebookVariableValidationSection`'s
+ * write gate, `DraftValidationRulesField`'s row refusal), and the researcher
+ * has to be told WHICH of the two refused: "these dates cannot overlap", in
+ * front of two fields that plainly do overlap, reads as the application being
+ * wrong about what is on the screen.
+ */
+describe('the rule-map gate that reads a stage and the codebook', () => {
+  const dateWindow = (min: string, max: string) => ({
+    component: 'DatePicker',
+    parameters: { type: 'year', min, max },
+  });
+
+  it('names the codebook record when only the form’s controls accept the rule', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('2020', '2025'),
+      },
+    };
+
+    // Both fields of the form render the same window, so the comparison is
+    // satisfiable in front of the researcher — and the codebook's own windows,
+    // which are what the write is judged by, are disjoint.
+    const issue = ruleMapIssueForWrite(
+      { sameAs: 'bornOn' },
+      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      {
+        ...dateWindow('2020', '2025'),
+        overlay: { bornOn: dateWindow('2020', '2025') },
+      },
+    );
+
+    expect(readMessage(issue ?? '')).toBe(
+      'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. The comparisons for metOn and bornOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
+  });
+
+  it('states the form’s own contradiction in its own words, unprefixed', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('1990', '1995'),
+      },
+    };
+
+    // Satisfiable in the codebook; impossible only through the window this
+    // field puts on it. The researcher can act on that where they stand, so
+    // the sentence is not about the record at all.
+    const issue = ruleMapIssueForWrite(
+      { sameAs: 'bornOn' },
+      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      { ...dateWindow('2020', '2025') },
+    );
+
+    expect(readMessage(issue ?? '')).toBe(
+      'The comparisons for metOn and bornOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
+  });
+
+  it('accepts a rule both readings can hold', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('2020', '2025') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('2020', '2025'),
+      },
+    };
+
+    expect(
+      ruleMapIssueForWrite(
+        { sameAs: 'bornOn' },
+        { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+        { ...dateWindow('2020', '2025') },
+      ),
     ).toBeUndefined();
   });
 });

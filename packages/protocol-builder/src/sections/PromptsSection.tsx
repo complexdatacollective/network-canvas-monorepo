@@ -142,6 +142,16 @@ export type PromptsSectionProps = Readonly<{
    */
   beforeSave?: RowListConfig['beforeSave'];
   /**
+   * What a prompt's dialog opens holding beyond the row itself.
+   *
+   * For working state a control is seeded with from somewhere other than the
+   * row — the answers a bound codebook attribute offers, which the prompt
+   * edits inline. `beforeSave` is handed the expanded row back as `openedOn`,
+   * which is how its gate tells a list the researcher wrote from one the
+   * control merely showed them. See `useOptionsRowCommit`.
+   */
+  expand?: RowListConfig['expand'];
+  /**
    * What a prompt this interface is adding starts out holding.
    *
    * For the parts of a row the researcher never chooses and no control in the
@@ -212,6 +222,15 @@ export type PromptsSectionProps = Readonly<{
    * disables the section, so a family wanting a second one says so.
    */
   waitingDescription?: MessageDescriptor;
+  /**
+   * What one prompt's own dialog says under its title.
+   *
+   * For a family whose prompt dialog has a single topic: the dialog says it
+   * once, above the fields, rather than a group inside it restating the title
+   * it was opened under. A family whose dialog holds several topics keeps its
+   * sections and leaves this out.
+   */
+  rowDescription?: MessageDescriptor;
   fieldHint?: MessageDescriptor;
   emptyState?: MessageDescriptor;
 }>;
@@ -234,10 +253,12 @@ export default function PromptsSection({
   PromptPreview,
   requiresSubject = true,
   beforeSave,
+  expand,
   itemTemplate,
   collapseRow,
   description = messages.description,
   waitingDescription,
+  rowDescription,
   fieldHint = messages.fieldHint,
   emptyState = messages.emptyState,
 }: PromptsSectionProps) {
@@ -255,9 +276,11 @@ export default function PromptsSection({
       Editor: PromptEditor,
       addTitle: messages.addTitle,
       editTitle: messages.editTitle,
+      ...(rowDescription === undefined ? {} : { description: rowDescription }),
       formId: 'prompt-editor',
       name: PROMPTS_FIELD,
       ...(beforeSave === undefined ? {} : { beforeSave }),
+      ...(expand === undefined ? {} : { expand }),
       // The family's collapse runs FIRST, for the reason `PageContentSection`
       // gives: it decides what each key becomes, and an emptied one has to be
       // able to clear it.
@@ -266,7 +289,14 @@ export default function PromptsSection({
           collapseRow === undefined ? row : collapseRow(row),
         ) as RowValues,
     }),
-    [PromptEditor, PromptPreview, beforeSave, collapseRow],
+    [
+      PromptEditor,
+      PromptPreview,
+      beforeSave,
+      collapseRow,
+      expand,
+      rowDescription,
+    ],
   );
 
   return (

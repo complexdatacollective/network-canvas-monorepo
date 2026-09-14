@@ -38,8 +38,9 @@ test('creates a valid DyadCensus stage from scratch', async ({
   // The shared prompts section's row dialog, filled with what a Dyad Census
   // prompt is made of (DyadCensusPromptsSection.tsx): the family's
   // `PromptTextField` (`label: 'Prompt text'`), and an `EdgeTypeSection` —
-  // rendered bare inside the "Prompt configuration" group, as Architect's is,
-  // holding a "Created edge type" picker over the codebook's edge types. The
+  // both rendered bare, because the question and the connection an
+  // affirmative answer records are the dialog's only topic and its own title
+  // names them. It holds a "Created edge type" picker over the codebook's edge types. The
   // picker itself offers "Create new edge type", which opens the codebook
   // entity editor: its only field a researcher must supply is "Edge type name"
   // (its colour is seeded from the shared new-type draft), and it commits with

@@ -244,8 +244,14 @@ export const FindingAnAttribute: Story = {
     await expect(
       await canvas.findByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
+    // The field's own statement of what it now holds, which is the `<data>`
+    // the pill draws the name in — inside the button that renames it, at this
+    // mount, because this picker can write to the codebook behind it.
     await expect(
-      canvas.getByText('contactFreq', { selector: 'span' }),
+      canvas.getByText('contactFreq', { selector: 'data' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Edit attribute name: contactFreq' }),
     ).toBeInTheDocument();
   },
 };

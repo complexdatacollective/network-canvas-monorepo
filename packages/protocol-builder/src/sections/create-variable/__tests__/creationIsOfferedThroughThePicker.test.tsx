@@ -178,7 +178,7 @@ const collapse = (text: string) => text.replaceAll(/\s+/gu, ' ').trim();
  *
  * `AttributeCodebookControls`' buttons — "Create this attribute and its
  * values", "Create this attribute and what it accepts", "Change this
- * attribute's values", "Set rules for this answer" — sit outside the window
+ * attribute's values" — sit outside the window
  * too, and are deliberately not among these: they are the codebook's own
  * surfaces for the attribute a row has ALREADY chosen or is already inventing,
  * which is the picker's escalation path rather than a second way in. The

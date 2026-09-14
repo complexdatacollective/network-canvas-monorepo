@@ -24,7 +24,6 @@ import {
   edgeFormFieldsOf,
   edgesOf,
   highlightInASociogram,
-  narrowPersonVariable,
   nodeFormFieldsOf,
   openRow,
   retypePersonVariable,
@@ -930,6 +929,141 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * The answers a composer field's attribute offers, edited under the picker
+   * that binds it and written by the row's own save.
+   *
+   * Architect rendered the same inline list here as in a form-field row
+   * (`EditableAttributesList/ComposerAttributeFields.tsx` mounts the same
+   * `VariableDefinitionFields`), and the panel the participant edits in is
+   * exactly where a value thought of a moment later has to be addable.
+   */
+  it('changes the values a composer field’s attribute offers', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: { fields: [{ id: 'field-1', variable: 'contactType' }] },
+      }),
+    );
+
+    const dialog = await openRow(harness, 'Edit form field');
+    const values = within(
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    );
+    await harness.user.click(
+      values.getByRole('button', { name: 'Create new option' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Label' }),
+      'Letter',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Value' }),
+      'letter',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Finish editing option' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    // On the codebook attribute, which is where the values live — and which is
+    // why every other stage collecting it gains them too.
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.contactType,
+      ).toEqual(
+        expect.objectContaining({
+          options: [
+            { label: 'In person', value: 'in_person' },
+            { label: 'Phone or video call', value: 'call' },
+            { label: 'Text or messaging', value: 'text' },
+            { label: 'Letter', value: 'letter' },
+          ],
+        }),
+      ),
+    );
+  });
+
+  /**
+   * And the two words a yes-or-no answer offers, for an attribute this row is
+   * inventing: authored beside the control that decides its kind, and written
+   * with the create.
+   *
+   * The composer takes the kind of answer FROM the control, so choosing the
+   * yes-or-no control is what says the attribute is a boolean — and the words
+   * on its two answers are the whole of what a name cannot carry.
+   */
+  it('writes the answers an invented boolean was given, with the create', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'livesNearby');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Boolean',
+    );
+
+    const answers = within(
+      await dialog.findByRole('region', { name: 'Boolean values' }),
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “true”' }),
+      'Nearby',
+    );
+    await harness.user.type(
+      answers.getByRole('textbox', { name: 'Label for “false”' }),
+      'Further away',
+    );
+
+    // Nothing yet: the row's own save is what creates the attribute.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'livesNearby',
+      ),
+    ).toBe(false);
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.values(variables).find(
+        (variable) => variable.name === 'livesNearby',
+      );
+      if (entry === undefined) {
+        throw new Error('the codebook has no “livesNearby” attribute');
+      }
+      return entry;
+    });
+    expect(created).toMatchObject({
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Nearby', value: true },
+        { label: 'Further away', value: false },
+      ],
+    });
+  });
+
+  /** A control that shows no list is offered none to author. */
+  it('offers no answers for an invented attribute a toggle collects', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'livesNearby');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+
+    await dialog.findByRole('textbox', { name: 'Question' });
+    expect(dialog.queryByRole('region', { name: 'Boolean values' })).toBeNull();
+  });
+
+  /**
    * The rules an invented answer has to satisfy, authored beside the control
    * that decides its kind and written with the create.
    *
@@ -952,12 +1086,11 @@ describe('what a network composer lets the participant build', () => {
     );
 
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     // Still nothing in the codebook: the rules are held on the row until the
     // create they belong to.
@@ -1863,7 +1996,7 @@ describe('the rules the composer’s quick-add attribute has to satisfy', () => 
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -1943,24 +2076,28 @@ describe('the rules a composer field authors', () => {
       ...YEAR_PICKER('1990', '1995'),
     });
 
+    // The attribute arrives holding the rule, so its nested Validation section
+    // is open on it already.
     const dialog = await openRow(harness, 'Edit form field');
-    await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
-    );
 
     expect(
-      await screen.findByText(
+      await dialog.findByText(
         'The comparisons for bornOn and metOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
       ),
     ).toBeInTheDocument();
-    // Switching another rule on leaves something to save, so what refuses the
-    // save is the contradiction rather than there being nothing to write.
+    // And a map that carries it does not reach the codebook: the section has
+    // no submit to refuse with, so what it must not do is write it.
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      dialog.getByRole('switch', { name: 'Required answer' }),
     );
-    expect(
-      screen.getByRole('button', { name: 'Save validation' }),
-    ).toBeDisabled();
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('switch', { name: 'Required answer' }),
+      ).toBeChecked(),
+    );
+    expect(harness.hostCodebook().node?.person?.variables?.metOn).toEqual(
+      expect.objectContaining({ validation: { sameAs: 'bornOn' } }),
+    );
   });
 
   /**
@@ -2007,10 +2144,10 @@ describe('the rules a composer field authors', () => {
     });
 
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Same as another attribute',
       }),
     );
@@ -2073,10 +2210,10 @@ describe('the rules a composer field authors', () => {
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Same as another attribute',
       }),
     );
@@ -2152,10 +2289,10 @@ describe('the rules a composer field authors', () => {
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Same as another attribute',
       }),
     );
@@ -2211,10 +2348,10 @@ describe('the rules a composer field authors', () => {
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Same as another attribute',
       }),
     );
@@ -2227,9 +2364,6 @@ describe('the rules a composer field authors', () => {
       ).toBeInTheDocument(),
     );
     await harness.user.selectOptions(targets, 'bornOn');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save validation' }),
-    );
 
     // The codebook as the PROTOCOL holds it: the rule is on the attribute, so
     // nothing short of that is the rule having been saved.
@@ -2241,78 +2375,18 @@ describe('the rules a composer field authors', () => {
   });
 
   /**
-   * And when only the codebook refuses it, the refusal says so.
+   * Which of the two readings refused a rule is stated by the seam both this
+   * surface and the row's own save ask
+   * (`variableValidation.test.ts`'s `ruleMapIssueForWrite` group).
    *
-   * "These dates cannot overlap", in front of two fields that plainly do
-   * overlap, reads as the application being wrong about what is on the screen.
-   * Reached by a collaborator narrowing the target in the codebook under an
-   * open dialog: the form goes on rendering the window it renders, and the
-   * record the rule would be written to can no longer hold it.
+   * It is not reachable from this dialog any more, and that is the point of
+   * the two rounds above: a comparison is offered only where BOTH readings
+   * accept it, and the section writes as the researcher types rather than at a
+   * submit, so there is no moment at which a map only the codebook refuses is
+   * sitting in front of them. A record narrowed under an authored rule is not
+   * that moment either — the protocol then holds a type its own validation
+   * rejects, and the attribute leaves the codebook with it.
    */
-  it('says when it is the codebook record refusing, not the form', async () => {
-    const harness = renderStageEditor(
-      composerHolding({
-        nodeForm: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'metOn',
-              ...YEAR_PICKER('2020', '2025'),
-            },
-            {
-              id: 'field-2',
-              variable: 'bornOn',
-              ...YEAR_PICKER('2020', '2025'),
-            },
-          ],
-        },
-      }),
-    );
-    for (const variableId of ['bornOn', 'metOn']) {
-      addPersonVariable(harness, variableId, {
-        name: variableId,
-        type: 'datetime',
-        ...YEAR_PICKER('2020', '2025'),
-      });
-    }
-
-    const dialog = await openRow(harness, 'Edit form field');
-    await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('checkbox', {
-        name: 'Same as another attribute',
-      }),
-    );
-    const targets = await screen.findByRole('combobox', {
-      name: 'Same as another attribute',
-    });
-    await waitFor(() =>
-      expect(
-        within(targets).getByRole('option', { name: 'bornOn' }),
-      ).toBeInTheDocument(),
-    );
-    await harness.user.selectOptions(targets, 'bornOn');
-    expect(
-      screen.getByRole('button', { name: 'Save validation' }),
-    ).toBeEnabled();
-
-    narrowPersonVariable(harness, 'bornOn', {
-      type: 'year',
-      min: '1990',
-      max: '1995',
-    });
-
-    expect(
-      await screen.findByText(
-        'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. The comparisons for bornOn and metOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Save validation' }),
-    ).toBeDisabled();
-  });
 
   /**
    * A boolean's domain is the control's too, which the analyser reads only
@@ -2348,24 +2422,27 @@ describe('the rules a composer field authors', () => {
       options: [{ label: 'Yes', value: true }],
     });
 
+    // The attribute arrives holding the rule, so its nested Validation section
+    // is open on it already.
     const dialog = await openRow(harness, 'Edit form field');
-    await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
-    );
 
     expect(
-      await screen.findByText(
+      await dialog.findByText(
         'The rules require different answers for isClose and isKin, but their allowed ranges force the same value. Widen a range or change the comparison.',
       ),
     ).toBeInTheDocument();
-    // Switching another rule on leaves something to save, so what refuses the
-    // save is the contradiction rather than there being nothing to write.
+    // And a map that carries it does not reach the codebook.
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      dialog.getByRole('switch', { name: 'Required answer' }),
     );
-    expect(
-      screen.getByRole('button', { name: 'Save validation' }),
-    ).toBeDisabled();
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('switch', { name: 'Required answer' }),
+      ).toBeChecked(),
+    );
+    expect(harness.hostCodebook().node?.person?.variables?.isKin).toEqual(
+      expect.objectContaining({ validation: { differentFrom: 'isClose' } }),
+    );
   });
 
   /**
@@ -2408,10 +2485,10 @@ describe('the rules a composer field authors', () => {
     const dialog = await openRow(harness, 'Edit form field');
     await chooseAttributeById(harness.user, picker('Attribute'), 'isClose');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Different from another attribute',
       }),
     );
@@ -2470,10 +2547,10 @@ describe('the rules a composer field authors', () => {
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.click(
-      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Different from another attribute',
       }),
     );

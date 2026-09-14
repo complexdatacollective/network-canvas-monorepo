@@ -29,6 +29,20 @@ export function useProtocolBuilderContext(): ProtocolBuilderContextValue {
   return value;
 }
 
+/**
+ * Whether there is a protocol host above this component at all.
+ *
+ * The one question about this context with an answer outside a
+ * `ProtocolBuilder`, and the reason it needs one: a control that offers to
+ * WRITE to the protocol beside the value it displays — the attribute pill's
+ * rename — has nothing to write to where there is no protocol, so it is drawn
+ * as the statement it otherwise is. Asking that must not be the thing that
+ * throws.
+ */
+export function useHasProtocolBuilderHost(): boolean {
+  return useContext(ProtocolBuilderContext) !== undefined;
+}
+
 /** Cache entry for who holds one section's lock; empty when nobody is known to. */
 export type LockState = Readonly<{ holder?: Presence }>;
 

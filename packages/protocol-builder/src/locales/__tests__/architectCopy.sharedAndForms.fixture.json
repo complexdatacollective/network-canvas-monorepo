@@ -124,11 +124,6 @@
     "es": "Editar elemento",
     "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem, sentence case"
   },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "en": "Item details",
-    "es": "Detalles del elemento",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.itemDetails"
-  },
   "protocolBuilder.contentBlock.sectionDescription": {
     "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
     "es": "Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.",
@@ -633,5 +628,50 @@
     "en": "Video",
     "es": "Video",
     "from": "74a07e626 architect.sections.contentGrid.options.config.video"
+  },
+  "protocolBuilder.variablePicker.renameTrigger": {
+    "en": "Edit attribute name: {label}",
+    "es": "Editar nombre del atributo: {label}",
+    "from": "74a07e626 architect.variablePill.editAttributeName"
+  },
+  "protocolBuilder.variablePicker.renameDialogName": {
+    "en": "Edit attribute name",
+    "es": "Editar nombre del atributo",
+    "from": "74a07e626 architect.variablePill.editAttributeName62aa3"
+  },
+  "protocolBuilder.variablePicker.renameFieldLabel": {
+    "en": "Attribute name",
+    "es": "Nombre del atributo",
+    "from": "74a07e626 architect.variablePill.attributeName"
+  },
+  "protocolBuilder.variablePicker.renamePlaceholder": {
+    "en": "Enter an attribute name...",
+    "es": "Introduce un nombre de atributo...",
+    "from": "74a07e626 architect.variablePill.enterAnAttributeName"
+  },
+  "protocolBuilder.variablePicker.renameSubmit": {
+    "en": "Save Changes",
+    "es": "Guardar cambios",
+    "from": "74a07e626 architect.variablePill.saveChanges"
+  },
+  "protocolBuilder.variablePicker.renameRequired": {
+    "en": "You must enter an attribute name",
+    "es": "Debes introducir un nombre de atributo",
+    "from": "74a07e626 architect.final.components.VariablePill.required"
+  },
+  "protocolBuilder.variablePicker.renameEditing": {
+    "en": "Editing attribute {name}",
+    "es": "Editando el atributo {name}",
+    "from": "74a07e626 architect.variablePill.editing"
+  },
+  "protocolBuilder.variablePicker.renameCancelled": {
+    "en": "Attribute name edit cancelled",
+    "es": "Se ha cancelado la edición del nombre del atributo",
+    "from": "74a07e626 architect.variablePill.cancelled"
+  },
+  "protocolBuilder.variablePicker.renamed": {
+    "en": "Attribute renamed to {name}",
+    "es": "Se ha cambiado el nombre del atributo a {name}",
+    "from": "74a07e626 architect.variablePill.renamed"
   }
 }
