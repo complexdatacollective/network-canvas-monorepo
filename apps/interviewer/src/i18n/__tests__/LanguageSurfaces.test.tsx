@@ -92,17 +92,26 @@ it('exposes a keyboard-operated language picker from the home footer', async () 
       />
     </InterviewerI18nProvider>,
   );
-  const opener = screen.getByRole('button', { name: 'App language' });
+  const opener = screen.getByRole('combobox', {
+    name: 'Interface language: Automatic (English)',
+  });
+  expect(opener).toHaveTextContent('Auto · EN');
   opener.focus();
   await user.keyboard('{Enter}');
-  const picker = await screen.findByRole('combobox', { name: 'App language' });
-  await user.selectOptions(picker, 'es');
+  const popover = await screen.findByRole('dialog', {
+    name: 'Interface language',
+  });
+  await user.click(within(popover).getByRole('option', { name: /^Español/ }));
   expect(document.documentElement).toHaveAttribute('lang', 'es');
-  expect(picker).toHaveFocus();
+  expect(opener).toHaveTextContent('ES');
+  expect(popover).toHaveAccessibleName('Idioma de la interfaz');
+  expect(within(popover).getAllByRole('status').at(-1)).toHaveTextContent(
+    'Guardado en este dispositivo.',
+  );
   await user.keyboard('{Escape}');
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Idioma de la aplicación' }),
+      screen.getByRole('combobox', { name: 'Idioma de la interfaz: Español' }),
     ).toHaveFocus(),
   );
   expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');

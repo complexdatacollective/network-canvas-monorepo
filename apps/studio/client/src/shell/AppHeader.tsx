@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import StudioLocaleSwitcher from '../i18n/StudioLocaleSwitcher.tsx';
 import { authClient } from '../lib/auth.ts';
 import { landingDestination, type LandingDestination } from '../lib/landing.ts';
 import AccountMenu from './AccountMenu.tsx';
@@ -125,6 +126,7 @@ export default function AppHeader() {
             {intl.formatMessage(entry.label)}
           </Link>
         ))}
+        <StudioLocaleSwitcher />
         <AccountMenu />
       </div>
     </div>

@@ -82,12 +82,6 @@ export const navLabelMessages = defineMessages({
     description:
       "Navigation label for the researcher's own profile screen in the account area.",
   },
-  language: {
-    id: 'studio.nav.language',
-    defaultMessage: 'Language',
-    description:
-      'Navigation label for the account screen where the researcher chooses the language Studio speaks.',
-  },
   signInMethods: {
     id: 'studio.nav.signInMethods',
     defaultMessage: 'Sign-in methods',
@@ -399,16 +393,6 @@ export function accountDestinations(): NavManifestEntry[] {
       area: 'account',
       context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account',
-    },
-    {
-      id: 'account:language',
-      label: navLabelMessages.language,
-      icon: Languages,
-      href: '/account/language',
-      link: { to: '/account/language' },
-      area: 'account',
-      context: navContextMessages.account,
-      isCurrent: (pathname) => pathname === '/account/language',
     },
     {
       id: 'account:sign-in-methods',

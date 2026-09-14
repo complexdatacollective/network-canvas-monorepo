@@ -167,6 +167,7 @@
     "./layout/Surface": "./src/layout/Surface.tsx",
     "./locales": "./src/locales/catalogs.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
+    "./navigation/LocaleSwitcher": "./src/navigation/LocaleSwitcher.tsx",
     "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
     "./navigation/NavItem": "./src/navigation/NavItem.tsx",
     "./navigation/NavList": "./src/navigation/NavList.tsx",
@@ -795,6 +796,10 @@
       "./navigation/EverythingBar": {
         "types": "./dist/navigation/EverythingBar.d.ts",
         "default": "./dist/navigation/EverythingBar.js"
+      },
+      "./navigation/LocaleSwitcher": {
+        "types": "./dist/navigation/LocaleSwitcher.d.ts",
+        "default": "./dist/navigation/LocaleSwitcher.js"
       },
       "./navigation/NavDrawer": {
         "types": "./dist/navigation/NavDrawer.d.ts",

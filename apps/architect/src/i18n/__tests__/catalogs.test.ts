@@ -60,10 +60,10 @@ describe('Architect catalog contract', () => {
   });
   it('detects a removed Spanish message and an altered ICU argument', () => {
     const incomplete = { ...es };
-    delete incomplete['architect.language.title'];
+    delete incomplete['architect.language.description'];
     expect(
       checkFullLocale(en, incomplete).some((x) =>
-        x.includes('architect.language.title'),
+        x.includes('architect.language.description'),
       ),
     ).toBe(true);
     const corrupt = {

@@ -48,6 +48,8 @@ type StudioLocaleContextValue = Readonly<{
    * the researcher follows browser negotiation ("Automatic").
    */
   preference: string | null;
+  /** What the automatic entry resolves to in this browser right now. */
+  automaticLocale: string;
   saveState: LocaleSaveState;
   /**
    * The researcher's own choice: applies immediately, mirrors to the device,
@@ -55,14 +57,6 @@ type StudioLocaleContextValue = Readonly<{
    * account. The dev-only pseudo-locale is device-only and never sent.
    */
   setLocale: (locale: string | null) => void;
-  /**
-   * Forgets what became of the last write. The provider outlives every screen,
-   * so the control calls this as it mounts: a result belongs to the choice that
-   * produced it, and announcing it again to whoever arrives next — through a
-   * live region, at somebody who has chosen nothing — describes a visit that is
-   * not theirs.
-   */
-  resetSaveState: () => void;
   /**
    * `LocaleSync`'s entry point: the server-stored preference for `userId`,
    * applied unless a fresher local change by that same account is still
@@ -272,8 +266,6 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const resetSaveState = useCallback(() => setSaveState('idle'), []);
-
   const applyServerPreference = useCallback(
     (locale: string | null, userId: string) => {
       // A development aid outranks the account: the pseudo-locale is never
@@ -316,16 +308,17 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
     () => resolveActiveLocale(preference),
     [preference],
   );
+  const automaticLocale = useMemo(() => resolveActiveLocale(null), []);
 
   const value = useMemo<StudioLocaleContextValue>(
     () => ({
       preference,
+      automaticLocale,
       saveState,
       setLocale,
-      resetSaveState,
       applyServerPreference,
     }),
-    [preference, saveState, setLocale, resetSaveState, applyServerPreference],
+    [preference, automaticLocale, saveState, setLocale, applyServerPreference],
   );
 
   return (

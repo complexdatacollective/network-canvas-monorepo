@@ -153,6 +153,17 @@
   "frescoUi.inputField.increase": "Aumentar el valor",
   "frescoUi.likertScale.noSelection": "Sin selección",
   "frescoUi.likertScale.sliderLabel": "Selecciona un valor en la escala",
+  "frescoUi.localeSwitcher.automaticCode": "AUTO",
+  "frescoUi.localeSwitcher.automaticCurrent": "Automático ({language})",
+  "frescoUi.localeSwitcher.heading": "Idioma de la interfaz",
+  "frescoUi.localeSwitcher.noResults": "Ningún idioma coincide con tu búsqueda.",
+  "frescoUi.localeSwitcher.saveFailed": "No se pudo guardar. El idioma se aplica por ahora.",
+  "frescoUi.localeSwitcher.savedOnAccount": "Guardado en tu cuenta.",
+  "frescoUi.localeSwitcher.savedOnDevice": "Guardado en este dispositivo.",
+  "frescoUi.localeSwitcher.saving": "Guardando…",
+  "frescoUi.localeSwitcher.searchPlaceholder": "Buscar idiomas",
+  "frescoUi.localeSwitcher.triggerAutomatic": "Auto · {code}",
+  "frescoUi.localeSwitcher.triggerName": "Idioma de la interfaz: {current}",
   "frescoUi.node.defaultLabel": "Nodo",
   "frescoUi.operatorFilter.add": "Añadir",
   "frescoUi.operatorFilter.and": "y",
@@ -212,6 +223,7 @@
   "frescoUi.storageRiskBanner.lowRisk": "Riesgo bajo de pérdida de datos",
   "frescoUi.storageRiskBanner.mediumRisk": "Riesgo moderado de pérdida de datos",
   "frescoUi.timeAgo.justNow": "ahora mismo",
+  "frescoUi.toast.notifications": "Notificaciones",
   "frescoUi.validation.differentFromError": "Tu respuesta debe ser distinta de la anterior.",
   "frescoUi.validation.differentFromHint": "Debe ser distinta de tu respuesta anterior.",
   "frescoUi.validation.differentFromLabelledError": "Tu respuesta debe ser distinta de tu respuesta a «{label}».",
@@ -258,6 +270,5 @@
   "frescoUi.validation.uniqueHint": "Debe ser único.",
   "frescoUi.visualAnalogScale.sliderLabel": "Valor de la escala visual analógica",
   "frescoUi.visualAnalogScale.unansweredValue": "Aún no se ha elegido un valor",
-  "frescoUi.wizard.finish": "Finalizar",
-  "frescoUi.toast.notifications": "Notificaciones"
+  "frescoUi.wizard.finish": "Finalizar"
 }

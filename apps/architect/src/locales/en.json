@@ -1607,29 +1607,9 @@
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
   },
-  "architect.language.automatic": {
-    "defaultMessage": "Automatic (browser language)",
-    "description": "Language choice that follows browser preferences instead of a fixed language."
-  },
-  "architect.language.failed": {
-    "defaultMessage": "Architect is using this language, but could not save the preference on this device. Choose it again on your next visit.",
-    "description": "Announced when browser storage blocks persistence; the local choice still applies."
-  },
-  "architect.language.hint": {
-    "defaultMessage": "Choose the language for Architect on this device. Automatic follows your browser language. Protocol content stays unchanged. Preview controls use this language unless you select a different one in the preview menu.",
-    "description": "Device language guidance: Automatic follows browser preferences; authored protocol content is preserved; built-in preview controls inherit this choice unless the full preview menu selects an override."
-  },
-  "architect.language.label": {
-    "defaultMessage": "Architect language",
-    "description": "Label of the app interface language selector."
-  },
-  "architect.language.saved": {
-    "defaultMessage": "Language saved on this device.",
-    "description": "Announced after the language preference is persisted successfully."
-  },
-  "architect.language.title": {
-    "defaultMessage": "Language settings",
-    "description": "Heading and accessible name for the app language settings dialog."
+  "architect.language.description": {
+    "defaultMessage": "Interface and preview controls only, on this device. Protocol content is unaffected.",
+    "description": "Note under the interface-language list: the choice applies to Architect and its preview controls on this device, never to authored protocol content."
   },
   "architect.library.metadata.justNow": {
     "defaultMessage": "< 1 min ago",

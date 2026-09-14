@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
-import { LanguageMenu } from '~/i18n/LanguageMenu';
+import InterviewerLocaleSwitcher from '~/i18n/InterviewerLocaleSwitcher';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -323,7 +323,6 @@ export function StatusRowView({
           })}
         </span>
       </Link>
-      <LanguageMenu />
       <div className="flex items-center gap-6">
         {/* Two orthogonal facts, stated separately so neither can be read as
             the other: encryption comes from the enrolled vault mode; storage
@@ -414,6 +413,7 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
+        <InterviewerLocaleSwitcher />
         {versionSlot ?? (
           <span>
             {intl.formatMessage(messages.interviewerAPPVERSION, {
