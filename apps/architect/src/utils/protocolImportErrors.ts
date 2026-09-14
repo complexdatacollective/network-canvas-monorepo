@@ -4,6 +4,10 @@ import {
   type IntlShape,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
+import {
+  getProtocolFileErrorKind,
+  type ProtocolFileErrorKind,
+} from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 const defaultIntl = createAppIntl({ locale: 'en' });
 export type LocalizedText = {
@@ -32,6 +36,35 @@ const importMessages = defineMessages({
     description: 'Researcher-facing Architect control or feedback.',
   },
 });
+
+/**
+ * Why an import failed, when the answer is about the researcher's file or
+ * their device rather than about Architect — the same three cases
+ * `describeImportFailure` can put a sentence to, in the same order.
+ *
+ * `null` means Architect fell over and cannot say why. That is the only case
+ * exception reporting should see: a damaged archive, a protocol that predates
+ * the oldest supported upgrade, and a private window with no storage are all
+ * outcomes a researcher can act on, and reporting them as exceptions buries
+ * the failures that are genuinely Architect's to fix.
+ */
+export type ImportFailureKind =
+  | ProtocolFileErrorKind
+  | 'tooLarge'
+  | 'storageUnavailable';
+
+export const getImportFailureKind = (
+  error: unknown,
+): ImportFailureKind | null => {
+  if (error instanceof NetcanvasTooLargeError) return 'tooLarge';
+
+  const protocolFileErrorKind = getProtocolFileErrorKind(error);
+  if (protocolFileErrorKind !== null) return protocolFileErrorKind;
+
+  if (isStorageUnavailableError(error)) return 'storageUnavailable';
+
+  return null;
+};
 
 /**
  * What a researcher is told when a protocol will not open, and the raw text

@@ -14,11 +14,13 @@ import {
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
+  createNetcanvasReader,
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
   loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
+  type NetcanvasReader,
   NetcanvasInflationLimitError,
 } from './utils/extractProtocol.ts';
 import { hashProtocol } from './utils/hashProtocol.ts';
@@ -26,6 +28,10 @@ import {
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
 } from './utils/malformedNetcanvasError.ts';
+import {
+  getProtocolFileErrorKind,
+  type ProtocolFileErrorKind,
+} from './utils/protocolFileErrorKind.ts';
 import {
   getVariableNamesFromNetwork,
   type Network,
@@ -117,6 +123,7 @@ export {
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
   collectStageReferences,
+  createNetcanvasReader,
   declaredStageReferenceSites,
   describeProtocolFileError,
   type EntityAttributeReferenceHit,
@@ -126,14 +133,17 @@ export {
   extractProtocolFromZip,
   formatProtocolValidationIssues,
   getAssetMimeType,
+  getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
   MAX_INFLATED_BYTES,
+  type NetcanvasReader,
   type Network,
   NetcanvasInflationLimitError,
+  type ProtocolFileErrorKind,
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,

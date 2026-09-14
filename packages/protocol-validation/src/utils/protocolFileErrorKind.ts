@@ -35,6 +35,11 @@ export function getProtocolFileErrorKind(
       case 'missing-protocol':
         return 'missingProtocol';
       case 'unreadable-protocol-json':
+      // Both say the same thing to a researcher: the bytes in the file are
+      // damaged. Which entry failed to inflate is a technical detail, and
+      // `damagedJson`'s sentence already speaks about the protocol's contents
+      // rather than about JSON specifically.
+      case 'unreadable-entry':
         return 'damagedJson';
       case 'missing-asset':
         return error.assetName ? 'missingNamedAsset' : 'missingAsset';

@@ -1,8 +1,7 @@
-import JSZip from 'jszip';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  createNetcanvasReader,
   type CurrentProtocol,
   detectSchemaVersion,
   type ExtractedAsset,
@@ -114,10 +113,13 @@ export async function peekProtocolName(
   buffer: Uint8Array,
 ): Promise<string | null> {
   try {
-    const zip = await JSZip.loadAsync(buffer);
-    const json = await zip.file('protocol.json')?.async('string');
-    if (!json) return null;
-    const parsed: unknown = JSON.parse(json);
+    // Goes through the package's loader and reader rather than JSZip directly,
+    // so naming the pending card costs the same bounded inflation as importing
+    // it: this runs on a researcher-supplied file before any size guard, and
+    // an unbudgeted `.async('string')` here would inflate a deflate-bombed
+    // `protocol.json` in full just to read one field off it.
+    const zip = await loadNetcanvasArchive(buffer);
+    const parsed: unknown = await createNetcanvasReader(zip).readProtocol();
     if (!isRecord(parsed)) return null;
     if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
       return parsed.name;

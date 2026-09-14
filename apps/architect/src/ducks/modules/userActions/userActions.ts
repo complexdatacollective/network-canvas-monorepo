@@ -42,6 +42,7 @@ import {
 import {
   type LocalizedText,
   describeImportFailure,
+  getImportFailureKind,
   PROTOCOL_OPEN_FAILURE_MESSAGE,
   TEMPLATE_OPEN_FAILURE_MESSAGE,
 } from '~/utils/protocolImportErrors';
@@ -155,10 +156,29 @@ const trackImportValidationFailure = (
   });
 };
 
-// An unexpected error was thrown while importing a protocol (fetch, unzip,
-// migration, asset IO, corrupt file). Report it as an exception so it surfaces
-// in error tracking, alongside the analytics event.
-const trackImportException = (source: ImportSource, error: unknown) => {
+// An import failed for a reason other than schema validation.
+//
+// A failure Architect can describe — a damaged or over-large archive, a
+// protocol too old to upgrade, a device that will not store it — is an outcome
+// of the file the researcher chose, not a defect. Those are recorded as an
+// event carrying only the failure kind, a fixed vocabulary: `error_message`
+// would carry researcher-authored resource names (a missing asset's failure
+// names it), the same leak `trackImportValidationFailure` avoids, and routing
+// them to exception tracking buries the failures that really are Architect's.
+//
+// Everything else is a bug, and is reported as an exception.
+const trackImportFailure = (source: ImportSource, error: unknown) => {
+  const kind = getImportFailureKind(error);
+
+  if (kind !== null) {
+    posthog.capture('protocol_import_failed', {
+      source,
+      reason: 'file',
+      error_kind: kind,
+    });
+    return;
+  }
+
   const normalizedError = reportError(error);
   posthog.capture('protocol_import_failed', {
     source,
@@ -362,7 +382,7 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       );
       return openedResult;
     } catch (error) {
-      trackImportException('local', error);
+      trackImportFailure('local', error);
       // The raw error still reaches exception reporting and the console above;
       // what the dialog leads with is Architect's own description of it, and
       // the raw text is offered only behind the technical-details disclosure.
@@ -572,7 +592,7 @@ export const openBundledTemplate = createAppAsyncThunk(
       );
       return openedResult;
     } catch (error) {
-      trackImportException('bundled', error);
+      trackImportFailure('bundled', error);
       // A bundled template never opens an archive, so the file-shaped reasons
       // are unreachable here — but storage failures are not, and the default
       // must talk about the template, never about a damaged file.
@@ -656,6 +676,11 @@ export const openLibraryProtocol = createAppAsyncThunk(
     try {
       admission = await admitStoredProtocol(row, undefined, getArchitectIntl());
     } catch (error: unknown) {
+      // Reported even when `getImportFailureKind` can classify it, unlike the
+      // import paths. A library row is Architect's own output, written from a
+      // document it had already migrated and validated, so "this protocol
+      // cannot be upgraded" here does not describe a file the researcher
+      // chose — it means Architect stored something it can no longer read.
       reportError(error, { operation: 'stored-protocol-admission' });
       const { message, detail, localizedMessage } = describeImportFailure(
         error,

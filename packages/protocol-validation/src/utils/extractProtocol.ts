@@ -84,7 +84,18 @@ const inflateEntryWithinBudget = (
       })
       .on('error', (error) => {
         if (!aborted) {
-          reject(error);
+          // A stream that gives up mid-inflate means the archive's compressed
+          // data is damaged. Classify it here so every caller describes it as
+          // a damaged file, rather than letting pako's own wording ("invalid
+          // distance too far back") reach a researcher through a host's
+          // fallback branch.
+          reject(
+            new MalformedNetcanvasError(
+              'unreadable-entry',
+              `Archive entry "${entry.name}" could not be decompressed`,
+              { cause: error },
+            ),
+          );
         }
       })
       .on('end', () => {
@@ -245,6 +256,44 @@ export const extractProtocol = async (
   return extractProtocolFromZip(zip, maxInflatedBytes);
 };
 
+/**
+ * One archive's two reads, sharing one inflation budget.
+ *
+ * `extractProtocolFromZip` reads everything in one go, which is what a host
+ * that installs whatever it is given wants. A host that decides whether to
+ * keep the protocol *before* paying for its media does not: Fresco refuses a
+ * duplicate as soon as it has hashed `protocol.json`, and inflating a 200 MB
+ * video first — only to throw it away — is the difference between a fast
+ * refusal and a stalled tab.
+ *
+ * Splitting the reads must not split the budget. Two independent caps would
+ * let an archive spend the whole allowance twice, so a bomb divided between
+ * `protocol.json` and the assets would pass both. The reader holds a single
+ * budget across both calls, so the total is what is capped.
+ *
+ * `readAssets` takes the protocol back rather than remembering it, because the
+ * manifest it must resolve against is the one that came out of *this* archive.
+ * A host that has since migrated or validated the document holds a different
+ * object, and looking its rewritten manifest up in the original zip is exactly
+ * the mismatch this signature refuses to let it express.
+ */
+export type NetcanvasReader = {
+  readProtocol: () => Promise<VersionedProtocol>;
+  readAssets: (protocol: VersionedProtocol) => Promise<Array<ExtractedAsset>>;
+};
+
+export const createNetcanvasReader = (
+  zip: Zip,
+  maxInflatedBytes: number = MAX_INFLATED_BYTES,
+): NetcanvasReader => {
+  const budget = createInflationBudget(maxInflatedBytes);
+
+  return {
+    readProtocol: () => getProtocolJsonAsObject(zip, budget),
+    readAssets: (protocol) => extractProtocolAssets(protocol, zip, budget),
+  };
+};
+
 // Extract from an already-loaded zip. Lets a caller that has already parsed the
 // archive (e.g. to size-guard it before inflating) avoid parsing it twice. Every
 // entry is inflated through a shared budget so the total decompressed output can
@@ -253,9 +302,9 @@ export const extractProtocolFromZip = async (
   zip: Zip,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
 ): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
-  const budget = createInflationBudget(maxInflatedBytes);
-  const protocol = await getProtocolJsonAsObject(zip, budget);
-  const assets = await extractProtocolAssets(protocol, zip, budget);
+  const reader = createNetcanvasReader(zip, maxInflatedBytes);
+  const protocol = await reader.readProtocol();
+  const assets = await reader.readAssets(protocol);
 
   return {
     assets,
