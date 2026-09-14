@@ -1,7 +1,6 @@
 import { Check, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
-  useEffect,
   useId,
   useMemo,
   useRef,
@@ -335,9 +334,16 @@ export default function AttributePill({
   className,
 }: AttributePillProps) {
   const intl = useAppIntl();
+  /**
+   * The pill itself, which is where focus goes back to once the editor closes.
+   *
+   * Nothing here puts it back: `Modal` remembers the control that was focused
+   * when it opened — the pill — and `ModalPopup` returns focus there on every
+   * close, whichever way it was asked for. This is the ref the trigger is
+   * measured through; the return is asserted beside the interaction that
+   * causes it, because it is behaviour a researcher has either way.
+   */
   const triggerRef = useRef<HTMLButtonElement>(null);
-  /** Whether the pill is the element focus belongs to once the editor closes. */
-  const restoreFocusRef = useRef(false);
   /**
    * Whether this editor has already begun closing.
    *
@@ -370,13 +376,6 @@ export default function AttributePill({
         ? validateName?.(draftName)
         : undefined;
   const isValid = validation === undefined;
-
-  useEffect(() => {
-    if (!editing && restoreFocusRef.current) {
-      triggerRef.current?.focus();
-      restoreFocusRef.current = false;
-    }
-  }, [editing]);
 
   // While the editor is closed the draft simply follows the name the codebook
   // holds, so a cancelled edit is discarded and a rename made elsewhere is
@@ -417,7 +416,6 @@ export default function AttributePill({
       message: messages.renameEditing,
       values: { name },
     });
-    restoreFocusRef.current = true;
     setEditing(true);
   };
 

@@ -1727,6 +1727,31 @@ describe('renaming the attribute a picker holds', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * An empty box is not a name with the wrong characters in it. The charset
+   * rule refuses `''` as firmly as it refuses a space, so asked in the wrong
+   * order a researcher who cleared the box would be sent looking for a
+   * character that is not there. Architect asked them in this order too.
+   */
+  it('asks for a name before it judges the characters in one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+
+    const box = await openTheEditor(harness);
+    await harness.user.clear(box);
+
+    expect(
+      await screen.findByText('You must enter an attribute name'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'only letters, numbers and the symbols ._-: can be used in a name',
+      ),
+    ).toBeNull();
+  });
+
   it('refuses a name the export formats cannot carry', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
@@ -1838,6 +1863,69 @@ describe('renaming the attribute a picker holds', () => {
 
     await closeAttributePicker(harness.user);
     await waitFor(() => expect(renameControls()).toHaveLength(1));
+  });
+
+  /**
+   * An option is whatever the caller put in the list, and not every one of
+   * them is an attribute: the form-fields list offers a row that stands for
+   * the attribute it is about to invent. No codebook section holds that, so
+   * there is nothing to rename — and a rename offered over it would open an
+   * editor whose save could only be refused.
+   *
+   * Two pickers in one harness, so the absence is read against a presence:
+   * the count would pass on its own while the stage was still opening, which
+   * is a state that offers no rename anywhere.
+   */
+  it('offers no rename for an option no codebook section holds', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <>
+          <HoldingPicker />
+          <Section title="What this question invents">
+            <Field<typeof VariablePickerField>
+              name="nodeConfig.otherVariable"
+              component={VariablePickerField}
+              label="Attribute this question invents"
+              options={[
+                { value: 'create:a_new_one', label: 'a_new_one', type: 'text' },
+              ]}
+              initialValue="create:a_new_one"
+            />
+          </Section>
+        </>
+      ),
+    });
+    await harness.opened();
+    await screen.findByText('a_new_one');
+
+    const renameControls = screen.queryAllByRole('button', {
+      name: /^Edit attribute name: /,
+    });
+    expect(
+      renameControls.map((control) => control.getAttribute('aria-label')),
+    ).toEqual(['Edit attribute name: name']);
+  });
+
+  /**
+   * The field is host-neutral by design: it is handed a list of attributes and
+   * a stored choice, and one that could only be rendered inside a stage editor
+   * could not be rendered in a story of itself. The pill it holds is then the
+   * statement it has always been — there is no protocol to rename anything in.
+   */
+  it('is still a statement where there is no protocol to write to', () => {
+    render(
+      <VariablePickerField
+        name="variable"
+        value="age"
+        options={[{ value: 'age', label: 'age', type: 'number' }]}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit attribute name: age' }),
+    ).toBeNull();
+    expect(screen.getByText('age').closest('data')).not.toBeNull();
   });
 
   it('leaves a reference the codebook has lost a statement', async () => {
