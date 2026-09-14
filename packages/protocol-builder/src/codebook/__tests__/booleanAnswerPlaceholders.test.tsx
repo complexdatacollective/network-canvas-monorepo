@@ -28,10 +28,21 @@ const inSpanish = (node: ReactNode) =>
     </AppI18nProvider>,
   );
 
+/**
+ * The placeholder on each answer's own box, in the order they are drawn.
+ *
+ * An answer's words are markdown — the interview renders an option label as
+ * markdown wherever it shows one — so they are authored in a rich-text box
+ * rather than an input, and a contenteditable carries its placeholder as
+ * `aria-placeholder`: what a screen reader reads, and what the empty box
+ * draws.
+ */
 const placeholders = () =>
-  [...document.querySelectorAll<HTMLInputElement>('input[placeholder]')].map(
-    (input) => input.placeholder,
-  );
+  [
+    ...document.querySelectorAll<HTMLElement>(
+      '[role="textbox"][aria-placeholder]',
+    ),
+  ].map((box) => box.getAttribute('aria-placeholder') ?? '');
 
 /**
  * A yes/no attribute nobody has written answers for is a Yes/No question, and

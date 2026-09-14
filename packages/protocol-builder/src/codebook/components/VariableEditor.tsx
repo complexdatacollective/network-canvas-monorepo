@@ -1,5 +1,6 @@
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import {
+  type ComponentType,
   createElement,
   type FormEvent,
   useCallback,
@@ -36,8 +37,12 @@ import {
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
+import { toCanonicalText } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
+import OptionLabelField from '../../fields/OptionLabelField.tsx';
+import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
+import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { variableValuesMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
@@ -224,6 +229,10 @@ const messages = defineMessages({
       'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
   },
 });
+
+const OptionLabelControl = OptionLabelField as ComponentType<
+  Record<string, unknown>
+>;
 
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
@@ -429,6 +438,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const [failure, setFailure] =
     useState<Readonly<{ message: string; held: boolean }>>();
   const [busy, setBusy] = useState(false);
+  const { hasEdited, markEdited } = useEditedCells();
   const failureRef = useRef<HTMLDivElement>(null);
   const optionKeySequence = useRef(0);
   const [optionKeys, setOptionKeys] = useState(() =>
@@ -726,6 +736,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     }
   };
 
+  // An option cell complains once the researcher has changed it, the way one
+  // in the inline list does — keyed by the row's own managed key rather than by
+  // its position, so deleting a row above does not move an edit onto another
+  // row's cell.
+  const labelCell = (index: number) => `${optionKeys[index] ?? index}-label`;
+
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
@@ -936,15 +952,28 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                               // make it a different name.
                               { index: String(index + 1) },
                             )}
-                            component={InputField}
+                            component={OptionLabelControl}
                             value={option.label}
-                            onChange={(label) => {
+                            onChange={(label: unknown) => {
+                              const written =
+                                typeof label === 'string' ? label : '';
+                              markEdited(
+                                labelCell(index),
+                                written,
+                                option.label,
+                              );
                               const next = [...options];
-                              next[index] = { ...option, label: label ?? '' };
+                              next[index] = { ...option, label: written };
                               replaceOptions(next);
                             }}
                             required
                             readOnly={interactionDisabled}
+                            errors={optionLabelIssues(option.label, options)}
+                            showErrors={
+                              hasEdited(labelCell(index)) &&
+                              optionLabelIssues(option.label, options).length >
+                                0
+                            }
                           />
                           <UnconnectedField
                             name={`option-${index + 1}-value`}
@@ -1337,7 +1366,7 @@ function readEditableOptions(value: unknown): EditableOption[] {
 }
 
 function parseOptionValue(value: string): string | number {
-  const normalized = value.normalize('NFC');
+  const normalized = toCanonicalText(value);
   if (/^-?(?:0|[1-9]\d*)$/.test(normalized)) {
     const numberValue = Number(normalized);
     if (Number.isSafeInteger(numberValue)) return numberValue;

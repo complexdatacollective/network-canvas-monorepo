@@ -1,5 +1,7 @@
 import { expect, type Locator } from '@playwright/test';
 
+import { writeRichText } from '../rich-text.js';
+
 /**
  * What a list of options a caller wants an attribute to hold looks like.
  */
@@ -263,6 +265,12 @@ export async function chooseOrCreateAttribute(
  * "Option N label"/"Option N value" boxes. Shared because every slot that
  * escalates for a list authors it the same way, and the numbering is the part
  * a copy gets wrong.
+ *
+ * The LABEL is markdown — the interview renders an option label as markdown
+ * wherever it shows one — so it is written through `writeRichText` rather than
+ * filled: emphasis has to be typed to become a mark, and the box is a Tiptap
+ * contenteditable that attaches a turn after the field around it renders. The
+ * value beside it is an ordinary input.
  */
 export function authorOptions(
   options: readonly OptionRow[],
@@ -278,9 +286,13 @@ export function authorOptions(
     for (const [index, option] of options.entries()) {
       await addOption.click();
       const position = index + 1;
-      await editor
-        .getByRole('textbox', { name: `Option ${position} label`, exact: true })
-        .fill(option.label);
+      await writeRichText(
+        editor.getByRole('textbox', {
+          name: `Option ${position} label`,
+          exact: true,
+        }),
+        option.label,
+      );
       await editor
         .getByRole('textbox', { name: `Option ${position} value`, exact: true })
         .fill(option.value);

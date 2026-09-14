@@ -63,12 +63,15 @@ export const NoAnswersYet: Story = {
     // turn after the story mounts.
     await awaitPassiveEffects();
 
+    // A markdown box rather than an input — the interview renders an option
+    // label as markdown wherever it shows one — so its placeholder is the one
+    // a screen reader reads and the empty box draws.
     await expect(
       await canvas.findByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveAttribute('placeholder', 'Yes');
+    ).toHaveAttribute('aria-placeholder', 'Yes');
     await expect(
       canvas.getByRole('textbox', { name: 'Label for “false”' }),
-    ).toHaveAttribute('placeholder', 'No');
+    ).toHaveAttribute('aria-placeholder', 'No');
   },
 };
 
@@ -90,10 +93,10 @@ export const AnswersTheAttributeHolds: Story = {
 
     await expect(
       await canvas.findByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveValue('Related');
+    ).toHaveTextContent('Related');
     await expect(
       canvas.getByRole('textbox', { name: 'Label for “false”' }),
-    ).toHaveValue('Not related');
+    ).toHaveTextContent('Not related');
   },
 };
 
@@ -116,7 +119,7 @@ export const ReadOnly: Story = {
 
     await expect(
       await canvas.findByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveAttribute('readonly');
+    ).toHaveAttribute('aria-readonly', 'true');
   },
 };
 
