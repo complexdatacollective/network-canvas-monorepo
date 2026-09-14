@@ -184,13 +184,10 @@ export const Spectating: Story = {
 };
 
 /**
- * The other way in, opened.
- *
- * This host will not resolve a map for a stored key — the contract's resource
- * procedures consume secret material and hand back only an id — so the dialog
- * says so and the researcher types the coordinates in the boxes behind it,
- * which is exactly why those boxes are the control. The dialog's own stories
- * cover what a host that CAN serve one shows.
+ * The other way in, opened: a map drawn from the stage's own key and basemap,
+ * which the researcher pans and zooms to the view the participant will open
+ * on. The typed boxes behind it stay the control; the dialog's own stories
+ * cover what it shows in every other state.
  */
 export const OpeningTheMap: Story = {
   play: async ({ canvasElement }) => {
@@ -206,12 +203,8 @@ export const OpeningTheMap: Story = {
     // The dialog is portalled out of the story's own element, so it is looked
     // for on the page rather than in the canvas.
     const dialog = await screen.findByRole('dialog');
-    // Awaited: the dialog opens saying how to pan a map, and only says this
-    // once the host has answered that it will not resolve one.
     await expect(
-      await within(dialog).findByText(
-        'This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.',
-      ),
+      await within(dialog).findByRole('region', { name: 'Interactive map' }),
     ).toBeInTheDocument();
   },
 };

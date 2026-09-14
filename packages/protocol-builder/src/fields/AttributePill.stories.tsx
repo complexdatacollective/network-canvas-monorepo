@@ -91,6 +91,32 @@ export const SomethingWithNoKindOfAnswerYet: Story = {
   args: { name: 'nickname', type: undefined },
 };
 
+/**
+ * An attribute a rule still names that the codebook no longer describes. The
+ * pill is drawn — a researcher cannot repair what the editor will not show
+ * them — in the destructive accent, so that "we do not know what kind of
+ * answer this holds" and "this attribute is gone" do not look the same.
+ */
+export const NoLongerInTheCodebook: Story = {
+  args: { name: 'closeness', type: undefined, missing: true },
+  play: async ({ canvasElement }) => {
+    const pill = canvasElement.querySelector('data');
+    if (!pill) throw new Error('The pill did not render.');
+
+    // The destructive accent resolved to a real colour, and a different one
+    // from the neutral mark an unknown kind takes — read from the page rather
+    // than from the token, which is what a researcher can actually see.
+    const missing = getComputedStyle(pill).backgroundColor;
+    await expect(missing).not.toBe('rgba(0, 0, 0, 0)');
+
+    const neutral = document.createElement('div');
+    neutral.style.backgroundColor = 'oklch(var(--charcoal))';
+    canvasElement.append(neutral);
+    await expect(missing).not.toBe(getComputedStyle(neutral).backgroundColor);
+    neutral.remove();
+  },
+};
+
 /** The pill is exactly as wide as its name and icon need. */
 export const ContentSized: Story = {
   args: { name: 'participant_neighbourhood', type: 'text' },

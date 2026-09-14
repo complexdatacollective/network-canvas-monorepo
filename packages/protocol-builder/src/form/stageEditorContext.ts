@@ -55,11 +55,28 @@ export type StageEditorFormContextValue = Readonly<{
    */
   storeApi: StageFormStoreApi;
   /**
-   * The document the editor opened on. Source of every field's `initialValue`,
+   * The document the form is WORKING on: what the editor opened with, plus
+   * every structural write made since. Source of every field's `initialValue`,
    * and the fallback for a section deciding whether it has anything to show
    * before its fields have registered.
+   *
+   * Not the stage as the protocol holds it — a structural write advances this
+   * without anything being saved, and a section asking what the researcher has
+   * already agreed to wants `savedFields` instead.
    */
   committedFields: StageFormDraft;
+  /**
+   * The stage as the protocol last stored it: what the editor opened with,
+   * advanced only by a save that succeeded.
+   *
+   * The one document a value thrown away by a structural write can be restored
+   * from. `committedFields` moves with that write, so a section reading it to
+   * put a value back reads the document the value has already gone from — and
+   * the researcher gets a default in place of the answer they saved. An
+   * initial value the researcher saved is their value, so this moves when they
+   * save it and not before.
+   */
+  savedFields: StageFormDraft;
   /**
    * The document right now: what the controls are holding, over what has been
    * written structurally.

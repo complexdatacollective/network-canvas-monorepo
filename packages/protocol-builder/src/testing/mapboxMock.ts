@@ -37,8 +37,6 @@ export type MapboxMapOptions = Readonly<{
 type MapboxMockState = {
   /** Every map this suite built, with the options it was built from. */
   built: MapboxMapOptions[];
-  /** Every style swapped onto a map after it was built, in order. */
-  styles: unknown[];
   handlers: Map<string, () => void>;
   controls: number;
   removed: number;
@@ -62,7 +60,6 @@ type MapboxMockScope = typeof globalThis & {
 
 const freshState = (): MapboxMockState => ({
   built: [],
-  styles: [],
   handlers: new Map(),
   controls: 0,
   removed: 0,
@@ -79,11 +76,6 @@ function state(): MapboxMockState {
 /** Every map built since the last reset, with the options it was given. */
 export function mapsBuilt(): readonly MapboxMapOptions[] {
   return state().built;
-}
-
-/** Every style the preview swapped onto a map after building it, in order. */
-export function stylesApplied(): readonly unknown[] {
-  return state().styles;
 }
 
 /** How many maps have been torn down, so a leaked one is visible. */
@@ -134,10 +126,6 @@ const instance = {
     return instance;
   },
   getCenter: () => state().center,
-  setStyle: (style: unknown) => {
-    state().styles.push(style);
-    return instance;
-  },
   getZoom: () => state().zoom,
   on: (event: string, handler: () => void) => {
     state().handlers.set(event, handler);

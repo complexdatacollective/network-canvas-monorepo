@@ -8,7 +8,6 @@ import type {
   ResourceInspectionSchema,
   ResourceKindSchema,
   ResourcePreviewSchema,
-  ResourceSecretStorageSchema,
   ResourceStatusSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
 
@@ -19,9 +18,6 @@ import type {
 export type ResourceKind = z.output<typeof ResourceKindSchema>;
 export type ResourceContentKind = z.output<typeof ResourceContentKindSchema>;
 export type ResourceStatus = z.output<typeof ResourceStatusSchema>;
-export type ResourceSecretStorage = z.output<
-  typeof ResourceSecretStorageSchema
->;
 export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
 export type ResourceInspection = z.output<typeof ResourceInspectionSchema>;
 export type ResourcePreview = z.output<typeof ResourcePreviewSchema>;
@@ -35,13 +31,6 @@ export type ResourceGatewayFailure = z.output<
 export type ResourceResult<T> =
   | Readonly<{ status: 'ok'; data: T }>
   | Readonly<{ status: 'failed'; failure: ResourceGatewayFailure }>;
-
-/**
- * Names one staged secret. It is not the secret and is not derived from it: it
- * exists so a promotion can ask the host to resolve the value it is holding
- * without the editor ever seeing it.
- */
-export type StagedSecretHandle = string;
 
 export type ResourceListOptions = Readonly<{
   kinds?: readonly ResourceKind[];
@@ -63,10 +52,7 @@ export type StageSecretRequest = Readonly<{
   /** Stable across an uncertain retry so a host stages the secret once. */
   requestId: string;
   name: string;
-  /**
-   * The secret itself. The host consumes it: no procedure returns it, no
-   * descriptor or event carries it, and nothing logs it.
-   */
+  /** The key itself, as the researcher pasted it. */
   value: string;
 }>;
 

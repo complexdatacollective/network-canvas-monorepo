@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type {
@@ -6,7 +5,6 @@ import type {
   ResourceGatewayFailureSchema,
   ResourceInspectionSchema,
   ResourcePreviewSchema,
-  ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -17,7 +15,6 @@ type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
 type Inspection = z.output<typeof ResourceInspectionSchema>;
 type Preview = z.output<typeof ResourcePreviewSchema>;
-type SecretStorage = z.output<typeof ResourceSecretStorageSchema>;
 type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
 
 export type ResourceOutcome<TData> =
@@ -37,14 +34,13 @@ export type DiscardOutcome =
  */
 export type EditScope = Readonly<{ sessionId: string; editId: string }>;
 
-type StagedResult = Readonly<{ descriptor: Descriptor; handle?: string }>;
+type StagedResult = Readonly<{ descriptor: Descriptor }>;
 
 type StagedEntry = Readonly<{
   owner: EditScope;
   descriptor: Descriptor;
   /** The name the manifest will record these bytes under, once promoted. */
   contentName?: string;
-  handle?: string;
   bytes?: Blob;
   secret?: string;
 }>;
@@ -90,12 +86,9 @@ function sameEdit(owner: EditScope, scope: EditScope): boolean {
   return owner.sessionId === scope.sessionId && owner.editId === scope.editId;
 }
 
-/** What staging answers with: never the bytes, and never the secret's value. */
+/** What staging answers with: the descriptor, never the bytes. */
 function stagedResult(entry: StagedEntry): StagedResult {
-  return {
-    descriptor: entry.descriptor,
-    ...(entry.handle === undefined ? {} : { handle: entry.handle }),
-  };
+  return { descriptor: entry.descriptor };
 }
 
 /**
@@ -158,7 +151,6 @@ const KindSchema = z.enum([
  * Committed resources are the protocol's and are shared by everyone.
  */
 export class InMemoryResourceStore {
-  readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
   /**
@@ -285,12 +277,6 @@ export class InMemoryResourceStore {
               name: request.name,
               status: 'staged',
             },
-            // Minted independently of the resource id, which `list` shows to
-            // everyone in the protocol: a handle derived from that id would be
-            // one any collaborator could work out, and the handle is the whole
-            // of what stops a secret being promoted by somebody who never
-            // staged it.
-            handle: `staged-secret:${uuid()}`,
             secret: request.value,
           }
         : {
@@ -321,7 +307,6 @@ export class InMemoryResourceStore {
   manifestFor(
     scope: EditScope,
     resourceIds: readonly string[],
-    secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<
     Readonly<{ entries: Record<string, unknown>; promoted: Descriptor[] }>
   > {
@@ -339,21 +324,6 @@ export class InMemoryResourceStore {
           source: entry.contentName,
         };
       } else {
-        // The handle staging answered with is the only way to promote the
-        // secret behind it. A staged resource id is listed to everyone in the
-        // protocol; the value it stands for is not, and writing it into the
-        // manifest is what puts a credential into the file the researcher
-        // sends on.
-        if (
-          entry.handle === undefined ||
-          secretHandles?.includes(entry.handle) !== true
-        ) {
-          return failure(
-            'invalid-request',
-            'promoting a staged secret needs the handle staging returned',
-            resourceId,
-          );
-        }
         entries[resourceId] = {
           name: entry.descriptor.name,
           type: 'apikey',
@@ -435,6 +405,13 @@ export class InMemoryResourceStore {
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
+    if (descriptor.kind === 'apikey') {
+      const value = this.#secretValue(assets, resourceId, scope);
+      return {
+        status: 'ok',
+        data: { descriptor, ...(value === undefined ? {} : { value }) },
+      };
+    }
     if (descriptor.kind !== 'network') {
       return { status: 'ok', data: { descriptor } };
     }
@@ -473,9 +450,6 @@ export class InMemoryResourceStore {
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
-    if (descriptor.kind === 'apikey') {
-      return failure('unsupported-kind', 'a secret has no preview', resourceId);
-    }
     const bytes = this.#bytes(descriptor, resourceId, scope);
     if (bytes === undefined) {
       return failure(
@@ -492,6 +466,24 @@ export class InMemoryResourceStore {
         url: `data:${contentType};base64,${await base64(bytes)}`,
       },
     };
+  }
+
+  /**
+   * An API key's own value: this edit's staged one, or the committed manifest
+   * entry's. Every host writes it into the manifest at promotion, so a stage
+   * editor can read it back and build the map the participant will see.
+   */
+  #secretValue(
+    assets: SectionDoc,
+    resourceId: string,
+    scope: EditScope | undefined,
+  ): string | undefined {
+    const staged =
+      scope === undefined ? undefined : this.#owned(scope, resourceId)?.secret;
+    if (staged !== undefined) return staged;
+    const entry = assets[resourceId];
+    if (!isRecord(entry)) return undefined;
+    return typeof entry.value === 'string' ? entry.value : undefined;
   }
 
   /** The bytes behind a resource: this edit's staged ones, or the committed. */

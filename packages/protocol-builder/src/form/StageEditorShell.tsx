@@ -127,13 +127,15 @@ export default function StageEditorShell(props: StageEditorShellProps) {
       key={`${identity.type}:${identity.id}:${discarded}`}
       committedFields={committedFields}
     >
-      {(document, working, setDocument) => (
+      {(document, working, setDocument, saved, setSaved) => (
         <StageEditorFormBody
           {...props}
           identity={identity}
           document={document}
           working={working}
           setDocument={setDocument}
+          saved={saved}
+          setSaved={setSaved}
           lostMessage={lostMessage}
           discardDraft={discardDraft}
         />
@@ -163,6 +165,16 @@ export default function StageEditorShell(props: StageEditorShellProps) {
  * Keyed by the caller, so opening a different stage — or starting again from
  * the protocol's own version after a save the host refused — is a different
  * document and a different form store, which Fresco has no reinitialise for.
+ *
+ * The SAVED document is held beside it, and is a different thing: the stage as
+ * the protocol last stored it. It starts as the same document and moves only
+ * when a save succeeds, where the working one also moves on every structural
+ * write. A section that puts back a value the researcher already agreed to —
+ * the pedigree's terminology, thrown away and restored by a round trip through
+ * the other framing — has to read the saved one, because the write that threw
+ * the value away moved the working document out from under it. A discard or a
+ * lost lock needs nothing here: both remount this by the key above, which
+ * seeds both documents again from what the protocol holds.
  */
 function StageDocument({
   committedFields,
@@ -173,14 +185,17 @@ function StageDocument({
     document: StageFormDraft,
     working: RefObject<StageFormDraft>,
     setDocument: (fields: StageFormDraft) => void,
+    saved: StageFormDraft,
+    setSaved: (fields: StageFormDraft) => void,
   ) => ReactNode;
 }>) {
   const working = useRef<StageFormDraft>(committedFields);
   const [document, setDocument] = useState<StageFormDraft>(committedFields);
+  const [saved, setSaved] = useState<StageFormDraft>(committedFields);
 
   return (
     <FormStoreProvider initialValues={document}>
-      {children(document, working, setDocument)}
+      {children(document, working, setDocument, saved, setSaved)}
     </FormStoreProvider>
   );
 }
@@ -193,6 +208,8 @@ function StageEditorFormBody({
   document,
   working,
   setDocument,
+  saved,
+  setSaved,
   lostMessage,
   discardDraft,
 }: StageEditorShellProps &
@@ -201,6 +218,8 @@ function StageEditorFormBody({
     document: StageFormDraft;
     working: RefObject<StageFormDraft>;
     setDocument: (fields: StageFormDraft) => void;
+    saved: StageFormDraft;
+    setSaved: (fields: StageFormDraft) => void;
     lostMessage: string | undefined;
     discardDraft: (message: string) => void;
   }>) {
@@ -356,6 +375,10 @@ function StageEditorFormBody({
         // losing work the editor was still showing them. (A field remounting
         // after one seeds itself from the working document, as ever.)
         setDocument(fields);
+        // And the only thing that moves what the protocol has STORED, which
+        // is the other question a section can ask about the stage: what the
+        // researcher agreed to, as against what the form is holding now.
+        setSaved(fields);
         storeApi.getState().rebaseToDocument(fields);
         clearRefusedWrite();
         return { success: true };
@@ -378,6 +401,7 @@ function StageEditorFormBody({
       readOnly,
       save,
       sections,
+      setSaved,
       storeApi,
       writeRefusal,
     ],
@@ -462,6 +486,7 @@ function StageEditorFormBody({
             formId,
             storeApi,
             committedFields: document,
+            savedFields: saved,
             liveDraft,
             applyOwnCommands,
             reportRefusedWrite,
@@ -480,6 +505,7 @@ function StageEditorFormBody({
       outline,
       readOnly,
       reportRefusedWrite,
+      saved,
       storeApi,
     ],
   );
@@ -498,40 +524,50 @@ function StageEditorFormBody({
           `@container` stays on the element above rather than here, so a
           section asking about the space it has is answered about the room the
           host gave the editor and not about this column's own cap.
+
+          Two elements, exactly as Architect had them (`StageEditor.tsx:733`):
+          the gutters on this wrapper and the cap on the column inside it.
+          `max-width` is a border-box cap, so both on one element spent the
+          gutters out of the 896px rather than outside it and drew every
+          section 848px wide.
         */}
-        <div className="phone-landscape:px-6 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4">
-          <form
-            id={formId}
-            ref={formRef}
-            noValidate // The form reports its own problems; the browser's differ.
-            aria-busy={isSubmitting}
-            onSubmit={formProps.onSubmit}
-            className="flex min-w-0 flex-col"
-          >
-            <LayoutGroup id={layoutGroupId}>
-              <EnclosingHeadingLevel level={stageTitleLevel}>
-                {access === 'readOnly' && (
-                  <Alert variant="info" density="compact">
-                    {holder === undefined
-                      ? intl.formatMessage(messages.heldByNobodyNamed)
-                      : intl.formatMessage(messages.heldBy, {
-                          holder: holder.displayName,
-                        })}
-                  </Alert>
-                )}
-                {reportedErrors && (
-                  <FormErrorsList key="form-errors" errors={reportedErrors} />
-                )}
-                {/*
+        <div className="phone-landscape:px-6 px-4">
+          <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+            <form
+              id={formId}
+              ref={formRef}
+              noValidate // The form reports its own problems; the browser's differ.
+              aria-busy={isSubmitting}
+              onSubmit={formProps.onSubmit}
+              className="flex min-w-0 flex-col"
+            >
+              <LayoutGroup id={layoutGroupId}>
+                <EnclosingHeadingLevel level={stageTitleLevel}>
+                  {access === 'readOnly' && (
+                    <Alert variant="info" density="compact">
+                      {holder === undefined
+                        ? intl.formatMessage(messages.heldByNobodyNamed)
+                        : intl.formatMessage(messages.heldBy, {
+                            holder: holder.displayName,
+                          })}
+                    </Alert>
+                  )}
+                  {reportedErrors && (
+                    <FormErrorsList key="form-errors" errors={reportedErrors} />
+                  )}
+                  {/*
                   Said once by the form rather than by every control: being
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
-              </EnclosingHeadingLevel>
-            </LayoutGroup>
-          </form>
-          {actions?.({ formId, readOnly, sections })}
+                  <FieldsDisabled disabled={readOnly}>
+                    {children}
+                  </FieldsDisabled>
+                </EnclosingHeadingLevel>
+              </LayoutGroup>
+            </form>
+            {actions?.({ formId, readOnly, sections })}
+          </div>
         </div>
       </div>
     </StageEditorFormContext>

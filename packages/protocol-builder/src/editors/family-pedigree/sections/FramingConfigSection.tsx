@@ -69,40 +69,40 @@ const boldTerm = (chunks: ReactNode) => <strong>{chunks}</strong>;
  * the form would hand the old terminology back the moment the researcher
  * returned to a fixed framing.
  *
- * Coming BACK is its own act, and it puts the committed terminology back —
- * or the canonical framing, for a stage that was saved as a participant
- * choice. A round trip through the other branch is not a decision to stop
- * using the words the stage already uses, and leaving the control empty
- * refused the save of a stage the researcher had changed nothing about. The
- * value is written here rather than left to the control's own `initialValue`
- * because the discard tombstones the form field, and a tombstone is exactly
- * what stops a re-registering control from taking its initial value.
+ * Coming BACK is its own act, and it puts the SAVED terminology back — or the
+ * canonical framing, for a stage that was saved as a participant choice. A
+ * round trip through the other branch is not a decision to stop using the
+ * words the stage already uses, and leaving the control empty refused the save
+ * of a stage the researcher had changed nothing about. The value is written
+ * here rather than left to the control's own `initialValue` because the
+ * discard tombstones the form field, and a tombstone is exactly what stops a
+ * re-registering control from taking its initial value.
  */
 export default function FramingConfigSection() {
   const intl = useAppIntl();
-  const { committedFields } = useStageEditorForm();
+  const { committedFields, savedFields, storeApi } = useStageEditorForm();
   const chosenMode = useStageValue(MODE_FIELD);
   const mode = chosenMode ?? 'fixed';
   const discardStageValues = useDiscardStageValues();
-  const { storeApi } = useStageEditorForm();
   const isFixed = mode === 'fixed';
-  // The AGREED framing, not the live one: an initial value that moved with the
-  // control would re-register the field on every change.
+  // The document's mode, not the live one: an initial value that moved with
+  // the control would re-register the field on every change. This control is
+  // mounted for the whole edit, so it takes its initial value once.
   const committedMode: unknown = get(committedFields, MODE_FIELD);
-  const committedValue: unknown = get(committedFields, VALUE_FIELD);
   /**
    * What a fixed framing says, here and on every return to it.
    *
-   * Read once, from the stage as the editor opened it. The discard below
-   * writes the mode change structurally, and the terminology it threw away is
-   * gone from the document by the time the researcher comes back — so a value
-   * read again at that point would only ever be the canonical framing, and a
-   * stage saved as gendered would silently return as gamete.
+   * Read from the stage as the protocol last STORED it, which is the only
+   * document that still holds it: the discard below writes the mode change
+   * structurally, so the working document has no terminology in it by the time
+   * the researcher comes back. A default the researcher saved is their value —
+   * they read it, the stage was valid, they saved — so opening on gamete,
+   * choosing gendered and saving means gendered is what a return to a fixed
+   * framing puts back, not the canonical one.
    */
-  const seededValueRef = useRef(
-    typeof committedValue === 'string' ? committedValue : DEFAULT_FRAMING,
-  );
-  const seededValue = seededValueRef.current;
+  const savedValue: unknown = get(savedFields, VALUE_FIELD);
+  const seededValue =
+    typeof savedValue === 'string' ? savedValue : DEFAULT_FRAMING;
 
   const wasFixed = useRef(isFixed);
   useEffect(() => {
