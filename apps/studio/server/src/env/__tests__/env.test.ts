@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 
@@ -21,49 +20,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('bootstrap configuration', () => {
-  it('keeps setup disabled until a canonical random token is configured', () => {
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', '');
-    expect(readEnv().bootstrapToken).toBeUndefined();
-    const token = randomBytes(32).toString('base64url');
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
-    expect(readEnv().bootstrapToken).toBe(token);
-  });
-
-  it.each([
-    'short',
-    'a'.repeat(43),
-    'A'.repeat(43) + '=',
-    'A'.repeat(42),
-    'A'.repeat(44),
-  ])(
-    'refuses truncated, padded, or noncanonical bootstrap credentials',
-    (token) => {
-      vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
-      expect(() => readEnv()).toThrow('Invalid environment variables');
-    },
-  );
-
-  it('withholds the credential from the lane without auth or a database', () => {
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', 'malformed-and-unused');
-    expect(
-      readEnv({ withoutDatabaseOrAuth: true }).bootstrapToken,
-    ).toBeUndefined();
-  });
-});
-
 describe('operational configuration', () => {
-  it('defaults to one combined process and accepts only explicit runtime roles', () => {
-    vi.stubEnv('STUDIO_ROLE', '');
-    expect(readEnv().role).toBe('both');
-    for (const role of ['web', 'worker', 'both']) {
-      vi.stubEnv('STUDIO_ROLE', role);
-      expect(readEnv().role).toBe(role);
-    }
-    vi.stubEnv('STUDIO_ROLE', 'background');
-    expect(() => readEnv()).toThrow('Invalid environment variables');
-  });
-
   it('keeps metrics off until a separate credential is configured', () => {
     vi.stubEnv('STUDIO_METRICS_TOKEN', '');
     expect(readEnv().metricsToken).toBeUndefined();
@@ -436,31 +393,14 @@ describe('database and auth', () => {
     });
   });
 
-  it('admits a worker with only its maintenance login', () => {
-    vi.stubEnv('STUDIO_ROLE', 'worker');
-    vi.stubEnv('DATABASE_URL', '');
-    vi.stubEnv(
-      'STUDIO_MAINTENANCE_DATABASE_URL',
-      'postgres://maintenance@localhost:5433/other',
-    );
-    const env = readEnv();
-    expect(env.db).toBeUndefined();
-    expect(env.maintenanceDb).toEqual({
-      url: 'postgres://maintenance@localhost:5433/other',
-    });
-    expect(env.auth?.baseUrl).toBe('http://localhost:5173');
-  });
-
-  it('refuses a web process with only a maintenance login', () => {
-    vi.stubEnv('STUDIO_DEV_DEFAULTS', 'false');
-    vi.stubEnv('STUDIO_ROLE', 'web');
+  it('refuses a maintenance login without an application database', () => {
     vi.stubEnv('DATABASE_URL', '');
     vi.stubEnv(
       'STUDIO_MAINTENANCE_DATABASE_URL',
       'postgres://maintenance@localhost:5433/other',
     );
     expect(() => readEnv()).toThrow(
-      'DATABASE_URL is required for a web-capable process',
+      'DATABASE_URL is required when STUDIO_MAINTENANCE_DATABASE_URL is set',
     );
   });
 

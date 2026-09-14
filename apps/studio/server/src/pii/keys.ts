@@ -2,8 +2,6 @@ import { createSecretKey, hkdfSync, type KeyObject } from 'node:crypto';
 
 import { z } from 'zod';
 
-import { isReservedLegacyIndexId } from './legacy-indexes.ts';
-
 const keyId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/);
 const namespace = z.strictObject({
   current: keyId,
@@ -92,10 +90,6 @@ class LoadedEncryptionKeys {
     return this.#namespaces[purpose].rootsByKeyId.has(id);
   }
 
-  ids(purpose: KeyPurpose): readonly string[] {
-    return [...this.#namespaces[purpose].rootsByKeyId.keys()];
-  }
-
   /** Internal to the encryption boundary; scope is an unambiguous tuple. */
   derive(purpose: KeyPurpose, id: string, scope: readonly string[]): KeyObject {
     const root = this.#namespaces[purpose].rootsByKeyId.get(id);
@@ -140,7 +134,6 @@ export async function loadEncryptionKeys(
     if (
       ids.size !== definition.keys.length ||
       !ids.has(definition.current) ||
-      definition.keys.some((key) => isReservedLegacyIndexId(key.id)) ||
       definition.keys.some((key) => !rootIds.has(key.rootId))
     ) {
       throw new KeyConfigurationError();

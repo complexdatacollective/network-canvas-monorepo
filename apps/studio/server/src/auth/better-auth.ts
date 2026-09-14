@@ -1,34 +1,25 @@
 import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink, organization } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
-import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import { logOperational } from '../observability/logger.ts';
-import type { EncryptionKeys } from '../pii/keys.ts';
 import type { MagicLinkMailer } from './email.ts';
-import { encryptedAuthAdapter } from './encrypted-adapter.ts';
 import type { AuthService } from './service.ts';
 
 // The only module that imports 'better-auth' (#1245).
-
-export type BetterAuthInstanceOptions = {
-  encryptionKeys?: EncryptionKeys;
-  deploymentMode?: DeploymentMode;
-};
 
 export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
   mailer: MagicLinkMailer,
-  options: BetterAuthInstanceOptions = {},
 ) {
-  const deploymentMode = options.deploymentMode ?? 'self-hosted';
   return betterAuth({
     logger: {
       level: 'warn',
@@ -38,17 +29,13 @@ export function createBetterAuthInstance(
         );
       },
     },
-    // Better Call otherwise prints unhandled errors after the configured logger.
-    // Let the owned HTTP boundary return a fixed diagnostic instead.
-    onAPIError: { throw: true },
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
-    database: encryptedAuthAdapter(
-      pool,
-      options.encryptionKeys,
-      deploymentMode === 'self-hosted',
-    ),
+    database: drizzleAdapter(drizzle({ client: pool }), {
+      provider: 'pg',
+      schema: AUTH_TABLES,
+    }),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],
@@ -80,14 +67,14 @@ export function createBetterAuthInstance(
       }),
     },
     // A third, always-available sign-in method alongside magic-link and
-    // social: the seeded admin account and the self-host bootstrap owner
-    // authenticate with a password. Self-host enrollment is invitation-only
-    // and local password signup is disabled; managed enrollment stays open. Uses
+    // social: the seeded admin account (src/db/seed.ts) needs somewhere to
+    // authenticate with its known password, and open sign-up here matches
+    // the same policy magic-link and social already carry (#1255) — access
+    // control arrives with team invitations (#1256), not a gate here. Uses
     // better-auth's default scrypt hasher (better-auth/crypto), which is the
     // same function the seed script hashes SEED_ADMIN_PASSWORD with.
     emailAndPassword: {
       enabled: true,
-      disableSignUp: deploymentMode === 'self-hosted',
     },
     user: {
       // Studio's per-user UI-language preference, stored on the user row
@@ -101,57 +88,19 @@ export function createBetterAuthInstance(
       },
     },
     account: {
-      additionalFields: {
-        accessTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        accessTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        refreshTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        refreshTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        idTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        idTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-      },
-      // Self-hosts do not trust a provider name as proof of an email address.
-      // In particular, an Entra email claim is mutable; the enrollment hook
-      // requires provider-verified email evidence or the existing mailbox-proof
-      // flow. The managed provider policy remains separately configured below.
+      // A Google or Microsoft sign-in whose verified email matches an
+      // existing (verified, e.g. magic-link) user joins that user rather
+      // than erroring: both IdPs verify addresses, so the claim is trusted
+      // as ownership proof even where the id token omits `email_verified`
+      // (some Entra tenants).
       accountLinking: {
         enabled: true,
-        trustedProviders:
-          deploymentMode === 'managed' ? [...SOCIAL_PROVIDERS] : [],
+        trustedProviders: [...SOCIAL_PROVIDERS],
       },
     },
     plugins: [
-      // Self-host creation crosses the shared verified-invitation hook;
-      // existing identities can still sign in without an outstanding invite.
+      // Sign-up is deliberately open for now (recorded on #1255): access
+      // control arrives with team invitations (#1256).
       magicLink({
         expiresIn: 300,
         storeToken: 'hashed',
@@ -209,30 +158,11 @@ export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
   mailer: MagicLinkMailer,
-  options: BetterAuthInstanceOptions = {},
 ): AuthService {
-  const auth = createBetterAuthInstance(env, pool, mailer, options);
+  const auth = createBetterAuthInstance(env, pool, mailer);
   const db = drizzle({ client: pool });
   return {
-    handler: async (request) => {
-      try {
-        const response = await auth.handler(request);
-        if (response.status < 500) return response;
-      } catch {
-        // Provider and database errors may contain credentials or identities.
-      }
-      logOperational('STUDIO_AUTH_ERROR');
-      return Response.json(
-        { code: 'STUDIO_AUTH_UNAVAILABLE' },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'Referrer-Policy': 'no-referrer',
-          },
-        },
-      );
-    },
+    handler: (request) => auth.handler(request),
     getSession: async (headers) => {
       const result = await auth.api.getSession({ headers });
       if (!result) return null;

@@ -1,11 +1,7 @@
 import type pg from 'pg';
 
 import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
-import {
-  copyPostgresAdministrativeLogins,
-  copyPostgresDatabaseEnrollmentOptions,
-  type PostgresDatabaseEnrollmentOptions,
-} from './postgres-database-enrollment.ts';
+import { copyPostgresAdministrativeLogins } from './postgres-database-enrollment.ts';
 import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
@@ -102,18 +98,10 @@ export function copyPostgresRestrictedIdentityPolicy(
 export async function assertSafePostgresRestrictedIdentities(
   client: pg.PoolClient,
   configuration: PostgresRestrictedIdentityPolicy,
-  options: PostgresDatabaseEnrollmentOptions = {},
 ): Promise<void> {
   const { allowedLogins, administrativeLogins, runtimeRoleSets, backupRole } =
     copyPostgresRestrictedIdentityPolicy(configuration);
   const runtimeRoles = runtimeRoleSets.flat();
-  let allowClosedEnrolledLogins: boolean;
-  try {
-    ({ allowClosedEnrolledLogins } =
-      copyPostgresDatabaseEnrollmentOptions(options));
-  } catch {
-    throw new UnsafePostgresRestrictedIdentitiesError('configuration');
-  }
   try {
     const roles = await client.query<{ rolname: string; safe: boolean }>(
       `SELECT role.rolname, NOT (role.rolcanlogin OR role.rolsuper OR role.rolbypassrls
@@ -141,10 +129,10 @@ export async function assertSafePostgresRestrictedIdentities(
       (login) => !administrators.includes(login),
     );
     const logins = await client.query<{ rolname: string; safe: boolean }>(
-      `SELECT rolname, (rolcanlogin OR $3::pg_catalog.bool) AND (rolname = ANY($2::pg_catalog.text[]) OR NOT (
+      `SELECT rolname, rolcanlogin AND (rolname = ANY($2::pg_catalog.text[]) OR NOT (
       rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication OR rolinherit
     )) AS safe FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])`,
-      [allowedLogins, administrators, allowClosedEnrolledLogins],
+      [allowedLogins, administrators],
     );
     if (
       logins.rows.length !== allowedLogins.length ||

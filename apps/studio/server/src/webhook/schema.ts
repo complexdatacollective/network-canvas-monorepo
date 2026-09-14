@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicies,
+  teamIsolationPolicy,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
@@ -31,8 +31,7 @@ const { studies } = STUDY_TABLES;
 // application encryption key (#1246 driver 2 — "PII encrypted in the
 // application, keys never held by the database"), with a key id for rotation.
 // Hashing it would make signing impossible. This is the only recoverable
-// kind of team-scoped recoverable secret; OAuth credentials use the same
-// integration namespace with their own account-bound scope.
+// secret in the design.
 const webhookSubscriptions = pgTable(
   'webhook_subscriptions',
   {
@@ -51,7 +50,6 @@ const webhookSubscriptions = pgTable(
     // integration secret and a participant's contact details must never be
     // recoverable with the same key.
     secretKeyId: text('secret_key_id').notNull(),
-    secretAlgorithm: text('secret_algorithm').notNull(),
     state: text('state').notNull().default('active'),
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),
     lastFailureAt: timestamp('last_failure_at', { withTimezone: true }),
@@ -103,12 +101,11 @@ const webhookSubscriptions = pgTable(
     check(
       'webhook_subscriptions_lengths_check',
       sql`char_length(${table.secretKeyId}) BETWEEN 1 AND 64
-          AND ${table.secretAlgorithm} = 'aes-256-gcm.v1'
-          AND octet_length(${table.secretCiphertext}) BETWEEN 29 AND 512
+          AND octet_length(${table.secretCiphertext}) BETWEEN 1 AND 512
           AND char_length(${table.createdByUserId}) BETWEEN 1 AND 255
           AND (${table.description} IS NULL OR char_length(${table.description}) BETWEEN 1 AND 500)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -177,7 +174,7 @@ const webhookDeliveries = pgTable(
           AND (${table.lastStatusCode} IS NULL OR ${table.lastStatusCode} BETWEEN 100 AND 599)
           AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

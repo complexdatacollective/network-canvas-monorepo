@@ -6,14 +6,11 @@ import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { AssetStore } from '../assets.ts';
 import { checkSchema, type SchemaState } from '../db/schema.ts';
-import { verifyEncryptionReadiness } from '../pii/initialize.ts';
-import type { EncryptionKeys } from '../pii/keys.ts';
 import { BoundedProbe, withProbeClient } from './bounded-probe.ts';
 
 export function createReadiness(options: {
   pool?: pg.Pool;
   maintenancePool?: pg.Pool;
-  encryptionKeys?: EncryptionKeys;
   assetStore?: AssetStore;
   timeoutMs?: number;
   cacheMs?: number;
@@ -37,19 +34,17 @@ export function createReadiness(options: {
     [TENANT_ROLES.app],
     [TENANT_ROLES.maintenance],
   ] as const;
-  const databasePool = pool ?? maintenancePool;
-  const primaryRole = pool ? TENANT_ROLES.app : TENANT_ROLES.maintenance;
   const database = new BoundedProbe<SchemaState>(
-    databasePool
+    pool
       ? (signal) =>
-          withProbeClient(databasePool, signal, async (client) => {
+          withProbeClient(pool, signal, async (client) => {
             try {
               await client.query('BEGIN READ ONLY');
 
               if (!allowUnversionedSchema)
                 await assertSafePostgresRuntimeIdentity(client, {
-                  intendedRole: primaryRole,
-                  allowedRoles: [primaryRole],
+                  intendedRole: TENANT_ROLES.app,
+                  allowedRoles: [TENANT_ROLES.app],
                   runtimeRoleSets,
                   backupRole: BACKUP_ROLE,
                   allowedLogins,
@@ -60,35 +55,27 @@ export function createReadiness(options: {
                 allowedLogins,
                 administrativeLogins,
               });
-              if (pool && maintenancePool) {
+              if (!allowUnversionedSchema && maintenancePool) {
                 await withProbeClient(
                   maintenancePool,
                   signal,
                   async (maintenance) => {
                     try {
                       await maintenance.query('BEGIN READ ONLY');
-                      if (!allowUnversionedSchema)
-                        await assertSafePostgresRuntimeIdentity(maintenance, {
-                          intendedRole: TENANT_ROLES.maintenance,
-                          allowedRoles: [TENANT_ROLES.maintenance],
-                          runtimeRoleSets,
-                          backupRole: BACKUP_ROLE,
-                          allowedLogins,
-                          administrativeLogins,
-                        });
+                      await assertSafePostgresRuntimeIdentity(maintenance, {
+                        intendedRole: TENANT_ROLES.maintenance,
+                        allowedRoles: [TENANT_ROLES.maintenance],
+                        runtimeRoleSets,
+                        backupRole: BACKUP_ROLE,
+                        allowedLogins,
+                        administrativeLogins,
+                      });
                       await assertSamePostgresDatabase(client, maintenance);
-                      if (options.encryptionKeys)
-                        await verifyEncryptionReadiness(
-                          maintenance,
-                          options.encryptionKeys,
-                        );
                     } finally {
                       await maintenance.query('ROLLBACK');
                     }
                   },
                 );
-              } else if (maintenancePool && options.encryptionKeys) {
-                await verifyEncryptionReadiness(client, options.encryptionKeys);
               }
               return state;
             } finally {

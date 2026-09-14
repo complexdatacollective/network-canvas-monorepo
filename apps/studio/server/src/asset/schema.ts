@@ -17,10 +17,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 
 // One row per (team, content hash): the media type, size, original filename,
 // provenance and sweep marker for a stored object.
@@ -88,7 +85,7 @@ const assets = pgTable(
       sql`${table.uploadedByUserId} IS NULL
           OR char_length(${table.uploadedByUserId}) BETWEEN 1 AND 255`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -138,7 +135,7 @@ const assetReferences = pgTable(
       'asset_references_referrer_id_check',
       sql`char_length(${table.referrerId}) BETWEEN 1 AND 255`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

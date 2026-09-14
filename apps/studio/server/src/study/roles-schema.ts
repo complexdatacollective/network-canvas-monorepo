@@ -11,10 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 
 import { STUDY_TABLES } from './schema.ts';
 
@@ -75,7 +72,7 @@ const studyRoleGrants = pgTable(
       sql`char_length(${table.userId}) BETWEEN 1 AND 255
           AND char_length(${table.grantedByUserId}) BETWEEN 1 AND 255`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

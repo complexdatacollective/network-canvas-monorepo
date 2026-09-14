@@ -8,7 +8,6 @@ import {
   type KeysetConfiguration,
   loadEncryptionKeys,
 } from '../keys.ts';
-import { RESERVED_LEGACY_INDEX_IDS } from '../legacy-indexes.ts';
 import { configuration, loadTestKeys, rootOne } from './fixtures.ts';
 
 describe('key configuration and loader boundary', () => {
@@ -95,25 +94,6 @@ describe('key configuration and loader boundary', () => {
         loadEncryptionKeys(invalid(configuration()), loader),
       ).rejects.toThrow(KeyConfigurationError);
       expect(loader).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(RESERVED_LEGACY_INDEX_IDS)(
-    'rejects reserved legacy ID %s in every real key namespace',
-    async (reservedId) => {
-      for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
-        const config = configuration();
-        config[namespace].keys[0] = {
-          ...config[namespace].keys[0]!,
-          id: reservedId,
-        };
-        config[namespace].current = reservedId;
-        const loader = vi.fn(async () => rootOne);
-        await expect(loadEncryptionKeys(config, loader)).rejects.toThrow(
-          KeyConfigurationError,
-        );
-        expect(loader).not.toHaveBeenCalled();
-      }
     },
   );
 

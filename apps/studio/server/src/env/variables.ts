@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
 
@@ -24,7 +23,6 @@ export const serverSchemas = {
    */
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
 
-  STUDIO_ROLE: z.enum(['web', 'worker', 'both']).optional(),
   STUDIO_TELEMETRY: z.stringbool().optional(),
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
@@ -52,8 +50,6 @@ export const serverSchemas = {
    */
   STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
 
-  STUDIO_BOOTSTRAP_TOKEN: BootstrapTokenSchema.optional(),
-
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the
   // hostname, which the S3 client would then fail on far from here.
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
@@ -63,9 +59,8 @@ export const serverSchemas = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   DATABASE_URL: z.string().min(1).optional(),
-  STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
   STUDIO_MAINTENANCE_DATABASE_URL: z.string().min(1).optional(),
-  // Parsed by production runtime admission and explicit operator entrypoints.
+  // Parsed and required only by the explicit migration entrypoint.
   STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
   STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: z.string().optional(),
 

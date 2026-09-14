@@ -32,8 +32,7 @@
     "./postgres-database-enrollment": "./src/postgres-database-enrollment.ts",
     "./postgres-database-identity": "./src/postgres-database-identity.ts",
     "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts",
-    "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts",
-    "./postgres-backup": "./src/postgres-backup.ts"
+    "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -7,14 +7,6 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 import { updateUserLocale } from './account/commands.ts';
 import type { AssetStore } from './assets.ts';
 import {
-  acknowledgeAuditAlert,
-  AuditAlertError,
-  listAuditAlerts,
-  markAuditAlertRead,
-  readAuditAlertSettings,
-  updateAuditAlertSettings,
-} from './audit/alerts.ts';
-import {
   appendAuditedEvent,
   auditActorEventContext,
   AuditCommandTeamNotFoundError,
@@ -25,7 +17,6 @@ import {
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
-import type { AuditEventInput } from './audit/events.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -43,11 +34,6 @@ import {
   type DeploymentStatus,
   getInstanceStatus,
 } from './domain.ts';
-import {
-  completeSetup,
-  getSetupStatus,
-  SetupError,
-} from './instance/bootstrap.ts';
 import {
   correlateAuthorizedTeam,
   logOperational,
@@ -106,10 +92,7 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = Extract<
-  AuditEventInput,
-  { eventType: 'audit.read_denied' }
->['details']['procedure'];
+type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -257,14 +240,10 @@ async function guardAuditRead<T>(
     reservation?.complete('other');
     return result;
   } catch (error) {
-    if (
-      error instanceof AuditReadDeniedError ||
-      (error instanceof AuditAlertError && error.code === 'FORBIDDEN')
-    ) {
+    if (error instanceof AuditReadDeniedError) {
       return denyAuditRead(context, procedure, reservation);
     }
     reservation?.complete('other');
-    if (error instanceof AuditAlertError) throw new ORPCError(error.code);
     throw error;
   }
 }
@@ -349,19 +328,12 @@ export function createRpcRouter(
     deployment: DeploymentStatus;
     telemetry: boolean;
     invitationDeliveryAvailable: boolean;
-    bootstrapToken?: string;
     pool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
   },
 ) {
-  const {
-    auth,
-    deployment,
-    invitationDeliveryAvailable,
-    bootstrapToken,
-    pool,
-  } = deps;
+  const { auth, deployment, invitationDeliveryAvailable, pool } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -473,29 +445,6 @@ export function createRpcRouter(
     status: os.status.handler(() =>
       getInstanceStatus(caps, deployment, deps.telemetry),
     ),
-    setup: {
-      status: os.setup.status.handler(() => {
-        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
-        return getSetupStatus(pool, caps.enabled ? bootstrapToken : undefined);
-      }),
-      complete: os.setup.complete.handler(async ({ input, context }) => {
-        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
-        if (!caps.enabled || !pool) throw new ORPCError('SERVICE_UNAVAILABLE');
-        try {
-          return await completeSetup(
-            pool,
-            bootstrapToken,
-            input,
-            context.requestId,
-          );
-        } catch (error) {
-          if (!(error instanceof SetupError)) throw error;
-          throw new ORPCError(
-            error.code === 'UNAVAILABLE' ? 'SERVICE_UNAVAILABLE' : error.code,
-          );
-        }
-      }),
-    },
     me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,
@@ -716,53 +665,6 @@ export function createRpcRouter(
         ),
     },
     audit: {
-      alerts: {
-        settings: os.audit.alerts.settings
-          .use(requireTeam)
-          .handler(({ context }) =>
-            guardAuditRead(context, 'audit.alerts.settings', () =>
-              readAuditAlertSettings(
-                auditedContextFor(context),
-                invitationDeliveryAvailable,
-              ),
-            ),
-          ),
-        updateSettings: os.audit.alerts.updateSettings
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.updateSettings', () =>
-              updateAuditAlertSettings(
-                auditedContextFor(context),
-                input,
-                invitationDeliveryAvailable,
-              ),
-            ),
-          ),
-        list: os.audit.alerts.list
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.list', () =>
-              listAuditAlerts(auditedContextFor(context), input.cursor),
-            ),
-          ),
-        markRead: os.audit.alerts.markRead
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.markRead', () =>
-              markAuditAlertRead(auditedContextFor(context), input.alertId),
-            ),
-          ),
-        acknowledge: os.audit.alerts.acknowledge
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.acknowledge', () =>
-              acknowledgeAuditAlert(
-                auditedContextFor(context),
-                input.deliveryId,
-              ),
-            ),
-          ),
-      },
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {
