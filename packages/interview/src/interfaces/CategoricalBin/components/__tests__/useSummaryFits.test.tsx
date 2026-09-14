@@ -7,6 +7,8 @@ import { useSummaryFits } from '../CategoricalBinItem';
 // jsdom does not lay anything out, so the three boxes the hook measures are
 // driven directly. `summaryNeeds` is the only one that moves during a test: it
 // stands for the summary's text changing as people arrive in or leave the bin.
+// It is read off the text element, which keeps its natural height even while
+// the bin is holding the box around it at zero.
 const CONTENT_HEIGHT = 100;
 const TITLE_HEIGHT = 74;
 let summaryNeeds = 20;
@@ -35,7 +37,7 @@ class FakeResizeObserver {
 function Probe() {
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const summaryRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLParagraphElement>(null);
   const fits = useSummaryFits(contentRef, titleRef, summaryRef, true);
 
   return (
@@ -43,9 +45,9 @@ function Probe() {
       <h4 ref={titleRef} data-testid="title">
         Family
       </h4>
-      <div ref={summaryRef} data-testid="summary">
+      <p ref={summaryRef} data-testid="summary">
         Amy and 2 others
-      </div>
+      </p>
       <output data-testid="fits">{String(fits)}</output>
     </div>
   );
@@ -70,16 +72,14 @@ beforeEach(() => {
     return this.dataset.testid === 'content' ? CONTENT_HEIGHT : 0;
   });
   defineMetric(HTMLElement.prototype, 'offsetHeight', function (this) {
-    return this.dataset.testid === 'title' ? TITLE_HEIGHT : 0;
-  });
-  defineMetric(HTMLElement.prototype, 'scrollHeight', function (this) {
+    if (this.dataset.testid === 'title') return TITLE_HEIGHT;
     return this.dataset.testid === 'summary' ? summaryNeeds : 0;
   });
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const metric of ['clientHeight', 'offsetHeight', 'scrollHeight']) {
+  for (const metric of ['clientHeight', 'offsetHeight']) {
     Reflect.deleteProperty(HTMLElement.prototype, metric);
   }
 });

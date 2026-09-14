@@ -283,8 +283,12 @@ const meta: Meta<StoryArgs> = {
 /**
  * Two readings, because the interface has failed both ways: a label can overrun
  * its own clipped box, or be centred in a box taller than the bin and pushed out
- * through the bin's clipped edge. Half a line box is the threshold for the
- * first — less is the leading under a descender, more is unreadable text.
+ * through the bin's clipped edge.
+ *
+ * The first is held to the same budget the fitter uses — the half-leading under
+ * the last line, floored at the rounding error. Anything looser passes a label
+ * with a row of pixels shaved off its glyphs, which is the regression this is
+ * here to catch.
  */
 const expectLabelsFullyVisible = async (
   canvasElement: HTMLElement,
@@ -306,10 +310,12 @@ const expectLabelsFullyVisible = async (
         await expect(labelBox.top).toBeGreaterThanOrEqual(binBox.top - 1);
         await expect(labelBox.bottom).toBeLessThanOrEqual(binBox.bottom + 1);
 
-        const line = Number.parseFloat(getComputedStyle(label).lineHeight);
-        await expect(label.scrollHeight - label.clientHeight).toBeLessThan(
-          line / 2,
-        );
+        const { lineHeight, fontSize } = getComputedStyle(label);
+        const halfLeading =
+          (Number.parseFloat(lineHeight) - Number.parseFloat(fontSize)) / 2;
+        await expect(
+          label.scrollHeight - label.clientHeight,
+        ).toBeLessThanOrEqual(Math.max(2, halfLeading));
         await expect(label.scrollWidth - label.clientWidth).toBeLessThanOrEqual(
           1,
         );
