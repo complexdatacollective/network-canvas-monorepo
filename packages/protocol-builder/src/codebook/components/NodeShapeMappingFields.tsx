@@ -241,12 +241,19 @@ function ThresholdRow({
           value={draft}
           disabled={disabled}
           onChange={(value) => setDraft(value ?? '')}
-          onBlur={() =>
-            onUpdate({
-              value: parseThresholdValue(draft) ?? threshold.value,
-              shape: threshold.shape,
-            })
-          }
+          onBlur={() => {
+            const typed = parseThresholdValue(draft);
+            // Nothing readable in the box, so there is nothing to commit —
+            // and the box goes back to saying what is actually stored.
+            // Architect left the old number saved under an empty box, which
+            // is a researcher clearing a threshold to take it out, seeing it
+            // gone, and getting it back in the interview.
+            if (typed === undefined) {
+              setDraft(String(threshold.value));
+              return;
+            }
+            onUpdate({ value: typed, shape: threshold.shape });
+          }}
         />
       </div>
       {/* Mathematical mapping symbol, independent of locale. */}
@@ -286,6 +293,33 @@ function ThresholdRow({
     </div>
   );
 }
+
+/**
+ * What tells one threshold row from another across a re-render.
+ *
+ * A threshold has no identity in the protocol, so it is identified by the
+ * number it stands for — which the save requires to be unique, since the
+ * thresholds must rise. Keyed by position instead, removing the first row
+ * handed its React instance to what had been the second, and the second row's
+ * half-typed number went with the instance that was discarded; a press on a
+ * button moves no focus in Safari or Firefox on macOS, so on those the number
+ * is still in the box rather than committed when the removal happens.
+ *
+ * A row whose own number changes gets a new key and starts again from it,
+ * which is what the row's committed-value sync does for it anyway. Repeated
+ * numbers — which the editor will not create and a hand-written protocol can
+ * still arrive with — are told apart by how many have come before.
+ */
+const thresholdRowKeys = (
+  thresholds: readonly Readonly<{ value: number }>[],
+): readonly string[] => {
+  const seen = new Map<number, number>();
+  return thresholds.map(({ value }) => {
+    const before = seen.get(value) ?? 0;
+    seen.set(value, before + 1);
+    return before === 0 ? String(value) : `${value}#${before}`;
+  });
+};
 
 export type NodeShapeMappingFieldsProps = Readonly<{
   /** The type's own attributes, from the document the editor opened on. */
@@ -334,6 +368,10 @@ export default function NodeShapeMappingFields({
   const options = eligibleShapeVariables(variables);
   const answers = selected === undefined ? [] : discreteOptions(selected, intl);
   const thresholds = mapping.thresholds ?? [];
+  // Absent where the range is used up, and the control that would add one is
+  // then not offered at all.
+  const nextValue = nextThresholdValue(mapping, config);
+  const thresholdKeys = thresholdRowKeys(thresholds);
 
   const groupHeading = (text: string) => (
     <Heading
@@ -463,9 +501,7 @@ export default function NodeShapeMappingFields({
 
               {thresholds.map((threshold, index) => (
                 <ThresholdRow
-                  // Positional: a threshold has no identity of its own, and the
-                  // list is re-sorted on every commit.
-                  key={index}
+                  key={thresholdKeys[index]}
                   threshold={threshold}
                   index={index}
                   config={config}
@@ -491,28 +527,26 @@ export default function NodeShapeMappingFields({
                 />
               ))}
 
-              {thresholds.length < MAX_SHAPE_THRESHOLDS && (
-                <div>
-                  <Button
-                    type="button"
-                    color="primary"
-                    disabled={disabled}
-                    onClick={() =>
-                      onChange(
-                        withThresholds(mapping, [
-                          ...thresholds,
-                          {
-                            value: nextThresholdValue(mapping, config),
-                            shape: 'square',
-                          },
-                        ]),
-                      )
-                    }
-                  >
-                    {intl.formatMessage(messages.shapeAddThreshold)}
-                  </Button>
-                </div>
-              )}
+              {thresholds.length < MAX_SHAPE_THRESHOLDS &&
+                nextValue !== undefined && (
+                  <div>
+                    <Button
+                      type="button"
+                      color="primary"
+                      disabled={disabled}
+                      onClick={() =>
+                        onChange(
+                          withThresholds(mapping, [
+                            ...thresholds,
+                            { value: nextValue, shape: 'square' },
+                          ]),
+                        )
+                      }
+                    >
+                      {intl.formatMessage(messages.shapeAddThreshold)}
+                    </Button>
+                  </div>
+                )}
             </div>
           )}
         </div>

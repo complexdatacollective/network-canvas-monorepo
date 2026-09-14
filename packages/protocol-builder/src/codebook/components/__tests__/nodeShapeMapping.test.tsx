@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -384,6 +390,114 @@ describe('a mapping that changes shape at a threshold', () => {
     expect(
       screen.getByRole('combobox', { name: 'Shape at threshold 2.5' }),
     ).toBeVisible();
+  });
+
+  /**
+   * A box left empty shows the number that is actually stored.
+   *
+   * Clearing one used to leave it looking empty while the old number went on
+   * being saved: a researcher who cleared a threshold to take it out saw an
+   * empty box, saved, and got the old number live in the interview. The box
+   * and the document have to say the same thing.
+   */
+  it('puts the stored value back into a threshold box left empty', async () => {
+    const onSubmit = vi.fn<SubmitEntity>(applied);
+    const user = renderEditor(onSubmit);
+    await user.click(toggle());
+    await chooseAttribute(user, attributeField('Attribute'), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+    await user.clear(thresholdValue(1));
+    await user.type(thresholdValue(1), '7');
+    await user.tab();
+
+    await user.clear(thresholdValue(1));
+    await user.tab();
+
+    expect(thresholdValue(1)).toHaveValue(7);
+    await user.click(save());
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(dynamicOf(onSubmit)).toMatchObject({
+      thresholds: [{ value: 7, shape: 'square' }],
+    });
+  });
+
+  /**
+   * The value a new threshold starts at is a number a researcher reads, so it
+   * is a number they could have typed.
+   *
+   * A scale attribute steps in tenths, and the sum of two of them in binary
+   * floating point is not a tenth: the box opened holding
+   * 0.30000000000000004, and the control beside it was named "Shape at
+   * threshold 0.30000000000000004".
+   */
+  it('starts a new threshold on a number the researcher could have typed', async () => {
+    const onSubmit = vi.fn<SubmitEntity>(applied);
+    const user = renderEditor(onSubmit);
+    await user.click(toggle());
+    await chooseAttribute(user, attributeField('Attribute'), 'Closeness');
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+    await user.clear(thresholdValue(1));
+    await user.type(thresholdValue(1), '0.2');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+
+    expect(thresholdValue(2)).toHaveValue(0.3);
+    expect(
+      screen.getByRole('combobox', { name: 'Shape at threshold 0.3' }),
+    ).toBeVisible();
+  });
+
+  /**
+   * There is no second threshold to offer once the first is at the top of the
+   * attribute's range: the next one would be the same number, which the save
+   * refuses for not rising. Offering it is offering a row whose only outcome
+   * is a refusal.
+   */
+  it('stops offering another threshold once the range is used up', async () => {
+    const onSubmit = vi.fn<SubmitEntity>(applied);
+    const user = renderEditor(onSubmit);
+    await user.click(toggle());
+    await chooseAttribute(user, attributeField('Attribute'), 'Closeness');
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+    await user.clear(thresholdValue(1));
+    await user.type(thresholdValue(1), '1');
+    await user.tab();
+
+    expect(screen.queryByRole('button', { name: 'Add threshold' })).toBeNull();
+  });
+
+  /**
+   * Removing one threshold leaves the others holding what the researcher
+   * typed into them.
+   *
+   * The rows were keyed by position, so removing the first made React reuse
+   * the first row's instance for what had been the second — and the second
+   * row's half-typed number went with the instance that was thrown away. A
+   * press on a button does not move focus in Safari or Firefox on macOS, so
+   * on those the number is still uncommitted when the removal happens, which
+   * is why the press here is the one that leaves focus where it was.
+   */
+  it('keeps a half-typed threshold when another row is removed', async () => {
+    const onSubmit = vi.fn<SubmitEntity>(applied);
+    const user = renderEditor(onSubmit);
+    await user.click(toggle());
+    await chooseAttribute(user, attributeField('Attribute'), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+    await user.clear(thresholdValue(1));
+    await user.type(thresholdValue(1), '3');
+    await user.tab();
+    await user.click(screen.getByRole('button', { name: 'Add threshold' }));
+    await user.clear(thresholdValue(2));
+    await user.type(thresholdValue(2), '7');
+    await user.tab();
+
+    await user.clear(thresholdValue(2));
+    await user.type(thresholdValue(2), '9');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove threshold 1' }));
+
+    expect(screen.getAllByRole('spinbutton')).toHaveLength(1);
+    expect(thresholdValue(1)).toHaveValue(9);
   });
 
   it('sorts the thresholds as soon as one is left out of order', async () => {

@@ -339,18 +339,45 @@ export const thresholdInputConfig = (
   };
 };
 
-/** Where the next threshold added to this mapping starts. */
+/**
+ * Where the next threshold added to this mapping starts, or `undefined` when
+ * there is no room for one.
+ *
+ * Rounded to the precision the control steps in: a scale attribute steps in
+ * tenths, and two tenths added to one another in binary floating point are
+ * not a tenth — the box opened holding 0.30000000000000004 and the control
+ * beside it was named after that number.
+ *
+ * `undefined` where the highest threshold is already at the top of the
+ * attribute's range. The next one would be that same number, which the save
+ * refuses for not rising, so there is nothing to offer: a row whose only
+ * outcome is a refusal is not a row.
+ */
 export const nextThresholdValue = (
   mapping: ShapeMappingDraft,
   config: ReturnType<typeof thresholdInputConfig>,
-): number => {
+): number | undefined => {
   const existing = mapping.thresholds ?? [];
   const step = typeof config.step === 'number' ? config.step : 1;
-  const base =
-    existing.length > 0
-      ? Math.max(...existing.map((threshold) => threshold.value)) + step
-      : (config.min ?? 0);
-  return config.max === undefined ? base : Math.min(base, config.max);
+  if (existing.length === 0) return config.min ?? 0;
+  const highest = Math.max(...existing.map((threshold) => threshold.value));
+  const next = roundToStep(highest + step, step);
+  const bounded = config.max === undefined ? next : Math.min(next, config.max);
+  return bounded > highest ? bounded : undefined;
+};
+
+/**
+ * `value`, with the floating-point residue of adding `step` to something taken
+ * off it.
+ *
+ * The number of decimals the step itself is written with is the number the
+ * answer may have: a step of 0.1 gives back tenths, a step of 1 whole numbers.
+ * `toPrecision` rather than a multiply-and-divide, because the multiply has
+ * the same residue the addition did.
+ */
+const roundToStep = (value: number, step: number): number => {
+  const decimals = (String(step).split('.')[1] ?? '').length;
+  return decimals === 0 ? value : Number(value.toFixed(decimals));
 };
 
 /**
