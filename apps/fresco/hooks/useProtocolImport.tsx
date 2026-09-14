@@ -16,6 +16,7 @@ import {
   createNetcanvasReader,
   getProtocolFileErrorKind,
   hashProtocol,
+  isProtocolFileFault,
   loadNetcanvasArchive,
   missingAssetsError,
 } from '@codaco/protocol-validation';
@@ -301,7 +302,7 @@ export const useProtocolImport = () => {
       // validated document supplies what gets stored against them.
       updateToastPhase(toastId, 'extracting-assets');
       const { assets: extractedAssets, missingAssets } =
-        await reader.readAssets(protocolJson);
+        await reader.readAssets();
 
       // Extraction reports a manifest entry with no file rather than refusing,
       // leaving the policy to the host. Fresco serves these resources to
@@ -434,19 +435,23 @@ export const useProtocolImport = () => {
     } catch (e) {
       const error = ensureError(e);
       const protocolFileError = describeProtocolFileErrorMessage(error);
-      const protocolFileErrorKind = getProtocolFileErrorKind(error);
-
       // A file the researcher chose being damaged, truncated, or too old to
       // upgrade is an answer about that file, not a defect in Fresco. Sending
       // it to exception tracking buries the failures that are defects, and the
       // message carries researcher-authored resource names. Record the kind
       // instead, which is a fixed vocabulary and holds nothing from the file.
-      if (protocolFileErrorKind === null) {
-        captureClientException(error);
-      } else {
+      //
+      // `isProtocolFileFault`, not merely "can this be described": a migration
+      // step that throws because of a bug in it is re-raised as
+      // `MigrationStepError` and describes itself as a protocol that cannot be
+      // upgraded, so treating every describable failure as the file's fault
+      // would hide our own migration defects.
+      if (isProtocolFileFault(error)) {
         captureClientEvent('ProtocolImportFailed', {
-          reason: protocolFileErrorKind,
+          reason: getProtocolFileErrorKind(error),
         });
+      } else {
+        captureClientException(error);
       }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a

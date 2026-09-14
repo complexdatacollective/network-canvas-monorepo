@@ -319,6 +319,10 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         guardedZip = await loadGuardedNetcanvas(bytes);
       } catch (error) {
         if (error instanceof NetcanvasTooLargeError) {
+          // Tracked here as well as at the catch below: this return is taken
+          // before it, so without this the kind would be one the tracker
+          // claims to record and never does.
+          trackImportFailure('local', error);
           return {
             status: 'error',
             title: getArchitectIntl().formatMessage(extraMessages.failed),
@@ -355,6 +359,7 @@ export const openLocalNetcanvas = createAppAsyncThunk(
           await extractProtocolFromZip(guardedZip));
       } catch (error) {
         if (error instanceof NetcanvasInflationLimitError) {
+          trackImportFailure('local', error);
           return {
             status: 'error',
             title: getArchitectIntl().formatMessage(extraMessages.failed),
@@ -375,6 +380,7 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         protocol: protocol as CurrentProtocol,
         name: protocolName,
         approved: migrationApproved,
+        source: 'local',
       });
 
       if (migrationResult.status !== 'ready') {
@@ -470,10 +476,12 @@ const handleProtocolMigration = ({
   protocol,
   name,
   approved,
+  source,
 }: {
   protocol: CurrentProtocol;
   name: string;
   approved: boolean;
+  source: ImportSource;
 }): ProtocolMigrationResult => {
   const schemaVersionStatus = checkSchemaVersion(protocol);
   switch (schemaVersionStatus) {
@@ -510,6 +518,12 @@ const handleProtocolMigration = ({
           protocol: migratedProtocol as CurrentProtocol,
         };
       } catch (caught) {
+        // The only place the thrown error still exists — the result below
+        // describes it for a dialog and drops it. A migration step that throws
+        // because of a bug in it is re-raised as `MigrationStepError`, which
+        // `getImportFailureKind` deliberately does not treat as the file's
+        // fault, so this is what puts our own migration defects in front of us.
+        trackImportFailure(source, caught);
         const { title, message, detail } = describeMigrationFailure(
           ensureError(caught),
           protocol,

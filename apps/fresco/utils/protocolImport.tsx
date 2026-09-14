@@ -24,7 +24,7 @@ type ProtocolAssetsResult = {
  *
  * Structure of an asset in network canvas protocols:
  *   - An asset in the manifest is an object whose key is a UID.
- *   - The ID property is the same as the key (duplicated for convinience :/)
+ *   - The ID property is the same as the key (duplicated for convenience :/)
  *   - Name property is the original file name when added to Architect
  *   - Source property is the internal path to the file in the zip, which is a
  *     separate UID + file extension.

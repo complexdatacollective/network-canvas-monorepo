@@ -1,8 +1,8 @@
 import type { SchemaVersion } from '../schemas/index.ts';
 
 export class MigrationError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = 'MigrationError';
   }
 }
@@ -24,8 +24,8 @@ export class VersionMismatchError extends MigrationError {
 }
 
 export class MigrationStepError extends MigrationError {
-  constructor(version: number) {
-    super(`Migration step failed at version ${version}.`);
+  constructor(version: number, options?: { cause?: unknown }) {
+    super(`Migration step failed at version ${version}.`, options);
     this.name = 'MigrationStepError';
   }
 }

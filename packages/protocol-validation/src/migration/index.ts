@@ -168,8 +168,11 @@ export class MigrationChain {
     try {
       const result = migration.migrate(document, dependencies);
       return result;
-    } catch (_error) {
-      throw new MigrationStepError(migration.from);
+    } catch (cause) {
+      // Kept on `cause`: this wrapper is indistinguishable from a protocol
+      // that legitimately cannot be upgraded, so without the original a host
+      // reporting it as a defect has nothing to act on.
+      throw new MigrationStepError(migration.from, { cause });
     }
   }
 

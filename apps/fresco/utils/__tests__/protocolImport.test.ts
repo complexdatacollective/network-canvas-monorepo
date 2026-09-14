@@ -46,9 +46,8 @@ describe('bounded protocol archive read failures', () => {
     )._data.compressedContent = new Uint8Array([0xff, 0xff, 0xff, 0xff]);
 
     const reader = createNetcanvasReader(zip);
-    const readProtocol = await reader.readProtocol();
 
-    await expect(reader.readAssets(readProtocol)).rejects.toSatisfy(
+    await expect(reader.readAssets()).rejects.toSatisfy(
       (error: unknown) =>
         describeProtocolFileError(error) ===
         "This protocol's contents are damaged and cannot be read. Try a backup, or the copy you originally downloaded.",
@@ -62,11 +61,11 @@ describe('bounded protocol archive read failures', () => {
     const zip = await archiveOf(protocol, { 'photo.png': 'x'.repeat(400) });
 
     const reader = createNetcanvasReader(zip, 500);
-    const readProtocol = await reader.readProtocol();
+    await reader.readProtocol();
 
     // The protocol JSON alone fits, and the asset alone fits, but together
     // they do not: a per-read cap would let this archive through.
-    await expect(reader.readAssets(readProtocol)).rejects.toThrow(
+    await expect(reader.readAssets()).rejects.toThrow(
       /expands to more data than can be opened safely/,
     );
   });

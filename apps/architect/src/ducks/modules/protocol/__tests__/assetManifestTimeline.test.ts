@@ -27,6 +27,10 @@ vi.mock('~/utils/assetUtils', () => ({
 
 const { validateAsset } = await import('~/utils/protocols/assetTools');
 const mockedValidateAsset = vi.mocked(validateAsset);
+const { saveAssetWithFallback } = await import('~/utils/assetUtils');
+const mockedSaveAsset = vi.mocked(saveAssetWithFallback);
+const { getSupportedAssetType } = await import('~/utils/protocols/importAsset');
+const mockedGetSupportedAssetType = vi.mocked(getSupportedAssetType);
 
 /**
  * The protocol timeline as the app actually builds it — `activeProtocol`
@@ -82,6 +86,29 @@ describe('a refused resource import and the protocol timeline', () => {
     vi.clearAllMocks();
     store = makeStore();
     store.dispatch(setActiveProtocol(protocol()));
+  });
+
+  it('writes no bytes when a replacement is the wrong kind of resource', async () => {
+    // The picker's `accept` filter is advisory — a researcher can choose any
+    // file — so this has to hold on the write path, not just in the dialog.
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('network');
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['a,b'], 'roster.csv'),
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
+    // Writing first and checking after stored the wrong bytes under an id the
+    // manifest still describes as an image: the resource then counts as
+    // resolved, the GC keeps it because the id is referenced, and the protocol
+    // previews and exports a CSV as its image.
+    expect(mockedSaveAsset).not.toHaveBeenCalled();
+    expect(manifestOf(store)).toEqual({});
   });
 
   it('records nothing when the import is refused', async () => {

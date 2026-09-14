@@ -228,6 +228,28 @@ export const importAssetAsync = createAsyncThunk<
         return rejectWithValue(refusedBeforeWrite);
       }
 
+      // Decided before anything is written. The type comes from the file's
+      // name, so it costs nothing to ask early — and asking late meant a
+      // replacement of the wrong type had already overwritten the bytes stored
+      // under the existing asset id. The manifest entry kept its old `source`
+      // and type, `getUnresolvedAssetIds` counted the resource as resolved
+      // because a row existed, and the GC retained it because the id was still
+      // referenced: a protocol that previews and exports the wrong file.
+      const assetType = getSupportedAssetType(file.name) as AssetType | false;
+
+      if (!assetType) {
+        throw new Error(`Unsupported asset type for file: ${file.name}`);
+      }
+
+      if (expectedType && assetType !== expectedType) {
+        throw Object.assign(
+          new Error(
+            `Replacement for asset ${assetId} is a ${assetType}, expected ${expectedType}`,
+          ),
+          { code: 'REPLACEMENT_TYPE_MISMATCH' },
+        );
+      }
+
       // Convert File to Blob and create ExtractedAsset
       const blob = new Blob([file], { type: file.type });
       const asset: ExtractedAsset = {
@@ -244,22 +266,6 @@ export const importAssetAsync = createAsyncThunk<
         dispatch(setStorageUnavailable(false));
       } else {
         dispatch(setStorageUnavailable(true));
-      }
-
-      // Get asset type for manifest
-      const assetType = getSupportedAssetType(file.name) as AssetType | false;
-
-      if (!assetType) {
-        throw new Error(`Unsupported asset type for file: ${file.name}`);
-      }
-
-      if (expectedType && assetType !== expectedType) {
-        throw Object.assign(
-          new Error(
-            `Replacement for asset ${assetId} is a ${assetType}, expected ${expectedType}`,
-          ),
-          { code: 'REPLACEMENT_TYPE_MISMATCH' },
-        );
       }
 
       const importPayload: ImportAssetCompletePayload = {

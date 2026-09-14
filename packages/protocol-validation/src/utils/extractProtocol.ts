@@ -318,15 +318,20 @@ export const extractProtocol = async (
  * `protocol.json` and the assets would pass both. The reader holds a single
  * budget across both calls, so the total is what is capped.
  *
- * `readAssets` takes the protocol back rather than remembering it, because the
- * manifest it must resolve against is the one that came out of *this* archive.
- * A host that has since migrated or validated the document holds a different
- * object, and looking its rewritten manifest up in the original zip is exactly
- * the mismatch this signature refuses to let it express.
+ * `readAssets` takes no document. The manifest it resolves against has to be
+ * the one that came out of *this* archive, and a host that has since migrated
+ * or validated the protocol holds a different object whose `source` values may
+ * no longer name entries in this zip. Accepting a protocol would let a caller
+ * pass that one — the exact mismatch this reader exists to prevent — so the
+ * reader keeps the document it read instead of trusting the caller to hand
+ * back the right one.
+ *
+ * The read is memoised, so a host that wants the protocol as well pays for
+ * `protocol.json` once and spends the budget once.
  */
 export type NetcanvasReader = {
   readProtocol: () => Promise<VersionedProtocol>;
-  readAssets: (protocol: VersionedProtocol) => Promise<ExtractedAssets>;
+  readAssets: () => Promise<ExtractedAssets>;
 };
 
 export const createNetcanvasReader = (
@@ -334,10 +339,14 @@ export const createNetcanvasReader = (
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
 ): NetcanvasReader => {
   const budget = createInflationBudget(maxInflatedBytes);
+  let protocol: Promise<VersionedProtocol> | undefined;
+  const readProtocol = () =>
+    (protocol ??= getProtocolJsonAsObject(zip, budget));
 
   return {
-    readProtocol: () => getProtocolJsonAsObject(zip, budget),
-    readAssets: (protocol) => extractProtocolAssets(protocol, zip, budget),
+    readProtocol,
+    readAssets: async () =>
+      extractProtocolAssets(await readProtocol(), zip, budget),
   };
 };
 
@@ -351,7 +360,7 @@ export const extractProtocolFromZip = async (
 ): Promise<ExtractedAssets & { protocol: VersionedProtocol }> => {
   const reader = createNetcanvasReader(zip, maxInflatedBytes);
   const protocol = await reader.readProtocol();
-  const { assets, missingAssets } = await reader.readAssets(protocol);
+  const { assets, missingAssets } = await reader.readAssets();
 
   return {
     assets,

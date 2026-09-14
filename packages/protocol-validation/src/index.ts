@@ -33,6 +33,7 @@ import {
 } from './utils/malformedNetcanvasError.ts';
 import {
   getProtocolFileErrorKind,
+  isProtocolFileFault,
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import {
@@ -140,6 +141,7 @@ export {
   getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
+  isProtocolFileFault,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
