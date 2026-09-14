@@ -40,8 +40,11 @@ export function teamIsolationPolicy() {
 }
 
 // Serialises role bootstrap across sessions provisioning schemas in parallel
-// (the test suites do), so a race on CREATE ROLE or GRANT cannot surface as a
-// spurious error.
+// (the test suites do), so a race on GRANT cannot surface as a spurious error.
+// Advisory locks are per database while role names are cluster-wide, so two
+// sessions in different databases can still race CREATE ROLE; the loser then
+// sees unique_violation on pg_authid_rolname_index rather than
+// duplicate_object, and both handlers below treat it as "already exists".
 const ROLE_BOOTSTRAP_LOCK_KEY = 4021775688147130;
 
 /**
@@ -52,14 +55,25 @@ const ROLE_BOOTSTRAP_LOCK_KEY = 4021775688147130;
  * provision as well as `public`.
  */
 export const TENANT_ROLES_SQL = `
-DO $$ BEGIN
+DO $$ DECLARE conflicting_constraint text;
+BEGIN
   PERFORM pg_advisory_xact_lock(${ROLE_BOOTSTRAP_LOCK_KEY});
   BEGIN
     CREATE ROLE ${TENANT_ROLES.app} NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  EXCEPTION WHEN duplicate_object THEN NULL; END;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN unique_violation THEN
+      GET STACKED DIAGNOSTICS conflicting_constraint = CONSTRAINT_NAME;
+      IF conflicting_constraint <> 'pg_authid_rolname_index' THEN RAISE; END IF;
+  END;
   BEGIN
     CREATE ROLE ${TENANT_ROLES.maintenance} NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  EXCEPTION WHEN duplicate_object THEN NULL; END;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN unique_violation THEN
+      GET STACKED DIAGNOSTICS conflicting_constraint = CONSTRAINT_NAME;
+      IF conflicting_constraint <> 'pg_authid_rolname_index' THEN RAISE; END IF;
+  END;
   IF NOT pg_has_role(current_user, '${TENANT_ROLES.app}', 'SET') THEN
     EXECUTE format('GRANT ${TENANT_ROLES.app} TO %I WITH SET TRUE', current_user);
   END IF;
