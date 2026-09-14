@@ -18,6 +18,7 @@ import CodebookVariableValidationEditor from '../codebook/validation/CodebookVar
 import type { CodebookWriteOutcome } from '../codebook/writes.ts';
 import * as alterEdgeFormStories from '../editors/alter-edge-form/AlterEdgeFormStageEditor.stories.tsx';
 import * as alterFormStories from '../editors/alter-form/AlterFormStageEditor.stories.tsx';
+import { dyadCensusStageEditor } from '../editors/dyad-census/DyadCensusStageEditor.ts';
 import * as egoFormStories from '../editors/ego-form/EgoFormStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/family-pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as informationStories from '../editors/information/InformationStageEditor.stories.tsx';
@@ -27,10 +28,7 @@ import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
-import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
-import PageContentSection from '../sections/page-content/PageContentSection.tsx';
+import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
 import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
@@ -236,11 +234,9 @@ describe('the stage editor shell', () => {
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
             <StageEditorShell actions={actions}>
               <StageNameSection />
-              <PageContentSection
-                ItemEditor={ContentBlockEditor}
-                ItemPreview={ContentBlockPreview}
-                slots={contentBlockSlots}
-              />
+              {/* The production pairing, not a hand-mount of its parts: what a
+                  block editor is paired with is `contentBlocks`' business. */}
+              {contentBlocks()()}
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -342,6 +338,31 @@ describe('a row of a stage editor list, opened in its dialog', () => {
       'h3: Additional attributes',
     ]);
     await expectHeadingOrder(3);
+  });
+
+  /**
+   * A row whose fields are ONE topic writes no heading below the dialog title
+   * at all: the title names the row and the dialog's description says what the
+   * fields decide, so a group around the whole body would only restate the
+   * title it was opened under (Josh, follow-up 2). Dyad Census is that shape —
+   * a question and the connection an affirmative answer records.
+   */
+  it('leaves a single-topic row dialog with only its title', async () => {
+    const harness = renderStageEditor({
+      stageId: 'dyad-census-1',
+      registry: dyadCensusStageEditor,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(headingLadder(dialog)).toEqual(['h2: Edit prompt']);
+    expect(dialog).toHaveAccessibleDescription(
+      'Write the participant prompt and select the edge type created by an affirmative response.',
+    );
+    await expectHeadingOrder(1);
   });
 });
 

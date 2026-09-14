@@ -1138,22 +1138,24 @@ describe('a family member form the researcher edits', () => {
  */
 describe('the pedigree’s nomination prompts', () => {
   /**
-   * The dialog's two fields sit in the titled group Architect gave them
-   * (`FamilyPedigree/NominationPromptFields.tsx:125-155`).
+   * The dialog's two fields are its only topic, so the sentence Architect put
+   * under its group heading (`FamilyPedigree/NominationPromptFields.tsx:125-155`)
+   * is said under the dialog's own title instead of under a second heading
+   * restating it.
    */
-  it('groups the question and its attribute under Architect’s heading', async () => {
+  it('says what the question and its attribute decide under the dialog’s own title', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Edit nomination prompt' }),
     );
-    const dialog = within(await screen.findByRole('dialog'));
-    const group = dialog.getByRole('region', { name: 'Nomination details' });
-    expect(group).toHaveAccessibleDescription(
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveAccessibleDescription(
       'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
     );
+    expect(within(dialog).queryAllByRole('region')).toEqual([]);
     expect(
-      within(group).getByRole('group', { name: 'Attribute' }),
+      within(dialog).getByRole('group', { name: 'Attribute' }),
     ).toBeInTheDocument();
   });
 

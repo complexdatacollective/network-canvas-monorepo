@@ -533,7 +533,7 @@
   },
   "protocolBuilder.censusPrompts.dyadPromptTextDescription": {
     "defaultMessage": "Write the participant prompt and select the edge type created by an affirmative response.",
-    "description": "Description of the group holding a Dyad Census prompt’s question and the kind of connection an affirmative answer records."
+    "description": "Said under the title of a Dyad Census prompt’s own dialog, which holds its question and the kind of connection an affirmative answer records."
   },
   "protocolBuilder.censusPrompts.edgeGoneRefusal": {
     "defaultMessage": "The connection type this prompt records is no longer in the codebook. Choose another one.",
@@ -1413,11 +1413,7 @@
   },
   "protocolBuilder.contentBlock.sectionDescription": {
     "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "description": "Description under the block-details heading."
-  },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "defaultMessage": "Item details",
-    "description": "Heading of the dialog where a researcher says what one piece of a page holds and provides it."
+    "description": "Description under the item dialog’s title."
   },
   "protocolBuilder.contentBlock.sizeFull": {
     "defaultMessage": "Full size",
@@ -1597,11 +1593,7 @@
   },
   "protocolBuilder.familyPedigree.nominationDetailsDescription": {
     "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
-    "description": "Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
-  },
-  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
-    "defaultMessage": "Nomination details",
-    "description": "Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology."
+    "description": "Said under the title of a nomination prompt’s own dialog. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
   },
   "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
     "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
@@ -2437,11 +2429,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
     "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
-    "description": "Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
-  },
-  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
-    "defaultMessage": "Disease details",
-    "description": "Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology."
+    "description": "Said under the title of a disease’s own dialog. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",

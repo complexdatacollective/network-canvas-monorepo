@@ -138,23 +138,26 @@ describe('the pedigree a narrative pedigree reads', () => {
   });
 
   /**
-   * The dialog's four fields sit in the titled group Architect gave them
-   * (`NarrativePedigree/DiseaseFields.tsx:157-224`): four decisions about one
-   * condition, under one sentence saying what they add up to.
+   * The dialog's four fields are its only topic, so the dialog itself says
+   * what they add up to — the sentence Architect put under its group heading
+   * (`NarrativePedigree/DiseaseFields.tsx:157-224`), said once under the title
+   * that already names the disease being edited rather than twice.
    */
-  it('groups a disease’s fields under Architect’s heading', async () => {
+  it('says what a disease’s fields decide under the dialog’s own title', async () => {
     const harness = openFixture();
 
-    const dialog = await openDisease(harness);
-    const group = dialog.getByRole('region', { name: 'Disease details' });
-    expect(group).toHaveAccessibleDescription(
+    await openDisease(harness);
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveAccessibleDescription(
       "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
     );
+    // And no group inside restates the title it was opened under.
+    expect(within(dialog).queryAllByRole('region')).toEqual([]);
     expect(
-      within(group).getByRole('textbox', { name: 'Disease label' }),
+      within(dialog).getByRole('textbox', { name: 'Disease label' }),
     ).toBeInTheDocument();
     expect(
-      within(group).getByRole('combobox', { name: 'Inheritance pattern' }),
+      within(dialog).getByRole('combobox', { name: 'Inheritance pattern' }),
     ).toBeInTheDocument();
   });
 

@@ -94,11 +94,6 @@
     "es": "Escribe la pregunta que responderán los participantes y elige el atributo booleano que registra a quién nominan.",
     "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.writeTheQuestionParticipantsWillAnswer"
   },
-  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
-    "en": "Nomination details",
-    "es": "Detalles de la nominación",
-    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.nominationDetails"
-  },
   "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
     "en": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
     "es": "Asigna los atributos de vínculo utilizados para describir las relaciones familiares y seguir la herencia.",
@@ -288,11 +283,6 @@
     "en": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
     "es": "Define cómo aparece esta enfermedad, asígnala al atributo de estado afectado de la genealogía de origen y elige cómo se interpreta su herencia.",
     "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.defineHowThisDiseaseAppearsMap"
-  },
-  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
-    "en": "Disease details",
-    "es": "Detalles de la enfermedad",
-    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.diseaseDetails"
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "en": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
