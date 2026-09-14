@@ -42,6 +42,7 @@ import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
   describeImportFailure,
+  getImportFailureKind,
   TEMPLATE_OPEN_FAILURE_MESSAGE,
 } from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
@@ -264,7 +265,12 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          reportError(error);
+          // Only report what Architect cannot describe. A storage failure is
+          // reachable here and is a fact about the researcher's device, not a
+          // defect; sending it to exception tracking buries the ones that are.
+          if (getImportFailureKind(error) === null) {
+            reportError(error);
+          }
           // This branch is the template's own asset loading and the thunk's
           // rejection — never an archive — so the default talks about the
           // template. `describeImportFailure` still runs first because a

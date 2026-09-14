@@ -8,6 +8,7 @@ import type { Codebook, CurrentProtocol } from '@codaco/protocol-validation';
 import {
   CurrentProtocolSchema,
   extractProtocol,
+  missingAssetsError,
   hashProtocol,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -64,8 +65,20 @@ export class ProtocolFixture {
 
   async install(protocolPath: string): Promise<InstalledProtocol> {
     const fileBuffer = await fs.readFile(protocolPath);
-    const { protocol: protocolJson, assets: extractedAssets } =
-      await extractProtocol(fileBuffer);
+    const {
+      protocol: protocolJson,
+      assets: extractedAssets,
+      missingAssets,
+    } = await extractProtocol(fileBuffer);
+
+    // Extraction reports a manifest entry with no file rather than refusing,
+    // so an authoring tool can open the protocol and let the researcher supply
+    // it. A fixture has no such move: installing it would write asset URLs for
+    // files that do not exist, and every test that does not happen to touch
+    // that stimulus would pass against a runtime fixture that is not valid.
+    if (missingAssets.length > 0) {
+      throw missingAssetsError(missingAssets);
+    }
 
     const protocolId = uuid();
     const protocolAssetDir = path.join(this.assetDir, protocolId);

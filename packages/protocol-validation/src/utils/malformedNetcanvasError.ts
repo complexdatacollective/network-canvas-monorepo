@@ -12,6 +12,13 @@ export type MalformedNetcanvasReason =
   | 'missing-protocol'
   /** `protocol.json` is present but is not parseable JSON. */
   | 'unreadable-protocol-json'
+  /**
+   * An entry is listed in the archive but its compressed data will not
+   * inflate. Distinct from `unreadable-protocol-json`, which is about JSON the
+   * archive handed over intact; this one never got that far, and applies to
+   * any entry — `protocol.json` or a media file.
+   */
+  | 'unreadable-entry'
   /** The manifest names a media file the archive does not contain. */
   | 'missing-asset'
   /** A manifest entry is not a shape this version understands. */
