@@ -18,6 +18,15 @@ const INVERTED_BOUNDS =
   'The minimum and maximum rules for age leave no permitted answer. Adjust the bounds or the required-answer rule.';
 
 /**
+ * The same sentence as a pattern, for reading it off a control's own
+ * description: a rule row describes its number box with its hint and its
+ * error together, so the description holds this sentence among others.
+ */
+const invertedBounds = new RegExp(
+  INVERTED_BOUNDS.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`),
+);
+
+/**
  * The rules the codebook holds for the `age` attribute, as the protocol has
  * them right now.
  *
@@ -125,7 +134,13 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // map written at every keystroke would judge every intermediate. So the
   // blur is what puts 2 into the rule map for the pair to be judged.
   await maxValue.blur();
-  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
+  // On each of the two rows that make it, because either is a place to repair
+  // it — which is how Architect's rule list reports a contradiction
+  // (`Validations.tsx` runs the check for every row). Read off the controls'
+  // own descriptions rather than as free text, so a sentence about some other
+  // rule could not satisfy this.
+  await expect(minValue).toHaveAccessibleDescription(invertedBounds);
+  await expect(maxValue).toHaveAccessibleDescription(invertedBounds);
   // The pair being refused is what keeps it out of the codebook: the section
   // writes each answerable change as it is made and simply does not write one
   // the attribute cannot carry, so the refusal is the record staying as it was
@@ -138,7 +153,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // Correcting the value clears the complaint and lets the write through.
   await maxValue.fill('20');
   await maxValue.blur();
-  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeHidden();
+  await expect(rules.getByText(INVERTED_BOUNDS).first()).toBeHidden();
 
   await fieldDialog.getByRole('button', { name: 'Save', exact: true }).click();
   await fieldDialog.waitFor({ state: 'detached' });
@@ -189,20 +204,26 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   await maxValue.fill('50');
   await maxValue.blur();
 
-  // The section stays open with both entered values intact, and says why.
+  // The section stays open with both entered values intact, and says why — on
+  // each of the two rows that make the pair.
   await expect(rules).toBeVisible();
-  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
+  await expect(minValue).toHaveAccessibleDescription(invertedBounds);
+  await expect(maxValue).toHaveAccessibleDescription(invertedBounds);
   await expect(minValue).toHaveValue('100');
   await expect(maxValue).toHaveValue('50');
 
-  // The attribute itself is in the codebook: it was written when the field ROW
-  // was saved, and an attribute belongs to the codebook rather than to the
-  // stage that collects it. The refused rule map is not: neither bound reached
-  // it, which is exactly the failure #1383 was filed for — the editor closing,
-  // the save succeeding, and the offending rule gone without a word.
+  // What the codebook holds, rule by rule. The section commits each answerable
+  // change as the researcher makes it rather than at a submit, so the minimum
+  // landed as it was entered — and switching the maximum ON gave it the
+  // minimum's own value, which is a pair the attribute can carry. The 50 that
+  // contradicts it never reached the record: that is the failure #1383 was
+  // filed for said the other way round — not an editor that closed and a save
+  // that succeeded with the offending rule gone without a word, but a rule
+  // that never landed while the pair it would make is on screen saying why.
   const validation = ageValidation(await readProtocolJson(architectPage));
-  expect(validation?.minValue).toBeUndefined();
-  expect(validation?.maxValue).toBeUndefined();
+  expect(validation?.minValue).toBe(100);
+  expect(validation?.maxValue).not.toBe(50);
+  expect(validation?.maxValue).toBeGreaterThanOrEqual(100);
 });
 
 // Issue #1383. `Café` written with the precomposed U+00E9 and `Café` written
