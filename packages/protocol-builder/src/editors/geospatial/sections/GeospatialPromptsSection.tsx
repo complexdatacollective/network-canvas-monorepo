@@ -48,7 +48,7 @@ import {
 export default function GeospatialPromptsSection() {
   const intl = useAppIntl();
   const prompts = useStageValue(PROMPTS_FIELD);
-  const { committedFields, identity } = useStageEditorForm();
+  const { savedFields, identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
 
@@ -68,16 +68,16 @@ export default function GeospatialPromptsSection() {
   /**
    * The location attribute this row was SAVED with, where it had one.
    *
-   * Read from the stage the editor opened on rather than from the row the
-   * dialog opened on: the two differ once a prompt has been edited more than
-   * once before the stage is saved, and only the saved value keeps a conflict
-   * the protocol ALREADY carries saveable. A researcher cannot be asked to
-   * repair this stage by editing a form in a stage they may not be able to
-   * reach.
+   * Read from the stage as the protocol last STORED it rather than from the
+   * row the dialog opened on: the two differ once a prompt has been edited
+   * more than once before the stage is saved, and only the saved value keeps a
+   * conflict the protocol ALREADY carries saveable. A researcher cannot be
+   * asked to repair this stage by editing a form in a stage they may not be
+   * able to reach.
    */
   const savedVariableFor = useCallback(
     (rowId: unknown): string => {
-      const saved: unknown = committedFields[PROMPTS_FIELD];
+      const saved: unknown = savedFields[PROMPTS_FIELD];
       if (!Array.isArray(saved) || typeof rowId !== 'string') return '';
       const row = saved.find(
         (candidate) =>
@@ -87,7 +87,7 @@ export default function GeospatialPromptsSection() {
       );
       return promptVariableOf(row) ?? '';
     },
-    [committedFields],
+    [savedFields],
   );
 
   /**

@@ -2413,7 +2413,7 @@ describe('a pedigree whose node type changes', () => {
  *
  * Coming back to a fixed framing is the other half of the same decision, and
  * it is not a decision to stop using the words the stage already uses: the
- * committed terminology is put back, or the canonical one for a stage that was
+ * SAVED terminology is put back, or the canonical one for a stage that was
  * saved as a participant choice, so a round trip through the other branch
  * leaves a stage that still saves.
  */
@@ -2457,7 +2457,7 @@ describe('what a framing change costs', () => {
     });
   });
 
-  it('puts the committed terminology back when the researcher returns to a fixed framing', async () => {
+  it('puts the saved terminology back when the researcher returns to a fixed framing', async () => {
     const harness = renderStageEditor(openWithGenderedFraming());
     expect(await terminology()).toHaveValue('gendered');
 
@@ -2498,6 +2498,42 @@ describe('what a framing change costs', () => {
     expect((await savedStage(harness)).framing).toEqual({
       mode: 'fixed',
       value: 'gamete',
+    });
+  });
+
+  /**
+   * The terminology a round trip puts back is the LAST SAVED one, not the one
+   * the editor was opened with.
+   *
+   * A researcher who reads the default, sees the rest of the stage is right
+   * and saves has chosen it: the default became their value at that moment.
+   * So a stage opened on gamete, changed to gendered and saved reads gendered
+   * from then on, and a later trip through the participant branch and back
+   * says gendered — the words the stage actually uses. Restoring what the
+   * editor happened to open on would quietly rewrite a saved decision.
+   */
+  it('restores the terminology the researcher last saved, not the one the editor opened on', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        framing: { mode: 'fixed', value: 'gamete' },
+      }),
+      sections: pedigreeSections,
+    });
+    await harness.user.selectOptions(await terminology(), 'gendered');
+
+    // The save is what makes it theirs, and the in-memory host leaves the
+    // editor mounted — so what follows is one sitting, not a reopened stage.
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gendered',
+    });
+
+    await roundTripThroughParticipantChoice(harness);
+
+    expect(await terminology()).toHaveValue('gendered');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gendered',
     });
   });
 });

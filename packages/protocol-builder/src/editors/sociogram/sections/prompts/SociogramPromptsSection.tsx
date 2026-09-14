@@ -50,7 +50,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * validated/unvalidated writer conflict the protocol then refuses.
  */
 export default function SociogramPromptsSection() {
-  const { committedFields, identity } = useStageEditorForm();
+  const { savedFields, identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
 
@@ -79,6 +79,11 @@ export default function SociogramPromptsSection() {
    * asked to repair this stage by editing a form in another one they may not
    * be able to reach.
    *
+   * Read from the stage as the protocol last STORED it, not from the working
+   * document: a row committed structurally earlier in this same edit moves the
+   * working one, and a conflict the researcher introduced a moment ago would
+   * then exempt itself.
+   *
    * `allowHighlighting` is what makes the saved prompt a writer, and only a
    * saved writer's pick is a conflict this edit did not introduce. A prompt
    * that merely HIGHLIGHTS its nodes by the attribute reads it and writes
@@ -88,7 +93,7 @@ export default function SociogramPromptsSection() {
    */
   const savedMarkFor = useCallback(
     (rowId: unknown): string => {
-      const saved: unknown = committedFields.prompts;
+      const saved: unknown = savedFields.prompts;
       if (!Array.isArray(saved) || typeof rowId !== 'string') return '';
       const row = saved.find(
         (candidate) => isRecord(candidate) && candidate.id === rowId,
@@ -97,7 +102,7 @@ export default function SociogramPromptsSection() {
       if (asNestedBoolean(highlight, 'allowHighlighting') !== true) return '';
       return asNestedText(highlight, 'variable') ?? '';
     },
-    [committedFields],
+    [savedFields],
   );
 
   const beforeSave = useCallback(
