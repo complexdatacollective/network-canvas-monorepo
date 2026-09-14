@@ -202,3 +202,19 @@ Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
 Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose
 committed WebP files are generated locally for stage thumbnails and
 documentation. CI and Netlify consume those files without regenerating them.
+
+#### Video steps cannot run locally on arm64
+
+Playwright's arm64 Linux Chromium crashes (`SIGILL`, reported as
+`Target crashed`) as soon as a decoded video frame is presented — a visible
+`<video>`, or `drawImage` of one onto a canvas. Decode itself is fine, and
+Firefox and WebKit are unaffected. So on an Apple-silicon dev VM,
+`apps/architect`'s `00-sample-protocol.spec.ts` always stops at step 04, the
+first `.mov` upload, and its remaining steps report "did not run".
+
+This is an environment limitation, diagnosed and recorded in
+`dev-vm/README.md`'s troubleshooting list; it is not a product or test defect.
+CI runs on x86_64 and executes the whole spec, so that spec's video coverage is
+real but CI-only. Do not skip, weaken or re-point the spec to accommodate a
+local run, and do not spend time re-diagnosing it: record it as known and rely
+on CI for the verdict.
