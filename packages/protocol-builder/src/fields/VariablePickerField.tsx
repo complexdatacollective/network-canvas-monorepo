@@ -8,21 +8,16 @@ import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';
-import {
-  normalizeForComparison,
-  VariableNameSchema,
-} from '@codaco/shared-consts';
 
 import {
   createVariableRefused,
   useRenameCodebookVariable,
   useSubjectForVariable,
-  variableNameInvalid,
-  variableNameTaken,
 } from '../codebook/useCodebookVariableEdits.ts';
 import { useSubjectVariableNames } from '../sections/canvas/codebookChoices.ts';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
 import AttributePill from './AttributePill.tsx';
+import { variableNameRefusal } from './variableNameRules.ts';
 import VariableSpotlight, {
   type CreateRowOutcome,
 } from './VariableSpotlight.tsx';
@@ -317,45 +312,37 @@ function RenameableAttributePill({
    * rename the write then refuses.
    */
   const validateName = useCallback(
-    (next: string): string | undefined => {
-      const typed = normalizeForComparison(next);
-      // Self-excluded by NAME rather than by record id, which here is the same
-      // exclusion: `assertVariableNameAvailable` compares normalised names, so
-      // no two attributes of one type can share one and an attribute is the
-      // only holder of its own. It is what lets a researcher change the case
-      // or the Unicode form of a name without being told it is already taken.
-      if (normalizeForComparison(option.label) === typed) return undefined;
-      if (
-        namesInThisType.some((held) => normalizeForComparison(held) === typed)
-      ) {
-        return intl.formatMessage(variableNameTaken);
-      }
-      if (!VariableNameSchema.safeParse(next).success) {
-        return intl.formatMessage(variableNameInvalid);
-      }
-      return undefined;
-    },
+    (next: string): string | undefined =>
+      variableNameRefusal(next, {
+        intl,
+        namesInUse: namesInThisType,
+        // Self-excluded by NAME rather than by record id, which here is the
+        // same exclusion: `assertVariableNameAvailable` compares normalised
+        // names, so no two attributes of one type can share one and an
+        // attribute is the only holder of its own. It is what lets a
+        // researcher change the case or the Unicode form of a name without
+        // being told it is already taken.
+        excluding: option.label,
+      }),
     [intl, namesInThisType, option.label],
   );
 
   /**
-   * Renames the attribute, and hands back whatever the codebook would not do.
+   * Asks the codebook for the rename, and answers the editor with whether it
+   * was taken.
    *
-   * Nothing is awaited by the editor: it closes as the write goes out, because
-   * a rename is one word and holding a zoomed overlay over the form until a
-   * round trip answers would stop the researcher reading the very thing they
-   * renamed it for. A refusal then has the pill's old name standing beside it,
-   * which is the codebook's answer.
+   * A refusal leaves the editor open on what the researcher typed — the thing
+   * there is to change — and is also said beside the field, where it is read
+   * once the editor has gone and where its register can be the one the refusal
+   * deserves: a colleague holding the codebook section is not a mistake.
    */
   const handleRename = useCallback(
-    (name: string) => {
+    async (name: string): Promise<boolean> => {
       onRefusal(undefined);
-      void (async () => {
-        const outcome = await renameVariable(option.value, name);
-        if (outcome.status === 'refused') {
-          onRefusal({ message: outcome.message, held: outcome.held });
-        }
-      })();
+      const outcome = await renameVariable(option.value, name);
+      if (outcome.status !== 'refused') return true;
+      onRefusal({ message: outcome.message, held: outcome.held });
+      return false;
     },
     [onRefusal, option.value, renameVariable],
   );

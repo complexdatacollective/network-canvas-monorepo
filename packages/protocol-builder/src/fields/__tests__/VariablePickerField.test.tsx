@@ -33,6 +33,7 @@ import {
   attributeField,
   chooseAttribute,
   clearAttributeSearch,
+  closeAttributePicker,
   openAttributePicker,
   searchAttributes,
 } from '../../testing/attributePicker.ts';
@@ -1561,5 +1562,323 @@ describe('the picker’s blur boundary', () => {
     expect(
       screen.queryByText('Choose what this attribute is set to.'),
     ).toBeNull();
+  });
+});
+
+/**
+ * Renaming the attribute a picker holds, wired to this package's own writes.
+ *
+ * `AttributePill.test.tsx` owns the interaction; what this owns is the
+ * connection: WHICH pill is editable, which rule judges the typed name, where
+ * the write lands, and what a refusal reads like.
+ */
+describe('renaming the attribute a picker holds', () => {
+  const PERSON_OPTIONS = [
+    { value: 'name', label: 'name', type: 'text' as VariableType },
+    { value: 'age', label: 'age', type: 'number' as VariableType },
+  ];
+
+  const HoldingPicker = ({
+    readOnly = false,
+    options = PERSON_OPTIONS,
+    initialValue = 'name',
+  }: Readonly<{
+    readOnly?: boolean;
+    options?: readonly {
+      value: string;
+      label: string;
+      type?: VariableType;
+      usable?: boolean;
+      unusableWords?: Readonly<{ optionLabel: string; note: string }>;
+    }[];
+    initialValue?: string;
+  }>) => (
+    <Section title="What this question records">
+      <Field<typeof VariablePickerField>
+        name="nodeConfig.egoVariable"
+        component={VariablePickerField}
+        label={DIRECT_PICKER}
+        readOnly={readOnly}
+        options={options}
+        initialValue={initialValue}
+      />
+    </Section>
+  );
+
+  const openTheEditor = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    attributeName = 'name',
+  ) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: `Edit attribute name: ${attributeName}`,
+      }),
+    );
+    return await screen.findByRole('textbox', { name: 'Attribute name' });
+  };
+
+  const typeName = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    box: HTMLElement,
+    name: string,
+  ) => {
+    await harness.user.clear(box);
+    await harness.user.type(box, name);
+  };
+
+  it('writes the new name to the codebook, and nothing else', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+    const stage = sectionId({ kind: 'stage', stageId: 'name-generator-1' });
+    const before = harness.host.store.read(stage);
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'full_name');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save Changes' }),
+    );
+
+    await waitFor(() =>
+      expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+        expect.objectContaining({ name: 'full_name', type: 'text' }),
+      ),
+    );
+    // Nothing about the stage: every reference to an attribute is by record
+    // key, so a rename moves nothing else in the protocol.
+    expect(harness.host.store.read(stage)).toEqual(before);
+  });
+
+  /**
+   * The record key is what settles which codebook section the write goes to,
+   * and the participant's own attributes are the section a subject passed down
+   * from a node stage would have got wrong.
+   */
+  it('writes a participant attribute to the participant’s own section', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: (
+        <HoldingPicker
+          options={[{ value: 'ego_name', label: 'ego_name', type: 'text' }]}
+          initialValue="ego_name"
+        />
+      ),
+    });
+
+    const box = await openTheEditor(harness, 'ego_name');
+    await typeName(harness, box, 'participant_name');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save Changes' }),
+    );
+
+    await waitFor(() =>
+      expect(harness.hostCodebook().ego?.variables?.ego_name).toEqual(
+        expect.objectContaining({ name: 'participant_name' }),
+      ),
+    );
+  });
+
+  /**
+   * The name rule the write judges by, asked before the round trip: compared
+   * case-folded and canonicalised, so `AGE` is the name `age` — and the
+   * attribute's own name is not one of the names standing in its way.
+   */
+  it('refuses a name the type already holds, however it is spelled', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'AGE');
+
+    expect(
+      await screen.findByText('this type already has an attribute called that'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+
+    // And its own name back again is no refusal, only no change.
+    await typeName(harness, box, 'NAME');
+    await waitFor(() =>
+      expect(
+        screen.queryByText('this type already has an attribute called that'),
+      ).toBeNull(),
+    );
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
+  });
+
+  /**
+   * Every name the TYPE holds, not just the ones this picker was given to
+   * offer: a name is taken by an attribute of a kind this control cannot use
+   * just as firmly as by one it can.
+   */
+  it('refuses a name held by an attribute the picker never offered', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker options={[PERSON_OPTIONS[0]!]} />,
+    });
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'contactFreq');
+
+    expect(
+      await screen.findByText('this type already has an attribute called that'),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses a name the export formats cannot carry', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'full name');
+
+    expect(
+      await screen.findByText(
+        'only letters, numbers and the symbols ._-: can be used in a name',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+  });
+
+  it('offers no rename at all while the field is read-only', async () => {
+    renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker readOnly />,
+    });
+
+    await screen.findByText('name');
+    expect(
+      screen.queryByRole('button', { name: 'Edit attribute name: name' }),
+    ).toBeNull();
+  });
+
+  /**
+   * A section somebody else is holding is not the researcher's mistake, so the
+   * refusal is a notice beside the field rather than an error on the name —
+   * and the pill goes on showing the name the codebook still holds.
+   */
+  it('says who is holding the codebook, and keeps the old name', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Priya Raman',
+        },
+      ],
+      sections: <HoldingPicker />,
+    });
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'full_name');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save Changes' }),
+    );
+
+    const heldNotice = await screen.findByText(
+      'Priya Raman is currently editing a section needed for this change.',
+    );
+    expect(heldNotice.closest('[role="status"]')).not.toBeNull();
+    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+      expect.objectContaining({ name: 'name' }),
+    );
+    // And the researcher is still looking at what they typed, which is the
+    // thing there is to change.
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'full_name',
+    );
+  });
+
+  /**
+   * Architect made exactly ONE pill a control: the attribute a picker is
+   * holding, where the field may write. Everything else that draws a pill —
+   * every row of the window's list, the fallback for a reference the codebook
+   * has lost, the fallback for one this caller has ruled out — is a statement.
+   *
+   * Counted rather than spot-checked, because the failure this guards is a
+   * pill somewhere else quietly becoming a button: the count is what would
+   * move, whichever mount it was.
+   */
+  it('makes the held pill the only rename control on the screen', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+    // Waited for rather than read straight away: the stage opens disabled
+    // until the host answers the acquire, and a disabled field offers no
+    // rename — so a count taken before that is a count of nothing.
+    await screen.findByRole('button', { name: 'Edit attribute name: name' });
+    const field = attributeField(DIRECT_PICKER);
+
+    const renameControls = () =>
+      screen.queryAllByRole('button', {
+        name: /^Edit attribute name: /,
+      });
+
+    expect(renameControls()).toHaveLength(1);
+    expect(field.contains(renameControls()[0] ?? null)).toBe(true);
+
+    // The window's rows draw the same pill for every attribute of the type,
+    // and not one of them offers a rename. The rows are counted first, so a
+    // query that had stopped reaching inside the window could not pass this
+    // by finding nothing.
+    const dialog = await openAttributePicker(harness.user, field);
+    expect(
+      within(dialog).queryAllByRole('option').length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      within(dialog).queryAllByRole('button', {
+        name: /^Edit attribute name: /,
+      }),
+    ).toHaveLength(0);
+
+    await closeAttributePicker(harness.user);
+    await waitFor(() => expect(renameControls()).toHaveLength(1));
+  });
+
+  it('leaves a reference the codebook has lost a statement', async () => {
+    renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker options={[]} initialValue="a_deleted_one" />,
+    });
+
+    await screen.findByText(
+      'a_deleted_one — this attribute is not available here',
+    );
+    expect(
+      screen.queryAllByRole('button', { name: /^Edit attribute name: / }),
+    ).toHaveLength(0);
+  });
+
+  it('leaves an attribute this caller has ruled out a statement', async () => {
+    renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <HoldingPicker
+          options={[
+            {
+              value: 'layout',
+              label: 'layout',
+              type: 'layout',
+              usable: false,
+              unusableWords: {
+                optionLabel: 'layout — records a position, not an answer',
+                note: 'This attribute records where somebody was placed on a screen. Choose another one.',
+              },
+            },
+          ]}
+          initialValue="layout"
+        />
+      ),
+    });
+
+    await screen.findByText('layout — records a position, not an answer');
+    expect(
+      screen.queryAllByRole('button', { name: /^Edit attribute name: / }),
+    ).toHaveLength(0);
   });
 });

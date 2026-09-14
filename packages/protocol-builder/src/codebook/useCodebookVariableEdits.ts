@@ -169,21 +169,6 @@ const messages = defineMessages({
 export const createVariableRefused = messages.refusedUnchanged;
 
 /**
- * The package's two sentences for a name the codebook will not take: another
- * attribute of the type already goes by it, or it holds characters the export
- * formats cannot carry.
- *
- * Exported because the rules are asked TWICE about one name — once by the
- * control while the researcher types, so a refusal does not cost a round trip,
- * and once by the write, which is what actually refuses — and a researcher
- * told one thing as they type and another when they save would read the second
- * as a different problem. The charset sentence is Architect's own words for it,
- * verbatim.
- */
-export const variableNameTaken = messages.nameTaken;
-export const variableNameInvalid = messages.nameInvalid;
-
-/**
  * As much of the refused draft as reading its refusal needs: which kind of
  * answer it was to hold, and which control it was to be collected with.
  */
