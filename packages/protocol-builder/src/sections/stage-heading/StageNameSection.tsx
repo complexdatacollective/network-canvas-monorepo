@@ -142,14 +142,23 @@ export default function StageNameSection({
       // Stated as a floor under the name rather than as "wherever the column
       // reaches its 896px cap", which would read better and is what this said
       // while the gutters were inside the cap. With them outside it that rule
-      // means 944px of container, and the hosts cannot reach it monotonically:
-      // Architect's stage-editor route hands the editor the whole width while
-      // its section list is stacked and only 904px once the list takes its own
-      // 16rem column, so a heading split at the cap would arrive just under
-      // 1008px of window and then stack again above it. Architect's own
-      // heading drew 544px beside the picture because nothing sat beside its
-      // column; a host that draws a list gives the editor less, and this is
-      // the width below which the rail is not worth its room.
+      // means 944px of container.
+      //
+      // Neither number crosses once as the WINDOW grows, because the container
+      // does not: Architect's stage-editor route hands the editor the whole
+      // width while its section list is stacked, and window − 296px (its 16rem
+      // list, `gap-10` and the gutter the editor column gives back), capped at
+      // 904px by the route's `max-w-6xl`, once the list takes its own column.
+      // Measured in Chromium on this branch, this heading is therefore
+      // two-column from about 900px of window, back in ONE column from 1008px
+      // where the list arrives, and two-column again from about 1192px, where
+      // window − 296 reaches the 56rem asked for. A split at the 944px cap
+      // would keep the first band and lose the last one for good, since 904
+      // never reaches 944 — worse, but the same shape. So the threshold is
+      // written as what it can honestly promise: Architect's own heading drew
+      // 544px beside the picture because nothing sat beside its column; a host
+      // that draws a list gives the editor less, and this is the width below
+      // which the rail is not worth its room.
       className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[56rem]:grid @min-[56rem]:grid-cols-[20rem_auto] @min-[56rem]:gap-8 @min-[56rem]:pt-10"
     >
       <div className="flex items-center justify-center">

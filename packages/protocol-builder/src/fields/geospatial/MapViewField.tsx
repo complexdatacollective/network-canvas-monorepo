@@ -25,12 +25,16 @@ export type MapViewFieldProps = CreateFormFieldProps<
      * alone, so the zoom is read and written through the stage form.
      */
     zoomFieldName: string;
-    /** The stored key the map is drawn with. Never the key itself. */
+    /**
+     * The manifest id of the stored key the map is drawn with. The preview
+     * reads that key's own value back through `inspect` and builds the map
+     * with it, as Architect did and as the interview runtime does.
+     */
     tokenAssetId?: string;
     /**
      * The basemap the stage is configured to show. Passed through to the
-     * preview so the view is framed on what the participant will see rather
-     * than on whatever style the host credentialled for the key.
+     * preview so the map is built on it from the first frame, and the view is
+     * framed on what the participant will actually see.
      */
     style?: string;
   }
