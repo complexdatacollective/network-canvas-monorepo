@@ -63,14 +63,10 @@ export async function runEncryptionCommand(
   const afterId = parseLegacyOperatorCursor(values['after-id'] ?? null);
   if (
     (
-      await checkSchema(
-        admission.schemaPool ?? maintenancePool,
-        {
-          allowedLogins: admission.allowedLogins,
-          administrativeLogins: admission.administrativeLogins,
-        },
-        operation === 'verify' ? { allowClosedEnrolledLogins: true } : {},
-      )
+      await checkSchema(admission.schemaPool ?? maintenancePool, {
+        allowedLogins: admission.allowedLogins,
+        administrativeLogins: admission.administrativeLogins,
+      })
     ).kind !== 'current'
   )
     throw new Error('Encryption maintenance requires the current schema.');
