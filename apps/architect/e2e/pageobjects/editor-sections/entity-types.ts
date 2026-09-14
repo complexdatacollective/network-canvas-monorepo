@@ -136,9 +136,13 @@ export async function mapNodeShapeToAttribute(
     .getByRole('option', { name: options.attribute, exact: true })
     .click();
   for (const { value, shape } of options.shapes) {
+    // A radio group of node swatches, as Architect had it — not a select. The
+    // group is named for the answer it maps; each swatch is named for the
+    // shape it offers.
     await dialog
-      .getByRole('combobox', { name: `Shape for ${value}`, exact: true })
-      .selectOption({ label: shape });
+      .getByRole('radiogroup', { name: `Shape for ${value}`, exact: true })
+      .getByRole('radio', { name: `Select shape ${shape}`, exact: true })
+      .click();
   }
   await dialog.getByRole('button', { name: 'Save entity' }).click();
   await dialog.waitFor({ state: 'detached' });
