@@ -162,26 +162,30 @@ describe('an editor opened in a dialog', () => {
     await expectHeadingOrder(3);
   });
 
-  it('puts an entity editor under the dialog title and its alerts under itself', async () => {
+  /**
+   * The entity editor writes no heading of its own: the dialog's title already
+   * names it, so its four topic sections — Architect's — start one below that
+   * title, and the alert it raises is their peer rather than their child.
+   */
+  it('puts the entity editor’s sections and alert under the dialog title', async () => {
     const user = userEvent.setup();
 
     render(
-      <Dialog open title="Create node type" closeDialog={() => undefined}>
-        <CodebookEntityEditor
-          mode="create"
-          sessionKey="open-1"
-          subject={SUBJECT}
-          initialDraft={{
-            name: 'Person',
-            color: 'node-color-seq-1',
-            icon: 'add-a-person',
-            shape: { default: 'circle' },
-          }}
-          existingEntityNames={[]}
-          onSubmit={REFUSED}
-          onApplied={() => undefined}
-        />
-      </Dialog>,
+      <CodebookEntityEditor
+        mode="create"
+        sessionKey="open-1"
+        dialog={{ title: 'Create node type' }}
+        subject={SUBJECT}
+        initialDraft={{
+          name: 'Person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+        }}
+        existingEntityNames={[]}
+        onSubmit={REFUSED}
+        onApplied={() => undefined}
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
@@ -189,10 +193,13 @@ describe('an editor opened in a dialog', () => {
 
     expect(headingLadder()).toEqual([
       'h2: Create node type',
-      'h3: Create node type',
-      'h4: Could not save this entity',
+      'h3: Could not save this entity',
+      'h3: Type identity',
+      'h3: Type color',
+      'h3: Node appearance',
+      'h3: Interface icon',
     ]);
-    await expectHeadingOrder(3);
+    await expectHeadingOrder(6);
   });
 
   it('puts a validation editor under the dialog title and its alerts under itself', async () => {

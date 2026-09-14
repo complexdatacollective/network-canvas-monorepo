@@ -1,0 +1,37 @@
+{
+  "protocolBuilder.codebookEntity.appearanceSectionDescription": {
+    "en": "Choose a default shape and optionally map shapes from an attribute.",
+    "es": "Elige una forma predeterminada y, si lo deseas, asigna formas a partir de un atributo.",
+    "from": "74a07e626 architect.typeEditor.typeEditor.chooseADefaultShapeAndOptionally"
+  },
+  "protocolBuilder.codebookEntity.appearanceSectionTitle": {
+    "en": "Node appearance",
+    "es": "Apariencia de los nodos",
+    "from": "74a07e626 architect.typeEditor.typeEditor.nodeAppearance"
+  },
+  "protocolBuilder.codebookEntity.colorSectionTitle": {
+    "en": "Type color",
+    "es": "Color del tipo",
+    "from": "74a07e626 architect.typeEditor.typeEditor.typeColor"
+  },
+  "protocolBuilder.codebookEntity.iconLabel": {
+    "en": "Icon",
+    "es": "Icono",
+    "from": "74a07e626 architect.typeEditor.typeEditor.icon"
+  },
+  "protocolBuilder.codebookEntity.iconSectionTitle": {
+    "en": "Interface icon",
+    "es": "Icono de la interfaz",
+    "from": "74a07e626 architect.typeEditor.typeEditor.interfaceIcon"
+  },
+  "protocolBuilder.codebookEntity.identitySectionDescription": {
+    "en": "Name this type for the codebook and exported data.",
+    "es": "Asigna un nombre a este tipo para el libro de códigos y los datos exportados.",
+    "from": "74a07e626 architect.typeEditor.typeEditor.nameThisTypeForTheCodebook"
+  },
+  "protocolBuilder.codebookEntity.identitySectionTitle": {
+    "en": "Type identity",
+    "es": "Identidad del tipo",
+    "from": "74a07e626 architect.typeEditor.typeEditor.typeIdentity"
+  }
+}

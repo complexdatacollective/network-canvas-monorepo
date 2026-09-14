@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
@@ -82,6 +88,103 @@ describe('CodebookEntityEditor', () => {
     if (form === null) throw new Error('expected entity editor form');
     fireEvent.submit(form);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The dialog's title already names the editor, so the editor writes no
+   * heading of its own: Architect's `TypeEditor` had four topic sections and
+   * no restatement of the title above them.
+   */
+  it('names its groups after Architect’s topics and restates no dialog title', () => {
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="topics"
+        dialog={{ title: 'Edit this node type' }}
+        subject={NODE_SUBJECT}
+        initialDraft={NODE_DOCUMENT}
+        authoritativeDocument={NODE_DOCUMENT}
+        existingEntityNames={[]}
+        onSubmit={async () => applied()}
+      />,
+    );
+
+    const dialog = within(screen.getByRole('dialog'));
+    expect(
+      dialog.getAllByRole('heading').map((heading) => heading.textContent),
+    ).toEqual([
+      'Edit this node type',
+      'Type identity',
+      'Type color',
+      'Node appearance',
+      'Interface icon',
+    ]);
+  });
+
+  /**
+   * Cancel and the save belong to the dialog's own footer, in that order: the
+   * footer is what pins the first of its children left, so a control rendered
+   * anywhere else reads as part of the form rather than as what commits it.
+   */
+  it('puts Cancel and the save in the dialog’s footer, cancel first', () => {
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="footer"
+        dialog={{ title: 'Edit this node type' }}
+        subject={NODE_SUBJECT}
+        initialDraft={NODE_DOCUMENT}
+        authoritativeDocument={NODE_DOCUMENT}
+        existingEntityNames={[]}
+        onCancel={() => undefined}
+        onSubmit={async () => applied()}
+      />,
+    );
+
+    const footer = screen.getByRole('dialog').querySelector('footer');
+    if (footer === null) throw new Error('expected a dialog footer');
+    expect(
+      within(footer)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Save entity']);
+  });
+
+  /**
+   * And it still commits from there. The save sits outside the `<form>`
+   * element once it is in the footer, so it names the form it submits; a
+   * control that lost that association would look right and do nothing.
+   */
+  it('saves from the footer control, which is outside the form element', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="footer-submits"
+        dialog={{ title: 'Edit this node type' }}
+        subject={NODE_SUBJECT}
+        initialDraft={NODE_DOCUMENT}
+        authoritativeDocument={NODE_DOCUMENT}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const dialog = within(screen.getByRole('dialog'));
+    const name = dialog.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Adult');
+
+    const save = dialog.getByRole('button', { name: 'Save entity' });
+    expect(save.closest('form')).toBeNull();
+    await user.click(save);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      name: 'Adult',
+    });
   });
 
   it('updates an existing node while preserving variables and unrendered properties', async () => {
@@ -211,7 +314,7 @@ describe('CodebookEntityEditor', () => {
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
-    const icon = screen.getByRole('textbox', { name: 'Interface icon' });
+    const icon = screen.getByRole('textbox', { name: 'Icon' });
     await user.clear(icon);
     await user.type(icon, 'not-a-rendered-icon');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
@@ -246,9 +349,7 @@ describe('CodebookEntityEditor', () => {
 
     expect(name).toHaveValue('Unsaved local name');
     expect(name).toBeDisabled();
-    expect(
-      screen.getByRole('textbox', { name: 'Interface icon' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Icon' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
     const form = container.querySelector('form');
     if (form === null) throw new Error('expected entity editor form');
@@ -433,7 +534,7 @@ describe('CodebookEntityEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Node type name' })).toHaveValue(
       'Place',
     );
-    expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Icon' })).toHaveValue(
       'add-a-place',
     );
   });

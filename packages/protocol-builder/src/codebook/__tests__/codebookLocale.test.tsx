@@ -257,7 +257,10 @@ describe('the codebook editors swept for English', () => {
     // Anchors: a sweep over an editor that failed to render passes vacuously,
     // so name one string per surface the sweep is supposed to be looking at.
     expect(
-      screen.getByRole('heading', { name: 'Crear tipo de nodo', level: 2 }),
+      screen.getByRole('heading', { name: 'Identidad del tipo' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Apariencia de los nodos' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
     expect(screen.getByRole('option', { name: 'Círculo' })).toBeInTheDocument();

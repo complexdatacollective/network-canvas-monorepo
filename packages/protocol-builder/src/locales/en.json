@@ -807,6 +807,14 @@
     "defaultMessage": "Add ego attributes",
     "description": "Button that adds the ego definition to a codebook that has none. The ego is the interview participant themselves."
   },
+  "protocolBuilder.codebookEntity.appearanceSectionDescription": {
+    "defaultMessage": "Choose a default shape and optionally map shapes from an attribute.",
+    "description": "Description of the appearance group of the node type editor, saying that the shape a node is drawn as can also follow one of its attributes."
+  },
+  "protocolBuilder.codebookEntity.appearanceSectionTitle": {
+    "defaultMessage": "Node appearance",
+    "description": "Heading of the group of the node type editor holding how a node of this type is drawn. A node is a member of the interview network."
+  },
   "protocolBuilder.codebookEntity.attributeListLabel": {
     "defaultMessage": "{name} attributes",
     "description": "Accessible name of the list of one entity’s attributes (its codebook variables). name is the researcher’s own name for the node or edge type, or the word for the ego."
@@ -839,6 +847,10 @@
     "defaultMessage": "Choose a color.",
     "description": "Refusal shown under the colour field of the entity editor when the researcher has chosen none."
   },
+  "protocolBuilder.codebookEntity.colorSectionTitle": {
+    "defaultMessage": "Type color",
+    "description": "Heading of the group of the entity editor holding the colour this type is drawn in."
+  },
   "protocolBuilder.codebookEntity.createAttribute": {
     "defaultMessage": "Create attribute",
     "description": "Visible label of the button that adds a new attribute (a codebook variable) to the entity this card is about."
@@ -859,10 +871,6 @@
     "defaultMessage": "Create node type",
     "description": "Button that adds a new node type to the codebook. A node is a member of the interview network."
   },
-  "protocolBuilder.codebookEntity.createTitle": {
-    "defaultMessage": "{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}",
-    "description": "Heading of the editor while a new codebook entity is being added. entity is node, edge or ego."
-  },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
     "description": "Heading over the codebook’s edge types. An edge is a relationship between two network members."
@@ -878,10 +886,6 @@
   "protocolBuilder.codebookEntity.editSubjectLabel": {
     "defaultMessage": "{entity, select, node {Edit Node type: {name}} edge {Edit Edge type: {name}} other {Edit Ego attributes}}",
     "description": "Accessible name of the button that opens one codebook card for editing. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card."
-  },
-  "protocolBuilder.codebookEntity.editTitle": {
-    "defaultMessage": "{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}",
-    "description": "Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego."
   },
   "protocolBuilder.codebookEntity.editType": {
     "defaultMessage": "Edit type",
@@ -904,16 +908,28 @@
     "description": "Guidance under the icon field. \"Lucide\" is an icon library and \"Network Canvas\" the product; both are names and stay as they are. An interface is one kind of interview step."
   },
   "protocolBuilder.codebookEntity.iconLabel": {
-    "defaultMessage": "Interface icon",
-    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step."
+    "defaultMessage": "Icon",
+    "description": "Label of the field naming the icon shown on the buttons an interview offers for creating this node type."
   },
   "protocolBuilder.codebookEntity.iconRequired": {
     "defaultMessage": "Enter an icon name.",
     "description": "Refusal shown under the icon field of the node type editor when the researcher has left it empty."
   },
+  "protocolBuilder.codebookEntity.iconSectionTitle": {
+    "defaultMessage": "Interface icon",
+    "description": "Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step."
+  },
   "protocolBuilder.codebookEntity.iconUnsupported": {
     "defaultMessage": "Choose an icon supported by Network Canvas.",
     "description": "Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. \"Network Canvas\" is the product name and stays as it is."
+  },
+  "protocolBuilder.codebookEntity.identitySectionDescription": {
+    "defaultMessage": "Name this type for the codebook and exported data.",
+    "description": "Description of the identity group of the entity editor. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+  },
+  "protocolBuilder.codebookEntity.identitySectionTitle": {
+    "defaultMessage": "Type identity",
+    "description": "Heading of the group of the entity editor holding the name this type is known by."
   },
   "protocolBuilder.codebookEntity.issuesListLabel": {
     "defaultMessage": "Codebook issues",

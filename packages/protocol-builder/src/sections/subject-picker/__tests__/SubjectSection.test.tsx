@@ -351,9 +351,7 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
       shape,
     );
-    expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
-      icon,
-    );
+    expect(screen.getByRole('textbox', { name: 'Icon' })).toHaveValue(icon);
   });
 
   it('puts the new type in the codebook and selects it here', async () => {

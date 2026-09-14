@@ -1,9 +1,10 @@
 import {
-  createElement,
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -16,6 +17,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
+import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ColorPickerField, {
   type ColorSwatchOption,
@@ -24,12 +26,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import {
-  EnclosingHeadingLevel,
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Section from '@codaco/fresco-ui/Section';
 import {
   EdgeColorSequence,
   NodeColorSequence,
@@ -187,9 +184,9 @@ const messages = defineMessages({
   },
   iconLabel: {
     id: 'protocolBuilder.codebookEntity.iconLabel',
-    defaultMessage: 'Interface icon',
+    defaultMessage: 'Icon',
     description:
-      'Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step.',
+      'Label of the field naming the icon shown on the buttons an interview offers for creating this node type.',
   },
   iconHint: {
     id: 'protocolBuilder.codebookEntity.iconHint',
@@ -198,19 +195,42 @@ const messages = defineMessages({
     description:
       'Guidance under the icon field. "Lucide" is an icon library and "Network Canvas" the product; both are names and stay as they are. An interface is one kind of interview step.',
   },
-  createTitle: {
-    id: 'protocolBuilder.codebookEntity.createTitle',
-    defaultMessage:
-      '{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}',
+  identitySectionTitle: {
+    id: 'protocolBuilder.codebookEntity.identitySectionTitle',
+    defaultMessage: 'Type identity',
     description:
-      'Heading of the editor while a new codebook entity is being added. entity is node, edge or ego.',
+      'Heading of the group of the entity editor holding the name this type is known by.',
   },
-  editTitle: {
-    id: 'protocolBuilder.codebookEntity.editTitle',
-    defaultMessage:
-      '{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}',
+  identitySectionDescription: {
+    id: 'protocolBuilder.codebookEntity.identitySectionDescription',
+    defaultMessage: 'Name this type for the codebook and exported data.',
     description:
-      'Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego.',
+      'Description of the identity group of the entity editor. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+  },
+  colorSectionTitle: {
+    id: 'protocolBuilder.codebookEntity.colorSectionTitle',
+    defaultMessage: 'Type color',
+    description:
+      'Heading of the group of the entity editor holding the colour this type is drawn in.',
+  },
+  appearanceSectionTitle: {
+    id: 'protocolBuilder.codebookEntity.appearanceSectionTitle',
+    defaultMessage: 'Node appearance',
+    description:
+      'Heading of the group of the node type editor holding how a node of this type is drawn. A node is a member of the interview network.',
+  },
+  appearanceSectionDescription: {
+    id: 'protocolBuilder.codebookEntity.appearanceSectionDescription',
+    defaultMessage:
+      'Choose a default shape and optionally map shapes from an attribute.',
+    description:
+      'Description of the appearance group of the node type editor, saying that the shape a node is drawn as can also follow one of its attributes.',
+  },
+  iconSectionTitle: {
+    id: 'protocolBuilder.codebookEntity.iconSectionTitle',
+    defaultMessage: 'Interface icon',
+    description:
+      'Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step.',
   },
   failureTitle: {
     id: 'protocolBuilder.codebookEntity.failureTitle',
@@ -396,88 +416,126 @@ export function CodebookEntityFields({
       : colorOptions(EDGE_COLOR_OPTIONS, currentColor, intl);
 
   return (
-    <div>
-      <UnconnectedField
-        name="name"
-        label={intl.formatMessage(messages.nameLabel, {
-          entity: subject.entity,
-        })}
-        hint={intl.formatMessage(messages.nameHint, {
-          entity: subject.entity,
-        })}
-        component={InputField}
-        value={stringValue(draft.name)}
-        onChange={(value) =>
-          onChange(replaceDraftProperty(draft, 'name', value ?? ''))
-        }
-        required
-        disabled={disabled}
-        errors={errors.name === undefined ? undefined : [errors.name]}
-        showErrors
-      />
+    <>
+      <Section
+        title={intl.formatMessage(messages.identitySectionTitle)}
+        description={intl.formatMessage(messages.identitySectionDescription)}
+      >
+        <UnconnectedField
+          name="name"
+          label={intl.formatMessage(messages.nameLabel, {
+            entity: subject.entity,
+          })}
+          hint={intl.formatMessage(messages.nameHint, {
+            entity: subject.entity,
+          })}
+          component={InputField}
+          value={stringValue(draft.name)}
+          onChange={(value) =>
+            onChange(replaceDraftProperty(draft, 'name', value ?? ''))
+          }
+          required
+          disabled={disabled}
+          errors={errors.name === undefined ? undefined : [errors.name]}
+          showErrors
+        />
+      </Section>
 
-      <UnconnectedField
-        name="color"
-        label={intl.formatMessage(messages.colorLabel)}
-        hint={intl.formatMessage(messages.colorHint, {
-          entity: subject.entity,
-        })}
-        component={ColorPickerField}
-        value={currentColor}
-        onChange={(value) =>
-          onChange(replaceDraftProperty(draft, 'color', value))
-        }
-        options={colors}
-        required
-        disabled={disabled}
-        errors={errors.color === undefined ? undefined : [errors.color]}
-        showErrors
-      />
+      <Section title={intl.formatMessage(messages.colorSectionTitle)}>
+        <UnconnectedField
+          name="color"
+          label={intl.formatMessage(messages.colorLabel)}
+          hint={intl.formatMessage(messages.colorHint, {
+            entity: subject.entity,
+          })}
+          component={ColorPickerField}
+          value={currentColor}
+          onChange={(value) =>
+            onChange(replaceDraftProperty(draft, 'color', value))
+          }
+          options={colors}
+          required
+          disabled={disabled}
+          errors={errors.color === undefined ? undefined : [errors.color]}
+          showErrors
+        />
+      </Section>
 
       {subject.entity === 'node' && (
         <>
-          <UnconnectedField
-            name="shape"
-            label={intl.formatMessage(messages.shapeLabel)}
-            hint={intl.formatMessage(messages.shapeHint)}
-            component={NativeSelect}
-            value={
-              isRecord(draft.shape) ? stringValue(draft.shape.default) : ''
-            }
-            onChange={(value) =>
-              onChange(replaceDefaultShape(draft, String(value)))
-            }
-            options={shapeOptions(intl)}
-            placeholder={intl.formatMessage(messages.shapePlaceholder)}
-            required
-            disabled={disabled}
-            errors={errors.shape === undefined ? undefined : [errors.shape]}
-            showErrors
-          />
+          <Section
+            title={intl.formatMessage(messages.appearanceSectionTitle)}
+            description={intl.formatMessage(
+              messages.appearanceSectionDescription,
+            )}
+          >
+            <UnconnectedField
+              name="shape"
+              label={intl.formatMessage(messages.shapeLabel)}
+              hint={intl.formatMessage(messages.shapeHint)}
+              component={NativeSelect}
+              value={
+                isRecord(draft.shape) ? stringValue(draft.shape.default) : ''
+              }
+              onChange={(value) =>
+                onChange(replaceDefaultShape(draft, String(value)))
+              }
+              options={shapeOptions(intl)}
+              placeholder={intl.formatMessage(messages.shapePlaceholder)}
+              required
+              disabled={disabled}
+              errors={errors.shape === undefined ? undefined : [errors.shape]}
+              showErrors
+            />
+          </Section>
 
-          <UnconnectedField
-            name="icon"
-            label={intl.formatMessage(messages.iconLabel)}
-            hint={intl.formatMessage(messages.iconHint)}
-            component={InputField}
-            value={stringValue(draft.icon)}
-            onChange={(value) =>
-              onChange(replaceDraftProperty(draft, 'icon', value ?? ''))
-            }
-            required
-            disabled={disabled}
-            errors={errors.icon === undefined ? undefined : [errors.icon]}
-            showErrors
-          />
+          <Section title={intl.formatMessage(messages.iconSectionTitle)}>
+            <UnconnectedField
+              name="icon"
+              label={intl.formatMessage(messages.iconLabel)}
+              hint={intl.formatMessage(messages.iconHint)}
+              component={InputField}
+              value={stringValue(draft.icon)}
+              onChange={(value) =>
+                onChange(replaceDraftProperty(draft, 'icon', value ?? ''))
+              }
+              required
+              disabled={disabled}
+              errors={errors.icon === undefined ? undefined : [errors.icon]}
+              showErrors
+            />
+          </Section>
         </>
       )}
-    </div>
+    </>
   );
 }
+
+/**
+ * The chrome of the dialog this editor is opened in, for a host that opens it
+ * in one.
+ *
+ * Given, the editor renders the dialog itself and puts its Cancel and its save
+ * in the dialog's own `footer`, where every other dialog in the package keeps
+ * them — Architect's `EntityTypeDialog` did the same, through `DialogForm`.
+ * That is only possible from here: the footer pins the first of its children
+ * left, so the two controls have to BE the footer's children rather than
+ * arrive inside something the host wrapped around them.
+ *
+ * Absent, the editor renders bare and keeps its controls beneath the fields,
+ * which is what a page host mounting it in a column of its own wants.
+ */
+export type CodebookEntityEditorDialogProps = Readonly<{
+  /** The dialog's own heading; also the label of the trigger that opened it. */
+  title: string;
+  /** Where focus returns when the dialog closes — see `Dialog.finalFocus`. */
+  finalFocus?: DialogProps['finalFocus'];
+}>;
 
 type CommonEditorProps = Readonly<{
   /** Must change on every open, even when the same entity is reopened. */
   sessionKey: string;
+  dialog?: CodebookEntityEditorDialogProps;
   subject: CodebookSubject;
   initialDraft: CodebookEntityDraft;
   /** Names of the other entities that this draft must not collide with. */
@@ -514,6 +572,7 @@ export type CodebookEntityEditorProps = CommonEditorProps &
  */
 export default function CodebookEntityEditor({
   sessionKey,
+  dialog,
   subject,
   initialDraft,
   existingEntityNames,
@@ -523,6 +582,9 @@ export default function CodebookEntityEditor({
   ...modeProps
 }: CodebookEntityEditorProps) {
   const intl = useAppIntl();
+  // The save lives in the dialog's footer, outside the `<form>` element, so it
+  // names the form it submits rather than being inside it.
+  const formDomId = useId();
   const [openKey, setOpenKey] = useState(sessionKey);
   const [draft, setDraft] = useState<CodebookEntityDraft>(initialDraft);
   const [errors, setErrors] = useState<EntityFieldErrors>({});
@@ -614,97 +676,114 @@ export default function CodebookEntityEditor({
 
   const interactionDisabled = readOnly || busy;
   const canSubmit = modeProps.mode === 'create' || subject.entity !== 'ego';
-  // Every host opens this editor inside a dialog, whose own title is the
-  // heading above it — so writing an `h2` here put the editor's title beside
-  // the dialog's rather than under it, and the alerts below counted from the
-  // dialog too and landed beside this title in turn. Read instead of written
-  // out, so the same editor is also correct on a page of its own, where an
-  // `h2` is what it has always been.
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const headingTag =
-    enclosingHeadingLevel === null
-      ? 'h2'
-      : headingTagBelow(enclosingHeadingLevel);
+
+  // The editor writes no heading of its own: it is opened under a title that
+  // already names it — the dialog's, or the page host's — and a second one
+  // saying the same thing is the restatement Architect's `TypeEditor` never
+  // had. Its sections and its alert count from that title instead.
+  const body = (
+    <>
+      {failure !== undefined && (
+        <Alert
+          ref={failureRef}
+          // A section somebody else is holding is not a fault: the change
+          // is fine and lands once they are finished, so it is said in
+          // the register of a notice rather than of an error.
+          variant={failure.held ? 'warning' : 'destructive'}
+          appearance="soft"
+          density="compact"
+          tabIndex={-1}
+          className="mb-6"
+        >
+          <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
+          <AlertDescription>
+            {/* Decoded here, not where it was raised: a refusal stands
+                until the next save, so it follows a change of language
+                while it waits. One already written for a researcher is
+                not ours to decode and passes through. */}
+            {formatMessageError(failure.message, intl) ?? failure.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <CodebookEntityFields
+        subject={subject}
+        draft={draft}
+        onChange={setDraft}
+        errors={errors}
+        disabled={interactionDisabled}
+      />
+    </>
+  );
+
+  const actions = (
+    <>
+      {onCancel !== undefined && (
+        <Button
+          type="button"
+          color="default"
+          onClick={onCancel}
+          disabled={busy}
+        >
+          {intl.formatMessage(commonMessages.cancel)}
+        </Button>
+      )}
+      {canSubmit && (
+        <Button
+          type="submit"
+          form={formDomId}
+          color="primary"
+          disabled={interactionDisabled || !dirty}
+        >
+          {intl.formatMessage(
+            busy ? codebookEditingMessages.saving : messages.submit,
+          )}
+        </Button>
+      )}
+    </>
+  );
+
+  const form = (tail?: ReactNode) => (
+    <form
+      id={formDomId}
+      onSubmit={(event) => void handleSubmit(event)}
+      noValidate
+    >
+      {body}
+      {tail}
+    </form>
+  );
+
+  if (dialog !== undefined) {
+    return (
+      <Dialog
+        open
+        title={dialog.title}
+        size="readable"
+        // A save in flight refuses every way out, because the dialog is about
+        // to show what became of it. Escape, a press outside and the close
+        // button all arrive at `closeDialog`, so refusing there covers all
+        // three — and `dismissible` takes the close button away rather than
+        // leaving a control on screen that does nothing.
+        dismissible={!busy}
+        closeDialog={() => {
+          if (!busy) onCancel?.();
+        }}
+        {...(dialog.finalFocus === undefined
+          ? {}
+          : { finalFocus: dialog.finalFocus })}
+        footer={actions}
+      >
+        {form()}
+      </Dialog>
+    );
+  }
 
   return (
     <Surface spacing="md" shadow="md" noContainer>
-      <form onSubmit={(event) => void handleSubmit(event)} noValidate>
-        <div className="flex flex-col gap-6">
-          <Heading
-            level="h2"
-            margin="none"
-            // The element only — `level` still carries the type treatment.
-            {...(headingTag === 'h2'
-              ? {}
-              : { render: createElement(headingTag) })}
-          >
-            {intl.formatMessage(
-              modeProps.mode === 'create'
-                ? messages.createTitle
-                : messages.editTitle,
-              { entity: subject.entity },
-            )}
-          </Heading>
-
-          <EnclosingHeadingLevel level={headingTag}>
-            {failure !== undefined && (
-              <Alert
-                ref={failureRef}
-                // A section somebody else is holding is not a fault: the change
-                // is fine and lands once they are finished, so it is said in
-                // the register of a notice rather than of an error.
-                variant={failure.held ? 'warning' : 'destructive'}
-                appearance="soft"
-                density="compact"
-                tabIndex={-1}
-              >
-                <AlertTitle>
-                  {intl.formatMessage(messages.failureTitle)}
-                </AlertTitle>
-                <AlertDescription>
-                  {/* Decoded here, not where it was raised: a refusal stands
-                      until the next save, so it follows a change of language
-                      while it waits. One already written for a researcher is
-                      not ours to decode and passes through. */}
-                  {formatMessageError(failure.message, intl) ?? failure.message}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <CodebookEntityFields
-              subject={subject}
-              draft={draft}
-              onChange={setDraft}
-              errors={errors}
-              disabled={interactionDisabled}
-            />
-
-            <div className="flex flex-wrap justify-end gap-3">
-              {onCancel !== undefined && (
-                <Button
-                  type="button"
-                  color="default"
-                  onClick={onCancel}
-                  disabled={busy}
-                >
-                  {intl.formatMessage(commonMessages.cancel)}
-                </Button>
-              )}
-              {canSubmit && (
-                <Button
-                  type="submit"
-                  color="primary"
-                  disabled={interactionDisabled || !dirty}
-                >
-                  {intl.formatMessage(
-                    busy ? codebookEditingMessages.saving : messages.submit,
-                  )}
-                </Button>
-              )}
-            </div>
-          </EnclosingHeadingLevel>
-        </div>
-      </form>
+      {form(
+        <div className="mt-6 flex flex-wrap justify-end gap-3">{actions}</div>,
+      )}
     </Surface>
   );
 }

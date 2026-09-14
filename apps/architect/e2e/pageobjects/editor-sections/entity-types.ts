@@ -10,7 +10,8 @@ import { expect, type Page } from '@playwright/test';
 //
 // "Create a new {node|edge} type" opens the package's `CodebookEntityEditor`,
 // whose name field is labelled "{Node|Edge} type name", whose icon is a text
-// field named "Interface icon", and whose submit reads "Save entity".
+// field named "Icon" inside its "Interface icon" group, and whose submit
+// reads "Save entity" from the dialog's footer.
 async function selectOrCreateEntityType(
   page: Page,
   entityType: 'node' | 'edge',
@@ -56,9 +57,7 @@ async function selectOrCreateEntityType(
   if (opts.icon) {
     // The icon is named rather than picked from a gallery: the editor takes
     // the icon's own name and refuses one no interface can draw.
-    await dialog
-      .getByRole('textbox', { name: 'Interface icon' })
-      .fill(opts.icon);
+    await dialog.getByRole('textbox', { name: 'Icon' }).fill(opts.icon);
   }
   await dialog.getByRole('button', { name: 'Save entity' }).click();
   // Answered BEFORE the dialog is waited out: a type created here is chosen

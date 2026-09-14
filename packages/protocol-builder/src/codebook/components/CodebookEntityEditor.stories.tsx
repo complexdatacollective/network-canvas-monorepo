@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, screen, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -77,5 +77,58 @@ export const ExistingNode: Story = {
 
     // The two are told apart by colour, which is the whole convention.
     await expect(cancel.background).not.toBe(submit.background);
+  },
+};
+
+/**
+ * The surface a researcher actually meets: the editor inside the dialog its
+ * trigger opened, with Architect's four topic sections and no heading
+ * restating the title above them, and with the two controls that commit it in
+ * the dialog's own footer.
+ */
+export const InADialog: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-person-dialog-1"
+      dialog={{ title: 'Edit this node type' }}
+      subject={{ entity: 'node', type: 'person' }}
+      initialDraft={PERSON}
+      authoritativeDocument={PERSON}
+      existingEntityNames={['Place']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = await screen.findByRole('dialog');
+
+    await expect(
+      within(dialog)
+        .getAllByRole('heading')
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      'Edit this node type',
+      'Type identity',
+      'Type color',
+      'Node appearance',
+      'Interface icon',
+    ]);
+
+    // The dialog's own footer, which is what pins Cancel to the left of the
+    // row: a control rendered anywhere else in here is part of the form.
+    const footer = dialog.querySelector('footer');
+    if (footer === null) throw new Error('expected a dialog footer');
+    await expect(
+      within(footer)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Save entity']);
   },
 };
