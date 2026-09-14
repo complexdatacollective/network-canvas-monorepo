@@ -146,6 +146,12 @@ export function useCreateVariableEditor({
    */
   const [submitting, setSubmitting] = useState(false);
   /**
+   * Where the editor paints its own actions: the dialog's fixed footer. Held
+   * in state rather than a ref because the editor renders INTO it, and a ref
+   * set during the dialog's render does not re-render the editor beside it.
+   */
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
+  /**
    * Whether the open editor may be written, readable when an ANSWER lands
    * rather than as it stood when the request left.
    *
@@ -307,6 +313,9 @@ export function useCreateVariableEditor({
         size="readable"
         dismissible={!submitting}
         closeDialog={requestClose}
+        // The editor paints Cancel and its own submit in here, so the dialog's
+        // actions are where every other dialog keeps them.
+        footer={<div ref={setFooterSlot} className="contents" />}
       >
         <VariableEditor
           mode="create"
@@ -325,6 +334,9 @@ export function useCreateVariableEditor({
           allowedVariableTypes={variableTypes}
           lockedOptions={lockedOptions ?? null}
           protocolContext={protocolContext}
+          chrome="dialog"
+          footerSlot={footerSlot}
+          onCancel={requestClose}
           onSubmitDocument={submitEdit(session.subject, session.variableId)}
           onComplete={(variableId) => {
             // Bound only while the slot still names attributes of the type the

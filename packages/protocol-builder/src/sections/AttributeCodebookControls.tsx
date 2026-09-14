@@ -406,6 +406,14 @@ export default function AttributeCodebookControls({
     const dialog = node?.closest<HTMLElement>('[role="dialog"]') ?? null;
     if (dialog !== null) rowDialog.current = dialog;
   };
+  /**
+   * Where a nested editor paints its own actions: the dialog's fixed footer.
+   *
+   * The element is held in state rather than a ref because the editor renders
+   * INTO it, and a ref set during the dialog's own render does not re-render
+   * the editor beside it.
+   */
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
   const createTrigger = useRef<HTMLButtonElement>(null);
   const definesTrigger = useRef<HTMLButtonElement>(null);
 
@@ -889,6 +897,9 @@ export default function AttributeCodebookControls({
             size="readable"
             dismissible={!submitting}
             closeDialog={requestClose}
+            // The editor paints Cancel and its own submit in here, so the
+            // dialog's actions are where every other dialog keeps them.
+            footer={<div ref={setFooterSlot} className="contents" />}
             // The picker outright, rather than the trigger-if-it-is-still-there
             // rule the other two use. Creating the attribute is what takes this
             // row out of inventing one, so the button that opened this editor is
@@ -934,7 +945,9 @@ export default function AttributeCodebookControls({
               // name.
               allowedVariableTypes={[inventedType]}
               readOnly={editorReadOnly}
-              title={editorTitle}
+              chrome="dialog"
+              footerSlot={footerSlot}
+              onCancel={requestClose}
               onSubmitDocument={submitEdit(
                 openEditor.subject,
                 openEditor.variableId,
@@ -978,6 +991,7 @@ export default function AttributeCodebookControls({
           size="readable"
           dismissible={!submitting}
           closeDialog={requestClose}
+          footer={<div ref={setFooterSlot} className="contents" />}
           finalFocus={() => focusAfterEditor(definesTrigger.current)}
         >
           {/* Said here rather than left to the editor, and only on THIS
@@ -1030,7 +1044,9 @@ export default function AttributeCodebookControls({
               isCollectableType(pickedType) ? [pickedType] : undefined
             }
             readOnly={editorReadOnly}
-            title={editorTitle}
+            chrome="dialog"
+            footerSlot={footerSlot}
+            onCancel={requestClose}
             onSubmitDocument={submitEdit(
               openEditor.subject,
               openEditor.variableId,

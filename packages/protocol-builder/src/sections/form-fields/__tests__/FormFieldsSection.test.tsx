@@ -1925,6 +1925,82 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * the attribute in the codebook, and coming back.
    */
   /**
+   * A dialog says what it is once.
+   *
+   * The attribute editor used to be handed the words on the button that opened
+   * it and print them again as its own heading, so "Set what this field
+   * accepts" was the dialog's title and the first line of its body — Josh's
+   * D2. The dialog's title is the one that stays: it is more specific than
+   * anything the editor could write about itself.
+   */
+  it('says what the attribute editor is for once, in the dialog’s title', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await openParametersEditor(harness, dialog);
+
+    const editor = within(
+      screen.getByRole('dialog', { name: 'Set what this field accepts' }),
+    );
+    expect(
+      editor.getAllByRole('heading', { name: 'Set what this field accepts' }),
+    ).toHaveLength(1);
+    // And no heading of the editor's own under it, saying the same thing in
+    // the package's own default words.
+    expect(
+      editor.queryByRole('heading', { name: 'Save attribute' }),
+    ).toBeNull();
+    expect(
+      editor.queryByRole('heading', { name: 'Edit attribute' }),
+    ).toBeNull();
+  });
+
+  /**
+   * And its actions are in the dialog's own footer, Cancel first.
+   *
+   * Every other dialog in the package keeps them there
+   * (`fresco-ui/dialogs/Dialog.tsx`'s footer convention, which `DialogForm`
+   * follows); this one had a submit inside the scrolling body and no Cancel at
+   * all, so the only way out was the close button in the corner.
+   */
+  it('puts the attribute editor’s actions in the dialog footer, cancel first', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await openParametersEditor(harness, dialog);
+
+    const editor = screen.getByRole('dialog', {
+      name: 'Set what this field accepts',
+    });
+    const footer = editor.querySelector('footer');
+    expect(footer).not.toBeNull();
+    expect(
+      within(footer!)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Save attribute']);
+
+    // Cancel closes the editor and leaves the row behind it standing.
+    await harness.user.click(
+      within(footer!).getByRole('button', { name: 'Cancel' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Set what this field accepts' }),
+      ).toBeNull(),
+    );
+    expect(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+    ).toBeVisible();
+  });
+
+  /**
    * The sections of this dialog, and which of them each control belongs to.
    *
    * Architect's own order (`sections/Form/FieldFields.tsx`): the attribute the
@@ -1957,8 +2033,11 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(
       dialog
         .getAllByRole('region')
-        .map((region) => within(region).getAllByRole('heading')[0]?.textContent)
-        .filter((heading) => heading !== undefined),
+        .map(
+          (region: HTMLElement) =>
+            within(region).getAllByRole('heading')[0]?.textContent,
+        )
+        .filter((heading: string | null | undefined) => heading !== undefined),
     ).toEqual([
       'Attribute selection',
       'Field configuration',

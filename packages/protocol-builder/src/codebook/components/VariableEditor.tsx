@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import {
   createMessageError,
   defineMessages,
@@ -321,6 +323,29 @@ type VariableEditorCommonProps = Readonly<{
   lockedOptions?: readonly VariableOption[] | null;
   readOnly?: boolean;
   title?: string;
+  /**
+   * Where this editor is mounted, which decides the chrome around it.
+   *
+   * `page` writes its own heading and puts its submit at the end of its own
+   * form, which is what a host that gives it a whole screen needs. `dialog`
+   * writes no heading — the dialog's title is already above it, and a second
+   * one saying the same thing is what Josh's D2 is about — and hands its
+   * actions to {@link footerSlot} so they sit in the dialog's fixed footer
+   * with a Cancel beside them, as every other dialog in the package does.
+   */
+  chrome?: 'page' | 'dialog';
+  /**
+   * Where a dialog host wants this editor's actions rendered.
+   *
+   * A slot rather than a rendered footer the host assembles, because what the
+   * buttons say and whether they may be pressed is this editor's own state: a
+   * save in flight, a draft that changes nothing, an attribute the codebook no
+   * longer holds. A host that reassembled them would be keeping a copy of all
+   * three.
+   */
+  footerSlot?: HTMLElement | null;
+  /** What Cancel does, for a dialog host. */
+  onCancel?: () => void;
 }>;
 
 export type VariableEditorProps =
@@ -373,6 +398,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     allowedVariableTypes,
     lockedOptions = null,
     readOnly = false,
+    chrome = 'page',
+    footerSlot = null,
+    onCancel,
   } = props;
   const intl = useAppIntl();
   const title =
@@ -466,6 +494,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       replaceProperties,
     );
   const statusId = useId();
+  // Named so a submit painted in the dialog's footer still submits this form:
+  // a portal keeps the React tree, and the browser's own submit follows the
+  // DOM, where the button is a sibling of the dialog rather than a descendant
+  // of the form.
+  const formId = `${statusId}-form`;
   // The editor writes a title of its own, so it owns a rung of the outline and
   // has to say which one. Opened from a dialog it is the dialog's title that
   // is above it; opened as a page of its own there is nothing above it, and
@@ -716,29 +749,70 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const refusalIsANotice =
     contradictions.length === 0 && failure?.held === true;
 
+  const inDialog = chrome === 'dialog';
+  // What the actions read, and whether they may be pressed. Assembled here
+  // whichever chrome renders them: it is this editor's own state, and a host
+  // that rebuilt the buttons would be keeping a second copy of it.
+  const actions = (
+    <>
+      {inDialog && onCancel !== undefined && (
+        <Button
+          type="button"
+          color="default"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          {intl.formatMessage(commonMessages.cancel)}
+        </Button>
+      )}
+      <Button
+        type="submit"
+        form={formId}
+        color="primary"
+        disabled={interactionDisabled || unchangedUpdate}
+        aria-busy={busy}
+      >
+        {intl.formatMessage(
+          props.mode === 'create' ? messages.createSubmit : messages.saveSubmit,
+        )}
+      </Button>
+    </>
+  );
+
   return (
     <Surface
-      as="section"
+      // Inside a dialog there is no region to name and no heading to name it
+      // with: the dialog's own title is above this, and `DialogContent` has
+      // already opened a heading level for what follows.
+      {...(inDialog ? {} : { as: 'section' as const })}
       noContainer
       spacing="md"
-      shadow="sm"
+      shadow={inDialog ? 'none' : 'sm'}
       className="w-full overflow-visible!"
-      aria-labelledby={`${statusId}-title`}
+      {...(inDialog ? {} : { 'aria-labelledby': `${statusId}-title` })}
     >
-      <Heading
-        id={`${statusId}-title`}
-        level="h3"
-        margin="none"
-        // The element only — `level` still carries the type treatment.
-        {...(headingTag === 'h3' ? {} : { render: createElement(headingTag) })}
-      >
-        {title}
-      </Heading>
-      <Paragraph emphasis="muted" className="mt-2">
-        {intl.formatMessage(messages.description)}
-      </Paragraph>
+      {!inDialog && (
+        <>
+          <Heading
+            id={`${statusId}-title`}
+            level="h3"
+            margin="none"
+            // The element only — `level` still carries the type treatment.
+            {...(headingTag === 'h3'
+              ? {}
+              : { render: createElement(headingTag) })}
+          >
+            {title}
+          </Heading>
+          <Paragraph emphasis="muted" className="mt-2">
+            {intl.formatMessage(messages.description)}
+          </Paragraph>
+        </>
+      )}
 
-      <EnclosingHeadingLevel level={headingTag}>
+      <EnclosingHeadingLevel
+        level={inDialog ? (enclosingHeadingLevel ?? 'h2') : headingTag}
+      >
         {refusals.length > 0 && (
           <Alert
             ref={failureRef}
@@ -772,7 +846,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </p>
         )}
 
-        <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
+        <form
+          id={formId}
+          className="mt-8"
+          onSubmit={(event) => void handleSubmit(event)}
+        >
           <UnconnectedField
             name="variable-name"
             label={intl.formatMessage(messages.nameLabel)}
@@ -1027,20 +1105,18 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             </fieldset>
           )}
 
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              color="primary"
-              disabled={interactionDisabled || unchangedUpdate}
-              aria-busy={busy}
-            >
-              {intl.formatMessage(
-                props.mode === 'create'
-                  ? messages.createSubmit
-                  : messages.saveSubmit,
-              )}
-            </Button>
-          </div>
+          {/* In the dialog's fixed footer, Cancel first, which is the
+              convention every other dialog in the package follows
+              (`fresco-ui/dialogs/Dialog.tsx`). Portalled rather than handed up
+              as a render prop, so what the buttons say and whether they may be
+              pressed stays this editor's own state; the submit names the form
+              it submits, because the browser follows the DOM rather than the
+              React tree. */}
+          {inDialog ? (
+            footerSlot !== null && createPortal(actions, footerSlot)
+          ) : (
+            <div className="flex justify-end">{actions}</div>
+          )}
         </form>
       </EnclosingHeadingLevel>
     </Surface>

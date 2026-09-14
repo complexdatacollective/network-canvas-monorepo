@@ -2,7 +2,7 @@ import { composeStories } from '@storybook/react-vite';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -116,37 +116,66 @@ async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
   ).toBeGreaterThanOrEqual(judgedAtLeast);
 }
 
+/**
+ * A dialog that lends its footer to the editor inside it, as the package's own
+ * hosts do: the editor's actions are its own state, so it paints them into a
+ * slot rather than handing them up.
+ */
+function DialogWithAFooterSlot({
+  title,
+  children,
+}: Readonly<{
+  title: string;
+  children: (footerSlot: HTMLElement | null) => ReactNode;
+}>) {
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
+  return (
+    <Dialog
+      open
+      title={title}
+      closeDialog={() => undefined}
+      footer={<div ref={setFooterSlot} className="contents" />}
+    >
+      {children(footerSlot)}
+    </Dialog>
+  );
+}
+
 describe('an editor opened in a dialog', () => {
   /**
-   * The dialog's title is the heading above the editor's own, and the editor's
-   * own is the heading above every alert it raises. Read from the enclosing
-   * statement rather than written out, because a hand-written level is only
-   * ever right in one of the places a reusable editor is opened: an `h3` here
-   * was a peer of the alerts below it, and an `h2` in the two editors beside
-   * it was a peer of the dialog's own title.
+   * Inside a dialog the variable editor writes NO heading of its own: the
+   * dialog's title already says what the surface is, and a second heading
+   * repeating it is Josh's D2. So the alerts it raises count from the dialog's
+   * title, read from the enclosing statement rather than written out — a
+   * hand-written level is only ever right in one of the places a reusable
+   * editor is opened.
    */
-  it('puts a variable editor under the dialog title and its alerts under itself', async () => {
+  it('puts a variable editor’s alerts under the dialog title', async () => {
     const user = userEvent.setup();
 
     render(
-      <Dialog open title="Create attribute" closeDialog={() => undefined}>
-        <VariableEditor
-          openId="open-1"
-          mode="create"
-          subject={SUBJECT}
-          authoritativeDocument={personDocument()}
-          variableId="new-variable"
-          initialDraft={{
-            name: 'choice',
-            type: 'categorical',
-            options: [{ label: 'Yes', value: 'yes' }],
-          }}
-          protocolContext={EMPTY_CONTEXT}
-          title="Define allowed values"
-          onSubmitDocument={REFUSED}
-          onComplete={() => undefined}
-        />
-      </Dialog>,
+      <DialogWithAFooterSlot title="Create attribute">
+        {(footerSlot) => (
+          <VariableEditor
+            openId="open-1"
+            mode="create"
+            subject={SUBJECT}
+            authoritativeDocument={personDocument()}
+            variableId="new-variable"
+            initialDraft={{
+              name: 'choice',
+              type: 'categorical',
+              options: [{ label: 'Yes', value: 'yes' }],
+            }}
+            protocolContext={EMPTY_CONTEXT}
+            chrome="dialog"
+            footerSlot={footerSlot}
+            onCancel={() => undefined}
+            onSubmitDocument={REFUSED}
+            onComplete={() => undefined}
+          />
+        )}
+      </DialogWithAFooterSlot>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
@@ -154,10 +183,45 @@ describe('an editor opened in a dialog', () => {
 
     expect(headingLadder()).toEqual([
       'h2: Create attribute',
+      'h3: Attribute not saved',
+    ]);
+    await expectHeadingOrder(2);
+  });
+
+  /**
+   * And the page host keeps its own: mounted on a screen of its own there is
+   * nothing above it to name the surface, so the editor's heading is what does
+   * — and its alerts count from that.
+   */
+  it('keeps a page-hosted variable editor’s own heading', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <VariableEditor
+        openId="open-1"
+        mode="create"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument()}
+        variableId="new-variable"
+        initialDraft={{
+          name: 'choice',
+          type: 'categorical',
+          options: [{ label: 'Yes', value: 'yes' }],
+        }}
+        protocolContext={EMPTY_CONTEXT}
+        title="Define allowed values"
+        onSubmitDocument={REFUSED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+    await screen.findByRole('alert');
+
+    expect(headingLadder()).toEqual([
       'h3: Define allowed values',
       'h4: Attribute not saved',
     ]);
-    await expectHeadingOrder(3);
   });
 
   it('puts an entity editor under the dialog title and its alerts under itself', async () => {
