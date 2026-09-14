@@ -1901,7 +1901,7 @@
   },
   "protocolBuilder.geospatial.previewLoading": {
     "defaultMessage": "Loading the map.",
-    "description": "Announced to screen readers only, while the host is asked for a map that can be drawn for the stored API key. Never shown on screen."
+    "description": "Announced to screen readers only, while the host is asked for the API key the map is drawn with. Never shown on screen."
   },
   "protocolBuilder.geospatial.previewMapLabel": {
     "defaultMessage": "Interactive map",
@@ -1915,9 +1915,9 @@
     "defaultMessage": "Try loading the map again",
     "description": "Button that asks the host again for a map it could not serve. Whole rather than a generic \"Try again\", because a screen reader announces a button by its name alone."
   },
-  "protocolBuilder.geospatial.previewUnavailable": {
-    "defaultMessage": "This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.",
-    "description": "Shown in the starting-view dialog when the host refuses to resolve a map for the stored key. Says why — the key is write-only to this editor — and what to do instead, which is the pair of coordinate boxes in the section behind the dialog."
+  "protocolBuilder.geospatial.previewUnreadableKey": {
+    "defaultMessage": "The map could not be drawn because the chosen API key could not be read. Choose a different key, or type the coordinates instead.",
+    "description": "Shown in the starting-view dialog when the stage names an API key the protocol holds no value for, so there is nothing to draw a map with. Says what to do instead, which is choosing another key or using the pair of coordinate boxes in the section behind the dialog."
   },
   "protocolBuilder.geospatial.promptPreviewEmpty": {
     "defaultMessage": "This prompt has no question yet.",
@@ -4658,10 +4658,6 @@
   "protocolBuilder.resourceSecret.valueRequired": {
     "defaultMessage": "Enter the value of the key.",
     "description": "Field error shown when a researcher submits an API key without pasting the key itself."
-  },
-  "protocolBuilder.resourceSecret.vaultHint": {
-    "defaultMessage": "Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.",
-    "description": "Hint under the API key input for a host that keeps the key itself rather than writing it into the protocol file."
   },
   "protocolBuilder.resourceSecret.waitingForNames": {
     "defaultMessage": "Waiting for the keys this protocol already has, so this one can be checked against them.",

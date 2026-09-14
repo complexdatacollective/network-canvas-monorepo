@@ -217,11 +217,7 @@ export function createArchitectRouter(
       const planned =
         promotion === undefined
           ? undefined
-          : resources.planPromotion(
-              promotion.editId,
-              promotion.resourceIds,
-              promotion.secretHandles,
-            );
+          : resources.planPromotion(promotion.editId, promotion.resourceIds);
       if (planned?.status === 'failed') {
         throw errors.PROMOTION_FAILED({
           data: { sectionId: input.sectionId, failure: planned.failure },
@@ -312,11 +308,7 @@ export function createArchitectRouter(
       const planned =
         promotion === undefined
           ? undefined
-          : resources.planPromotion(
-              promotion.editId,
-              promotion.resourceIds,
-              promotion.secretHandles,
-            );
+          : resources.planPromotion(promotion.editId, promotion.resourceIds);
       if (planned?.status === 'failed') {
         throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
       }

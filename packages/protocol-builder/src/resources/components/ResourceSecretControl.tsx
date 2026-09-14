@@ -5,7 +5,6 @@ import {
   createMessageError,
   defineMessages,
   formatMessageError,
-  type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
@@ -14,12 +13,11 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
-import { useResourceClient, useSecretStorage } from '../client.tsx';
+import { useResourceClient } from '../client.tsx';
 import {
   resourceOk,
   type ResourceDescriptor,
   type ResourceResult,
-  type ResourceSecretStorage,
   type StageSecretRequest,
 } from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
@@ -77,13 +75,6 @@ const messages = defineMessages({
     description:
       'Hint under the API key input for a host that writes the key into the protocol file itself. The researcher is deciding whether to put a credential into a file they will share, so the consequence is stated plainly.',
   },
-  vaultHint: {
-    id: 'protocolBuilder.resourceSecret.vaultHint',
-    defaultMessage:
-      'Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.',
-    description:
-      'Hint under the API key input for a host that keeps the key itself rather than writing it into the protocol file.',
-  },
   retry: {
     id: 'protocolBuilder.resourceSecret.retry',
     defaultMessage: 'Try adding the key again',
@@ -104,34 +95,8 @@ const messages = defineMessages({
   },
 });
 
-/**
- * What the researcher is told about the key before they paste it, chosen by
- * what the host does with it when the stage is saved.
- *
- * Where the key ends up is the whole of what makes this decision consequential
- * — a key written into the protocol file leaves with every copy of that file,
- * and the researcher is the only person who can decide whether that is
- * acceptable for the key in their hand. Saying nothing leaves them deciding
- * without the fact; saying it unconditionally would be telling a host that
- * keeps the value itself that it does not. So the host says which it is and
- * each answer is written out whole, ready to translate as the statement it is
- * rather than as a warning glued onto a hint.
- *
- * The host states it in its answer to `list`, so until a list has come back
- * there is no answer to give — and a hint is left off the input entirely
- * rather than guessed at. Everything else about the key is said either way.
- */
-const KEY_HINT: Readonly<Record<ResourceSecretStorage, MessageDescriptor>> = {
-  plaintext: messages.plaintextHint,
-  vault: messages.vaultHint,
-};
-
 export type ResourceSecretControlProps = Readonly<{
-  /**
-   * The key that was added, as the field will refer to it. Only the
-   * descriptor: the handle promotion needs is the edit's, captured where the
-   * secret was staged, and no surface here has any use for it.
-   */
+  /** The key that was added, as the field will refer to it. */
   onStaged: (descriptor: ResourceDescriptor) => void;
   /**
    * Reports whether this control is holding work a dismissal would lose.
@@ -205,7 +170,6 @@ export default function ResourceSecretControl({
   disabled = false,
 }: ResourceSecretControlProps) {
   const resources = useResourceClient();
-  const secretStorage = useSecretStorage();
   const intl = useAppIntl();
   const { busy, clear, failure, retry, run } = useResourceAttempt();
   const [name, setName] = useState('');
@@ -428,9 +392,7 @@ export default function ResourceSecretControl({
       <UnconnectedField
         name="staged-secret-value"
         label={intl.formatMessage(messages.valueLabel)}
-        {...(secretStorage === undefined
-          ? {}
-          : { hint: intl.formatMessage(KEY_HINT[secretStorage]) })}
+        hint={intl.formatMessage(messages.plaintextHint)}
         component={InputField}
         type="password"
         autoComplete="off"

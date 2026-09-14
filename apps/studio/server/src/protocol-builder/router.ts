@@ -42,7 +42,6 @@ import {
   committedDescriptors,
   committedInspection,
   committedPreview,
-  SECRET_STORAGE,
   StagedResourceRegistry,
 } from './resources.ts';
 import {
@@ -404,11 +403,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const planned =
           promotion === undefined || store === undefined
             ? undefined
-            : await store.plan(
-                deps.assetStore,
-                promotion.resourceIds,
-                promotion.secretHandles,
-              );
+            : await store.plan(deps.assetStore, promotion.resourceIds);
         if (planned?.status === 'failed') {
           throw errors.PROMOTION_FAILED({
             data: { sectionId: input.sectionId, failure: planned.failure },
@@ -498,11 +493,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const planned =
           promotion === undefined || store === undefined
             ? undefined
-            : await store.plan(
-                deps.assetStore,
-                promotion.resourceIds,
-                promotion.secretHandles,
-              );
+            : await store.plan(deps.assetStore, promotion.resourceIds);
         if (planned?.status === 'failed') {
           throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
         }
@@ -653,7 +644,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           );
           return {
             status: 'ok' as const,
-            data: { secretStorage: SECRET_STORAGE, resources },
+            data: { resources },
           };
         },
       ),

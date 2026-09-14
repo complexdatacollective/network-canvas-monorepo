@@ -87,7 +87,6 @@ function keyRecorder() {
   const control = {
     refuseNextStage: false,
     refuseNextList: false,
-    secretStorage: undefined as 'plaintext' | 'vault' | undefined,
     heldList: undefined as Promise<void> | undefined,
   };
   const refusal = {
@@ -115,14 +114,7 @@ function keyRecorder() {
           control.refuseNextList = false;
           return refusal;
         }
-        const listed = await host.client.resources.list(input);
-        if (listed.status !== 'ok' || control.secretStorage === undefined) {
-          return listed;
-        }
-        return {
-          status: 'ok' as const,
-          data: { ...listed.data, secretStorage: control.secretStorage },
-        };
+        return host.client.resources.list(input);
       },
     });
 
@@ -514,31 +506,24 @@ describe('the secret resource picker', () => {
 /**
  * What the researcher is told about where the key ends up.
  *
- * The host states it in its answer to `list`, so the hint is read through the
- * browser that lists — which is also the only way a researcher ever reaches
- * this control.
+ * Every host writes a promoted key into the protocol's own asset manifest, so
+ * there is one thing to say and the field says it unconditionally.
  */
 describe('the warning beside the key input', () => {
-  async function openKeyForm(storage: 'plaintext' | 'vault' | undefined) {
+  /**
+   * Pasting a credential is a decision about who ends up holding it: the value
+   * goes into the file the researcher sends on, so it leaves with every copy
+   * of it. The field itself has to say so — a warning the researcher has to go
+   * and find is one they paste without.
+   */
+  it('warns that the key is readable by anyone with the protocol file', async () => {
     const user = userEvent.setup();
     const key = keyRecorder();
-    key.control.secretStorage = storage;
     renderKeyPicker(key);
     await user.click(
       await screen.findByRole('button', { name: 'Select an API key' }),
     );
-    return { user, input: await screen.findByLabelText('Key') };
-  }
-
-  /**
-   * Pasting a credential is a decision about who ends up holding it, and the
-   * host is the only thing that knows: the editor is handed an opaque handle
-   * and never learns what promotion does with the value. So the two answers
-   * are two different things to say, and the field itself has to say them —
-   * a warning the researcher has to go and find is one they paste without.
-   */
-  it('warns that a key it will write into the protocol is readable by anyone with the file', async () => {
-    const { input } = await openKeyForm('plaintext');
+    const input = await screen.findByLabelText('Key');
 
     // The description, not the text: a hint no assistive technology ties to
     // the input is one a researcher filling the field never hears.
@@ -546,40 +531,6 @@ describe('the warning beside the key input', () => {
       expect(input).toHaveAccessibleDescription(
         /saved inside your protocol as plain text, so anyone you give the protocol file to can read it/,
       ),
-    );
-  });
-
-  it('does not warn of plain text for a host that keeps the key itself', async () => {
-    const { input } = await openKeyForm('vault');
-
-    await waitFor(() =>
-      expect(input).toHaveAccessibleDescription(
-        /kept by the host rather than saved inside your protocol/,
-      ),
-    );
-    // Saying it anyway would be telling the researcher their key is going
-    // somewhere it is not, which is its own kind of wrong.
-    expect(input).not.toHaveAccessibleDescription(/plain text/);
-  });
-
-  it('says nothing about storage until the host has said where keys go', async () => {
-    const user = userEvent.setup();
-    const key = keyRecorder();
-    // The list never answers, so the host has never said. Guessing would be
-    // telling a researcher their credential is going somewhere it may not.
-    key.control.heldList = new Promise<void>(() => undefined);
-    renderKeyPicker(key);
-
-    await user.click(
-      await screen.findByRole('button', { name: 'Select an API key' }),
-    );
-    const input = await screen.findByLabelText('Key');
-
-    expect(input).not.toHaveAccessibleDescription(/plain text/);
-    expect(input).not.toHaveAccessibleDescription(/kept by the host/);
-    // Everything else the form says is still said.
-    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
-      /How this key is listed in your protocol/,
     );
   });
 });
@@ -615,8 +566,7 @@ describe('the control a key is typed into', () => {
     // assertion rather than a query that found nothing to look at.
     expect(inputValues()).toEqual(['', '']);
     expect(document.body.innerHTML).not.toContain(SECRET);
-    // Only the descriptor: the opaque handle promotion needs was captured by
-    // the edit where the secret was staged, and no surface here has it.
+    // Only the descriptor, which is what a stage field stores.
     expect(staged.mock.calls[0]?.[0]).toEqual({
       id: 'staged-resource-1',
       kind: 'apikey',

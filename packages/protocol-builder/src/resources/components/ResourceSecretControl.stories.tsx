@@ -7,7 +7,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../client.tsx';
-import type { ResourceSecretStorage } from '../types.ts';
 import ResourceSecretControl from './ResourceSecretControl.tsx';
 import { API_KEY_RESOURCE, createStoryHost } from './storyFixtures.ts';
 
@@ -15,8 +14,6 @@ import { API_KEY_RESOURCE, createStoryHost } from './storyFixtures.ts';
 const MAPBOX_KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzdG9yeWJvb2sifQ';
 
 type SecretControlHostProps = Readonly<{
-  /** What this host does with a key once the stage is saved. */
-  secretStorage: ResourceSecretStorage;
   /** Whether the host will take the next key it is offered. */
   hostAcceptsKeys?: boolean;
 }>;
@@ -24,21 +21,14 @@ type SecretControlHostProps = Readonly<{
 /**
  * A host holding the key control and reporting what it was handed.
  *
- * It reports the descriptor, which is all the control ever gives it: the value
- * goes to the host and the opaque handle promotion needs is the edit's,
- * captured where the secret was staged.
+ * It reports the descriptor, which is what a stage field stores: the value
+ * goes to the host, which writes it into the protocol's own asset manifest at
+ * promotion.
  */
-function SecretControlHost({
-  secretStorage,
-  hostAcceptsKeys = true,
-}: SecretControlHostProps) {
-  // The in-memory host's own promotion writes the value into the protocol's
-  // `apikey` asset, which IS the `plaintext` answer — so the vault story is a
-  // host that says of itself what a host with a secret store of its own would.
+function SecretControlHost({ hostAcceptsKeys = true }: SecretControlHostProps) {
   const [host] = useState(() =>
     createStoryHost({
       resources: [API_KEY_RESOURCE],
-      secretStorage,
       ...(hostAcceptsKeys
         ? {}
         : { refuses: { procedure: 'stage', forever: true } as const }),
@@ -72,11 +62,10 @@ const meta = {
     docs: {
       description: {
         component:
-          'Stages secret material — a map provider’s API key — without the editor ever holding on to it. The value exists in the control’s own state while it is being typed and nowhere else; staging hands it to the host and empties both inputs. Where a promoted key comes to rest is a fact about the host rather than about the editor, so the host says which it is and the control tells the researcher before they paste anything.',
+          'Stages a map provider’s API key. The value exists in the control’s own state while it is being typed and nowhere else on screen; staging hands it to the host and empties both inputs, and what the stage is left holding is the asset id. A promoted key is written into the protocol’s own asset manifest, so it travels with every copy of the protocol file — which the control says before the researcher pastes anything.',
       },
     },
   },
-  args: { secretStorage: 'plaintext' },
   tags: ['autodocs'],
 } satisfies Meta<typeof SecretControlHost>;
 
@@ -84,10 +73,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Architect’s answer: the key is written into the protocol’s own asset, so it
- * travels inside the protocol file and inside every export of it. The
- * researcher is told so before they paste it, because they are the only person
- * who can decide whether that is acceptable for the key in their hand.
+ * The key is written into the protocol’s own asset, so it travels inside the
+ * protocol file and inside every export of it. The researcher is told so
+ * before they paste it, because they are the only person who can decide
+ * whether that is acceptable for the key in their hand.
  */
 export const SavedInTheProtocol: Story = {
   play: async ({ canvasElement }) => {
@@ -99,25 +88,6 @@ export const SavedInTheProtocol: Story = {
     await expect(canvas.getByLabelText('Key')).toHaveAccessibleDescription(
       /saved inside your protocol as plain text, so anyone you give the protocol file to can read it/,
     );
-  },
-};
-
-/**
- * The answer a host with a secret store of its own gives. Saying "plain text"
- * here would be telling the researcher their key is going somewhere it is not,
- * which is its own kind of wrong.
- */
-export const KeptByTheHost: Story = {
-  args: { secretStorage: 'vault' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const key = canvas.getByLabelText('Key');
-    await expect(key).toHaveAccessibleDescription(
-      /kept by the host rather than saved inside your protocol/,
-    );
-    await expect(key).not.toHaveAccessibleDescription(/plain text/);
   },
 };
 

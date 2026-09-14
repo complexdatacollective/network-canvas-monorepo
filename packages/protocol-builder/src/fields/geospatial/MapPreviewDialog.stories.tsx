@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { type ReactNode, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -7,13 +7,15 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { REQUIRED } from '../../form/requiredField.ts';
-import { useResourceClient } from '../../resources/client.tsx';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
 import MapPreviewDialog from './MapPreviewDialog.tsx';
 import MapViewField from './MapViewField.tsx';
 
-/** The fixture's stored Mapbox key, which this host will not resolve a map for. */
+/** The fixture's stored Mapbox key, which the map below is drawn with. */
 const KEY_ASSET = 'mapbox_token';
+
+/** An id the fixture protocol has no resource for, so the host refuses it. */
+const MISSING_KEY_ASSET = 'a-key-this-protocol-no-longer-has';
 
 /**
  * The dialog, mounted the way `MapViewField` mounts it, with a way back in.
@@ -35,7 +37,7 @@ function PreviewOn({
   zoom,
 }: Readonly<{
   tokenAssetId: string | undefined;
-  /** The basemap the stage names, swapped in once the host's map has loaded. */
+  /** The basemap the stage names, which the map is built on. */
   style?: string;
   center: unknown;
   zoom: unknown;
@@ -74,53 +76,6 @@ function PreviewOn({
   );
 }
 
-/**
- * A host that answers a stored id with a URL a preview can be drawn from.
- *
- * This package's own in-memory host cannot, and that refusal is a story of its
- * own below: the contract's resource procedures consume secret material and
- * hand back only an id, so `preview` of a key answers `unsupported-kind`. A
- * host that has built the other side — credentialling a style itself and
- * serving it for that id — is the only way to reach anything past that point,
- * and the one thing this host WILL hand back a URL for is a file it is holding
- * bytes for. So a file is staged and its id is passed as the key's.
- *
- * What the URL points at is immaterial and no story reaches Mapbox: the SDK is
- * replaced for the whole Storybook (`.storybook/mapboxMock.ts`), and the map it
- * builds draws a labelled placeholder instead of pretending to be a map. What
- * the staging buys is the state past the refusal — a map that reports it has
- * loaded, and a view that can be accepted.
- */
-function WithAServedMap({
-  children,
-}: Readonly<{ children: (tokenAssetId: string) => ReactNode }>) {
-  const resources = useResourceClient();
-  const [assetId, setAssetId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      const staged = await resources.stageUpload({
-        // Stable across every run of this effect, so a remount stages one file
-        // rather than another: the host answers a repeated request id with
-        // what it staged the first time.
-        requestId: 'story-served-map',
-        kind: 'geojson',
-        name: 'A file this host will serve a URL for',
-        source: 'served-map.json',
-        contentType: 'application/json',
-        bytes: new TextEncoder().encode('{}'),
-      });
-      if (live && staged.status === 'ok') setAssetId(staged.data.id);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [resources]);
-
-  return assetId === undefined ? null : children(assetId);
-}
-
 const meta = {
   title: 'Protocol Builder/Fields/Geospatial/Starting view on a map',
   component: FieldStoryHost,
@@ -129,7 +84,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Sets a stage’s starting view by panning and zooming a real map, for a researcher who knows the place but not its coordinates. The API key itself never reaches this dialog and cannot: the contract’s resource procedures consume secret material and hand back only an id, so the map is built from a style URL the host resolved for that id and credentialled on its own side. A host that will not do that says so, and the researcher sets the same two numbers by hand in the section behind the dialog — which is why those boxes are the control and this is the convenience. No story draws a real map: the Mapbox SDK is replaced for the whole Storybook, so no story reaches a live account.',
+          'Sets a stage’s starting view by panning and zooming a real map, for a researcher who knows the place but not its coordinates. The map is built from the chosen API key’s own value and the basemap the stage is configured to show, which is the pair the participant’s map is built from — so the view is framed on the map the participant will see. The typed coordinate boxes in the section behind the dialog stay the control, and this is the convenience. No story draws a real map: the Mapbox SDK is replaced for the whole Storybook, so no story reaches a live account.',
       },
     },
   },
@@ -137,15 +92,7 @@ const meta = {
     stageId: 'geospatial-1',
     sectionTitle: 'Starting map view',
     children: (
-      <WithAServedMap>
-        {(tokenAssetId) => (
-          <PreviewOn
-            tokenAssetId={tokenAssetId}
-            center={[-74, 40.7]}
-            zoom={10}
-          />
-        )}
-      </WithAServedMap>
+      <PreviewOn tokenAssetId={KEY_ASSET} center={[-74, 40.7]} zoom={10} />
     ),
   },
   tags: ['autodocs'],
@@ -194,15 +141,7 @@ export const OpenedOnTheStagesView: Story = {
 export const NoStartingViewYet: Story = {
   args: {
     children: (
-      <WithAServedMap>
-        {(tokenAssetId) => (
-          <PreviewOn
-            tokenAssetId={tokenAssetId}
-            center={undefined}
-            zoom={undefined}
-          />
-        )}
-      </WithAServedMap>
+      <PreviewOn tokenAssetId={KEY_ASSET} center={undefined} zoom={undefined} />
     ),
   },
 };
@@ -219,15 +158,7 @@ export const NoStartingViewYet: Story = {
 export const TakingTheView: Story = {
   args: {
     children: (
-      <WithAServedMap>
-        {(tokenAssetId) => (
-          <PreviewOn
-            tokenAssetId={tokenAssetId}
-            center={undefined}
-            zoom={undefined}
-          />
-        )}
-      </WithAServedMap>
+      <PreviewOn tokenAssetId={KEY_ASSET} center={undefined} zoom={undefined} />
     ),
   },
   play: async ({ canvasElement }) => {
@@ -274,15 +205,19 @@ export const NoKeyChosenYet: Story = {
 };
 
 /**
- * The refusal this package's own host gives: it never hands a stored key back,
- * so it can resolve no map for one. The only failure here that is not worth
- * retrying, which is why the dialog says what to do instead rather than
- * offering to ask again.
+ * A stage still naming a key the protocol no longer holds — deleted from the
+ * resource library while this stage kept pointing at it. The host says so in
+ * its own words and no map is drawn; the coordinate boxes behind the dialog
+ * are still there.
  */
-export const TheHostWillNotResolveOne: Story = {
+export const TheKeyIsNoLongerInTheProtocol: Story = {
   args: {
     children: (
-      <PreviewOn tokenAssetId={KEY_ASSET} center={[-74, 40.7]} zoom={10} />
+      <PreviewOn
+        tokenAssetId={MISSING_KEY_ASSET}
+        center={[-74, 40.7]}
+        zoom={10}
+      />
     ),
   },
   play: async () => {
@@ -290,9 +225,7 @@ export const TheHostWillNotResolveOne: Story = {
 
     const dialog = await screen.findByRole('dialog');
     await expect(
-      await within(dialog).findByText(
-        'This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.',
-      ),
+      await within(dialog).findByText(/no such resource/i),
     ).toBeInTheDocument();
     await expect(
       within(dialog).queryByRole('region', { name: 'Interactive map' }),
