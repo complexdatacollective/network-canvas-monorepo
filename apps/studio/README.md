@@ -204,7 +204,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `4de5d4fa8be602828573447158bbad335d38b9f0effd94534189026911c065e6`.
+Schema fingerprint: `a4b24cae5da454bd7c7f76cb738162a7880539c45f97ef06a07ba75e3d9365d7`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 

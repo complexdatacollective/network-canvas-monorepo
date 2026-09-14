@@ -4,11 +4,16 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
-import { createScanner, SyntaxKind } from 'typescript/unstable/ast';
+import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
 import { contract } from '@codaco/studio-rpc';
 
+import {
+  sourceTokens,
+  tokenName,
+  type SourceToken,
+} from '../../__tests__/support/source-tokens.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
 import type { AuthEnv } from '../../env.ts';
 import { SYNC_TRANSACTION_POLICIES } from '../../protocol/sync.ts';
@@ -74,62 +79,6 @@ type TenantBoundaryAccess = {
   line: number;
   sqlVerb?: 'INSERT' | 'UPDATE' | 'DELETE';
 };
-
-type SourceToken = {
-  kind: SyntaxKind;
-  raw: string;
-  value: string;
-  position: number;
-};
-
-// TS 7 exposes its tokenizer independently of the compiler process. Using it
-// here means comments and strings cannot spoof the source-policy inventory,
-// while keeping the test independent of a TypeScript program/typecheck.
-function sourceTokens(source: string): SourceToken[] {
-  const scanner = createScanner(true, undefined, source);
-  const tokens: SourceToken[] = [];
-  const templateBraceDepth: number[] = [];
-  let kind = scanner.scan();
-  while (kind !== SyntaxKind.EndOfFile) {
-    tokens.push({
-      kind,
-      raw: scanner.getTokenText(),
-      value: scanner.getTokenValue(),
-      position: scanner.getTokenStart(),
-    });
-
-    if (kind === SyntaxKind.TemplateHead) {
-      templateBraceDepth.push(0);
-    } else if (kind === SyntaxKind.TemplateTail) {
-      templateBraceDepth.pop();
-    } else if (templateBraceDepth.length > 0) {
-      const index = templateBraceDepth.length - 1;
-      if (kind === SyntaxKind.OpenBraceToken) {
-        templateBraceDepth[index] = (templateBraceDepth[index] ?? 0) + 1;
-      } else if (kind === SyntaxKind.CloseBraceToken) {
-        const depth = templateBraceDepth[index] ?? 0;
-        if (depth === 0) {
-          kind = scanner.reScanTemplateToken(false);
-          continue;
-        }
-        templateBraceDepth[index] = depth - 1;
-      }
-    }
-    kind = scanner.scan();
-  }
-  return tokens;
-}
-
-function tokenName(token: SourceToken | undefined): string | undefined {
-  if (token === undefined) return undefined;
-  return token.kind === SyntaxKind.StringLiteral ||
-    token.kind === SyntaxKind.NoSubstitutionTemplateLiteral ||
-    token.kind === SyntaxKind.TemplateHead ||
-    token.kind === SyntaxKind.TemplateMiddle ||
-    token.kind === SyntaxKind.TemplateTail
-    ? token.value
-    : token.raw;
-}
 
 function isTenantReceiver(token: SourceToken | undefined): boolean {
   const name = tokenName(token);
