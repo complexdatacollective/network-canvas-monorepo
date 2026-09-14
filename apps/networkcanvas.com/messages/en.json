@@ -93,9 +93,8 @@
   "Publications": {
     "heading": "Recent Publications Using Network Canvas",
     "carouselLabel": "Recent publications carousel",
-    "introduction": "The following are the eight most recent publications utilizing Network Canvas. Browse the <all>full list of publications</all>, or see our <article>documentation article</article> for guidance on citing Network Canvas.",
+    "introduction": "The following are the 16 most recent publications utilizing Network Canvas. Browse the <all>full list of publications</all>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
-    "article": "documentation article",
     "thread": "thread"
   },
   "PublicationsPage": {

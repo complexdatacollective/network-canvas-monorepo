@@ -78,17 +78,8 @@ const originalClientWidth = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
   'clientWidth',
 );
-const originalScrollHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  'scrollHeight',
-);
-const originalInnerHeight = Object.getOwnPropertyDescriptor(
-  window,
-  'innerHeight',
-);
-let contentScrollHeight = 600;
 let viewportScrollWidth = 1800;
-let pinnedViewportMatches = true;
+let flowingViewportMatches = true;
 const mediaQueryListeners = new Set<() => void>();
 
 function createRail(entries: readonly Publication[] = publications) {
@@ -110,8 +101,8 @@ function renderRail(entries: readonly Publication[] = publications) {
   return render(createRail(entries));
 }
 
-function setPinnedViewportMatches(matches: boolean) {
-  pinnedViewportMatches = matches;
+function setFlowingViewportMatches(matches: boolean) {
+  flowingViewportMatches = matches;
   mediaQueryListeners.forEach((listener) => listener());
 }
 
@@ -120,9 +111,8 @@ describe('PublicationRail', () => {
     motionState.progress = 0;
     motionState.reducedMotion = false;
     motionState.scrollHandler = undefined;
-    contentScrollHeight = 600;
     viewportScrollWidth = 1800;
-    pinnedViewportMatches = true;
+    flowingViewportMatches = true;
     mediaQueryListeners.clear();
 
     Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
@@ -141,27 +131,15 @@ describe('PublicationRail', () => {
           : 0;
       },
     });
-    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-      configurable: true,
-      get() {
-        return this.getAttribute('data-testid') === 'publication-rail-content'
-          ? contentScrollHeight
-          : 0;
-      },
-    });
-    Object.defineProperty(window, 'innerHeight', {
-      configurable: true,
-      value: 900,
-    });
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => {
-        const isPinnedRailQuery =
+        const isFlowingRailQuery =
           query === '(min-width: 768px) and (min-height: 640px)';
 
         return {
           get matches() {
-            return isPinnedRailQuery && pinnedViewportMatches;
+            return isFlowingRailQuery && flowingViewportMatches;
           },
           media: query,
           onchange: null,
@@ -201,60 +179,43 @@ describe('PublicationRail', () => {
     } else {
       Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth');
     }
-
-    if (originalScrollHeight) {
-      Object.defineProperty(
-        HTMLElement.prototype,
-        'scrollHeight',
-        originalScrollHeight,
-      );
-    } else {
-      Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
-    }
-
-    if (originalInnerHeight) {
-      Object.defineProperty(window, 'innerHeight', originalInnerHeight);
-    } else {
-      Reflect.deleteProperty(window, 'innerHeight');
-    }
   });
 
-  it('pins the copy while one full-width row follows page scroll', async () => {
+  it('advances the rail as page scroll changes, without discarding a manual scroll position', async () => {
     motionState.progress = 0.25;
     renderRail();
 
     const section = screen.getByRole('region', {
       name: 'Recent publications',
-      // jsdom 30 cannot resolve the pinned calc(100svh + <px>) height while
-      // Testing Library performs its CSS visibility check. The role and
-      // accessible name are still asserted; visibility is not under test.
-      hidden: true,
     });
-    const stage = screen.getByTestId('publication-rail-stage');
     const viewport = screen.getByTestId('publication-rail-viewport');
-    const track = screen.getByRole('list', { hidden: true });
+    const track = screen.getByRole('list');
     const heading = screen.getByRole('heading', {
       name: 'Recent publications',
-      hidden: true,
     });
 
     await waitFor(() => {
-      expect(section).toHaveAttribute('data-publication-rail-mode', 'pinned');
+      expect(section).toHaveAttribute('data-publication-rail-mode', 'flowing');
     });
 
-    expect(section.style.height).toBe('calc(800px + 100svh)');
-    expect(stage).toHaveClass('sticky', 'top-0', 'h-svh');
     expect(viewport).toHaveAccessibleName('Recent publications carousel');
-    expect(viewport).toHaveClass('overflow-x-hidden');
-    expect(viewport).toHaveAttribute('tabindex', '-1');
-    expect(track).toHaveClass('flex', 'w-max', 'items-stretch');
+    await waitFor(() => expect(viewport).toHaveAttribute('tabindex', '0'));
+    expect(track).toHaveClass('grid', 'w-max', 'grid-flow-col', 'grid-rows-2');
     expect(track).not.toContainElement(heading);
     expect(withinTrackLinks(track)).toHaveLength(publications.length);
-    expect(viewport.scrollLeft).toBe(200);
+
+    // Mounting mid-scroll anchors the auto-advance baseline instead of
+    // jumping the rail to match the page's current scroll progress.
+    expect(viewport.scrollLeft).toBe(0);
 
     act(() => motionState.scrollHandler?.(0.75));
+    expect(viewport.scrollLeft).toBe(400);
 
-    expect(viewport.scrollLeft).toBe(600);
+    // A manual scroll (trackpad, touch, scrollbar) composes with further
+    // page-scroll-linked movement instead of being overwritten by it.
+    viewport.scrollLeft = 550;
+    act(() => motionState.scrollHandler?.(0.9));
+    expect(viewport.scrollLeft).toBe(670);
   });
 
   it('shows each publication year as a machine-readable date', async () => {
@@ -267,14 +228,13 @@ describe('PublicationRail', () => {
     expect(year.closest('a')).toHaveTextContent('Journal One · 2024');
   });
 
-  it('keeps a native horizontal row without pinning for reduced motion', async () => {
+  it('keeps a native horizontal grid without scroll-linked motion for reduced motion', async () => {
     motionState.reducedMotion = true;
     renderRail();
 
     const section = screen.getByRole('region', {
       name: 'Recent publications',
     });
-    const stage = screen.getByTestId('publication-rail-stage');
     const viewport = screen.getByTestId('publication-rail-viewport');
     const track = screen.getByRole('list');
 
@@ -285,18 +245,15 @@ describe('PublicationRail', () => {
     });
 
     expect(section).toHaveAttribute('data-publication-rail-mode', 'scrollable');
-    expect(section).not.toHaveAttribute('style');
-    expect(stage).not.toHaveClass('sticky', 'h-svh');
     expect(viewport).toHaveClass('overflow-x-auto', 'snap-x', 'snap-proximity');
-    expect(viewport).toHaveAttribute('tabindex', '0');
+    await waitFor(() => expect(viewport).toHaveAttribute('tabindex', '0'));
 
     act(() => motionState.scrollHandler?.(0.75));
-
     expect(viewport.scrollLeft).toBe(0);
   });
 
-  it('keeps the native fallback when the content cannot fit in the viewport', async () => {
-    contentScrollHeight = 800;
+  it('keeps the native fallback below the pinned-rail viewport breakpoint', async () => {
+    flowingViewportMatches = false;
     renderRail();
 
     const section = screen.getByRole('region', {
@@ -311,26 +268,26 @@ describe('PublicationRail', () => {
       );
     });
 
-    expect(section).not.toHaveAttribute('style');
     expect(viewport).toHaveClass('overflow-x-auto');
-    expect(viewport).toHaveAttribute('tabindex', '0');
+    await waitFor(() => expect(viewport).toHaveAttribute('tabindex', '0'));
   });
 
-  it('resets the pinned position once when changing to the native fallback', async () => {
+  it('keeps the scroll position and stops auto-advancing once the native fallback engages', async () => {
     motionState.progress = 0.5;
-    const { rerender } = renderRail();
+    renderRail();
     const section = screen.getByRole('region', {
       name: 'Recent publications',
-      hidden: true,
     });
     const viewport = screen.getByTestId('publication-rail-viewport');
 
     await waitFor(() => {
-      expect(section).toHaveAttribute('data-publication-rail-mode', 'pinned');
+      expect(section).toHaveAttribute('data-publication-rail-mode', 'flowing');
     });
-    expect(viewport.scrollLeft).toBe(400);
 
-    act(() => setPinnedViewportMatches(false));
+    act(() => motionState.scrollHandler?.(0.75));
+    expect(viewport.scrollLeft).toBe(200);
+
+    act(() => setFlowingViewportMatches(false));
 
     await waitFor(() => {
       expect(section).toHaveAttribute(
@@ -338,15 +295,10 @@ describe('PublicationRail', () => {
         'scrollable',
       );
     });
-    expect(viewport.scrollLeft).toBe(0);
+    expect(viewport.scrollLeft).toBe(200);
 
-    viewport.scrollLeft = 175;
-    viewportScrollWidth = 1700;
-    rerender(createRail(publications.slice(0, 2)));
-
-    await waitFor(() => {
-      expect(viewport.scrollLeft).toBe(175);
-    });
+    act(() => motionState.scrollHandler?.(1));
+    expect(viewport.scrollLeft).toBe(200);
   });
 
   it('hydrates the static fallback before activating scroll-linked motion', async () => {
