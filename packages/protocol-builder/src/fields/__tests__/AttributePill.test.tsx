@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -343,17 +349,16 @@ describe('renaming an attribute from its pill', () => {
   });
 
   /**
-   * A close is one act however it was asked for.
+   * A write that is out cannot be taken back, so nothing may say it was.
    *
-   * The write is asked for before the editor closes, so a researcher who
-   * gives up on a slow one — Escape, while the codebook is still being
-   * written to — has closed it themselves, and what they are told is that they
-   * cancelled. The answer that arrives afterwards must not announce a second
-   * close on top of theirs: two sentences about one editor, the second of them
-   * contradicting the first, is how a screen-reader user comes to believe the
-   * application is doing things it was not asked to do.
+   * Cancel is disabled from the moment Save is pressed. Escape and a press
+   * outside are the same act by another route, and while they were still
+   * accepted the researcher who gave up on a slow write was told the edit was
+   * cancelled — while the rename landed anyway, and the pill went on to show
+   * the new name under a "cancelled" announcement. The editor now holds until
+   * the write answers, and says what actually happened.
    */
-  it('says one thing about a close, even when the write was still in flight', async () => {
+  it('refuses to be dismissed while the write is out, and says what landed', async () => {
     let taken: ((value: boolean) => void) | undefined;
     const onRename = vi.fn(
       () =>
@@ -369,23 +374,71 @@ describe('renaming an attribute from its pill', () => {
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
     expect(onRename).toHaveBeenCalledExactlyOnceWith('age_at_interview');
 
-    // Given up on while the write is still out.
+    // Neither way out is offered while the write is with the codebook, and
+    // neither button can ask for a second write.
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+
     await user.keyboard('{Escape}');
     expect(
-      screen.getByText('Attribute name edit cancelled'),
+      screen.getByRole('textbox', { name: 'Attribute name' }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Attribute name edit cancelled'),
+    ).not.toBeInTheDocument();
 
-    // And then the write lands.
+    // And then the write lands: the editor closes on what actually happened.
     await act(async () => {
       taken?.(true);
     });
 
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
     expect(
-      screen.getByText('Attribute name edit cancelled'),
+      screen.getByText('Attribute renamed to age_at_interview'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('Attribute renamed to age_at_interview'),
+      screen.queryByText('Attribute name edit cancelled'),
     ).not.toBeInTheDocument();
+    expect(onRename).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The pill gets focus back, whatever had it when the editor opened.
+   *
+   * `Modal` returns focus to whatever `document.activeElement` was when it
+   * opened, which is the pill only when the click that opened it also focused
+   * it — and a mouse click on a `<button>` does not move focus in Safari or
+   * Firefox on macOS. A researcher using one of those browsers, with focus
+   * left on another control, was returned to that other control after every
+   * close, one pill away from where they were working. So the pill puts focus
+   * back itself, as Architect's own `restoreFocusRef` effect did.
+   */
+  it('returns focus to the pill even when the click never focused it', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Somewhere else</button>
+        <AttributePill name="age" type="number" editable onRename={takeIt} />
+      </>,
+    );
+    const elsewhere = screen.getByRole('button', { name: 'Somewhere else' });
+    const trigger = screen.getByRole('button', {
+      name: 'Edit attribute name: age',
+    });
+
+    // The state those browsers leave behind: the researcher is working in
+    // another control, and the press on the pill moves no focus.
+    elsewhere.focus();
+    fireEvent.click(trigger);
+    await screen.findByRole('textbox', { name: 'Attribute name' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   /** Enter is the keyboard's Save, and only where there is something to save. */

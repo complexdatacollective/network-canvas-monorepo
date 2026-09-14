@@ -1,6 +1,7 @@
 import { Check, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -334,16 +335,22 @@ export default function AttributePill({
   className,
 }: AttributePillProps) {
   const intl = useAppIntl();
-  /**
-   * The pill itself, which is where focus goes back to once the editor closes.
-   *
-   * Nothing here puts it back: `Modal` remembers the control that was focused
-   * when it opened — the pill — and `ModalPopup` returns focus there on every
-   * close, whichever way it was asked for. This is the ref the trigger is
-   * measured through; the return is asserted beside the interaction that
-   * causes it, because it is behaviour a researcher has either way.
-   */
+  /** The pill itself: what the editor is measured from, and where focus goes
+   * back to once it closes. */
   const triggerRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Whether this pill opened the editor that is closing, and so owes itself
+   * focus back.
+   *
+   * `Modal` returns focus to whatever `document.activeElement` was when it
+   * opened, which is this pill only where the press that opened it also
+   * focused it — and a mouse press on a `<button>` moves no focus in Safari or
+   * Firefox on macOS. A researcher on either, with focus left on another
+   * control, was handed back to that other control after every close. So the
+   * pill puts focus back itself, as Architect did
+   * (`components/VariablePill.tsx`'s `restoreFocusRef`).
+   */
+  const restoreFocusRef = useRef(false);
   /**
    * Whether this editor has already begun closing.
    *
@@ -398,6 +405,12 @@ export default function AttributePill({
       : `oklch(var(${accentToken}))`,
   };
 
+  useEffect(() => {
+    if (editing || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    triggerRef.current?.focus();
+  }, [editing]);
+
   const startEditing = () => {
     const trigger = triggerRef.current;
     if (trigger === null) return;
@@ -416,6 +429,7 @@ export default function AttributePill({
       message: messages.renameEditing,
       values: { name },
     });
+    restoreFocusRef.current = true;
     setEditing(true);
   };
 
@@ -582,6 +596,13 @@ export default function AttributePill({
       <Modal
         open={editing}
         backdropClassName="z-30"
+        /*
+          Escape and a press outside are Cancel by another route, so they are
+          withdrawn where Cancel is: a write that is already with the codebook
+          cannot be taken back, and a dismissal accepted while it was out told
+          the researcher the edit was cancelled while the rename landed anyway.
+        */
+        dismissible={!closing}
         onOpenChange={(open) => {
           if (!open) cancel();
         }}

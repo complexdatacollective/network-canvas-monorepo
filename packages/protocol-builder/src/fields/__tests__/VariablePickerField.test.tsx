@@ -1782,6 +1782,31 @@ describe('renaming the attribute a picker holds', () => {
   });
 
   /**
+   * The register a refusal is said in, in the words a screen reader hears.
+   *
+   * `Alert` puts a visually-hidden word before its own content — `Warning:`
+   * for a notice, `Error:` for a fault — which is what stands in for the
+   * colour a sighted reader sees. Read from there rather than from a class
+   * name, and rather than from the icon, whose `<title>` says "Warning" for
+   * both variants and so tells the two apart not at all.
+   *
+   * The alert itself is reached through its `role="presentation"`: the live
+   * region around it is what announces, and a second one inside would
+   * announce twice.
+   */
+  const registerOf = (text: HTMLElement): string => {
+    const alert = text.closest<HTMLElement>('[role="presentation"]');
+    if (alert === null) {
+      throw new Error('That sentence is not inside an alert at all.');
+    }
+    const spoken = alert.querySelector('.sr-only')?.textContent?.trim();
+    if (spoken === undefined) {
+      throw new Error('That alert says nothing about its own register.');
+    }
+    return spoken;
+  };
+
+  /**
    * A section somebody else is holding is not the researcher's mistake, so the
    * refusal is a notice beside the field rather than an error on the name —
    * and the pill goes on showing the name the codebook still holds.
@@ -1807,7 +1832,11 @@ describe('renaming the attribute a picker holds', () => {
     const heldNotice = await screen.findByText(
       'Priya Raman is currently editing a section needed for this change.',
     );
-    expect(heldNotice.closest('[role="status"]')).not.toBeNull();
+    // In the register of a notice rather than of an error, which is the whole
+    // point of telling the researcher WHO has it: the rename is fine and will
+    // work once they are finished. Read the way a screen reader reads it —
+    // the alert's own spoken prefix — rather than off a class name.
+    expect(registerOf(heldNotice)).toBe('Warning:');
     expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
       expect.objectContaining({ name: 'name' }),
     );
@@ -1816,6 +1845,51 @@ describe('renaming the attribute a picker holds', () => {
     expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
       'full_name',
     );
+  });
+
+  /**
+   * A name the codebook refuses is the researcher's to fix, and is said so.
+   *
+   * The pill's own rule asks the codebook this client has, so a name taken
+   * while the editor was open passes it and is refused by the write instead.
+   * Reached here by writing the other researcher's attribute into the protocol
+   * behind this client's back — which is the race, made to happen on purpose.
+   */
+  it('says a name already taken is an error, in the researcher’s own register', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <HoldingPicker />,
+    });
+    await harness.opened();
+
+    const box = await openTheEditor(harness);
+    await typeName(harness, box, 'full_name');
+
+    // The other researcher takes the name. Their revision never reaches this
+    // client, so the pill goes on offering the save — which is exactly the
+    // state a real race leaves behind, and the only one in which the write's
+    // own duplicate rule is the thing that answers.
+    const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const held = harness.host.store.read(person).document;
+    harness.host.store.disconnectWatchers();
+    harness.host.store.applyAsCollaborator(person, {
+      ...held,
+      variables: {
+        ...(typeof held.variables === 'object' && held.variables !== null
+          ? held.variables
+          : {}),
+        'their-attribute': { name: 'full_name', type: 'text' },
+      },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save Changes' }),
+    );
+
+    const refusal = await screen.findByText(
+      'An attribute with this name already exists here. Choose another name.',
+    );
+    expect(registerOf(refusal)).toBe('Error:');
   });
 
   /**
