@@ -2,7 +2,6 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import { protocolBuilderContract } from './protocolBuilder.ts';
-
 import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,

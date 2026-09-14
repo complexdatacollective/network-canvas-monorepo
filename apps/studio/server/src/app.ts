@@ -129,7 +129,10 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
-  app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
+  // One store for both surfaces: the /storage routes and the protocol
+  // builder's content promotions name the same bytes.
+  const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
+  app.route('/storage', createAssetRoutes(assetStore));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
