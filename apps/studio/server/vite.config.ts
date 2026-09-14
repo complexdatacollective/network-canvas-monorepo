@@ -17,6 +17,11 @@ export default defineConfig({
       '@codaco/shared-consts',
       '@codaco/studio-rpc',
       '@codaco/studio-sync',
+      // protocol-validation's source imports jszip at load time. The image
+      // installs with `pnpm deploy --prod --legacy`, which keeps workspace
+      // packages as symlinks and never installs their dependencies, so the
+      // import must be inlined here or the container fails at boot.
+      'jszip',
     ],
   },
 });
