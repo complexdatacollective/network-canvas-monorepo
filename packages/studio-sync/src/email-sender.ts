@@ -66,8 +66,7 @@ const messageSchema = z.strictObject({
     .optional(),
 });
 
-/** Normalize only the domain of an already validated addr-spec. */
-export function normalizeMailbox(value: string): string {
+function normalizeMailbox(value: string): string {
   const boundary = value.lastIndexOf('@');
   // Nodemailer normalizes domains before reporting accepted recipients. Local
   // parts remain case sensitive, so compare the exact normalized envelope.
@@ -83,23 +82,6 @@ function address(value: string | EmailAddress): EmailAddress {
     address: single.address,
     ...(single.name ? { name: single.name } : {}),
   });
-}
-
-/** Both transports enforce the same single-recipient and header boundary. */
-export function normalizeEmailMessage(value: EmailMessage) {
-  try {
-    const message = messageSchema.parse(value);
-    return {
-      ...message,
-      from: address(message.from),
-      to: normalizeMailbox(message.to),
-      replyTo:
-        message.replyTo === undefined ? undefined : address(message.replyTo),
-      messageId: message.messageId ?? `<${randomUUID()}@networkcanvas.local>`,
-    };
-  } catch {
-    throw new EmailDeliveryError('permanent');
-  }
 }
 
 /** Validate operator-configured senders before a deployment accepts work. */
@@ -187,9 +169,21 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
   let closed = false;
   return {
     async send(value) {
-      const message = normalizeEmailMessage(value);
-      const { from, to, replyTo, messageId } = message;
+      let message;
+      let from;
+      let replyTo;
+      try {
+        message = messageSchema.parse(value);
+        from = address(message.from);
+        replyTo =
+          message.replyTo === undefined ? undefined : address(message.replyTo);
+      } catch {
+        throw new EmailDeliveryError('permanent');
+      }
       if (closed) throw new EmailDeliveryError('retryable');
+      const messageId =
+        message.messageId ?? `<${randomUUID()}@networkcanvas.local>`;
+      const to = normalizeMailbox(message.to);
       let socket: Socket | undefined;
       let contentStarted = false;
       const streams = new Set<Readable>();

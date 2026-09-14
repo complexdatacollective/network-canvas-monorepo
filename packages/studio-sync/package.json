@@ -21,7 +21,6 @@
     "./taxonomy": "./src/taxonomy.ts",
     "./tenant": "./src/tenant.ts",
     "./email-sender": "./src/email-sender.ts",
-    "./postmark-email-sender": "./src/postmark-email-sender.ts",
     "./section-references": "./src/section-references.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
