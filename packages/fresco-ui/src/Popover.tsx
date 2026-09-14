@@ -231,10 +231,12 @@ function PopoverContent({
 
 export function ArrowSvg(props: ComponentProps<'svg'>) {
   return (
+    // Proportional to the viewBox: a mismatch letterboxes the drawing and
+    // invalidates POPOVER_ARROW_CLASS_NAME's offsets.
     <svg
       aria-hidden="true"
       width="30"
-      height="20"
+      height="15"
       viewBox="0 0 20 10"
       fill="none"
       {...props}
