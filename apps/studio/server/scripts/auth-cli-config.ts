@@ -3,9 +3,10 @@
 // emitted drizzle schema covers exactly the configured plugin set; the output
 // is reviewed into src/db/auth-schema.ts (see that file for the regeneration
 // procedure).
+import pg from 'pg';
+
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';
 import { createConsoleMailer } from '../src/auth/email.ts';
-import { createOwnerPool } from '../src/db/pool.ts';
 import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
 
 export const auth = createBetterAuthInstance(
@@ -17,6 +18,6 @@ export const auth = createBetterAuthInstance(
     socialProviders: {},
   },
   // The dev Postgres from scripts/dev-pg.ts: generate diffs the live schema.
-  createOwnerPool({ url: DEV_DATABASE_URL }),
+  new pg.Pool({ connectionString: DEV_DATABASE_URL }),
   createConsoleMailer(),
 );

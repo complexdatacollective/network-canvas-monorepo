@@ -23,10 +23,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 import { drafts } from '@codaco/studio-sync/schema';
 
 const protocolEvents = pgTable(
@@ -93,7 +90,7 @@ const protocolEvents = pgTable(
       'protocol_events_holder_check',
       sql`(${table.owner} IS NULL) = (${table.holder} IS NULL)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -162,7 +159,7 @@ const protocolWriteReceipts = pgTable(
             ELSE ${table.createdSectionId} IS NULL
           END`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

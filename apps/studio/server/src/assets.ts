@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 
 import {
   GetObjectCommand,
-  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -36,8 +35,6 @@ export type StoredAsset = {
 };
 
 export type AssetStore = {
-  /** Checks bucket accessibility without reading or writing research objects. */
-  checkHealth(signal: AbortSignal): Promise<void>;
   put(bytes: Uint8Array, mediaType: string): Promise<StoredAsset>;
   get(hash: string): Promise<{
     body: ReadableStream;
@@ -58,11 +55,6 @@ export function createAssetStore(env: S3Env): AssetStore {
   });
 
   return {
-    async checkHealth(signal) {
-      await client.send(new HeadBucketCommand({ Bucket: env.bucket }), {
-        abortSignal: signal,
-      });
-    },
     async put(bytes, mediaType) {
       const hash = createHash('sha256').update(bytes).digest('hex');
       const key = `${KEY_PREFIX}${hash}`;

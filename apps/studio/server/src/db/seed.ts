@@ -4,12 +4,6 @@ import type pg from 'pg';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import { refreshProjectionsForSessions } from '../network/projections.ts';
-import {
-  developmentKeyConfiguration,
-  loadDevelopmentRoot,
-} from '../pii/development.ts';
-import { verifyEncryptionKeyTransaction } from '../pii/initialize.ts';
-import { type EncryptionKeys, loadEncryptionKeys } from '../pii/keys.ts';
 import { seedAssets, seedTemplates } from './seed/assets.ts';
 import { seedAuditEvents } from './seed/audit.ts';
 import {
@@ -48,7 +42,7 @@ import {
 // real collected networks, consent, scheduling and messaging, tokens,
 // templates, webhooks, experiments, feedback, monitoring rollups and audit
 // history. Every call pins the faker PRNG below, so two runs produce
-// reproducible synthetic data (encrypted secrets retain fresh random nonces). The wipe and every insert share one transaction, so a
+// byte-identical data. The wipe and every insert share one transaction, so a
 // failure part-way leaves the previous dataset in place rather than an emptied
 // or half-filled one.
 //
@@ -74,8 +68,6 @@ export type SeedOptions = {
   adminPassword?: string;
   /** Defaults to `demo`. */
   scale?: SeedScale;
-  /** Registered deployment keys; omitted only for synthetic development data. */
-  encryptionKeys?: EncryptionKeys;
 };
 
 const FAKER_SEED = 20260902;
@@ -136,7 +128,7 @@ async function wipe(client: pg.ClientBase): Promise<void> {
     begin
       for r in
         select tablename from pg_tables
-        where schemaname = current_schema() and tablename NOT IN ('schemaFingerprint', 'encryption_key_verifications', 'credential_audit_events', 'studio_instance', 'user', 'teams')
+        where schemaname = current_schema() and tablename <> 'schemaFingerprint'
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;
@@ -144,12 +136,6 @@ async function wipe(client: pg.ClientBase): Promise<void> {
           execute format('truncate table %I restart identity cascade', r.tablename);
         end if;
       end loop;
-      -- studio_instance is the permanent setup-completion marker. Its two
-      -- ownership FKs are deliberately ON DELETE SET NULL, so remove their
-      -- former synthetic parents after every referencing table is empty rather
-      -- than truncating a parent with CASCADE into the marker.
-      delete from "user";
-      delete from teams;
     end $$;
   `);
 }
@@ -200,7 +186,6 @@ async function populate(
   client: pg.PoolClient,
   adminPassword: string,
   scale: (typeof SCALES)[SeedScale],
-  encryptionKeys: EncryptionKeys,
 ): Promise<SeedTotals> {
   await wipe(client);
 
@@ -255,16 +240,9 @@ async function populate(
       earliestSessionByParticipant(sessions),
     );
 
-    await seedScheduling(client, team, studies, encryptionKeys);
+    await seedScheduling(client, team, studies);
     await seedApiTokens(client, team, studies);
-    await seedWebhooks(
-      client,
-      team,
-      studies,
-      sessions,
-      withdrawals,
-      encryptionKeys,
-    );
+    await seedWebhooks(client, team, studies, sessions, withdrawals);
     await seedExperiments(client, team, studies, sessions);
     await seedFeedback(client, team, studies);
     await seedMonitoringRollups(client, team.id, seedTime(0));
@@ -298,28 +276,13 @@ export async function seed(
 ): Promise<void> {
   const adminPassword = options.adminPassword ?? SEED_ADMIN_PASSWORD;
   const scale = SCALES[options.scale ?? 'demo'];
-  const encryptionKeys =
-    options.encryptionKeys ??
-    (await loadEncryptionKeys(
-      developmentKeyConfiguration,
-      loadDevelopmentRoot,
-    ));
   faker.seed(FAKER_SEED);
 
   const client = await pool.connect();
   let totals: SeedTotals;
   try {
     await client.query('begin');
-    const role = await client.query<{ role: string }>(
-      'SELECT current_user AS role',
-    );
-    const owner = role.rows[0]?.role;
-    if (!owner || owner === 'studio_app' || owner === 'studio_maintenance')
-      throw new Error('Synthetic seeding requires the schema owner.');
-    await client.query("SELECT set_config('role', 'studio_maintenance', true)");
-    await verifyEncryptionKeyTransaction(client, encryptionKeys, false);
-    await client.query("SELECT set_config('role', $1, true)", [owner]);
-    totals = await populate(client, adminPassword, scale, encryptionKeys);
+    totals = await populate(client, adminPassword, scale);
     await client.query('commit');
   } catch (error) {
     await client.query('rollback');

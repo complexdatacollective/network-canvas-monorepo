@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
+    "jszip": "catalog:",
     "ohash": "^2.0.11",
     "zod": "catalog:"
   },
@@ -59,7 +60,6 @@
     "@types/tar-stream": "^3.1.4",
     "dotenv": "catalog:",
     "gunzip-maybe": "^1.4.2",
-    "jszip": "catalog:",
     "tar-stream": "^3.2.0",
     "tsx": "catalog:",
     "typescript": "catalog:",

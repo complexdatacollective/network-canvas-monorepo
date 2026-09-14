@@ -67,7 +67,7 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
         table,
         enabled: true,
         forced: true,
-        policies: ['backup_read', 'team_isolation'],
+        policies: ['team_isolation'],
       })),
     );
   });

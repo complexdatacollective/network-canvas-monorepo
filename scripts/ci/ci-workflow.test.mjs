@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 import { test } from 'vitest';
@@ -948,49 +947,6 @@ test('release-sensitive app builds run before merge', () => {
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
-  assert.match(supportJob, /pnpm --filter=@codaco\/studio-client build$/m);
-  assert.match(supportJob, /pnpm --filter=@codaco\/studio-server build$/m);
-  assert.match(
-    supportJob,
-    /pnpm --filter=@codaco\/studio-server build:netlify$/m,
-  );
-});
-
-test('Studio browser telemetry failures fail the actual quality-support gate', () => {
-  const steps = parsedWorkflow.jobs['quality-support'].steps;
-  const telemetry = steps.find((step) => step.id === 'studio-telemetry');
-  assert.ok(telemetry, 'the built-browser telemetry check exists');
-  assert.match(telemetry.run, /playwright install --with-deps chromium/);
-  assert.match(
-    telemetry.run,
-    /pnpm --filter @codaco\/studio-client test:telemetry/,
-  );
-  const verify = steps.at(-1);
-  const outcomes = Object.fromEntries(
-    Object.keys(verify.env).map((key) => [key, 'success']),
-  );
-  const run = (state) =>
-    spawnSync('bash', ['-c', verify.run], {
-      encoding: 'utf8',
-      timeout: 3_000,
-      env: {
-        PATH: process.env.PATH,
-        ...outcomes,
-        STUDIO_TELEMETRY_OUTCOME: state,
-      },
-    });
-  const positive = run('success');
-  assert.equal(positive.error, undefined);
-  assert.equal(positive.status, 0, positive.stderr);
-  for (const state of ['failure', 'cancelled', 'skipped', '']) {
-    const result = run(state);
-    assert.equal(result.error, undefined);
-    assert.equal(
-      result.status,
-      1,
-      `telemetry=${state} must fail the job: ${result.stdout}`,
-    );
-  }
 });
 
 // Every check in quality-support is `continue-on-error`, so the job's own
@@ -1015,22 +971,6 @@ test('every quality-support check is consulted by the step that fails the job', 
       new RegExp(`=\\$${escapeRegExp(outcome[0])}"`),
       `${id}'s outcome is checked, not just passed in`,
     );
-    const outcomes = Object.fromEntries(
-      Object.keys(verify.env).map((key) => [key, 'success']),
-    );
-    for (const state of ['failure', 'cancelled', 'skipped', '']) {
-      const result = spawnSync('bash', ['-c', verify.run], {
-        encoding: 'utf8',
-        timeout: 3_000,
-        env: { PATH: process.env.PATH, ...outcomes, [outcome[0]]: state },
-      });
-      assert.equal(result.error, undefined);
-      assert.equal(
-        result.status,
-        1,
-        `${id}=${state} must fail the actual support job: ${result.stdout}`,
-      );
-    }
   }
 });
 

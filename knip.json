@@ -27,7 +27,6 @@
     ".": {
       "entry": [
         "scripts/release-test/interviewer-*-walker.mjs",
-        "apps/studio/deployment/managed/generate-subprocessor-inventory.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/build/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
@@ -227,12 +226,9 @@
         "scripts/auth-cli-config.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
         // by an import — it is the Netlify Function entry.
-        "src/netlify.ts!",
-        // Explicit image commands are bundle input strings, not imports.
-        "src/configure.ts!",
-        "src/diagnostics.ts!"
+        "src/netlify.ts!"
       ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [
@@ -272,10 +268,6 @@
       "ignoreBinaries": ["Rscript"]
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {},
-    "workers/studio-ingress": {
-      "entry": ["src/index.mjs!"],
-      "project": ["src/**/*.mjs"]
-    }
+    "workers/posthog-proxy": {}
   }
 }
