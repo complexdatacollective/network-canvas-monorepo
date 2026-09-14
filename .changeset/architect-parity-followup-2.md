@@ -1,8 +1,11 @@
 ---
-'@codaco/fresco-ui': patch
+'@codaco/fresco-ui': minor
 '@codaco/shared-consts': patch
 '@codaco/architect': patch
 ---
+
+`Modal`'s `forceBackdrop` prop is gone: every nested surface now dims what is
+behind it, so there is nothing left for a caller to opt into.
 
 A dialog opened from inside another dialog dims what is behind it. Reaching for
 the attribute picker from an edit prompt dialog, or opening an attribute's

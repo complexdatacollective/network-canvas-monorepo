@@ -6,6 +6,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { writeInto } from '../../editors/__tests__/writeInto.ts';
 import TieStrengthCensusPromptsSection from '../../editors/tie-strength-census/sections/TieStrengthCensusPromptsSection.tsx';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
@@ -380,5 +384,138 @@ describe('the answers a form field writes back to its attribute', () => {
       { label: 'Text or messaging', value: 'text' },
       { label: 'Letters', value: 'letters' },
     ]);
+  });
+});
+
+/**
+ * The answers on screen belong to the attribute the row binds NOW.
+ *
+ * The control is keyed on the attribute, but every one of them registers under
+ * the same draft key and fresco-ui parks a value when a field unregisters, so
+ * a re-mount takes the parked list in preference to its own seed. Nothing put
+ * the new attribute's list there — so the row went on holding the FIRST
+ * attribute's answers and its save wrote them onto the second.
+ */
+describe('the answers shown after the row is pointed somewhere else', () => {
+  /** A second attribute of the same kind, for the row to be moved onto. */
+  const MOOD = {
+    name: 'mood',
+    type: 'categorical',
+    component: 'CheckboxGroup',
+    options: [
+      { label: 'Happy', value: 'happy' },
+      { label: 'Sad', value: 'sad' },
+      { label: 'Neither', value: 'neither' },
+    ],
+  };
+
+  const openOnAChoice = async (harness: StageEditorHarness) => {
+    await harness.opened();
+    const person = harness.protocolSections()[PERSON_SECTION];
+    if (person === undefined) {
+      throw new Error('the fixture protocol has no "person" node type.');
+    }
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...person,
+          variables: {
+            ...asRecord(person.variables),
+            [CHOICE_VARIABLE]: withTheControlTheRowWouldChoose(
+              asRecord(asRecord(person.variables)[CHOICE_VARIABLE]),
+            ),
+            mood: MOOD,
+          },
+        },
+      },
+    });
+    await waitFor(() =>
+      expect(collectedAttribute(harness).component).toBe('CheckboxGroup'),
+    );
+    const dialog = await openFormField(harness);
+    await dialog.findByRole('region', { name: 'Choice values' });
+    return dialog;
+  };
+
+  const pointTheRowAt = async (
+    harness: StageEditorHarness,
+    attributeId: string,
+  ) => {
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute', screen.getByRole('dialog')),
+      attributeId,
+    );
+  };
+
+  const personVariable = (
+    harness: StageEditorHarness,
+    id: string,
+  ): Record<string, unknown> =>
+    asRecord(
+      asRecord(asRecord(harness.hostCodebook().node?.person).variables)[id],
+    );
+
+  it('leaves the second attribute’s own answers alone', async () => {
+    const harness = renderStageEditor({
+      stage: FORM_COLLECTING_A_CHOICE,
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const dialog = await openOnAChoice(harness);
+
+    await pointTheRowAt(harness, 'mood');
+
+    // The list on screen is the attribute the row binds now, not the one it
+    // opened on.
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('region', { name: 'Choice values' })).getByText(
+          'Happy',
+        ),
+      ).toBeVisible(),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(personVariable(harness, 'mood').options).toEqual(MOOD.options);
+  });
+
+  /**
+   * And a list of one SHAPE is never carried onto an attribute of the other.
+   *
+   * A yes-or-no attribute's answers are two, keyed by the boolean each records.
+   * A choice list passes straight through the shape reading, so three choice
+   * options were written onto a boolean — a record the protocol schema refuses
+   * and the interview cannot draw.
+   */
+  it('never carries a choice list onto a yes-or-no attribute', async () => {
+    const harness = renderStageEditor({
+      stage: FORM_COLLECTING_A_CHOICE,
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const dialog = await openOnAChoice(harness);
+
+    await pointTheRowAt(harness, 'flagged');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: 'Choice values' }),
+      ).toBeNull(),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // Whatever the yes-or-no attribute ends up holding, it is not the three
+    // choices the row was showing a moment ago.
+    const held = personVariable(harness, 'flagged').options;
+    expect(Array.isArray(held) ? held : []).not.toEqual(
+      expect.arrayContaining([{ label: 'In person', value: 'in_person' }]),
+    );
+    expect(Array.isArray(held) ? held.length : 0).toBeLessThanOrEqual(2);
   });
 });

@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
@@ -57,6 +58,54 @@ export const attributeOptionsFieldFor = (slotName: string): string =>
  */
 const isOptionList = (value: unknown): value is OptionValue[] =>
   Array.isArray(value);
+
+/**
+ * Puts the newly bound attribute's own answers into the draft, whenever the
+ * row is pointed at a different attribute.
+ *
+ * The control is keyed on the attribute, so a change of binding re-mounts it —
+ * but every binding registers the SAME field name, and fresco-ui parks a value
+ * when a field unregisters and prefers that parked value to a fresh
+ * `initialValue`. So the re-mounted control came back holding the previous
+ * attribute's list, and the row's save wrote those answers onto the attribute
+ * the researcher had just chosen. Across shapes it was worse: a choice list
+ * passes straight through the shape reading, so three choice options went onto
+ * a yes-or-no attribute.
+ *
+ * Written through the store rather than left to the field, for the reason
+ * `useControlThatFollowsTheAttribute` writes the input control the same way:
+ * the field is not mounted for every binding — an attribute that holds no list
+ * renders nothing here at all — and a value parked for a control that is gone
+ * has to be replaced where it is parked.
+ *
+ * The first render records the binding and writes nothing: the field has just
+ * registered from the same seed, and a write there would mark a row dirty that
+ * nobody has touched.
+ */
+function useAnswersThatFollowTheAttribute(
+  optionsField: string,
+  binding: string,
+  seeded: unknown,
+  known: boolean,
+): void {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const shown = useRef(binding);
+
+  useEffect(() => {
+    if (shown.current === binding) return;
+    // The row names an attribute this client has not been told about yet — a
+    // create that has landed on the host and whose revision is still on its
+    // way. Seeding from a codebook that does not hold it would clear the list
+    // the researcher has just written; the binding is left unrecorded so the
+    // seed happens when the attribute arrives.
+    if (!known) return;
+    shown.current = binding;
+    // `undefined` for an attribute that holds no list, which clears the park
+    // as well as the control: absence is what "this attribute offers no
+    // answers" is spelled as everywhere else here.
+    setFieldValue(optionsField, seeded as never);
+  }, [binding, known, optionsField, seeded, setFieldValue]);
+}
 
 export type AttributeValueFieldsProps = Readonly<{
   subject: CodebookSubject | undefined;
@@ -128,6 +177,24 @@ export default function AttributeValueFields({
     variableId === undefined || variableId === ''
       ? undefined
       : variables[variableId];
+
+  // What this row is asking about, and the codebook's own answer for it. An
+  // attribute being INVENTED is its own binding: there is no record to seed
+  // from, so its answers start empty — and moving from one to the other is a
+  // change of question like any other.
+  const heldSeed =
+    picked === undefined ? undefined : Reflect.get(picked, 'options');
+  useAnswersThatFollowTheAttribute(
+    optionsField,
+    invented === undefined
+      ? `attribute:${variableId ?? ''}`
+      : `invented:${invented}`,
+    invented === undefined && isOptionList(heldSeed) ? heldSeed : undefined,
+    invented !== undefined ||
+      variableId === undefined ||
+      variableId === '' ||
+      picked !== undefined,
+  );
 
   const locked = useMemo(
     () =>
