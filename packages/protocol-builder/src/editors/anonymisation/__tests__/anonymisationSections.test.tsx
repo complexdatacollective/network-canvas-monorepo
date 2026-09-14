@@ -149,7 +149,7 @@ describe('the sections of an anonymisation stage', () => {
     // The minimum rule off, so this is about the maximum alone rather than
     // about a minimum that now exceeds it.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
     const maximum = await screen.findByRole('spinbutton', {
       name: /maximum text length/i,
@@ -194,18 +194,34 @@ describe('the sections of an anonymisation stage', () => {
         .outline()
         .find((section) => section.title === 'Passphrase validation'),
     ).toEqual({ title: 'Passphrase validation', state: 'Has a problem' });
-    // Once on screen. The rule editor states a verdict for itself where it has
-    // no host to state it, but here the field's error region — an `aria-live`
-    // region, beside the control the editor marks invalid — is already saying
-    // this one, so the editor's own alert stands down rather than repeating it.
+    // On the row it is about, as Architect's rule list says it
+    // (`Validations/ValidationRule.tsx` gives every row its own `FieldErrors`)
+    // — read off the control's own description rather than as free text on the
+    // page, so a sentence about some other rule could not satisfy this.
+    const minimum = screen.getByRole('spinbutton', {
+      name: 'Minimum text length',
+    });
+    await waitFor(() =>
+      expect(minimum).toHaveAccessibleDescription(
+        expect.stringContaining(
+          'Enter a value for "Minimum text length", or switch the rule off.',
+        ),
+      ),
+    );
+    expect(minimum).toHaveAttribute('aria-invalid', 'true');
+    // And in the field's own error region, which is what the outline above
+    // read to call the section a problem.
     expect(
-      await screen.findAllByText(
+      within(screen.getByTestId('validation-field-error')).getByText(
         'Enter a value for "Minimum text length", or switch the rule off.',
       ),
-    ).toHaveLength(1);
+    ).toBeVisible();
+    // Nowhere else: the editor has no verdict of its own to add beside them.
     expect(
-      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
-    ).toHaveAttribute('aria-invalid', 'true');
+      screen.getAllByText(
+        'Enter a value for "Minimum text length", or switch the rule off.',
+      ),
+    ).toHaveLength(2);
   });
 
   /**
@@ -237,7 +253,7 @@ describe('how the passphrase rules are put on screen', () => {
   it('renders the rule list under the section’s own heading, unlabelled twice', async () => {
     openEditor();
 
-    await screen.findByRole('checkbox', { name: 'Minimum text length' });
+    await screen.findByRole('switch', { name: 'Minimum text length' });
     // The rule list is still NAMED — a control a screen reader reaches has to
     // be — but the name is not a second heading a sighted researcher reads
     // immediately under the one above it. `sr-only` is fresco-ui's own answer
@@ -275,11 +291,18 @@ describe('how the passphrase rules are put on screen', () => {
       registry: anonymisationStageEditor,
     });
 
-    expect(
-      await screen.findByText(
-        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
-      ),
-    ).toBeInTheDocument();
+    // Said on each of the two rows that make it — the minimum and the maximum
+    // — because either is a place to repair it, which is how Architect's rule
+    // list reports a contradiction (`Validations.tsx` `checkDraft` runs for
+    // every row and the row states what it gets back).
+    const repair =
+      'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.';
+    expect(await screen.findAllByText(repair)).toHaveLength(2);
+    for (const label of ['Minimum text length', 'Maximum text length']) {
+      expect(
+        screen.getByRole('spinbutton', { name: label }),
+      ).toHaveAccessibleDescription(expect.stringContaining(repair));
+    }
     expect(
       screen.queryByText(/is greater than maxLength/),
     ).not.toBeInTheDocument();

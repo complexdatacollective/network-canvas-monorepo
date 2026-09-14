@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -29,17 +28,11 @@ import {
   useCodebookSectionDocument,
   useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
-import CodebookVariableValidationEditor, {
-  DraftVariableValidationEditor,
-} from '../codebook/validation/CodebookVariableValidationEditor.tsx';
-import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
   getValidationLabel,
   isValidationMap,
   rulesSurvivingTypeChange,
-  type ValidationMap,
-  type VariableOverlay,
 } from '../codebook/variableValidation.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
 import { createdUnassigned } from '../fields/VariablePickerField.tsx';
@@ -54,9 +47,6 @@ import {
 
 /** Where a row that binds an attribute usually keeps the attribute it binds. */
 const DEFAULT_VARIABLE_FIELD = 'variable';
-
-/** Where a row that keeps its own control's settings usually keeps them. */
-const DEFAULT_PARAMETERS_FIELD = 'parameters';
 
 /**
  * No rules were taken off the draft — held as one value so that saying so
@@ -86,29 +76,11 @@ const messages = defineMessages({
     description:
       'Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member.',
   },
-  editValues: {
-    id: 'protocolBuilder.attributeCodebookControls.editValues',
-    defaultMessage: 'Change this attribute’s values',
-    description:
-      'Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens.',
-  },
-  editAnswerLabels: {
-    id: 'protocolBuilder.attributeCodebookControls.editAnswerLabels',
-    defaultMessage: 'Change this attribute’s answer labels',
-    description:
-      'The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens.',
-  },
   editParameters: {
     id: 'protocolBuilder.attributeCodebookControls.editParameters',
     defaultMessage: 'Set what this field accepts',
     description:
       'The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens.',
-  },
-  editRules: {
-    id: 'protocolBuilder.attributeCodebookControls.editRules',
-    defaultMessage: 'Set rules for this answer',
-    description:
-      'Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens.',
   },
   createNeedsValues: {
     id: 'protocolBuilder.attributeCodebookControls.createNeedsValues',
@@ -223,40 +195,6 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   componentField: string;
   /**
-   * Where in the row the settings that control takes live, for a caller whose
-   * row keeps them (`offerParameters` false).
-   *
-   * Read only to be handed to the rules editor, which judges a rule against
-   * what the field will actually render: the two date pickers' windows, and a
-   * boolean's domain, are the field's `component` and `parameters` rather than
-   * the codebook's. Never written here — that is what `offerParameters` is
-   * about.
-   */
-  parametersField?: string;
-  /**
-   * How the rest of the same form renders ITS attributes, for a caller whose
-   * rows keep their own control and settings (`offerParameters` false).
-   *
-   * Keyed by the attribute each of those rows records into. A rule comparing
-   * this answer with another one the same form asks for is satisfiable or not
-   * in the renderings BOTH arrive with — two codebook dates that overlap can
-   * be pulled apart by a window one FIELD puts on one of them, and two
-   * booleans the codebook leaves open can be pinned to one value each by the
-   * controls the fields choose. Judged against the codebook's renderings for
-   * the comparison target, the editor accepted rules the saved form makes
-   * impossible and blocked rules it makes fine.
-   */
-  siblingRenderings?: VariableOverlay;
-  /**
-   * Attributes whose rendering neither this form nor this row decides —
-   * overridden by a form somewhere else, at a control this surface cannot see.
-   *
-   * See `StageRendering.unknownRenderings`: judged at the codebook's control
-   * they would be judged at one nothing renders them with, which can refuse a
-   * comparison the protocol accepts.
-   */
-  unknownRenderings?: ReadonlySet<string>;
-  /**
    * The attribute this row is inventing, while it is inventing one.
    *
    * One prop rather than three, because the three are one fact about the row
@@ -297,17 +235,6 @@ export type AttributeCodebookControlsProps = Readonly<{
    * exactly that pairing.
    */
   offerParameters?: boolean;
-  /**
-   * Whether the answer this row collects is checked against the attribute's
-   * rules at all.
-   *
-   * FALSE where the interview writes the attribute without asking the
-   * participant anything a form could check — a bin filled by dragging, whose
-   * schema reference says so with `usage: 'unvalidatedAttribute'`. Rules
-   * authored there would never run, and the button offering them says "for
-   * this answer" about a value nobody types.
-   */
-  offerRules?: boolean;
 }>;
 
 /**
@@ -340,22 +267,12 @@ export default function AttributeCodebookControls({
   committedVariable,
   variableField = DEFAULT_VARIABLE_FIELD,
   componentField,
-  parametersField = DEFAULT_PARAMETERS_FIELD,
-  siblingRenderings,
-  unknownRenderings,
   inventing,
   offerParameters = true,
-  offerRules = true,
 }: AttributeCodebookControlsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
   const writeCodebookSection = useCodebookSectionWrite();
-  /**
-   * The row dialog's own store, for the one read that is not a subscription:
-   * the rules draft this surface opens ON. Read imperatively at that moment
-   * rather than followed, for the reason every other capture here is.
-   */
-  const rowStore = useContext(FormStoreContext);
   const protocolContext = useProtocolContext();
   const codebookDocument = useCodebookSectionDocument(subject);
   // The dialog's OWN store: the picker's choice is the row's, and the created
@@ -364,7 +281,6 @@ export default function AttributeCodebookControls({
   const chosen =
     asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
-  const liveParameters = useRowValue(parametersField);
   /**
    * The rules the row is holding for an attribute it has not created yet.
    *
@@ -377,7 +293,7 @@ export default function AttributeCodebookControls({
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
-    surface: 'create' | 'defines' | 'rules';
+    surface: 'create' | 'defines';
     /**
      * The words on the button that opened this, and what the host's record of
      * the edit is called.
@@ -438,17 +354,6 @@ export default function AttributeCodebookControls({
      * written beside a control that cannot take them.
      */
     component: string;
-    /**
-     * The rules the row was already holding for an attribute it is INVENTING,
-     * present exactly when this rules surface is about one.
-     *
-     * Captured on open like everything else here, and for the same reason: it
-     * is the draft this dialog is editing, and re-reading it live would let a
-     * write made behind the dialog replace what the researcher is typing into
-     * it. Absent wherever the surface is about an attribute the codebook
-     * already holds, which is what the two rules dialogs below tell apart.
-     */
-    draftRules?: ValidationMap;
   }> | null>(null);
   /**
    * Whether a nested editor's save is with the host right now.
@@ -476,12 +381,11 @@ export default function AttributeCodebookControls({
    *
    * Kept rather than cleared on the next act of any kind: it is the only
    * record that rules the researcher wrote are no longer there, and nothing
-   * else on this surface says so. It ends at the two acts that answer it — a
-   * save of the rules editor, which is the researcher looking at the draft
-   * against the kind it is now for, and the row leaving the invention, which
-   * takes that draft away with it. A further change of kind is neither: one
-   * that takes nothing away has shown them nothing, so the notice stands; one
-   * that takes more away replaces the list with the rules that have just gone.
+   * else on this surface says so. It ends when the row leaves the invention,
+   * which takes that draft away with it. A further change of kind does not end
+   * it: one that takes nothing away has shown them nothing, so the notice
+   * stands; one that takes more away replaces the list with the rules that
+   * have just gone.
    */
   const [rulesDropped, setRulesDropped] =
     useState<readonly string[]>(NOTHING_DROPPED);
@@ -502,9 +406,16 @@ export default function AttributeCodebookControls({
     const dialog = node?.closest<HTMLElement>('[role="dialog"]') ?? null;
     if (dialog !== null) rowDialog.current = dialog;
   };
+  /**
+   * Where a nested editor paints its own actions: the dialog's fixed footer.
+   *
+   * The element is held in state rather than a ref because the editor renders
+   * INTO it, and a ref set during the dialog's own render does not re-render
+   * the editor beside it.
+   */
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
   const createTrigger = useRef<HTMLButtonElement>(null);
   const definesTrigger = useRef<HTMLButtonElement>(null);
-  const rulesTrigger = useRef<HTMLButtonElement>(null);
 
   /**
    * The section an editor already open reads: the one it was OPENED against.
@@ -546,62 +457,10 @@ export default function AttributeCodebookControls({
   // The row's own choice while it is being made, falling back to the codebook
   // for the render before the control has registered.
   const pickedComponent = asString(liveComponent) ?? codebookComponent;
-  /**
-   * The control whose choice decides what the CODEBOOK holds.
-   *
-   * The row's, wherever the row's control is the one being written to the
-   * codebook: it was chosen a moment ago, and the editor writes it alongside
-   * whatever depends on it. But a caller that keeps its control on the stage
-   * (`offerParameters` false) never writes it, so the codebook's own control
-   * is the only one its schema is keyed on — and judging by the row's would
-   * offer a boolean's answer labels for an attribute the codebook records as a
-   * toggle, whose schema has no `options` key to put them in.
-   */
-  const decidingComponent = offerParameters
-    ? pickedComponent
-    : codebookComponent;
-  // Which list of answers the attribute holds — a list the researcher adds to,
-  // or the two a boolean choice names. Asked of a control for the reason the
-  // settings are: a boolean moved to a toggle holds no list at all.
-  const optionsShape =
-    picked === undefined
-      ? null
-      : optionsShapeFor(pickedType, decidingComponent);
-  const canEditValues = optionsShape === 'choice';
-  const canEditAnswers = optionsShape === 'boolean';
   const canEditParameters =
     offerParameters &&
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
-  /**
-   * What the rules editor judges this attribute's rules against: this row's
-   * own control and settings, and the renderings the rest of the form gives
-   * the attributes those rules can compare this one with.
-   *
-   * Only where the STAGE owns the rendering: everywhere else the codebook's
-   * own pair is already on the attribute the editor reads, and restating it
-   * here would say nothing.
-   */
-  const stageRendering = useMemo(
-    () =>
-      offerParameters
-        ? undefined
-        : {
-            component: pickedComponent,
-            parameters: liveParameters,
-            ...(siblingRenderings === undefined
-              ? {}
-              : { overlay: siblingRenderings }),
-            ...(unknownRenderings === undefined ? {} : { unknownRenderings }),
-          },
-    [
-      liveParameters,
-      offerParameters,
-      pickedComponent,
-      siblingRenderings,
-      unknownRenderings,
-    ],
-  );
   /**
    * The kind of answer the row is inventing, once the researcher has said what
    * it is. Everything below is decided by it.
@@ -621,26 +480,6 @@ export default function AttributeCodebookControls({
    */
   const canCreate =
     inventedType !== undefined && needsCodebookEditorToCreate(inventedType);
-  /**
-   * Whether the rules being offered are for an attribute that does not exist
-   * yet.
-   *
-   * Architect authors the rules for an attribute a form field is inventing in
-   * the same dialog and writes them with the create
-   * (`Form/fieldCommit.ts:168-172`); here they were offered only once the
-   * attribute existed, so making an invented answer required took a save, a
-   * reopen and a second dialog. The row's create is DEFERRED — the picker's
-   * create row writes a name and the row's own save turns it into an attribute
-   * — so there is no id to hang a codebook write on while the researcher is
-   * still authoring, and the rules are held on the row until that create.
-   *
-   * Only for the kinds a name finishes. The rest reach the codebook editor
-   * above, which creates the attribute as it saves, and the row then holds a
-   * real id — so those are served by the ordinary surface a moment later, and
-   * a draft offered beside it would be a second place to write the same rules.
-   */
-  const inventedRules = inventedType !== undefined && !canCreate;
-  const canEditRules = offerRules && (picked !== undefined || inventedRules);
   /**
    * The rules draft following the kind of answer it was written about.
    *
@@ -668,6 +507,16 @@ export default function AttributeCodebookControls({
    */
   const rulesField = inventing?.rulesField;
   const kindTheDraftWasWrittenFor = useRef(inventedType);
+  /**
+   * The draft this component last narrowed, so the researcher's own edits can
+   * be told from its own write.
+   *
+   * The notice ends at the act that answers it — the researcher going back to
+   * the rules and looking at what is left against the kind the row holds now —
+   * and the only signal of that act is the rules draft changing for a reason
+   * other than this effect writing it.
+   */
+  const rulesWeWrote = useRef<unknown>(undefined);
   useEffect(() => {
     const previousKind = kindTheDraftWasWrittenFor.current;
     kindTheDraftWasWrittenFor.current = inventedType;
@@ -680,7 +529,15 @@ export default function AttributeCodebookControls({
       setRulesDropped(NOTHING_DROPPED);
       return;
     }
-    if (previousKind === inventedType) return;
+    if (previousKind === inventedType) {
+      // The researcher has been back to the rules since the change of kind
+      // that took some away: the draft they are looking at is the one the
+      // notice is about, so the notice has nothing left to report.
+      if (heldDraftRules !== rulesWeWrote.current) {
+        setRulesDropped(NOTHING_DROPPED);
+      }
+      return;
+    }
     if (inventedType === undefined) return;
     if (!isValidationMap(heldDraftRules)) return;
     const { kept, dropped } = rulesSurvivingTypeChange(
@@ -695,6 +552,7 @@ export default function AttributeCodebookControls({
     // names is the rules that have just gone.
     if (dropped.length === 0) return;
     setRulesDropped(dropped);
+    rulesWeWrote.current = kept;
     setFieldValue(rulesField, kept);
   }, [heldDraftRules, inventedType, rulesField, setFieldValue]);
   /**
@@ -729,11 +587,7 @@ export default function AttributeCodebookControls({
   const createNeeds = creatingValues
     ? messages.createNeedsValues
     : messages.createNeedsSettings;
-  const definesLabel = canEditValues
-    ? messages.editValues
-    : canEditAnswers
-      ? messages.editAnswerLabels
-      : messages.editParameters;
+  const definesLabel = messages.editParameters;
 
   /**
    * Whether another editor may be STARTED from here.
@@ -748,13 +602,7 @@ export default function AttributeCodebookControls({
    * own save refused — which is what `readOnly` does to both of them.
    */
   const offerLaunch =
-    sectionIsLive &&
-    !readOnly &&
-    (canCreate ||
-      canEditValues ||
-      canEditAnswers ||
-      canEditParameters ||
-      canEditRules);
+    sectionIsLive && !readOnly && (canCreate || canEditParameters);
   // The notice below counts too: it is the only record of an attribute the
   // researcher created and this row did not take, and a component that
   // vanished at the moment it had something to say would take the sentence
@@ -919,10 +767,7 @@ export default function AttributeCodebookControls({
     if (submitting) return;
     close();
   };
-  const open = (
-    surface: 'create' | 'defines' | 'rules',
-    label: MessageDescriptor,
-  ) => {
+  const open = (surface: 'create' | 'defines', label: MessageDescriptor) => {
     // Every control that calls this is offered only while the section is live,
     // and the check is written out rather than assumed because what it takes
     // is what the editor goes on reading until it closes.
@@ -931,10 +776,6 @@ export default function AttributeCodebookControls({
     // editor is the start of a different one. Same rule, and the same reason,
     // as the picker's own notice clearing when the researcher types a new name.
     setCreatedElsewhere(undefined);
-    const heldRules =
-      inventing === undefined || rowStore === undefined
-        ? undefined
-        : rowStore.getState().getValue(inventing.rulesField);
     setEditing({
       openId: uuid(),
       surface,
@@ -945,9 +786,6 @@ export default function AttributeCodebookControls({
       fillsIn: chosen,
       openedDocument: codebookDocument,
       component: pickedComponent,
-      ...(surface === 'rules' && inventedRules
-        ? { draftRules: isValidationMap(heldRules) ? { ...heldRules } : {} }
-        : {}),
     });
   };
 
@@ -979,27 +817,15 @@ export default function AttributeCodebookControls({
             {intl.formatMessage(createLabel)}
           </Button>
         )}
-        {offerLaunch &&
-          (canEditValues || canEditAnswers || canEditParameters) && (
-            <Button
-              ref={definesTrigger}
-              type="button"
-              color="primary"
-              size="sm"
-              onClick={() => open('defines', definesLabel)}
-            >
-              {intl.formatMessage(definesLabel)}
-            </Button>
-          )}
-        {offerLaunch && canEditRules && (
+        {offerLaunch && canEditParameters && (
           <Button
-            ref={rulesTrigger}
+            ref={definesTrigger}
             type="button"
             color="primary"
             size="sm"
-            onClick={() => open('rules', messages.editRules)}
+            onClick={() => open('defines', definesLabel)}
           >
-            {intl.formatMessage(messages.editRules)}
+            {intl.formatMessage(definesLabel)}
           </Button>
         )}
       </div>
@@ -1071,6 +897,9 @@ export default function AttributeCodebookControls({
             size="readable"
             dismissible={!submitting}
             closeDialog={requestClose}
+            // The editor paints Cancel and its own submit in here, so the
+            // dialog's actions are where every other dialog keeps them.
+            footer={<div ref={setFooterSlot} className="contents" />}
             // The picker outright, rather than the trigger-if-it-is-still-there
             // rule the other two use. Creating the attribute is what takes this
             // row out of inventing one, so the button that opened this editor is
@@ -1116,7 +945,9 @@ export default function AttributeCodebookControls({
               // name.
               allowedVariableTypes={[inventedType]}
               readOnly={editorReadOnly}
-              title={editorTitle}
+              chrome="dialog"
+              footerSlot={footerSlot}
+              onCancel={requestClose}
               onSubmitDocument={submitEdit(
                 openEditor.subject,
                 openEditor.variableId,
@@ -1160,6 +991,7 @@ export default function AttributeCodebookControls({
           size="readable"
           dismissible={!submitting}
           closeDialog={requestClose}
+          footer={<div ref={setFooterSlot} className="contents" />}
           finalFocus={() => focusAfterEditor(definesTrigger.current)}
         >
           {/* Said here rather than left to the editor, and only on THIS
@@ -1212,7 +1044,9 @@ export default function AttributeCodebookControls({
               isCollectableType(pickedType) ? [pickedType] : undefined
             }
             readOnly={editorReadOnly}
-            title={editorTitle}
+            chrome="dialog"
+            footerSlot={footerSlot}
+            onCancel={requestClose}
             onSubmitDocument={submitEdit(
               openEditor.subject,
               openEditor.variableId,
@@ -1221,75 +1055,6 @@ export default function AttributeCodebookControls({
           />
         </Dialog>
       )}
-      {/* The rules for an attribute that does not exist yet. Written onto the
-          row rather than into the codebook, because the create they belong to
-          is the row's own save — see `inventedRules`. Its own dialog rather
-          than a branch inside the one below, for the reason the three surfaces
-          above are written out: what a rules editor is editing is decided when
-          it opens, and one dialog holding both would hand whichever editor
-          rendered whatever the row had become by then. */}
-      {openEditor?.surface === 'rules' &&
-        openEditor.draftRules !== undefined &&
-        inventing !== undefined &&
-        inventedType !== undefined && (
-          <Dialog
-            open
-            title={editorTitle}
-            size="readable"
-            dismissible
-            closeDialog={requestClose}
-            finalFocus={() => focusAfterEditor(rulesTrigger.current)}
-          >
-            <DraftVariableValidationEditor
-              openId={openEditor.openId}
-              entity={openEditor.subject.entity}
-              variableName={inventing.name}
-              variableType={inventedType}
-              // The live codebook, because a comparison rule points at an
-              // attribute that already exists and the researcher is choosing
-              // it now.
-              allVariables={variables}
-              value={openEditor.draftRules}
-              readOnly={readOnly}
-              {...(stageRendering === undefined ? {} : { stageRendering })}
-              onSave={(validation) => {
-                // What this writes is the draft as the researcher has just
-                // seen it, against the kind the row holds now — so whatever an
-                // earlier change of kind took away has been answered, and the
-                // notice about it has nothing left to report.
-                setRulesDropped(NOTHING_DROPPED);
-                setFieldValue(inventing.rulesField, validation);
-                close();
-              }}
-            />
-          </Dialog>
-        )}
-      {openEditor?.surface === 'rules' &&
-        openEditor.draftRules === undefined && (
-          <Dialog
-            open
-            title={editorTitle}
-            size="readable"
-            dismissible={!submitting}
-            closeDialog={requestClose}
-            finalFocus={() => focusAfterEditor(rulesTrigger.current)}
-          >
-            <CodebookVariableValidationEditor
-              openId={openEditor.openId}
-              subject={openEditor.subject}
-              variableId={openEditor.variableId}
-              authoritativeEntityDocument={openEditor.document}
-              allSubjectVariables={editorVariables}
-              readOnly={editorReadOnly}
-              {...(stageRendering === undefined ? {} : { stageRendering })}
-              onSubmitDocument={submitEdit(
-                openEditor.subject,
-                openEditor.variableId,
-              )}
-              onComplete={close}
-            />
-          </Dialog>
-        )}
     </>
   );
 }

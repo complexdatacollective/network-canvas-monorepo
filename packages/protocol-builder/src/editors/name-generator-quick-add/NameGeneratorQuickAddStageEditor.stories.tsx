@@ -102,7 +102,7 @@ export const RulesForTheAttribute: Story = {
       canvas.getByRole('switch', { name: 'Validation' }),
     ).toHaveAttribute('aria-checked', 'true');
     await userEvent.click(
-      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
+      await canvas.findByRole('switch', { name: 'Minimum text length' }),
     );
     // Each rule's number carries steppers named for that rule, so a screen
     // holding several of them does not offer three buttons all called

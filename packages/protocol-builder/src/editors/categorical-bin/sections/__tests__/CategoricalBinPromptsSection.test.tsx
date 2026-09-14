@@ -351,7 +351,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
   const followUpGroup = (): HTMLElement =>
     screen.getByRole('region', { name: 'Follow-up other option' });
 
-  it('opens its rules rather than the bins’ own', async () => {
+  it('rules the follow-up’s answer rather than the bins’ own', async () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
@@ -364,25 +364,21 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     await openFollowUp(harness);
 
+    const followUp = within(followUpGroup());
     await harness.user.click(
-      within(followUpGroup()).getByRole('button', {
-        name: 'Set rules for this answer',
-      }),
+      followUp.getByRole('switch', { name: 'Validation' }),
     );
 
-    // The attribute the editor opened on is the FOLLOW-UP's, not the bins':
-    // both controls are in the same row, and only the field each was given
-    // tells them apart. The editor says which one it is about in its own
-    // heading, which is the researcher's evidence too.
+    // Both attributes are picked in this one dialog, and only the field each
+    // control was given tells them apart — so the evidence is the rule
+    // catalogue on offer. `relationship_to_ego` is typed text; `contactType`
+    // is chosen from a list, and the rules about how many are chosen belong to
+    // it alone.
     expect(
-      await screen.findByRole('heading', {
-        name: 'Edit validation for relationship_to_ego',
-      }),
+      await followUp.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', {
-        name: 'Edit validation for contactType',
-      }),
+      followUp.queryByRole('switch', { name: 'Minimum selection' }),
     ).toBeNull();
   });
 
@@ -405,11 +401,9 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
 
     const group = within(followUpGroup());
     expect(
-      group.getByRole('button', { name: 'Set rules for this answer' }),
+      group.getByRole('switch', { name: 'Validation' }),
     ).toBeInTheDocument();
-    expect(
-      group.queryByRole('button', { name: 'Change this attribute’s values' }),
-    ).toBeNull();
+    expect(group.queryByRole('region', { name: 'Choice values' })).toBeNull();
   });
 
   /**
@@ -441,16 +435,16 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     // The values behind the bins stay editable: those the interview does read.
     expect(
-      bins.getByRole('button', { name: 'Change this attribute’s values' }),
+      bins.getByRole('region', { name: 'Choice values' }),
     ).toBeInTheDocument();
-    expect(
-      bins.queryByRole('button', { name: 'Set rules for this answer' }),
-    ).toBeNull();
+    expect(bins.queryByRole('switch', { name: 'Validation' })).toBeNull();
     // Both attributes are picked in this one dialog, so counting is what says
-    // the remaining control belongs to the follow-up rather than to the bins.
+    // the remaining section belongs to the follow-up rather than to the bins —
+    // and that the dialog offers ONE way to reach an attribute's rules rather
+    // than a section and a button that both claim to.
     expect(
-      within(screen.getByRole('dialog')).getAllByRole('button', {
-        name: 'Set rules for this answer',
+      within(screen.getByRole('dialog')).getAllByRole('switch', {
+        name: 'Validation',
       }),
     ).toHaveLength(1);
   });
@@ -673,7 +667,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     // And still read-only: the list is shown INSTEAD of the control that would
     // edit it, rather than beside it.
     expect(
-      screen.queryByRole('button', { name: 'Change this attribute’s values' }),
+      screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
   });
 });
@@ -712,7 +706,7 @@ describe('the rules the follow-up attribute’s answers have to satisfy', () => 
       dialog.getByText('Enable validation of the other attribute.'),
     ).toBeInTheDocument();
     await harness.user.click(
-      await dialog.findByRole('checkbox', { name: 'Required answer' }),
+      await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>

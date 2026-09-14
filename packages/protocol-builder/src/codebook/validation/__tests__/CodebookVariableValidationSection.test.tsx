@@ -165,13 +165,13 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     );
 
     expect(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('checkbox', { name: 'Minimum text length' }),
+      screen.getByRole('switch', { name: 'Minimum text length' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('checkbox', { name: 'Unique value' }),
+      screen.queryByRole('switch', { name: 'Unique value' }),
     ).not.toBeInTheDocument();
   });
 
@@ -182,7 +182,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -224,7 +224,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     // Switched on and not answered, so it is held on screen and never
     // written: the codebook still says this attribute has no rules.
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Less than another attribute',
       }),
     );
@@ -238,14 +238,14 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     harness.receiveCodebookUpdate(personHolding('boolean'));
     await waitFor(() =>
       expect(
-        screen.queryByRole('checkbox', {
+        screen.queryByRole('switch', {
           name: 'Less than another attribute',
         }),
       ).not.toBeInTheDocument(),
     );
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -316,7 +316,7 @@ describe('rules written while the codebook is moving', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     collaboratorRules(harness, { minLength: 3 });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
     await waitFor(() =>
       expect(egoValidation(harness, 'ego_name')).toEqual({
@@ -339,15 +339,15 @@ describe('rules written while the codebook is moving', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     collaboratorRules(harness, { minLength: 3 });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
     await waitFor(() =>
       expect(
-        screen.getByRole('checkbox', { name: 'Minimum text length' }),
+        screen.getByRole('switch', { name: 'Minimum text length' }),
       ).toBeChecked(),
     );
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
     await waitFor(() =>
       expect(egoValidation(harness, 'ego_name')).toEqual({ minLength: 3 }),
@@ -376,11 +376,11 @@ describe('rules written while the codebook is moving', () => {
     // On screen, so the rule the researcher switches on is seeded from the
     // maximum they can see — nine — rather than from the collaborator's two.
     expect(
-      await screen.findByRole('checkbox', { name: 'Maximum text length' }),
+      await screen.findByRole('switch', { name: 'Maximum text length' }),
     ).toBeChecked();
     collaboratorRules(harness, { maxLength: 2 });
     fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Minimum text length' }),
+      screen.getByRole('switch', { name: 'Minimum text length' }),
     );
 
     // Re-queried rather than held: the collaborator's rule arrives on the
@@ -410,9 +410,9 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Minimum text length' }),
+      screen.getByRole('switch', { name: 'Minimum text length' }),
     );
     release();
 
@@ -439,14 +439,14 @@ describe('rules written while the codebook is moving', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     const before = changesTaken(harness);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     release();
 
     await waitFor(() => expect(changesTaken(harness)).toBe(before + 2n));
     expect(egoValidation(harness, 'ego_name')).toBeUndefined();
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      screen.getByRole('switch', { name: 'Required answer' }),
     ).not.toBeChecked();
   });
 
@@ -505,7 +505,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
     await waitFor(() =>
@@ -541,7 +541,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
       expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked(),
     );
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      screen.getByRole('switch', { name: 'Required answer' }),
     ).toBeChecked();
   });
 
@@ -573,7 +573,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
       ).not.toBeChecked(),
     );
     expect(
-      screen.queryByRole('checkbox', { name: 'Required answer' }),
+      screen.queryByRole('switch', { name: 'Required answer' }),
     ).not.toBeInTheDocument();
   });
 
@@ -597,7 +597,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     });
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -605,7 +605,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     );
     expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      screen.getByRole('switch', { name: 'Required answer' }),
     ).not.toBeChecked();
   });
 });
@@ -634,7 +634,7 @@ describe('a refusal the researcher has moved on from', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     expect(
       await screen.findByText(
@@ -645,7 +645,7 @@ describe('a refusal the researcher has moved on from', () => {
     // Back to the rules the codebook holds, so nothing is written — and
     // nothing else takes down the sentence the refused edit left behind.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>
@@ -683,7 +683,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     expect(
       await screen.findByText(
@@ -697,7 +697,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
       sectionId: EGO_SECTION,
     });
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
 
     await waitFor(() =>
@@ -709,7 +709,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
     // And still on screen, because the codebook now holds it: a rule the write
     // left behind is unticked by the re-seed a moment later, silently.
     expect(
-      screen.getByRole('checkbox', { name: 'Required answer' }),
+      screen.getByRole('switch', { name: 'Required answer' }),
     ).toBeChecked();
   });
 
@@ -722,14 +722,14 @@ describe('a rule on screen that the codebook has not taken yet', () => {
     );
     // Switched on with no target yet, so it is held on screen and not written.
     await harness.user.click(
-      await screen.findByRole('checkbox', {
+      await screen.findByRole('switch', {
         name: 'Less than another attribute',
       }),
     );
     // Still unanswerable with the comparison open, so this is not written
     // either — and it is the edit the map on screen is now ahead by.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
     expect(personValidation(harness, 'story')).toBeUndefined();
 

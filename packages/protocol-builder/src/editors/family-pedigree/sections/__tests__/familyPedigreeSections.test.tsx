@@ -2691,7 +2691,7 @@ describe('the rules the display-label attribute’s answers have to satisfy', ()
 
     // `fm_name` already carries `unique`, so the section mounts open.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required answer' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
     await waitFor(() =>

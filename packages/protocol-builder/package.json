@@ -16,7 +16,6 @@
     "./codebook/components/CodebookSurface": "./src/codebook/components/CodebookSurface.tsx",
     "./codebook/components/VariableEditor": "./src/codebook/components/VariableEditor.tsx",
     "./codebook/editing": "./src/codebook/editing.ts",
-    "./codebook/validation/CodebookVariableValidationEditor": "./src/codebook/validation/CodebookVariableValidationEditor.tsx",
     "./codebook/validation/VariableValidationEditor": "./src/codebook/validation/VariableValidationEditor.tsx",
     "./codebook/variableRoles": "./src/codebook/variableRoles.ts",
     "./codebook/variableValidation": "./src/codebook/variableValidation.ts",

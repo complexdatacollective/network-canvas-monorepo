@@ -29,8 +29,15 @@ import type { Stage } from '@codaco/protocol-validation';
 import {
   useCodebookSectionDocument,
   useCreateCodebookVariable,
+  useSetVariableOptions,
   useWhereTheAnswerLands,
 } from '../../codebook/useCodebookVariableEdits.ts';
+import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
+import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
+import {
+  optionsForShape,
+  optionsShapeFor,
+} from '../../codebook/variableOptions.ts';
 import {
   type ParameterShape,
   parameterShapeFor,
@@ -83,6 +90,9 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  ATTRIBUTE_OPTIONS_FIELD,
+} from '../AttributeValueFields.tsx';
 import {
   COLLECTABLE_TYPES,
   useSubjectVariableNames,
@@ -392,6 +402,7 @@ function ComposerFormRows({
   // create below reads it when the codebook answers.
   const rowUnderEdit = useRef<string | undefined>(undefined);
   const createVariable = useCreateCodebookVariable(subject);
+  const setOptions = useSetVariableOptions();
   const whereTheAnswerLands = useWhereTheAnswerLands(
     subject,
     () => rowUnderEdit.current,
@@ -595,20 +606,57 @@ function ComposerFormRows({
         !controlsForType(attribute.type).some(
           ({ value }) => value === component,
         );
-      return unpaired
-        ? {
-            refused: {
-              fieldErrors: {
-                [COMPONENT_FIELD]: intl.formatMessage(
-                  messages.staleControlRefusal,
-                  { attributeName: attribute.name },
-                ),
-              },
+      if (unpaired) {
+        return {
+          refused: {
+            fieldErrors: {
+              [COMPONENT_FIELD]: intl.formatMessage(
+                messages.staleControlRefusal,
+                { attributeName: attribute.name },
+              ),
             },
-          }
-        : { row };
+          },
+        };
+      }
+
+      // The answers the attribute offers, which this row authored inline under
+      // the picker. A codebook write of its own, under that section's lock,
+      // made before the row is committed for the reason every codebook write
+      // here is made first: it is the one that can be refused.
+      //
+      // Judged by the CODEBOOK's own control rather than the row's: a composer
+      // field owns its control from the create onwards, so no later save moves
+      // it, and the codebook's is the one its schema is keyed on.
+      const draftOptions = row[ATTRIBUTE_OPTIONS_FIELD];
+      if (draftOptions !== undefined) {
+        const written = await setOptions(
+          subject,
+          variable,
+          optionsForShape(
+            optionsShapeFor(
+              attribute?.type,
+              attribute === undefined
+                ? undefined
+                : Reflect.get(attribute, 'component'),
+            ),
+            draftOptions,
+            attribute === undefined
+              ? undefined
+              : Reflect.get(attribute, 'options'),
+          ),
+        );
+        if (written.status === 'refused') {
+          return {
+            refused: {
+              fieldErrors: { [ATTRIBUTE_OPTIONS_FIELD]: written.message },
+            },
+          };
+        }
+      }
+
+      return { row };
     },
-    [inventAttribute, intl, roleMap, rows, subject, variables],
+    [inventAttribute, intl, roleMap, rows, setOptions, subject, variables],
   );
 
   const rowList = useMemo<RowListConfig>(
@@ -672,6 +720,7 @@ function normalizeComposerField(value: RowValues): RowValues {
   const {
     [NEW_VARIABLE_NAME]: _name,
     [NEW_VARIABLE_VALIDATION]: _validation,
+    [ATTRIBUTE_OPTIONS_FIELD]: _options,
     ...row
   } = cleaned;
   if (row[VALIDATION_HINTS_FIELD] !== false) return row;
@@ -722,6 +771,7 @@ function ComposerFieldPreviewPane({ item }: RowAsideProps) {
 function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const { readOnly } = useStageEditorForm();
   const { subject, rows, draftUnvalidated, renderedElsewhere, rowUnderEdit } =
     useComposerFormScope();
   const setRowValue = useFormStore((state) => state.setFieldValue);
@@ -852,6 +902,24 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       ? undefined
       : variables[chosen]?.type;
   const typeLabel = variableTypeLabel(attributeType ?? '');
+  /**
+   * What the validation section judges these rules against.
+   *
+   * This field keeps its own control and settings on the STAGE, and so do its
+   * siblings, so the codebook's renderings are not what the interview will
+   * run: judged by them, a contradiction this form can author goes unreported
+   * and a comparison its own controls make satisfiable is blocked.
+   */
+  const liveParameters = useRowValue(PARAMETERS_FIELD);
+  const stageRendering = useMemo(
+    () => ({
+      component: control,
+      parameters: liveParameters,
+      overlay: siblingRenderings,
+      unknownRenderings,
+    }),
+    [control, liveParameters, siblingRenderings, unknownRenderings],
+  );
   const controlOptions = useMemo(
     () =>
       // Everything a form can collect while the attribute is being invented:
@@ -1140,9 +1208,6 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
-        parametersField={PARAMETERS_FIELD}
-        siblingRenderings={siblingRenderings}
-        unknownRenderings={unknownRenderings}
         offerParameters={false}
         {...(inventing
           ? {
@@ -1153,6 +1218,14 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
               },
             }
           : {})}
+      />
+      {/* The answers the attribute offers, under the picker that binds it, as
+          Architect had them (`EditableAttributesList/ComposerAttributeFields.tsx`
+          renders the same `VariableDefinitionFields` the form-field row does).
+          Written to the codebook attribute by this row's own save. */}
+      <AttributeValueFields
+        subject={subject}
+        variableId={chosen === '' ? undefined : chosen}
       />
       {shape !== null && (
         <Field<typeof ComposerParametersField>
@@ -1197,6 +1270,32 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         inline
         initialValue={item[VALIDATION_HINTS_FIELD] === true}
       />
+      {/* The rules the participant's answer has to satisfy, last, as Architect
+          puts them (`sections/Form/FieldFields.tsx`). Judged against what THIS
+          form renders: the field keeps its own control and settings on the
+          stage, and a rule comparing this answer with another the same form
+          asks for is satisfiable or not in the renderings both arrive with. */}
+      {inventing
+        ? attributeType !== undefined && (
+            <DraftVariableValidationSection
+              entity={subject?.entity ?? 'node'}
+              variableType={attributeType}
+              variableName={inventedName}
+              rulesField={NEW_VARIABLE_VALIDATION}
+              initialValue={item[NEW_VARIABLE_VALIDATION]}
+              allVariables={variables}
+              stageRendering={stageRendering}
+              disabled={readOnly}
+            />
+          )
+        : chosen !== undefined &&
+          chosen !== '' && (
+            <CodebookVariableValidationSection
+              subject={subject}
+              variableId={chosen}
+              stageRendering={stageRendering}
+            />
+          )}
     </>
   );
 }

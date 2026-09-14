@@ -2,7 +2,6 @@ import { isEqual } from 'es-toolkit';
 import { useRef, useState } from 'react';
 
 import {
-  defineMessages,
   formatMessageError,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
@@ -16,30 +15,17 @@ import {
   type CodebookSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { validationSectionMessages } from '../codebookMessages.ts';
 import { documentWithUpdatedVariable } from '../editing.ts';
 import {
   isValidationMap,
-  ruleMapIssue,
+  ruleMapIssueForWrite,
   rulesSurvivingTypeChange,
+  type StageRendering,
   type ValidationMap,
 } from '../variableValidation.ts';
 import { useCodebookSectionWrite } from '../writes.ts';
 import VariableValidationEditor from './VariableValidationEditor.tsx';
-
-const messages = defineMessages({
-  title: {
-    id: 'protocolBuilder.variableValidation.sectionTitle',
-    defaultMessage: 'Validation',
-    description:
-      'Heading of the nested section holding the rules an answer to one attribute has to satisfy. An attribute is one field the protocol records about a network member or about the participant.',
-  },
-  description: {
-    id: 'protocolBuilder.variableValidation.sectionDescription',
-    defaultMessage: 'Enable to add validation rules to the attribute.',
-    description:
-      'Description under the heading of the nested validation section, saying what switching it on does. Shown beside a switch, so it is written as an instruction about the switch.',
-  },
-});
 
 export type CodebookVariableValidationSectionProps = Readonly<{
   /** The type whose attribute is being ruled. `undefined` while none is chosen. */
@@ -56,6 +42,18 @@ export type CodebookVariableValidationSectionProps = Readonly<{
   description?: MessageDescriptor;
   /** Whether the field above this section is itself unavailable. */
   disabled?: boolean;
+  /**
+   * How the STAGE renders the attributes these rules compare, where the
+   * codebook does not decide it — see `StageRendering`.
+   *
+   * Only a network composer's row passes one: its field keeps its own
+   * `component` and `parameters` on the stage, and a rule comparing this
+   * answer with another the same form asks for is satisfiable or not in the
+   * renderings BOTH arrive with. Judged against the codebook's renderings
+   * alone, a contradiction that row can author goes unreported and a
+   * comparison its own controls make satisfiable is blocked.
+   */
+  stageRendering?: StageRendering;
 }>;
 
 /**
@@ -81,6 +79,7 @@ export default function CodebookVariableValidationSection({
   variableId,
   description,
   disabled = false,
+  stageRendering,
 }: CodebookVariableValidationSectionProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
@@ -106,9 +105,12 @@ export default function CodebookVariableValidationSection({
       subject={subject}
       variableId={variableId}
       variables={variables}
-      title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(description ?? messages.description)}
+      title={intl.formatMessage(validationSectionMessages.sectionTitle)}
+      description={intl.formatMessage(
+        description ?? validationSectionMessages.sectionDescription,
+      )}
       disabled={disabled || readOnly}
+      {...(stageRendering === undefined ? {} : { stageRendering })}
     />
   );
 }
@@ -190,6 +192,7 @@ function VariableValidationSection({
   title,
   description,
   disabled,
+  stageRendering,
 }: Readonly<{
   subject: CodebookSubject;
   variableId: string;
@@ -197,6 +200,7 @@ function VariableValidationSection({
   title: string;
   description: string;
   disabled: boolean;
+  stageRendering?: StageRendering;
 }>) {
   const intl = useAppIntl();
   const write = useCodebookSectionWrite();
@@ -300,14 +304,19 @@ function VariableValidationSection({
 
   /** What is wrong with a rule map, in the words the rows state it in. */
   const ruleMapRefusal = (map: Readonly<ValidationMap>): string | undefined =>
-    ruleMapIssue(map, {
-      allVariables: { ...variables },
-      currentVariableId: variableId,
-      variableType,
-      options: propertyOf(variable, 'options'),
-      component: propertyOf(variable, 'component'),
-      parameters: propertyOf(variable, 'parameters'),
-    });
+    ruleMapIssueForWrite(
+      map,
+      {
+        allVariables: { ...variables },
+        currentVariableId: variableId,
+        variableType,
+        options: propertyOf(variable, 'options'),
+      },
+      // The attribute's own control and settings are already on the record in
+      // `variables`, which is what the analyser reads them from; only a STAGE
+      // that renders it with something else has anything to add.
+      stageRendering,
+    );
 
   /** Runs one write after every write asked for before it. */
   const enqueue = (work: () => Promise<boolean>): Promise<boolean> => {
@@ -452,6 +461,7 @@ function VariableValidationSection({
         value={draft}
         onChange={handleChange}
         readOnly={disabled}
+        {...(stageRendering === undefined ? {} : { stageRendering })}
       />
     </Section>
   );

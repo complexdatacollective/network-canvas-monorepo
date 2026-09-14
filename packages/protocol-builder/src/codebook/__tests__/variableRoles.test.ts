@@ -245,7 +245,7 @@ describe('variable role helpers', () => {
         ) ?? '',
       ),
     ).toBe(
-      'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+      'These options are set by the interface that uses this attribute and cannot be changed here. Reopen this row to start from the current options.',
     );
     expect(
       interfaceOwnedOptionsIssue(

@@ -30,8 +30,15 @@ import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
 import {
   useCreateCodebookVariable,
   useSetVariableComponent,
+  useSetVariableOptions,
   useWhereTheAnswerLands,
 } from '../../codebook/useCodebookVariableEdits.ts';
+import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
+import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
+import {
+  optionsForShape,
+  optionsShapeFor,
+} from '../../codebook/variableOptions.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -76,6 +83,9 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  ATTRIBUTE_OPTIONS_FIELD,
+} from '../AttributeValueFields.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
 import {
@@ -924,6 +934,7 @@ function normalizeFormField(value: RowValues): RowValues {
     [NEW_VARIABLE_TYPE]: _type,
     [NEW_VARIABLE_VALIDATION]: _validation,
     [INPUT_CONTROL]: _component,
+    [ATTRIBUTE_OPTIONS_FIELD]: _options,
     ...field
   } = cleaned;
   if (field.showValidationHints === false) delete field.showValidationHints;
@@ -949,6 +960,7 @@ function useCommitFormField(
   const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
+  const setOptions = useSetVariableOptions();
   // Both writes below are round trips, and both are ABOUT the attribute the
   // row's picker names, which is the attribute the row commits: the dialog is
   // the only thing that can change a row of a stage this editor holds. One
@@ -1014,6 +1026,42 @@ function useCommitFormField(
                 },
               }
             : { refused: { formErrors: [outcome.message] } };
+        }
+        // The answers the attribute offers, which this row authored inline
+        // under the question that asks for them. After the control, because
+        // the control is what decides whether the attribute holds a list at
+        // all — a boolean moved to a toggle holds none, and a list written
+        // before that move would be written onto a shape that cannot carry it.
+        //
+        // Filed on the list itself, where the researcher typed it: the
+        // refusals it can earn are about the values — an interface that owns
+        // them, a collaborator holding the section — and they are what has to
+        // be corrected.
+        const draftOptions = value[ATTRIBUTE_OPTIONS_FIELD];
+        if (draftOptions !== undefined && codebookSubject !== undefined) {
+          const held = variablesForSubject(protocolContext, codebookSubject)[
+            variableId
+          ];
+          const written = await setOptions(
+            codebookSubject,
+            variableId,
+            // Two blank answers are what a researcher who has written nothing
+            // sees AND what one who has just cleared both sees, and those save
+            // differently — so the list the row opened on settles it, the same
+            // way the codebook's own editor settles it.
+            optionsForShape(
+              optionsShapeFor(held?.type, component),
+              draftOptions,
+              held === undefined ? undefined : Reflect.get(held, 'options'),
+            ),
+          );
+          if (written.status === 'refused') {
+            return {
+              refused: {
+                fieldErrors: { [ATTRIBUTE_OPTIONS_FIELD]: written.message },
+              },
+            };
+          }
         }
         // The control belongs to the attribute rather than to the field, so
         // this write reaches every form that collects it — and the row it was
@@ -1329,7 +1377,18 @@ function hasUnvalidatedUseFor(
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
+  const protocolContext = useProtocolContext();
+  const { readOnly } = useStageEditorForm();
   const { subject, rowUnderEdit } = useFormFieldsScope();
+  // The attributes a comparison rule may be pointed at, for the validation
+  // section below.
+  const subjectVariables = useMemo(
+    () =>
+      subject === undefined
+        ? {}
+        : variablesForSubject(protocolContext, subject),
+    [protocolContext, subject],
+  );
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
   const inventedName =
@@ -1354,10 +1413,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
+  // The control the row holds right now, which is what the codebook will
+  // record — so it is also what decides which list of answers the attribute
+  // has (a boolean moved to a toggle has none).
+  const liveControl = asString(useRowValue(INPUT_CONTROL));
   useControlThatFollowsTheAttribute(
     control.binding,
     control.seeded,
-    asString(useRowValue(INPUT_CONTROL)),
+    liveControl,
   );
   // What every codebook write this row makes is about. Written on every render
   // rather than from an effect, the way the shared list keeps its own view of
@@ -1395,10 +1458,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             required={intl.formatMessage(messages.newTypeRequired)}
           />
         )}
-        {/* The input control belongs to an attribute that exists. While one
-            is still being invented in the codebook editor, there is nothing
-            yet for a control to be chosen for. */}
-        {!inventingInTheEditor && <InputControlField control={control} />}
         <AttributeCodebookControls
           subject={subject}
           committedVariable={item.variable}
@@ -1445,7 +1504,50 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           inline
           initialValue={item.showValidationHints === true}
         />
+        {/* Last in this section, as Architect has it
+            (`sections/Form/FieldFields.tsx` puts `InputControlFields` after
+            the validation-hints toggle): how the participant answers follows
+            what they are asked. The control belongs to an attribute that
+            exists — while one is still being invented in the codebook editor
+            there is nothing yet for a control to be chosen for. */}
+        {!inventingInTheEditor && <InputControlField control={control} />}
       </Section>
+      {/* The answers the attribute offers, under the question that asks for
+          them, as Architect had them
+          (`sections/Form/VariableDefinitionFields.tsx`'s "Choice values" and
+          "Boolean values"). Written to the codebook attribute by this row's
+          own save. */}
+      <AttributeValueFields
+        subject={subject}
+        variableId={control.chosen === '' ? undefined : control.chosen}
+        rowComponent={liveControl ?? ''}
+      />
+      {/* Architect's own last section of this dialog
+          (`sections/Form/FieldFields.tsx`): the rules the participant's answer
+          has to satisfy, authored where the question is rather than behind a
+          button. They belong to the codebook attribute, so a bound attribute's
+          rules commit under the codebook section's own lock; an attribute this
+          row is still inventing has no record to write to, and its rules ride
+          along with the create. */}
+      {inventing
+        ? isCollectableType(newType) &&
+          !inventingInTheEditor && (
+            <DraftVariableValidationSection
+              entity={subject?.entity ?? 'node'}
+              variableType={newType}
+              variableName={inventedName}
+              rulesField={NEW_VARIABLE_VALIDATION}
+              initialValue={item[NEW_VARIABLE_VALIDATION]}
+              allVariables={subjectVariables}
+              disabled={readOnly}
+            />
+          )
+        : control.chosen !== '' && (
+            <CodebookVariableValidationSection
+              subject={subject}
+              variableId={control.chosen}
+            />
+          )}
     </>
   );
 }

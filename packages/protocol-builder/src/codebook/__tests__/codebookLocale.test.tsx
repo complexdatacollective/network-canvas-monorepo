@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { commonCatalogs } from '@codaco/app-i18n/common';
@@ -26,7 +26,8 @@ import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
-import CodebookVariableValidationEditor from '../validation/CodebookVariableValidationEditor.tsx';
+import VariableValidationEditor from '../validation/VariableValidationEditor.tsx';
+import type { ValidationMap } from '../variableValidation.ts';
 import { ruleMapPrecheck } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 
@@ -254,6 +255,33 @@ const refused = async (): Promise<CodebookWriteOutcome> => ({
   message: codebookRefusalMessage({ kind: 'held' }),
   refusal: { kind: 'unexplained' },
 });
+
+/**
+ * The rule editor with somebody holding its map, as every host does.
+ *
+ * The editor is controlled: it hands a new map to its host and renders what it
+ * is handed back. A test that never writes the map back cannot reach the row's
+ * own refusal, because the row states it about the value the map holds.
+ */
+function HeldRules({
+  variables,
+  seed,
+}: Readonly<{
+  variables: Readonly<Record<string, unknown>>;
+  seed: ValidationMap;
+}>) {
+  const [rules, setRules] = useState<ValidationMap>(seed);
+  return (
+    <VariableValidationEditor
+      entity="node"
+      variableType="number"
+      currentVariableId="age"
+      allVariables={variables}
+      value={rules}
+      onChange={setRules}
+    />
+  );
+}
 
 describe('the codebook editors swept for English', () => {
   it('leaves no English in the entity editor, its choice lists or its failure alert', async () => {
@@ -681,7 +709,7 @@ describe('the codebook editors swept for English', () => {
     ).toBeVisible();
   });
 
-  it('leaves no English in the validation editor or its rule list', async () => {
+  it('leaves no English in the validation rule list', async () => {
     const user = userEvent.setup();
     const variables: Readonly<Record<string, unknown>> = {
       age: {
@@ -693,36 +721,24 @@ describe('the codebook editors swept for English', () => {
       height: { name: 'Height', type: 'number', component: 'Number' },
     };
     const document: SectionDoc = { ...PERSON_DOCUMENT, variables };
-    renderInSpanish(
-      <CodebookVariableValidationEditor
-        openId="es-validation"
-        subject={{ entity: 'node', type: 'person' }}
-        variableId="age"
-        authoritativeEntityDocument={document}
-        allSubjectVariables={variables}
-        onSubmitDocument={refused}
-      />,
-    );
+    renderInSpanish(<HeldRules variables={variables} seed={{ minValue: 0 }} />);
 
     const minimum = screen.getByRole('spinbutton', { name: 'Valor mínimo' });
     expect(minimum).toBeVisible();
-    expectNoLocaleLeaks('the validation editor', protocolStrings(document));
+    expectNoLocaleLeaks('the validation rule list', protocolStrings(document));
 
-    // The submit stays disabled until the draft differs from the authority,
-    // so the refusal is only reachable through an actual edit.
+    // Leaving a rule's box empty is what makes the row state its own refusal,
+    // which is the one sentence this editor writes for itself.
     await user.clear(minimum);
-    await user.type(minimum, '3');
-    await user.click(
-      screen.getByRole('button', { name: 'Guardar validación' }),
-    );
+    await user.tab();
 
     expect(
       await screen.findByText(
-        'Se está editando ahora mismo una sección necesaria para este cambio.',
+        'Introduce un valor para «Valor mínimo» o desactiva la regla.',
       ),
     ).toBeVisible();
     expectNoLocaleLeaks(
-      'the validation editor after a refused save',
+      'the validation rule list stating a refusal',
       protocolStrings(document),
     );
   });

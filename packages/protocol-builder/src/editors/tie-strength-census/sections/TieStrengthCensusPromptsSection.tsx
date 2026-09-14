@@ -11,16 +11,12 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import {
   buildExclusiveVariableSlotMap,
-  buildInterfaceOwnedOptionMap,
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
   hasValidatedUse,
   interfaceOwnedPickIssue,
-  lockedVariableOptions,
-  variableRoleKey,
 } from '../../../codebook/variableRoles.ts';
-import { LockedOptions } from '../../../fields/BinAttributeField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -40,8 +36,12 @@ import type {
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import AttributeCodebookControls from '../../../sections/AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  attributeOptionsFieldFor,
+} from '../../../sections/AttributeValueFields.tsx';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import EdgeTypeSection, {
@@ -336,19 +336,6 @@ function ScaleField({
   // scale — a family pedigree's relationship kinds, say — but its points are
   // that interface's to decide, so they are shown rather than offered for
   // editing.
-  const locked = useMemo(
-    () =>
-      subject === undefined || picked === undefined
-        ? undefined
-        : lockedVariableOptions(
-            allVariables,
-            picked,
-            buildInterfaceOwnedOptionMap(protocolContext)[
-              variableRoleKey(subject, picked)
-            ],
-          ),
-    [allVariables, picked, protocolContext, subject],
-  );
 
   // The scale belongs to the connection, so there is nothing to choose from
   // until the connection type is known — and it is that type's own attributes
@@ -383,21 +370,17 @@ function ScaleField({
         codebook edit in this package is — the attribute lives in another
         section of the protocol and commits on its own.
       */}
-      {locked === undefined ? (
-        <AttributeCodebookControls
-          subject={subject}
-          variableField={SCALE_FIELD}
-          committedVariable={committed}
-          componentField={NO_ROW_COMPONENT}
-          // The participant taps a point and the value is written as it is,
-          // with nothing to check it — the schema says so by declaring this
-          // reference `unvalidatedAttribute` — so rules authored here would
-          // never run.
-          offerRules={false}
-        />
-      ) : (
-        <LockedOptions options={locked} />
-      )}
+      <AttributeCodebookControls
+        subject={subject}
+        variableField={SCALE_FIELD}
+        committedVariable={committed}
+        componentField={NO_ROW_COMPONENT}
+      />
+      <AttributeValueFields
+        subject={subject}
+        variableId={picked}
+        optionsField={attributeOptionsFieldFor(SCALE_FIELD)}
+      />
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
           <AlertTitle>
@@ -483,8 +466,14 @@ export default function TieStrengthCensusPromptsSection() {
    * The connection type is asked about first: the scale hangs off it, so with
    * the type gone there is no codebook to judge the attribute against.
    */
+  const commitScaleOptions = useOptionsRowCommit(SCALE_FIELD, (row) =>
+    edgeSubjectOf(row[CREATE_EDGE_FIELD]),
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       const edgeIssue = missingEdgeTypeIssue(
         protocolContext.codebook.edge ?? {},
         row[CREATE_EDGE_FIELD],
@@ -528,11 +517,16 @@ export default function TieStrengthCensusPromptsSection() {
         subject,
         variableId,
       );
-      return owned === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      if (owned !== undefined) {
+        return { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      }
+
+      // Last, because the response options are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot scale has no list to
+      // write anywhere.
+      return await commitScaleOptions(row);
     },
-    [identity.id, protocolContext],
+    [commitScaleOptions, identity.id, protocolContext],
   );
 
   return (
