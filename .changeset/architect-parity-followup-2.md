@@ -98,3 +98,29 @@ interview rather than turning into emphasis or a heading, which the plain boxes
 could not promise. The two answers of a yes-or-no attribute are written the
 same way, and the check that refuses two answers with the same label now asks
 one question from every surface instead of four slightly different ones.
+
+A node type's shape is chosen from the shapes themselves. The default shape, and
+the shape each answer or threshold of a shape mapping maps to, were dropdowns
+listing the words circle, square and diamond; they are swatches again, drawn in
+the type's own colour, as Architect drew them — so the choice is made by looking
+at what a participant will see. A threshold box left empty now goes back to the
+number that is actually stored rather than saving a number it is not showing,
+adding a threshold starts it on a number you could have typed rather than on a
+floating-point remainder, and no further threshold is offered once the
+attribute's range is used up.
+
+The warning that an attribute offers more answers than a screen can draw appears
+while you are adding them. It counted the answers the codebook had already
+stored, so adding a sixth value to a bin prompt or a tie-strength scale said
+nothing until the save — which closes the dialog, so it was never read at all.
+
+Saving a prompt no longer writes back answers you did not touch. The list of
+answers under an attribute is filled in from the codebook, so every save used to
+write it back; a colleague who added a value while you were rewording the prompt
+had it taken away again by your save, with nothing on either screen saying so.
+A list nobody edited is left alone.
+
+Renaming an attribute from its pill holds until the codebook answers. Pressing
+Escape or clicking away while the rename was still being written said the edit
+was cancelled while the new name landed anyway. Both ways out now wait, as the
+Cancel button already did, and what you are told is what actually happened.

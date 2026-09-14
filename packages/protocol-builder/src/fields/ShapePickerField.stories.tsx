@@ -18,12 +18,10 @@ function ShapePicker({
   initialValue,
   nodeColor,
   readOnly = false,
-  required = false,
 }: Readonly<{
-  initialValue?: string;
+  initialValue?: 'circle' | 'square' | 'diamond';
   nodeColor?: string;
   readOnly?: boolean;
-  required?: string;
 }>) {
   return (
     <Field<typeof ShapePickerField>
@@ -34,7 +32,6 @@ function ShapePicker({
       {...(initialValue === undefined ? {} : { initialValue })}
       {...(nodeColor === undefined ? {} : { nodeColor })}
       readOnly={readOnly}
-      {...(required === undefined ? {} : { required })}
     />
   );
 }

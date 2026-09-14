@@ -51,11 +51,15 @@ async function addInlineValue(
   await harness.user.click(
     values.getByRole('button', { name: 'Create new option' }),
   );
-  await harness.user.type(
+  // Pasted rather than typed: the keystrokes prove nothing here and each one
+  // re-renders the prompt around the list.
+  await writeInto(
+    harness,
     await screen.findByRole('textbox', { name: 'Label' }),
     label,
   );
-  await harness.user.type(
+  await writeInto(
+    harness,
     screen.getByRole('textbox', { name: 'Value' }),
     String(value),
   );
