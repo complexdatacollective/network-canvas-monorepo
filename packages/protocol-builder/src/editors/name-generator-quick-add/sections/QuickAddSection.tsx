@@ -26,6 +26,7 @@ import {
 } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useSubjectVariableNames } from '../../../sections/canvas/codebookChoices.ts';
+import { useRenameAttributeProps } from '../../../sections/useRenameAttribute.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 
@@ -150,6 +151,7 @@ export default function QuickAddSection() {
   // What the create row checks a typed name against: every attribute name this
   // type holds, not just the text ones the picker offers.
   const namesInUse = useSubjectVariableNames(subject);
+  const renameProps = useRenameAttributeProps(subject);
 
   const roleMap = useMemo(
     () => buildVariableRoleMap(protocolContext, identity.id),
@@ -241,6 +243,7 @@ export default function QuickAddSection() {
         onCreateOption={createQuickAddAttribute}
         namesInUse={namesInUse}
         required={CHOOSE_AN_ATTRIBUTE}
+        {...renameProps}
       />
       <CodebookVariableValidationSection
         subject={subject}

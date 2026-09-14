@@ -779,6 +779,10 @@
     "defaultMessage": "Not a valid option value. Only letters, numbers and the symbols ._-: are supported",
     "description": "Refusal shown when an allowed answer’s stored value holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated."
   },
+  "protocolBuilder.codebookEditing.renameVariableRefused": {
+    "defaultMessage": "This attribute could not be renamed, so nothing was changed. Try again.",
+    "description": "Refusal shown beside an attribute whose name could not be changed, for a reason with no explanation of its own."
+  },
   "protocolBuilder.codebookEditing.saving": {
     "defaultMessage": "Saving…",
     "description": "The submit button of a codebook editor while the change is in flight, replacing its usual wording."
@@ -6058,6 +6062,42 @@
   "protocolBuilder.variablePicker.nothingToSelect": {
     "defaultMessage": "There are no attributes to choose from here, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
     "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and this control does not allow one to be created."
+  },
+  "protocolBuilder.variablePicker.renameCancelled": {
+    "defaultMessage": "Attribute name edit cancelled",
+    "description": "Said aloud when the researcher leaves the attribute-name editor without saving."
+  },
+  "protocolBuilder.variablePicker.renameDialogName": {
+    "defaultMessage": "Edit attribute name",
+    "description": "Accessible name of the small editor that opens over the attribute pill for renaming the attribute."
+  },
+  "protocolBuilder.variablePicker.renameEditing": {
+    "defaultMessage": "Editing attribute {name}",
+    "description": "Said aloud when the editor for an attribute’s name opens. name is the researcher’s own name for it and is not translated."
+  },
+  "protocolBuilder.variablePicker.renameFieldLabel": {
+    "defaultMessage": "Attribute name",
+    "description": "Accessible name of the box the attribute’s new name is typed into."
+  },
+  "protocolBuilder.variablePicker.renamePlaceholder": {
+    "defaultMessage": "Enter an attribute name...",
+    "description": "Placeholder in the box the attribute’s new name is typed into, shown while it is empty."
+  },
+  "protocolBuilder.variablePicker.renameRequired": {
+    "defaultMessage": "You must enter an attribute name",
+    "description": "Refusal shown in the attribute-name editor when the box has been emptied. An attribute must be called something."
+  },
+  "protocolBuilder.variablePicker.renameSubmit": {
+    "defaultMessage": "Save Changes",
+    "description": "Button that writes the attribute’s new name."
+  },
+  "protocolBuilder.variablePicker.renameTrigger": {
+    "defaultMessage": "Edit attribute name: {label}",
+    "description": "Accessible name and tooltip of the attribute pill when pressing it opens the editor for the attribute’s name. label is the researcher’s own name for it and is not translated."
+  },
+  "protocolBuilder.variablePicker.renamed": {
+    "defaultMessage": "Attribute renamed to {name}",
+    "description": "Said aloud once an attribute has been renamed. name is the researcher’s own new name for it and is not translated."
   },
   "protocolBuilder.variablePicker.resultsLabel": {
     "defaultMessage": "Attribute results",

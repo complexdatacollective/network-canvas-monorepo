@@ -37,6 +37,7 @@ import { asText } from '../../../sections/canvas/rowValues.ts';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { composerFormFieldMessages } from '../../../sections/form-fields/composerFormFieldMessages.ts';
 import { ComposerFormFieldsField } from '../../../sections/form-fields/ComposerFormFields.tsx';
+import { useRenameAttributeProps } from '../../../sections/useRenameAttribute.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { composerMessages as messages } from './composerMessages.ts';
@@ -148,6 +149,7 @@ function useKeptOptions(
 export default function ComposerNodesSection() {
   const intl = useAppIntl();
   const subject = useStageSubject('node');
+  const renameProps = useRenameAttributeProps(subject);
   const waiting = subject === undefined;
   const setStageValue = useSetStageValue();
 
@@ -308,6 +310,7 @@ export default function ComposerNodesSection() {
           required={REQUIRED}
           {...quickAddValidation}
           {...quickAddCreate.createProps}
+          {...renameProps}
         />
         {quickAddCreate.editor}
         <CodebookVariableValidationSection
@@ -330,6 +333,7 @@ export default function ComposerNodesSection() {
           emptyMessage={intl.formatMessage(messages.layoutEmpty)}
           required={REQUIRED}
           {...layoutCreate.createProps}
+          {...renameProps}
         />
         {layoutCreate.editor}
       </Section>
@@ -360,6 +364,7 @@ export default function ComposerNodesSection() {
           emptyMessage={intl.formatMessage(messages.hullEmpty)}
           {...hullValidation}
           {...hullCreate.createProps}
+          {...renameProps}
         />
         {hullCreate.editor}
       </Section>

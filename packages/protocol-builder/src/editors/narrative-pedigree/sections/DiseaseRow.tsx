@@ -26,6 +26,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { useRenameAttributeProps } from '../../../sections/useRenameAttribute.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
   diseaseRowIssue,
@@ -181,6 +182,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
       subject,
     ],
   );
+  const renameProps = useRenameAttributeProps(subject ?? undefined);
 
   return (
     <Section
@@ -228,6 +230,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
         required={intl.formatMessage(
           narrativePedigreeMessages.diseaseVariableRequired,
         )}
+        {...renameProps}
       />
       <Field<typeof NativeSelectField>
         name={INHERITANCE_FIELD}

@@ -95,6 +95,7 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from '../collectableTypes.ts';
+import { useRenameAttributeProps } from '../useRenameAttribute.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
@@ -1852,6 +1853,7 @@ function AttributePicker({
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
   const inventedType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
   const namesInUse = useSubjectVariableNames(subject);
+  const renameProps = useRenameAttributeProps(subject);
 
   const roleMap = useUnvalidatedWriterMap(answeredFor);
 
@@ -1960,6 +1962,7 @@ function AttributePicker({
       initialValue={committed}
       required={intl.formatMessage(messages.attributeRequired)}
       {...(subject === undefined ? {} : { onCreateOption: invent, namesInUse })}
+      {...renameProps}
     />
   );
 }
