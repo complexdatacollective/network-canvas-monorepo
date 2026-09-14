@@ -3695,11 +3695,18 @@ describe('the answers a boolean a field is inventing offers', () => {
     });
 
     const dialog = await inventBoolean(harness);
-    // On screen and untouched, which is the whole of the case: a row that
-    // registered the control still has a draft pair to send.
-    expect(
+    const answers = within(
       await dialog.findByRole('region', { name: 'Boolean values' }),
-    ).toBeInTheDocument();
+    );
+    // Written and then cleared, which is what makes this about the rule rather
+    // than about a control nobody touched: the row is now holding a pair of
+    // blank answers, and a blank pair stamped on the attribute is a control
+    // with two buttons the participant cannot read.
+    const positive = answers.getByRole('textbox', {
+      name: 'Label for “true”',
+    });
+    await harness.user.type(positive, 'Nearby');
+    await harness.user.clear(positive);
 
     await addTheRow(harness, dialog);
 
