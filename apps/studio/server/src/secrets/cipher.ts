@@ -89,13 +89,6 @@ export type SecretsCipher = {
 };
 
 /**
- * Reads the key id out of a stored OAuth token value, or `undefined` when the
- * value is not a sealed one. Pure, so the boot check and the rotation command
- * can ask the same question in JavaScript that the SQL asks with
- * `split_part(col, ':', 2)` on rows matching `studio-secret:%` — the two agree
- * for every id a keyring can hold, because an id cannot contain a `:`.
- */
-/**
  * The exact prefix `sealOAuthToken` writes for `keyId`. Exported so the
  * rotation's SQL can select on the string rather than on a LIKE pattern: a key
  * id may contain `_`, which LIKE reads as a wildcard, and a selection that
@@ -105,6 +98,13 @@ export function sealedOAuthTokenPrefix(keyId: string): string {
   return `${OAUTH_PREFIX}${keyId}:`;
 }
 
+/**
+ * Reads the key id out of a stored OAuth token value, or `undefined` when the
+ * value is not a sealed one. Pure, so the boot check and the rotation command
+ * can ask the same question in JavaScript that the SQL asks with
+ * `split_part(col, ':', 2)` on rows matching `studio-secret:%` — the two agree
+ * for every id a keyring can hold, because an id cannot contain a `:`.
+ */
 export function parseOAuthTokenKeyId(stored: string): string | undefined {
   if (!stored.startsWith(OAUTH_PREFIX)) return undefined;
   const rest = stored.slice(OAUTH_PREFIX.length);

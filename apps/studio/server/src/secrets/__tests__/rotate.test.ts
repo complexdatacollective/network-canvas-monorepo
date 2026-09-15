@@ -394,7 +394,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
       const refused = rotateSecrets(maintenance, AFTER);
       await expect(refused).rejects.toThrow(RotationIncompleteError);
       await expect(refused).rejects.toThrow(
-        /webhook_subscriptions: 1 row still under another key \(held by another session\); run rotate-secrets again/,
+        /webhook_subscriptions: 1 row still under another key \(held by another session, or written under an older key while this ran\); run rotate-secrets again/,
       );
     } finally {
       // In `finally` so a failed assertion still gives the row lock back:

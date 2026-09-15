@@ -33,7 +33,7 @@ export class RotationIncompleteError extends Error {
       `${remaining
         .map(
           ({ store, rows }) =>
-            `${store}: ${rows} row${rows === 1 ? '' : 's'} still under another key (held by another session)`,
+            `${store}: ${rows} row${rows === 1 ? '' : 's'} still under another key (held by another session, or written under an older key while this ran)`,
         )
         .join('; ')}; run rotate-secrets again once the other session has ` +
         'finished, and before removing the old entry from the keyring.',

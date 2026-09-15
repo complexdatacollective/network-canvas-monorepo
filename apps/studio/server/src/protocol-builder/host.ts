@@ -596,7 +596,11 @@ async function writeSections(
     const stripped = stripAssetKeyValues(assets);
     if (stripped.values.size > 0) {
       // In this transaction, so a refused write seals nothing and a committed
-      // one cannot leave a manifest naming a key the store does not hold.
+      // one cannot leave a manifest naming a key the store does not hold — for
+      // an entry that arrived with a value. An entry written without one (the
+      // stored shape, which validation admits) names a key nobody promoted,
+      // and the inspect path reports that as "never promoted" rather than
+      // failing.
       await sealAssetKeys(
         client,
         session.cipher,
