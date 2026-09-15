@@ -1,5 +1,10 @@
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { selectOrCreateNodeType } from '../pageobjects/editor-sections/entity-types.js';
+import { addPrompt } from '../pageobjects/editor-sections/prompts.js';
+import { createAttribute } from '../pageobjects/editor-sections/variables.js';
+import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
 /**
@@ -78,4 +83,91 @@ test('sends focus to the control an issue row names', async ({
 
   // Not the trigger, and not `<body>`: the field the row names.
   await expect(heading).toBeFocused();
+});
+
+/**
+ * The panel over the fields the stage editor actually renders.
+ *
+ * Every field in the editor comes from `@codaco/protocol-builder` and renders
+ * none of Architect's own `IssueAnchor`s, so the panel's rows used to be
+ * composed against ids nothing mounted: each row linked to `#field_prompts`
+ * and, with no anchor to read a name off, called its field by the store's
+ * internal path. Observed on the deployed dev site at v8.2.5 while
+ * release-testing a quick-add name generator.
+ *
+ * A LIST is the shape that broke hardest: the only thing inside it a person
+ * can operate is an add button named by its own words, so there was nothing
+ * anywhere to name the field by.
+ */
+test('names a list field, and links to something that is on the page', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol(), { name: 'Issues Panel Lists' });
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('NameGeneratorQuickAdd');
+  await selectOrCreateNodeType(architectPage, 'Person');
+  await createAttribute(editor.field('quickAdd'), 'name');
+
+  // The one thing left undone, so the panel lists exactly the prompt list.
+  await architectPage.getByRole('button', { name: 'Finished Editing' }).click();
+
+  const row = architectPage.getByTestId('issue').first();
+  await expect(row).toBeVisible();
+  // The field's own label — not "prompts", which is the form store's key.
+  await expect(row).toHaveText(/^Prompts - /);
+
+  const href = await row.getByRole('link').getAttribute('href');
+  expect(href).toBeTruthy();
+  await expect(architectPage.locator(href!)).toHaveCount(1);
+
+  // And taking the row puts the researcher on the control that resolves it.
+  await row.getByRole('link').click();
+  await expect(
+    architectPage.getByRole('button', { name: 'Create new prompt' }),
+  ).toBeFocused();
+});
+
+/**
+ * A refusal is about the value it was raised against, so it goes when that
+ * value changes — without the researcher having to leave the protocol and
+ * open it again.
+ */
+test('drops a refusal as soon as the researcher answers it', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol(), { name: 'Refusal Clearing' });
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('NameGeneratorQuickAdd');
+  await selectOrCreateNodeType(architectPage, 'Person');
+  await createAttribute(editor.field('quickAdd'), 'name');
+
+  await architectPage.getByRole('button', { name: 'Finished Editing' }).click();
+  await expect(architectPage.getByTestId('issue')).toHaveCount(1);
+  await architectPage.keyboard.press('Escape');
+
+  await addPrompt(editor.section('Prompt collection'), async () => {
+    await editor.fillRichText(
+      'Prompt text',
+      'Please name someone you talk to.',
+    );
+  });
+  await expect(
+    architectPage.getByText('Please name someone you talk to.'),
+  ).toBeVisible();
+
+  // The toolbar's issues control is composed from the field errors, so it goes
+  // with them: no count left standing over a stage that now asks something.
+  // Scoped to the toolbar, and matched on the count the control carries, so a
+  // protocol whose NAME begins "Issues" cannot answer for it.
+  await expect(
+    architectPage
+      .getByRole('toolbar')
+      .getByRole('button', { name: /^Issues \(\d+\)$/ }),
+  ).toHaveCount(0);
 });

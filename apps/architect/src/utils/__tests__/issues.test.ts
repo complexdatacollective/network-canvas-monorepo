@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import * as issues from '../issues';
 
@@ -59,31 +59,88 @@ describe('utils/issues', () => {
     });
   });
 
-  describe('candidateIdsFor()', () => {
-    it('returns the exact id (and its _error variant) for a flat field', () => {
-      expect(issues.candidateIdsFor('interviewScript')).toEqual([
-        'field_interviewScript',
-        'field_interviewScript__error',
-      ]);
+  describe('resolveIssueTarget()', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
     });
 
-    it('walks up to ancestor anchors for a nested array field', () => {
-      const ids = issues.candidateIdsFor('form.fields[0].variable');
-      expect(ids[0]).toBe('field_form_fields_0__variable');
-      expect(ids).toContain('field_form_fields__error');
-      expect(ids).toContain('field_form');
+    /** A field as fresco-ui's `Field` renders one: the seam, and a label. */
+    const mountField = (path: string, label: string) => {
+      document.body.innerHTML = `
+        <div data-field-name="${path}" data-field-path="${path}">
+          <label id="${path}-label" for="${path}-control">${label}<span aria-hidden="true"> *</span></label>
+          <div><button type="button">Create new prompt</button></div>
+        </div>
+      `;
+    };
+
+    /** A field as Architect's own `ArchitectField` still renders one. */
+    const mountAnchor = (path: string, label: string) => {
+      document.body.innerHTML = `<div id="${issues.getFieldId(path)}" data-name="${label}"></div>`;
+    };
+
+    it('names a field by the label the researcher reads, without its required marker', () => {
+      mountField('prompts', 'Prompts');
+
+      expect(issues.resolveIssueTarget('prompts')?.label).toBe('Prompts');
     });
 
-    it('trims array indices as well as dotted segments', () => {
-      const ids = issues.candidateIdsFor('prompts[0].text');
-      expect(ids).toContain('field_prompts_0__text');
-      expect(ids).toContain('field_prompts__error');
-      expect(ids).toContain('field_prompts');
+    it('answers with an id that is mounted, so a row can link to it', () => {
+      mountField('prompts', 'Prompts');
+      const anchorId = issues.resolveIssueTarget('prompts')?.anchorId;
+
+      expect(anchorId).toBe('prompts-label');
+      expect(document.getElementById(anchorId!)).not.toBeNull();
+    });
+
+    it('reads the field itself rather than whichever control comes first inside it', () => {
+      // The defect this replaced: the label was read off the control's
+      // `aria-labelledby`, and a list's only operable control is an add button
+      // named by its own words. Every list, picker and radio group in the
+      // stage editor fell through to the store's internal path.
+      mountField('prompts', 'Prompts');
+
+      expect(issues.resolveIssueTarget('prompts')?.label).not.toBe(
+        'Create new prompt',
+      );
+    });
+
+    it('ignores the labels of fields nested inside a composite one', () => {
+      document.body.innerHTML = `
+        <div data-field-path="prompts">
+          <label id="prompts-label">Prompts</label>
+          <div data-field-path="prompts[0].text">
+            <label id="row-label">Prompt text</label>
+          </div>
+        </div>
+      `;
+
+      expect(issues.resolveIssueTarget('prompts')?.label).toBe('Prompts');
+    });
+
+    it('falls back to the legacy anchor for the forms that still render one', () => {
+      mountAnchor('introductionPanel.title', 'Page heading');
+      const target = issues.resolveIssueTarget('introductionPanel.title');
+
+      expect(target?.label).toBe('Page heading');
+      expect(target?.anchorId).toBe('field_introductionPanel_title');
+    });
+
+    it('walks up to an ancestor anchor when the exact field has none', () => {
+      mountAnchor('form.fields', 'Form fields');
+
+      expect(issues.resolveIssueTarget('form.fields[0].variable')?.label).toBe(
+        'Form fields',
+      );
+    });
+
+    it('answers with nothing at all when the field is not on the page', () => {
+      expect(issues.resolveIssueTarget('prompts')).toBeNull();
     });
 
     it('terminates on degenerate paths (trailing/empty delimiters)', () => {
       for (const input of ['a.', 'foo..bar', '.', '', '[0]']) {
-        expect(() => issues.candidateIdsFor(input)).not.toThrow();
+        expect(() => issues.resolveIssueTarget(input)).not.toThrow();
       }
     });
   });

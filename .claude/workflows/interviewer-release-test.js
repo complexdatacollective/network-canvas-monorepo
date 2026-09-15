@@ -363,6 +363,13 @@ KNOWN APP QUIRKS — encode them, do NOT report them as bugs:
   changing a value, wait for the UI to read it back before reloading.
 - Reloading while a device lock is enrolled relocks the app (the in-memory
   key drops). Expected behaviour, not a bug.
+- Analytics is observable ONLY as the PostHog client's init traffic: the
+  app constructs the client solely while analytics is enabled, and
+  construction fires config and flags requests to ph-relay.networkcanvas.com
+  at opt-in and at every boot with the setting persisted ON. Explicit app
+  events never reach the relay under this harness — posthog-js's bot filter
+  (navigator.webdriver, the HeadlessChrome brand) drops capture() before any
+  request is made — so a tracked action proves nothing in either direction.
 - Use generous timeouts: 15–20 s around import, interview mount, and stage
   changes; 30 s for synthetic-data generation.
 - EXACTLY four kinds of console error are expected noise, and no others:
@@ -810,13 +817,11 @@ check's detail:
    "manual-and-idle-lock".
 4. Step-up gates (a rejected credential creates no session) and encryption
    at rest across sessions, protocols, AND assets — including rows seeded
-   in plaintext BEFORE enrolment, proving the re-encryption sweep: steps
-   "seed-before-enrolment", "stepup-interview-entry",
-   "phantom-after-entry-gated-exit", "stepup-export", and
-   "ciphertext-at-rest".
-4d. The re-encryption sweep is proven END TO END: the session recorded
-   before any vault existed remounts through the app and the encrypted
-   export carries the response seeded before enrolment: steps
+   in plaintext BEFORE enrolment, with the re-encryption sweep proven END
+   TO END (the session recorded before any vault existed remounts through
+   the app and the encrypted export carries the response seeded before
+   enrolment): steps "seed-before-enrolment", "stepup-interview-entry",
+   "phantom-after-entry-gated-exit", "stepup-export", "ciphertext-at-rest",
    "encrypted-export-decrypts", "sweep-decrypt-proof", and
    "phantom-after-sweep-probe-exit".
 5. Lock-screen guard on interview routes (recovery suppressed) and
@@ -960,25 +965,30 @@ CHECKS:
 5. Privacy: "Enable analytics" switch flips and reads back — verified
    BEHAVIOURALLY with BOTH directions of evidence: the context blocks the
    relay, but attempted requests to ph-relay.networkcanvas.com are still
-   observable via page.on('request'). The app disables autocapture and
-   pageview capture (only explicit app events emit), so an idle page
-   proves NOTHING — every probe must be a KNOWN-TRACKED action: feed a
-   garbage bad.netcanvas to the protocol import input, which fires a
-   protocol_install_failed analytics event on every failed import
-   (useProtocolImport.ts) with no persistent state. Report the switch's
-   initial state as an observation, never a failure. Sequence:
-   (a) POSITIVE CONTROL first: toggle analytics ON, wait for read-back,
-   perform the garbage import, and require AT LEAST ONE attempted relay
-   request within a 20 s armed window — if none arrives, the listener or
-   the probe is not observing capture at all, so record THIS check as
-   failed coverage rather than treating later zeroes as an opt-out pass.
-   (b) Toggle OFF, wait for read-back, reload, RE-READ the switch after
-   the reload (the persisted setting is what survives), repeat the
-   garbage-import probe, and KEEP the listener armed through a 15 s quiet
-   window (the client batches on a flush timer — an immediate counter
-   read misses a late flush): assert ZERO new attempts across the whole
-   window. (c) Enable, then disable again, and repeat (b) — the opt-out
-   must hold after re-enable, not only from the initial state.
+   observable via page.on('request'). The observable signal is the
+   client's INIT traffic (config and flags requests): the app constructs
+   the PostHog client only while analytics is enabled, and construction
+   fires relay requests within a second — on opt-in, and again on every
+   boot while the setting is persisted ON. Explicit app events are NOT
+   observable under this harness (posthog-js drops them — see the
+   analytics quirk above), so never use a tracked action as the probe.
+   Report the switch's initial state as an observation, never a failure.
+   Sequence:
+   (a) POSITIVE CONTROL first: establish a cold opted-out boot — if the
+   switch is ON, toggle it OFF and wait for read-back; reload and re-read it
+   as OFF. Then arm the listener, toggle analytics ON, wait for read-back,
+   and require AT LEAST ONE attempted relay request within a 20 s armed
+   window — if none arrives, the listener is not observing the relay at all,
+   so record THIS check as failed coverage rather than treating later zeroes
+   as an opt-out pass.
+   (b) Toggle OFF, wait for read-back, then arm the listener and reload;
+   RE-READ the switch after the reload (the persisted setting is what
+   survives) and KEEP the listener armed through a 15 s quiet window
+   after the boot: assert ZERO attempts across the whole window — a
+   client constructed despite the opt-out would fire its init traffic at
+   boot. (c) Enable (init traffic must fire again — a second positive
+   control), then disable again, and repeat (b) — the opt-out must hold
+   after re-enable, not only from the initial state.
 6. Escape closes the Settings modal.
 7. Routing: an unknown path (${url}/definitely-not-a-route) renders the
    not-found screen (actual content, not a blank page), and navigation back

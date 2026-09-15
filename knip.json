@@ -1,17 +1,17 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
-  // Claude skill entries are symlinks to the canonical .agents files. Ignore
-  // the mirrored tree so Knip does not analyse every script twice.
-  //
-  // The second pattern covers the agent scratch directories: only `skills/`
-  // and `workflows/` under `.claude/` are tracked, and an agent working
-  // through a piece of work keeps its notes and one-off probes in a
-  // gitignored `.claude/<epic>/` beside them. Those files are not part of any
-  // pushed revision — CI never sees them — but knip analyses the working
-  // tree, so one left behind by a finished piece of work blocks every later
-  // push from that checkout with a finding about code nobody is shipping.
-  "ignore": [".claude/skills/**", ".claude/!(skills|workflows)/**"],
+  // Recognising scripts/vitest.config.ts (see the workspace entry below)
+  // turns on knip's vitest plugin for the root workspace, which widens
+  // analysis to .claude/ and .agents/. Most of .claude/ is gitignored
+  // per-agent orchestration state (.claude/<epic>/, .claude/worktrees/, ...;
+  // see .gitignore) that is never part of the pushed revision but is still
+  // present on disk when the pre-push knip gate checks a clean worktree in
+  // place, so ignore all of .claude/ — including the skills mirror
+  // (symlinks to the canonical .agents files, so Knip does not analyse
+  // every script twice) — except the workflows entries declared below,
+  // which must stay analysed.
+  "ignore": [".claude/**", "!.claude/workflows/**"],
   // The legacy app-build workflow (.github/workflows/legacy-app-build.yml)
   // invokes the electron-builder binary, which is a devDependency of the
   // legacy architect app rather than the root, so knip sees it as unlisted.
