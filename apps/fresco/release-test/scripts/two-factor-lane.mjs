@@ -186,9 +186,12 @@ try {
         `${config.baseUrl}/api/storage/presign`,
         { data: { files: [{ name: 'gate-probe.txt', size: 12 }] } },
       );
+      // 200, not "anything but 401": a 403, or a 500 from storage, would
+      // otherwise read as the gate having lifted when the request was in fact
+      // still refused — for a different reason.
       return {
-        pass: response.status() !== 401,
-        detail: `the same request answered ${response.status()} once enrolment was complete`,
+        pass: response.status() === 200,
+        detail: `the same request answered ${response.status()} once enrolment was complete (200 expected)`,
       };
     }),
   );

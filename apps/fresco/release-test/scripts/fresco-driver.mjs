@@ -12,7 +12,7 @@
 // list of `{ id, status, detail }` checks and the workflow binds that list to
 // an expected set of ids, so a lane that silently stops running a check fails
 // the run rather than passing a shorter list.
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -376,6 +376,10 @@ export const check = (id, pass, detail) => ({
  */
 let diagnostics = null;
 export function recordDiagnosticsTo(page, outDir) {
+  // Created here rather than left to the caller: a lane that fails its first
+  // check before writing anything else would otherwise throw on the write and
+  // lose both the diagnostics and the rest of its run.
+  mkdirSync(outDir, { recursive: true });
   diagnostics = { page, outDir };
 }
 
@@ -402,10 +406,16 @@ export async function attempt(id, fn) {
       .locator('body')
       .ariaSnapshot()
       .catch((error) => `no accessible snapshot: ${error.message}`);
-    writeFileSync(
-      join(outDir, `${id}.txt`),
-      `url: ${page.url()}\n\n${snapshot}\n`,
-    );
+    // Diagnostics are evidence, never the verdict: a failure to write one must
+    // not turn a failed check into a crashed lane.
+    try {
+      writeFileSync(
+        join(outDir, `${id}.txt`),
+        `url: ${page.url()}\n\n${snapshot}\n`,
+      );
+    } catch {
+      /* the check's own detail still carries the finding */
+    }
   }
   return result;
 }
