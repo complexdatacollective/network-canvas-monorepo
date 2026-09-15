@@ -7,7 +7,7 @@
 // payloads. Everything here is pure: the sink writes records, the reader
 // decodes and judges them, and both sides import this module, so the oracle is
 // exercised on synthetic records rather than only through a running stack
-// (`scripts/release-test/fresco-release-test-analytics.test.mjs`).
+// (`scripts/release-test/fresco-release-test-lane-contracts.test.mjs`).
 //
 // The governing rule, inherited from the connection sink: a payload that
 // cannot be read is a violation, never a silence. Every negative assertion
@@ -69,7 +69,7 @@ export const ENTITY_ID_PROPERTIES = [
  * name, a message, a researcher's own resource name — fails rather than
  * passing as "a reason was reported". Bound to the package's own
  * `ProtocolFileErrorKind` union by
- * `scripts/release-test/fresco-release-test-analytics.test.mjs`, so a kind
+ * `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, so a kind
  * added there without being added here is a failing test rather than a check
  * that quietly rejects a legitimate reason.
  */

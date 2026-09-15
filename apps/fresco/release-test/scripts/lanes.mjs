@@ -4,8 +4,8 @@
 // stacks — and every driver here has to agree with it: a driver that dialled
 // the wrong port would test a lane it was not pointed at, or nothing at all.
 // Duplication is unavoidable across the two languages, so it is bound instead:
-// `scripts/release-test/fresco-release-test-harness.test.mjs` parses up.sh and
-// fails when the two drift.
+// `scripts/release-test/fresco-release-test-workflow.test.mjs` parses up.sh
+// and fails when the two drift.
 //
 // Kept free of side effects so it can be imported by anything, including the
 // tests, without opening a socket or reading a container.

@@ -2,8 +2,8 @@
 // for, from the catalogs the build ships.
 //
 // Pure, so the oracle is exercised on synthetic renderings rather than only
-// through a browser (`scripts/release-test/fresco-release-test-localization.
-// test.mjs`).
+// through a browser
+// (`scripts/release-test/fresco-release-test-lane-contracts.test.mjs`).
 //
 // Deliberately not a list of expected Spanish sentences. A hand-picked
 // sentence goes stale the moment a translation is improved, and a check that

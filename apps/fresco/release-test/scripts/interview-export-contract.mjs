@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 // Separate from the lane script and free of Playwright, so the "did the answers
 // survive the export" oracle can be exercised on archives built in a test
 // rather than only on one a browser downloaded
-// (`scripts/release-test/fresco-release-test-interview.test.mjs`).
+// (`scripts/release-test/fresco-release-test-lane-contracts.test.mjs`).
 //
 // Deliberately text-level. A structural reader would have to model GraphML,
 // three CSV shapes and the JSON one, and would then only assert what the model
