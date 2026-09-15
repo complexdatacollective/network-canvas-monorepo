@@ -269,9 +269,9 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 describe.skipIf(!db)('email/password sign-in', () => {
   // Exercises the seed script's credential account (src/db/seed.ts) against
   // the real better-auth handler end to end — the same path that regressed
-  // silently when the account table was missing better-auth's `issuer`
-  // column (auth-schema.ts), because until this account existed nothing in
-  // this suite ever queried that table by provider.
+  // silently when the account table did not match better-auth's own account
+  // key (auth-schema.ts), because until this account existed nothing in this
+  // suite ever queried that table by provider.
   //
   // Seeded once for every case here; none of them writes anything another can
   // see. `tiny` because these cases need the admin, a team and that team's

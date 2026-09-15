@@ -635,7 +635,7 @@ describe.skipIf(!db)('the user locale column', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
-  it('keys accounts on (issuer, accountId), both required', async () => {
+  it('keys accounts on (providerId, accountId), uniquely', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
       await pool.query(
@@ -643,25 +643,26 @@ describe.skipIf(!db)('schema application', () => {
          VALUES ('u1', 'Researcher', 'researcher@example.org', true)`,
       );
       await pool.query(
-        `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
-         VALUES ('google', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
+        `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+         VALUES ('google', 'sub-google', 'google', 'u1', now())`,
       );
 
-      // better-auth 1.7 keys every account lookup on (issuer, accountId): an
-      // account without an issuer is unmatchable, and two accounts under one
-      // key would make the lookup ambiguous.
+      // The same subject under a different provider is a different account.
+      await pool.query(
+        `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+         VALUES ('microsoft', 'sub-google', 'microsoft', 'u1', now())`,
+      );
+
+      // Two rows under one key would make every better-auth account lookup
+      // ambiguous — it throws rather than picking one.
       await expect(
         pool.query(
           `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
-           VALUES ('no-issuer', 'sub-2', 'google', 'u1', now())`,
+           VALUES ('dup', 'sub-google', 'google', 'u1', now())`,
         ),
-      ).rejects.toMatchObject({ column: 'issuer' });
-      await expect(
-        pool.query(
-          `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
-           VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
-        ),
-      ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
+      ).rejects.toMatchObject({
+        constraint: 'account_providerId_accountId_idx',
+      });
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
     });
   });

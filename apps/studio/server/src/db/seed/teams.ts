@@ -31,13 +31,6 @@ const MAX_MEMBERS_PER_TEAM = 6;
 // the remaining roles.
 const NON_OWNER_ROLES = TEAM_ROLES.filter((role) => role !== 'owner');
 
-// better-auth's own `createLocalAccountIssuer('credential')`
-// (@better-auth/core/db, not a direct dependency here) — the synthetic
-// `issuer` key its adapter matches a credential account by, alongside
-// providerId and accountId. See the comment on auth-schema.ts's `issuer`
-// column.
-const CREDENTIAL_ISSUER = 'local:credential';
-
 export type SeedTeamMember = {
   memberId: string;
   userId: string;
@@ -118,9 +111,9 @@ async function insertCredentialAccount(
 ): Promise<void> {
   const password = await hashPassword(input.password);
   await client.query(
-    `insert into account (id, "accountId", "providerId", issuer, "userId", password, "createdAt", "updatedAt")
-     values ($1, $2, 'credential', $3, $2, $4, $5, $5)`,
-    [seedUuid(), input.userId, CREDENTIAL_ISSUER, password, input.createdAt],
+    `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     values ($1, $2, 'credential', $2, $3, $4, $4)`,
+    [seedUuid(), input.userId, password, input.createdAt],
   );
 }
 
