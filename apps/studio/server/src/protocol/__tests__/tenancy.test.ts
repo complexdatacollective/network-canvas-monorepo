@@ -13,6 +13,7 @@ import {
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { seedTeam } from '../../__tests__/support/postgres.ts';
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore, ProtocolStoreError } from '../store.ts';
 import {
@@ -41,8 +42,8 @@ describe.skipIf(!storeDb)('team isolation', () => {
     await seedTeam(db, 'team-b');
     tenantA = createTenantDb(app, 'team-a');
     tenantB = createTenantDb(app, 'team-b');
-    storeA = new ProtocolStore(tenantA);
-    storeB = new ProtocolStore(tenantB);
+    storeA = new ProtocolStore(tenantA, testCipher());
+    storeB = new ProtocolStore(tenantB, testCipher());
   });
   afterAll(async () => {
     await dispose();
@@ -166,7 +167,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
 
     // Discarding the draft leaves the team present only in `sections`, the
     // other half of the enumeration.
-    await new ProtocolStore(ghost).discardDraft(draftId);
+    await new ProtocolStore(ghost, testCipher()).discardDraft(draftId);
     await gcProtocolStore(maintenance, GC_OPTS);
     await ageQuarantine(db, 'team-ghost');
     await gcProtocolStore(maintenance, GC_OPTS);

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { SectionValidationFailedError } from '@codaco/studio-sync/section-validation';
 import {
   LeaseRejectedError,
@@ -11,6 +12,8 @@ import {
 } from '@codaco/studio-sync/server';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
+import { openAssetKey } from '../asset-keys.ts';
 import {
   DraftStructureError,
   addCodebookEntity,
@@ -38,7 +41,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
   beforeAll(async () => {
     ({ db, tenantDb, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(tenantDb);
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();
@@ -680,6 +683,164 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       );
       expect(res.rowCount, table).toBe(0);
     }
+  });
+
+  describe('API-key assets (#1900)', () => {
+    const KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciJ9.not-a-real-key';
+
+    function protocolWithKey(): CurrentProtocol {
+      return {
+        ...baseProtocol(),
+        assetManifest: {
+          mapKey: { name: 'Mapbox token', type: 'apikey', value: KEY },
+        },
+      } as unknown as CurrentProtocol;
+    }
+
+    it('seals the key and stores a manifest that does not carry it', async () => {
+      const { protocolId, draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+
+      const document = await store.getDraftDocument(draftId);
+      const manifest = document.assetManifest as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(manifest.mapKey).toEqual({
+        name: 'Mapbox token',
+        type: 'apikey',
+      });
+
+      const sealed = await db.query(
+        `SELECT key_id FROM protocol_asset_keys
+         WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
+        [TEST_TEAM_ID, protocolId, 'mapKey'],
+      );
+      expect(sealed.rowCount).toBe(1);
+      await expect(
+        openAssetKey(tenantDb, testCipher(), {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'mapKey',
+        }),
+      ).resolves.toBe(KEY);
+    });
+
+    it('never writes the key into any section row', async () => {
+      await store.createProtocol({ protocol: protocolWithKey() });
+
+      // The whole table, because a key must not be at rest in any revision of
+      // any section — not only in the manifest the draft happens to point at.
+      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
+      const all = (docs.rows as { doc: string }[])
+        .map((row) => row.doc)
+        .join('\n');
+      expect(all).not.toContain(KEY);
+    });
+
+    it('still refuses an import whose apikey asset has no value', async () => {
+      // Stripping must not become a way to smuggle an invalid manifest past
+      // the write-time section validation.
+      await expect(
+        store.createProtocol({
+          protocol: {
+            ...baseProtocol(),
+            assetManifest: {
+              mapKey: { name: 'Mapbox token', type: 'apikey', value: '' },
+            },
+          } as unknown as CurrentProtocol,
+        }),
+      ).rejects.toThrow(SectionValidationFailedError);
+    });
+
+    it('publishes a draft whose key is sealed, validating against the placeholder', async () => {
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+
+      await expect(store.validateDraft(draftId)).resolves.toEqual({
+        valid: true,
+      });
+      const published = await store.publishDraft({ draftId });
+      expect(published.status).toBe('published');
+    });
+
+    it('refuses a sync commit that would write a key into the assets section', async () => {
+      // The client route for a key is `resources.stage`, which promotes it
+      // through the host and seals it. A commit carrying one is refused rather
+      // than stripped, so the editor is told instead of silently losing it.
+      const { draftId } = await store.createProtocol({
+        protocol: baseProtocol(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-1');
+      const before = await store.getDraftSections(draftId);
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-1',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'mapKey',
+              value: { name: 'Mapbox token', type: 'apikey', value: KEY },
+            },
+          ],
+        }),
+      ).rejects.toThrow(SectionValidationFailedError);
+
+      const after = await store.getDraftSections(draftId);
+      expect(after.headManifestHash).toBe(before.headManifestHash);
+    });
+
+    it('admits a sync commit that writes a file asset', async () => {
+      // The refusal has to be about keys, not about the assets section: a
+      // researcher adding a geojson through the same path must still work.
+      const { draftId } = await store.createProtocol({
+        protocol: baseProtocol(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-2');
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-2',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'map',
+              value: {
+                name: 'Districts',
+                type: 'geojson',
+                source: 'districts.geojson',
+              },
+            },
+          ],
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('returns the redacted manifest from a published version too', async () => {
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+      const published = await store.publishDraft({ draftId });
+      if (published.status !== 'published') {
+        throw new Error(`expected a publication, got ${published.status}`);
+      }
+
+      const document = await store.getVersionDocument(published.versionId);
+      expect(JSON.stringify(document)).not.toContain(KEY);
+    });
   });
 
   it('unknown drafts and versions surface as errors', async () => {

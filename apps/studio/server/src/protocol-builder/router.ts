@@ -19,8 +19,10 @@ import {
 
 import type { AssetStore } from '../assets.ts';
 import type { AuthService, Principal } from '../auth/service.ts';
+import { openAssetKey } from '../protocol/asset-keys.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
 import type { RpcContext } from '../rpc.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
@@ -43,6 +45,8 @@ import {
   committedInspection,
   committedPreview,
   StagedResourceRegistry,
+  type Inspection,
+  type ResourceOutcome,
 } from './resources.ts';
 import {
   IDLE_MS,
@@ -63,6 +67,14 @@ export type ProtocolBuilderRouterDeps = {
   runtime: ProtocolBuilderRuntime;
   pool?: pg.Pool;
   assetStore?: AssetStore;
+  /**
+   * Seals an API-key asset as a promotion writes the manifest, and opens it
+   * again for the editor's preview (#1900). Absent only on an entrypoint with
+   * no database — the env layer requires a keyring wherever DATABASE_URL is
+   * set — so it is refused beside the pool below rather than being allowed to
+   * reach a write that would store the key in the section document.
+   */
+  cipher?: SecretsCipher;
 };
 
 function requirePrincipal(context: RpcContext): Principal {
@@ -98,7 +110,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     protocolId: string,
   ): Promise<ProtocolBuilderSession | null> => {
     const principal = requirePrincipal(context);
-    if (!deps.pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    if (!deps.pool || !deps.cipher) {
+      throw new ORPCError('INTERNAL_SERVER_ERROR');
+    }
     const memberships = await auth.listMemberships(principal.userId);
     const session = await resolveProtocolSession(deps.pool, {
       protocolId,
@@ -107,6 +121,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       connectionId: connectionOf(context, principal),
       clientSessionId: clientSessionOf(context, principal),
       memberships,
+      cipher: deps.cipher,
     });
     if (session !== null) {
       runtime.leases.touch(sessionOwner(session));
@@ -685,9 +700,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             input.editId === undefined
               ? undefined
               : staged.opened(stagingKey(session, input.editId));
-          return store === undefined
-            ? committedInspection(assets, input.resourceId)
-            : store.inspect(assets, input.resourceId);
+          const inspection =
+            store === undefined
+              ? committedInspection(assets, input.resourceId)
+              : store.inspect(assets, input.resourceId);
+          return withCommittedAssetKey(session, input.resourceId, inspection);
         },
       ),
 
@@ -709,6 +726,41 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       ),
     },
   };
+}
+
+/**
+ * Fills a committed API key's value in from `protocol_asset_keys` (#1900).
+ *
+ * The stored manifest carries a key asset's name and type and never its value,
+ * so a committed inspection would otherwise answer with no value at all — and
+ * a value is exactly what `inspect` is for here: the editor's map preview
+ * builds the same Mapbox request the interview will. This is the researcher
+ * preview the issue admits decryption for, and the only read path that makes
+ * one.
+ *
+ * A staged key has not been sealed yet and is answered out of this process's
+ * memory by `StagedResourceRegistry.inspect`, so an inspection that already
+ * carries a value is passed through untouched.
+ */
+async function withCommittedAssetKey(
+  session: ProtocolBuilderSession,
+  resourceId: string,
+  outcome: ResourceOutcome<Inspection>,
+): Promise<ResourceOutcome<Inspection>> {
+  if (outcome.status !== 'ok') return outcome;
+  if (outcome.data.descriptor.kind !== 'apikey') return outcome;
+  if (outcome.data.value !== undefined) return outcome;
+  const value = await openAssetKey(session.tenantDb, session.cipher, {
+    teamId: session.tenantDb.teamId,
+    protocolId: session.protocolId,
+    assetId: resourceId,
+  });
+  // A manifest entry with no sealed row is a protocol written before this
+  // existed, or one whose key was never promoted: the descriptor is still the
+  // truth about the asset, so it is answered without a value rather than as a
+  // missing resource.
+  if (value === undefined) return outcome;
+  return { status: 'ok', data: { ...outcome.data, value } };
 }
 
 /**

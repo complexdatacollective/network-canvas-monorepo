@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
 import {
@@ -39,7 +40,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
 
   beforeAll(async () => {
     ({ db, tenantDb, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(tenantDb);
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();

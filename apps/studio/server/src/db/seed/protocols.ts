@@ -21,6 +21,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { addStage, removeStage } from '../../protocol/draft-structure.ts';
 import { ProtocolStore } from '../../protocol/store.ts';
+import type { SecretsCipher } from '../../secrets/cipher.ts';
 import { seedTime, seedUuid } from './rng.ts';
 
 /** The structural half of an assembled protocol document `generateNetwork` reads. */
@@ -151,9 +152,11 @@ async function readVersion(
 export async function seedProtocolLine(
   client: pg.PoolClient,
   teamId: string,
+  /** Seals the protocol's API-key assets, if it ever gains one (#1900). */
+  cipher: SecretsCipher,
 ): Promise<SeededProtocolLine> {
   const scope = seedTenantScope(client, teamId);
-  const store = new ProtocolStore(scope);
+  const store = new ProtocolStore(scope, cipher);
   const protocol = loadSampleProtocol();
 
   // Dated so the line and both versions exist before any study is created

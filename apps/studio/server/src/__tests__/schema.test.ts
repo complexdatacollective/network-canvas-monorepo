@@ -138,6 +138,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('sections_hold_no_asset_keys');
     expect(readmeSection).toContain('assets_metadata_immutable');
     expect(readmeSection).toContain('asset_references_published_immutable');
     expect(readmeSection).toContain('template_versions_immutable');
@@ -241,6 +242,7 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain('sidecar trigger sections_hold_no_asset_keys');
     expect(svg).toContain('sidecar trigger assets_metadata_immutable');
     expect(svg).toContain(
       'sidecar trigger asset_references_published_immutable',
@@ -455,6 +457,7 @@ describe.skipIf(!db)('schema verification', () => {
         'participant_consents',
         'participant_contact_optouts',
         'participants',
+        'protocol_asset_keys',
         'protocol_drafts',
         'protocol_events',
         'protocol_versions',

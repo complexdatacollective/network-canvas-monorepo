@@ -104,6 +104,7 @@ describe.skipIf(!db)('row-level security', () => {
       'participant_consents',
       'participant_contact_optouts',
       'participants',
+      'protocol_asset_keys',
       'protocol_drafts',
       'protocol_events',
       'protocol_versions',

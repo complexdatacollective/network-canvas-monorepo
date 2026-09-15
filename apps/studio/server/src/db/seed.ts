@@ -225,7 +225,7 @@ async function populate(
   for (const team of teams) {
     await scopeToTeam(client, team.id);
 
-    const line = await seedProtocolLine(client, team.id);
+    const line = await seedProtocolLine(client, team.id, cipher);
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );

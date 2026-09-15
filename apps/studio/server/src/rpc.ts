@@ -44,6 +44,7 @@ import {
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
+import type { SecretsCipher } from './secrets/cipher.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -343,9 +344,24 @@ export function createRpcRouter(
     pool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
+    /**
+     * Seals and opens the API-key protocol assets (#1900). Absent only where
+     * there is no database, since the env layer requires a keyring wherever
+     * DATABASE_URL is set; the procedures that need one refuse without it,
+     * exactly as they refuse without a pool.
+     */
+    cipher?: SecretsCipher;
   },
 ) {
   const { auth, deployment, jobs, pool } = deps;
+
+  // A protocol store can seal, so it always takes the cipher. A router wired
+  // without one is a deployment bug rather than an authorization refusal —
+  // the same reading the pool gets above.
+  const requireCipher = (): SecretsCipher => {
+    if (!deps.cipher) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    return deps.cipher;
+  };
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -413,6 +429,7 @@ export function createRpcRouter(
       const team = await openTeam(context, input.teamId);
       const reachable = await new ProtocolStore(
         team.tenantDb,
+        requireCipher(),
       ).isReachableByCaller(input.protocolId, {
         actorUserId: team.principal.userId,
         seesEveryStudy: seesEveryTeamStudy(team.team.role),
@@ -589,6 +606,7 @@ export function createRpcRouter(
               requestId: context.requestId,
             },
             input,
+            requireCipher(),
           ),
         ),
       ),
@@ -603,6 +621,7 @@ export function createRpcRouter(
       runtime: deps.protocolBuilder,
       ...(pool === undefined ? {} : { pool }),
       ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+      ...(deps.cipher === undefined ? {} : { cipher: deps.cipher }),
     }),
     protocols: {
       create: os.protocols.create
@@ -616,6 +635,7 @@ export function createRpcRouter(
                 requestId: context.requestId,
               },
               input,
+              requireCipher(),
             ),
           ),
         ),
@@ -623,7 +643,7 @@ export function createRpcRouter(
       // rather than as a refusal: a Member is shown the lines behind the
       // studies they hold a grant on, and an Admin or Owner every line.
       list: os.protocols.list.use(requireTeam).handler(({ context }) =>
-        new ProtocolStore(context.tenantDb).listProtocols({
+        new ProtocolStore(context.tenantDb, requireCipher()).listProtocols({
           actorUserId: context.principal.userId,
           seesEveryStudy: seesEveryTeamStudy(context.team.role),
         }),
@@ -633,6 +653,7 @@ export function createRpcRouter(
         .handler(async ({ context, input }) => {
           const { protocol, draft } = await new ProtocolStore(
             context.tenantDb,
+            requireCipher(),
           ).getProtocolDraft(input.protocolId, input.draftId);
           return {
             protocol,

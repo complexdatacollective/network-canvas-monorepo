@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import { createAuditedProtocol } from '../commands.ts';
 
@@ -41,6 +42,7 @@ describe('audited protocol commands', () => {
           protocolId: randomUUID(),
           draftId: randomUUID(),
         },
+        testCipher(),
       ),
     ).toThrow('Protocol name must contain a non-whitespace character');
     expect(transactionCount).toBe(0);
