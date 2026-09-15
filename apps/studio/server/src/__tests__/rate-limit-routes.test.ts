@@ -10,7 +10,7 @@ import type { contract } from '@codaco/studio-rpc';
 
 import { createApp } from '../app.ts';
 import { resolve } from '../env/resolve.ts';
-import type { RawEnv } from '../env/variables.ts';
+import type { RateLimitSettings } from '../rate-limit/scopes.ts';
 import { stubAuthService } from './support/auth.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
@@ -39,17 +39,25 @@ function peer(address: string) {
   };
 }
 
+/** A limit small enough to count to, for the one scope a case is about. */
+const perMinute = (max: number) => ({ max, windowMs: 60_000 });
+
+/**
+ * The shipped limits with one or two scopes turned down, stated in code
+ * (#1909). There is no environment variable behind any of them any more, and
+ * counting to the real `storage_read` limit would be two thousand requests.
+ */
 function appWith(
-  overrides: RawEnv,
+  limits: Partial<RateLimitSettings>,
   principalUserId?: string,
   memberOfTeamId?: string,
 ) {
   const env = resolve({
     NODE_ENV: 'test',
     ...(url ? { REDIS_URL: url } : {}),
-    ...overrides,
   });
   return createApp(env, {
+    limits,
     // A pool that is never connected to. `openTeam` needs one to exist before
     // it will look a membership up at all, and every procedure behind it fails
     // when it tries to use it — which is what tells an admitted call from a
@@ -115,7 +123,7 @@ async function expectProblemJson429(response: Response): Promise<void> {
 
 describe.skipIf(!url)('the limited request paths', () => {
   it('refuses a third magic-link request for one email address', async () => {
-    const app = appWith({ RATE_LIMIT_SIGN_IN_EMAIL: '2/1m' });
+    const app = appWith({ sign_in_email: perMinute(2) });
     const email = `researcher-${randomUUID()}@example.org`;
     const send = () =>
       app.request(
@@ -153,7 +161,7 @@ describe.skipIf(!url)('the limited request paths', () => {
     // guard a 404 and the live path would have none. The client accepts over
     // RPC (client/src/routes/AcceptInvitation.tsx).
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ RATE_LIMIT_INVITATION_ACCEPT: '2/1m' }, userId);
+    const app = appWith({ invitation_accept: perMinute(2) }, userId);
     const { client, lastResponse } = rpcClientFor(app);
     const invitationId = randomUUID();
 
@@ -204,7 +212,7 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third storage read from one client address', async () => {
-    const app = appWith({ RATE_LIMIT_STORAGE_READ: '2/1m' });
+    const app = appWith({ storage_read: perMinute(2) });
     const address = '203.0.113.11';
     const read = () =>
       app.request(`/storage/${randomUUID()}`, {}, peer(address));
@@ -225,7 +233,7 @@ describe.skipIf(!url)('the limited request paths', () => {
     // unvalidated string. Keying on it would let an anonymous caller mint a
     // fresh allowance per request by changing the value — the address limit
     // doing nothing at all.
-    const app = appWith({ RATE_LIMIT_PUBLIC_API: '2/1m' });
+    const app = appWith({ public_api: perMinute(2) });
     const call = () =>
       app.request(
         '/api/v1/status',
@@ -239,7 +247,7 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third public API call from one address when there is no token', async () => {
-    const app = appWith({ RATE_LIMIT_PUBLIC_API: '2/1m' });
+    const app = appWith({ public_api: perMinute(2) });
     const call = (address: string) =>
       app.request('/api/v1/status', {}, peer(address));
 
@@ -251,7 +259,7 @@ describe.skipIf(!url)('the limited request paths', () => {
 
   it('refuses a third WebSocket upgrade for one user', async () => {
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ RATE_LIMIT_WS_UPGRADE: '2/1m' }, userId);
+    const app = appWith({ ws_upgrade: perMinute(2) }, userId);
     const upgrade = () =>
       app.request(
         '/ws',
@@ -269,7 +277,7 @@ describe.skipIf(!url)('the limited request paths', () => {
 
   it('refuses a third RPC call for one user, with Retry-After on the response', async () => {
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ RATE_LIMIT_RPC_USER: '2/1m' }, userId);
+    const app = appWith({ rpc_user: perMinute(2) }, userId);
     const { client, lastResponse } = rpcClientFor(app);
 
     await expect(client.me()).resolves.toMatchObject({ userId });
@@ -296,7 +304,7 @@ describe.skipIf(!url)('the limited request paths', () => {
     // with calls that are all refused.
     const teamId = `team-${randomUUID()}`;
     const stranger = appWith(
-      { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
+      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
       `stranger-${randomUUID()}`,
     );
     const outsider = rpcClientFor(stranger).client;
@@ -307,7 +315,7 @@ describe.skipIf(!url)('the limited request paths', () => {
 
     // A member of that team still has the whole allowance.
     const member = appWith(
-      { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
+      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
       `member-${randomUUID()}`,
       teamId,
     );
@@ -326,7 +334,7 @@ describe.skipIf(!url)('the limited request paths', () => {
     // one part of the RPC plane with no per-user limit — including edits over
     // an open WebSocket.
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ RATE_LIMIT_RPC_USER: '2/1m' }, userId);
+    const app = appWith({ rpc_user: perMinute(2) }, userId);
     const { client, lastResponse } = rpcClientFor(app);
     const call = () =>
       safe(client.protocolBuilder.listSections({ protocolId: randomUUID() }));
@@ -345,7 +353,7 @@ describe.skipIf(!url)('the limited request paths', () => {
     const app = appWith(
       // The per-user limit is left generous so that what refuses the third
       // call can only be the team's.
-      { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
+      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
       `user-${randomUUID()}`,
       teamId,
     );

@@ -34,6 +34,7 @@ export const REDIS_DATABASES = {
   summaryJob: 5,
   health: 6,
   workerEntrypoint: 7,
+  webEntrypoint: 8,
 } as const;
 
 /** `REDIS_URL` pointed at one logical database, or null when none is set. */

@@ -120,9 +120,9 @@ export function createBetterAuthInstance(
       ? {
           enabled: true,
           customStorage: createAuthRateLimitStorage(limiter),
-          // better-auth's own default for these paths is three attempts in ten
-          // seconds. Studio's is per RATE_LIMIT_SIGN_IN_ADDRESS, which a
-          // deployer can see and change; the per-email limit is Studio's own
+          // better-auth's own default for these paths is three attempts in
+          // ten seconds. Studio's is the `sign_in_address` constant
+          // (src/rate-limit/scopes.ts); the per-email limit is Studio's own
           // middleware, because better-auth keys only by address and path.
           customRules: Object.fromEntries(
             [...SIGN_IN_PATHS].map((path) => [
