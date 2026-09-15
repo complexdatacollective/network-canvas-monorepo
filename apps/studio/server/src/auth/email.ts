@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
@@ -46,21 +45,16 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
   // after which pg-boss fails the job as 'shut down while active' rather than
   // letting it retry. These bounds fit inside both.
   //
-  // Built through SMTPTransport rather than by handing `createTransport` a
-  // configuration object, because that call discards the object when it
-  // carries a `url`: it replaces the whole configuration with what it parses
-  // out of the URL (nodemailer/lib/nodemailer.js), so options set beside one
-  // never reach the connection. SMTPTransport instead merges the URL over the
-  // options it was given, which keeps both — and leaves a URL free to carry
-  // its own overrides in a query string.
-  const transport = nodemailer.createTransport(
-    new SMTPTransport({
-      url: smtpUrl,
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 20_000,
-    }),
-  );
+  // Before nodemailer 10, `createTransport` discarded every other key of a
+  // configuration object that carried a `url`, so these timeouts had to be
+  // set through an SMTPTransport built by hand. 10.0.0 applies them beside
+  // the URL; src/auth/__tests__/email.test.ts holds the bound either way.
+  const transport = nodemailer.createTransport({
+    url: smtpUrl,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
   return {
     sendMagicLink: async ({ email, url }) => {
       await transport.sendMail({
