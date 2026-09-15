@@ -22,23 +22,20 @@
  * the drop and reseed would then land under it.
  */
 
-import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 
 import { createOwnerPool } from '../src/db/pool.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import { DEV } from '../src/env/catalogue.ts';
 import { resetSchemaAndSeed } from './apply.ts';
+import {
+  composeFile,
+  createCompose,
+  devComposeFile,
+  writeSecretsIfAbsent,
+} from './compose.ts';
 import { loadEnvFiles } from './load-env-files.ts';
-
-const studioRoot = new URL('../../', import.meta.url);
-const composeFile = fileURLToPath(new URL('docker-compose.yml', studioRoot));
-const devComposeFile = fileURLToPath(
-  new URL('docker-compose.dev.yml', studioRoot),
-);
-const secretsDirectory = fileURLToPath(new URL('secrets/', studioRoot));
 
 // Named so it cannot collide with a production-shaped stack run from the same
 // checkout, which uses the compose file's own project name.
@@ -47,14 +44,6 @@ const PROJECT = 'studio-dev';
 // The services the development lane runs. The rest of the stack is the same
 // file's, and stays stopped.
 const SERVICES = ['postgres', 'garage', 'valkey', 'mailpit'];
-
-/**
- * The keyring the encryption work (#1900) reads through
- * `STUDIO_SECRETS_KEY_FILE`, which the compose file mounts as a file secret.
- * This is the value `.env.development` carries as `STUDIO_SECRETS_KEY` once
- * that issue lands; it is published, and is a development fixture only.
- */
-const DEV_SECRETS_KEY = 'dev:c3R1ZGlvLWRldi1rZXlyaW5nLW5vdC1mb3ItcHJvZCE=';
 
 /**
  * Everything `../../docker-compose.yml` interpolates. Compose validates the
@@ -93,58 +82,13 @@ function composeEnvironment(): Record<string, string> {
   };
 }
 
-function compose(
-  args: string[],
-  options: { capture?: boolean } = {},
-): { status: number; stdout: string; stderr: string } {
-  const result = spawnSync(
-    'docker',
-    [
-      'compose',
-      '-p',
-      PROJECT,
-      '-f',
-      composeFile,
-      '-f',
-      devComposeFile,
-      ...args,
-    ],
-    {
-      encoding: 'utf8',
-      // Compose reads no `.env` of its own here: everything it interpolates is
-      // in this environment, so what the containers get is what `DEV` says.
-      env: { ...process.env, ...composeEnvironment() },
-      stdio: options.capture ? 'pipe' : ['inherit', 'inherit', 'pipe'],
-    },
-  );
-  const stderr = result.stderr ?? '';
-  // Compose writes progress to stderr, so an inherited run still has to print
-  // it — only a captured one is silent.
-  if (!options.capture && stderr) process.stderr.write(stderr);
-  return {
-    status: result.status ?? -1,
-    stdout: result.stdout ?? '',
-    stderr,
-  };
-}
-
-/**
- * The two Compose file secrets. Written only when absent, so a developer who
- * put a real value in one keeps it.
- */
-function writeSecretsIfAbsent(): void {
-  mkdirSync(secretsDirectory, { recursive: true });
-  const files: [name: string, contents: string, what: string][] = [
-    ['postgres-password', DEV.pgPassword, 'the development database password'],
-    ['studio-secrets-key', DEV_SECRETS_KEY, 'the development keyring'],
-  ];
-  for (const [name, contents, what] of files) {
-    const path = `${secretsDirectory}${name}`;
-    if (existsSync(path)) continue;
-    writeFileSync(path, `${contents}\n`, { mode: 0o600 });
-    console.log(`Wrote secrets/${name} — ${what}`);
-  }
-}
+const compose = createCompose({
+  project: PROJECT,
+  files: [composeFile, devComposeFile],
+  // Compose reads no `.env` of its own here: everything it interpolates is in
+  // this environment, so what the containers get is what `DEV` says.
+  environment: composeEnvironment(),
+});
 
 /**
  * The containers this script replaces (`dev-pg`, `dev-s3`) were branch-scoped
@@ -181,7 +125,7 @@ function stopSupersededContainers(): string[] {
 
 function up(): void {
   console.log(`Starting ${SERVICES.join(', ')} [project: ${PROJECT}]...`);
-  let result = compose(['up', '-d', '--wait', ...SERVICES]);
+  let result = compose.run(['up', '-d', '--wait', ...SERVICES]);
   if (result.status !== 0) {
     const stopped = stopSupersededContainers();
     if (stopped.length === 0) {
@@ -190,7 +134,7 @@ function up(): void {
     console.log(
       `Stopped ${stopped.join(', ')} — containers from the dev scripts this stack replaces, which still held its ports. Retrying.`,
     );
-    result = compose(['up', '-d', '--wait', ...SERVICES]);
+    result = compose.run(['up', '-d', '--wait', ...SERVICES]);
     if (result.status !== 0) {
       throw new Error(`docker compose up failed:\n${result.stderr}`);
     }
@@ -199,7 +143,7 @@ function up(): void {
 
 /** The layout, the access key, the bucket and its grant. Idempotent. */
 function bootstrapObjectStore(): void {
-  const result = compose(['run', '--rm', 'garage-init']);
+  const result = compose.run(['run', '--rm', 'garage-init']);
   if (result.status !== 0) {
     throw new Error(`garage-init failed:\n${result.stderr}`);
   }
@@ -235,25 +179,7 @@ async function resetAndSeed(): Promise<void> {
 }
 
 function followLogs(): void {
-  const child = spawn(
-    'docker',
-    [
-      'compose',
-      '-p',
-      PROJECT,
-      '-f',
-      composeFile,
-      '-f',
-      devComposeFile,
-      'logs',
-      '-f',
-      ...SERVICES,
-    ],
-    {
-      stdio: 'inherit',
-      env: { ...process.env, ...composeEnvironment() },
-    },
-  );
+  const child = compose.start(['logs', '-f', ...SERVICES]);
 
   let shuttingDown = false;
   const shutdown = (): void => {
@@ -274,7 +200,7 @@ function followLogs(): void {
 }
 
 function down(removeVolumes: boolean): void {
-  const result = compose(['down', ...(removeVolumes ? ['--volumes'] : [])]);
+  const result = compose.run(['down', ...(removeVolumes ? ['--volumes'] : [])]);
   if (result.status !== 0) {
     throw new Error(`docker compose down failed:\n${result.stderr}`);
   }

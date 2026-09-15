@@ -18,10 +18,13 @@ const read = (name: string): string =>
 
 const composeSource = read('docker-compose.yml');
 const devComposeSource = read('docker-compose.dev.yml');
+const localComposeSource = read('docker-compose.local.yml');
 const envExampleSource = read('.env.example');
 
 type ComposeService = {
   image?: string;
+  command?: string[];
+  ports?: string[];
   environment?: Record<string, string>;
   secrets?: string[];
 };
@@ -36,6 +39,7 @@ type ComposeFile = {
 // themselves rather than about one machine's values for them.
 const compose = parse(composeSource) as ComposeFile;
 const devCompose = parse(devComposeSource) as ComposeFile;
+const localCompose = parse(localComposeSource) as ComposeFile;
 
 /** Every `${NAME}`, `${NAME:-default}` and `${NAME-default}` in the file. */
 function references(source: string): { name: string; hasDefault: boolean }[] {
@@ -88,6 +92,7 @@ describe('the reference compose stack', () => {
     const unpinned = Object.entries({
       ...compose.services,
       ...devCompose.services,
+      ...localCompose.services,
     })
       .filter(([, service]) => service.image !== undefined)
       .filter(
@@ -175,6 +180,53 @@ describe('the reference compose stack', () => {
         referencedWithDefault: true,
       });
     }
+  });
+
+  it('restates the whole Traefik command in the dev:stack override', () => {
+    // A Compose override REPLACES a command list rather than appending to it,
+    // so `docker-compose.local.yml` has to carry every flag the production
+    // file sets. A flag added there and not here would simply be missing from
+    // `dev:stack` — the lane whose job is to run what a self-hoster runs.
+    const production = compose.services.traefik!.command!;
+    const local = localCompose.services.traefik!.command!;
+    const CA_SERVER =
+      '--certificatesResolvers.le.acme.caServer=https://127.0.0.1:9/directory';
+
+    // The one deliberate difference: a certificate authority that does not
+    // answer, so Traefik falls back to its own self-signed certificate rather
+    // than asking Let's Encrypt for `localhost`.
+    expect(local).toContain(CA_SERVER);
+    expect(production).not.toContain(CA_SERVER);
+    expect(local.filter((flag) => flag !== CA_SERVER)).toEqual(production);
+  });
+
+  it('publishes nothing in the dev:stack override on a port the dev lane holds', () => {
+    // The two lanes run side by side. The stack takes 80 and 443, which the
+    // development lane does not use; anything the override publishes has to
+    // stay off the development lane's fixed ports, which is why its Mailpit
+    // asks for an ephemeral one.
+    const devPorts = new Set(
+      Object.values(devCompose.services).flatMap((service) =>
+        (service.ports ?? []).map((mapping) => mapping.split(':').at(-2)),
+      ),
+    );
+    const collisions = Object.entries(localCompose.services).flatMap(
+      ([name, service]) =>
+        (service.ports ?? [])
+          .filter((mapping) => devPorts.has(mapping.split(':').at(-2)))
+          .map((mapping) => `${name}: ${mapping}`),
+    );
+    expect(collisions).toEqual([]);
+  });
+
+  it('introduces no variable of its own in the dev:stack override', () => {
+    // `scripts/dev-stack.ts` writes `.env.local` from the base file's
+    // variables. One that appeared only in the override would have no source.
+    const known = new Set(references(composeSource).map(({ name }) => name));
+    const stray = references(localComposeSource)
+      .map(({ name }) => name)
+      .filter((name) => !known.has(name));
+    expect(stray).toEqual([]);
   });
 
   it('carries the two file secrets and no others', () => {
