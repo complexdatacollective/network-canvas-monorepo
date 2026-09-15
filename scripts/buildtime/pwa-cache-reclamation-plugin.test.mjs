@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
 import vm from 'node:vm';
+
+import { describe, it } from 'vitest';
 
 import {
   PWA_BUILD_LEASE_READY,

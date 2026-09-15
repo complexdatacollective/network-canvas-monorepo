@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { test } from 'vitest';
 
 import { literalOpenSurfaces } from './check-dialog-exit-animations.mjs';
@@ -122,10 +123,7 @@ test('ignores a dialog that only a comment mentions', () => {
     literalOpenSurfaces('// <Dialog open /> is the shape this looks for\n'),
     [],
   );
-  assert.deepEqual(
-    literalOpenSurfaces('/*\n  <Dialog open />\n*/\n'),
-    [],
-  );
+  assert.deepEqual(literalOpenSurfaces('/*\n  <Dialog open />\n*/\n'), []);
 });
 
 test('does not mistake a compound part or a close tag for the surface', () => {

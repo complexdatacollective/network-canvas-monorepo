@@ -186,7 +186,7 @@ what the origin serves.)
 Cloudflare honours those rules but differs in two other ways, both handled by
 `scripts/write-cloudflare-archive-config.mjs` at deploy time — **never by
 editing `public/_headers`**, whose shape is asserted for Netlify in
-`scripts/build/assert-pwa-cache-headers.mjs`:
+`scripts/buildtime/assert-pwa-cache-headers.mjs`:
 
 - **`_headers` rules append rather than replace.** Netlify lets `/assets/*`
   override the blanket `/*` no-store; Cloudflare joins them into one header

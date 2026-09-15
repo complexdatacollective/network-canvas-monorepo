@@ -3,10 +3,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
 import JSZip from 'jszip';
+import { test } from 'vitest';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const GUARD = join(scriptDir, 'check-mapbox-tokens.mjs');

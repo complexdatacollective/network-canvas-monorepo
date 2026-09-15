@@ -46,7 +46,7 @@
 // be told apart from ordinary teardown, so React Testing Library's cleanup
 // would fire it after most of the existing dialog tests.
 //
-// Usage: node scripts/build/check-dialog-exit-animations.mjs   (from anywhere inside the repo)
+// Usage: node scripts/buildtime/check-dialog-exit-animations.mjs   (from anywhere inside the repo)
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -208,11 +208,15 @@ const main = () => {
   // answer about THAT tree rather than about this one.
   const root = repoRoot(process.cwd());
 
-  const tracked = execFileSync('git', ['ls-files', '--', 'apps/*.tsx', 'packages/*.tsx'], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  })
+  const tracked = execFileSync(
+    'git',
+    ['ls-files', '--', 'apps/*.tsx', 'packages/*.tsx'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  )
     .split('\n')
     .filter(Boolean)
     .filter(
@@ -249,11 +253,11 @@ const main = () => {
         '\n\nThe exit animation is run by the `AnimatePresence` inside `Modal`, so a ' +
         'surface has to STAY MOUNTED and receive `open={false}` to close. Pass the ' +
         'open state as `open={…}` instead of unmounting the surface.\n\n' +
-        "  - Content that comes from the opening (the row being edited, the type being\n" +
-        "    created) is held across the close by `useDialogSession`\n" +
-        "    (@codaco/fresco-ui/dialogs/useDialogSession).\n" +
-        "  - A form the dialog holds is emptied by `ResetFormWhenClosed`\n" +
-        "    (@codaco/fresco-ui/form/ResetFormWhenClosed), for a caller that was\n" +
+        '  - Content that comes from the opening (the row being edited, the type being\n' +
+        '    created) is held across the close by `useDialogSession`\n' +
+        '    (@codaco/fresco-ui/dialogs/useDialogSession).\n' +
+        '  - A form the dialog holds is emptied by `ResetFormWhenClosed`\n' +
+        '    (@codaco/fresco-ui/form/ResetFormWhenClosed), for a caller that was\n' +
         '    unmounting the dialog to clear it.\n\n' +
         'A surface that genuinely never closes belongs in PERMANENTLY_OPEN in this ' +
         'script, with the reason it never closes.',

@@ -10,8 +10,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import { vendorSharedVitestConfig } from '../release/mirror-app.mjs';
 import { resolveManifest } from '../release/resolve-manifest.mjs';

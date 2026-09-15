@@ -769,7 +769,7 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
-          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/build/posthog-cli-upload-stub.mjs
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/buildtime/posthog-cli-upload-stub.mjs
         run: |
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
