@@ -21,23 +21,69 @@ describe('development defaults', () => {
     expect(env.devDefaults).toBe(true);
   });
 
-  it('delivers magic links to the console', () => {
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'console' });
+  it('delivers magic links to the console, for the process that sends them', () => {
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
   });
 
   it('tolerates the unpaired EMAIL_FROM it supplies for the Mailpit loop', () => {
     // .env.development sets EMAIL_FROM but no SMTP_URL, so that adding
     // SMTP_URL alone locally completes the pair.
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'console' });
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
   });
 
   it('completes the SMTP pair when only SMTP_URL is added', () => {
     vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
-    expect(readEnv().auth?.mailer).toEqual({
+    expect(readEnv({ withMail: true }).mail).toEqual({
       kind: 'smtp',
       url: 'smtp://localhost:1025',
       from: DEV.emailFrom,
     });
+  });
+});
+
+// Only the worker sends mail (#1895), so only the worker's read may see the
+// transport: the web process must not be able to construct one by accident,
+// and a deployment's SMTP credentials must not be readable from a process
+// that has no use for them.
+describe('the mail transport', () => {
+  it('is withheld from a read that did not ask for it', () => {
+    vi.stubEnv('SMTP_URL', 'smtp://user:password@smtp.example.org:587');
+    vi.stubEnv('EMAIL_FROM', 'studio@studio.example');
+    expect(readEnv().mail).toBeUndefined();
+    expect(readEnv({ withMail: true }).mail).toEqual({
+      kind: 'smtp',
+      url: 'smtp://user:password@smtp.example.org:587',
+      from: 'studio@studio.example',
+    });
+  });
+
+  it('does not refuse a half configuration it was not asked to read', () => {
+    // The pairing rule belongs to the process that would send through it. A
+    // deployment that half-configures mail must not take the web process down
+    // with a variable the web process never uses.
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
+    vi.stubEnv('SMTP_URL', '');
+    expect(readEnv().mail).toBeUndefined();
+    expect(() => readEnv({ withMail: true })).toThrow(
+      /SMTP_URL is required when EMAIL_FROM/,
+    );
+  });
+
+  it('leaves magic-link sign-in enabled with no transport configured', () => {
+    // Delivery is the worker's, and with none configured a sign-in email
+    // waits on the queue (#1895). What the capability reports is whether the
+    // method exists, which is a question about auth alone.
+    vi.stubEnv('SMTP_URL', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    const env = readEnv({ withMail: true });
+    expect(env.auth).toBeDefined();
+    expect(env.mail).toEqual({ kind: 'console' });
+
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    const deployed = readEnv({ withMail: true });
+    expect(deployed.auth).toBeDefined();
+    expect(deployed.mail).toEqual({ kind: 'refuse' });
   });
 });
 
@@ -76,9 +122,9 @@ describe('the development marker', () => {
     // mistake in its own right, so this is the whole lane being left behind.
     vi.stubEnv('EMAIL_FROM', '');
     vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
-    const env = readEnv();
+    const env = readEnv({ withMail: true });
     expect(env.devDefaults).toBe(false);
-    expect(env.auth?.mailer).toEqual({ kind: 'refuse' });
+    expect(env.mail).toEqual({ kind: 'refuse' });
   });
 
   it('is what enables the console mailer, not NODE_ENV', () => {
@@ -87,14 +133,16 @@ describe('the development marker', () => {
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'refuse' });
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'refuse' });
   });
 
   it('is what tolerates an unpaired EMAIL_FROM, not NODE_ENV', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
-    expect(() => readEnv()).toThrow(/SMTP_URL is required when EMAIL_FROM/);
+    expect(() => readEnv({ withMail: true })).toThrow(
+      /SMTP_URL is required when EMAIL_FROM/,
+    );
   });
 });
 
@@ -274,6 +322,81 @@ describe('the deployment mode', () => {
     // direction.
     vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
     expect(() => readEnv()).toThrow();
+  });
+});
+
+// Every Studio pool runs as a role it pins through pg's `options` startup
+// parameter, and node-postgres lets a connection string's own `options`
+// override it — which would run the web process and the worker as the
+// connecting login, in development the superuser that row-level security does
+// not apply to.
+describe('the pinned role', () => {
+  it('refuses a DATABASE_URL that would override it', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?options=-c%20role%3Dpostgres',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+    // The message has to say what to take out, because the parameter is more
+    // often inherited from a hosting provider's string than typed by hand.
+    expect(() => readEnv()).toThrow(/Remove `options` from the connection/);
+  });
+
+  it('refuses it among other connection parameters', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio&options=-csearch_path%3Dpublic',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts a connection string that leaves the parameter alone', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio',
+    );
+    expect(readEnv().db?.url).toContain('application_name=studio');
+  });
+
+  it('refuses it in a connection string with no host', () => {
+    // The form that says "the default Unix socket", which a hosting provider's
+    // socket configuration produces. `new URL` rejects it outright, so reading
+    // the string that way left this one through — pg reads it perfectly well,
+    // and would have sent the `options` it carries.
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@/studio_dev?options=-crole%3Dpostgres',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts the two formats that cannot carry the parameter', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+
+    // The bare socket form: its whole grammar is a socket directory and a
+    // database name, so there is nowhere in it to write a parameter.
+    vi.stubEnv('DATABASE_URL', '/var/run/postgresql studio_dev');
+    expect(readEnv().db?.url).toBe('/var/run/postgresql studio_dev');
+
+    // A libpq keyword DSN, which node-postgres does not accept at all: its
+    // parser reads the whole string as one long database name, so the
+    // `options=` written here is inert rather than tolerated. Asserting the
+    // `options` spelling specifically, because the review that asked for this
+    // guard believed pg honoured it.
+    vi.stubEnv(
+      'DATABASE_URL',
+      'host=/var/run/postgresql dbname=studio_dev options=-crole%3Dpostgres',
+    );
+    expect(readEnv().db?.url).toContain('options=');
   });
 });
 

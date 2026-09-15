@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { renderJobStatements } from '../../jobs/queues.ts';
 
 /* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
 const CI = process.env.CI === 'true';
@@ -20,9 +21,9 @@ const CI = process.env.CI === 'true';
  * own behaviour and still imports it directly.
  *
  * Whoever renders first checks the result against `SCHEMA_FINGERPRINT` — the
- * committed sha256 of exactly these bytes, the same equality `applySchema`
- * asserts before it pushes — so a tree whose schema has moved without
- * `sync-fingerprint` fails with the message that names the fix rather than
+ * committed sha256 of these bytes together with pg-boss's job statements, the
+ * same equality `applySchema` asserts before it pushes — so a tree whose
+ * schema has moved without `sync-fingerprint` fails with the message that names the fix rather than
  * provisioning something the fingerprint does not describe. That check is new
  * to this path: `provisionScratchSchema` used to stamp the fingerprint
  * without confirming the DDL it had just executed hashed to it.
@@ -66,8 +67,17 @@ function cachePath(): string {
   );
 }
 
-function fingerprintOf(sql: string): string {
-  return createHash('sha256').update(sql).digest('hex');
+/**
+ * `SCHEMA_FINGERPRINT` covers the public statements and pg-boss's together, so
+ * verifying the DDL means hashing it alongside the job statements exactly as
+ * `computeSchemaFingerprint` does. The job statements are rendered here rather
+ * than read from `scripts/apply.ts` because they need no drizzle-kit, and the
+ * cache exists to keep that module graph out of a hit.
+ */
+function fingerprintOf(schemaSql: string): string {
+  return createHash('sha256')
+    .update([schemaSql, ...renderJobStatements()].join('\n'))
+    .digest('hex');
 }
 
 async function load(): Promise<string> {

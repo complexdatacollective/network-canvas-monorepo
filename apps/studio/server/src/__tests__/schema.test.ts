@@ -1,9 +1,17 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { applySchema, computeSchemaFingerprint } from '../../scripts/apply.ts';
+import { JOB_QUEUES, JOB_SCHEMA } from '@codaco/studio-sync/jobs';
+
+import {
+  applySchema,
+  computeSchemaFingerprint,
+  renderJobStatements,
+  renderSchemaStatements,
+} from '../../scripts/apply.ts';
 import {
   readSchemaDocsSection,
   STUDIO_ERD_PATH,
@@ -11,6 +19,7 @@ import {
 } from '../../scripts/schema-docs.ts';
 import { ACCESS_SIDECAR_SQL } from '../db/access.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
+import { createPool } from '../db/pool.ts';
 import {
   checkSchema,
   SIDECARS,
@@ -19,6 +28,13 @@ import {
   schemaProblemMessage,
 } from '../db/schema.ts';
 import type { DbEnv } from '../env.ts';
+import { createJobClient } from '../jobs/client.ts';
+import { JOB_SCHEMA_VERSION } from '../jobs/queues.ts';
+import {
+  declaredQueueRows,
+  installedQueueRows,
+  queueRowFor,
+} from './support/job-queues.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -45,6 +61,19 @@ describe('fingerprint constant', () => {
 
   it('is resynced by a script package.json declares', () => {
     expect(readManifestScripts()).toHaveProperty('sync-fingerprint');
+  });
+
+  // A pg-boss upgrade or a queue change is a schema change like any other, so
+  // both have to move the fingerprint every process checks at boot.
+  it('covers pg-boss and the queues declared on it', async () => {
+    const jobStatements = renderJobStatements().join('\n');
+    expect(jobStatements).toContain(JSON.stringify(JOB_QUEUES));
+    expect(jobStatements).toContain(`VALUES ('${JOB_SCHEMA_VERSION}')`);
+
+    const publicOnly = createHash('sha256')
+      .update((await renderSchemaStatements()).join('\n'))
+      .digest('hex');
+    expect(await computeSchemaFingerprint()).not.toBe(publicOnly);
   });
 
   it('applies audit immutability after every general privilege grant', () => {
@@ -365,14 +394,20 @@ describe('generated schema documentation', () => {
   );
 });
 
-async function withScratch(
-  make: (db: DbEnv) => Promise<{ pool: pg.Pool; dispose: () => Promise<void> }>,
-  run: (pool: pg.Pool) => Promise<void>,
+async function withScratch<
+  Scratch extends { pool: pg.Pool; dispose: () => Promise<void> },
+>(
+  make: (db: DbEnv) => Promise<Scratch>,
+  // The scratch itself is the second argument rather than the first because
+  // almost every case here needs only the owner pool; what wants the whole
+  // thing is the case that connects as another role, which needs the scratch
+  // database's own URL.
+  run: (pool: pg.Pool, scratch: Scratch) => Promise<void>,
 ): Promise<void> {
   if (!db) throw new Error('unreachable: probe guaranteed db');
   const scratch = await make(db);
   try {
-    await run(scratch.pool);
+    await run(scratch.pool, scratch);
   } finally {
     await scratch.dispose();
   }
@@ -661,6 +696,232 @@ describe.skipIf(!db)('schema application', () => {
       );
       expect(columns.rows.map((r) => r.column_name)).toContain('name');
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+    });
+  });
+
+  const jobQueueRows = (pool: pg.Pool) => installedQueueRows(pool, JOB_SCHEMA);
+
+  it('installs pg-boss and every declared queue', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+    });
+  });
+
+  it('brings a queue whose options drifted back to the declaration', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // A queue's options are data in its row, so drift is what a hand-run
+      // statement — or a declaration that changed between deployments — leaves
+      // behind. Reapplying has to reconcile it the way a push reconciles a
+      // column, which is the half of syncJobQueues that creation never reaches.
+      await pool.query(
+        `update ${JOB_SCHEMA}.queue
+         set retry_limit = 99, expire_seconds = 123, notify = not notify
+         where name = 'sign-in-email'`,
+      );
+      // The other half of "equal to the declaration": every option below is
+      // one `protocol-store-gc` does not declare, so reconciliation has to
+      // send pg-boss the default for it. An update carrying only the
+      // declaration would leave all of these exactly as they are — a queue
+      // still notifying, still dead-lettering and still retrying because some
+      // earlier deployment said so.
+      await pool.query(
+        `update ${JOB_SCHEMA}.queue
+         set retry_delay = 42, retry_backoff = true, retention_seconds = 60,
+             deletion_seconds = 60, warning_queued = 5, heartbeat_seconds = 30,
+             notify = true, dead_letter = 'invitation-delivery-dead-letter'
+         where name = 'protocol-store-gc'`,
+      );
+
+      await applySchema(pool);
+
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+    });
+  });
+
+  it('keeps the defaults it reconciles against level with pg-boss', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // pg-boss's own `create_queue`, given the options `createQueue(name, {})`
+      // passes it: the manager defaults `policy` in JavaScript and leaves every
+      // other option to the function, so this row is what a queue with nothing
+      // declared about it looks like. Called directly rather than through a
+      // PgBoss instance because a test constructing one of those is what
+      // src/jobs/__tests__/source-policy.test.ts refuses.
+      //
+      // Reconciliation is only "equal to the declaration" if the values it
+      // sends for the undeclared options are these, so an upgrade that moves a
+      // default has to be noticed here rather than in a deployment.
+      await pool.query(
+        `select ${JOB_SCHEMA}.create_queue($1, '{"policy":"standard"}'::jsonb)`,
+        ['pg-boss-defaults'],
+      );
+
+      expect(
+        await installedQueueRows(pool, JOB_SCHEMA, ['pg-boss-defaults']),
+      ).toEqual([queueRowFor('pg-boss-defaults')]);
+    });
+  });
+
+  /**
+   * What the application role has to be able to do after an apply: create a
+   * job, through the same client the web process uses. It proves the grants
+   * survived — or were re-applied after — whatever the apply did to the
+   * schema, which the owner pool cannot answer for, being a superuser here.
+   */
+  async function enqueueAsApplication(scratchDb: DbEnv): Promise<void> {
+    const jobs = createJobClient(scratchDb);
+    const app = createPool(scratchDb);
+    try {
+      const connection = await app.connect();
+      try {
+        await connection.query('BEGIN');
+        await jobs.enqueue(connection, 'protocol-store-gc', {});
+        await connection.query('COMMIT');
+      } finally {
+        connection.release();
+      }
+    } finally {
+      await jobs.stop();
+      await app.end();
+    }
+  }
+
+  it('replaces a pg-boss schema installed at another version', async () => {
+    await withScratch(createScratchDatabase, async (pool, scratch) => {
+      await applySchema(pool);
+      const queued = await pool.query<{ id: string }>(
+        `insert into ${JOB_SCHEMA}.job_common (name, data)
+         values ('protocol-store-gc', '{}'::jsonb) returning id`,
+      );
+      // What an upgrade to a pg-boss whose schema moved looks like from here:
+      // the tables are a version this build cannot use, so they are dropped
+      // and rebuilt rather than migrated (the pre-release posture), and the
+      // jobs go with them.
+      await pool.query(
+        `update ${JOB_SCHEMA}.version set version = version - 1`,
+      );
+
+      await applySchema(pool);
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+      const jobs = await pool.query(
+        `select id from ${JOB_SCHEMA}.job_common where id = $1`,
+        [queued.rows[0]!.id],
+      );
+      expect(jobs.rowCount).toBe(0);
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+
+      // The drop took the grants with it, so the reinstall has to put them
+      // back: a database the web process cannot enqueue into is one this
+      // apply had no business stamping.
+      await enqueueAsApplication(scratch.db);
+      const requeued = await pool.query<{ name: string }>(
+        `select name from ${JOB_SCHEMA}.job_common`,
+      );
+      expect(requeued.rows).toEqual([{ name: 'protocol-store-gc' }]);
+    });
+  });
+
+  it('replaces a pg-boss schema that lost its version row', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // A version table with nothing in it says nothing about what the tables
+      // beside it are. Treating that as "not installed" would re-run the
+      // construction plan over them, which fails on CREATE TYPE (42710) and
+      // leaves the database unstampable.
+      await pool.query(`delete from ${JOB_SCHEMA}.version`);
+
+      await expect(applySchema(pool)).resolves.toBeDefined();
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+    });
+  });
+
+  it('lets the application enqueue and nothing else', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+
+      const privileges = await pool.query<Record<string, boolean>>(
+        `select
+           has_schema_privilege('studio_app', '${JOB_SCHEMA}', 'USAGE') as app_schema,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'INSERT') as app_insert,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.queue', 'SELECT') as app_queue,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'id', 'SELECT') as app_id,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'start_after', 'SELECT') as app_start_after,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'name', 'SELECT') as app_name,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'data', 'SELECT') as app_data,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'UPDATE') as app_update,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'DELETE') as app_delete,
+           has_table_privilege('studio_maintenance', '${JOB_SCHEMA}.job_common', 'UPDATE') as maintenance_update,
+           has_table_privilege('studio_maintenance', '${JOB_SCHEMA}.schedule', 'INSERT') as maintenance_schedule`,
+      );
+      expect(privileges.rows[0]).toEqual({
+        app_schema: true,
+        app_insert: true,
+        app_queue: true,
+        // The two columns the insert reads back, and nothing else: the job's
+        // queue name says which team's work is waiting, so the role that
+        // serves requests is not given it either.
+        app_id: true,
+        app_start_after: true,
+        app_name: false,
+        app_data: false,
+        app_update: false,
+        app_delete: false,
+        maintenance_update: true,
+        maintenance_schedule: true,
+      });
+    });
+  });
+
+  it('leaves an installed pg-boss schema and its queues alone', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      const queued = await pool.query<{ id: string }>(
+        `insert into ${JOB_SCHEMA}.job_common (name, data)
+         values ('protocol-store-gc', '{}'::jsonb) returning id`,
+      );
+      const created = await pool.query<{ name: string; created_on: Date }>(
+        `select name, created_on from ${JOB_SCHEMA}.queue order by name`,
+      );
+
+      const again = await applySchema(pool);
+      expect(again.statements).toEqual([]);
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      // A reinstall would have dropped the schema, taking the queued job and
+      // the queues' creation times with it.
+      expect(
+        (
+          await pool.query(
+            `select id from ${JOB_SCHEMA}.job_common where id = $1`,
+            [queued.rows[0]!.id],
+          )
+        ).rowCount,
+      ).toBe(1);
+      expect(
+        (
+          await pool.query<{ name: string; created_on: Date }>(
+            `select name, created_on from ${JOB_SCHEMA}.queue order by name`,
+          )
+        ).rows,
+      ).toEqual(created.rows);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
     });
   });
 

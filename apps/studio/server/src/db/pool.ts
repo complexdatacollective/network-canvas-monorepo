@@ -19,11 +19,23 @@ const CONNECTION_TIMEOUT_MS = 10_000;
 // a role that could bypass row-level security — not in a deployment, and not
 // in development, where the login is the superuser. Garbage collection pins
 // the maintenance role the same way as durable delivery workers do.
-function connect(db: DbEnv, role?: string): pg.Pool {
+/** What a caller may vary; the identity and the timeout are not negotiable. */
+export type PoolLimits = {
+  /**
+   * How many connections this pool may hold. Left to node-postgres's default
+   * for a pool that serves requests; set by a pool whose whole job is one kind
+   * of statement, so it cannot take a share of the database's connections that
+   * its work does not need (src/jobs/client.ts).
+   */
+  max?: number;
+};
+
+function connect(db: DbEnv, role?: string, limits: PoolLimits = {}): pg.Pool {
   const pool = new pg.Pool({
     connectionString: db.url,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     ...(role === undefined ? {} : { options: `-c role=${role}` }),
+    ...limits,
   });
   // A client that dies while idle (database restart, network partition) emits
   // `error` on the pool with no query to reject. Node turns an unhandled
@@ -38,8 +50,8 @@ function connect(db: DbEnv, role?: string): pg.Pool {
 }
 
 /** The application's pool: every session runs as the application role. */
-export function createPool(db: DbEnv): pg.Pool {
-  return connect(db, TENANT_ROLES.app);
+export function createPool(db: DbEnv, limits: PoolLimits = {}): pg.Pool {
+  return connect(db, TENANT_ROLES.app, limits);
 }
 
 /** Background jobs: every session runs as the cross-team maintenance role. */
@@ -55,13 +67,17 @@ export function createOwnerPool(db: DbEnv): pg.Pool {
 /**
  * A pinned pool against a database whose schema — and so whose roles — was
  * never applied is refused at connect, before any query could tell the
- * schema is absent.
+ * schema is absent. Either pinned role answers for that: the web process
+ * verifies the schema on the application pool and the worker on the
+ * maintenance one (src/boot.ts), and an unapplied database is missing both.
  */
 export function isMissingRoleError(error: unknown): boolean {
   return (
     error instanceof Error &&
     'code' in error &&
     error.code === '22023' &&
-    error.message.includes(TENANT_ROLES.app)
+    [TENANT_ROLES.app, TENANT_ROLES.maintenance].some((role) =>
+      error.message.includes(role),
+    )
   );
 }

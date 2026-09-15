@@ -121,12 +121,9 @@ const webhookDeliveries = pgTable(
     eventType: text('event_type').notNull(),
     // Thin by policy: event type, resource ids, team. Never a body.
     payload: jsonb('payload').notNull(),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     lastStatusCode: smallint('last_status_code'),
@@ -142,9 +139,6 @@ const webhookDeliveries = pgTable(
       columns: [table.subscriptionId, table.teamId],
       foreignColumns: [webhookSubscriptions.id, webhookSubscriptions.teamId],
     }),
-    index('webhook_deliveries_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(sql`delivered_at IS NULL AND failed_at IS NULL`),
     index('webhook_deliveries_team_id_created_at_idx').on(
       table.teamId,
       table.createdAt.desc(),
@@ -154,17 +148,10 @@ const webhookDeliveries = pgTable(
       sql`jsonb_typeof(${table.payload}) = 'object'
           AND pg_column_size(${table.payload}) <= 4096`,
     ),
-    check(
-      'webhook_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // A delivery ends once, one way: delivered or given up on, never both.
     check(
       'webhook_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}) <= 1
-          AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}) <= 1`,
     ),
     check(
       'webhook_deliveries_lengths_check',
@@ -243,7 +230,7 @@ CREATE OR REPLACE TRIGGER webhook_deliveries_subscription_wants_event
 ${tenantTablesSql(['webhook_subscriptions', 'webhook_deliveries'])}
 
 -- Commands enqueue a delivery inside their audited transaction; only the
--- maintenance dispatcher advances its state. The revocation binds only where
+-- maintenance worker advances its state. The revocation binds only where
 -- this sidecar runs after db/access.ts's blanket grant over ALL TABLES, which
 -- is where team_invitation_deliveries' matching revocation sits; the payload
 -- trigger above holds for every role regardless.

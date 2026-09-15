@@ -289,7 +289,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         {
           auth: stubAuthService({ listMemberships: memberships }),
           deployment: { mode: 'self-hosted', billing: false },
-          invitationDeliveryAvailable: false,
           pool: scratch.app,
           protocolBuilder: createProtocolBuilderRuntime(() => now),
           assetStore,
@@ -305,7 +304,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       {
         auth: stubAuthService({ listMemberships: memberships }),
         deployment: { mode: 'self-hosted', billing: false },
-        invitationDeliveryAvailable: false,
         pool: scratch.app,
         protocolBuilder: runtime,
         assetStore,

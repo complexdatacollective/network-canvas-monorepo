@@ -9,9 +9,9 @@ import { readEnv } from './env.ts';
 //     is no schema to verify on a cold start
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
 //     is excluded from `config.path` below
-//   - background invitation delivery — no durable scheduler invokes this
-//     function, so RPC invitation creation is explicitly unavailable rather
-//     than committing an outbox job that nothing can drain
+//   - the job client — this lane holds no database, so there is no queue to
+//     create a job on, and nothing that would create one is reachable anyway:
+//     auth is off, so the RPC surface refuses every team command
 
 // This lane serves the managed topology, and cannot gate on it. netlify.toml's
 // `/*` redirect answers every client path with index.html at 200, and
@@ -52,7 +52,7 @@ import { readEnv } from './env.ts';
 // Serving auth from this lane needs the origin derived from the request, which
 // netlify.toml assigns to the real topology work — not a site-level variable.
 const env = readEnv({ withoutDatabaseOrAuth: true });
-const app = createApp(env, { invitationDeliveryAvailable: false });
+const app = createApp(env);
 
 export default async function handler(request: Request): Promise<Response> {
   return app.fetch(request);

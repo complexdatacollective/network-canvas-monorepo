@@ -25,8 +25,10 @@ when its boundary moved.
   server through typed oRPC procedures, importing the boundary contract
   type-only.
 - `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
-  (Node 24 baseline), one persistent process serving every surface below,
-  plus static client assets in the self-host topology. It owns the database:
+  (Node 24 baseline), one persistent process serving every surface below, plus
+  static client assets in the self-host topology. A second process built from
+  the same source runs background jobs and nothing else (see
+  [Background work](#background-work)). It owns the database:
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
 - `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
@@ -34,7 +36,9 @@ when its boundary moved.
   halves.
 - `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
   (#1247). Isomorphic: the client imports its apply engine, the server its
-  lease and commit engine and the schema those run against.
+  lease and commit engine and the schema those run against. It also carries the
+  declarations that are schema without being tables — the database roles, and
+  the background queues.
 
 ## Surfaces
 
@@ -151,7 +155,7 @@ the same table definitions) must land before a release carries data worth
 keeping.
 
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
-with their owners:
+with their owners, plus the queue declarations beside them:
 
 - better-auth's tables — `server/src/db/auth-schema.ts`
 - the sync engine's drafts, sections, manifests, leases and command log —
@@ -175,6 +179,11 @@ with their owners:
 - immutable audit history, its staged exports and its alert outbox —
   `server/src/audit/schema.ts`
 - durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
+- the background queues — `packages/studio-sync/src/jobs.ts`: every queue
+  Studio declares and how each one retries and expires, the cron schedules the
+  worker registers, what a job on each queue may carry, and what the two
+  database roles may do with pg-boss's tables. Declarations rather than Drizzle
+  tables — pg-boss owns the tables (see [Background work](#background-work))
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
@@ -194,6 +203,19 @@ The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
 
+pg-boss's own schema, `pgboss`, is part of what a schema application installs.
+`apply-schema` runs pg-boss's construction plan, applies the grants that sit
+beside the queue declarations, and creates or updates every declared queue. No
+process migrates pg-boss at start. That plan's SQL, those grants and the queue
+declarations are all hashed into the fingerprint, so a pg-boss upgrade or a
+change to a queue's retry, expiry or dead-letter settings is a schema change
+like any other: applied once by `apply-schema`, and refused at boot by every
+process until it has been. Pre-release, a version difference is resolved the
+way the rest of the schema is — by replacement rather than migration. A
+database whose installed pg-boss schema is not this build's version is dropped
+and reinstalled, which discards every job that was queued in it; `apply-schema`
+logs how many that was before it does it.
+
 <!-- generated:schema-docs start -->
 
 #### Generated entity-relationship diagram
@@ -204,7 +226,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `4de5d4fa8be602828573447158bbad335d38b9f0effd94534189026911c065e6`.
+Schema fingerprint: `b6be9eb93393f23c956907ea5a3ba67ec541cdc49da955fe9a987574bba82807`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -376,13 +398,26 @@ team, a policy clause rather than a `BYPASSRLS` role because only a superuser
 can create one of those and managed Postgres offers none — enumerates tenants
 from the swept tables, sweeps each under that team's `TenantDb`, and refuses
 any other role, under which it would report a clean sweep without having
-visited anyone. The study purge job and the outbox dispatchers will run the
-same way. Two tables beside the audit log — `audit_export_jobs` and
-`audit_alert_outbox` — carry the ordinary policy rather than the audit log's
-stricter `audit_team_isolation` (which admits no maintenance role at all),
-because their workers claim work across teams; they hold ids, event types and
-counters, never event content. A second transaction-scoped marker,
-`app.erasing_participant_id`, authorizes participant erasure: the guards on
+visited anyone. Every background job runs that way: the worker process
+(see [Background work](#background-work)) runs protocol-store garbage
+collection, which pg-boss's cron starts hourly, and invitation and sign-in
+mail, all as `studio_maintenance`. The application role may create a job and
+nothing else with it — INSERT on the job table, SELECT on the queue and version
+tables, and a column-level SELECT on the two columns its insert reads back — so
+queued work is invisible to the role that serves requests, and one team cannot
+learn what another has queued. Job payloads carry row identifiers only; the
+handler loads what it needs under its own role. There is one documented
+exception, declared where the policy is (`JOB_PAYLOAD_POLICY` in
+`packages/studio-sync/src/jobs.ts`, where a test refuses any other): a sign-in
+email carries the address and the one-time link, because better-auth stores the
+token hashed and mints the link during the request, so there is no row for the
+handler to load it back from. Two tables beside the audit log —
+`audit_export_jobs` and `audit_alert_outbox` — carry the ordinary policy rather
+than the audit log's stricter `audit_team_isolation` (which admits no
+maintenance role at all), because the jobs that will drain them run across
+teams; they hold ids, event types and counters, never event content. A second
+transaction-scoped marker, `app.erasing_participant_id`, authorizes participant
+erasure: the guards on
 participant data accept an application-role delete only when the marker names
 the row's own participant, so a bug cannot delete anyone else's data and a
 finalized session can be deleted only by that path or by the maintenance
@@ -426,6 +461,65 @@ once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
 
+### Background work
+
+Everything Studio does outside a request is a job on a queue, and a second
+process runs it (#1895). One image, two processes: `node dist/index.js` is the
+web process, which serves HTTP, the RPC surface and the WebSocket endpoint and
+may only create jobs, and `node dist/worker.js` is the worker, which runs the
+jobs and the cron schedules and binds no port. Neither can do the other's work
+— the web process constructs pg-boss with supervision, scheduling and migration
+off, and the worker imports neither the HTTP app nor the RPC router, which a
+source test holds it to. `pnpm dev` runs both.
+
+A job is created inside the transaction that caused it. The command hands its
+own database client to pg-boss through pg-boss's Drizzle adapter, so the job is
+inserted on that connection, inside that transaction, alongside the domain row
+and its audit event: a command that rolls back leaves no job, and a command
+that commits always leaves exactly one. Nothing enqueues after a commit, and
+`server/src/jobs/enqueue.ts` is the only module that creates a job at all —
+another source test holds the codebase to that, because an enqueue on its own
+connection reopens both windows this closes.
+
+Queues are schema rather than configuration. A queue is declared in
+`JOB_QUEUES` in `packages/studio-sync/src/jobs.ts` — after any queue it names
+as its dead letter, because the target has to exist before the queue that
+points at it — and `pnpm --filter @codaco/studio-server sync-fingerprint` then
+folds it into the fingerprint every process verifies at boot. `apply-schema`
+creates or updates it (see [Changing the schema](#changing-the-schema)).
+Nothing creates a queue at run time. What each database role may do with the
+job tables is in [Tenancy](#tenancy).
+
+| Queue                             | What runs on it                                         | Retries                                            | Attempt expiry | When attempts run out                             |
+| --------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
+| `invitation-delivery`             | Team-invitation email                                   | 7 (eight attempts), exponential from 5 s to 30 min | 60 s           | Copied to `invitation-delivery-dead-letter`       |
+| `invitation-delivery-dead-letter` | Nothing works it; it holds what failed                  | none                                               | —              | Kept 30 days for a manual re-send (#1307)         |
+| `sign-in-email`                   | Magic-link sign-in email                                | 2, exponential from 5 s to 60 s                    | 30 s           | Dropped; an expired sign-in link is worth nothing |
+| `protocol-store-gc`               | The protocol-store sweep, hourly, at most one at a time | none                                               | 1 h            | Nothing; the next hour's run does the same work   |
+
+A worker with no mail transport still boots. It registers the cron and works
+the sweep, logs at error level that `invitation-delivery` and `sign-in-email`
+are going unworked, and the mail waits: an invitation created while no worker
+has SMTP is queued and sent when one arrives, rather than refused (the ruling
+recorded on #1895 — queue it; it sends when a worker returns). `SMTP_URL` and
+`EMAIL_FROM` therefore belong in the worker's environment; the web process does
+not read them.
+
+Each job outcome is one log line naming the queue, the job id and the attempt.
+Two of them are at error level, because nothing will retry either: a final
+failure, and `uncertain` — the send may have happened and Studio could not
+record that it did, so a person decides rather than a retry duplicating
+someone's mail (#1305, #1307).
+
+On SIGTERM the worker stops pg-boss gracefully with a 25-second timeout, so a
+send already in flight finishes inside the container's stop window. A job that
+outlives it fails and is retried by the next worker.
+
+What is deliberately absent: there is no admin surface, no dashboard, and no
+job priorities. A delivery state researchers can see, and a manual re-send, is
+#1307; structured logging, metrics, and whether to mount pg-boss's own
+dashboard belong to the observability aspect of #1243.
+
 ## Environment
 
 `apps/studio/server/src/env.ts` is the only module in the server that reads
@@ -433,7 +527,11 @@ them.
 everything else takes a resolved `StudioEnv`. It validates in two layers:
 `src/env/variables.ts` declares a schema per variable, and `src/env/resolve.ts`
 applies the rules that span several at once (all-or-nothing `S3_*`, the
-`SMTP_URL`/`EMAIL_FROM` pairing, the mailer's three-way resolution).
+`SMTP_URL`/`EMAIL_FROM` pairing, the mail transport's three-way resolution).
+Those two mail variables are read only by the process that sends mail — the
+worker (see [Background work](#background-work)) — and withheld from every
+other read, so the web process cannot construct a transport even where a
+deployment defines them, and a half-configured pair is the worker's to refuse.
 
 Three files carry values, and the dev script loads them in this order, so a
 later one wins:
@@ -510,34 +608,35 @@ fails `pnpm typecheck`.
 
 ### Database
 
-| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                                   |
-| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. |
+| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead. |
 
 ### Authentication
 
-| Variable                     | What it is                                                                                                    | Development default                    | Real deployment                                                                                                                                                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`         | Signing secret for sessions and magic-link tokens.                                                            | `studio-dev-secret-not-for-production` | Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.                                                                                                                                                                         |
-| `PUBLIC_URL`                 | The browser-facing origin. Cookies, magic-link URLs, and team-invitation URLs are minted against it.          | `http://localhost:5173`                | Required whenever `DATABASE_URL` is set.                                                                                                                                                                                                                      |
-| `SMTP_URL`                   | SMTP transport sign-in and team-invitation email is sent through.                                             | —                                      | Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.                                                                                                         |
-| `EMAIL_FROM`                 | From address on sign-in and team-invitation email.                                                            | `studio-dev@localhost`                 | Required alongside `SMTP_URL`, and refused without it.                                                                                                                                                                                                        |
-| `GOOGLE_CLIENT_ID`           | OAuth client ID for "Continue with Google" sign-in (#1255).                                                   | —                                      | Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.                                    |
-| `GOOGLE_CLIENT_SECRET`       | OAuth client secret paired with `GOOGLE_CLIENT_ID`.                                                           | —                                      | Required with `GOOGLE_CLIENT_ID`, and refused without it.                                                                                                                                                                                                     |
-| `MICROSOFT_CLIENT_ID`        | Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).                                  | —                                      | Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.                                                          |
-| `MICROSOFT_CLIENT_SECRET`    | Client secret paired with `MICROSOFT_CLIENT_ID`.                                                              | —                                      | Required with `MICROSOFT_CLIENT_ID`, and refused without it.                                                                                                                                                                                                  |
-| `MICROSOFT_TENANT_ID`        | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                                              |
-| `STUDIO_SEED_ADMIN_PASSWORD` | Password of the `admin@studio.test` account the `seed` command creates, which owns every seeded team.         | —                                      | Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only. |
-| `TRUSTED_PROXIES`            | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.                |
+| Variable                     | What it is                                                                                                    | Development default                    | Real deployment                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`         | Signing secret for sessions and magic-link tokens.                                                            | `studio-dev-secret-not-for-production` | Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.                                                                                                                                                                                                                                                                                                 |
+| `PUBLIC_URL`                 | The browser-facing origin. Cookies, magic-link URLs, and team-invitation URLs are minted against it.          | `http://localhost:5173`                | Required whenever `DATABASE_URL` is set.                                                                                                                                                                                                                                                                                                                                              |
+| `SMTP_URL`                   | SMTP transport sign-in and team-invitation email is sent through.                                             | —                                      | Read by the worker process, which sends every message Studio sends; the web process never reads it. Unset ⇒ the worker boots without its mail workers and says so, and sign-in and invitation mail queues until one is configured. In development the worker’s console mailer prints the links instead. A sign-in or invitation link is never written to the log outside development. |
+| `EMAIL_FROM`                 | From address on sign-in and team-invitation email.                                                            | `studio-dev@localhost`                 | Read by the worker process alongside `SMTP_URL`: required with it, and refused without it.                                                                                                                                                                                                                                                                                            |
+| `GOOGLE_CLIENT_ID`           | OAuth client ID for "Continue with Google" sign-in (#1255).                                                   | —                                      | Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.                                                                                                                                                            |
+| `GOOGLE_CLIENT_SECRET`       | OAuth client secret paired with `GOOGLE_CLIENT_ID`.                                                           | —                                      | Required with `GOOGLE_CLIENT_ID`, and refused without it.                                                                                                                                                                                                                                                                                                                             |
+| `MICROSOFT_CLIENT_ID`        | Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).                                  | —                                      | Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.                                                                                                                                                                                  |
+| `MICROSOFT_CLIENT_SECRET`    | Client secret paired with `MICROSOFT_CLIENT_ID`.                                                              | —                                      | Required with `MICROSOFT_CLIENT_ID`, and refused without it.                                                                                                                                                                                                                                                                                                                          |
+| `MICROSOFT_TENANT_ID`        | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                                                                                                                                                                      |
+| `STUDIO_SEED_ADMIN_PASSWORD` | Password of the `admin@studio.test` account the `seed` command creates, which owns every seeded team.         | —                                      | Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only.                                                                                                                         |
+| `TRUSTED_PROXIES`            | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.                                                                                                                                        |
 
 <!-- generated:env end -->
 
 ## Production
 
 ```bash
-pnpm --filter @codaco/studio-client build   # client/dist — static assets
-pnpm --filter @codaco/studio-server build   # server/dist — Node bundle
-pnpm --filter @codaco/studio-server start   # serves both locally
+pnpm --filter @codaco/studio-client build        # client/dist — static assets
+pnpm --filter @codaco/studio-server build        # server/dist — Node bundle
+pnpm --filter @codaco/studio-server start        # serves both locally
+pnpm --filter @codaco/studio-server start:worker # runs the background jobs
 ```
 
 The Docker image — the self-host artifact — builds from the monorepo root and
@@ -547,6 +646,19 @@ contains the server bundle plus the built client assets:
 docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
+
+Background work runs in a second container from that same image, started with
+the worker command (see [Background work](#background-work)):
+
+```bash
+docker run --rm --no-healthcheck network-canvas-studio node dist/worker.js
+```
+
+`--no-healthcheck` because the image's `HEALTHCHECK` polls `/healthz`, which
+the worker deliberately does not serve: it binds no port at all. The worker is
+the only process that sends mail, so `SMTP_URL` and `EMAIL_FROM` belong in its
+environment. Process-aware health checks belong to the deployment aspect of
+#1243.
 
 ### Database schema and seeding
 
@@ -587,11 +699,10 @@ them:
 - **The Netlify lane has no automation.** Its build command does not touch the
   database and its function has no boot, so `apply-schema` is a manual step
   there — and consequently the only place that lane ever detects a stale
-  schema. It also has no supported durable background dispatcher, so team
-  invitation creation fails closed with `SERVICE_UNAVAILABLE` in that lane
-  rather than queueing email that cannot be delivered. Use the persistent Node
-  server topology for invitation delivery until a scheduled Netlify dispatcher
-  is implemented.
+  schema. That lane runs only the web process, and it has no database at all,
+  so nothing can be queued there and there is no worker to run it. Sign-in and
+  team invitations are refused there because auth is off (see the note in
+  `netlify.toml`), not because delivery is unavailable.
 - **`seed` wipes every table and repopulates synthetic content** (faker,
   `src/db/seed.ts` and `src/db/seed/`): five teams with a mix of members
   across every team role, and one fixed admin account —
@@ -656,6 +767,14 @@ their chunks) and routes the server's paths to the origin — a persistent Node
 process colocated with the Postgres primary. Edge compute is a non-goal;
 replicas serve only reads the query layer marks replica-tolerant (#1246).
 
+Background jobs run in a second container from the same image, colocated with
+the web process (see [Background work](#background-work)). The web process
+stays a single replica, as it already did: the sync leases it holds and the
+audit denial-rate window it counts are per-process state, and a second replica
+would change what that window means (#1251). Workers have no such state and may
+be scaled — pg-boss hands each job, and each firing of a cron schedule, to
+exactly one of them.
+
 ```mermaid
 graph LR
     P[Participant / researcher<br/>browser — Studio SPA]
@@ -668,6 +787,7 @@ graph LR
 
     subgraph O[Origin region]
         S[studio-server<br/>persistent Node process<br/>WS + leases: single replica]
+        W[studio-server worker<br/>same image, node dist/worker.js<br/>jobs + cron: scalable]
         PG[(Postgres<br/>primary)]
         RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
     end
@@ -678,7 +798,8 @@ graph LR
     P -->|"/rpc · /ws (cookie)"| RT
     X -->|"/api/v1 (PAT)"| RT
     RT --> S
-    S --> PG
+    S -->|"rows + jobs (one transaction)"| PG
+    W -->|"jobs + cron"| PG
     S -.-> RR
     PG -.->|streaming replication| RR
     S -->|S3 API| R2
@@ -688,8 +809,9 @@ graph LR
 ### Self-host
 
 The same server image embeds and serves the client assets itself: the app
-container, Postgres, and an S3-compatible object store (MinIO by default, or
-bring your own endpoint) — the same shape Fresco self-hosters already run.
+container, a second container from that image running the worker, Postgres, and
+an S3-compatible object store (MinIO by default, or bring your own endpoint) —
+the same shape Fresco self-hosters already run, plus the worker.
 
 ```mermaid
 graph LR
@@ -697,12 +819,14 @@ graph LR
 
     subgraph H[Researcher-operated host — Docker]
         C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws · /storage]
+        W[studio worker container<br/>same image, node dist/worker.js<br/>jobs + cron, no port]
         PG[(Postgres<br/>container)]
         M[(MinIO container<br/>or BYO S3 endpoint)]
     end
 
     B -->|one origin| C
     C --> PG
+    W --> PG
     C -->|S3 API| M
 ```
 

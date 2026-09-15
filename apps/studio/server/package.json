@@ -11,7 +11,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev-pg.ts --prepare && concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\"",
+    "dev": "node scripts/dev-pg.ts --prepare && concurrently -k -n s3,pg,server,worker \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/worker.ts\"",
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
@@ -23,6 +23,7 @@
     "generate:erd": "node scripts/generate-schema-docs.ts",
     "check:schema-docs": "node scripts/check-schema-docs.ts",
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
+    "start:worker": "NODE_ENV=production node --env-file-if-exists=.env dist/worker.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -47,8 +48,10 @@
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "^4.13.5",
-    "nodemailer": "9.0.5",
-    "pg": "^8.22.0",
+    "nodemailer": "10.0.9",
+    "pg": "^8.23.0",
+    "pg-boss": "12.31.1",
+    "pg-connection-string": "^2.14.0",
     "ws": "catalog:",
     "zod": "catalog:"
   },
@@ -57,7 +60,6 @@
     "@dbml/core": "10.1.1",
     "@orpc/client": "catalog:",
     "@softwaretechnik/dbml-renderer": "1.0.31",
-    "@types/nodemailer": "8.0.1",
     "@types/pg": "^8.20.4",
     "@types/ws": "^8.18.1",
     "concurrently": "^10.0.5",

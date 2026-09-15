@@ -3,8 +3,8 @@
 // partial artifact is released", the single-use handle, the immutability of an
 // export request and of an alert's link to its immutable event, and the
 // deliberate policy divergence — both tables carry the ordinary
-// `team_isolation` policy, so the workers that drive them can claim across
-// teams while `audit_events` itself stays behind the strict policy.
+// `team_isolation` policy, so the workers that drive them can reach a row of
+// any team while `audit_events` itself stays behind the strict policy.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK or foreign-key violation, the SQLSTATE for a privilege
@@ -39,7 +39,7 @@ const sequence = () => String(++nextSequence);
 
 /**
  * The five columns an outbox row pins through: the link, its team, and the
- * three the row copies out of the event so the dispatcher can route without
+ * three the row copies out of the event so the worker can route without
  * reading it.
  */
 type EventIdentity = {
@@ -179,19 +179,15 @@ describe.skipIf(!db)('audit outbox schema', () => {
       const id = await newJob();
 
       const row = await pool.query<Row>(
-        `SELECT status, attempt_count, lease_owner, lease_expires_at,
-                artifact_key, handle_hash, handle_consumed_at,
-                completion_event_id, failure_event_id, ready_at, failed_at,
-                available_at IS NOT NULL AS scheduled,
-                created_at IS NOT NULL AS stamped
+        `SELECT status, attempt_count, artifact_key, handle_hash,
+                handle_consumed_at, completion_event_id, failure_event_id,
+                ready_at, failed_at, created_at IS NOT NULL AS stamped
          FROM audit_export_jobs WHERE id = $1`,
         [id],
       );
       expect(row.rows[0]).toEqual({
         status: 'pending',
         attempt_count: 0,
-        lease_owner: null,
-        lease_expires_at: null,
         artifact_key: null,
         handle_hash: null,
         handle_consumed_at: null,
@@ -199,7 +195,6 @@ describe.skipIf(!db)('audit outbox schema', () => {
         failure_event_id: null,
         ready_at: null,
         failed_at: null,
-        scheduled: true,
         stamped: true,
       });
     });
@@ -338,20 +333,6 @@ describe.skipIf(!db)('audit outbox schema', () => {
         'audit_export_jobs_consumed_check',
       ],
       [
-        'half a lease',
-        { lease_owner: randomUUID() },
-        'audit_export_jobs_lease_check',
-      ],
-      [
-        'a terminal job still holding a lease',
-        {
-          ...readyPayload(),
-          lease_owner: randomUUID(),
-          lease_expires_at: new Date(),
-        },
-        'audit_export_jobs_terminal_state_check',
-      ],
-      [
         'a blank actor id',
         { actor_id: '' },
         'audit_export_jobs_identifier_lengths_check',
@@ -407,18 +388,17 @@ describe.skipIf(!db)('audit outbox schema', () => {
     it('lets the worker advance generation state', async () => {
       const id = await newJob();
 
-      const claimed = await pool.query(
+      const started = await pool.query(
         `UPDATE audit_export_jobs
-         SET status = 'generating', attempt_count = attempt_count + 1,
-             lease_owner = $2, lease_expires_at = now() + interval '1 minute'
+         SET status = 'generating', attempt_count = attempt_count + 1
          WHERE id = $1`,
-        [id, randomUUID()],
+        [id],
       );
-      expect(claimed.rowCount).toBe(1);
+      expect(started.rowCount).toBe(1);
 
       const completed = await pool.query(
         `UPDATE audit_export_jobs
-         SET status = 'ready', lease_owner = NULL, lease_expires_at = NULL,
+         SET status = 'ready',
              handle_hash = $2, handle_expires_at = now() + interval '1 hour',
              artifact_key = $3, artifact_row_count = 10,
              artifact_byte_count = 2048, completion_event_id = $4,
@@ -471,22 +451,17 @@ describe.skipIf(!db)('audit outbox schema', () => {
       const id = await newOutboxRow();
 
       const row = await pool.query<Row>(
-        `SELECT attempt_count, lease_owner, lease_expires_at, delivered_at,
-                failed_at, suppressed_at, last_error,
-                available_at IS NOT NULL AS scheduled,
-                created_at IS NOT NULL AS stamped
+        `SELECT attempt_count, delivered_at, failed_at, suppressed_at,
+                last_error, created_at IS NOT NULL AS stamped
          FROM audit_alert_outbox WHERE id = $1`,
         [id],
       );
       expect(row.rows[0]).toEqual({
         attempt_count: 0,
-        lease_owner: null,
-        lease_expires_at: null,
         delivered_at: null,
         failed_at: null,
         suppressed_at: null,
         last_error: null,
-        scheduled: true,
         stamped: true,
       });
     });
@@ -543,7 +518,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
     });
 
     // The alert policy decides from `event_type` and `event_version`, and the
-    // dispatcher orders and rate-limits on `audit_event_sequence`. A key that
+    // worker orders and rate-limits on `audit_event_sequence`. A key that
     // proved only (audit_event_id, team_id) would let a row cite a real event
     // and describe a different one, routing a real alert under a fabricated
     // description.
@@ -609,22 +584,8 @@ describe.skipIf(!db)('audit outbox schema', () => {
         'audit_alert_outbox_lengths_check',
       ],
       [
-        'half a lease',
-        { lease_expires_at: new Date() },
-        'audit_alert_outbox_lease_check',
-      ],
-      [
         'two terminal states at once',
         { delivered_at: new Date(), suppressed_at: new Date() },
-        'audit_alert_outbox_terminal_state_check',
-      ],
-      [
-        'a terminal row still holding a lease',
-        {
-          delivered_at: new Date(),
-          lease_owner: randomUUID(),
-          lease_expires_at: new Date(),
-        },
         'audit_alert_outbox_terminal_state_check',
       ],
     ])('refuses %s', async (_label, overrides, constraint) => {
@@ -655,22 +616,21 @@ describe.skipIf(!db)('audit outbox schema', () => {
       ).rejects.toThrow('audit alert link is immutable');
     });
 
-    it('lets the dispatcher advance delivery state', async () => {
+    it('lets the worker advance delivery state', async () => {
       const id = await newOutboxRow();
 
-      const claimed = await maintenance.query(
+      const attempted = await maintenance.query(
         `UPDATE audit_alert_outbox
-         SET attempt_count = attempt_count + 1, lease_owner = $2,
-             lease_expires_at = now() + interval '1 minute',
+         SET attempt_count = attempt_count + 1,
              last_error = 'channel timeout'
          WHERE id = $1`,
-        [id, randomUUID()],
+        [id],
       );
-      expect(claimed.rowCount).toBe(1);
+      expect(attempted.rowCount).toBe(1);
 
       const delivered = await maintenance.query(
         `UPDATE audit_alert_outbox
-         SET delivered_at = now(), lease_owner = NULL, lease_expires_at = NULL
+         SET delivered_at = now(), last_error = NULL
          WHERE id = $1`,
         [id],
       );
@@ -747,7 +707,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
   });
 
   describe('the deliberate policy divergence', () => {
-    it('lets maintenance claim alerts across teams but never enumerate history', async () => {
+    it('lets maintenance reach alerts of any team but never enumerate history', async () => {
       const mine = await newOutboxRow();
       const theirs = await newOutboxRow({ team_id: TEAM_B });
       const events = await pool.query<{ id: string }>(
@@ -759,7 +719,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
       const eventIds = events.rows.map((row) => row.id);
       expect(eventIds).toHaveLength(2);
 
-      // The dispatcher's claim scan runs with no team context at all.
+      // The worker reads a queued alert with no team context at all.
       const claimable = await maintenance.query<{ n: number }>(
         `SELECT count(*)::int AS n FROM audit_alert_outbox
          WHERE id = ANY($1::uuid[])`,
@@ -768,7 +728,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
       expect(claimable.rows[0]).toEqual({ n: 2 });
 
       // The history those alerts point at stays behind the strict policy: the
-      // escape buys the claim scan, not the events.
+      // escape buys reaching the row, not the events.
       const history = await maintenance.query<{ n: number }>(
         `SELECT count(*)::int AS n FROM audit_events WHERE id = ANY($1::uuid[])`,
         [eventIds],

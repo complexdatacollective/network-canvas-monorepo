@@ -5,7 +5,9 @@
 #
 # This is NOT the deployment topology decided in #1245/#1247. It exists to get
 # branch previews and a public URL; /ws is unserved here (Netlify cannot hold
-# persistent connections), and scheduled work has nowhere to run.
+# persistent connections). The lane runs the web process alone and holds no
+# database, so nothing is ever queued here and there is no worker process to
+# run it (#1895).
 #
 # Auth is therefore off here: PUBLIC_URL has to match the origin the browser
 # used, and a deploy preview's origin is per-PR. Netlify cannot supply it —

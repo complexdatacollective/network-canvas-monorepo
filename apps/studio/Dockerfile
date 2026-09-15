@@ -11,6 +11,17 @@
 # STUDIO_DEPLOYMENT_MODE=managed in its container environment — at runtime, not
 # in this file, which is what lets one image serve both topologies.
 #
+# One image, two processes (#1895). The default command below is the web
+# process, which serves users. A deployment starts a second container from this
+# same image for background work:
+#
+#   docker run --no-healthcheck network-canvas-studio node dist/worker.js
+#
+# `--no-healthcheck` because the HEALTHCHECK below polls /healthz, which the
+# worker deliberately does not serve: it binds no port at all. The worker is
+# the only process that sends mail, so SMTP_URL and EMAIL_FROM belong in its
+# environment; the web process never reads them.
+#
 # Build from the monorepo root:
 #
 #   docker build -f apps/studio/Dockerfile -t network-canvas-studio .

@@ -1,3 +1,5 @@
+import { parse as parseConnectionString } from 'pg-connection-string';
+
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import type { RawEnv } from './variables.ts';
@@ -28,7 +30,6 @@ export type AuthEnv = {
   secret: string;
   /** The browser-facing origin; cookies and magic-link URLs are minted against it. */
   baseUrl: string;
-  mailer: MailerEnv;
   trustedProxies: string[] | undefined;
   socialProviders: SocialProvidersEnv;
 };
@@ -42,6 +43,14 @@ export type StudioEnv = {
   s3: S3Env | undefined;
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
+  /**
+   * The mail transport, and only where it was asked for: the worker process
+   * sends every message Studio sends (#1895), so the web process never reads
+   * these variables at all. `undefined` therefore means two different things by
+   * design — "this process does not send mail" for the web process, and "no
+   * transport is configured" for the worker, which is the `refuse` kind.
+   */
+  mail: MailerEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
@@ -93,6 +102,49 @@ export function isLocalDatabase(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Refuses a connection string that would unpin the role Studio's pools run as.
+ *
+ * Every pool sets pg's `options` startup parameter to `-c role=…`
+ * (src/db/pool.ts), which is what keeps the server off the connecting login —
+ * in development the container's superuser, which row-level security does not
+ * apply to at all. node-postgres merges a connection string's parameters over
+ * the configuration it was given rather than under it, so an `options` in
+ * `DATABASE_URL` wins: every pool in both processes would connect as the
+ * login, and nothing else in the system would notice.
+ *
+ * Read with `pg-connection-string`, which is the parser node-postgres itself
+ * hands the string to: what it calls `options` is exactly what pg will send as
+ * the startup parameter, so the guard and the pool cannot disagree about which
+ * strings carry one. It is a ranged dependency rather than a pinned one for
+ * that reason — pnpm then keeps the single copy `pg` already resolves, and the
+ * guard cannot end up reading with a different version of the parser than the
+ * pool it guards. `new URL` could disagree: it rejects the host-less form
+ * `postgres://user:pass@/db?options=…` — a connection string pg accepts, and
+ * one a hosting provider's socket configuration produces — which the guard
+ * used to tolerate rather than refuse.
+ *
+ * Two formats carry no `options` by construction, and are accepted for that
+ * reason rather than by an exception: the bare socket form
+ * (`/var/run/postgresql studio_dev`), whose whole grammar is a path and a
+ * database name, and a libpq keyword DSN (`host=… dbname=… options=…`), which
+ * the parser reads as one long database name because node-postgres does not
+ * accept keyword DSNs at all — pg would never honour an `options` written
+ * that way.
+ */
+function assertPinnedRoleSurvives(url: string): void {
+  // Not caught: a string this throws on is one pg would throw on too, at the
+  // first connection instead of at boot. The error redacts the input itself.
+  if (!('options' in parseConnectionString(url))) return;
+  throw new Error(
+    'DATABASE_URL must not carry an `options` parameter: it overrides the ' +
+      '`role=` startup parameter every Studio pool pins its identity with, so ' +
+      'the web process and the worker would both run as the connecting login ' +
+      'instead of studio_app and studio_maintenance, bypassing row-level ' +
+      'security. Remove `options` from the connection string.',
+  );
 }
 
 function resolveS3(raw: RawEnv): S3Env | undefined {
@@ -179,11 +231,7 @@ function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
   return providers;
 }
 
-function resolveAuth(
-  raw: RawEnv,
-  db: DbEnv | undefined,
-  devDefaults: boolean,
-): AuthEnv | undefined {
+function resolveAuth(raw: RawEnv, db: DbEnv | undefined): AuthEnv | undefined {
   // Validated before the database check so a half-configured provider fails
   // fast even on a deployment where auth is otherwise off.
   const socialProviders = resolveSocialProviders(raw);
@@ -200,7 +248,6 @@ function resolveAuth(
   return {
     secret: raw.BETTER_AUTH_SECRET,
     baseUrl: raw.PUBLIC_URL,
-    mailer: resolveMailer(raw, devDefaults),
     trustedProxies: raw.TRUSTED_PROXIES?.length
       ? raw.TRUSTED_PROXIES
       : undefined,
@@ -208,7 +255,15 @@ function resolveAuth(
   };
 }
 
-export function resolve(raw: RawEnv): StudioEnv {
+/**
+ * `withMail` says the caller read `SMTP_URL` and `EMAIL_FROM` rather than
+ * withholding them (see `readEnv`). Resolution cannot infer it: under the
+ * development defaults an unset `SMTP_URL` means the console mailer, which is
+ * indistinguishable here from the web process never having read the variable.
+ */
+export type ResolveOptions = { withMail?: boolean };
+
+export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
   // Checked against an explicit development or test NODE_ENV rather than
@@ -226,6 +281,7 @@ export function resolve(raw: RawEnv): StudioEnv {
   }
 
   const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
+  if (db) assertPinnedRoleSurvives(db.url);
 
   // The marker travels with a publicly-known signing secret, a console mailer,
   // and a boot that applies the schema to whatever DATABASE_URL names. An
@@ -247,7 +303,8 @@ export function resolve(raw: RawEnv): StudioEnv {
     clientDist: raw.CLIENT_DIST,
     s3: resolveS3(raw),
     db,
-    auth: resolveAuth(raw, db, devDefaults),
+    auth: resolveAuth(raw, db),
+    mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,

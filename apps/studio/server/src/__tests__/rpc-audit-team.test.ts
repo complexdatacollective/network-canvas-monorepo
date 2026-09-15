@@ -28,6 +28,7 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe.skipIf(!db)('audited team RPC', () => {
   let pool: pg.Pool;
+  let jobSchema: string;
   let dispose: () => Promise<void>;
   let membershipRole: string;
   let client: ReturnType<typeof createRpcClient>;
@@ -36,6 +37,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
+    jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, 'rpc-audit-team');
@@ -62,8 +64,10 @@ describe.skipIf(!db)('audited team RPC', () => {
     client = createRpcClient(
       createApp(readEnv(), {
         auth,
-        invitationDeliveryAvailable: true,
         pool: scratch.app,
+        // What the web process hands the router: creating an invitation queues
+        // its delivery in the same transaction (#1895).
+        jobs: await scratch.createJobClient(),
       }),
     );
   });
@@ -103,6 +107,19 @@ describe.skipIf(!db)('audited team RPC', () => {
       status: 'canceled',
     });
 
+    const queued = await pool.query<{ name: string; data: unknown }>(
+      `select job.name, job.data
+       from ${jobSchema}.job_common job
+       join team_invitation_deliveries delivery
+         on delivery.id = (job.data->>'deliveryId')::uuid
+       where delivery.invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    // Exactly one, carrying the delivery id alone: the command's transaction
+    // creates the invitation, its delivery row and its job together.
+    expect(queued.rows).toHaveLength(1);
+    expect(queued.rows[0]?.name).toBe('invitation-delivery');
+
     const events = await pool.query<{
       event_type: string;
       request_id: string;
@@ -134,67 +151,6 @@ describe.skipIf(!db)('audited team RPC', () => {
       }),
     );
     expect(error).toMatchObject({ code: 'FORBIDDEN' });
-  });
-
-  it('refuses to create invitations when this instance cannot deliver email', async () => {
-    const env = readEnv();
-    if (!env.auth) throw new Error('test auth environment is unavailable');
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const unavailableClient = createRpcClient(
-      createApp(
-        { ...env, auth: { ...env.auth, mailer: { kind: 'refuse' } } },
-        { auth, invitationDeliveryAvailable: true, pool },
-      ),
-    );
-
-    const { error } = await safe(
-      unavailableClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'cannot-deliver@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'cannot-deliver@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
-  });
-
-  it('refuses to queue an invitation when the runtime has no dispatcher', async () => {
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const serverlessClient = createRpcClient(
-      createApp(readEnv(), {
-        auth,
-        invitationDeliveryAvailable: false,
-        pool,
-      }),
-    );
-
-    const { error } = await safe(
-      serverlessClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'undrainable@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'undrainable@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
   });
 
   it('lets the authenticated invitee accept without an existing membership', async () => {

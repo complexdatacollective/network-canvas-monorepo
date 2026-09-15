@@ -94,6 +94,19 @@ describe('principal resolution', () => {
     });
   });
 
+  it('offers magic-link sign-in even where no mail transport is configured', async () => {
+    // Delivery is the worker's (#1895): with no transport anywhere, a sign-in
+    // email waits on the queue rather than the method being withdrawn. The
+    // capability answers whether the method exists, and `mail` is the worker's
+    // resolution — the web process's read leaves it undefined entirely.
+    const base = readEnv();
+    const client = createRpcClient(
+      createApp({ ...base, mail: { kind: 'refuse' } }),
+    );
+    const status = await client.status();
+    expect(status.auth.magicLink).toBe(true);
+  });
+
   it('lists configured OAuth providers in the RPC status', async () => {
     const base = readEnv();
     if (!base.auth) throw new Error('dev env must configure auth');
@@ -121,6 +134,7 @@ describe('unconfigured auth', () => {
     s3: undefined,
     db: undefined,
     auth: undefined,
+    mail: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
@@ -185,6 +199,50 @@ function callBetterAuthOrganizationRoute(
 }
 
 describe.skipIf(!db)('magic-link sign-in', () => {
+  it('queues the email for the worker rather than sending it', async () => {
+    if (!db) throw new Error('unreachable');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const jobs = await scratch.createJobClient();
+      // The production wiring: createApp builds the auth service from the
+      // pool and the job client, and no mailer exists for it to reach for —
+      // src/__tests__/process-separation.test.ts pins that nodemailer is not
+      // even in this process's module graph.
+      const app = createApp(env, { jobs, pool: scratch.app });
+      const email = `queued-${Date.now()}@example.com`;
+
+      const send = await app.request('/api/auth/sign-in/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+        },
+        body: JSON.stringify({ email, callbackURL: '/' }),
+      });
+      expect(send.status).toBe(200);
+
+      const queued = await scratch.pool.query<{ name: string; data: unknown }>(
+        `select name, data from ${scratch.jobSchema}.job_common`,
+      );
+      expect(queued.rows).toEqual([
+        {
+          name: 'sign-in-email',
+          data: { email, url: expect.stringContaining('/api/auth/magic-link') },
+        },
+      ]);
+
+      // The link in the payload is the real one: the worker sends what is
+      // here, so a job carrying anything else would sign nobody in.
+      const { url } = queued.rows[0]!.data as { url: string };
+      const verify = await app.request(url);
+      expect([302, 200]).toContain(verify.status);
+      expect(verify.headers.get('set-cookie')).toBeTruthy();
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
   it('signs in end to end: send, verify, session, me', async () => {
     if (!db) throw new Error('unreachable');
     const scratch = await createScratchSchema(db);
@@ -245,9 +303,9 @@ describe.skipIf(!db)('email/password sign-in', () => {
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
     await seed(scratch.pool, { scale: 'tiny' });
-    const auth = createBetterAuthService(env.auth, scratch.pool, {
-      sendMagicLink: () => Promise.resolve(),
-    });
+    const auth = createBetterAuthService(env.auth, scratch.pool, () =>
+      Promise.resolve(),
+    );
     app = createApp(env, { auth });
   }, SEEDING_TIMEOUT_MS);
 

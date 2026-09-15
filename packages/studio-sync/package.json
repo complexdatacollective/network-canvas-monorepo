@@ -13,6 +13,7 @@
   "exports": {
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
+    "./jobs": "./src/jobs.ts",
     "./protocol-document": "./src/protocol-document.ts",
     "./server": "./src/server.ts",
     "./rls": "./src/rls.ts",
@@ -31,7 +32,7 @@
     "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.3.0",
     "drizzle-orm": "catalog:",
-    "pg": "^8.22.0",
+    "pg": "^8.23.0",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -22,7 +22,7 @@ export type InvitationMailer = {
 
 export type StudioMailer = MagicLinkMailer & InvitationMailer;
 
-export function createConsoleMailer(): StudioMailer {
+function createConsoleMailer(): StudioMailer {
   return {
     sendMagicLink: ({ email, url }) => {
       // oxlint-disable-next-line no-console -- the development sign-in loop
@@ -38,11 +38,17 @@ export function createConsoleMailer(): StudioMailer {
 }
 
 function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  // Magic-link sends happen inside the sign-in request, and nodemailer's
-  // defaults (2 minutes to connect, 10 minutes of socket inactivity) would
-  // hold that request open long past the point the person gave up. These
-  // bounds also keep an invitation attempt within its worker's 60-second
-  // lease under ordinary transport failures.
+  // nodemailer's defaults — 2 minutes to connect, 30 seconds for a greeting,
+  // 10 minutes of socket inactivity — are longer than anything that waits on
+  // a send: the invitation queue expires an attempt after 60 seconds, and the
+  // worker gives an in-flight handler 25 seconds when a container stops it,
+  // after which pg-boss fails the job as 'shut down while active' rather than
+  // letting it retry. These bounds fit inside both.
+  //
+  // Before nodemailer 10, `createTransport` discarded every other key of a
+  // configuration object that carried a `url`, so these timeouts had to be
+  // set through an SMTPTransport built by hand. 10.0.0 applies them beside
+  // the URL; src/auth/__tests__/email.test.ts holds the bound either way.
   const transport = nodemailer.createTransport({
     url: smtpUrl,
     connectionTimeout: 10_000,
