@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # Stands up one release-test stack (Fresco + Postgres + MinIO) and blocks until
-# the app is healthy. Two lanes exist:
+# the app is healthy. Four lanes exist, each a compose project of its own on
+# its own ports, so they can run side by side:
 #
-#   up.sh --lane upgrade --image ghcr.io/complexdatacollective/fresco:latest
-#   up.sh --lane upgrade --image fresco-release-test:pending --keep-data
-#   up.sh --lane fresh   --image fresco-release-test:pending
+#   up.sh --lane upgrade   --image ghcr.io/complexdatacollective/fresco:latest
+#   up.sh --lane upgrade   --image fresco-release-test:pending --keep-data
+#   up.sh --lane fresh     --image fresco-release-test:pending
+#   up.sh --lane analytics --image fresco-release-test:pending
+#   up.sh --lane twofactor --image fresco-release-test:pending
+#
+# The lane is also the deployment configuration. `upgrade` and `fresh` are the
+# disabled-analytics deployment every other check assumes; `analytics` is the
+# one lane that runs with analytics ENABLED, against a sink that terminates TLS
+# and records the payloads (the only way to see what an enabled deployment
+# actually sends); `twofactor` sets REQUIRE_TWO_FACTOR. Each switch lives here
+# rather than in the compose file so that a lane cannot be started in another
+# lane's configuration by accident.
 #
 # --keep-data recreates only the app container against the live volumes (the
 # upgrade swap: the new image's migrate-and-start.sh runs against the seeded
@@ -30,20 +41,75 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# Deployment defaults: the configuration the release ships and most lanes
+# test. Only the lane that needs a switch flipped flips it, below.
+FRESCO_DISABLE_ANALYTICS="true"
+FRESCO_REQUIRE_TWO_FACTOR="false"
+FRESCO_NODE_TLS_REJECT_UNAUTHORIZED="1"
+RELAY_SINK_SCRIPT="relay-sink.mjs"
+
 case "$LANE" in
   upgrade)
     PROJECT="fresco-release-test-upgrade"
     FRESCO_PORT=3210 POSTGRES_PORT=5533 MINIO_PORT=9310
+    SINK_HTTPS_PORT=9440 SINK_HTTP_PORT=9450
     ;;
   fresh)
     PROJECT="fresco-release-test-fresh"
     FRESCO_PORT=3211 POSTGRES_PORT=5534 MINIO_PORT=9311
+    SINK_HTTPS_PORT=9441 SINK_HTTP_PORT=9451
     ;;
-  *) echo "Usage: up.sh --lane upgrade|fresh --image <ref> [--keep-data]" >&2; exit 1 ;;
+  analytics)
+    PROJECT="fresco-release-test-analytics"
+    FRESCO_PORT=3212 POSTGRES_PORT=5535 MINIO_PORT=9312
+    SINK_HTTPS_PORT=9442 SINK_HTTP_PORT=9452
+    # The one enabled-analytics deployment. Its sink terminates TLS with a
+    # certificate minted below, which the container would otherwise refuse —
+    # see the compose file for why that only changes verification.
+    FRESCO_DISABLE_ANALYTICS="false"
+    FRESCO_NODE_TLS_REJECT_UNAUTHORIZED="0"
+    RELAY_SINK_SCRIPT="relay-payload-sink.mjs"
+    ;;
+  twofactor)
+    PROJECT="fresco-release-test-twofactor"
+    FRESCO_PORT=3213 POSTGRES_PORT=5536 MINIO_PORT=9313
+    SINK_HTTPS_PORT=9443 SINK_HTTP_PORT=9453
+    FRESCO_REQUIRE_TWO_FACTOR="true"
+    ;;
+  *) echo "Usage: up.sh --lane upgrade|fresh|analytics|twofactor --image <ref> [--keep-data]" >&2; exit 1 ;;
 esac
 [ -n "$IMAGE" ] || { echo "Missing --image" >&2; exit 1; }
 
-export FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT MINIO_PORT
+# Bind-mount targets. Created here so docker does not create them as root, and
+# emptied for a lane that is starting fresh so one run's captures can never be
+# read as another's.
+CAPTURE_DIR="$SCRIPT_DIR/artifacts/relay-capture"
+TLS_DIR="$SCRIPT_DIR/artifacts/relay-tls"
+mkdir -p "$CAPTURE_DIR" "$TLS_DIR"
+if [ "$KEEP_DATA" != "true" ]; then
+  rm -f "$CAPTURE_DIR/$LANE.jsonl"
+fi
+
+# The payload sink's certificate. Minted per run into a git-ignored directory
+# rather than committed: a checked-in private key is a liability even when it
+# only ever serves a name that resolves to a container on this machine.
+if [ "$RELAY_SINK_SCRIPT" = "relay-payload-sink.mjs" ]; then
+  # The name the certificate has to carry is the relay constant's own host,
+  # read from it rather than repeated: a certificate for the wrong name would
+  # make the container refuse the sink and the lane observe nothing.
+  RELAY_HOST="$(node -e "
+    const { readFileSync } = require('node:fs');
+    const src = readFileSync('$SCRIPT_DIR/../../../packages/shared-consts/src/posthog.ts', 'utf8');
+    process.stdout.write(new URL(/POSTHOG_HOST = '([^']+)'/.exec(src)[1]).hostname);
+  ")"
+  openssl req -x509 -newkey rsa:2048 -nodes -days 30     -subj "/CN=$RELAY_HOST"     -addext "subjectAltName=DNS:$RELAY_HOST,DNS:localhost,IP:127.0.0.1"     -keyout "$TLS_DIR/key.pem" -out "$TLS_DIR/cert.pem" 2>/dev/null
+  chmod 644 "$TLS_DIR/key.pem"
+fi
+
+export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT MINIO_PORT \
+  SINK_HTTPS_PORT SINK_HTTP_PORT FRESCO_DISABLE_ANALYTICS \
+  FRESCO_REQUIRE_TWO_FACTOR FRESCO_NODE_TLS_REJECT_UNAUTHORIZED \
+  RELAY_SINK_SCRIPT
 compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }
@@ -80,5 +146,8 @@ HEALTH="$(curl -fsS "$BASE_URL/api/health")"
 # baseline container is replaced by the swap, so this is the only record of
 # the image the upgrade actually started from.
 IMAGE_ID="$(docker inspect --format '{{.Image}}' "$(compose ps -q fresco)")"
-printf '{"lane":"%s","project":"%s","baseUrl":"%s","image":"%s","imageId":"%s","health":%s}\n' \
-  "$LANE" "$PROJECT" "$BASE_URL" "$IMAGE" "$IMAGE_ID" "$HEALTH"
+printf '{"lane":"%s","project":"%s","baseUrl":"%s","image":"%s","imageId":"%s","sinkHttpsPort":%s,"sinkHttpPort":%s,"analytics":%s,"requireTwoFactor":%s,"health":%s}\n' \
+  "$LANE" "$PROJECT" "$BASE_URL" "$IMAGE" "$IMAGE_ID" \
+  "$SINK_HTTPS_PORT" "$SINK_HTTP_PORT" \
+  "$([ "$FRESCO_DISABLE_ANALYTICS" = "false" ] && echo true || echo false)" \
+  "$FRESCO_REQUIRE_TWO_FACTOR" "$HEALTH"

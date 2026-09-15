@@ -6,7 +6,7 @@
 # it (MinIO CORS allows any origin), wraps it in a File, and dispatches a drop
 # event on the import dropzone.
 #
-# Usage: stage-fixture.sh --lane upgrade|fresh --file <path> [--name <object name>]
+# Usage: stage-fixture.sh --lane upgrade|fresh|analytics|twofactor --file <path> [--name <object name>]
 # Prints the URL the page should fetch.
 set -euo pipefail
 
@@ -24,7 +24,9 @@ done
 case "$LANE" in
   upgrade) MINIO_PORT=9310 ;;
   fresh) MINIO_PORT=9311 ;;
-  *) echo "Usage: stage-fixture.sh --lane upgrade|fresh --file <path> [--name <object name>]" >&2; exit 1 ;;
+  analytics) MINIO_PORT=9312 ;;
+  twofactor) MINIO_PORT=9313 ;;
+  *) echo "Usage: stage-fixture.sh --lane upgrade|fresh|analytics|twofactor --file <path> [--name <object name>]" >&2; exit 1 ;;
 esac
 [ -f "$FILE" ] || { echo "No such file: $FILE" >&2; exit 1; }
 [ -n "$NAME" ] || NAME="$(basename "$FILE")"
