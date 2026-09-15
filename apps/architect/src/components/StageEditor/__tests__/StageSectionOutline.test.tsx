@@ -2,18 +2,21 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type {
   StageSection,
+  StageSectionChrome,
   StageSectionsStore,
   StageSectionStatus,
 } from '@codaco/protocol-builder/stage-editor-contract';
 import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
-import StageSectionOutline from '../StageSectionOutline';
+import StageSectionOutline, {
+  OUTLINE_OFFSET_VARIABLE,
+} from '../StageSectionOutline';
 
 /**
  * Architect's own list of the stage's sections, over a store standing in for
@@ -31,6 +34,29 @@ beforeAll(() => {
   Element.prototype.scrollIntoView ??= () => undefined;
 });
 
+/**
+ * A piece of the page around the list — the column it is drawn in, a section
+ * of the form beside it — laid out where the test says, because jsdom lays
+ * nothing out anywhere.
+ *
+ * Cleared after each test rather than left behind: the sections stand in for
+ * the editor's own, and a leftover one is a duplicate of the id the next test
+ * looks its section up by.
+ */
+const staged: HTMLElement[] = [];
+afterEach(() => {
+  while (staged.length > 0) staged.pop()?.remove();
+});
+
+function onThePage(tag: string, rect: DOMRect, id?: string): HTMLElement {
+  const element = document.createElement(tag);
+  if (id !== undefined) element.id = id;
+  element.getBoundingClientRect = () => rect;
+  document.body.append(element);
+  staged.push(element);
+  return element;
+}
+
 function storeOf(sections: readonly StageSection[]): StageSectionsStore {
   const snapshot = Object.freeze([...sections]);
   return {
@@ -45,7 +71,10 @@ const section = (
   title: string,
   status: StageSectionStatus,
   problems: readonly string[] = [],
-): StageSection => ({ id, title, status, problems });
+  // A card unless the fixture says otherwise, as the editor publishes them:
+  // only the stage's own name and interface wear the page's heading.
+  chrome: StageSectionChrome = 'card',
+): StageSection => ({ id, title, chrome, status, problems });
 
 /** The sections themselves, as the editor renders them: focusable regions. */
 function SectionsOnThePage({
@@ -68,7 +97,7 @@ function SectionsOnThePage({
 }
 
 const EVERY_STATUS: readonly StageSection[] = [
-  section('s-1', 'Stage name', 'complete'),
+  section('s-1', 'Stage name', 'complete', [], 'heading'),
   section('s-2', 'Page content', 'incomplete'),
   section('s-3', 'Prompts', 'error'),
   section('s-4', 'Interviewer guidance', 'switchedOff'),
@@ -99,7 +128,9 @@ const STATE_WORDS: Record<StageSectionStatus, string> = {
 
 describe('the list of a stage’s sections', () => {
   it('names itself, and says every section and how far along it is', () => {
-    render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={null} />,
+    );
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
     expect(within(outline).getAllByRole('listitem')).toHaveLength(5);
@@ -113,7 +144,9 @@ describe('the list of a stage’s sections', () => {
   });
 
   it('draws each state as its own glyph, so none of them is only a colour', () => {
-    render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={null} />,
+    );
     // The drawing each state is expected to be given, rendered here so the
     // question can be asked of the glyph itself rather than of the class the
     // icon is painted with — a class carries the status colour, so five
@@ -168,6 +201,7 @@ describe('the list of a stage’s sections', () => {
 
     render(
       <StageSectionOutline
+        host={null}
         sections={storeOf([
           // Encoded where it was decided, decoded here: the editor has no
           // reader, so what it publishes is a descriptor rather than words.
@@ -190,7 +224,7 @@ describe('the list of a stage’s sections', () => {
     const user = userEvent.setup();
     render(
       <>
-        <StageSectionOutline sections={storeOf(EVERY_STATUS)} />
+        <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={null} />
         <SectionsOnThePage sections={EVERY_STATUS} />
       </>,
     );
@@ -216,25 +250,102 @@ describe('the list of a stage’s sections', () => {
    * with what is on the screen.
    */
   it('starts and ends clear of the navigation bar', () => {
-    render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={null} />,
+    );
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+    // The card the list is drawn on is what stops where the screen does: it
+    // holds the height and the scrolling, so a long list scrolls inside it
+    // rather than sliding out from under its own top edge.
+    const card = screen.getByRole('list').parentElement;
 
     expect(outline.className).toContain(
       `@min-[60rem]:top-(${NAV_HEIGHT_VARIABLE})`,
     );
-    expect(outline.className).toContain(
+    expect(card?.className).toContain(
       `@min-[60rem]:max-h-[calc(100dvh-var(${NAV_HEIGHT_VARIABLE}))]`,
     );
     expect(outline.className).not.toContain('@min-[60rem]:top-0');
-    expect(outline.className).not.toContain('@min-[60rem]:max-h-dvh');
+    expect(card?.className).not.toContain('@min-[60rem]:max-h-dvh');
     // The 56px of top padding that stood in for the bar's height is gone with
     // it: kept alongside the offset it would be a second, unrelated gap.
     expect(outline.className).not.toContain('@min-[60rem]:py-14');
   });
 
+  /**
+   * Where the list STARTS, beside a form whose first card is not at the top of
+   * it.
+   *
+   * The two columns begin together and the editor spends the first stretch of
+   * its own on the stage's heading — a name that wraps, a badge row that
+   * wraps, an alert about a read-only session — so a list level with the top
+   * of the column is level with nothing. The offset is therefore the distance
+   * between two things measured on the page rather than a height written
+   * down, and it is the FIRST CARD that is measured: the heading is a section
+   * too, and lining up with it would be the fault itself.
+   */
+  it('starts level with the first card of the form rather than with the stage’s heading', () => {
+    // jsdom lays nothing out, so the two readings the component takes are the
+    // two stubbed here: the column starts 120px down the page, and the first
+    // card 360px down, which leaves 240px of heading between them.
+    const host = onThePage('div', new DOMRect(0, 120, 256, 720));
+    onThePage('section', new DOMRect(0, 140, 640, 200), 's-1'); // the heading
+    onThePage('section', new DOMRect(0, 360, 640, 200), 's-2'); // first card
+
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={host} />,
+    );
+
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+    expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).toBe(
+      '240px',
+    );
+    // 20px is the distance to the heading, which is the section this list
+    // starts BELOW rather than beside.
+    expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).not.toBe(
+      '20px',
+    );
+  });
+
+  it('publishes no offset from a column nothing has laid out', () => {
+    const host = onThePage('div', new DOMRect());
+
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={host} />,
+    );
+
+    // Everything measures zero here, and a zero offset published as a real
+    // reading would put the list back level with the stage's heading — the
+    // fault this exists to fix — instead of leaving the declaration to fall
+    // back to none.
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+    expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).toBe('');
+  });
+
+  /**
+   * Below the two-column breakpoint the same list is a row of chips above the
+   * form, where there is no column to line up with and nothing for a card to
+   * be a card beside. Both the offset and the card are therefore asked for
+   * only above it: the card generates no box at all (`contents`), leaving the
+   * strip the layout, the scrolling and the page's own background it had.
+   */
+  it('is a bare strip again, with no offset, below the two-column breakpoint', () => {
+    render(
+      <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={null} />,
+    );
+
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+    const card = screen.getByRole('list').parentElement;
+
+    expect(outline.className).toContain(
+      `@min-[60rem]:mt-(${OUTLINE_OFFSET_VARIABLE})`,
+    );
+    expect(card?.className).toContain('@max-[60rem]:contents');
+  });
+
   it('is not there at all before the editor has any sections to list', () => {
-    render(<StageSectionOutline sections={storeOf([])} />);
+    render(<StageSectionOutline sections={storeOf([])} host={null} />);
 
     // An empty landmark is worse than none: it is one more stop on the way
     // through the page that says nothing when a reader arrives at it.
@@ -255,7 +366,7 @@ describe('the list of a stage’s sections', () => {
       getServerSnapshot: () => snapshot,
     };
 
-    render(<StageSectionOutline sections={store} />);
+    render(<StageSectionOutline sections={store} host={null} />);
     expect(
       screen.getByRole('button', { name: 'Page contentNot finished' }),
     ).toBeInTheDocument();

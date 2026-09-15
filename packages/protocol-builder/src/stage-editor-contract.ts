@@ -19,6 +19,21 @@ export type StageSectionStatus =
   | 'unavailable';
 
 /**
+ * What a section wears on the page.
+ *
+ * Almost every section is a `card`: a titled block of the form that configures
+ * one part of the stage. The stage's own name and interface are a section too
+ * — they are a named part of the stage a researcher navigates to, and the name
+ * can be left empty — but they are drawn as the page's `heading` instead.
+ *
+ * Published because a host laying the editor out has to tell them apart, and
+ * the alternative is recognising the heading by a class name or by trusting it
+ * to be first: Architect lines its section list up with the first CARD, which
+ * is where the stage stops being identified and starts being configured.
+ */
+export type StageSectionChrome = 'heading' | 'card';
+
+/**
  * What one section of the stage being edited is, as a host reads it.
  *
  * The package owns the form, so it is the only thing that can say which
@@ -31,6 +46,8 @@ export type StageSection = Readonly<{
   /** The DOM id of the section's own element, for `focusStageSection`. */
   id: string;
   title: string;
+  /** Whether the section is drawn as a card or as the stage's own heading. */
+  chrome: StageSectionChrome;
   status: StageSectionStatus;
   /**
    * What the protocol refused about this section that no field of it is

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 
+import type { StageSectionChrome } from '../stage-editor-contract.ts';
 import type { SectionAvailability } from './outlineStore.ts';
 import { useStageEditorForm } from './stageEditorContext.ts';
 
@@ -16,6 +17,12 @@ import { useStageEditorForm } from './stageEditorContext.ts';
 export function useOutlineSection(
   title: string,
   availability: SectionAvailability = 'available',
+  /**
+   * What this section wears on the page. A constant of the section rather than
+   * a state of it — a card does not become the stage's heading — so it is read
+   * once, where the section registers.
+   */
+  chrome: StageSectionChrome = 'card',
 ): Readonly<{ sectionId: string }> {
   const { outline } = useStageEditorForm();
   const sectionId = useId();
@@ -26,10 +33,12 @@ export function useOutlineSection(
   // unregistering here would empty the section's field list and leave the
   // renamed section reporting itself as finished.
   const initialTitle = useRef(title);
+  const initialChrome = useRef(chrome);
   useEffect(() => {
     const unregister = outline.registerSection({
       id: sectionId,
       title: initialTitle.current,
+      chrome: initialChrome.current,
     });
     // Looked up rather than held by a ref: the element belongs to whichever
     // component renders the section's chrome. The outline needs it only to
