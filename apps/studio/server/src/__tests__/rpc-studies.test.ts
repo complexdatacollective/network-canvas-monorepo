@@ -13,12 +13,13 @@ import {
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM_ID = 'rpc-studies-team';
+const TEAM_ID = uniqueTeamId('rpc-studies-team');
 const OTHER_TEAM_ID = 'rpc-studies-other-team';
 
 type Researcher = {

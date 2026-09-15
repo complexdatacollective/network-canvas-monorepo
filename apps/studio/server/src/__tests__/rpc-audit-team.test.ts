@@ -11,8 +11,11 @@ import {
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+
+const TEAM_ID = uniqueTeamId('rpc-audit-team');
 
 const db = await reachableDb();
 
@@ -40,7 +43,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
-    await seedTeam(pool, 'rpc-audit-team');
+    await seedTeam(pool, TEAM_ID);
     await pool.query(
       `INSERT INTO "user" (id, name, email, "emailVerified") VALUES
          ($1, $2, $3, true),
@@ -49,17 +52,15 @@ describe.skipIf(!db)('audited team RPC', () => {
     );
     await pool.query(
       `INSERT INTO team_members (id, team_id, user_id, role) VALUES
-         ('rpc-audit-owner-member', 'rpc-audit-team', $1, 'owner'),
-         ('rpc-audit-target-member', 'rpc-audit-team', 'rpc-audit-member-user', 'member')`,
+         ('rpc-audit-owner-member', '${TEAM_ID}', $1, 'owner'),
+         ('rpc-audit-target-member', '${TEAM_ID}', 'rpc-audit-member-user', 'member')`,
       [PRINCIPAL.userId],
     );
     membershipRole = 'owner';
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(
-          teamId === 'rpc-audit-team' ? { role: membershipRole } : null,
-        ),
+        Promise.resolve(teamId === TEAM_ID ? { role: membershipRole } : null),
     });
     client = createRpcClient(
       createApp(readEnv(), {
@@ -79,7 +80,7 @@ describe.skipIf(!db)('audited team RPC', () => {
   it('routes role and invitation mutations through typed audited commands', async () => {
     await expect(
       client.team.updateMemberRole({
-        teamId: 'rpc-audit-team',
+        teamId: TEAM_ID,
         memberId: 'rpc-audit-target-member',
         role: 'admin',
       }),
@@ -88,7 +89,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       role: 'admin',
     });
     const invitation = await client.team.createInvitation({
-      teamId: 'rpc-audit-team',
+      teamId: TEAM_ID,
       email: 'rpc-invitee@example.com',
       role: 'member',
     });
@@ -99,7 +100,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     });
     await expect(
       client.team.cancelInvitation({
-        teamId: 'rpc-audit-team',
+        teamId: TEAM_ID,
         invitationId: invitation.invitationId,
       }),
     ).resolves.toEqual({
@@ -125,7 +126,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       request_id: string;
     }>(
       `SELECT event_type, request_id::text
-       FROM audit_events WHERE team_id = 'rpc-audit-team' ORDER BY sequence`,
+       FROM audit_events WHERE team_id = '${TEAM_ID}' ORDER BY sequence`,
     );
     expect(events.rows.map(({ event_type }) => event_type)).toEqual([
       'team.member.role_changed',
@@ -172,7 +173,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     await pool.query(
       `INSERT INTO team_invitations (
          id, team_id, email, role, status, expires_at, inviter_id
-       ) VALUES ($1, 'rpc-audit-team', $2, 'admin', 'pending',
+       ) VALUES ($1, '${TEAM_ID}', $2, 'admin', 'pending',
                  CURRENT_TIMESTAMP + INTERVAL '1 day', $3)`,
       [invitationId, invitee.email, PRINCIPAL.userId],
     );
@@ -188,13 +189,13 @@ describe.skipIf(!db)('audited team RPC', () => {
       inviteeClient.team.acceptInvitation({ invitationId }),
     ).resolves.toMatchObject({
       invitationId,
-      teamId: 'rpc-audit-team',
+      teamId: TEAM_ID,
       role: 'admin',
       status: 'accepted',
     });
     const membership = await pool.query<{ role: string }>(
       `SELECT role FROM team_members
-       WHERE team_id = 'rpc-audit-team' AND user_id = $1`,
+       WHERE team_id = '${TEAM_ID}' AND user_id = $1`,
       [invitee.userId],
     );
     expect(membership.rows).toEqual([{ role: 'admin' }]);

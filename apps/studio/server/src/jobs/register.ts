@@ -2,6 +2,7 @@ import type { PgBoss } from 'pg-boss';
 
 import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { createDeniedAttemptsSummaryHandler } from './handlers/denied-attempts-summary.ts';
 import { registerInvitationDelivery } from './handlers/invitation-delivery.ts';
 import { createProtocolStoreGcHandler } from './handlers/protocol-store-gc.ts';
 import { createSignInEmailHandler } from './handlers/sign-in-email.ts';
@@ -86,6 +87,19 @@ export async function registerJobs(
     'protocol-store-gc',
     { ...WORK_OPTIONS, pollingIntervalSeconds },
     createProtocolStoreGcHandler({ maintenancePool: deps.maintenancePool }),
+  );
+
+  // Registered whether or not a rate-limit store is configured: the schedule
+  // creates a job every minute either way, and a queue nothing works would
+  // accumulate them. Without a store the handler has nothing to read and says
+  // so in its outcome line.
+  await boss.work(
+    'denied-attempts-summary',
+    { ...WORK_OPTIONS, pollingIntervalSeconds },
+    createDeniedAttemptsSummaryHandler({
+      maintenancePool: deps.maintenancePool,
+      store: deps.rateLimitStore,
+    }),
   );
 
   if (!deps.mailer) {

@@ -130,6 +130,15 @@ const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
+/**
+ * better-auth's own rate-limit model. Nothing reads or writes it since #1909:
+ * the limiter counts in Valkey through `rateLimit.customStorage`, which takes
+ * precedence over every built-in storage. It stays declared rather than
+ * dropped because it is better-auth's model, not Studio's — the adapter is
+ * given the schema it expects, and a future release that reaches for the model
+ * finds it. Dropping the table is a schema change to make deliberately, not a
+ * side effect of moving the counters.
+ */
 const rateLimit = pgTable('rateLimit', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),

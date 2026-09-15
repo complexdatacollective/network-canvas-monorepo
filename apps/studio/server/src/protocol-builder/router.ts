@@ -21,6 +21,8 @@ import type { AssetStore } from '../assets.ts';
 import type { AuthService, Principal } from '../auth/service.ts';
 import { openAssetKey } from '../protocol/asset-keys.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
+import type { RateLimiter } from '../rate-limit.ts';
+import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import type { RpcContext } from '../rpc.ts';
 import type { SecretsCipher } from '../secrets/cipher.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
@@ -75,6 +77,14 @@ export type ProtocolBuilderRouterDeps = {
    * reach a write that would store the key in the section document.
    */
   cipher?: SecretsCipher;
+  /**
+   * Where this router's calls are counted (#1909). Every procedure here
+   * authenticates through `openSession` rather than through `requireUser` and
+   * `requireTeam`, so without this the whole protocol-builder surface —
+   * including every edit over an open WebSocket — would be the one part of the
+   * RPC plane with no per-user or per-team limit at all.
+   */
+  limiter?: RateLimiter;
 };
 
 function requirePrincipal(context: RpcContext): Principal {
@@ -110,6 +120,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     protocolId: string,
   ): Promise<ProtocolBuilderSession | null> => {
     const principal = requirePrincipal(context);
+    // The caller's own budget before any query, exactly as `requireUser` takes
+    // it on the rest of the RPC surface.
+    await enforceRateLimit(
+      deps.limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
     if (!deps.pool || !deps.cipher) {
       throw new ORPCError('INTERNAL_SERVER_ERROR');
     }
@@ -124,6 +142,16 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       cipher: deps.cipher,
     });
     if (session !== null) {
+      // And the team's, once the session says which team this protocol is in —
+      // the same order `openTeam` takes them in, and for the same reason: a
+      // caller who turns out to have no reachable protocol has not charged
+      // anyone else's quota.
+      await enforceRateLimit(
+        deps.limiter,
+        'rpc_team',
+        session.tenantDb.teamId,
+        context.resHeaders,
+      );
       runtime.leases.touch(sessionOwner(session));
       // A call is the only sign of life the unary plane gives, so it says both
       // things: this owner is still here with everything it has staged, and

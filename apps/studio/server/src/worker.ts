@@ -8,6 +8,8 @@ import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
 import { createJobWorker, type JobWorker } from './jobs/worker.ts';
+import { createRateLimiter } from './rate-limit.ts';
+import { closeRateLimitStores, getRateLimitStore } from './rate-limit/store.ts';
 import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -47,6 +49,13 @@ if (!db || !auth) {
 // own maintenance — the application role may create a job and nothing else.
 const maintenancePool = createMaintenancePool(db);
 
+// The shared rate-limit store (#1909). The worker enforces no limit itself; it
+// holds the store so that the per-minute summary job can drain the suppressed
+// windows the API processes leave behind, and so that readiness reports the
+// same degraded verdict the API does when it cannot be reached.
+const rateLimitStore = env.redis ? getRateLimitStore(env.redis) : undefined;
+const limiter = createRateLimiter(env);
+
 let worker: JobWorker | undefined;
 // `worker.start()` resolves once pg-boss is connected and the handlers are
 // registered. Readiness needs that distinction: an instance that exists but
@@ -61,6 +70,10 @@ const health = serve({
   fetch: createHealthRoutes({
     db: databaseCheck(maintenancePool),
     schema: schemaCheck(maintenancePool),
+    // `degraded`, never `failed`: the limiter fails open, so a worker that
+    // cannot reach it still runs every job it has — only the summary job has
+    // nothing to drain.
+    ...(limiter.configured ? { limiter: limiter.readiness } : {}),
     jobs: async () => {
       if (!worker || !jobsStarted) throw new Error('not started');
       // pg-boss's own connection rather than the maintenance pool: the point
@@ -107,6 +120,7 @@ const startWorker = (): void => {
         ? createMailer(env.mail)
         : undefined,
     publicBaseUrl: auth.baseUrl,
+    rateLimitStore,
   });
   void worker.start().then(
     () => {
@@ -158,7 +172,7 @@ function shutdown() {
       // oxlint-disable-next-line no-console -- shutdown diagnostics
       console.error('Job worker shutdown failed:', error);
     })
-    .then(() => maintenancePool.end())
+    .then(() => Promise.all([maintenancePool.end(), closeRateLimitStores()]))
     .catch(() => undefined)
     .finally(() => {
       process.exit(0);

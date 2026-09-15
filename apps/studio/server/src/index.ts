@@ -2,11 +2,11 @@ import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
-import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { awaitCurrentSchema } from './boot.ts';
 import { createPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createJobClient, type JobClient } from './jobs/client.ts';
+import { closeRateLimitStores } from './rate-limit/store.ts';
 import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -119,12 +119,13 @@ function shutdown() {
   );
   void Promise.all(closing).then(() => {
     server.close(() => {
-      // Suppression summaries use the application pool, so give their
-      // bounded flush a chance to become immutable before closing database
-      // resources. Nothing of ours is ever in flight on the job client;
-      // stopping it ends the pool it owns. The outer ten-second backstop
-      // still caps total shutdown.
-      void Promise.all([jobs?.stop(), flushDeniedAuditSummaries()])
+      // Nothing of ours is ever in flight on the job client; stopping it ends
+      // the pool it owns. The rate-limit store holds no state this process is
+      // responsible for — its counters are in Valkey and the suppressed
+      // windows are the worker's to summarise (#1909) — so closing it is
+      // returning a socket, not flushing anything. The outer ten-second
+      // backstop still caps total shutdown.
+      void Promise.all([jobs?.stop(), closeRateLimitStores()])
         .catch(() => undefined)
         .then(() => pool?.end())
         .finally(() => {

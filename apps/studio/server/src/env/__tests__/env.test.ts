@@ -7,10 +7,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { isLocalDatabase, readEnv } from '../../env.ts';
+import { parseRateLimitSpec } from '../../rate-limit/scopes.ts';
 import { KeyringError } from '../../secrets/keyring.ts';
 import {
   DEV,
   DEV_DATABASE_URL,
+  DEV_REDIS_URL,
   DEV_S3_ENDPOINT,
   DEV_SMTP_URL,
 } from '../catalogue.ts';
@@ -31,7 +33,30 @@ describe('development defaults', () => {
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
+    expect(env.redis).toBe(DEV_REDIS_URL);
     expect(env.devDefaults).toBe(true);
+  });
+
+  it('leaves development effectively unlimited while still using the store', () => {
+    // Development is where a person reloads a page fifty times a minute and
+    // where the suite signs in dozens of times; being refused for either would
+    // only ever be noise. Every decision still goes through Valkey, so a
+    // mistake in the limiter itself still shows up locally.
+    const { rateLimits } = readEnv();
+    expect(rateLimits.sign_in_address).toEqual(
+      parseRateLimitSpec(DEV.rateLimit),
+    );
+    expect(rateLimits.storage_read).toEqual(parseRateLimitSpec(DEV.rateLimit));
+  });
+
+  it('takes a deployment’s own limits, and refuses a value it cannot read', () => {
+    vi.stubEnv('RATE_LIMIT_SIGN_IN_EMAIL', '5/10m');
+    expect(readEnv().rateLimits.sign_in_email).toEqual({
+      max: 5,
+      windowMs: 600_000,
+    });
+    vi.stubEnv('RATE_LIMIT_SIGN_IN_EMAIL', '5 per 10 minutes');
+    expect(() => readEnv()).toThrow();
   });
 
   it('delivers magic links through the development stack’s mail sink', () => {

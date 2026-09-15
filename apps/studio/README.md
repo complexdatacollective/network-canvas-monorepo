@@ -75,6 +75,53 @@ unrecognised — is served as `application/octet-stream` with
 `default-src 'none'; sandbox` CSP. Rendering SVG stimuli inline needs an
 isolated asset origin first.
 
+### Rate limiting
+
+Every surface above is rate-limited, and every counter lives in Valkey — the
+Redis-compatible service in the stack, named by `REDIS_URL` (#1909). That is
+the whole point of it being there rather than in each process's memory: a limit
+has to mean the same thing whether one API container is running or two, and the
+limiters this replaced did not — better-auth's sign-in counters were rows in
+Postgres, and the audit denied-attempts window was a `Map`.
+
+There is a limit per scope, where a scope is a surface plus the kind of subject
+it is counted against: sign-in per client address and per email; invitation
+acceptance per token; participant redemption per address and per link, and
+participant sync writes per session (declared here, enforced when the
+participant routes land with #1899); RPC per user and per team; storage reads
+per address; the public API per token, or per address with none; and WebSocket
+upgrades per user. Each is one `RATE_LIMIT_*` variable in
+[Environment](#environment), written as `count/window`. Subjects are hashed
+before they become key material, so no address or email address sits in the
+store in clear, and a refused call is logged with its scope and its
+retry-after and never with whom it refused.
+
+A refused call answers 429 with `Retry-After` and RFC 9457 problem JSON; a
+refused RPC call is `TOO_MANY_REQUESTS` with the same header, and carries the
+retry-after in its error data as well, because a call arriving over the
+WebSocket has no response headers to read it from.
+
+**It fails open.** A Valkey that cannot be reached allows every call, logs one
+line a minute while it is down, and shows as `limiter: degraded` on `/readyz`,
+which stays 200. A rate limit protects against abuse and is not a correctness
+guarantee; refusing traffic because the defence is broken would turn an abuse
+control into an outage.
+
+The suites that exercise any of this — the limiter's own, and the three cases
+in `server/src/team/__tests__/commands.test.ts` that assert where the audit
+denial window's cap falls — need the development lane's Valkey running and
+skip without it, because a limiter that fails open cannot be observed
+enforcing anything; on CI they throw instead, where the store is part of the
+job.
+
+What was refused is reported once a minute by the `denied-attempts-summary`
+job on the worker (see [Background work](#background-work)). Suppressed
+authorization denials become one
+`security.denied_attempts.rate_limited` event per actor, team, operation and
+minute in that team's audit log; the scopes with no team behind them — sign-in,
+storage, the public API — become one log line per scope per run, with a count
+and nothing else.
+
 ## Development
 
 ```bash
@@ -368,7 +415,7 @@ logs how many that was before it does it.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `27af5dd22c9dbb048d4c32aa04d125dfee654bfbe1907421b2ca7023b30b897f`.
+Schema fingerprint: `1f6a03b55c7fb8dcf75c5fd6413cf4770bbb97da38fc8f4d61006f615ccdd4bf`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -693,12 +740,13 @@ creates or updates it (see [Changing the schema](#changing-the-schema)).
 Nothing creates a queue at run time. What each database role may do with the
 job tables is in [Tenancy](#tenancy).
 
-| Queue                             | What runs on it                                         | Retries                                            | Attempt expiry | When attempts run out                             |
-| --------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
-| `invitation-delivery`             | Team-invitation email                                   | 7 (eight attempts), exponential from 5 s to 30 min | 60 s           | Copied to `invitation-delivery-dead-letter`       |
-| `invitation-delivery-dead-letter` | Nothing works it; it holds what failed                  | none                                               | —              | Kept 30 days for a manual re-send (#1307)         |
-| `sign-in-email`                   | Magic-link sign-in email                                | 2, exponential from 5 s to 60 s                    | 30 s           | Dropped; an expired sign-in link is worth nothing |
-| `protocol-store-gc`               | The protocol-store sweep, hourly, at most one at a time | none                                               | 1 h            | Nothing; the next hour's run does the same work   |
+| Queue                             | What runs on it                                                  | Retries                                            | Attempt expiry | When attempts run out                             |
+| --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
+| `invitation-delivery`             | Team-invitation email                                            | 7 (eight attempts), exponential from 5 s to 30 min | 60 s           | Copied to `invitation-delivery-dead-letter`       |
+| `invitation-delivery-dead-letter` | Nothing works it; it holds what failed                           | none                                               | —              | Kept 30 days for a manual re-send (#1307)         |
+| `sign-in-email`                   | Magic-link sign-in email                                         | 2, exponential from 5 s to 60 s                    | 30 s           | Dropped; an expired sign-in link is worth nothing |
+| `protocol-store-gc`               | The protocol-store sweep, hourly, at most one at a time          | none                                               | 1 h            | Nothing; the next hour's run does the same work   |
+| `denied-attempts-summary`         | The suppressed-denial sweep, every minute, at most one at a time | none                                               | 60 s           | Nothing; the next minute's run does the same work |
 
 A worker with no mail transport still boots. It registers the cron and works
 the sweep, logs at error level that `invitation-delivery` and `sign-in-email`
@@ -839,6 +887,23 @@ fails `pnpm typecheck`.
 | `MICROSOFT_TENANT_ID`        | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                                                                                                 |
 | `STUDIO_SEED_ADMIN_PASSWORD` | Password of the `admin@studio.test` account the `seed` command creates, which owns every seeded team.         | —                                      | Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only.                                                    |
 | `TRUSTED_PROXIES`            | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.                                                                   |
+
+### Rate limiting
+
+| Variable                                | What it is                                                                                                     | Development default       | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL`                             | Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter.                  | `redis://127.0.0.1:63790` | Unset ⇒ there is no limiter store, every limit below is disabled, and the server says so once at boot outside development. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes and nothing else — and the counters are disposable: losing them resets every window rather than losing data.                                         |
+| `RATE_LIMIT_SIGN_IN_ADDRESS`            | Sign-in and magic-link requests per client address, as `count/window`.                                         | `100000/1m`               | Unset ⇒ `10/10m`. Ten attempts from one address in ten minutes covers a shared institutional address whose users mistype passwords, and makes credential stuffing from a single host pointless.                                                                                                                                                                                                                     |
+| `RATE_LIMIT_SIGN_IN_EMAIL`              | Sign-in and magic-link requests per email address.                                                             | `100000/1m`               | Unset ⇒ `5/10m`. An account belongs to one person, and a person who has failed five times in ten minutes needs the reset link rather than a sixth attempt. This is the limit an attacker spreading attempts across addresses meets.                                                                                                                                                                                 |
+| `RATE_LIMIT_INVITATION_ACCEPT`          | Team-invitation acceptances per invitation token.                                                              | `100000/1m`               | Unset ⇒ `10/10m`. An invitation is accepted once; ten allows a reload, a wrong account, and a sign-in in between, and stops a token being brute-forced through one link.                                                                                                                                                                                                                                            |
+| `RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS` | Participation-link redemptions per client address.                                                             | `100000/1m`               | Unset ⇒ `20/10m`. A lab runs several interviews from one address, so this is deliberately loose; the per-link limit below is what protects a single link. Declared now and enforced when the participant routes land (#1899).                                                                                                                                                                                       |
+| `RATE_LIMIT_PARTICIPANT_REDEEM_LINK`    | Participation-link redemptions per link.                                                                       | `100000/1m`               | Unset ⇒ `5/10m`. A link is redeemed once, so five covers a reload and a lost response while making a link identifier not worth guessing. Declared now and enforced when the participant routes land (#1899).                                                                                                                                                                                                        |
+| `RATE_LIMIT_PARTICIPANT_SYNC`           | Interview sync writes per participant session.                                                                 | `100000/1m`               | Unset ⇒ `600/1m`. Ten writes a second is far above what answering questions produces and far below what a script replaying a session could. Declared now and enforced when the participant routes land (#1899).                                                                                                                                                                                                     |
+| `RATE_LIMIT_RPC_USER`                   | Internal RPC calls per signed-in user.                                                                         | `100000/1m`               | Unset ⇒ `600/1m`. The app issues a burst of calls per screen, so the limit is a ceiling on a runaway client rather than a budget a person can feel: ten calls a second sustained is more than any screen needs.                                                                                                                                                                                                     |
+| `RATE_LIMIT_RPC_TEAM`                   | Internal RPC calls per team, across everyone in it.                                                            | `100000/1m`               | Unset ⇒ `3000/1m`. A team is many researchers working at once, so this protects the instance rather than the person: it is five times the per-user limit, which one runaway client cannot reach alone.                                                                                                                                                                                                              |
+| `RATE_LIMIT_STORAGE_READ`               | Reads from `/storage`, per participant session where the request carries one and otherwise per client address. | `100000/1m`               | Unset ⇒ `2000/5m`. Generous by design: an interview fetches every stimulus it shows, and an institution often puts a whole building behind one address. Keyed per client address until the participant session token exists (#1899).                                                                                                                                                                                |
+| `RATE_LIMIT_PUBLIC_API`                 | Calls to `/api/v1`, per client address.                                                                        | `100000/1m`               | Unset ⇒ `300/1m`. Five calls a second suits an analysis script paging through results and leaves the instance responsive to everyone else. Per address rather than per `Authorization` header: there is no token plane until #1899, so a header is an unvalidated string and keying on it would let a caller mint a fresh allowance per request by changing it. It becomes the resolved token id when tokens exist. |
+| `RATE_LIMIT_WS_UPGRADE`                 | WebSocket upgrades per signed-in user.                                                                         | `100000/1m`               | Unset ⇒ `30/1m`. A tab opens one socket and reopens it when the network drops, so thirty a minute absorbs a flapping connection while stopping a reconnect loop from becoming a connection storm.                                                                                                                                                                                                                   |
 
 <!-- generated:env end -->
 
@@ -1109,7 +1174,10 @@ same compose file with its own `.env`, pointing the five `S3_*` variables at an
 R2 bucket instead of the stack's Garage. There is no CDN in front of the client
 — nginx behind the ingress is enough at the expected scale — and no second
 topology to maintain. The web process stays a single replica, as it already
-did: the sync leases it holds are per-process state (#1247). Workers have no
+did: the sync leases it holds are per-process state (#1247). The audit
+denial-rate window used to be a second reason and is not one any more — it
+counts in Valkey now, like every other limit (#1909) — so what a second replica
+still needs is somewhere shared for the sync leases to live. Workers have no
 such state and may be scaled — pg-boss hands each job, and each firing of a
 cron schedule, to exactly one of them (see
 [Background work](#background-work)).

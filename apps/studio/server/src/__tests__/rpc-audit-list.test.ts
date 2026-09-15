@@ -13,13 +13,14 @@ import {
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM = 'audit-list-team';
-const OTHER_TEAM = 'audit-list-other';
+const TEAM = uniqueTeamId('audit-list-team');
+const OTHER_TEAM = uniqueTeamId('audit-list-other');
 const T0 = '2026-08-30T10:00:00.000Z';
 const T1 = '2026-08-30T11:00:00.000Z';
 const T2 = '2026-08-30T12:00:00.000Z';
