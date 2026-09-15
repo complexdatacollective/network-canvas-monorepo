@@ -943,7 +943,7 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /POSTHOG_PROJECT_ID: '1'/);
   assert.match(
     supportJob,
-    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/build\/posthog-cli-upload-stub\.mjs/,
+    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/buildtime\/posthog-cli-upload-stub\.mjs/,
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
