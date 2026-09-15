@@ -18,6 +18,30 @@ const DEFAULT_BATCH_SIZE = 100;
 
 export type RotationCounts = Record<string, number>;
 
+/**
+ * Rows that are still not under the current key once the loop has stopped.
+ *
+ * The loop cannot prove it is done: `FOR UPDATE SKIP LOCKED` steps over a row
+ * another session holds, so that batch returns zero — which is also how a
+ * finished store reports itself. Believing it let the command print "every
+ * stored secret is now under key id …" with rows still sealed under the entry
+ * the operator was about to remove from the keyring.
+ */
+export class RotationIncompleteError extends Error {
+  constructor(remaining: readonly { store: string; rows: number }[]) {
+    super(
+      `${remaining
+        .map(
+          ({ store, rows }) =>
+            `${store}: ${rows} row${rows === 1 ? '' : 's'} still under another key (held by another session)`,
+        )
+        .join('; ')}; run rotate-secrets again once the other session has ` +
+        'finished, and before removing the old entry from the keyring.',
+    );
+    this.name = 'RotationIncompleteError';
+  }
+}
+
 export type RotateSecretsOptions = {
   /** Rows per transaction. Small enough that no batch holds locks for long. */
   batchSize?: number;
@@ -47,6 +71,10 @@ async function inTransaction<T>(
  * Idempotent — a second run finds nothing to do and reports zeros — and
  * resumable, because each batch is its own transaction: a run killed halfway
  * leaves the batches it committed rotated, and a rerun finishes the rest.
+ *
+ * Resolves only when every store has been PROVED empty of rows under an older
+ * key; otherwise it rejects with `RotationIncompleteError`, leaving everything
+ * it did commit committed.
  *
  * @param pool must run as the MAINTENANCE role: the tenant tables force
  * row-level security, and any other identity would silently rotate one team's
@@ -83,6 +111,21 @@ export async function rotateSecrets(
     }
     counts[store.name] = rotated;
   }
+
+  // The postcondition, after every store: counted rather than inferred from
+  // the loop ending, and reported together so one rerun can be scheduled for
+  // everything that is behind.
+  const remaining: { store: string; rows: number }[] = [];
+  const client = await pool.connect();
+  try {
+    for (const store of SECRET_STORES) {
+      const rows = await store.remaining(client, cipher.currentKeyId);
+      if (rows > 0) remaining.push({ store: store.name, rows });
+    }
+  } finally {
+    client.release();
+  }
+  if (remaining.length > 0) throw new RotationIncompleteError(remaining);
 
   return counts;
 }

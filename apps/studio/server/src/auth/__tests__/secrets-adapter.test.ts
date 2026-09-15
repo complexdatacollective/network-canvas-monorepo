@@ -198,7 +198,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
     );
   });
 
-  it('re-seals the tokens an update did not touch, under the current key', async () => {
+  it('re-seals the tokens an update did not touch when they are behind', async () => {
     // Sealed under a keyring whose only key is `test-2` ...
     const { account, accountId } = await signUpWithGoogle(
       testCipher(testKeyring(['test-2'])),
@@ -231,6 +231,57 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
       refreshToken: TOKENS.refreshToken,
       idToken: TOKENS.idToken,
     });
+  });
+
+  it('leaves an untouched token that is already current out of the patch', async () => {
+    // better-auth's own `getAccessToken` refreshes a token by reading the row
+    // and writing all three columns from that read, so the wrapper adds no
+    // window in steady state. It would add one if it re-emitted columns the
+    // caller never named from a snapshot of its own: a refresh committing
+    // between the read and the write would be overwritten by a stale value.
+    // Nothing is rewritten unless it has to be.
+    const { ctx, account, accountId } = await signUpWithGoogle(testCipher());
+    const before = await storedTokens(accountId);
+
+    await ctx.internalAdapter.updateAccount(account.id, {
+      accessToken: 'a-refreshed-access-token',
+    });
+
+    const after = await storedTokens(accountId);
+    // Byte-identical, which a re-seal cannot be: sealing draws a fresh nonce,
+    // so the same plaintext under the same key stores as different bytes.
+    expect(after.refreshToken).toBe(before.refreshToken);
+    expect(after.idToken).toBe(before.idToken);
+    expect(after.accessToken).not.toBe(before.accessToken);
+
+    const accounts = await ctx.internalAdapter.findAccounts(account.userId);
+    expect(accounts[0]).toMatchObject({
+      accessToken: 'a-refreshed-access-token',
+      refreshToken: TOKENS.refreshToken,
+      idToken: TOKENS.idToken,
+    });
+  });
+
+  it('re-seals untouched tokens when the update moves the row identity', async () => {
+    // The identity is bound into the ciphertext, so a token left as it was
+    // would stop opening the moment the row it names changes underneath it.
+    const { ctx, account, accountId } = await signUpWithGoogle(testCipher());
+    const before = await storedTokens(accountId);
+    const movedTo = randomUUID();
+
+    await ctx.adapter.update({
+      model: 'account',
+      where: [{ field: 'id', value: account.id }],
+      update: { accountId: movedTo },
+    });
+
+    const after = await storedTokens(movedTo);
+    expect(after.refreshToken).not.toBe(before.refreshToken);
+    const moved = await ctx.internalAdapter.findAccountByKey({
+      issuer: GOOGLE.issuer,
+      accountId: movedTo,
+    });
+    expect(moved).toMatchObject(TOKENS);
   });
 
   it('still sets a password, and leaves the credential row untouched', async () => {

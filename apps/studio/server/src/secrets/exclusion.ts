@@ -1,61 +1,34 @@
 // What must never leave the process, and the one check that enforces it today
 // (#1900, for #1897).
 //
-// #1897 owns the sinks — logs, spans, metrics, error reports, analytics — and
-// will read `TELEMETRY_EXCLUSIONS` to decide what each of them redacts. This
-// module is written now because the rule it records was settled by the
-// 2026-09-14 ruling on #1897 while the values it names were being moved, and a
+// The rule, from the 2026-09-14 ruling on #1897 — three kinds of value that
+// may not be sent to any sink outside this process (a log line, a span
+// attribute, a metric label, an error report, an analytics event):
+//
+//  1. **Participant information** — `participants.email` / `phone` / `name` /
+//     `attributes`, `message_deliveries.recipient_address`,
+//     `participant_contact_optouts.recipient_address`, and anything assembled
+//     from them. Contact details are stored in plain columns (#1900, ruled
+//     2026-09-14), so the only thing keeping them inside the deployment is
+//     that nothing sends them out; a log line carrying an address puts it
+//     somewhere the encrypted volume is not.
+//  2. **Asset keys** — the `value` of an `apikey` entry in a protocol's asset
+//     manifest, at rest only in `protocol_asset_keys` and opened only to
+//     assemble a protocol for a participant session or a researcher preview.
+//     It is a researcher's own credential with a third party (a Mapbox token
+//     bills their account), and the one secret that passes through a document
+//     Studio otherwise hands around freely.
+//  3. **Secrets** — webhook signing secrets, OAuth access, refresh and id
+//     tokens, the keyring itself, and any envelope or key id read back out of
+//     a column. These let someone act as Studio or as a researcher; the
+//     keyring and the envelope refuse to print themselves for this reason,
+//     and a sink that serialised a caught error, or an adapter row, would
+//     undo that.
+//
+// Only the asset-key half is enforced in code today, by `assertNoAssetKeyValues`
+// below. #1897 owns the sinks and adds the rest, extending this module and its
+// test file; the rule is written here rather than only in an issue because a
 // rule with no code beside it is a rule the next change forgets.
-
-/** One kind of value that may not be sent anywhere outside the process. */
-export type TelemetryExclusion = {
-  /** The kind, in the words the ruling used. */
-  kind: 'participant-information' | 'asset-keys' | 'secrets';
-  /** Where a sink would find it, so a new one knows what to look for. */
-  where: string;
-  /** Why it is excluded; the three have different reasons. */
-  why: string;
-};
-
-/**
- * The registry, deliberately a list of descriptions rather than a list of
- * field names: the sinks #1897 adds are of different shapes (a log record, a
- * span attribute, an exception's `cause` chain), and what they share is the
- * decision about what is out of bounds, not a way of spelling it.
- */
-export const TELEMETRY_EXCLUSIONS: readonly TelemetryExclusion[] = [
-  {
-    kind: 'participant-information',
-    where:
-      'participants.email / phone / name / attributes, message_deliveries.recipient_address, ' +
-      'participant_contact_optouts.recipient_address, and anything assembled from them.',
-    why:
-      'Contact details are stored in plain columns (#1900, ruled 2026-09-14), so the ' +
-      'only thing keeping them inside the deployment is that nothing sends them out. ' +
-      'A log line carrying an address puts it somewhere the encrypted volume is not.',
-  },
-  {
-    kind: 'asset-keys',
-    where:
-      "the `value` of an `apikey` entry in a protocol's asset manifest, which is at rest " +
-      'only in `protocol_asset_keys` and is opened only to assemble a protocol for a ' +
-      'participant session or a researcher preview.',
-    why:
-      "It is a researcher's own credential with a third party — a Mapbox token bills " +
-      'their account — and it is the one secret that passes through a document Studio ' +
-      'otherwise hands around freely.',
-  },
-  {
-    kind: 'secrets',
-    where:
-      'webhook signing secrets, OAuth access, refresh and id tokens, the keyring itself, ' +
-      'and any envelope or key id read back out of a column.',
-    why:
-      'These are the values that let someone act as Studio or as a researcher. The ' +
-      'keyring and the envelope refuse to print themselves for this reason; a sink that ' +
-      'serialised a caught error, or an adapter row, would undo that.',
-  },
-];
 
 /** Thrown when an assembled protocol document still carries an API key. */
 export class AssetKeyLeakError extends Error {

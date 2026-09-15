@@ -34,7 +34,9 @@ const OAUTH: OAuthTokenIdentity = {
 };
 
 const WEBHOOK_SECRET = 'whsec_2f1c9d0b8a7e6f5d4c3b2a190807f6e5';
-const ASSET_KEY = 'pk.eyJ1IjoiZXhhbXBsZSJ9.not-a-real-mapbox-token';
+// Not Mapbox-token shaped, so `pnpm check:mapbox-tokens` does not read it as a
+// committed access token; what the envelope seals is opaque text either way.
+const ASSET_KEY = 'map-key-not-a-real-mapbox-token';
 const OAUTH_TOKEN = 'ya29.a0ARrdaM-not-a-real-access-token';
 
 /**
@@ -449,18 +451,51 @@ describe('the stored OAuth token form', () => {
 describe('what a failure says', () => {
   const cipher = testCipher();
 
+  it('does not print a stored key id that is not a keyring id', () => {
+    // `secret_key_id` and `key_id` are ordinary columns, so what comes back is
+    // whatever is in them. A failure that repeated it would turn any write
+    // around the application into a way to put arbitrary stored bytes in a log.
+    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const error = thrown(() =>
+      cipher.openWebhookSecret(WEBHOOK, {
+        ...sealed,
+        keyId: 'not a key id <script>',
+      }),
+    );
+    expect(error).toBeInstanceOf(SecretUnreadableError);
+    const message = (error as Error).message;
+    expect(message).toContain('a key id that is not a keyring id');
+    expect(message).not.toContain('not a key id <script>');
+    // A well-formed id is still named: that is what an operator acts on.
+    expect(
+      (
+        thrown(() =>
+          cipher.openWebhookSecret(WEBHOOK, { ...sealed, keyId: 'gone' }),
+        ) as Error
+      ).message,
+    ).toContain('key id "gone"');
+  });
+
   it('names neither the value nor the key when a read fails', () => {
     const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
     const material = testKeyring().subkey('secrets', 'test-1').export();
     const cases = [
       () => cipher.openWebhookSecret({ ...WEBHOOK, teamId: 'other' }, sealed),
       () => cipher.openWebhookSecret(WEBHOOK, { ...sealed, keyId: 'gone' }),
-      () => cipher.openOAuthToken(OAUTH, cipher.sealOAuthToken(OAUTH, 'x')),
+      // An access token presented against the id-token column of its own row.
+      () =>
+        cipher.openOAuthToken(
+          { ...OAUTH, column: 'idToken' },
+          cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN),
+        ),
       () => cipher.openOAuthToken(OAUTH, OAUTH_TOKEN),
     ];
     for (const act of cases) {
       const error = thrown(act);
-      if (!error) continue;
+      // Asserted, never skipped: a case that stopped failing would otherwise
+      // silently stop being checked, and the assertions below — which are the
+      // acceptance criterion — would pass on nothing.
+      expect(error).toBeInstanceOf(Error);
       expectNoLeak(error, WEBHOOK_SECRET, OAUTH_TOKEN);
       expect(inspect(error)).not.toContain(
         sealed.ciphertext.toString('base64'),

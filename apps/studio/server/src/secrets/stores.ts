@@ -1,7 +1,10 @@
 import type pg from 'pg';
 
-import type { OAuthTokenColumn, SecretsCipher } from './cipher.ts';
-import { isKeyId } from './keyring.ts';
+import {
+  type OAuthTokenColumn,
+  sealedOAuthTokenPrefix,
+  type SecretsCipher,
+} from './cipher.ts';
 
 // Every place a secret is stored, as one entry each (#1900). The boot check
 // and the rotation command both walk this list rather than naming tables
@@ -14,11 +17,32 @@ import { isKeyId } from './keyring.ts';
 // named, and a check that saw one team's rows would pass while another team's
 // key was missing.
 
+/**
+ * Opens one stored secret with the given cipher, throwing the cipher's own
+ * `SecretUnreadableError` when it will not open. What `probe` hands the boot
+ * check, so that each store keeps the knowledge of which identity its rows are
+ * sealed under and which open function reads them.
+ */
+export type SecretOpener = (cipher: SecretsCipher) => string;
+
 export type SecretStore = {
   /** The table, which is what the rotation's counts are keyed and printed by. */
   name: string;
-  /** Distinct key ids the stored rows were sealed under. */
+  /**
+   * Distinct key ids the stored rows were sealed under, exactly as stored. Ids
+   * that no keyring could hold are INCLUDED: the boot check counts them (never
+   * printing the text, which came out of a column), because dropping them made
+   * a database of rows nothing can open pass the check that exists to catch
+   * exactly that.
+   */
   keyIdsInUse(client: pg.PoolClient): Promise<string[]>;
+  /**
+   * One stored secret sealed under `keyId`, ready to open, or null when this
+   * store has none. The boot check opens one per (store, key id) so that a
+   * keyring naming the right ids under the WRONG material is refused before
+   * the deployment serves anything.
+   */
+  probe(client: pg.PoolClient, keyId: string): Promise<SecretOpener | null>;
   /**
    * Re-seals up to `batchSize` rows that are not under the current key and
    * returns how many were changed; zero means this store is finished. Runs
@@ -31,6 +55,13 @@ export type SecretStore = {
     cipher: SecretsCipher,
     batchSize: number,
   ): Promise<number>;
+  /**
+   * How many rows are still not under `currentKeyId`. The rotation's
+   * postcondition: a batch returning zero means "nothing I could take", not
+   * "nothing left" — `FOR UPDATE SKIP LOCKED` steps over a row another session
+   * holds — so the loop ending is not proof the store is done.
+   */
+  remaining(client: pg.PoolClient, currentKeyId: string): Promise<number>;
 };
 
 /**
@@ -49,14 +80,14 @@ function reseal<T>(what: string, act: () => T): T {
   }
 }
 
-/**
- * Only ids a keyring could hold. The other columns' key ids are read back out
- * of stored text, and a boot refusal that names one must not be a way to get
- * arbitrary stored bytes into a log. A row whose id is unreadable cannot be
- * opened either, and fails loudly at the use site rather than here.
- */
-function producibleIds(ids: readonly (string | null)[]): string[] {
-  return ids.filter((id): id is string => id !== null && isKeyId(id));
+/** A NULL key id names no stored secret; anything else is one, well-formed or not. */
+function storedIds(ids: readonly (string | null)[]): string[] {
+  return ids.filter((id): id is string => id !== null);
+}
+
+/** The count one `SELECT count(*)` answered, as a number rather than a string. */
+function countOf(result: pg.QueryResult<{ count: string }>): number {
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 const webhookSubscriptions: SecretStore = {
@@ -66,8 +97,38 @@ const webhookSubscriptions: SecretStore = {
     const rows = await client.query<{ key_id: string }>(
       'SELECT DISTINCT secret_key_id AS key_id FROM webhook_subscriptions',
     );
-    return producibleIds(rows.rows.map((row) => row.key_id));
+    return storedIds(rows.rows.map((row) => row.key_id));
   },
+
+  probe: async (client, keyId) => {
+    const rows = await client.query<{
+      id: string;
+      team_id: string;
+      secret_ciphertext: Buffer;
+    }>(
+      `SELECT id, team_id, secret_ciphertext
+         FROM webhook_subscriptions
+        WHERE secret_key_id = $1
+        LIMIT 1`,
+      [keyId],
+    );
+    const row = rows.rows[0];
+    if (row === undefined) return null;
+    return (cipher) =>
+      cipher.openWebhookSecret(
+        { teamId: row.team_id, subscriptionId: row.id },
+        { ciphertext: row.secret_ciphertext, keyId },
+      );
+  },
+
+  remaining: async (client, currentKeyId) =>
+    countOf(
+      await client.query<{ count: string }>(
+        `SELECT count(*) AS count FROM webhook_subscriptions
+          WHERE secret_key_id IS NOT NULL AND secret_key_id <> $1`,
+        [currentKeyId],
+      ),
+    ),
 
   rotateBatch: async (client, cipher, batchSize) => {
     const rows = await client.query<{
@@ -120,10 +181,30 @@ const OAUTH_COLUMNS: readonly OAuthTokenColumn[] = [
 
 const SEALED_PREFIX_PATTERN = 'studio-secret:%';
 
+/**
+ * "This token column holds something other than a value sealed under the
+ * current key", as SQL over the prefix `sealedOAuthTokenPrefix` writes.
+ *
+ * `left(col, length) <> prefix` rather than `NOT LIKE prefix || '%'`: a key id
+ * may contain `_`, which LIKE reads as "any one character", so a LIKE would
+ * call a neighbouring key id current and leave its rows behind. It also picks
+ * up a PLAINTEXT token, which carries no prefix at all — a row whose only
+ * token was written around the auth adapter used to match nothing and was
+ * walked past, leaving rotation to report success with plaintext at rest.
+ * Selected here, it reaches `reseal`, which refuses it.
+ *
+ * `$1` is the prefix's length and `$2` the prefix itself.
+ */
+const NOT_UNDER_CURRENT_KEY = OAUTH_COLUMNS.map(
+  (column) => `("${column}" IS NOT NULL AND left("${column}", $1) <> $2)`,
+).join(' OR ');
+
 const account: SecretStore = {
   name: 'account',
 
   keyIdsInUse: async (client) => {
+    // Only rows that carry the sealed prefix: a plaintext token has no key id
+    // to report, and the read path refuses it wherever it is used.
     const rows = await client.query<{ key_id: string }>(
       OAUTH_COLUMNS.map(
         (column) =>
@@ -132,17 +213,50 @@ const account: SecretStore = {
       ).join('\nUNION\n'),
       [SEALED_PREFIX_PATTERN],
     );
-    return producibleIds(rows.rows.map((row) => row.key_id));
+    return storedIds(rows.rows.map((row) => row.key_id));
+  },
+
+  probe: async (client, keyId) => {
+    const prefix = sealedOAuthTokenPrefix(keyId);
+    const found = OAUTH_COLUMNS.map(
+      (column) =>
+        `SELECT "providerId", "accountId", '${column}' AS column_name, "${column}" AS token
+           FROM account WHERE left("${column}", $1) = $2`,
+    ).join('\nUNION ALL\n');
+    const rows = await client.query<{
+      providerId: string;
+      accountId: string;
+      column_name: OAuthTokenColumn;
+      token: string;
+    }>(`${found}\nLIMIT 1`, [prefix.length, prefix]);
+    const row = rows.rows[0];
+    if (row === undefined) return null;
+    return (cipher) =>
+      cipher.openOAuthToken(
+        {
+          providerId: row.providerId,
+          accountId: row.accountId,
+          column: row.column_name,
+        },
+        row.token,
+      );
+  },
+
+  remaining: async (client, currentKeyId) => {
+    const prefix = sealedOAuthTokenPrefix(currentKeyId);
+    return countOf(
+      await client.query<{ count: string }>(
+        `SELECT count(*) AS count FROM account WHERE ${NOT_UNDER_CURRENT_KEY}`,
+        [prefix.length, prefix],
+      ),
+    );
   },
 
   rotateBatch: async (client, cipher, batchSize) => {
     // A row is behind when ANY of its tokens is, and every token present is
     // then re-sealed — so a row always carries one key id across its three
     // columns, whatever order better-auth wrote them in.
-    const behind = OAUTH_COLUMNS.map(
-      (column) =>
-        `("${column}" LIKE $1 AND split_part("${column}", ':', 2) <> $2)`,
-    ).join(' OR ');
+    const prefix = sealedOAuthTokenPrefix(cipher.currentKeyId);
     const rows = await client.query<
       {
         id: string;
@@ -152,10 +266,10 @@ const account: SecretStore = {
     >(
       `SELECT id, "providerId", "accountId", "accessToken", "refreshToken", "idToken"
          FROM account
-        WHERE ${behind}
+        WHERE ${NOT_UNDER_CURRENT_KEY}
         LIMIT $3
           FOR UPDATE SKIP LOCKED`,
-      [SEALED_PREFIX_PATTERN, cipher.currentKeyId, batchSize],
+      [prefix.length, prefix, batchSize],
     );
 
     for (const row of rows.rows) {
@@ -203,8 +317,42 @@ const protocolAssetKeys: SecretStore = {
     const rows = await client.query<{ key_id: string }>(
       'SELECT DISTINCT key_id FROM protocol_asset_keys',
     );
-    return producibleIds(rows.rows.map((row) => row.key_id));
+    return storedIds(rows.rows.map((row) => row.key_id));
   },
+
+  probe: async (client, keyId) => {
+    const rows = await client.query<{
+      team_id: string;
+      protocol_id: string;
+      asset_id: string;
+      ciphertext: Buffer;
+    }>(
+      `SELECT team_id, protocol_id, asset_id, ciphertext
+         FROM protocol_asset_keys
+        WHERE key_id = $1
+        LIMIT 1`,
+      [keyId],
+    );
+    const row = rows.rows[0];
+    if (row === undefined) return null;
+    return (cipher) =>
+      cipher.openAssetKey(
+        {
+          teamId: row.team_id,
+          protocolId: row.protocol_id,
+          assetId: row.asset_id,
+        },
+        { ciphertext: row.ciphertext, keyId },
+      );
+  },
+
+  remaining: async (client, currentKeyId) =>
+    countOf(
+      await client.query<{ count: string }>(
+        `SELECT count(*) AS count FROM protocol_asset_keys WHERE key_id <> $1`,
+        [currentKeyId],
+      ),
+    ),
 
   rotateBatch: async (client, cipher, batchSize) => {
     const rows = await client.query<{

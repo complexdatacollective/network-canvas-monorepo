@@ -31,7 +31,7 @@ if (values.scale !== 'demo' && values.scale !== 'large') {
 const scale: SeedScale = values.scale;
 
 const env = readEnv();
-const { db, secrets } = confirmDestructiveTarget(
+const { db, secrets, local } = confirmDestructiveTarget(
   env,
   values.force,
   'wipe and reseed',
@@ -45,7 +45,14 @@ try {
     console.error(schemaProblemMessage(state));
     process.exit(1);
   }
-  await seed(pool, { secrets, adminPassword: env.seedAdminPassword, scale });
+  await seed(pool, {
+    secrets,
+    adminPassword: env.seedAdminPassword,
+    scale,
+    // Local only: against a real deployment this seals with that deployment's
+    // keyring, and a PRNG nonce there is a nonce an attacker can predict.
+    reproducible: local,
+  });
   console.log('Seed complete.');
 } finally {
   await pool.end();

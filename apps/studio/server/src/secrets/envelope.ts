@@ -1,6 +1,11 @@
 import { createCipheriv, createDecipheriv, type KeyObject } from 'node:crypto';
 
-import { type Keyring, KeyringError, type SecretPurpose } from './keyring.ts';
+import {
+  isKeyId,
+  type Keyring,
+  KeyringError,
+  type SecretPurpose,
+} from './keyring.ts';
 
 // The byte layout every secret is stored in, and the only code in the server
 // that calls a cipher. Internal to `src/secrets`: use sites reach it through
@@ -76,6 +81,18 @@ function canonicalUuid(part: string): string {
     : part;
 }
 
+/**
+ * How a key id is named in a failure. A well-formed id is not a secret and is
+ * what an operator needs; anything else came out of a database column as it
+ * stood, and these messages reach logs and error reports — so a column holding
+ * something else must not be a way to get arbitrary stored bytes into one.
+ */
+function namedKeyId(keyId: string): string {
+  return isKeyId(keyId)
+    ? `key id "${keyId}"`
+    : 'a key id that is not a keyring id';
+}
+
 function subkeyFor(keyring: Keyring, keyId: string): KeyObject {
   try {
     return keyring.subkey(PURPOSE, keyId);
@@ -86,7 +103,7 @@ function subkeyFor(keyring: Keyring, keyId: string): KeyObject {
       // unreadable row, and the boot check (#1900) is what turns it into a
       // refusal to start rather than a surprise at request time.
       throw new SecretUnreadableError(
-        `the keyring cannot produce key id "${keyId}".`,
+        `the keyring cannot produce ${namedKeyId(keyId)}.`,
       );
     }
     throw error;
@@ -167,7 +184,7 @@ export function openSecret(
     // deliberately dropped: it says nothing an operator can act on, and the
     // one thing a caller can do is treat the row as unreadable.
     throw new SecretUnreadableError(
-      `authentication failed under key id "${sealed.keyId}"; the value, the row it was read from, or the key does not match the one it was sealed with.`,
+      `authentication failed under ${namedKeyId(sealed.keyId)}; the value, the row it was read from, or the key does not match the one it was sealed with.`,
     );
   } finally {
     // The plaintext has been copied into a string by then. Zeroing the buffer

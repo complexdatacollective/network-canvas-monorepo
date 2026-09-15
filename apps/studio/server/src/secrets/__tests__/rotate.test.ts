@@ -9,10 +9,21 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
-import { testKeyring } from '../../__tests__/support/secrets.ts';
-import { SecretKeyMissingError, secretKeyIdsInUse } from '../boot.ts';
+import {
+  testKeyring,
+  testKeyringEntry,
+} from '../../__tests__/support/secrets.ts';
+import {
+  assertSecretKeysProducible,
+  SecretKeyCheckError,
+  SecretKeyIdMalformedError,
+  SecretKeyMaterialError,
+  SecretKeyMissingError,
+  secretKeyIdsInUse,
+} from '../boot.ts';
 import { createSecretsCipher } from '../cipher.ts';
-import { rotateSecrets } from '../rotate.ts';
+import { parseKeyring } from '../keyring.ts';
+import { RotationIncompleteError, rotateSecrets } from '../rotate.ts';
 
 // Rotation against real rows, because every property it has to hold is a
 // property of the transactions: that it re-seals what is behind and leaves
@@ -32,6 +43,14 @@ const MISSING = 'gone';
 const BEFORE = testKeyring(['test-2', 'test-1']);
 /** `test-1` current, `test-2` readable: the keyring a rotation deploys. */
 const AFTER = testKeyring(['test-1', 'test-2']);
+
+/**
+ * `test-1` by name, another key by material: the shape a restore from the
+ * wrong backup, or a regenerated keyring, leaves behind.
+ */
+const IMPOSTOR = parseKeyring(
+  `test-1:${testKeyringEntry('test-impostor').split(':')[1]!}`,
+);
 
 const before = createSecretsCipher(BEFORE);
 const after = createSecretsCipher(AFTER);
@@ -357,7 +376,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     ).toBe(true);
   });
 
-  it('skips a row another transaction holds, and takes it on the rerun', async () => {
+  it('refuses to report success while another transaction holds a row', async () => {
     const held = await newSubscription();
     await newSubscription();
 
@@ -368,18 +387,32 @@ describe.skipIf(!db)('rotating stored secrets', () => {
         'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
         [held.id],
       );
-      // FOR UPDATE SKIP LOCKED: a rotation must never queue behind a live
-      // writer holding a row, because the command would then appear to hang.
-      expect(await rotateSecrets(maintenance, AFTER)).toEqual({
-        webhook_subscriptions: 1,
-        account: 0,
-        protocol_asset_keys: 0,
-      });
-      await holder.query('ROLLBACK');
+      // FOR UPDATE SKIP LOCKED means a held row makes a batch return zero,
+      // which is also how a finished store reports itself. Believing it let
+      // the command print "every stored secret is now under key id …" with a
+      // row still sealed under the entry the operator is about to remove.
+      const refused = rotateSecrets(maintenance, AFTER);
+      await expect(refused).rejects.toThrow(RotationIncompleteError);
+      await expect(refused).rejects.toThrow(
+        /webhook_subscriptions: 1 row still under another key \(held by another session\); run rotate-secrets again/,
+      );
     } finally {
+      // In `finally` so a failed assertion still gives the row lock back:
+      // released with its transaction open, this connection would block the
+      // cleanup DELETE and every later test with it.
+      await holder.query('ROLLBACK').catch(() => undefined);
       holder.release();
     }
 
+    // The batch that did commit is still committed: the postcondition reports,
+    // it does not roll anything back.
+    expect(
+      (await subscriptionRows()).filter(
+        (row) => row.secret_key_id === 'test-1',
+      ),
+    ).toHaveLength(1);
+
+    // And the rerun the message asks for finishes the job.
     expect(await rotateSecrets(maintenance, AFTER)).toEqual({
       webhook_subscriptions: 1,
       account: 0,
@@ -409,12 +442,15 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     }
   });
 
-  it('ignores a stored key id no keyring could hold', async () => {
-    // These ids are read back out of stored text. A boot refusal names them,
-    // so a column holding something else must not be a way to get arbitrary
-    // stored bytes into a log — and a row like that cannot be opened anyway,
-    // which is a failure at its use site.
+  it('refuses at boot when a stored key id is not a keyring id', async () => {
+    // A row whose key id is not one a keyring could hold cannot be opened by
+    // any keyring, so dropping it from the comparison made the boot check pass
+    // on a database it had just proved unreadable. It is counted instead, and
+    // the count says which table without ever printing what the column holds:
+    // these ids are read back out of stored text, and a boot refusal must not
+    // be a way to get arbitrary stored bytes into a log.
     await newSubscription(before, 'not a key id');
+    await newSubscription(before, 'nor is this');
     await newAssetKey(before, 'not a key id either');
     await pool.query(
       `INSERT INTO account
@@ -423,12 +459,64 @@ describe.skipIf(!db)('rotating stored secrets', () => {
                'studio-secret::whatever', now())`,
       [randomUUID()],
     );
-    const client = await maintenance.connect();
-    try {
-      expect(await secretKeyIdsInUse(client)).toEqual([]);
-    } finally {
-      client.release();
-    }
+
+    const act = assertSecretKeysProducible(maintenance, AFTER);
+    await expect(act).rejects.toThrow(SecretKeyIdMalformedError);
+    // Every refusal from the boot check is one type to catch: that is what
+    // `verifySecretKeysOrExit` prints as a sentence rather than a stack.
+    await expect(act).rejects.toThrow(SecretKeyCheckError);
+    const error = await act.catch((reason: unknown) => reason);
+    const message = error instanceof Error ? error.message : String(error);
+    expect(message).toContain(
+      '2 stored key ids in webhook_subscriptions are not keyring ids',
+    );
+    expect(message).toContain(
+      '1 stored key id in protocol_asset_keys is not a keyring id',
+    );
+    expect(message).toContain('1 stored key id in account is not a keyring id');
+    // Never the text itself.
+    expect(message).not.toContain('not a key id');
+    expect(message).not.toContain('whatever');
+  });
+
+  it('refuses at boot when the keyring holds an id under different material', async () => {
+    // A restored database and a keyring that both name `test-1` but disagree
+    // about what it is: every id is present, so the produce-check passed and
+    // the deployment came up to fail one webhook signature at a time.
+    await newSubscription(after);
+    await newAccount(after);
+    await newAssetKey(after);
+
+    const refused = assertSecretKeysProducible(maintenance, IMPOSTOR);
+    await expect(refused).rejects.toThrow(SecretKeyMaterialError);
+    await expect(refused).rejects.toThrow(
+      /Key id "test-1" in the keyring does not open the stored secrets sealed under it/,
+    );
+    // The keyring that does match still passes, so the probe is not simply
+    // refusing everything.
+    await expect(
+      assertSecretKeysProducible(maintenance, AFTER),
+    ).resolves.toBeUndefined();
+  });
+
+  it('refuses a row whose only token is plaintext', async () => {
+    // Selected on "is not under the current key" rather than on carrying a
+    // sealed prefix: a row whose only token is plaintext matched neither, so
+    // rotation walked past it and reported success with plaintext at rest.
+    const id = randomUUID();
+    await pool.query(
+      `INSERT INTO account
+         (id, "accountId", "providerId", issuer, "userId", "refreshToken", "updatedAt")
+       VALUES ($1, $2, 'google', 'https://accounts.google.com', 'user-rotation',
+               '1//written-around-the-adapter', now())`,
+      [id, `sub-${id}`],
+    );
+
+    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
+      new RegExp(`account ${id} refreshToken could not be re-sealed`),
+    );
+    const [row] = await accountRows();
+    expect(row?.refreshToken).toBe('1//written-around-the-adapter');
   });
 
   it('refuses a keyring missing a stored key id, and rotates nothing', async () => {

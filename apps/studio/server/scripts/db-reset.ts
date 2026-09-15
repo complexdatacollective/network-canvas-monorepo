@@ -18,7 +18,7 @@ const { values } = parseArgs({
 loadEnvFiles();
 
 const env = readEnv();
-const { db, secrets, target } = confirmDestructiveTarget(
+const { db, secrets, target, local } = confirmDestructiveTarget(
   env,
   values.force,
   'reset',
@@ -33,6 +33,8 @@ try {
     secrets,
     adminPassword: env.seedAdminPassword,
     sweepScratch: true,
+    // See scripts/seed.ts: deterministic nonces are for a local target only.
+    reproducible: local,
   });
   console.log('Database reset.');
 } finally {

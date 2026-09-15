@@ -1,9 +1,10 @@
 import type { DBAdapter, DBTransactionAdapter } from 'better-auth/types';
 
-import type {
-  OAuthTokenColumn,
-  OAuthTokenIdentity,
-  SecretsCipher,
+import {
+  type OAuthTokenColumn,
+  type OAuthTokenIdentity,
+  parseOAuthTokenKeyId,
+  type SecretsCipher,
 } from '../secrets/cipher.ts';
 
 // better-auth owns the `account` table and stores OAuth tokens in plain `text`
@@ -81,6 +82,18 @@ function tokenText(
 
 function touchesTokens(update: unknown): boolean {
   return isRow(update) && TOKEN_COLUMNS.some((column) => column in update);
+}
+
+/**
+ * The columns a token is sealed under. An update naming one has to go through
+ * the re-sealing path even when it names no token at all: the identity is
+ * bound into every ciphertext, so tokens left alone would stop opening the
+ * moment the row they name changes underneath them.
+ */
+const IDENTITY_COLUMNS = ['providerId', 'accountId'] as const;
+
+function touchesIdentity(update: unknown): boolean {
+  return isRow(update) && IDENTITY_COLUMNS.some((column) => column in update);
 }
 
 /**
@@ -210,16 +223,16 @@ function wrapOperations(
     },
 
     update: async <T>(data: UpdateArgs): Promise<T | null> => {
-      if (data.model !== ACCOUNT_MODEL || !touchesTokens(data.update)) {
+      if (
+        data.model !== ACCOUNT_MODEL ||
+        !(touchesTokens(data.update) || touchesIdentity(data.update))
+      ) {
         const updated = await inner.update<T>(data);
         openResult(updated, data.model, cipher);
         return updated;
       }
       // A partial update carries neither the row's identity nor the tokens it
-      // leaves alone, so the row is read first. Every token then present is
-      // written back under the CURRENT key — not only the ones the caller
-      // named — so a row never spans two keys and the rotation check can read
-      // one key id per row rather than three.
+      // leaves alone, so the row is read first.
       const existing = await inner.findOne<Row>({
         model: ACCOUNT_MODEL,
         where: data.where,
@@ -234,26 +247,44 @@ function wrapOperations(
       // Sealing uses the identity the row will have once this update lands,
       // because that is what the next read will open it with.
       const after: Row = { ...existing, ...patch };
+      const identityMoved = IDENTITY_COLUMNS.some(
+        (column) => after[column] !== existing[column],
+      );
       for (const column of TOKEN_COLUMNS) {
-        let plaintext: string | undefined;
         if (column in patch) {
-          plaintext = tokenText(patch[column], column);
+          const plaintext = tokenText(patch[column], column);
           // An explicit null clears the column; there is nothing to seal.
           if (plaintext === undefined) continue;
-        } else {
-          const stored = tokenText(existing[column], column);
-          if (stored === undefined) continue;
-          // Opened under the identity the row carries now and re-sealed under
-          // the one it will carry, so an identity change cannot strand a token
-          // this update never touched.
-          plaintext = cipher.openOAuthToken(
-            identityFrom(existing, column),
-            stored,
+          patch[column] = cipher.sealOAuthToken(
+            identityFrom(after, column),
+            plaintext,
           );
+          continue;
         }
+        const stored = tokenText(existing[column], column);
+        if (stored === undefined) continue;
+        // A column this update never named is rewritten only when it has to
+        // be: because the identity it is bound to is moving, or because it is
+        // behind the current key and a row carrying two key ids would make the
+        // rotation check read three columns to decide whether it is done.
+        //
+        // Otherwise it is left out of the patch entirely. Re-emitting it from
+        // the snapshot read a moment ago would overwrite whatever a concurrent
+        // refresh had committed in between with a stale value — a window this
+        // wrapper would be adding, since better-auth's own `getAccessToken`
+        // writes all three columns from its own read.
+        if (
+          !identityMoved &&
+          parseOAuthTokenKeyId(stored) === cipher.currentKeyId
+        ) {
+          continue;
+        }
+        // Opened under the identity the row carries now and re-sealed under
+        // the one it will carry, so an identity change cannot strand a token
+        // this update never touched.
         patch[column] = cipher.sealOAuthToken(
           identityFrom(after, column),
-          plaintext,
+          cipher.openOAuthToken(identityFrom(existing, column), stored),
         );
       }
       const updated = await inner.update<T>({ ...data, update: patch });

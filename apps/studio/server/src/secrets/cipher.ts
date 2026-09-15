@@ -95,6 +95,16 @@ export type SecretsCipher = {
  * `split_part(col, ':', 2)` on rows matching `studio-secret:%` — the two agree
  * for every id a keyring can hold, because an id cannot contain a `:`.
  */
+/**
+ * The exact prefix `sealOAuthToken` writes for `keyId`. Exported so the
+ * rotation's SQL can select on the string rather than on a LIKE pattern: a key
+ * id may contain `_`, which LIKE reads as a wildcard, and a selection that
+ * quietly matched one character too many is how a row stays behind.
+ */
+export function sealedOAuthTokenPrefix(keyId: string): string {
+  return `${OAUTH_PREFIX}${keyId}:`;
+}
+
 export function parseOAuthTokenKeyId(stored: string): string | undefined {
   if (!stored.startsWith(OAUTH_PREFIX)) return undefined;
   const rest = stored.slice(OAUTH_PREFIX.length);

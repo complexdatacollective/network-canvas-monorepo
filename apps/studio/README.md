@@ -515,10 +515,11 @@ separate, participant-held, zero-knowledge feature: Studio stores what it
 produces as opaque bytes and has no key for it. It is untouched by any of the
 above.
 
-`src/secrets/exclusion.ts` records the values that must never leave the
-process at all — participant information, API-key asset values, secrets — and
-enforces the asset-key half today, where an assembled protocol document leaves
-the store. The logging, tracing, metrics and analytics half is #1897.
+`src/secrets/exclusion.ts` states, at the top of the file, the values that
+must never leave the process at all — participant information, API-key asset
+values, secrets — and enforces the asset-key half today, where an assembled
+protocol document leaves the store. The logging, tracing, metrics and
+analytics half is #1897.
 
 ### Background work
 

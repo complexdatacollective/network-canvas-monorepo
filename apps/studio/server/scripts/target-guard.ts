@@ -15,12 +15,16 @@ import type { Keyring } from '../src/secrets/keyring.ts';
  * `resolve()` already refuses a `DATABASE_URL` without it (#1900). Narrowing
  * both here rather than in each caller keeps that rule in one place, and means
  * a caller that has a database provably has a keyring for it.
+ *
+ * `local` comes back too, because this is where the question is already
+ * answered: the seed's reproducible nonces are for a local target only, and a
+ * caller re-deriving that would be a second place for the two to disagree.
  */
 export function confirmDestructiveTarget(
   env: StudioEnv,
   force: boolean,
   verb: string,
-): { db: DbEnv; secrets: Keyring; target: string } {
+): { db: DbEnv; secrets: Keyring; target: string; local: boolean } {
   if (!env.db) {
     console.error(`DATABASE_URL is not set; there is no database to ${verb}.`);
     process.exit(1);
@@ -37,7 +41,7 @@ export function confirmDestructiveTarget(
   const url = new URL(env.db.url);
   const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
   if (isLocalDatabase(env.db.url)) {
-    return { db: env.db, secrets: env.secrets, target };
+    return { db: env.db, secrets: env.secrets, target, local: true };
   }
   if (!force) {
     console.error(
@@ -54,5 +58,5 @@ export function confirmDestructiveTarget(
     );
     process.exit(1);
   }
-  return { db: env.db, secrets: env.secrets, target };
+  return { db: env.db, secrets: env.secrets, target, local: false };
 }

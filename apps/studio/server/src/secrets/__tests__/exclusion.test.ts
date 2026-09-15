@@ -1,8 +1,8 @@
-// The #1897 exclusion rule, and the half of it that is enforced in code today
-// (#1900). #1897 extends this file: when logs, spans, metrics, error reports
-// and analytics gain sinks, each one gets its cases here — that participant
-// contact details, asset keys and secrets do not appear in what it emits —
-// against the same `TELEMETRY_EXCLUSIONS` registry the cases below read.
+// The half of the #1897 exclusion rule that is enforced in code today (#1900):
+// an assembled protocol document never leaves the store carrying an API key.
+// #1897 extends this file — when logs, spans, metrics, error reports and
+// analytics gain sinks, each one gets its cases here, against the rule stated
+// at the top of `../exclusion.ts`.
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -17,11 +17,7 @@ import {
   storeDb,
 } from '../../protocol/__tests__/helpers.ts';
 import { ProtocolStore } from '../../protocol/store.ts';
-import {
-  AssetKeyLeakError,
-  assertNoAssetKeyValues,
-  TELEMETRY_EXCLUSIONS,
-} from '../exclusion.ts';
+import { AssetKeyLeakError, assertNoAssetKeyValues } from '../exclusion.ts';
 
 const API_KEY = 'pk.eyJ1IjoiZXhjbHVzaW9uIiwiYSI6Im5vdC1hLXJlYWwta2V5In0';
 const ASSET_ID = 'mapKey';
@@ -34,25 +30,6 @@ function protocolWithKey(): CurrentProtocol {
     },
   } as unknown as CurrentProtocol;
 }
-
-describe('the telemetry exclusion registry', () => {
-  it('names the three kinds the 2026-09-14 ruling settled', () => {
-    expect(TELEMETRY_EXCLUSIONS.map((entry) => entry.kind)).toEqual([
-      'participant-information',
-      'asset-keys',
-      'secrets',
-    ]);
-  });
-
-  it('says where each kind lives and why it is excluded', () => {
-    // The registry is what #1897's sinks will be written against, so an entry
-    // reading only "do not log secrets" would be worth nothing to them.
-    for (const entry of TELEMETRY_EXCLUSIONS) {
-      expect(entry.where.length).toBeGreaterThan(40);
-      expect(entry.why.length).toBeGreaterThan(40);
-    }
-  });
-});
 
 describe('assertNoAssetKeyValues', () => {
   it('passes a document whose apikey assets are redacted', () => {

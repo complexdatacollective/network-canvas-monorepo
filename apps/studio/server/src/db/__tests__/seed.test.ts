@@ -1195,7 +1195,14 @@ describe.skipIf(!db)('seed', () => {
         const { pool, dispose } = await createScratchSchema(db);
         try {
           await provisionScratchSchema(pool);
-          await seed(pool, { secrets: testKeyring(), scale: 'tiny' });
+          // The only thing that makes two dumps comparable: without it the
+          // secret envelopes take fresh CSPRNG nonces, as they do in a
+          // deployment.
+          await seed(pool, {
+            secrets: testKeyring(),
+            scale: 'tiny',
+            reproducible: true,
+          });
           dumps.push(
             await dumpSchemaRows(pool, { omitColumns: IRREPRODUCIBLE }),
           );

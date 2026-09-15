@@ -25,6 +25,43 @@ const db = await reachableDb();
 const SEEDING_TIMEOUT_MS = 360_000;
 
 /**
+ * The base64 renderings of `bytes` at each of the three offsets it could sit
+ * at inside a larger encoded blob.
+ *
+ * Base64 reads its input in three-byte groups, so a secret that starts one or
+ * two bytes into what was encoded produces an entirely different string from
+ * the one `Buffer.toString('base64')` gives — which is the normal case, since
+ * a secret inside a JSON payload or a bytea column is never at offset zero.
+ * Searching only the aligned form passed over exactly the leak this test is
+ * for.
+ *
+ * Each rendering keeps only the characters that depend on the secret alone:
+ * the leading characters that share a six-bit group with the padding bytes are
+ * dropped (none, two and three of them), and so is any trailing partial group,
+ * whose bits would be shared with whatever followed the secret in the real
+ * blob. Hex needs none of this — it is two characters per byte, so it never
+ * straddles a boundary.
+ */
+function base64Alignments(
+  bytes: Buffer,
+  encoding: 'base64' | 'base64url',
+): { label: string; needle: string }[] {
+  const LEADING_CHARS_TO_DROP = [0, 2, 3];
+  return [0, 1, 2].map((offset) => {
+    const encoded = Buffer.concat([Buffer.alloc(offset), bytes]).toString(
+      encoding,
+    );
+    // Four characters per complete three-byte group; anything past them
+    // encodes a group the secret only partly fills.
+    const whole = Math.floor((offset + bytes.length) / 3) * 4;
+    return {
+      label: `${encoding}@${offset}`,
+      needle: encoded.slice(LEADING_CHARS_TO_DROP[offset]!, whole),
+    };
+  });
+}
+
+/**
  * Every rendering of a secret a dump could plausibly hold. A value written
  * straight into a column appears as itself; one that travelled through a JSON
  * payload, a bytea column or an encoded envelope appears as one of the
@@ -35,11 +72,41 @@ function encodings(secret: string): { label: string; needle: string }[] {
   const bytes = Buffer.from(secret, 'utf8');
   return [
     { label: 'plaintext', needle: secret },
-    { label: 'base64', needle: bytes.toString('base64') },
-    { label: 'base64url', needle: bytes.toString('base64url') },
+    ...base64Alignments(bytes, 'base64'),
+    ...base64Alignments(bytes, 'base64url'),
     { label: 'hex', needle: bytes.toString('hex') },
   ];
 }
+
+describe('the needles the dump is searched for', () => {
+  // The helper's own oracle, and the reason the search below can fail: a
+  // needle that did not actually appear in an encoded blob would make every
+  // assertion in this file vacuous, and would fail silently rather than loudly.
+  const secret = 'whsec_2f1c9d0b8a7e6f5d4c3b2a190807f6e5';
+
+  it('finds the secret wherever it sits inside an encoded blob', () => {
+    for (const encoding of ['base64', 'base64url'] as const) {
+      for (const offset of [0, 1, 2, 3, 4, 5]) {
+        const blob = Buffer.concat([
+          Buffer.from('x'.repeat(offset)),
+          Buffer.from(secret),
+          Buffer.from('trailing bytes'),
+        ]).toString(encoding);
+        const needles = base64Alignments(Buffer.from(secret), encoding);
+        expect(
+          needles.some(({ needle }) => blob.includes(needle)),
+          `${encoding} at offset ${offset}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('keeps every needle long enough to mean something', () => {
+    for (const { label, needle } of encodings(secret)) {
+      expect(needle.length, label).toBeGreaterThan(16);
+    }
+  });
+});
 
 describe.skipIf(!db)('a seeded database at rest', () => {
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;

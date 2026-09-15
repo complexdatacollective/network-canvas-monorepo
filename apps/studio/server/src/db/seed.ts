@@ -79,6 +79,19 @@ export type SeedOptions = {
   adminPassword?: string;
   /** Defaults to `demo`. */
   scale?: SeedScale;
+  /**
+   * Draw the secret envelopes' nonces from the pinned PRNG instead of
+   * `crypto.randomBytes`, so two runs write byte-identical rows. Default
+   * false, and set only by the local development paths and by the tests that
+   * compare two dumps.
+   *
+   * Opt-in because the same command can be pointed at a real deployment:
+   * `scripts/seed.ts --force` seals with THAT deployment's keyring, and a
+   * predictable nonce is a broken nonce whatever the plaintext is worth. The
+   * determinism is a convenience for a local dump comparison, so it is asked
+   * for where the target is known to be local rather than taken by default.
+   */
+  reproducible?: boolean;
 };
 
 export type SeedResult = {
@@ -320,15 +333,18 @@ export async function seed(
   const scale = SCALES[options.scale ?? 'demo'];
   faker.seed(FAKER_SEED);
 
-  // The one place in the application that hands the cipher its randomness:
-  // every other caller takes `crypto.randomBytes`, because a nonce that is not
-  // unpredictable is a broken nonce. Here the whole corpus is synthetic and
-  // `seed.test.ts` seeds two scratch schemas and compares ordered dumps of
-  // every table (all but better-auth's scrypt password hash, which no PRNG
-  // seed reaches), so the seed draws its nonces from the same pinned PRNG as
-  // everything else it writes. Nothing sealed here protects anything, and
-  // nothing outside this module may pass `random`.
-  const cipher = createSecretsCipher(options.secrets, { random: seedBytes });
+  // The one place in the application that can hand the cipher its randomness,
+  // and only when the caller asks: every other caller takes `crypto.randomBytes`,
+  // because a nonce that is not unpredictable is a broken nonce. With
+  // `reproducible`, the whole corpus is synthetic and local, and `seed.test.ts`
+  // seeds two scratch schemas and compares ordered dumps of every table (all
+  // but better-auth's scrypt password hash, which no PRNG seed reaches) — so
+  // the seed draws its nonces from the same pinned PRNG as everything else it
+  // writes. Nothing outside this module may pass `random`.
+  const cipher = createSecretsCipher(
+    options.secrets,
+    options.reproducible === true ? { random: seedBytes } : {},
+  );
 
   const client = await pool.connect();
   let totals: SeedTotals;

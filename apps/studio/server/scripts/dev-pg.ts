@@ -216,7 +216,9 @@ async function resetAndSeed(): Promise<void> {
   }
   const pool = createOwnerPool(db);
   try {
-    await resetSchemaAndSeed(pool, { secrets });
+    // The container this script runs is local by construction, so the seed
+    // can take the pinned PRNG's nonces and write the same rows every boot.
+    await resetSchemaAndSeed(pool, { secrets, reproducible: true });
     console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();
