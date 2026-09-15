@@ -13,7 +13,7 @@ import {
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
-import { testKeyring } from './support/secrets.ts';
+import { testCipher, testKeyring } from './support/secrets.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -306,8 +306,11 @@ describe.skipIf(!db)('email/password sign-in', () => {
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
     await seed(scratch.pool, { scale: 'tiny', secrets: testKeyring() });
-    const auth = createBetterAuthService(env.auth, scratch.pool, () =>
-      Promise.resolve(),
+    const auth = createBetterAuthService(
+      env.auth,
+      scratch.pool,
+      () => Promise.resolve(),
+      testCipher(),
     );
     app = createApp(env, { auth });
   }, SEEDING_TIMEOUT_MS);

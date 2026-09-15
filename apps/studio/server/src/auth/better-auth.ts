@@ -9,9 +9,13 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
+import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService } from './service.ts';
 
-// The only module that imports 'better-auth' (#1245).
+// The only module that builds a better-auth instance (#1245). Two siblings
+// take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
+// its password hasher.
 
 /**
  * How a magic link leaves this process. Declared here rather than taken from
@@ -27,15 +31,23 @@ export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
+  secrets: SecretsCipher,
 ) {
+  const adapter = drizzleAdapter(drizzle({ client: pool }), {
+    provider: 'pg',
+    schema: AUTH_TABLES,
+  });
   return betterAuth({
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
-    database: drizzleAdapter(drizzle({ client: pool }), {
-      provider: 'pg',
-      schema: AUTH_TABLES,
-    }),
+    // Wrapped so `account`'s OAuth tokens are sealed in the database and
+    // opened on the way out (#1900); `account.encryptOAuthTokens` stays unset
+    // because it would seal with BETTER_AUTH_SECRET, unrotatable and bound to
+    // no row. Composed here, at the factory, so the wrapper is the adapter
+    // better-auth resolves for every path including its transactions.
+    database: (options: Parameters<typeof adapter>[0]) =>
+      withSecretsAdapter(adapter(options), secrets),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],
@@ -158,8 +170,9 @@ export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
+  secrets: SecretsCipher,
 ): AuthService {
-  const auth = createBetterAuthInstance(env, pool, sendMagicLink);
+  const auth = createBetterAuthInstance(env, pool, sendMagicLink, secrets);
   const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),

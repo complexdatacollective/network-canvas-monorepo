@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { contract } from '@codaco/studio-rpc';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import {
   sourceTokens,
   tokenName,
@@ -296,7 +297,12 @@ describe('audit mutation policy', () => {
       socialProviders: {},
     };
     try {
-      const auth = createBetterAuthInstance(env, pool, () => Promise.resolve());
+      const auth = createBetterAuthInstance(
+        env,
+        pool,
+        () => Promise.resolve(),
+        testCipher(),
+      );
       const plugin = auth.options.plugins?.find(
         (candidate) => candidate.id === 'organization',
       );
@@ -432,6 +438,14 @@ describe('audit mutation policy', () => {
         { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/audit/transaction.ts': [
+        { member: 'transaction', form: 'call', line: 0 },
+      ],
+      // Not a tenant transaction: this is better-auth's own adapter handing
+      // out a scoped adapter, which the secrets wrapper re-wraps so the
+      // account writes inside an OAuth sign-up are sealed like every other
+      // one (#1900). The oracle matches `.transaction` on any receiver on
+      // purpose, so a non-tenant one is listed here rather than exempted.
+      'apps/studio/server/src/auth/secrets-adapter.ts': [
         { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/db/schema.ts': [
