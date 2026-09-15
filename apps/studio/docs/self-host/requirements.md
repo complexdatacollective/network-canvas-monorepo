@@ -19,7 +19,7 @@ are generated from the server's environment catalogue and stay current with it.
 | Memory   | 2 GB    | 4 GB         |
 | Disk     | 20 GB   | 40 GB and up |
 
-**Memory.** The nine containers use about **750 MB** between them with the
+**Memory.** The seven long-running containers use about **750 MB** between them with the
 instance idle: roughly 240 MB each for `api` and `worker` (Node), 130 MB for
 `traefik`, 105 MB for `postgres`, and under 20 MB each for `web`, `valkey` and
 `garage`. 2 GB leaves the rest for Postgres's cache and concurrent interviews;
@@ -177,7 +177,7 @@ The commands Studio issues:
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Directly                                     | `EVAL`, `SCAN`, `PING`                                                                   |
 | Inside the sliding-window script             | `TIME`, `ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE … WITHSCORES`, `ZADD`, `PEXPIRE`, `HINCRBY` |
-| Inside the denial-window and summary scripts | `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                                 |
+| Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
 
 Server-side scripting must be available: atomicity is the script, which is what
 makes the answer the same whether one API container is running or two. Each

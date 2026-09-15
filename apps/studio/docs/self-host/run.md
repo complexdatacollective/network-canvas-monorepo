@@ -20,7 +20,7 @@ curl -o .env https://raw.githubusercontent.com/complexdatacollective/network-can
 
 ## 2. Fill in `.env`
 
-Open it: every variable is there with a comment saying what it is. Six need a
+Open it: every variable is there with a comment saying what it is. Seven need a
 value from you, and five of those are generated.
 
 **The hostname and the certificate contact.** `STUDIO_HOSTNAME` must already
@@ -85,9 +85,9 @@ so a file written by a shell redirection is fine.
 
 `studio-secrets-key` is the **keyring** every stored secret is encrypted under:
 one or more `id:base64(32 bytes)` entries, separated by commas or newlines, the
-first being the current one. The `k1` above is the entry's id — any label of
-letters, digits, `.`, `_` and `-` that you will recognise later, and never
-containing a `:`. Rotation adds a second entry at the front; one is what you
+first being the current one. The `k1` above is the entry's id — a label of up to
+64 letters, digits, `.`, `_` and `-`, starting with a letter or digit, that you
+will recognise later; it never contains a `:`. Rotation adds a second entry at the front; one is what you
 start with. The reader that uses it lands with
 [#1900](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1900)
 (PR
