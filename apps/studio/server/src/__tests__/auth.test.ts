@@ -6,7 +6,6 @@ import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { resolve } from '../env/resolve.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -140,7 +139,6 @@ describe('unconfigured auth', () => {
     // No database, so nothing to hold a secret and nothing to encrypt it with.
     secrets: undefined,
     redis: undefined,
-    rateLimits: resolve({}).rateLimits,
     trustedProxies: undefined,
     devDefaults: false,
     telemetry: true,
@@ -290,6 +288,9 @@ describe.skipIf(!db)('email/password sign-in', () => {
   // hung, not one sharing a machine.
   const SEEDING_TIMEOUT_MS = 180_000;
 
+  /** Well past what this file asks for, so repeated local runs never meet it. */
+  const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
+
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
   let app: ReturnType<typeof createApp>;
 
@@ -317,7 +318,15 @@ describe.skipIf(!db)('email/password sign-in', () => {
       () => Promise.resolve(),
       testCipher(),
     );
-    app = createApp(env, { auth });
+    // Every case here signs the one seeded account in, so they all count
+    // against one `sign_in_email` bucket — and the shipped limit is five in
+    // ten minutes, which a developer re-running this file would reach on the
+    // third run. The limiter is not what this file is about, so it states a
+    // limit of its own rather than sharing the constant's window (#1909).
+    app = createApp(env, {
+      auth,
+      limits: { sign_in_email: SIGN_IN_ALLOWANCE },
+    });
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {

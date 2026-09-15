@@ -9,15 +9,14 @@ import {
   withStore,
 } from '../../__tests__/support/valkey.ts';
 import { resolve } from '../../env/resolve.ts';
-import type { RawEnv } from '../../env/variables.ts';
 import {
   createRateLimiter,
   DENIED_SCOPE_COUNTS_KEY,
 } from '../../rate-limit.ts';
 import {
   RATE_LIMIT_SCOPES,
-  type RateLimitRule,
-  type RateLimitScope,
+  RATE_LIMITS,
+  type RateLimitSettings,
 } from '../scopes.ts';
 
 // The limiter module itself (#1909). The request paths that use it are in
@@ -27,26 +26,14 @@ import {
 const url = await reachableRedis(REDIS_DATABASES.limiter);
 
 /**
- * A different limit per scope, so that reading one scope's variable into
- * another would fail rather than pass by coincidence. The maxima are also what
- * the trip cases below count to.
+ * A limit per scope, small enough to count to and different in every scope, so
+ * that a limiter applying one scope's rule to another would fail here rather
+ * than pass by coincidence. The maxima are what the trip cases below count to.
+ *
+ * Injected in code, because that is the only way a limit is ever anything but
+ * its constant: there is no environment variable behind any of these (#1909).
  */
-const LIMITS: RawEnv = {
-  RATE_LIMIT_SIGN_IN_ADDRESS: '1/1m',
-  RATE_LIMIT_SIGN_IN_EMAIL: '2/1m',
-  RATE_LIMIT_INVITATION_ACCEPT: '3/1m',
-  RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS: '4/1m',
-  RATE_LIMIT_PARTICIPANT_REDEEM_LINK: '5/1m',
-  RATE_LIMIT_PARTICIPANT_SYNC: '6/1m',
-  RATE_LIMIT_RPC_USER: '7/1m',
-  RATE_LIMIT_RPC_TEAM: '8/1m',
-  RATE_LIMIT_STORAGE_READ: '9/1m',
-  RATE_LIMIT_PUBLIC_API: '10/1m',
-  RATE_LIMIT_WS_UPGRADE: '11/1m',
-};
-
-/** What each of those means, written out rather than parsed again here. */
-const EXPECTED: Record<RateLimitScope, RateLimitRule> = {
+const INJECTED: RateLimitSettings = {
   sign_in_address: { max: 1, windowMs: 60_000 },
   sign_in_email: { max: 2, windowMs: 60_000 },
   invitation_accept: { max: 3, windowMs: 60_000 },
@@ -60,13 +47,13 @@ const EXPECTED: Record<RateLimitScope, RateLimitRule> = {
   ws_upgrade: { max: 11, windowMs: 60_000 },
 };
 
-function limiterWith(overrides: RawEnv = {}) {
+function limiterWith(limits: Partial<RateLimitSettings> = {}) {
   return createRateLimiter(
     resolve({
       NODE_ENV: 'test',
       ...(url ? { REDIS_URL: url } : {}),
-      ...overrides,
     }),
+    limits,
   );
 }
 
@@ -74,11 +61,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('the catalogue variables', () => {
-  it('configure one scope each', () => {
-    // A scope reading the wrong variable is a limit nobody can change; every
-    // value here is distinct so that mistake cannot look like a pass.
-    expect(limiterWith(LIMITS).rules).toEqual(EXPECTED);
+describe('the limits a process enforces', () => {
+  it('are the constants when nothing is injected', () => {
+    // Which is every deployment: `limits` is a test seam, and there is nothing
+    // else left for a limit to come from now the variables are gone.
+    expect(limiterWith().rules).toEqual(RATE_LIMITS);
+  });
+
+  it('are a positive count over a whole number of seconds', () => {
+    // What the removed `count/window` pattern used to refuse on the way in: a
+    // window of `10` meaning ten milliseconds rather than ten minutes, or a
+    // count of zero refusing everybody. Written as numbers those are a typo
+    // away and nothing else in the system would notice.
+    const wrong = RATE_LIMIT_SCOPES.filter((scope) => {
+      const { max, windowMs } = RATE_LIMITS[scope];
+      return max < 1 || windowMs < 1_000 || windowMs % 1_000 !== 0;
+    });
+    expect(wrong).toEqual([]);
+  });
+
+  it('take an injected limit for the scope it names, and no other', () => {
+    const rules = limiterWith({ rpc_user: { max: 2, windowMs: 60_000 } }).rules;
+    expect(rules.rpc_user).toEqual({ max: 2, windowMs: 60_000 });
+    expect(rules.rpc_team).toEqual(RATE_LIMITS.rpc_team);
+    expect(rules.sign_in_address).toEqual(RATE_LIMITS.sign_in_address);
   });
 });
 
@@ -86,9 +92,9 @@ describe.skipIf(!url)('the limiter against a real store', () => {
   it.each(RATE_LIMIT_SCOPES)(
     'lets %s through to its limit and refuses the next call',
     async (scope) => {
-      const limiter = limiterWith(LIMITS);
+      const limiter = limiterWith(INJECTED);
       const subject = `${scope}-${randomUUID()}`;
-      const { max } = EXPECTED[scope];
+      const { max } = INJECTED[scope];
 
       for (let call = 0; call < max; call += 1) {
         expect(await limiter.check(scope, subject)).toEqual({ allowed: true });
@@ -112,7 +118,7 @@ describe.skipIf(!url)('the limiter against a real store', () => {
 
   it('never puts a subject in the store in clear', async () => {
     if (!url) throw new Error('unreachable: the probe guaranteed a store');
-    const limiter = limiterWith(LIMITS);
+    const limiter = limiterWith(INJECTED);
     const email = `researcher-${randomUUID()}@example.org`;
     expect(await limiter.check('sign_in_email', email)).toEqual({
       allowed: true,
@@ -138,7 +144,9 @@ describe.skipIf(!url)('the limiter against a real store', () => {
     // A delta, because the cases above have denied calls of their own: what is
     // being asserted is that one denial adds one, in this scope and no other.
     const before = await read();
-    const limiter = limiterWith({ RATE_LIMIT_PARTICIPANT_SYNC: '1/1m' });
+    const limiter = limiterWith({
+      participant_sync: { max: 1, windowMs: 60_000 },
+    });
     const subject = `session-${randomUUID()}`;
     await limiter.check('participant_sync', subject);
     await limiter.check('participant_sync', subject);
@@ -156,8 +164,8 @@ describe.skipIf(!url)('the limiter against a real store', () => {
     // containers are two of these, and the count they read is one count.
     // src/__tests__/rate-limit-processes.test.ts proves the same with two
     // operating-system processes.
-    const first = limiterWith({ RATE_LIMIT_RPC_USER: '2/1m' });
-    const second = limiterWith({ RATE_LIMIT_RPC_USER: '2/1m' });
+    const first = limiterWith({ rpc_user: { max: 2, windowMs: 60_000 } });
+    const second = limiterWith({ rpc_user: { max: 2, windowMs: 60_000 } });
     const subject = `user-${randomUUID()}`;
 
     expect(await first.check('rpc_user', subject)).toEqual({ allowed: true });
@@ -180,11 +188,8 @@ describe('the limiter with no store to reach', () => {
     const closed = `redis://127.0.0.1:${await freePort()}`;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const limiter = createRateLimiter(
-      resolve({
-        NODE_ENV: 'test',
-        REDIS_URL: closed,
-        RATE_LIMIT_RPC_USER: '1/1m',
-      }),
+      resolve({ NODE_ENV: 'test', REDIS_URL: closed }),
+      { rpc_user: { max: 1, windowMs: 60_000 } },
     );
 
     const subject = `user-${randomUUID()}`;

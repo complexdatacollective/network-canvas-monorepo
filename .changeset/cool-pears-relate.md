@@ -10,8 +10,8 @@ Every surface is limited: sign-in per client address and per email address,
 invitation acceptance per token, internal RPC per user and per team, storage
 reads, the public data API per token, and WebSocket upgrades per user. Limits
 for participant redemption and interview sync are declared and take effect
-with the participant routes. Each is one `RATE_LIMIT_*` variable written as
-`count/window`, and each is documented in the environment catalogue.
+with the participant routes. Each limit is a constant in the server's
+`rate-limit/scopes.ts`, with its count, its window, and why that number.
 
 A refused request answers 429 with `Retry-After` and problem JSON. Addresses
 and email addresses are hashed before they are used as keys, and a refusal is

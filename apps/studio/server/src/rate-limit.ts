@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type { StudioEnv } from './env.ts';
 import {
+  RATE_LIMITS,
   type RateLimitRule,
   type RateLimitScope,
   type RateLimitSettings,
@@ -170,9 +171,18 @@ let warnedAboutNoStore = false;
  * The limiter this process uses. There is one store per process (see
  * `getRateLimitStore`), so calling this more than once — every `createApp` in
  * the suites does — costs a closure rather than a connection.
+ *
+ * @param limits scopes to enforce something other than their constant for.
+ * Every scope left out keeps the number in `rate-limit/scopes.ts`, which is
+ * what every deployment runs: nothing in the environment can reach this, and
+ * the only callers that pass anything are the suites that have to trip a limit
+ * without making a thousand requests to do it.
  */
-export function createRateLimiter(env: StudioEnv): RateLimiter {
-  const settings: RateLimitSettings = env.rateLimits;
+export function createRateLimiter(
+  env: StudioEnv,
+  limits: Partial<RateLimitSettings> = {},
+): RateLimiter {
+  const settings: RateLimitSettings = { ...RATE_LIMITS, ...limits };
   const store: RateLimitStore | undefined = env.redis
     ? getRateLimitStore(env.redis)
     : undefined;

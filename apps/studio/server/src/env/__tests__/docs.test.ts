@@ -67,6 +67,23 @@ describe('the catalogue itself', () => {
     }
   });
 
+  it('offers no rate-limit knob', () => {
+    // The limits are constants in src/rate-limit/scopes.ts (#1909, the ruling
+    // of 2026-09-15). A `RATE_LIMIT_*` variable reappearing here would put the
+    // eleven settings back into .env.example, the README table and the
+    // self-host guide, where the whole point is that a deployment cannot raise
+    // a security default without changing code. `REDIS_URL` — where the
+    // counters live — is the one thing in this group that is configuration.
+    expect(
+      Object.keys(CATALOGUE).filter((name) => name.startsWith('RATE_LIMIT_')),
+    ).toEqual([]);
+    expect(
+      Object.entries(CATALOGUE)
+        .filter(([, doc]) => doc.group === 'Rate limiting')
+        .map(([name]) => name),
+    ).toEqual(['REDIS_URL']);
+  });
+
   it('omits the development marker from the deployer template', () => {
     // Setting it in a deployment is refused at boot; suggesting it would be
     // an invitation to do exactly that.

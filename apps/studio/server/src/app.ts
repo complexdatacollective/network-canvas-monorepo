@@ -42,6 +42,7 @@ import {
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRateLimiter } from './rate-limit.ts';
+import type { RateLimitSettings } from './rate-limit/scopes.ts';
 import { createRpcRouter } from './rpc.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
@@ -143,6 +144,14 @@ type CreateAppDeps = {
    */
   jobs?: JobClient;
   pool?: pg.Pool;
+  /**
+   * Scopes this app enforces something other than their constant for. A
+   * deployment never passes it — the limits are the constants in
+   * `rate-limit/scopes.ts` and there is no way to configure them — and the
+   * suites do, because tripping a real limit through the request path would
+   * otherwise mean two thousand requests to `/storage`.
+   */
+  limits?: Partial<RateLimitSettings>;
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
@@ -151,7 +160,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Every limit this process enforces, counted in the shared store (#1909).
   // Built before anything is mounted because better-auth's own sign-in limiter
   // stores its counters through it too.
-  const limiter = createRateLimiter(env);
+  const limiter = createRateLimiter(env, deps.limits);
   const trustedProxies = createTrustedProxies(env.trustedProxies);
 
   // Unexpected failures on the machine surfaces (e.g. the database down
