@@ -400,9 +400,14 @@ everything else in the same dialog was translated. Neither guard could see it:
 a string with no descriptor behind it is invisible to `checkFullLocale`, to the
 attribute scan and to the sweeps alike. The kinds of answer are now named by
 the same `codebookVariable.type*` descriptors the codebook editor uses — moved
-into `codebook/variableTypeLabels.ts` so the two surfaces read one list — and
-the input controls have their own `formFields.control*` names, following
-Architect's own long-standing wording for the same controls.
+into `codebook/variableTypeLabels.ts` so the two surfaces read one list, and
+read here as the heading over each group of input controls — and the input
+controls have their own `formFields.control*` names, which are Architect's own
+long-standing names for the same controls (`TextInput`, `BooleanChoice`,
+`ToggleButtonGroup`) with their words separated. Descriptive paraphrases were
+tried in their place and reverted: they broke the correspondence between what
+the dialog offers, what the documentation calls the control, and what a
+protocol file spells it.
 
 The RESOURCE half of `schemaProblem` — what a researcher is told about a stored
 resource entry the asset schema refuses — is declared in `form/schemaProblems.ts`

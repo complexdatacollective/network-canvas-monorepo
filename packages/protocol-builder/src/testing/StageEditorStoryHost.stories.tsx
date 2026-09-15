@@ -208,7 +208,7 @@ export const ACollaboratorRevisesTheCodebook: Story = {
     });
     await expect(
       await canvas.findByText(
-        exactlyText('Text attribute using Text input input control'),
+        exactlyText('Text attribute using Text Input input control'),
       ),
     ).toBeInTheDocument();
 
@@ -226,7 +226,7 @@ export const ACollaboratorRevisesTheCodebook: Story = {
     // Their change, on screen, without this editor having asked for it.
     await expect(
       await canvas.findByText(
-        exactlyText('Text attribute using Text area input control'),
+        exactlyText('Text attribute using Text Area input control'),
       ),
     ).toBeInTheDocument();
 

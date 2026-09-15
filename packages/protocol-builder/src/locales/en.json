@@ -1667,6 +1667,14 @@
     "defaultMessage": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
     "description": "Guidance under the input-control field, ending in a link to the documentation page about input controls. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together."
   },
+  "protocolBuilder.formFields.componentInventsHint": {
+    "defaultMessage": "How the answer is collected, and what kind of answer the new attribute will hold. Every control a form can offer is listed, grouped by the kind each one collects. For detailed information about these options, see our <link>documentation</link>.",
+    "description": "Guidance under the input-control field while the field is inventing the attribute it collects. Replaces the ordinary guidance, which says nothing about the kind: there is no attribute yet to narrow the list by, and the control chosen here is what decides what kind of answer the attribute records. Ends in a link to the documentation page about input controls."
+  },
+  "protocolBuilder.formFields.componentInventsRequired": {
+    "defaultMessage": "Choose how the participant answers this question.",
+    "description": "Refusal shown under the input-control field when a researcher saves a field that is inventing its attribute without having chosen a control. Only an invented attribute can reach this: an attribute that already exists arrives with a control already chosen."
+  },
   "protocolBuilder.formFields.componentLabel": {
     "defaultMessage": "Input control",
     "description": "Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons."
@@ -1676,56 +1684,56 @@
     "description": "Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute."
   },
   "protocolBuilder.formFields.controlBoolean": {
-    "defaultMessage": "Yes or no buttons",
-    "description": "Choice offered for the control a participant answers with: a pair of buttons for a true or false answer."
+    "defaultMessage": "Boolean Choice",
+    "description": "Choice offered for the control a participant answers with: a pair of buttons for a true or false answer. Architect names this control BooleanChoice; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlCheckboxGroup": {
-    "defaultMessage": "Checkbox group",
-    "description": "Choice offered for the control a participant answers with: a list of options of which they may pick several."
+    "defaultMessage": "Checkbox Group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they may pick several. Architect names this control CheckboxGroup; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlDatePicker": {
-    "defaultMessage": "Date picker",
-    "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
+    "defaultMessage": "Date Picker",
+    "description": "Choice offered for the control a participant answers with: a calendar they choose a date from. Architect names this control DatePicker; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlLandedElsewhere": {
     "defaultMessage": "The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.",
     "description": "Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated."
   },
   "protocolBuilder.formFields.controlLikertScale": {
-    "defaultMessage": "Likert scale",
-    "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other."
+    "defaultMessage": "Likert Scale",
+    "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other. Architect names this control LikertScale; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlNumber": {
-    "defaultMessage": "Number input",
-    "description": "Choice offered for the control a participant answers with: a box that takes a number."
+    "defaultMessage": "Number Input",
+    "description": "Choice offered for the control a participant answers with: a box that takes a number. Architect names this control NumberInput; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlRadioGroup": {
-    "defaultMessage": "Radio group",
-    "description": "Choice offered for the control a participant answers with: a list of options of which they pick one."
+    "defaultMessage": "Radio Group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they pick one. Architect names this control RadioGroup; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlRelativeDatePicker": {
-    "defaultMessage": "Relative date picker",
-    "description": "Choice offered for the control a participant answers with: a date chosen as a number of days before or after another date."
+    "defaultMessage": "Relative Date Picker",
+    "description": "Choice offered for the control a participant answers with: a date chosen as a number of days before or after another date. Architect names this control RelativeDatePicker; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlText": {
-    "defaultMessage": "Text input",
-    "description": "Choice offered for the control a participant answers with: a single-line box they type into."
+    "defaultMessage": "Text Input",
+    "description": "Choice offered for the control a participant answers with: a single-line box they type into. Architect names this control TextInput; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlTextArea": {
-    "defaultMessage": "Text area",
-    "description": "Choice offered for the control a participant answers with: a large box for several lines of text."
+    "defaultMessage": "Text Area",
+    "description": "Choice offered for the control a participant answers with: a large box for several lines of text. Architect names this control TextArea; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlToggle": {
     "defaultMessage": "Toggle",
-    "description": "Choice offered for the control a participant answers with: a single switch they turn on or off."
+    "description": "Choice offered for the control a participant answers with: a single switch they turn on or off. Architect names this control Toggle, which is one word, so the label is that name unchanged."
   },
   "protocolBuilder.formFields.controlToggleButtonGroup": {
-    "defaultMessage": "Toggle button group",
-    "description": "Choice offered for the control a participant answers with: a row of buttons of which they may turn on several."
+    "defaultMessage": "Toggle Button Group",
+    "description": "Choice offered for the control a participant answers with: a row of buttons of which they may turn on several. Architect names this control ToggleButtonGroup; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.controlVisualAnalogScale": {
-    "defaultMessage": "Visual analogue scale",
-    "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
+    "defaultMessage": "Visual Analog Scale",
+    "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line. Architect names this control VisualAnalogScale; the label is that name with its words separated."
   },
   "protocolBuilder.formFields.createWithSettingsFirst": {
     "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
@@ -1807,21 +1815,9 @@
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
     "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
   },
-  "protocolBuilder.formFields.newTypeHint": {
-    "defaultMessage": "What this attribute holds. It cannot be changed once answers have been collected.",
-    "description": "Guidance under the kind-of-answer control."
-  },
-  "protocolBuilder.formFields.newTypeLabel": {
-    "defaultMessage": "Kind of answer",
-    "description": "Label of the control choosing what sort of value a new attribute holds — text, a number, a date, a choice from a list."
-  },
   "protocolBuilder.formFields.newTypeNotice": {
     "defaultMessage": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
     "description": "Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated."
-  },
-  "protocolBuilder.formFields.newTypeRequired": {
-    "defaultMessage": "Choose what kind of answer this attribute holds.",
-    "description": "Refusal shown under the kind-of-answer control when nothing has been chosen."
   },
   "protocolBuilder.formFields.previewMissing": {
     "defaultMessage": "This attribute is no longer in the codebook.",

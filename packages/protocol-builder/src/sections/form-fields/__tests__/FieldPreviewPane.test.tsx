@@ -214,7 +214,6 @@ describe('FieldPreviewPane', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
-      _newVariableType: 'text',
       _component: 'Text',
     });
 
@@ -262,7 +261,6 @@ describe('FieldPreviewPane', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
-      _newVariableType: 'text',
       _component: 'Text',
       prompt: 'Research_Question_Á1',
     });
@@ -332,10 +330,12 @@ describe('FieldPreviewPane', () => {
     ).toBeVisible();
   });
 
-  it('previews the answer the chosen control collects when no kind has been chosen', () => {
-    // An invented attribute whose kind the row does not hold: the control
-    // itself says what the attribute will collect, because every control
-    // belongs to exactly one kind of answer.
+  it('reads an invented attribute’s kind off the control and nothing else', () => {
+    // The row holds no kind of answer at all — there is no such key, and the
+    // dialog never asks — so the control is the whole of what the preview has
+    // to go on. Two rows alike in every other respect, and the participant
+    // meets a different kind of answer in each: the pairing the interview
+    // resolves is coming from the control alone.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
@@ -345,6 +345,24 @@ describe('FieldPreviewPane', () => {
 
     expect(
       screen.getByRole('textbox', { name: 'Research_Question_Á2' }),
+    ).toBeVisible();
+    // Not a number: a `text` attribute is what `Text` makes, and nothing here
+    // could have said so but the control.
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Research_Question_Á2' }),
+    ).not.toBeInTheDocument();
+
+    cleanup();
+
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'Nickname',
+      _component: 'Number',
+      prompt: 'Research_Question_Á2',
+    });
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Research_Question_Á2' }),
     ).toBeVisible();
   });
 
@@ -364,7 +382,8 @@ describe('FieldPreviewPane', () => {
     // would be right; throwing on `options.map` would not.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
-      _newVariableType: 'ordinal',
+      // A list of answers is what `RadioGroup` collects, and the row says so by
+      // naming that control: the kind is never written beside it.
       _component: 'RadioGroup',
       prompt: 'How often?',
     });
@@ -511,10 +530,12 @@ describe('FieldPreviewPane', () => {
   });
 
   it('previews a composer’s invented attribute from the control it chose', () => {
-    // The composer's row is never asked for a kind of answer: the input
-    // control is the question, so the control alone says what the participant
-    // will meet. Nothing writes `_newVariableType` here, which is exactly what
-    // separates this row from the form family's invention.
+    // No row of either family is asked for a kind of answer: the input control
+    // is the question, so the control alone says what the participant will
+    // meet. The composer's row differs only in WHERE it keeps that control —
+    // its own `component`, rather than the `_component` the form family's
+    // dialog writes to the codebook — and this pins that the composer reads
+    // its own key.
     renderPreview(
       {
         variable: CREATE_NEW_ATTRIBUTE,

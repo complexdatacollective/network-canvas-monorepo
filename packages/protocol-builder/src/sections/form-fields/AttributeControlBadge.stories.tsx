@@ -88,7 +88,7 @@ export const EveryType: Story = {
     // Named, because a badge that rendered nothing would pass the contrast
     // check this story exists for.
     await expect(
-      await badgeSaying('Text attribute using Text input input control'),
+      await badgeSaying('Text attribute using Text Input input control'),
     ).toBeVisible();
     await expect(
       await badgeSaying(

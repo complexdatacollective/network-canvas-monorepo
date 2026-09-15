@@ -221,23 +221,30 @@ describe('the form-fields section, read in Spanish', () => {
     // it is broken across elements and no single text node carries it.
     expect(
       screen.getByText(
-        exactlyText('Atributo de tipo Texto con control Campo de texto'),
+        exactlyText('Atributo de tipo Texto con control Entrada de texto'),
       ),
     ).toBeVisible();
   });
 
   /**
-   * The one decision this section exists to ask, and the control that follows
-   * from it.
+   * The one decision this section exists to ask, and the groups it is read
+   * under.
    *
-   * Both used to be labelled with the schema's own tokens — `text`,
-   * `datetime`, `RelativeDatePicker` — in every language, while everything
-   * else in the same dialog was translated. No guard in the package could see
-   * it: a string with no descriptor behind it is invisible to `checkFullLocale`,
-   * to the copy scan and to the sweep alike, which is why the whole list is
-   * read here rather than one entry of it.
+   * The input control IS that decision — this dialog asks for no kind of
+   * answer, because every control collects exactly one kind — and its list
+   * used to be labelled with the schema's own tokens, `RelativeDatePicker` and
+   * `VisualAnalogScale`, in every language while everything else in the same
+   * dialog was translated. No guard in the package could see it: a string with
+   * no descriptor behind it is invisible to `checkFullLocale`, to the copy
+   * scan and to the sweep alike, which is why the whole list is read here
+   * rather than one entry of it.
+   *
+   * The group headings are read with it. They are the kinds of answer, named
+   * by the same descriptors the codebook editor names them by, and they are
+   * the only thing on this surface that tells a researcher what the control
+   * they are about to choose will make the attribute.
    */
-  it('names every kind of answer and every input control', async () => {
+  it('names every input control, under the kind of answer each one collects', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       locale: 'es',
@@ -252,15 +259,18 @@ describe('the form-fields section, read in Spanish', () => {
     const dialog = asDialog(await screen.findByRole('dialog'));
     await inventThroughThePicker(harness, dialog, 'apodo');
 
-    const kind = await dialog.findByRole('combobox', {
-      name: 'Tipo de respuesta',
+    const control = await dialog.findByRole('combobox', {
+      name: 'Control de entrada',
     });
-    expect(
-      within(kind)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual([
-      'Selecciona una opción…',
+    // Unanswered, because answering it is the decision: a control chosen for
+    // the researcher would decide what the attribute holds for them.
+    expect(control).toHaveValue('');
+
+    // Real `<optgroup>`s rather than disabled rows standing in for headings,
+    // which is what makes these announced as groups rather than as seven more
+    // things a researcher could pick.
+    const groups = within(control).getAllByRole('group');
+    expect(groups.map((group) => group.getAttribute('label'))).toEqual([
       'Texto',
       'Número',
       'Booleano',
@@ -269,44 +279,28 @@ describe('the form-fields section, read in Spanish', () => {
       'Escalar',
       'Fecha',
     ]);
-
-    // And the controls each kind can be collected with, which read
-    // `DatePicker` / `RelativeDatePicker` / `VisualAnalogScale` to every
-    // reader. Read per kind rather than once, because the list the control
-    // offers is what the kind decides.
-    const controlsFor = async (type: string) => {
-      await harness.user.selectOptions(kind, type);
-      const control = await dialog.findByRole('combobox', {
-        name: 'Control de entrada',
-      });
-      return (
-        within(control)
+    expect(
+      groups.map((group) =>
+        within(group)
           .getAllByRole('option')
-          .map((option) => option.textContent)
-          // The select keeps its placeholder while the kind it was answering
-          // for has been replaced; the controls are what is being read here.
-          .filter((label) => label !== 'Selecciona una opción…')
-      );
-    };
-
-    expect(await controlsFor('datetime')).toEqual([
-      'Selector de fecha',
-      'Selector de fecha relativa',
-    ]);
-    expect(await controlsFor('text')).toEqual([
-      'Campo de texto',
-      'Área de texto',
-    ]);
-    expect(await controlsFor('number')).toEqual(['Campo numérico']);
-    expect(await controlsFor('boolean')).toEqual([
-      'Botones de sí o no',
-      'Interruptor',
+          .map((option) => option.textContent),
+      ),
+    ).toEqual([
+      ['Entrada de texto', 'Área de texto'],
+      ['Entrada numérica'],
+      ['Elección booleana', 'Interruptor'],
+      ['Grupo de opciones', 'Escala Likert'],
+      ['Grupo de casillas', 'Grupo de botones conmutables'],
+      ['Escala analógica visual'],
+      ['Selector de fecha', 'Selector de fecha relativa'],
     ]);
 
-    // A scale is not invented from a name and a kind — its two end labels are
-    // part of it — so choosing that kind offers the codebook editor instead of
-    // a control to pick, and both sentences that say so are read here.
-    await harness.user.selectOptions(kind, 'scalar');
+    // A scale is not invented from a name and a control — its two end labels
+    // are part of it — so choosing the control that collects one offers the
+    // codebook editor as well, and both sentences that say so are read here.
+    // The control stays on screen: it is what the researcher would change to
+    // invent something else instead.
+    await harness.user.selectOptions(control, 'VisualAnalogScale');
     expect(
       await dialog.findByRole('button', {
         name: 'Crear este atributo y lo que acepta',
@@ -318,12 +312,12 @@ describe('the form-fields section, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      dialog.queryByRole('combobox', { name: 'Control de entrada' }),
-    ).toBeNull();
+      dialog.getByRole('combobox', { name: 'Control de entrada' }),
+    ).toBeInTheDocument();
 
-    // The control a scale IS collected with still has to be named, so it is
-    // read from a scale the codebook already holds — which is the only place
-    // that list appears now.
+    // And the same list narrowed, for a scale the codebook already holds: a
+    // bound attribute's kind cannot change, so only its own controls are
+    // offered.
     seedPersonVariables(harness, {
       closeness: {
         name: 'closeness',
@@ -563,8 +557,8 @@ const inventAttribute = async (
   );
   await inventThroughThePicker(harness, dialog, attributeName);
   await harness.user.selectOptions(
-    await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
-    'text',
+    await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+    'Text',
   );
   await writeQuestion(harness, dialog, '¿Cómo lo llaman?');
   await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
@@ -629,26 +623,28 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     // The name was given to the window's create row, in Spanish, which leaves
-    // the kind of answer as the only thing the row is still missing.
+    // the input control as the only thing the row is still missing — and it is
+    // the only thing it CAN still be missing, because the kind of answer
+    // follows from it rather than being asked for beside it.
     await inventThroughThePicker(harness, dialog, 'apodo');
 
     expect(
-      await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
     ).toBeInTheDocument();
 
     await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
 
     expect(
       await dialog.findByText(
-        'Elige qué tipo de respuesta contiene este atributo.',
+        'Elige cómo responde el participante a esta pregunta.',
       ),
     ).toBeInTheDocument();
   });
 
   /**
    * A categorical attribute IS its list of answers, so it cannot be made from
-   * a name and a kind — and the sentence that says so has to say what to press
-   * instead, which is the button beside it.
+   * a name and a control — and the sentence that says so has to say what to
+   * press instead, which is the button beside it.
    */
   it('explains why an attribute with values is made elsewhere, and refuses a field that skipped it', async () => {
     const harness = alterFormInSpanish();
@@ -657,9 +653,11 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
+    // The control is what says this is a list of answers; nothing else on the
+    // row is asked for a kind.
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
-      'categorical',
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+      'CheckboxGroup',
     );
 
     expect(
@@ -688,9 +686,11 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
+    // The control is what says this is a list of answers; nothing else on the
+    // row is asked for a kind.
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
-      'categorical',
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+      'CheckboxGroup',
     );
     await harness.user.click(
       dialog.getByRole('button', { name: 'Crear este atributo y sus valores' }),

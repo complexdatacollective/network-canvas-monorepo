@@ -1833,11 +1833,14 @@ describe('what a family member form field’s attribute holds', () => {
     await within(attributeField('Attribute', dialog)).findByText(
       'household_role',
     );
-    // An attribute participants choose from IS its values, so a name is not
-    // enough: the row sends the researcher to the editor that authors both.
+    // The input control is the only thing this row asks about the attribute,
+    // and it is what decides the kind: a checkbox group collects a categorical
+    // answer. An attribute participants choose from IS its values, so a name
+    // and a control are not enough — the row sends the researcher to the
+    // editor that authors both.
     await harness.user.selectOptions(
-      await field.findByRole('combobox', { name: 'Kind of answer' }),
-      'categorical',
+      await field.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
     );
     await harness.user.click(
       field.getByRole('button', {

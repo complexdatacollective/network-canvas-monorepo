@@ -101,7 +101,7 @@ import {
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
 import {
-  ALL_CONTROLS,
+  allControlGroups,
   controlsForType,
   isOptionType,
   needsCodebookEditorToCreate,
@@ -939,13 +939,15 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       // Everything a form can collect while the attribute is being invented:
       // there is no type yet to narrow the list by, and narrowing it to the
       // kind the current control implies would take away every other kind the
-      // researcher might have meant.
-      (inventing ? ALL_CONTROLS : controlsForType(attributeType ?? '')).map(
-        ({ value, label }) => ({
-          value,
-          label: intl.formatMessage(label),
-        }),
-      ),
+      // researcher might have meant. Grouped under the kind each control
+      // collects, so a list of twelve says what each choice will make the
+      // attribute before it is chosen.
+      inventing
+        ? allControlGroups(intl)
+        : controlsForType(attributeType ?? '').map(({ value, label }) => ({
+            value,
+            label: intl.formatMessage(label),
+          })),
     [attributeType, intl, inventing],
   );
 

@@ -52,6 +52,7 @@ import {
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   variableDisplayName,
+  variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import VariablePickerField, {
@@ -91,11 +92,11 @@ import AttributeValueFields, {
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
 import {
+  allControlGroups,
   controlsForType,
   isCollectableType,
   isOptionType,
   needsCodebookEditorToCreate,
-  TYPE_OPTIONS,
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
@@ -125,7 +126,6 @@ const TITLE = 'form.title';
  * where it follows from the input control instead. Its name and its rules are
  * the shared keys, and mean the same thing on either row.
  */
-const NEW_VARIABLE_TYPE = '_newVariableType';
 const INPUT_CONTROL = '_component';
 
 /**
@@ -282,24 +282,6 @@ const messages = defineMessages({
       'Write the participant-facing prompt and choose how the response is collected.',
     description: 'Description under the Question heading.',
   },
-  newTypeLabel: {
-    id: 'protocolBuilder.formFields.newTypeLabel',
-    defaultMessage: 'Kind of answer',
-    description:
-      'Label of the control choosing what sort of value a new attribute holds — text, a number, a date, a choice from a list.',
-  },
-  newTypeHint: {
-    id: 'protocolBuilder.formFields.newTypeHint',
-    defaultMessage:
-      'What this attribute holds. It cannot be changed once answers have been collected.',
-    description: 'Guidance under the kind-of-answer control.',
-  },
-  newTypeRequired: {
-    id: 'protocolBuilder.formFields.newTypeRequired',
-    defaultMessage: 'Choose what kind of answer this attribute holds.',
-    description:
-      'Refusal shown under the kind-of-answer control when nothing has been chosen.',
-  },
   promptLabel: {
     id: 'protocolBuilder.formFields.promptLabel',
     defaultMessage: 'Question text',
@@ -367,6 +349,19 @@ const messages = defineMessages({
       'How the answer is collected. For detailed information about these options, see our <link>documentation</link>.',
     description:
       'Guidance under the input-control field, ending in a link to the documentation page about input controls. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together.',
+  },
+  componentInventsHint: {
+    id: 'protocolBuilder.formFields.componentInventsHint',
+    defaultMessage:
+      'How the answer is collected, and what kind of answer the new attribute will hold. Every control a form can offer is listed, grouped by the kind each one collects. For detailed information about these options, see our <link>documentation</link>.',
+    description:
+      'Guidance under the input-control field while the field is inventing the attribute it collects. Replaces the ordinary guidance, which says nothing about the kind: there is no attribute yet to narrow the list by, and the control chosen here is what decides what kind of answer the attribute records. Ends in a link to the documentation page about input controls.',
+  },
+  componentInventsRequired: {
+    id: 'protocolBuilder.formFields.componentInventsRequired',
+    defaultMessage: 'Choose how the participant answers this question.',
+    description:
+      'Refusal shown under the input-control field when a researcher saves a field that is inventing its attribute without having chosen a control. Only an invented attribute can reach this: an attribute that already exists arrives with a control already chosen.',
   },
   noInputControl: {
     id: 'protocolBuilder.formFields.componentRequired',
@@ -938,7 +933,6 @@ function normalizeFormField(value: RowValues): RowValues {
   if (!isRecord(cleaned)) return value;
   const {
     [NEW_VARIABLE_NAME]: _name,
-    [NEW_VARIABLE_TYPE]: _type,
     [NEW_VARIABLE_VALIDATION]: _validation,
     [INPUT_CONTROL]: _component,
     [ATTRIBUTE_OPTIONS_FIELD]: _options,
@@ -1019,21 +1013,31 @@ function useCommitFormField(
       value: RowValues,
       context: RowSaveContext,
     ): Promise<RowSaveOutcome> => {
+      const component = asString(value[INPUT_CONTROL]) ?? '';
+      // The kind of answer follows from the control, which is the whole of how
+      // an invented attribute gets one: this dialog never asks for a kind, and
+      // `variableTypeForComponent` is the same lookup the network composer's
+      // row and the field preview make of the same choice.
+      const inventedType =
+        value.variable === NEW_VARIABLE && component !== ''
+          ? variableTypeForComponent(component)
+          : undefined;
       // An attribute the codebook editor has to author is only ever made
-      // there, so nothing here can create one from a name and a type. Said in
-      // its own words rather than left to the schema, which would answer a
+      // there, so nothing here can create one from a name and a control. Said
+      // in its own words rather than left to the schema, which would answer a
       // list of answers with a count of a list the researcher never saw — and
       // a scale not at all, because a scale with no end labels is a protocol
-      // the schema accepts and a participant cannot read.
-      const inventedType = asString(value[NEW_VARIABLE_TYPE]) ?? '';
+      // the schema accepts and a participant cannot read. Filed on the
+      // control, which is where the kind of answer was decided — the same
+      // field the network composer's row files it on.
       if (
-        value.variable === NEW_VARIABLE &&
+        inventedType !== undefined &&
         needsCodebookEditorToCreate(inventedType)
       ) {
         return {
           refused: {
             fieldErrors: {
-              [NEW_VARIABLE_TYPE]: isOptionType(inventedType)
+              [INPUT_CONTROL]: isOptionType(inventedType)
                 ? CREATE_WITH_VALUES_FIRST
                 : CREATE_WITH_SETTINGS_FIRST,
             },
@@ -1041,16 +1045,26 @@ function useCommitFormField(
         };
       }
       // The belt for a row that reaches a commit with no control on it at all.
-      // `InputControlField` is not on screen when there is none to choose, so
-      // this cannot be filed against that field: `focusFirstError` would be
-      // sent to a control that is not in the document and the researcher would
-      // be left with a refused save and nothing on screen. It goes where the
-      // dialog reports everything else about a whole draft — above the fields,
-      // in the same place `NoInputControlOffered` is already standing on the
-      // one route a researcher can take here.
-      const component = asString(value[INPUT_CONTROL]) ?? '';
+      // Where the row is INVENTING, the control is on screen and `required`,
+      // so the refusal goes under it. Where it is not, `InputControlField` may
+      // be absent — an attribute with no control to offer — and a refusal
+      // filed against a field that is not in the document would send
+      // `focusFirstError` nowhere and leave the researcher with a refused save
+      // and nothing on screen. So that one goes where the dialog reports
+      // everything else about a whole draft: above the fields, beside
+      // `NoInputControlOffered`.
       if (component === '') {
-        return { refused: { formErrors: [NO_INPUT_CONTROL] } };
+        return value.variable === NEW_VARIABLE
+          ? {
+              refused: {
+                fieldErrors: {
+                  [INPUT_CONTROL]: intl.formatMessage(
+                    messages.componentInventsRequired,
+                  ),
+                },
+              },
+            }
+          : { refused: { formErrors: [NO_INPUT_CONTROL] } };
       }
 
       if (value.variable !== NEW_VARIABLE) {
@@ -1165,22 +1179,26 @@ function useCommitFormField(
       }
 
       const name = asString(value[NEW_VARIABLE_NAME])?.trim() ?? '';
-      const type = asString(value[NEW_VARIABLE_TYPE]) ?? '';
-      // The kind of answer is a `required` field of this dialog (see
-      // `FormFieldEditor`), so this is the belt for a row that arrives already
-      // broken rather than a rule of its own — and it is what narrows `type`
-      // for the create below.
+      // The control is a `required` field of this dialog while the row is
+      // inventing (see `FormFieldEditor`), and every control the list offers
+      // names exactly one kind of answer — so this is the belt for a row that
+      // arrives holding a control the schema does not know, which is what a
+      // protocol authored against a later schema arrives with. It is also what
+      // narrows `type` for the create below.
       //
       // ONE key, carrying the one sentence there is. The name is `required`
       // too and used to be named here as well, with an empty string for
       // whichever of the two was actually fine — and an empty string survives
       // the row's own filter, so the first-error walk could land on a control
       // whose error region is blank while the sentence sat on the other one.
-      if (!isCollectableType(type)) {
+      const type = inventedType;
+      if (type === undefined) {
         return {
           refused: {
             fieldErrors: {
-              [NEW_VARIABLE_TYPE]: intl.formatMessage(messages.newTypeRequired),
+              [INPUT_CONTROL]: intl.formatMessage(
+                messages.componentInventsRequired,
+              ),
             },
           },
         };
@@ -1468,29 +1486,27 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
     [protocolContext, subject],
   );
   const inventing = useInventingAttribute(item);
-  const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
   const inventedName =
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
-  const typeOptions = useMemo(
-    () =>
-      TYPE_OPTIONS.map(({ value, label }) => ({
-        value,
-        label: intl.formatMessage(label),
-      })),
-    [intl],
-  );
-  // Some attributes cannot be invented from a name: a list of answers IS its
-  // values, and a scale IS the two labels that say which end is which. So the
-  // name box gives way to the editor that authors the attribute and the part
-  // of it a name cannot carry.
-  const inventingInTheEditor =
-    inventing && needsCodebookEditorToCreate(newType);
 
   // Asked HERE rather than inside the field, because the field comes and goes
   // and the question does not: the row is on its second binding by the time a
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
+  /**
+   * The kind of answer an invented attribute will hold, which the input
+   * control decides.
+   *
+   * This dialog does not ask for a kind. Architect does not either
+   * (`sections/Form/withFieldsHandlers.js` derives it with
+   * `getTypeForComponent`), and asking would be asking the same question
+   * twice: every control the schema knows collects exactly one kind, so a
+   * researcher who has said how the participant answers has already said what
+   * the attribute holds. Empty until they choose a control, which is the state
+   * everything below offers nothing in.
+   */
+  const newType = inventing ? control.type : '';
   // The control the row holds right now, which is what the codebook will
   // record — so it is also what decides which list of answers the attribute
   // has (a boolean moved to a toggle has none).
@@ -1523,19 +1539,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         description={intl.formatMessage(messages.attributeSectionDescription)}
       >
         <AttributePicker item={item} editIndex={editIndex} />
-        {inventing && (
-          // Asked before the name, because the answer decides what else this
-          // attribute needs before it can exist.
-          <Field<typeof SelectControl>
-            name={NEW_VARIABLE_TYPE}
-            component={SelectControl}
-            label={intl.formatMessage(messages.newTypeLabel)}
-            hint={intl.formatMessage(messages.newTypeHint)}
-            options={typeOptions}
-            initialValue={asString(item[NEW_VARIABLE_TYPE]) ?? ''}
-            required={intl.formatMessage(messages.newTypeRequired)}
-          />
-        )}
         <AttributeCodebookControls
           subject={subject}
           committedVariable={item.variable}
@@ -1585,10 +1588,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         {/* Last in this section, as Architect has it
             (`sections/Form/FieldFields.tsx` puts `InputControlFields` after
             the validation-hints toggle): how the participant answers follows
-            what they are asked. The control belongs to an attribute that
-            exists — while one is still being invented in the codebook editor
-            there is nothing yet for a control to be chosen for. */}
-        {!inventingInTheEditor && <InputControlField control={control} />}
+            what they are asked.
+
+            Always on screen while the row is inventing, because it is the
+            question that decides what the attribute will BE — including
+            whether it is one the codebook's own editor has to author. Taking
+            it away for those kinds would take away the only control the
+            researcher could use to change their mind. */}
+        <InputControlField control={control} />
       </Section>
       {/* The answers the attribute offers, under the question that asks for
           them, as Architect had them
@@ -1599,7 +1606,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
-        {...(inventing && !inventingInTheEditor ? { invented: newType } : {})}
+        {...(inventing && newType !== '' ? { invented: newType } : {})}
       />
       {/* Architect's own last section of this dialog
           (`sections/Form/FieldFields.tsx`): the rules the participant's answer
@@ -1609,8 +1616,13 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           row is still inventing has no record to write to, and its rules ride
           along with the create. */}
       {inventing
-        ? isCollectableType(newType) &&
-          !inventingInTheEditor && (
+        ? // Not for a kind the codebook's own editor has to author. Those
+          // rules ride along with THAT create (`AttributeCodebookControls`
+          // seeds the editor with `draftRulesForCreate`), so a second rules
+          // surface here would be a draft with nowhere to go — and the row's
+          // own save refuses this kind outright.
+          isCollectableType(newType) &&
+          !needsCodebookEditorToCreate(newType) && (
             <DraftVariableValidationSection
               entity={subject?.entity ?? 'node'}
               variableType={newType}
@@ -1652,19 +1664,34 @@ type AttributeControl = Readonly<{
   chosen: string;
   /**
    * The kind of answer the control is being chosen for: the chosen
-   * attribute's, or, while one is being invented, the kind the researcher
-   * picked for it. Empty while neither is settled.
+   * attribute's, or, while one is being invented, the kind the CONTROL
+   * decides. Empty while neither is settled — which, for an invention, is
+   * until a control has been chosen.
    */
   type: string;
   /** Whether the row is inventing the attribute rather than binding one. */
   inventing: boolean;
-  /** The controls the chosen attribute's kind of answer allows. */
-  options: readonly Readonly<{ value: string; label: string }>[];
   /**
-   * What the control is an answer ABOUT — the chosen attribute, or, while one
-   * is being invented, the kind of answer that decides which controls exist at
-   * all. Two rows of the same dialog holding different bindings are two
-   * different questions, whatever they happen to be showing.
+   * What may be chosen: the controls the bound attribute's kind of answer
+   * allows, or — while one is being invented — every control a form can
+   * offer, grouped under the kind each group collects.
+   */
+  options: readonly Readonly<
+    | { value: string; label: string }
+    | {
+        label: string;
+        options: readonly Readonly<{ value: string; label: string }>[];
+      }
+  >[];
+  /**
+   * What the control is an answer ABOUT: the chosen attribute, or the
+   * invention itself.
+   *
+   * Two rows of the same dialog holding different bindings are two different
+   * questions, whatever they happen to be showing. An invention is ONE
+   * binding however often the control moves: the control is what decides the
+   * kind of answer, so a binding that carried the kind would change under
+   * every choice and re-seed the field the researcher had just answered.
    */
   binding: string;
   /**
@@ -1672,6 +1699,11 @@ type AttributeControl = Readonly<{
    * the first one its kind of answer offers where the attribute has none yet
    * (an attribute created for its own sake, or one just invented in the
    * codebook editor).
+   *
+   * Empty for an invention, which has no codebook answer to seed from and
+   * whose control is the question being asked — so the field opens on its
+   * placeholder, as Architect's does for a new variable
+   * (`sections/Form/FieldFields.tsx`: "Select an input control").
    */
   seeded: string;
 }>;
@@ -1693,33 +1725,46 @@ function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
-  const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  const live = asString(useRowValue(INPUT_CONTROL));
+  const inventing = chosen === NEW_VARIABLE;
 
   const variable =
-    subject === undefined || chosen === '' || chosen === NEW_VARIABLE
+    subject === undefined || chosen === '' || inventing
       ? undefined
       : variablesForSubject(protocolContext, subject)[chosen];
-  const type = chosen === NEW_VARIABLE ? newType : (variable?.type ?? '');
+  // An invention's kind is read off the control the researcher chose; a
+  // binding's is the attribute's own, which no control can change.
+  const type = inventing
+    ? (variableTypeForComponent(live ?? '') ?? '')
+    : (variable?.type ?? '');
   const options = useMemo(
     () =>
-      controlsForType(type).map(({ value, label }) => ({
-        value,
-        label: intl.formatMessage(label),
-      })),
-    [intl, type],
+      inventing
+        ? allControlGroups(intl)
+        : controlsForType(type).map(({ value, label }) => ({
+            value,
+            label: intl.formatMessage(label),
+          })),
+    [intl, inventing, type],
   );
   const committed =
     variable !== undefined && 'component' in variable
       ? asString(variable.component)
       : undefined;
+  const firstOffered = options[0];
+  const seeded =
+    committed ??
+    (firstOffered === undefined || 'options' in firstOffered
+      ? ''
+      : firstOffered.value);
 
   return {
     chosen,
     type,
-    inventing: chosen === NEW_VARIABLE,
+    inventing,
     options,
-    binding: chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen,
-    seeded: committed ?? options[0]?.value ?? '',
+    binding: chosen,
+    seeded: inventing ? '' : seeded,
   };
 }
 
@@ -1732,6 +1777,14 @@ function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
  * back through a codebook edit when the dialog saves. It is required: the
  * schema refuses a form field whose attribute defines no control, and an
  * attribute created for its own sake (a number nothing collects yet) has none.
+ *
+ * While the row is INVENTING, this is the question the whole invention turns
+ * on: every control a form can offer is listed, grouped by the kind of answer
+ * each one collects, and what the researcher picks is what the attribute will
+ * be. Architect asks it the same way and in the same place
+ * (`sections/Form/withFieldsHandlers.js` hands the whole grouped list to a new
+ * variable's select and derives the type with `getTypeForComponent`), and that
+ * is why this dialog has no kind-of-answer control of its own.
  */
 function InputControlField({
   control,
@@ -1741,14 +1794,14 @@ function InputControlField({
   const typeLabel = variableTypeLabel(type);
 
   // Nothing to choose from — and which of the two reasons it is decides
-  // whether the researcher is mid-answer or stuck.
+  // whether the researcher is mid-answer or stuck. An invention always has
+  // something to choose from, so it is never either.
   if (options.length === 0) {
-    // Mid-answer: the row names no attribute yet, or is inventing one whose
-    // kind of answer is still unsettled. Mounting the control would register
-    // an empty value and refuse the save with a question they cannot yet
-    // answer, and the field they CAN answer — the attribute, the kind of
-    // answer — already carries its own refusal.
-    if (chosen === '' || chosen === NEW_VARIABLE) return null;
+    // Mid-answer: the row names no attribute yet. Mounting the control would
+    // register an empty value and refuse the save with a question they cannot
+    // yet answer, and the field they CAN answer — the attribute — already
+    // carries its own refusal.
+    if (chosen === '') return null;
     return <NoInputControlOffered />;
   }
 
@@ -1758,16 +1811,27 @@ function InputControlField({
         name={INPUT_CONTROL}
         component={SelectControl}
         label={intl.formatMessage(messages.componentLabel)}
-        hint={intl.formatMessage(messages.componentHint, {
-          link: renderInputControlsLink,
-        })}
+        hint={intl.formatMessage(
+          inventing ? messages.componentInventsHint : messages.componentHint,
+          { link: renderInputControlsLink },
+        )}
         options={options}
-        // Always one of `options`, so the field cannot register an empty
-        // control and has no `required` of its own to state: a native select
-        // offers no way back to nothing. What "no control" means here is that
-        // this field is not on screen at all, which is
+        // For a BOUND attribute, always one of `options`, so the field cannot
+        // register an empty control and has no `required` of its own to state:
+        // a native select offers no way back to nothing. What "no control"
+        // means there is that this field is not on screen at all, which is
         // `NoInputControlOffered`'s to say.
+        //
+        // An invention has no codebook answer to seed from and nothing to
+        // default to — the choice is what decides the kind of answer, and
+        // picking the first control for the researcher would decide it for
+        // them. So it opens on the placeholder and says so if they leave it.
         initialValue={seeded}
+        {...(inventing
+          ? {
+              required: intl.formatMessage(messages.componentInventsRequired),
+            }
+          : {})}
       />
       {/* Why the list above is as long as it is. Picking an attribute that
           already exists narrows it to the controls that attribute's type
@@ -1859,10 +1923,20 @@ function useControlThatFollowsTheAttribute(
     if (binding !== previous.binding) {
       // A different question, so the answer starts again from the codebook's.
       shown.current = { binding, seeded, answered: false };
-      // There is no answer to give: the row names no attribute yet, or names
-      // one no control can collect, or is inventing one whose kind of answer
-      // is still unsettled. Nothing is written, and whatever the field left
-      // behind is refused by `useCommitFormField` or held off by
+      // An invention has no codebook answer to seed from, and the control is
+      // the question it turns on — so the row starts it unanswered. Cleared
+      // rather than left: `useField` unregisters preserving its value and
+      // prefers that dormant value over the initial one, so a control chosen
+      // for the attribute the row USED to collect would come back as the
+      // researcher's answer about the attribute they are inventing, and decide
+      // its kind for them.
+      if (binding === NEW_VARIABLE) {
+        setFieldValue(INPUT_CONTROL, '');
+        return;
+      }
+      // There is no answer to give either: the row names no attribute yet, or
+      // names one no control can collect. Nothing is written, and whatever the
+      // field left behind is refused by `useCommitFormField` or held off by
       // `NoInputControlOffered` rather than saved.
       if (seeded === '') return;
       setFieldValue(INPUT_CONTROL, seeded);
@@ -1929,7 +2003,11 @@ function AttributePicker({
   const inventing = useInventingAttribute(item);
   const inventedName =
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
-  const inventedType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  // The kind of answer the control the row holds will make the attribute —
+  // this dialog asks for no other. Empty until a control has been chosen,
+  // which is what leaves the pill uncoloured until then.
+  const inventedType =
+    variableTypeForComponent(asString(useRowValue(INPUT_CONTROL)) ?? '') ?? '';
   const namesInUse = useSubjectVariableNames(subject);
 
   const roleMap = useUnvalidatedWriterMap(answeredFor);

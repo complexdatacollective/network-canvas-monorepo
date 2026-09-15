@@ -161,6 +161,7 @@ const AMERICAN_TO_BRITISH: ReadonlyMap<string, string> = new Map([
   ['centered', 'centred'],
   ['labeled', 'labelled'],
   ['labeling', 'labelling'],
+  ['analog', 'analogue'],
   ['neighborhood', 'neighbourhood'],
   ['neighborhoods', 'neighbourhoods'],
   ['recognize', 'recognise'],
