@@ -193,17 +193,31 @@ const themedBadgeVariants = cva({
       filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
       /**
        * The colour is the border and a wash of it behind the label; the label
-       * itself is the surface's own text colour.
+       * itself is the contrast colour the surface underneath publishes.
        *
        * Not the theme colour: most of this palette sits in the middle of the
        * lightness range, where the colour reaches neither 4.5:1 against a 14%
        * wash of itself nor against white — cerulean blue is 4.43:1 either way.
-       * The text token is the one colour the theme already guarantees against
-       * the surface this badge sits on, in light and dark alike, and a wash
-       * this thin does not move it.
+       *
+       * `--published-text` rather than `--text`, because the page's text token
+       * is only guaranteed against the page. A `Surface` publishes the
+       * background it paints and the contrast colour that goes with it
+       * together, and a badge sitting on one is read against that background,
+       * not against the page's. Where the two differ the page token is simply
+       * the wrong ink: on Architect's accent series — the ladder every
+       * `ArrayField` row is drawn on — `--text` is cyber grape on slate blue,
+       * which measures 2.69:1, while the surface's own contrast colour is
+       * white at 5.16:1. Off a published surface the variable is unset and the
+       * declaration falls back to the inherited colour, which is what the
+       * uncoloured `outline` variant above uses.
+       *
+       * The wash stays mixed toward `transparent` rather than toward
+       * `--published-bg`: an opaque mix would repaint 86% of the badge in the
+       * published background, which is the surface's colour only while the
+       * badge sits directly on it. Alpha compositing is right wherever it sits.
        */
       outline:
-        'text-text border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)]',
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
     },
   },
 });

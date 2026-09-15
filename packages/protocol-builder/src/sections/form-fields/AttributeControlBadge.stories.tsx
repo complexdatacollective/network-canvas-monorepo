@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
+
 import { VARIABLE_TYPE_OPTIONS } from '../../codebook/variableTypeLabels.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
@@ -9,6 +11,12 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  * One badge per kind of attribute, each with the first control its type
  * allows, on the surface the row list draws them on.
  *
+ * That surface is an accent `Surface`, because that is what an `ArrayField`
+ * row is — and the accent ladder is where the badge's colours are hardest to
+ * read. Drawn on a plain `bg-surface` instead, this preview showed the badge
+ * against a background no row ever uses, and the a11y check below was
+ * measuring the wrong thing.
+ *
  * Every colour at once because the badge's colour is the whole of what varies
  * between rows: the a11y check this preview runs over every story is what says
  * the sentence inside a badge is readable, and it can only say it about the
@@ -16,7 +24,12 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  */
 function EveryAttributeType() {
   return (
-    <main className="bg-surface flex flex-col gap-2.5 p-6">
+    <Surface
+      noContainer
+      as="main"
+      series="accent"
+      className="flex flex-col gap-2.5"
+    >
       {VARIABLE_TYPE_OPTIONS.map(({ value }) => (
         <div key={value}>
           <AttributeControlBadge
@@ -35,7 +48,7 @@ function EveryAttributeType() {
       <div>
         <AttributeControlBadge attribute={undefined} />
       </div>
-    </main>
+    </Surface>
   );
 }
 
