@@ -246,6 +246,9 @@ function memoryStore(): AssetStore {
         size: stored.bytes.byteLength,
       };
     },
+    async head() {
+      // An in-memory store is always reachable.
+    },
   };
 }
 

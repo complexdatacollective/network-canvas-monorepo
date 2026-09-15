@@ -148,6 +148,14 @@ verifies.
   is dropped and reinstalled rather than migrated — the same pre-release
   posture the public schema takes, and it discards whatever was queued, which
   is why the count is logged first. No process migrates pg-boss at start.
+- `migrateDatabase()` (`src/db/migrate.ts`) is what `studio-api migrate` runs
+  in the image, where drizzle-kit does not exist. The build renders the same
+  statements into `dist/schema-ddl.json` (`scripts/render-schema-ddl.ts`) and
+  this executes them in one transaction, then installs pg-boss's schema and
+  reconciles the queues through the same `src/jobs/install.ts` that
+  `applySchema` calls, and stamps the fingerprint. It refuses a document whose
+  statements do not hash to the fingerprint beside them, and — pre-release — it
+  refuses a database another build created rather than reconciling it (#1901).
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
   `mismatch` or `unstamped`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.

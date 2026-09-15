@@ -1,8 +1,10 @@
 // The worker as a deployment actually runs it: a process started from the
 // image's second command (#1895). Everything here is a property of the whole
-// process — what it prints at boot, that it listens on nothing, and that a
-// container stop ends it cleanly — none of which an in-process test of
-// `createJobWorker` can answer.
+// process — what it prints at boot, what it binds, what its healthcheck reads,
+// and that a container stop ends it cleanly — none of which an in-process test
+// of `createJobWorker` can answer.
+import { networkInterfaces } from 'node:os';
+
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
@@ -17,6 +19,30 @@ import {
 } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { startSilentSmtp } from './support/smtp.ts';
+
+type Readiness = { status: string; checks: Record<string, string> };
+
+/**
+ * Every address this machine answers on that is not the loopback. The worker's
+ * health listener must be reachable on none of them: it exists for the
+ * container runtime, and a worker is not a service anything routes to.
+ */
+function externalAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flatMap((addresses) => addresses ?? [])
+    .filter((address) => address.family === 'IPv4' && !address.internal)
+    .map((address) => address.address);
+}
+
+async function readReadiness(
+  port: number,
+): Promise<{ status: number; body: Readiness }> {
+  const response = await fetch(`http://127.0.0.1:${port}/readyz`);
+  return {
+    status: response.status,
+    body: (await response.json()) as Readiness,
+  };
+}
 
 const db = await reachableDb();
 
@@ -34,6 +60,15 @@ const IN_FLIGHT_CASE_TIMEOUT_MS = 45_000;
 
 /** Longer than the send this case is waiting out, shorter than the case. */
 const IN_FLIGHT_STOP_TIMEOUT_MS = 30_000;
+
+/** A boot, a drizzle-kit push against a fresh database, and the retry after it. */
+const READINESS_CASE_TIMEOUT_MS = 240_000;
+
+/** The boot retry re-reads the fingerprint every three seconds. */
+const SCHEMA_WAIT_MS = 60_000;
+
+/** A boot, plus one connection attempt per external address that may be dropped. */
+const LOOPBACK_CASE_TIMEOUT_MS = 60_000;
 
 /**
  * The deployment's environment, minus the development lane: the committed
@@ -53,6 +88,19 @@ function startWorker(overrides: Record<string, string>): Entrypoint {
   });
 }
 
+/**
+ * The development lane, which waits for a schema rather than exiting on one it
+ * does not have. It is the only way to hold a real worker process in the state
+ * the readiness case is about: up and answering, with pg-boss not connected.
+ */
+function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
+  return startEntrypoint('src/worker.ts', {
+    NODE_ENV: 'development',
+    STUDIO_DEV_DEFAULTS: '1',
+    ...overrides,
+  });
+}
+
 describe.skipIf(!db)('the worker entrypoint', () => {
   let applied: Awaited<ReturnType<typeof createScratchDatabase>>;
 
@@ -66,12 +114,14 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     await applied.dispose();
   });
 
-  it('starts, reports the missing transport, binds nothing, and stops on SIGTERM', async () => {
+  it('starts, reports the missing transport, serves no user surface, and stops on SIGTERM', async () => {
     const port = await freePort();
+    const healthPort = await freePort();
     const worker = startWorker({
       DATABASE_URL: applied.db.url,
       // Nothing should bind this; the probe below is the assertion.
       PORT: String(port),
+      WORKER_HEALTH_PORT: String(healthPort),
     });
     try {
       await worker.waitForOutput(
@@ -82,10 +132,30 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       await worker.waitForOutput(/No mail transport is configured/);
       expect(worker.output()).toMatch(/invitation-delivery and sign-in-email/);
 
-      // Two independent readings of "it binds no port": it never announced a
-      // listener, and the port it was given refuses a connection.
-      expect(worker.output()).not.toMatch(/listening on/i);
+      // It serves the health routes and nothing else: the port a deployment
+      // would route users to refuses a connection.
       expect(await connectionRefused(port)).toBe(true);
+
+      const live = await fetch(`http://127.0.0.1:${healthPort}/healthz`);
+      expect(live.status).toBe(200);
+      expect(await live.json()).toEqual({ status: 'ok' });
+
+      // Ready, with the job connection among the checks: a worker whose
+      // pg-boss had gone is exactly what the compose healthcheck is for, and
+      // `db` alone would report that worker healthy.
+      expect(await readReadiness(healthPort)).toEqual({
+        status: 200,
+        body: { status: 'ok', checks: { db: 'ok', schema: 'ok', jobs: 'ok' } },
+      });
+
+      // No Studio surface behind it: the RPC path the web process serves is
+      // not mounted here.
+      const rpc = await fetch(`http://127.0.0.1:${healthPort}/rpc/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      expect(rpc.status).toBe(404);
 
       worker.child.kill('SIGTERM');
       // A container stop is a SIGTERM and a deadline. Anything but a clean
@@ -97,10 +167,100 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       const { code, signal } = await worker.exited;
       clearTimeout(timeout);
       expect({ code, signal }).toEqual({ code: 0, signal: null });
+      // The listener goes with the process, so nothing holds the port against
+      // the container the deployment replaces it with.
+      expect(await connectionRefused(healthPort)).toBe(true);
     } finally {
       worker.child.kill('SIGKILL');
     }
   });
+
+  it(
+    'reports jobs failing until pg-boss is connected, and ready once it is',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      // The state the compose healthcheck exists to catch: a container that is
+      // up and answering with no queue behind it. A worker that called itself
+      // ready here would be left in service running nothing.
+      const scratch = await createScratchDatabase(db);
+      const healthPort = await freePort();
+      const worker = startWaitingWorker({
+        DATABASE_URL: scratch.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
+      });
+
+      try {
+        await worker.waitForOutput(/Database has no Studio schema/);
+
+        const waiting = await readReadiness(healthPort);
+        expect(waiting.status).toBe(503);
+        expect(waiting.body.status).toBe('failing');
+        expect(waiting.body.checks.jobs).toBe('failed: not started');
+        // Liveness is separate and stays 200: a container runtime would
+        // restart a process that is doing exactly what it should.
+        expect(
+          (await fetch(`http://127.0.0.1:${healthPort}/healthz`)).status,
+        ).toBe(200);
+
+        await applySchema(scratch.pool);
+        await worker.waitForOutput(
+          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          SCHEMA_WAIT_MS,
+        );
+
+        await vi.waitFor(
+          async () =>
+            expect(await readReadiness(healthPort)).toEqual({
+              status: 200,
+              body: {
+                status: 'ok',
+                checks: { db: 'ok', schema: 'ok', jobs: 'ok' },
+              },
+            }),
+          { timeout: 15_000, interval: 100 },
+        );
+      } finally {
+        worker.child.kill('SIGKILL');
+        await scratch.dispose();
+      }
+    },
+    READINESS_CASE_TIMEOUT_MS,
+  );
+
+  it.skipIf(externalAddresses().length === 0)(
+    'binds its health listener to the loopback alone',
+    async () => {
+      // 127.0.0.1 is written into the source rather than taken from a
+      // variable, and this is what holds it there: published, the listener
+      // would let anything that can reach the host read a Studio deployment's
+      // dependency status.
+      const healthPort = await freePort();
+      const worker = startWorker({
+        DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
+      });
+      try {
+        await worker.waitForOutput(
+          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        );
+        // Reachable on the loopback first, so a refusal below is the bind and
+        // not a listener that never came up.
+        expect(
+          (await fetch(`http://127.0.0.1:${healthPort}/healthz`)).status,
+        ).toBe(200);
+
+        for (const address of externalAddresses()) {
+          expect({
+            address,
+            refused: await connectionRefused(healthPort, address),
+          }).toEqual({ address, refused: true });
+        }
+      } finally {
+        worker.child.kill('SIGKILL');
+      }
+    },
+    LOOPBACK_CASE_TIMEOUT_MS,
+  );
 
   it(
     'finishes a job it is running before it exits on SIGTERM',

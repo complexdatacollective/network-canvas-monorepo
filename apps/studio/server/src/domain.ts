@@ -27,10 +27,11 @@ export type InstanceStatus = InferContractRouterOutputs<
 export type AuthCapabilities = InstanceStatus['auth'];
 
 /**
- * Which topology this deployment is, and whether it offers billing. The
- * client reads it to decide what a signed-in researcher may navigate to;
- * the HTTP gate in src/client-assets.ts enforces the same classification
- * independently, so a client that ignores this cannot reach the surfaces.
+ * Which topology this deployment is, and whether it offers billing. The client
+ * reads it to decide what a signed-in researcher may navigate to, and guards
+ * its own route tree with the same classification
+ * (client/src/lib/deployment.ts). Since #1909 the client is served by nginx
+ * rather than by this process, so there is no second, HTTP-layer gate.
  */
 export type DeploymentStatus = InstanceStatus['deployment'];
 

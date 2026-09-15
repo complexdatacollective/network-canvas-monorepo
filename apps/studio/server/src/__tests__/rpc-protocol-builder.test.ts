@@ -182,6 +182,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       });
     },
     get: () => Promise.resolve(null),
+    head: () =>
+      storeUnreachable
+        ? Promise.reject(new Error('the object store is unreachable'))
+        : Promise.resolve(),
   };
   /**
    * The clock the lease keeper reads, so a test can reach the idle bound

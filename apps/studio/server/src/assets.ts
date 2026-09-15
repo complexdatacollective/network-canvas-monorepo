@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -41,6 +42,14 @@ export type AssetStore = {
     mediaType: string;
     size: number | undefined;
   } | null>;
+  /**
+   * Does the configured bucket answer, with these credentials? What `/readyz`
+   * asks the object store (#1897): resolving means reachable, and anything
+   * thrown is the reason readiness reports. Deliberately a bucket-level probe
+   * rather than a read of some object, because there is no object every
+   * deployment is known to hold.
+   */
+  head(): Promise<void>;
 };
 
 export function createAssetStore(env: S3Env): AssetStore {
@@ -105,6 +114,10 @@ export function createAssetStore(env: S3Env): AssetStore {
         if (isNotFound(error)) return null;
         throw error;
       }
+    },
+
+    async head() {
+      await client.send(new HeadBucketCommand({ Bucket: env.bucket }));
     },
   };
 }

@@ -1,0 +1,204 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { JOB_QUEUES, JOB_SCHEMA } from '@codaco/studio-sync/jobs';
+
+import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
+import {
+  createScratchDatabase,
+  reachableDb,
+} from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
+import {
+  fingerprintOfDdl,
+  migrateDatabase,
+  type SchemaDdl,
+  SchemaDdlMismatch,
+  StaleDatabase,
+  verifySchemaDdl,
+} from '../migrate.ts';
+import { checkSchema, stampFingerprint } from '../schema.ts';
+
+// `studio-api migrate` against a real, empty database — the one-shot a
+// deployment runs before anything else starts (#1909).
+//
+// It is proved here rather than through the container because what could go
+// wrong is the SQL: the statements are rendered at build time from the same
+// definitions `apply-schema` pushes, and executing them has to leave a database
+// every process reads as `current`. The container proves the command is wired
+// to this; this proves the command does the work.
+
+const db = await reachableDb();
+
+/** Rendering the DDL imports drizzle-kit and diffs the whole schema. */
+const RENDER_TIMEOUT_MS = 180_000;
+const CASE_TIMEOUT_MS = 120_000;
+
+describe('the rendered schema DDL', () => {
+  it(
+    'round-trips to this build’s fingerprint',
+    async () => {
+      // What the build writes to dist/schema-ddl.json. `renderSchemaDdl` already
+      // refuses a mismatch, so this asserts the hash independently rather than
+      // trusting that refusal: a render function that stopped checking would
+      // otherwise ship a document describing some other schema.
+      const ddl = await renderSchemaDdl();
+      expect(ddl.fingerprint).toBe(SCHEMA_FINGERPRINT);
+      expect(fingerprintOfDdl(ddl)).toBe(SCHEMA_FINGERPRINT);
+      expect(ddl.statements.length).toBeGreaterThan(0);
+      expect(ddl.jobStatements.length).toBeGreaterThan(0);
+    },
+    RENDER_TIMEOUT_MS,
+  );
+
+  it('refuses a document another build rendered', async () => {
+    const ddl = await renderSchemaDdl();
+    expect(() =>
+      verifySchemaDdl({ ...ddl, fingerprint: 'f'.repeat(64) }),
+    ).toThrow(SchemaDdlMismatch);
+  });
+
+  it('refuses a document that does not hash to its own fingerprint', async () => {
+    // A truncated or hand-edited file: the fingerprint beside the statements
+    // still says this build, and the statements no longer are.
+    const ddl = await renderSchemaDdl();
+    expect(() =>
+      verifySchemaDdl({ ...ddl, statements: ddl.statements.slice(0, -1) }),
+    ).toThrow(SchemaDdlMismatch);
+  });
+});
+
+describe.skipIf(!db)('migrate', () => {
+  let ddl: SchemaDdl;
+
+  beforeAll(async () => {
+    ddl = await renderSchemaDdl();
+  }, RENDER_TIMEOUT_MS);
+
+  const scratches: { dispose: () => Promise<void> }[] = [];
+
+  async function emptyDatabase() {
+    if (!db) throw new Error('unreachable: probe guaranteed a database');
+    const scratch = await createScratchDatabase(db);
+    scratches.push(scratch);
+    return scratch;
+  }
+
+  afterAll(async () => {
+    await Promise.allSettled(scratches.map((scratch) => scratch.dispose()));
+  });
+
+  it(
+    'creates a schema every process reads as current',
+    async () => {
+      const scratch = await emptyDatabase();
+      expect((await checkSchema(scratch.pool)).kind).toBe('absent');
+
+      const lines: string[] = [];
+      const outcome = await migrateDatabase(scratch.pool, ddl, {
+        log: (line) => lines.push(line),
+      });
+
+      expect(outcome).toEqual({ kind: 'applied' });
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
+      expect(lines.at(-1)).toBe('Schema applied.');
+
+      // Not merely "tables exist": the queues are what the worker fetches from
+      // and the web process enqueues on, and they are created through pg-boss's
+      // own API rather than by the DDL — so a migrate that ran the statements
+      // and stopped would leave a database that boots and can queue nothing.
+      const queues = await scratch.pool.query<{ name: string }>(
+        `select name from ${JOB_SCHEMA}.queue order by name`,
+      );
+      expect(queues.rows.map((row) => row.name)).toEqual(
+        JOB_QUEUES.map(({ name }) => name).toSorted(),
+      );
+
+      // And the roles the server's pools pin themselves to, which the sidecars
+      // create: without them every pool is refused at connect.
+      const roles = await scratch.pool.query<{ rolname: string }>(
+        `select rolname from pg_roles where rolname in ('studio_app', 'studio_maintenance') order by rolname`,
+      );
+      expect(roles.rows.map((row) => row.rolname)).toEqual([
+        'studio_app',
+        'studio_maintenance',
+      ]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'is a no-op the second time, and changes nothing',
+    async () => {
+      const scratch = await emptyDatabase();
+      await migrateDatabase(scratch.pool, ddl);
+
+      const before = await scratch.pool.query<{
+        fingerprint: string;
+        appliedAt: Date;
+      }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
+
+      const lines: string[] = [];
+      const outcome = await migrateDatabase(scratch.pool, ddl, {
+        log: (line) => lines.push(line),
+      });
+
+      expect(outcome).toEqual({ kind: 'current' });
+      expect(lines).toEqual(['Schema current.']);
+      // The stamp row is the oracle for "wrote nothing": a second run that
+      // re-applied would restamp it, and re-running the DDL over live tables
+      // would have failed on the first CREATE TABLE anyway.
+      const after = await scratch.pool.query<{
+        fingerprint: string;
+        appliedAt: Date;
+      }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
+      expect(after.rows).toEqual(before.rows);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses a database another build created, without touching it',
+    async () => {
+      const scratch = await emptyDatabase();
+      await migrateDatabase(scratch.pool, ddl);
+
+      const other = 'a'.repeat(64);
+      await stampFingerprint(scratch.pool, other);
+
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        StaleDatabase,
+      );
+      // Both fingerprints named, so an operator can tell which build is which,
+      // and the reason it will not be reconciled.
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        new RegExp(
+          `${other.slice(0, 12)}[\\s\\S]*${SCHEMA_FINGERPRINT.slice(0, 12)}`,
+        ),
+      );
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(/#1901/);
+
+      // Unchanged: the refusal is a refusal, not a half-applied upgrade.
+      const stamp = await scratch.pool.query<{ fingerprint: string }>(
+        'select "fingerprint" from "schemaFingerprint"',
+      );
+      expect(stamp.rows).toEqual([{ fingerprint: other }]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses a database carrying tables but no fingerprint',
+    async () => {
+      // The `unstamped` verdict: a database whose SQL is unknown. Adopting it
+      // would launder exactly the staleness the fingerprint exists to catch.
+      const scratch = await emptyDatabase();
+      await migrateDatabase(scratch.pool, ddl);
+      await scratch.pool.query('delete from "schemaFingerprint"');
+
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        /no fingerprint/,
+      );
+    },
+    CASE_TIMEOUT_MS,
+  );
+});
