@@ -974,11 +974,13 @@ CHECKS:
    analytics quirk above), so never use a tracked action as the probe.
    Report the switch's initial state as an observation, never a failure.
    Sequence:
-   (a) POSITIVE CONTROL first: arm the listener, toggle analytics ON,
-   wait for read-back, and require AT LEAST ONE attempted relay request
-   within a 20 s armed window — if none arrives, the listener is not
-   observing the relay at all, so record THIS check as failed coverage
-   rather than treating later zeroes as an opt-out pass.
+   (a) POSITIVE CONTROL first: establish a cold opted-out boot — if the
+   switch is ON, toggle it OFF and wait for read-back; reload and re-read it
+   as OFF. Then arm the listener, toggle analytics ON, wait for read-back,
+   and require AT LEAST ONE attempted relay request within a 20 s armed
+   window — if none arrives, the listener is not observing the relay at all,
+   so record THIS check as failed coverage rather than treating later zeroes
+   as an opt-out pass.
    (b) Toggle OFF, wait for read-back, then arm the listener and reload;
    RE-READ the switch after the reload (the persisted setting is what
    survives) and KEEP the listener armed through a 15 s quiet window
