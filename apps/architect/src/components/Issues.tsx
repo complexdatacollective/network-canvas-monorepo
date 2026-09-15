@@ -1,7 +1,14 @@
 import { map } from 'es-toolkit/compat';
 import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -12,7 +19,11 @@ import {
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
-import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
+import {
+  flattenIssues,
+  type IssueTarget,
+  resolveIssueTarget,
+} from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
 const messages = defineMessages({
   issueDetail: {
@@ -34,39 +45,28 @@ type UseIssuesToolbarControlResult = {
   hasIssues: boolean;
 };
 
-const resolveTarget = (field: string): HTMLElement | null => {
-  for (const id of candidateIdsFor(field)) {
-    const el = document.getElementById(id);
-    if (el instanceof HTMLElement) {
-      return el;
-    }
-  }
-  return null;
-};
+/** What each errored field looks like on screen, keyed by the store's key. */
+type ResolvedTargets = Record<string, IssueTarget | null>;
 
 /**
- * What the researcher calls the field this issue is about.
+ * Whether two resolutions would render the same rows.
  *
- * The field's own label, read from the element the control is named by: a row
- * that said `introductionPanel.title` would be sending them to look for a
- * control by a name nothing on screen uses. The required marker inside the
- * label is `aria-hidden`, and is dropped here for the same reason it is hidden
- * there — it is punctuation, not part of the name.
+ * Only what a row is DRAWN from is compared — whether the field was found at
+ * all, what it is called, and the id the row links to. The element itself is
+ * not: a re-render that found the same field again is not a change, and the
+ * click handler resolves the element afresh anyway. Without this the layout
+ * effect below would set state on every commit and loop.
  */
-const labelTextFor = (field: string): string | null => {
-  const control = resolveFieldErrorTarget(field);
-  const labelId = control?.getAttribute('aria-labelledby')?.split(/\s+/)[0];
-  const named = labelId === undefined ? null : document.getElementById(labelId);
-  const source = named ?? resolveTarget(field);
-  if (!(source instanceof HTMLElement)) return null;
-  const dataName = source.getAttribute('data-name');
-  if (dataName) return dataName;
-  const clone = source.cloneNode(true);
-  if (!(clone instanceof HTMLElement)) return null;
-  for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
-    hidden.remove();
-  }
-  return clone.textContent?.trim() || null;
+const sameTargets = (a: ResolvedTargets, b: ResolvedTargets): boolean => {
+  const fields = Object.keys(b);
+  if (Object.keys(a).length !== fields.length) return false;
+  return fields.every(
+    (field) =>
+      Object.hasOwn(a, field) &&
+      (a[field] === null) === (b[field] === null) &&
+      a[field]?.label === b[field]?.label &&
+      a[field]?.anchorId === b[field]?.anchorId,
+  );
 };
 
 export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
@@ -96,7 +96,6 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   const issueCount = flatIssues.length;
 
   const [open, setOpen] = useState(false);
-  const issueRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Where the popover hands focus back on close. Base UI restores focus to the
   // trigger by default, which is right for a panel the researcher dismissed
@@ -110,48 +109,15 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     if (hasIssues) setOpen(true);
   }, [hasIssues]);
 
-  // Field display labels live in the DOM, so a row's own label is only
-  // discoverable once that field is mounted. Rewrites the row in place, and is
-  // idempotent — writing the same label twice is a no-op, which is what lets
-  // both callers below run freely.
-  const harvestLabel = useCallback((el: HTMLElement | null, field: string) => {
-    if (!el) return;
-    const fieldName = labelTextFor(field);
-    if (fieldName) el.textContent = fieldName;
-  }, []);
-
-  // Keyed by the row's own id rather than its field id: a field that fails
-  // several rules has one row per message, and they must not share a slot.
-  const setIssueRef = useCallback(
-    (el: HTMLElement | null, id: string, field: string) => {
-      issueRefs.current[id] = el;
-      // Harvest HERE, as the row mounts, not only from the effect below. Base
-      // UI mounts the popover's portal in a later commit than the one that
-      // flips `open`, so on a first open the effect runs while `issueRefs` is
-      // still empty and every row keeps its raw internal path. Verified in a
-      // real browser on an invalid Information stage: without this the row
-      // read "title - This field is required." — the raw field name — and only
-      // re-validating after an edit replaced it. It now harvests to
-      // "Page heading - …", because #1400 changed `ArchitectField`'s
-      // `IssueAnchor` description from `startCase(name)` to the field's own
-      // `label` ("Page heading", sections/ContentGrid/ContentGrid.tsx), so the
-      // panel and the control agree by construction and neither says "Title". Pinned by
-      // e2e/specs/issues-panel.spec.ts. A ref callback cannot be early: it
-      // runs when the element exists, whenever that turns out to be.
-      harvestLabel(el, field);
-    },
-    [harvestLabel],
-  );
-
   const handleClickIssue = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, field: string) => {
+    (e: React.MouseEvent<HTMLElement>, field: string) => {
       e.preventDefault();
       // The same resolution an invalid submit uses, so an issue row and a
       // failed save agree about which control owns a field's error —
       // including composite fields that name their own target and Base UI
       // switches, which no plain selector reaches.
       const control = resolveFieldErrorTarget(field);
-      const destination = control ?? resolveTarget(field);
+      const destination = control ?? resolveIssueTarget(field)?.element;
       if (!destination) return;
 
       finalFocusRef.current = control ?? null;
@@ -198,15 +164,31 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     }
   }, [isOpen]);
 
-  // Second pass, for a label that was not resolvable when its row mounted —
-  // an anchor inside a section that has since expanded, say. The ref callback
-  // above is what covers the ordinary first open.
-  useEffect(() => {
-    if (!isOpen) return;
-    flatIssues.forEach(({ id, field }) => {
-      harvestLabel(issueRefs.current[id] ?? null, field);
-    });
-  }, [flatIssues, harvestLabel, isOpen]);
+  /**
+   * What each errored field looks like on screen: the name the researcher
+   * knows it by, and an id worth linking to.
+   *
+   * Read from the FIELDS, which are in the page the whole time, rather than
+   * from the rows. The rows used to be rewritten in place from a ref callback
+   * precisely because Base UI mounts the popover's portal in a later commit
+   * than the one that opens the panel; resolving against the editor instead
+   * means the first render of a row already carries its label, and the row's
+   * `href` can name something that exists.
+   *
+   * Re-run on every open as well as on a change of issues: a field inside a
+   * section the researcher has since expanded is nowhere to be found the first
+   * time and named properly the second.
+   */
+  const [targets, setTargets] = useState<ResolvedTargets>({});
+  useLayoutEffect(() => {
+    const resolved: ResolvedTargets = {};
+    for (const { field } of flatIssues) {
+      resolved[field] ??= resolveIssueTarget(field);
+    }
+    setTargets((current) =>
+      sameTargets(current, resolved) ? current : resolved,
+    );
+  }, [flatIssues, isOpen]);
 
   const control = useMemo<React.ReactNode>(() => {
     if (!hasIssues || !submitFailed) return null;
@@ -242,31 +224,57 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
           <hr className="my-0" />
           <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
             {map(flatIssues, ({ id, field, issue }) => {
-              // Row identity (`id`) and anchor target (`fieldId`) are separate:
-              // several rows can share one field, and scroll-to-error resolves
-              // through the field path.
-              const fieldId = getFieldId(field);
+              // Row identity (`id`) and the field it is about are separate:
+              // several rows can share one field, and the target below is
+              // resolved once per field.
+              const target = targets[field];
+              const detail = intl.formatMessage(messages.issueDetail, {
+                // The name on screen, and the store's own key only when the
+                // field is nowhere to be found — at which point the key is all
+                // there is to tell one row from another.
+                field: target?.label ?? field,
+                issue,
+                fieldLabel: (children) => <span>{children}</span>,
+              });
               return (
                 <li
                   key={id}
                   data-testid="issue"
                   className="hover:bg-surface-2 m-0 bg-transparent p-0 transition-colors duration-300 ease-in-out"
                 >
-                  <a
-                    href={`#${fieldId}`}
-                    onClick={(e) => handleClickIssue(e, field)}
-                    className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
-                  >
-                    {intl.formatMessage(messages.issueDetail, {
-                      field,
-                      issue,
-                      fieldLabel: (children) => (
-                        <span ref={(el) => setIssueRef(el, id, field)}>
-                          {children}
-                        </span>
-                      ),
-                    })}
-                  </a>
+                  {/*
+                    Three shapes, because a row can promise three different
+                    things. A field with an id worth naming is an in-page LINK
+                    to it, which is what a row has always looked like. A field
+                    on screen that owns no id is a button — the row still takes
+                    the researcher there, and a keyboard can still reach it,
+                    which an `<a>` with no `href` cannot. A field that is not
+                    in the DOM at all is neither: it used to be an `<a
+                    href="#field_prompts">` pointing at an id nothing renders,
+                    announced as a link and offered to "open in a new tab",
+                    and it went nowhere when taken.
+                  */}
+                  {target === null || target === undefined ? (
+                    <span className="block w-full px-5 py-2.5 before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]">
+                      {detail}
+                    </span>
+                  ) : target.anchorId === undefined ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleClickIssue(e, field)}
+                      className="block w-full px-5 py-2.5 text-left before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                    >
+                      {detail}
+                    </button>
+                  ) : (
+                    <a
+                      href={`#${target.anchorId}`}
+                      onClick={(e) => handleClickIssue(e, field)}
+                      className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                    >
+                      {detail}
+                    </a>
+                  )}
                 </li>
               );
             })}
@@ -280,8 +288,8 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     hasIssues,
     isOpen,
     issueCount,
-    setIssueRef,
     submitFailed,
+    targets,
     intl,
   ]);
 
