@@ -460,8 +460,12 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
           the exit animation belongs to the `AnimatePresence` inside the
           dialog, so a mount guard repeating the same condition — which is
           what stood here — took the animation away and the dialog vanished.
-          Each form store is keyed per opening, so a half-typed PIN or
-          passphrase still cannot come back with the dialog. */}
+          Each form store stays mounted and is emptied by the
+          `ResetFormWhenClosed` beside its dialog, which is what stops a
+          half-typed PIN or passphrase coming back with it. NOT by a `key` per
+          opening: keying the provider remounts the dialog inside it, and a
+          dialog remounted mid-exit leaves its portal behind — the field stayed
+          in the document, with its contents, for good. */}
       {authenticationDialog}
       <FormStoreProvider>
         <ResetFormWhenClosed open={recoveryDialogOpen} />
