@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, waitFor } from 'storybook/test';
 
 import Button from './Button';
 import ComboboxField from './form/fields/Combobox/Combobox';
@@ -197,5 +198,108 @@ export const LayeredSurfaces: Story = {
         </PopoverContent>
       </Popover>
     );
+  },
+};
+
+const ARROW_SIDES = ['top', 'right', 'bottom', 'left'] as const;
+
+export const ArrowAlignment: Story = {
+  args: {
+    children: null,
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          "One Popover per side. The arrow's outline has to continue the popup's border as one unbroken line; the play function measures that seam, since the failure it guards against is a fraction of a pixel.",
+      },
+    },
+  },
+  render: () => (
+    <div className="grid h-dvh grid-cols-2 place-items-center">
+      {ARROW_SIDES.map((side) => (
+        <Popover defaultOpen key={side}>
+          <PopoverTrigger render={<Button>{side}</Button>} />
+          <PopoverContent side={side} className="w-40">
+            Anchored {side}
+          </PopoverContent>
+        </Popover>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      // Popups portal to the body, so reach each one through its own trigger
+      // rather than querying the document for four and hoping.
+      const pairs = Array.from(
+        canvasElement.querySelectorAll<HTMLElement>('button[aria-controls]'),
+      ).map((trigger) => {
+        const popup = document.getElementById(
+          trigger.getAttribute('aria-controls')!,
+        );
+        expect(popup).not.toBeNull();
+        const arrow = popup!.querySelector<SVGSVGElement>(
+          '[aria-hidden="true"][data-side] > svg',
+        );
+        expect(arrow).not.toBeNull();
+        return { trigger, popup: popup!, arrow: arrow! };
+      });
+      expect(pairs).toHaveLength(ARROW_SIDES.length);
+
+      const measurements = pairs.flatMap(({ trigger, popup, arrow }) => {
+        const box = arrow.parentElement!;
+        const side = box.dataset.side!;
+        // The square box lies over 17px of real content, and must not take its
+        // clicks.
+        const boxRect = box.getBoundingClientRect();
+        const over = document.elementFromPoint(
+          boxRect.left + boxRect.width / 2,
+          boxRect.top + boxRect.height / 2,
+        );
+        expect(popup.contains(over)).toBe(true);
+        expect(box.contains(over)).toBe(false);
+        const popupRect = popup.getBoundingClientRect();
+        const triggerRect = trigger.getBoundingClientRect();
+        const border = parseFloat(getComputedStyle(popup).borderTopWidth);
+        const ctm = arrow.getScreenCTM()!;
+        // 30px of arrow across 20 viewBox units, and nothing else scaling it —
+        // so a popup caught mid-entrance fails rather than being measured.
+        expect(Math.hypot(ctm.a, ctm.b)).toBeCloseTo(1.5, 5);
+
+        const horizontal = side === 'top' || side === 'bottom';
+        const at = (x: number, y: number) => {
+          const p = new DOMPoint(x, y).matrixTransform(ctm);
+          return horizontal ? p : { x: p.y, y: p.x };
+        };
+        const borderCentre =
+          side === 'bottom'
+            ? popupRect.top + border / 2
+            : side === 'top'
+              ? popupRect.bottom - border / 2
+              : side === 'right'
+                ? popupRect.left + border / 2
+                : popupRect.right - border / 2;
+        const triggerCentre = horizontal
+          ? triggerRect.left + triggerRect.width / 2
+          : triggerRect.top + triggerRect.height / 2;
+
+        // y=8 is the shoulder the border runs through — both ends, so a shoulder
+        // that isn't parallel to it is caught too. x=10 is the drawing's centre.
+        return [
+          { side, what: 'shoulder start', offBy: at(0, 8).y - borderCentre },
+          { side, what: 'shoulder end', offBy: at(20, 8).y - borderCentre },
+          { side, what: 'aim', offBy: at(10, 8).x - triggerCentre },
+        ];
+      });
+
+      expect([...new Set(measurements.map(({ side }) => side))].sort()).toEqual(
+        [...ARROW_SIDES].sort(),
+      );
+      // Negated, so a NaN fails instead of filtering itself out.
+      expect(
+        measurements.filter(({ offBy }) => !(Math.abs(offBy) <= 0.1)),
+      ).toEqual([]);
+    });
   },
 };
