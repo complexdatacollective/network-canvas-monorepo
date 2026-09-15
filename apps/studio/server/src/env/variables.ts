@@ -44,6 +44,21 @@ export const serverSchemas = {
   DATABASE_URL: z.string().min(1).optional(),
 
   /**
+   * The keyring every stored secret is encrypted with (#1900), as
+   * `<id>:<base64 of 32 bytes>` entries. Shape is not checked here: the parse
+   * that produces the keyring is the only thing that can say whether a value
+   * is usable, and it reports what is wrong without ever echoing the value.
+   */
+  STUDIO_SECRETS_KEY: z.string().min(1).optional(),
+
+  /**
+   * Where to read the same value from instead. The reference stack mounts it
+   * as a Compose file secret, which is how the keyring stays out of
+   * `docker inspect` and out of any log that prints the environment.
+   */
+  STUDIO_SECRETS_KEY_FILE: z.string().min(1).optional(),
+
+  /**
    * 32 bytes of base64 is 44 characters, so the documented
    * `openssl rand -base64 32` clears this comfortably. The floor exists to
    * refuse a placeholder or truncated value at boot rather than let it

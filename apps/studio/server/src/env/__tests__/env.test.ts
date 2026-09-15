@@ -1,7 +1,14 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { isLocalDatabase, readEnv } from '../../env.ts';
+import { KeyringError } from '../../secrets/keyring.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
+import { resolve } from '../resolve.ts';
 
 // The suite runs with the committed .env.development loaded (see
 // vitest.config.ts), so it starts from the same environment `pnpm dev` gets
@@ -436,5 +443,120 @@ describe('the local-database judgement', () => {
       isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
     ).toBe(false);
     expect(isLocalDatabase('not a url')).toBe(false);
+  });
+});
+
+// The keyring is the whole of Studio's key custody (#1900). It is read here,
+// once, before anything is written under it: a deployment whose keyring is
+// missing or malformed has to fail while it still has the one it was using,
+// not halfway through writing a secret it will not be able to read back.
+describe('the secrets keyring', () => {
+  const configured = {
+    DATABASE_URL: DEV_DATABASE_URL,
+    BETTER_AUTH_SECRET: DEV.authSecret,
+    PUBLIC_URL: DEV.baseUrl,
+  };
+
+  function refusal(act: () => unknown): string {
+    try {
+      act();
+    } catch (error: unknown) {
+      return error instanceof Error ? error.message : String(error);
+    }
+    throw new Error('expected a refusal');
+  }
+
+  it('parses the fixture the committed development file supplies', () => {
+    expect(readEnv().secrets?.currentId).toBe(DEV.secretsKey.split(':')[0]);
+    expect(readEnv().secrets?.ids()).toEqual(['dev']);
+  });
+
+  it('refuses both variables at once rather than choosing one', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY_FILE', '/run/secrets/studio_secrets_key');
+    expect(() => readEnv()).toThrow(
+      /STUDIO_SECRETS_KEY and STUDIO_SECRETS_KEY_FILE are both set; set exactly one/,
+    );
+  });
+
+  it('reads the file when the file is the one that is set', () => {
+    const read = vi.fn(() => `${testKeyringEntry('file-1')}\n`);
+    const env = resolve(
+      { ...configured, STUDIO_SECRETS_KEY_FILE: '/run/secrets/keyring' },
+      { readSecretsFile: read },
+    );
+    expect(read).toHaveBeenCalledExactlyOnceWith('/run/secrets/keyring');
+    expect(env.secrets?.currentId).toBe('file-1');
+  });
+
+  it('reads a keyring off disk, one entry per line', () => {
+    // Through `readEnv`, so the real file read is what runs: the mounted
+    // Compose secret is the deployed path, and an injected reader cannot say
+    // whether it works.
+    const directory = mkdtempSync(join(tmpdir(), 'studio-secrets-'));
+    const path = join(directory, 'studio_secrets_key');
+    try {
+      writeFileSync(
+        path,
+        `${testKeyringEntry('file-1')}\n${testKeyringEntry('file-2')}\n`,
+      );
+      vi.stubEnv('STUDIO_SECRETS_KEY', '');
+      vi.stubEnv('STUDIO_SECRETS_KEY_FILE', path);
+      expect(readEnv().secrets?.ids()).toEqual(['file-1', 'file-2']);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('names the path, and nothing the read said, when the file is unreadable', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    const path = join(tmpdir(), 'studio-secrets-key-that-is-not-there');
+    vi.stubEnv('STUDIO_SECRETS_KEY_FILE', path);
+    const message = refusal(() => readEnv());
+    expect(message).toBe(`STUDIO_SECRETS_KEY_FILE could not be read: ${path}`);
+    // A filesystem error can quote what it was reading, and this file is
+    // entirely key material.
+    expect(message).not.toContain('ENOENT');
+  });
+
+  it('refuses a database with no keyring, and says how to make one', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    const message = refusal(() => readEnv());
+    expect(message).toContain('STUDIO_SECRETS_KEY_FILE');
+    expect(message).toContain('STUDIO_SECRETS_KEY');
+    expect(message).toContain('openssl rand -base64 32');
+    expect(message).toContain('k1:<value>');
+    // The one rule a self-hoster has to carry away from this refusal.
+    expect(message).toContain(
+      'Back the keyring up with the database: without it every stored secret is unreadable.',
+    );
+  });
+
+  it('is undefined where there is no database to hold a secret', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    vi.stubEnv('DATABASE_URL', '');
+    expect(readEnv().secrets).toBeUndefined();
+  });
+
+  it('is parsed even with no database, so a mistake in it surfaces early', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    expect(readEnv().secrets?.currentId).toBe('dev');
+    vi.stubEnv('STUDIO_SECRETS_KEY', 'k1:not-a-key');
+    expect(() => readEnv()).toThrow(KeyringError);
+  });
+
+  it('reports what is wrong with a keyring without echoing it', () => {
+    const entry = testKeyringEntry('dev');
+    vi.stubEnv('STUDIO_SECRETS_KEY', `${entry},${entry}`);
+    const message = refusal(() => readEnv());
+    expect(message).toContain('key id "dev" twice');
+    expect(message).not.toContain(entry.split(':')[1]);
+  });
+
+  it('is withheld from the lane that serves no database', () => {
+    // The Netlify lane reads an allow-list, and a variable added later is
+    // withheld from it by default. A lane with no database has no secret to
+    // read, so it has no business holding the key to one.
+    vi.stubEnv('STUDIO_SECRETS_KEY', testKeyringEntry('netlify'));
+    expect(readEnv({ withoutDatabaseOrAuth: true }).secrets).toBeUndefined();
   });
 });

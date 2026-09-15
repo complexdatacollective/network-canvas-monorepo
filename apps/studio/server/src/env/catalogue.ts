@@ -22,6 +22,13 @@ export const DEV = {
   s3AccessKeyId: 'minioadmin',
   s3SecretAccessKey: 'minioadmin',
   authSecret: 'studio-dev-secret-not-for-production',
+  /**
+   * The development keyring (#1900). Its 32 bytes are the ASCII of
+   * `studio-dev-keyring-not-for-prod!`, so anyone who decodes a ciphertext's
+   * key out of a local database finds a sentence saying what it is rather
+   * than a value they might mistake for a generated one.
+   */
+  secretsKey: 'dev:c3R1ZGlvLWRldi1rZXlyaW5nLW5vdC1mb3ItcHJvZCE=',
   // The Vite dev server, which proxies every server path — the single-origin
   // invariant (#1245).
   baseUrl: 'http://localhost:5173',
@@ -35,6 +42,7 @@ export const GROUPS = [
   'Process',
   'Object storage',
   'Database',
+  'Secrets',
   'Authentication',
 ] as const;
 
@@ -143,6 +151,24 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
+  },
+
+  STUDIO_SECRETS_KEY: {
+    group: 'Secrets',
+    summary:
+      'The keyring Studio encrypts stored secrets with — webhook signing secrets, API-key protocol assets and OAuth tokens. One or more `<id>:<base64 of 32 bytes>` entries separated by commas or whitespace, the first of which is the one new values are written under.',
+    deployment:
+      'Required whenever `DATABASE_URL` is set, unless `STUDIO_SECRETS_KEY_FILE` names a file holding it; setting both is refused at boot. Generate an entry with `openssl rand -base64 32` and write it as `k1:<value>`. Back it up with the database: without it every stored secret is unreadable, and the server refuses to start rather than serve a database it can only half read. Rotate by adding a new entry at the front, deploying, running `studio-api rotate-secrets`, and then removing the old entry.',
+    devDefault: DEV.secretsKey,
+    example: `k1:${'x'.repeat(43)}=`,
+  },
+  STUDIO_SECRETS_KEY_FILE: {
+    group: 'Secrets',
+    summary:
+      'Path to a file holding the keyring, read once at boot; the file may put one entry per line.',
+    deployment:
+      'The reference stack mounts the keyring as a Compose file secret under `/run/secrets`, so it never appears in `docker inspect` or in a log of the environment. Takes the place of `STUDIO_SECRETS_KEY`, which stays for development and for hosts that have no file secrets; setting both is refused at boot.',
+    example: '/run/secrets/studio_secrets_key',
   },
 
   BETTER_AUTH_SECRET: {

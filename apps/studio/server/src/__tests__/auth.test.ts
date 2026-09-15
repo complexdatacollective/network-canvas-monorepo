@@ -135,6 +135,8 @@ describe('unconfigured auth', () => {
     db: undefined,
     auth: undefined,
     mail: undefined,
+    // No database, so nothing to hold a secret and nothing to encrypt it with.
+    secrets: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
