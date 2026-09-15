@@ -19,6 +19,9 @@ import { saveAction, type SaveAction } from '~/lib/files/download';
 
 import type { ExportFlow } from './useSessionMutations';
 
+/** Every phase that has a dialog to show — anything but `idle`. */
+type OpenExportFlow = Exclude<ExportFlow, { phase: 'idle' }>;
+
 const messages = defineMessages({
   errorDetailsCopiedToClipboard: {
     id: 'interviewer.exportDialog.errorDetailsCopiedToClipboard',
@@ -246,25 +249,39 @@ export function ExportDialog({
   const intl = useAppIntl();
   const primaryActionRef = useRef<HTMLButtonElement | null>(null);
 
+  // The flow goes idle the instant the export is dismissed, and the dialog has
+  // to keep drawing the phase it was in until it has animated out — rendered
+  // only while there was a flow, closing unmounted it in the same tick and
+  // took the `AnimatePresence` running the exit with it. Held in state rather
+  // than a ref because the render during the exit reads it.
+  //
+  // Everything below reads `shown` rather than `flow` for the same reason: a
+  // footer recomputed from the idle flow would relabel its own primary action
+  // as the dialog faded.
+  const [heldFlow, setHeldFlow] = useState<OpenExportFlow | null>(null);
+  if (flow.phase !== 'idle' && flow !== heldFlow) setHeldFlow(flow);
+
+  const shown = flow.phase === 'idle' ? heldFlow : flow;
+
   // The dialog is already open during the build, so nothing refocuses when the
   // content changes underneath it: move focus onto the primary action when the
   // archive becomes ready (Enter/Space activation counts as a user gesture for
   // Web Share, so the keyboard path is first-class).
   useEffect(() => {
-    if (flow.phase === 'ready') {
+    if (shown?.phase === 'ready') {
       primaryActionRef.current?.focus();
     }
-  }, [flow.phase]);
+  }, [shown?.phase]);
 
   const action = useMemo(
     () =>
-      flow.phase === 'ready' || flow.phase === 'saving'
-        ? saveAction(flow.blob, flow.fileName)
+      shown?.phase === 'ready' || shown?.phase === 'saving'
+        ? saveAction(shown.blob, shown.fileName)
         : null,
-    [flow],
+    [shown],
   );
 
-  if (flow.phase === 'idle') {
+  if (shown === null) {
     return null;
   }
 
@@ -276,18 +293,18 @@ export function ExportDialog({
   let footer: ReactNode;
   let children: ReactNode = null;
 
-  if (flow.phase === 'building') {
+  if (shown.phase === 'building') {
     const percent =
-      flow.current !== null && flow.total !== null && flow.total > 0
-        ? Math.round((flow.current / flow.total) * 100)
+      shown.current !== null && shown.total !== null && shown.total > 0
+        ? Math.round((shown.current / shown.total) * 100)
         : null;
     title = intl.formatMessage(messages.exporting, {
-      count: flow.sessionCount,
+      count: shown.sessionCount,
     });
     // An accidental backdrop click or Escape must not destroy a long build;
     // cancellation is the explicit footer action only.
     dismissible = false;
-    announcement = intl.formatMessage(exportStageMessages[flow.stage]);
+    announcement = intl.formatMessage(exportStageMessages[shown.stage]);
     footer = (
       <Button onClick={onCancelBuild} data-testid="export-cancel-build">
         {intl.formatMessage(commonMessages.cancel)}
@@ -308,17 +325,17 @@ export function ExportDialog({
           label={intl.formatMessage(messages.exportProgress)}
           className="text-sea-green mt-4 h-2"
         />
-        {flow.current !== null && flow.total !== null && (
+        {shown.current !== null && shown.total !== null && (
           <Paragraph margin="none" emphasis="muted" className="mt-2 text-sm">
             {intl.formatMessage(messages.filesProgress, {
-              current: flow.current,
-              total: flow.total,
+              current: shown.current,
+              total: shown.total,
             })}
           </Paragraph>
         )}
       </>
     );
-  } else if (flow.phase === 'error') {
+  } else if (shown.phase === 'error') {
     title = intl.formatMessage(messages.exportFailed);
     description = intl.formatMessage(messages.failedDescription);
     accent = 'destructive';
@@ -328,7 +345,7 @@ export function ExportDialog({
       'Interviewer export failed.',
       `App version: ${APP_VERSION}`,
       '',
-      flow.detail,
+      shown.detail,
     ].join('\n');
     footer = <ExportErrorFooter copyText={copyText} onClose={onDismiss} />;
     children = (
@@ -340,7 +357,7 @@ export function ExportDialog({
       </Paragraph>
     );
   } else {
-    const saving = flow.phase === 'saving';
+    const saving = shown.phase === 'saving';
     const resolvedAction = action ?? 'download';
     const ActionIcon = READY_ACTION_ICONS[resolvedAction];
     title = intl.formatMessage(messages.archiveReady);
@@ -375,19 +392,19 @@ export function ExportDialog({
           <FileArchive className="text-success size-8 shrink-0" aria-hidden />
           <div className="min-w-0">
             <Paragraph margin="none" className="font-semibold break-all">
-              {flow.fileName}
+              {shown.fileName}
             </Paragraph>
             <Paragraph emphasis="muted" margin="none" className="mt-1 text-sm">
               {intl.formatMessage(messages.contains, {
-                count: flow.sessionIds.length,
+                count: shown.sessionIds.length,
               })}
             </Paragraph>
           </div>
         </Surface>
-        {flow.failedCount > 0 && (
+        {shown.failedCount > 0 && (
           <Alert variant="warning" className="mt-4">
             {intl.formatMessage(messages.incomplete, {
-              count: flow.failedCount,
+              count: shown.failedCount,
             })}
           </Alert>
         )}
@@ -397,7 +414,8 @@ export function ExportDialog({
 
   return (
     <Dialog
-      open
+      open={flow.phase !== 'idle'}
+      onExitComplete={() => setHeldFlow(null)}
       title={title}
       description={description}
       accent={accent}

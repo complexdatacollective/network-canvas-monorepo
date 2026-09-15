@@ -116,6 +116,7 @@
     "./form/Form": "./src/form/Form.tsx",
     "./form/FormErrors": "./src/form/FormErrors.tsx",
     "./form/Hint": "./src/form/Hint.tsx",
+    "./form/ResetFormWhenClosed": "./src/form/ResetFormWhenClosed.tsx",
     "./form/SubmitButton": "./src/form/SubmitButton.tsx",
     "./form/fields/ArrayField/ArrayField": "./src/form/fields/ArrayField/ArrayField.tsx",
     "./form/fields/Boolean": "./src/form/fields/Boolean.tsx",
@@ -594,6 +595,10 @@
       "./form/Hint": {
         "types": "./dist/form/Hint.d.ts",
         "default": "./dist/form/Hint.js"
+      },
+      "./form/ResetFormWhenClosed": {
+        "types": "./dist/form/ResetFormWhenClosed.d.ts",
+        "default": "./dist/form/ResetFormWhenClosed.js"
       },
       "./form/SubmitButton": {
         "types": "./dist/form/SubmitButton.d.ts",
