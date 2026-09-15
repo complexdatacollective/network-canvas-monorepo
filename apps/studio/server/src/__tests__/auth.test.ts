@@ -13,6 +13,7 @@ import {
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testKeyring } from './support/secrets.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -304,7 +305,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool, { scale: 'tiny' });
+    await seed(scratch.pool, { scale: 'tiny', secrets: testKeyring() });
     const auth = createBetterAuthService(env.auth, scratch.pool, () =>
       Promise.resolve(),
     );

@@ -4,10 +4,10 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
+import type { SecretsCipher } from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededSession } from './network.ts';
 import {
-  seedBytes,
   seedHex,
   seedTime,
   seedUuid,
@@ -214,9 +214,13 @@ type WebhookDisablement = {
  * once its data is written).
  *
  * The signing secret is stored as ciphertext because Standard Webhooks
- * requires the server to reproduce it on every send. The seed has no key
- * management, so it writes opaque bytes under a placeholder key id: nothing
- * can sign with them, which is the honest state for synthetic data.
+ * requires the server to reproduce it on every send. Since #1900 the seed
+ * seals a real `whsec_` secret through the deployment's own cipher rather than
+ * writing opaque bytes under a placeholder key id: a seeded instance is then a
+ * working one — the worker can sign a delivery — and the boot check, which
+ * refuses to serve while a stored key id is one the keyring cannot produce,
+ * has real rows to read. The plaintexts are returned so the dump-and-search
+ * test knows what to look for.
  */
 export async function seedWebhooks(
   client: pg.PoolClient,
@@ -224,10 +228,12 @@ export async function seedWebhooks(
   studies: SeedStudy[],
   sessions: SeededSession[],
   withdrawals: SeedWithdrawal[],
-): Promise<void> {
+  cipher: SecretsCipher,
+): Promise<string[]> {
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
   const disablements: WebhookDisablement[] = [];
+  const plaintextSecrets: string[] = [];
   const createdAt = seedTime(-250 + team.index);
   const resources = webhookResources(studies, sessions, withdrawals);
 
@@ -251,6 +257,15 @@ export async function seedWebhooks(
       ),
       { min: 1, max: 4 },
     );
+    // Sealed against this row's own identity, so the seeded corpus exercises
+    // the AAD binding as a real subscription does: the ciphertext opens only
+    // as (this team, this subscription).
+    const secret = `whsec_${seedHex(24)}`;
+    plaintextSecrets.push(secret);
+    const sealed = cipher.sealWebhookSecret(
+      { teamId: team.id, subscriptionId: id },
+      secret,
+    );
     subscriptionRows.push([
       id,
       team.id,
@@ -260,8 +275,8 @@ export async function seedWebhooks(
         ? 'Retired endpoint, kept for the failure history'
         : faker.lorem.sentence(),
       eventTypes,
-      seedBytes(48),
-      `dev-integration-key-1`,
+      sealed.ciphertext,
+      sealed.keyId,
       'active',
       0,
       null,
@@ -381,6 +396,8 @@ export async function seedWebhooks(
       ],
     );
   }
+
+  return plaintextSecrets;
 }
 
 /** Two experiments per team: one still running, one already stopped. */

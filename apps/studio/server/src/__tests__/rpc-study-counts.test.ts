@@ -28,6 +28,7 @@ import {
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testKeyring } from './support/secrets.ts';
 
 const db = await reachableDb();
 
@@ -77,7 +78,7 @@ describe.skipIf(!db)('studies.counts', () => {
     ownerPool = scratch.pool;
     appPool = scratch.app;
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool);
+    await seed(scratch.pool, { secrets: testKeyring() });
 
     // The managed study with the most collected sessions, so every count under
     // test is non-zero: an assertion that 0 equals 0 would hold however wrong

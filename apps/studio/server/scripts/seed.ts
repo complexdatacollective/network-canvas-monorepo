@@ -31,7 +31,11 @@ if (values.scale !== 'demo' && values.scale !== 'large') {
 const scale: SeedScale = values.scale;
 
 const env = readEnv();
-const { db } = confirmDestructiveTarget(env, values.force, 'wipe and reseed');
+const { db, secrets } = confirmDestructiveTarget(
+  env,
+  values.force,
+  'wipe and reseed',
+);
 
 const pool = createOwnerPool(db);
 
@@ -41,7 +45,7 @@ try {
     console.error(schemaProblemMessage(state));
     process.exit(1);
   }
-  await seed(pool, { adminPassword: env.seedAdminPassword, scale });
+  await seed(pool, { secrets, adminPassword: env.seedAdminPassword, scale });
   console.log('Seed complete.');
 } finally {
   await pool.end();

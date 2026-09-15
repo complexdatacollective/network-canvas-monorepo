@@ -6,7 +6,7 @@
 // randomBytes, and it rules out letting Postgres fill a `defaultNow()` column:
 // two runs a millisecond apart would disagree. Hashing is still `node:crypto`
 // — a digest of deterministic input is deterministic.
-import { createHash, createHmac } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { faker } from '@faker-js/faker';
 
@@ -57,22 +57,6 @@ export function sha256Bytes(input: string | Buffer): Buffer {
 
 export function base64url(input: Buffer): string {
   return input.toString('base64url');
-}
-
-/**
- * A placeholder keying for the contact blind indexes, so seeded opt-outs
- * actually suppress seeded deliveries. #1258 has not chosen the deployment's
- * blind-index key or its derivation; when it does, this constant and every
- * caller move to that keying. It is published here deliberately — a
- * development-only key that protects nothing must not look like a secret.
- */
-const SEED_BLIND_INDEX_KEY = 'studio-development-blind-index-key';
-
-/** The HMAC the runtime will compute over a normalized recipient address. */
-export function contactBlindIndex(address: string): string {
-  return createHmac('sha256', SEED_BLIND_INDEX_KEY)
-    .update(address.trim().toLowerCase())
-    .digest('hex');
 }
 
 /** Draws `count` distinct members of `items`, or all of them if fewer. */

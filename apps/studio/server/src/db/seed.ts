@@ -4,6 +4,8 @@ import type pg from 'pg';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import { refreshProjectionsForSessions } from '../network/projections.ts';
+import { createSecretsCipher, type SecretsCipher } from '../secrets/cipher.ts';
+import type { Keyring } from '../secrets/keyring.ts';
 import { seedAssets, seedTemplates } from './seed/assets.ts';
 import { seedAuditEvents } from './seed/audit.ts';
 import {
@@ -19,7 +21,7 @@ import {
   seedSessionsAndNetworks,
 } from './seed/network.ts';
 import { seedProtocolLine, type SeededVersion } from './seed/protocols.ts';
-import { seedTime } from './seed/rng.ts';
+import { seedBytes, seedTime } from './seed/rng.ts';
 import {
   closeStudy,
   publishConsentDocuments,
@@ -64,10 +66,27 @@ export { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD };
 export type SeedScale = 'tiny' | 'demo' | 'large';
 
 export type SeedOptions = {
+  /**
+   * The deployment's keyring. Required, and required of every caller rather
+   * than defaulted: the seed writes real sealed webhook secrets, and a seed
+   * that quietly invented key material of its own would leave rows the running
+   * instance cannot open — which the boot check would then refuse to serve
+   * behind.
+   */
+  secrets: Keyring;
   /** Defaults to SEED_ADMIN_PASSWORD. */
   adminPassword?: string;
   /** Defaults to `demo`. */
   scale?: SeedScale;
+};
+
+export type SeedResult = {
+  /**
+   * The webhook signing secrets this seed wrote, in plaintext. Returned so the
+   * dump-and-search test knows what to search the database for; nothing else
+   * needs them, and they are never printed.
+   */
+  plaintextSecrets: string[];
 };
 
 const FAKER_SEED = 20260902;
@@ -180,12 +199,14 @@ type SeedTotals = {
   sessions: number;
   auditEvents: number;
   anonymousLinks: string[];
+  plaintextSecrets: string[];
 };
 
 async function populate(
   client: pg.PoolClient,
   adminPassword: string,
   scale: (typeof SCALES)[SeedScale],
+  cipher: SecretsCipher,
 ): Promise<SeedTotals> {
   await wipe(client);
 
@@ -198,6 +219,7 @@ async function populate(
     sessions: 0,
     auditEvents: 0,
     anonymousLinks: [],
+    plaintextSecrets: [],
   };
 
   for (const team of teams) {
@@ -242,7 +264,16 @@ async function populate(
 
     await seedScheduling(client, team, studies);
     await seedApiTokens(client, team, studies);
-    await seedWebhooks(client, team, studies, sessions, withdrawals);
+    totals.plaintextSecrets.push(
+      ...(await seedWebhooks(
+        client,
+        team,
+        studies,
+        sessions,
+        withdrawals,
+        cipher,
+      )),
+    );
     await seedExperiments(client, team, studies, sessions);
     await seedFeedback(client, team, studies);
     await seedMonitoringRollups(client, team.id, seedTime(0));
@@ -272,17 +303,26 @@ async function populate(
 
 export async function seed(
   pool: pg.Pool,
-  options: SeedOptions = {},
-): Promise<void> {
+  options: SeedOptions,
+): Promise<SeedResult> {
   const adminPassword = options.adminPassword ?? SEED_ADMIN_PASSWORD;
   const scale = SCALES[options.scale ?? 'demo'];
   faker.seed(FAKER_SEED);
+
+  // The one place in the application that hands the cipher its randomness:
+  // every other caller takes `crypto.randomBytes`, because a nonce that is not
+  // unpredictable is a broken nonce. Here the whole corpus is synthetic and
+  // `seed.test.ts` compares two full ordered dumps byte for byte, so the seed
+  // draws its nonces from the same pinned PRNG as everything else it writes.
+  // Nothing sealed here protects anything, and nothing outside this module may
+  // pass `random`.
+  const cipher = createSecretsCipher(options.secrets, { random: seedBytes });
 
   const client = await pool.connect();
   let totals: SeedTotals;
   try {
     await client.query('begin');
-    totals = await populate(client, adminPassword, scale);
+    totals = await populate(client, adminPassword, scale, cipher);
     await client.query('commit');
   } catch (error) {
     await client.query('rollback');
@@ -306,4 +346,6 @@ export async function seed(
   ];
   // oxlint-disable-next-line no-console -- the deploy-time and dev-boot seed's own progress output
   console.log(lines.join('\n'));
+
+  return { plaintextSecrets: totals.plaintextSecrets };
 }

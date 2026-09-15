@@ -206,9 +206,10 @@ const studyWaves = pgTable(
   ],
 );
 
-// A study-scoped person record: the durable identity that links a
-// participant's sessions across waves, their IANA time zone, and the encrypted
-// tier holding every contact detail and researcher-defined attribute.
+// The study-scoped person record: the durable identity that links a
+// participant's sessions across waves, their IANA time zone, and contact
+// details and researcher-defined attributes as plain columns, protected by the
+// deployment (#1900).
 const participants = pgTable(
   'participants',
   {
@@ -225,18 +226,27 @@ const participants = pgTable(
     // The schedule anchor (participant enrolment date).
     enrolledAt: timestamp('enrolled_at', { withTimezone: true }),
 
-    // ---- The encrypted tier -------------------------------------------------
-    emailCiphertext: bytea('email_ciphertext'),
-    emailIndex: bytea('email_index'),
-    phoneCiphertext: bytea('phone_ciphertext'),
-    phoneIndex: bytea('phone_index'),
-    nameCiphertext: bytea('name_ciphertext'),
-    // The researcher-defined attribute bag, encrypted whole. Not JSONB: a
-    // ciphertext is opaque, and storing it as JSONB would invite a
-    // server-side query into it that cannot work.
-    attributesCiphertext: bytea('attributes_ciphertext'),
-    piiKeyId: text('pii_key_id'),
-    piiAlgorithm: text('pii_algorithm'),
+    // ---- Contact details and attributes ------------------------------------
+    // Plain columns, on the #1900 ruling that encrypting contact details does
+    // not matter while response data is not encrypted: what protects them is
+    // the deployment — encrypted volumes, encrypted backups, TLS to the
+    // database and access control — not the application. Search, sort and
+    // partial match therefore work here as on any column. Encrypting them
+    // later is a keyring purpose, ciphertext columns and a blind index, all of
+    // which the secrets work left in place; the issue records that seam so the
+    // decision can be revisited without re-deriving it.
+    //
+    // Null throughout: a managed study need not hold an address, and an
+    // anonymous one holds no participants at all.
+    email: text('email'),
+    phone: text('phone'),
+    name: text('name'),
+    // The researcher-defined attribute bag. JSONB rather than the opaque bytes
+    // this was while it was encrypted, because the point of a plain column is
+    // that the server can query into it.
+    attributes: jsonb('attributes')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
 
     // Provenance for the audited copy/transfer tool. No foreign keys: the
     // source study may since have been purged, and the audit event is the
@@ -265,14 +275,15 @@ const participants = pgTable(
       table.createdAt.desc(),
       table.id.desc(),
     ),
-    // The blind-index equality lookup, team-first. Partial: anonymous studies
-    // hold no participants and managed ones need not hold an email.
-    index('participants_team_id_study_id_email_index_idx')
-      .on(table.teamId, table.studyId, table.emailIndex)
-      .where(sql`${table.emailIndex} IS NOT NULL`),
-    index('participants_team_id_study_id_phone_index_idx')
-      .on(table.teamId, table.studyId, table.phoneIndex)
-      .where(sql`${table.phoneIndex} IS NOT NULL`),
+    // The contact-detail lookup, team-first. Partial: anonymous studies hold
+    // no participants and managed ones need not hold either address, so the
+    // index covers only the rows a lookup can match.
+    index('participants_team_id_study_id_email_idx')
+      .on(table.teamId, table.studyId, table.email)
+      .where(sql`${table.email} IS NOT NULL`),
+    index('participants_team_id_study_id_phone_idx')
+      .on(table.teamId, table.studyId, table.phone)
+      .where(sql`${table.phone} IS NOT NULL`),
     check(
       'participants_participant_code_check',
       sql`${table.participantCode} ~ '[^[:space:]]'
@@ -285,25 +296,36 @@ const participants = pgTable(
       sql`${table.timezone} ~ '^[A-Za-z][A-Za-z0-9+_-]*(/[A-Za-z0-9+._-]+)*$'
           AND char_length(${table.timezone}) BETWEEN 1 AND 64`,
     ),
-    // A blind index without its ciphertext cannot be decrypted; a ciphertext
-    // without its blind index cannot be found. Neither is ever correct.
+    // Stored normalised (`normalizeContactAddress` in src/study/contact.ts),
+    // so an equality lookup finds the participant whatever case the address
+    // was typed in, and #1270's dedupe and #1305's opt-outs compare one
+    // spelling. `btrim` and `lower` are how the database says the same thing
+    // the application does before writing: a row written past the application
+    // still cannot hold an address that would not be found.
     check(
-      'participants_blind_index_pairing_check',
-      sql`(${table.emailCiphertext} IS NULL) = (${table.emailIndex} IS NULL)
-          AND (${table.phoneCiphertext} IS NULL) = (${table.phoneIndex} IS NULL)`,
+      'participants_email_check',
+      sql`${table.email} IS NULL
+          OR (char_length(${table.email}) BETWEEN 3 AND 320
+              AND ${table.email} = lower(btrim(${table.email})))`,
     ),
-    // Every ciphertext names the key and algorithm that produced it, so
-    // rotation is a per-row property rather than an instance-wide flag day.
+    // E.164, which is the only form an SMS provider takes and the only one two
+    // spellings of a number can be compared in.
     check(
-      'participants_pii_key_check',
-      sql`(${table.piiKeyId} IS NULL) = (${table.piiAlgorithm} IS NULL)
-          AND (
-            ${table.piiKeyId} IS NOT NULL
-            OR num_nonnulls(
-              ${table.emailCiphertext}, ${table.phoneCiphertext},
-              ${table.nameCiphertext}, ${table.attributesCiphertext}
-            ) = 0
-          )`,
+      'participants_phone_check',
+      sql`${table.phone} IS NULL OR ${table.phone} ~ '^\\+[1-9][0-9]{6,14}$'`,
+    ),
+    check(
+      'participants_name_check',
+      sql`${table.name} IS NULL
+          OR (${table.name} ~ '[^[:space:]]'
+              AND char_length(${table.name}) <= 320)`,
+    ),
+    // An object, never a scalar or an array: every reader indexes into this by
+    // attribute name, and `jsonb` would otherwise accept `1` or `[]` and turn
+    // that into a runtime surprise somewhere far from the write.
+    check(
+      'participants_attributes_check',
+      sql`jsonb_typeof(${table.attributes}) = 'object'`,
     ),
     check(
       'participants_source_check',

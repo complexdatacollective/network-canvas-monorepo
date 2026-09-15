@@ -18,7 +18,11 @@ const { values } = parseArgs({
 loadEnvFiles();
 
 const env = readEnv();
-const { db, target } = confirmDestructiveTarget(env, values.force, 'reset');
+const { db, secrets, target } = confirmDestructiveTarget(
+  env,
+  values.force,
+  'reset',
+);
 
 console.log(`Resetting ${target}`);
 
@@ -26,6 +30,7 @@ const pool = createOwnerPool(db);
 
 try {
   await resetSchemaAndSeed(pool, {
+    secrets,
     adminPassword: env.seedAdminPassword,
     sweepScratch: true,
   });

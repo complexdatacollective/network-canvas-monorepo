@@ -11,9 +11,9 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
+import { normalizeContactAddress } from '../../study/contact.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import {
-  contactBlindIndex,
   seedHex,
   seedTime,
   seedUuid,
@@ -480,9 +480,12 @@ async function seedDeliveries(
   // the suppression list tell one story in time.
   const optOutMoment = (participant: SeedParticipant) =>
     shiftDays(participant.enrolledAt, 20);
-  const optOutAtByIndex = new Map(
+  // Keyed by the normalised address, which is what the suppression list and
+  // the outbox join on — not by participant id, so a seeded opt-out suppresses
+  // the way a real one does.
+  const optOutAtByAddress = new Map(
     optedOut.map((participant) => [
-      contactBlindIndex(participant.contactAddress),
+      normalizeContactAddress(participant.contactAddress),
       optOutMoment(participant),
     ]),
   );
@@ -496,7 +499,7 @@ async function seedDeliveries(
       optOutRows.push([
         team.id,
         channel,
-        contactBlindIndex(participant.contactAddress),
+        normalizeContactAddress(participant.contactAddress),
         faker.helpers.arrayElement([
           'participant_reply',
           'provider',
@@ -538,8 +541,10 @@ async function seedDeliveries(
     channel: string;
     createdAt: Date;
   }) => {
-    const blindIndex = contactBlindIndex(input.participant.contactAddress);
-    const optOutAt = optOutAtByIndex.get(blindIndex);
+    const recipientAddress = normalizeContactAddress(
+      input.participant.contactAddress,
+    );
+    const optOutAt = optOutAtByAddress.get(recipientAddress);
     const drawn = outcomeFor(ordinal++);
     // A delivery behind a dispatched occurrence was attempted: the schedule
     // says the prompt went out, so the outbox cannot still be waiting to try.
@@ -571,7 +576,7 @@ async function seedDeliveries(
       template.id,
       input.kind,
       input.channel,
-      blindIndex,
+      recipientAddress,
       sha256Hex(render(template, input.participant)),
       provider,
       outcome === 'sent' ? `msg_${seedHex(8)}` : null,
@@ -663,7 +668,7 @@ async function seedDeliveries(
       'template_id',
       'kind',
       'channel',
-      'recipient_blind_index',
+      'recipient_address',
       'rendered_body_hash',
       'provider',
       'provider_message_id',
@@ -696,7 +701,7 @@ async function seedDeliveries(
   await insertRows(
     client,
     'participant_contact_optouts',
-    ['team_id', 'channel', 'recipient_blind_index', 'source', 'opted_out_at'],
+    ['team_id', 'channel', 'recipient_address', 'source', 'opted_out_at'],
     optOutRows,
   );
 }

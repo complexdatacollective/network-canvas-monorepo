@@ -9,6 +9,7 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
 import { sha256Hex } from '../seed/rng.ts';
 
@@ -69,6 +70,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
   let pool: pg.Pool;
   let elapsedMs = 0;
   let adminId = '';
+  let plaintextSecrets: string[] = [];
 
   beforeAll(async () => {
     if (!db) return;
@@ -76,7 +78,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
     pool = scratch.pool;
     await provisionScratchSchema(pool);
     const started = performance.now();
-    await seed(pool);
+    ({ plaintextSecrets } = await seed(pool, { secrets: testKeyring() }));
     elapsedMs = performance.now() - started;
     const admin = await pool.query<{ id: string }>(
       `select id from "user" where email = $1`,
@@ -322,14 +324,56 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
-  it('leaves participant PII columns null and codes well-formed', async () => {
+  it('writes plain contact columns and codes well-formed', async () => {
+    // Every participant is reachable by email, and every address is stored in
+    // the one normalised spelling the opt-out join depends on.
     await expect(
       count(
         pool,
         `select count(*)::int as n from participants
-         where num_nonnulls(email_ciphertext, phone_ciphertext, name_ciphertext,
-                            attributes_ciphertext, email_index, phone_index,
-                            pii_key_id, pii_algorithm) > 0`,
+         where email is null or email <> lower(btrim(email))`,
+      ),
+    ).resolves.toBe(0);
+    // Some but not all carry a phone, so the corpus holds both the
+    // SMS-reachable and the email-only case …
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants where phone is not null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants where phone is null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    // … and every phone that is there is E.164, which is the only form an SMS
+    // provider takes.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where phone is not null and phone !~ '^\\+[1-9][0-9]{6,14}$'`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where name is null or name !~ '[^[:space:]]'`,
+      ),
+    ).resolves.toBe(0);
+    // The attribute bag is an object with something in it: a seed that wrote
+    // `{}` everywhere would satisfy the column's own check and give a filter
+    // in the UI nothing to bite on.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where jsonb_typeof(attributes) <> 'object'
+            or attributes->>'cohort' is null
+            or attributes->>'referral' is null`,
       ),
     ).resolves.toBe(0);
     await expect(
@@ -442,7 +486,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
            and not exists (
              select 1 from participant_contact_optouts o
              where o.team_id = d.team_id and o.channel = d.channel
-               and o.recipient_blind_index = d.recipient_blind_index
+               and o.recipient_address = d.recipient_address
                and o.opted_out_at <= d.created_at)`,
       ),
     ).resolves.toBe(0);
@@ -460,7 +504,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
-          and o.recipient_blind_index = d.recipient_blind_index
+          and o.recipient_address = d.recipient_address
          where o.opted_out_at <= d.created_at and d.suppressed_at is null`,
       ),
     ).resolves.toBe(0);
@@ -470,7 +514,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
-          and o.recipient_blind_index = d.recipient_blind_index
+          and o.recipient_address = d.recipient_address
          where o.opted_out_at > d.created_at and d.suppressed_at is null`,
       ),
     ).resolves.toBeGreaterThan(0);
@@ -969,6 +1013,46 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
+  it('seals every webhook secret under the current key and can open it again', async () => {
+    const keyring = testKeyring();
+    // Every row names the current entry, never an older one: the seed writes
+    // under whatever is current, which is the state `rotate-secrets` leaves
+    // behind and the state the boot check expects to find.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_subscriptions
+         where secret_key_id <> $1`,
+        [keyring.currentId],
+      ),
+    ).resolves.toBe(0);
+
+    const subscriptions = await pool.query<{
+      id: string;
+      team_id: string;
+      secret_ciphertext: Buffer;
+      secret_key_id: string;
+    }>(
+      `select id, team_id, secret_ciphertext, secret_key_id
+       from webhook_subscriptions order by id limit 1`,
+    );
+    const row = subscriptions.rows[0];
+    expect(row).toBeDefined();
+    if (!row) throw new Error('unreachable: the seed writes subscriptions');
+
+    // The round trip is the assertion that matters: the bytes in the column
+    // are a real envelope over a real secret, bound to this row's identity,
+    // not opaque filler that happens to be the right length.
+    const opened = testCipher(keyring).openWebhookSecret(
+      { teamId: row.team_id, subscriptionId: row.id },
+      { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+    );
+    expect(plaintextSecrets).toContain(opened);
+    expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
+    // The column does not hold what the round trip returned.
+    expect(row.secret_ciphertext.toString('utf8')).not.toContain(opened);
+  });
+
   it('appends a dense audit sequence per team and no unbacked outbox rows', async () => {
     const sequences = await pool.query<{ team_id: string; ok: boolean }>(
       `select team_id,
@@ -997,6 +1081,7 @@ describe.skipIf(!db)('seed', () => {
       try {
         await provisionScratchSchema(pool);
         await seed(pool, {
+          secrets: testKeyring(),
           scale: 'tiny',
           adminPassword: 'chosen-for-this-instance',
         });

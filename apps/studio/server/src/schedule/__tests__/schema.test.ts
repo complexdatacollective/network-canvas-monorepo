@@ -128,7 +128,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     template_id: templateId,
     kind: 'prompt',
     channel: 'email',
-    recipient_blind_index: hex(`recipient-${randomUUID()}`),
+    recipient_address: `recipient-${randomUUID()}@example.org`,
     rendered_body_hash: hex(`body-${randomUUID()}`),
     ...overrides,
   });
@@ -147,7 +147,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   const optoutRow = (overrides: Row = {}): Row => ({
     team_id: TEAM_A,
     channel: 'email',
-    recipient_blind_index: hex(`optout-${randomUUID()}`),
+    recipient_address: `optout-${randomUUID()}@example.org`,
     source: 'participant_reply',
     ...overrides,
   });
@@ -1065,9 +1065,14 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         'message_deliveries_hash_check',
       ],
       [
-        'a blind index that is not a sha256 digest',
-        { recipient_blind_index: 'ABC' },
-        'message_deliveries_hash_check',
+        'an address shorter than 3 characters',
+        { recipient_address: 'a@' },
+        'message_deliveries_lengths_check',
+      ],
+      [
+        'an address longer than 320 characters',
+        { recipient_address: `${'a'.repeat(315)}@e.org` },
+        'message_deliveries_lengths_check',
       ],
       [
         'two terminal timestamps at once',
@@ -1222,7 +1227,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       for (const assignment of [
         `kind = 'reminder'`,
         `channel = 'sms'`,
-        `recipient_blind_index = '${hex('someone-else')}'`,
+        `recipient_address = 'someone-else@example.org'`,
         `rendered_body_hash = '${hex('a different body')}'`,
         `occurrence_id = '${occurrenceId}'`,
         `participant_id = '${otherParticipantId}'`,
@@ -1579,9 +1584,14 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         'participant_contact_optouts_source_check',
       ],
       [
-        'an address in the clear',
-        { recipient_blind_index: 'someone@example.org' },
-        'participant_contact_optouts_blind_index_check',
+        'an address shorter than 3 characters',
+        { recipient_address: 'a@' },
+        'participant_contact_optouts_address_check',
+      ],
+      [
+        'an address longer than 320 characters',
+        { recipient_address: `${'a'.repeat(315)}@e.org` },
+        'participant_contact_optouts_address_check',
       ],
     ])('rejects %s', async (_label, overrides, constraint) => {
       await expect(
@@ -1589,17 +1599,17 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toMatchObject({ constraint });
     });
 
-    it('holds one opt-out per team, channel and blind index', async () => {
-      const blindIndex = hex('opted-out-recipient');
+    it('holds one opt-out per team, channel and address', async () => {
+      const address = 'opted-out-recipient@example.org';
       await insert(
         'participant_contact_optouts',
-        optoutRow({ recipient_blind_index: blindIndex }),
+        optoutRow({ recipient_address: address }),
       );
 
       await expect(
         insert(
           'participant_contact_optouts',
-          optoutRow({ recipient_blind_index: blindIndex, source: 'provider' }),
+          optoutRow({ recipient_address: address, source: 'provider' }),
         ),
       ).rejects.toMatchObject({
         code: '23505',
@@ -1610,7 +1620,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       await expect(
         insert(
           'participant_contact_optouts',
-          optoutRow({ recipient_blind_index: blindIndex, channel: 'sms' }),
+          optoutRow({ recipient_address: address, channel: 'sms' }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
 
@@ -1620,7 +1630,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         insert(
           'participant_contact_optouts',
           optoutRow({
-            recipient_blind_index: blindIndex,
+            recipient_address: address,
             team_id: TEAM_B,
           }),
         ),
