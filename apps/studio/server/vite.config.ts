@@ -5,10 +5,12 @@ import { defineConfig } from 'vite';
 // installs them as source and Node refuses to type-strip under node_modules —
 // anything left external here dies at boot in the image.
 //
-// Two entries, one image (#1895): `dist/index.js` serves users and
-// `dist/worker.js` runs background jobs. `ssr: true` rather than a path,
-// because the entries are named by `rollupOptions.input` — a string would name
-// only one of them.
+// Three entries, one image (#1895, #1900): `dist/index.js` serves users,
+// `dist/worker.js` runs background jobs, and `dist/cli.js` is the image's
+// entrypoint — the `studio-api` dispatcher, which loads one of the other two
+// or runs `rotate-secrets`. `ssr: true` rather than a path, because the
+// entries are named by `rollupOptions.input` — a string would name only one of
+// them.
 export default defineConfig({
   build: {
     ssr: true,
@@ -16,7 +18,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'node24',
     rollupOptions: {
-      input: { index: 'src/index.ts', worker: 'src/worker.ts' },
+      input: {
+        index: 'src/index.ts',
+        worker: 'src/worker.ts',
+        cli: 'src/cli.ts',
+      },
       output: {
         // Beside the entries, not under `assets/`. Two entries mean rollup
         // emits a chunk for what they share, and src/version.ts and

@@ -53,6 +53,13 @@ export type OAuthTokenIdentity = {
 const OAUTH_PREFIX = 'studio-secret:';
 
 export type SecretsCipher = {
+  /**
+   * The id every `seal` writes under. Rotation reads it to select the rows
+   * that are not current yet (src/secrets/stores.ts); nothing else needs it,
+   * because a caller never chooses a key.
+   */
+  readonly currentKeyId: string;
+
   sealWebhookSecret(
     identity: WebhookSecretIdentity,
     secret: string,
@@ -161,6 +168,8 @@ export function createSecretsCipher(
   }
 
   return {
+    currentKeyId: keyring.currentId,
+
     sealWebhookSecret: (identity, secret) =>
       seal(webhookIdentity(identity), secret),
     openWebhookSecret: (identity, sealed) =>

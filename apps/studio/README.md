@@ -654,11 +654,13 @@ docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
 
-Background work runs in a second container from that same image, started with
-the worker command (see [Background work](#background-work)):
+The image's entrypoint is the `studio-api` dispatcher, so every container
+names a command rather than a path into the bundle. `serve` is the default,
+and background work runs in a second container from that same image (see
+[Background work](#background-work)):
 
 ```bash
-docker run --rm --no-healthcheck network-canvas-studio node dist/worker.js
+docker run --rm --no-healthcheck network-canvas-studio worker
 ```
 
 `--no-healthcheck` because the image's `HEALTHCHECK` polls `/healthz`, which
@@ -666,6 +668,24 @@ the worker deliberately does not serve: it binds no port at all. The worker is
 the only process that sends mail, so `SMTP_URL` and `EMAIL_FROM` belong in its
 environment. Process-aware health checks belong to the deployment aspect of
 #1243.
+
+The third command re-encrypts every stored secret under the keyring's current
+entry, and is what makes a key rotation safe (see [Secrets](#secrets) for the
+keyring itself). It runs to completion and exits:
+
+```bash
+docker run --rm --no-healthcheck network-canvas-studio rotate-secrets
+```
+
+In the reference stack (#1909) that is `docker compose run --rm --no-deps api
+rotate-secrets`, and from a repo checkout it is `pnpm --filter
+@codaco/studio-server rotate-secrets`. Rotating is three steps: add a new entry
+at the FRONT of the keyring and deploy, so new values are written under it and
+the old one can still be read; run the command, which re-seals every row whose
+key id is not the current one, in batches, and can be rerun until it reports
+zero; then remove the old entry and deploy again. Both processes refuse to
+start while any stored key id is missing from the keyring, naming it, so a
+half-finished rotation is caught before it serves anything.
 
 ### Database schema and seeding
 

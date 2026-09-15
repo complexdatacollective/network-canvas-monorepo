@@ -1,0 +1,201 @@
+import type pg from 'pg';
+
+import type { OAuthTokenColumn, SecretsCipher } from './cipher.ts';
+import { isKeyId } from './keyring.ts';
+
+// Every place a secret is stored, as one entry each (#1900). The boot check
+// and the rotation command both walk this list rather than naming tables
+// themselves, so a new store is added in one place and is immediately both
+// verified at boot and rotated — the failure a registry exists to prevent is a
+// store that rotation forgets and that therefore pins an old key forever.
+//
+// Every statement here runs as the MAINTENANCE role: the tenant tables force
+// row-level security, so any other role sees only the team its transaction
+// named, and a check that saw one team's rows would pass while another team's
+// key was missing.
+
+export type SecretStore = {
+  /** The table, which is what the rotation's counts are keyed and printed by. */
+  name: string;
+  /** Distinct key ids the stored rows were sealed under. */
+  keyIdsInUse(client: pg.PoolClient): Promise<string[]>;
+  /**
+   * Re-seals up to `batchSize` rows that are not under the current key and
+   * returns how many were changed; zero means this store is finished. Runs
+   * inside the caller's transaction, and takes the rows it works with
+   * `FOR UPDATE SKIP LOCKED` so a second runner (or a request writing the same
+   * row) never waits on it.
+   */
+  rotateBatch(
+    client: pg.PoolClient,
+    cipher: SecretsCipher,
+    batchSize: number,
+  ): Promise<number>;
+};
+
+/**
+ * Adds the row to a re-sealing failure. The row's id is not a secret and is
+ * the only thing that turns "a stored secret could not be read" into something
+ * an operator can act on; the cipher's own message never carries more.
+ */
+function reseal<T>(what: string, act: () => T): T {
+  try {
+    return act();
+  } catch (error) {
+    throw new Error(
+      `${what} could not be re-sealed: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Only ids a keyring could hold. The other columns' key ids are read back out
+ * of stored text, and a boot refusal that names one must not be a way to get
+ * arbitrary stored bytes into a log. A row whose id is unreadable cannot be
+ * opened either, and fails loudly at the use site rather than here.
+ */
+function producibleIds(ids: readonly (string | null)[]): string[] {
+  return ids.filter((id): id is string => id !== null && isKeyId(id));
+}
+
+const webhookSubscriptions: SecretStore = {
+  name: 'webhook_subscriptions',
+
+  keyIdsInUse: async (client) => {
+    const rows = await client.query<{ key_id: string }>(
+      'SELECT DISTINCT secret_key_id AS key_id FROM webhook_subscriptions',
+    );
+    return producibleIds(rows.rows.map((row) => row.key_id));
+  },
+
+  rotateBatch: async (client, cipher, batchSize) => {
+    const rows = await client.query<{
+      id: string;
+      team_id: string;
+      secret_ciphertext: Buffer;
+      secret_key_id: string;
+    }>(
+      `SELECT id, team_id, secret_ciphertext, secret_key_id
+         FROM webhook_subscriptions
+        WHERE secret_key_id <> $1
+        LIMIT $2
+          FOR UPDATE SKIP LOCKED`,
+      [cipher.currentKeyId, batchSize],
+    );
+
+    for (const row of rows.rows) {
+      const identity = { teamId: row.team_id, subscriptionId: row.id };
+      const resealed = reseal(`webhook_subscriptions ${row.id}`, () =>
+        cipher.resealWebhookSecret(identity, {
+          ciphertext: row.secret_ciphertext,
+          keyId: row.secret_key_id,
+        }),
+      );
+      // `updated_at` is deliberately left alone: rotation changes how a row is
+      // stored, not when the subscription was last changed by anyone.
+      await client.query(
+        `UPDATE webhook_subscriptions
+            SET secret_ciphertext = $1, secret_key_id = $2
+          WHERE id = $3`,
+        [resealed.ciphertext, resealed.keyId, row.id],
+      );
+    }
+    return rows.rows.length;
+  },
+};
+
+/**
+ * better-auth's `account` table, whose three token columns hold
+ * `studio-secret:<keyId>:<base64url>` strings rather than a ciphertext and a
+ * key id of their own (better-auth types them as `text`). `split_part(col, ':',
+ * 2)` reads the same id `parseOAuthTokenKeyId` does, because a key id can
+ * never contain a `:`.
+ */
+const OAUTH_COLUMNS: readonly OAuthTokenColumn[] = [
+  'accessToken',
+  'refreshToken',
+  'idToken',
+];
+
+const SEALED_PREFIX_PATTERN = 'studio-secret:%';
+
+const account: SecretStore = {
+  name: 'account',
+
+  keyIdsInUse: async (client) => {
+    const rows = await client.query<{ key_id: string }>(
+      OAUTH_COLUMNS.map(
+        (column) =>
+          `SELECT DISTINCT split_part("${column}", ':', 2) AS key_id
+             FROM account WHERE "${column}" LIKE $1`,
+      ).join('\nUNION\n'),
+      [SEALED_PREFIX_PATTERN],
+    );
+    return producibleIds(rows.rows.map((row) => row.key_id));
+  },
+
+  rotateBatch: async (client, cipher, batchSize) => {
+    // A row is behind when ANY of its tokens is, and every token present is
+    // then re-sealed — so a row always carries one key id across its three
+    // columns, whatever order better-auth wrote them in.
+    const behind = OAUTH_COLUMNS.map(
+      (column) =>
+        `("${column}" LIKE $1 AND split_part("${column}", ':', 2) <> $2)`,
+    ).join(' OR ');
+    const rows = await client.query<
+      {
+        id: string;
+        providerId: string;
+        accountId: string;
+      } & Record<OAuthTokenColumn, string | null>
+    >(
+      `SELECT id, "providerId", "accountId", "accessToken", "refreshToken", "idToken"
+         FROM account
+        WHERE ${behind}
+        LIMIT $3
+          FOR UPDATE SKIP LOCKED`,
+      [SEALED_PREFIX_PATTERN, cipher.currentKeyId, batchSize],
+    );
+
+    for (const row of rows.rows) {
+      const resealed = OAUTH_COLUMNS.map((column) => {
+        const stored = row[column];
+        if (stored === null) return null;
+        // A plaintext token in one of these columns is a fault, not a value to
+        // encrypt on the way past: sealing it here would hide the write that
+        // bypassed the auth adapter. The batch fails, nothing commits, and a
+        // person looks at the row.
+        return reseal(`account ${row.id} ${column}`, () =>
+          cipher.resealOAuthToken(
+            {
+              providerId: row.providerId,
+              accountId: row.accountId,
+              column,
+            },
+            stored,
+          ),
+        );
+      });
+      // `updatedAt` is left alone: better-auth's own writes own that column,
+      // and a session's freshness has nothing to do with which key holds it.
+      await client.query(
+        `UPDATE account
+            SET "accessToken" = $1, "refreshToken" = $2, "idToken" = $3
+          WHERE id = $4`,
+        [...resealed, row.id],
+      );
+    }
+    return rows.rows.length;
+  },
+};
+
+/**
+ * The finisher adds `protocol_asset_keys` here once its table exists (#1900
+ * §5); nothing else has to change for the boot check and the rotation command
+ * to cover it.
+ */
+export const SECRET_STORES: readonly SecretStore[] = [
+  webhookSubscriptions,
+  account,
+];

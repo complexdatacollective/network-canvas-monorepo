@@ -11,16 +11,21 @@
 # STUDIO_DEPLOYMENT_MODE=managed in its container environment — at runtime, not
 # in this file, which is what lets one image serve both topologies.
 #
-# One image, two processes (#1895). The default command below is the web
-# process, which serves users. A deployment starts a second container from this
-# same image for background work:
+# One image, three commands (#1895, #1900). The entrypoint is the `studio-api`
+# dispatcher, so a deployment names a command rather than a path into a bundle
+# whose layout is ours to change. The default is the web process, which serves
+# users; a deployment starts a second container from this same image for
+# background work, and runs the rotation by hand when it re-keys:
 #
-#   docker run --no-healthcheck network-canvas-studio node dist/worker.js
+#   docker run --no-healthcheck network-canvas-studio worker
+#   docker run --rm --no-healthcheck network-canvas-studio rotate-secrets
 #
-# `--no-healthcheck` because the HEALTHCHECK below polls /healthz, which the
-# worker deliberately does not serve: it binds no port at all. The worker is
-# the only process that sends mail, so SMTP_URL and EMAIL_FROM belong in its
-# environment; the web process never reads them.
+# `--no-healthcheck` because the HEALTHCHECK below polls /healthz, which
+# neither of those serves: the worker binds no port at all, and the rotation
+# runs to completion and exits. The worker is the only process that sends mail,
+# so SMTP_URL and EMAIL_FROM belong in its environment; the web process never
+# reads them. Both read the keyring (STUDIO_SECRETS_KEY_FILE, mounted as a
+# Compose file secret by the reference stack), and refuse to start without it.
 #
 # Build from the monorepo root:
 #
@@ -59,4 +64,5 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? 3000}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["node", "dist/cli.js"]
+CMD ["serve"]

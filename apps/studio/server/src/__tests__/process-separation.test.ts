@@ -181,11 +181,37 @@ describe('the web process', () => {
     expect(reached(graph, ['src/auth/email.ts', 'nodemailer'])).toEqual([]);
   });
 
+  it('cannot re-key the database while it is serving it', () => {
+    // Rotation rewrites every stored secret under a maintenance identity, in
+    // batches, and is something a person runs once (#1900). A web process that
+    // could reach it is one refactor from doing it on a request; the command
+    // lives behind the dispatcher instead, which loads it and nothing else.
+    expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([]);
+  });
+
   it('creates jobs through the enqueue-only client', () => {
     // The positive half, so that "no worker" cannot be satisfied by having no
     // queue at all.
     expect(
       reached(graph, ['src/jobs/client.ts', 'src/jobs/enqueue.ts']),
     ).toEqual(['src/jobs/client.ts', 'src/jobs/enqueue.ts']);
+  });
+});
+
+// The dispatcher is the one module that is allowed to reach everything: it is
+// how the image starts each of the three (#1900), and it loads exactly one of
+// them per run. The separation above is what makes that safe — whichever
+// command runs, the other two commands' modules are not in its graph.
+describe('the studio-api dispatcher', () => {
+  const graph = moduleGraph('src/cli.ts');
+
+  it('can reach every command the image offers', () => {
+    expect(
+      reached(graph, [
+        'src/index.ts',
+        'src/worker.ts',
+        'src/secrets/rotate.ts',
+      ]),
+    ).toEqual(['src/index.ts', 'src/worker.ts', 'src/secrets/rotate.ts']);
   });
 });
