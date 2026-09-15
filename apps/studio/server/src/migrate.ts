@@ -4,6 +4,7 @@ import process from 'node:process';
 import { migrateDatabase, type SchemaDdl } from './db/migrate.ts';
 import { createOwnerPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
+import { issueBootstrapToken, printBootstrapToken } from './setup/bootstrap.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The image's third entry: `studio-api migrate`, the one-shot that creates the
@@ -43,6 +44,12 @@ try {
     // oxlint-disable-next-line no-console -- command output
     log: (line) => console.log(line),
   });
+  // First-run bootstrap (#1909): on a database nobody owns yet, issue the
+  // token `/setup` spends and print it once — rotating any earlier one, so a
+  // lost token is recovered by running this again. An owned instance issues
+  // nothing and prints nothing. After `migrateDatabase`, on the pool: the
+  // installation table exists only once its transaction has committed.
+  printBootstrapToken(await issueBootstrapToken(pool), env.auth?.baseUrl);
 } catch (error) {
   // oxlint-disable-next-line no-console -- command diagnostics
   console.error(error instanceof Error ? error.message : String(error));

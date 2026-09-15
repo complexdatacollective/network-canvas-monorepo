@@ -148,8 +148,9 @@ export async function migrateDatabase(
       log('Reconciling the job queues.');
       await syncJobQueues(lock, JOB_SCHEMA);
 
-      // PR 4 (#1909) prints the first-run bootstrap token here, on a database
-      // that has no owner yet.
+      // The first-run bootstrap token is issued by the entry (src/migrate.ts)
+      // once this has returned: the installation table it writes exists only
+      // when this transaction has committed.
 
       // Last, and inside the transaction with everything it vouches for: a
       // stamp that could outlive a failed apply is a database that reads as
