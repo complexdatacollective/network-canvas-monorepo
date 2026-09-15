@@ -9,7 +9,6 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
-import CodebookVariableValidationEditor from '../validation/CodebookVariableValidationEditor.tsx';
 import type { CodebookWriteOutcome } from '../writes.ts';
 
 /**
@@ -54,9 +53,6 @@ const PERSON: SectionDoc = {
     },
   },
 };
-
-const variablesOfPerson = (): Record<string, unknown> =>
-  PERSON.variables as Record<string, unknown>;
 
 const applied = async (): Promise<CodebookWriteOutcome> => ({
   status: 'applied',
@@ -115,20 +111,6 @@ const editors = [
     ),
   },
   {
-    name: 'the validation editor',
-    save: 'Save validation',
-    editor: (onSubmitDocument: () => Promise<CodebookWriteOutcome>) => (
-      <CodebookVariableValidationEditor
-        openId="nested-validation"
-        subject={SUBJECT}
-        variableId={ATTRIBUTE}
-        authoritativeEntityDocument={PERSON}
-        allSubjectVariables={variablesOfPerson()}
-        onSubmitDocument={onSubmitDocument}
-      />
-    ),
-  },
-  {
     name: 'the entity editor',
     save: 'Save entity',
     editor: (onSubmitDocument: () => Promise<CodebookWriteOutcome>) => (
@@ -173,13 +155,6 @@ describe('a codebook editor saved from inside another form', () => {
       });
       expect(promptText).toHaveValue(HALF_TYPED);
 
-      if (save === 'Save validation') {
-        // The validation editor refuses an unchanged draft, so there has to be
-        // a change before its save is live at all.
-        await user.click(
-          screen.getByRole('checkbox', { name: 'Required answer' }),
-        );
-      }
       await user.click(screen.getByRole('button', { name: save }));
 
       // The codebook edit really happened, so what follows is about where its

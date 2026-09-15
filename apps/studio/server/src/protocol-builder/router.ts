@@ -19,8 +19,12 @@ import {
 
 import type { AssetStore } from '../assets.ts';
 import type { AuthService, Principal } from '../auth/service.ts';
+import { openAssetKey } from '../protocol/asset-keys.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
+import type { RateLimiter } from '../rate-limit.ts';
+import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import type { RpcContext } from '../rpc.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
@@ -42,8 +46,9 @@ import {
   committedDescriptors,
   committedInspection,
   committedPreview,
-  SECRET_STORAGE,
   StagedResourceRegistry,
+  type Inspection,
+  type ResourceOutcome,
 } from './resources.ts';
 import {
   IDLE_MS,
@@ -64,6 +69,22 @@ export type ProtocolBuilderRouterDeps = {
   runtime: ProtocolBuilderRuntime;
   pool?: pg.Pool;
   assetStore?: AssetStore;
+  /**
+   * Seals an API-key asset as a promotion writes the manifest, and opens it
+   * again for the editor's preview (#1900). Absent only on an entrypoint with
+   * no database — the env layer requires a keyring wherever DATABASE_URL is
+   * set — so it is refused beside the pool below rather than being allowed to
+   * reach a write that would store the key in the section document.
+   */
+  cipher?: SecretsCipher;
+  /**
+   * Where this router's calls are counted (#1909). Every procedure here
+   * authenticates through `openSession` rather than through `requireUser` and
+   * `requireTeam`, so without this the whole protocol-builder surface —
+   * including every edit over an open WebSocket — would be the one part of the
+   * RPC plane with no per-user or per-team limit at all.
+   */
+  limiter?: RateLimiter;
 };
 
 function requirePrincipal(context: RpcContext): Principal {
@@ -99,7 +120,17 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     protocolId: string,
   ): Promise<ProtocolBuilderSession | null> => {
     const principal = requirePrincipal(context);
-    if (!deps.pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    // The caller's own budget before any query, exactly as `requireUser` takes
+    // it on the rest of the RPC surface.
+    await enforceRateLimit(
+      deps.limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
+    if (!deps.pool || !deps.cipher) {
+      throw new ORPCError('INTERNAL_SERVER_ERROR');
+    }
     const memberships = await auth.listMemberships(principal.userId);
     const session = await resolveProtocolSession(deps.pool, {
       protocolId,
@@ -108,8 +139,19 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       connectionId: connectionOf(context, principal),
       clientSessionId: clientSessionOf(context, principal),
       memberships,
+      cipher: deps.cipher,
     });
     if (session !== null) {
+      // And the team's, once the session says which team this protocol is in —
+      // the same order `openTeam` takes them in, and for the same reason: a
+      // caller who turns out to have no reachable protocol has not charged
+      // anyone else's quota.
+      await enforceRateLimit(
+        deps.limiter,
+        'rpc_team',
+        session.tenantDb.teamId,
+        context.resHeaders,
+      );
       runtime.leases.touch(sessionOwner(session));
       // A call is the only sign of life the unary plane gives, so it says both
       // things: this owner is still here with everything it has staged, and
@@ -404,11 +446,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const planned =
           promotion === undefined || store === undefined
             ? undefined
-            : await store.plan(
-                deps.assetStore,
-                promotion.resourceIds,
-                promotion.secretHandles,
-              );
+            : await store.plan(deps.assetStore, promotion.resourceIds);
         if (planned?.status === 'failed') {
           throw errors.PROMOTION_FAILED({
             data: { sectionId: input.sectionId, failure: planned.failure },
@@ -498,11 +536,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const planned =
           promotion === undefined || store === undefined
             ? undefined
-            : await store.plan(
-                deps.assetStore,
-                promotion.resourceIds,
-                promotion.secretHandles,
-              );
+            : await store.plan(deps.assetStore, promotion.resourceIds);
         if (planned?.status === 'failed') {
           throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
         }
@@ -653,7 +687,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           );
           return {
             status: 'ok' as const,
-            data: { secretStorage: SECRET_STORAGE, resources },
+            data: { resources },
           };
         },
       ),
@@ -694,9 +728,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             input.editId === undefined
               ? undefined
               : staged.opened(stagingKey(session, input.editId));
-          return store === undefined
-            ? committedInspection(assets, input.resourceId)
-            : store.inspect(assets, input.resourceId);
+          const inspection =
+            store === undefined
+              ? committedInspection(assets, input.resourceId)
+              : store.inspect(assets, input.resourceId);
+          return withCommittedAssetKey(session, input.resourceId, inspection);
         },
       ),
 
@@ -718,6 +754,41 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       ),
     },
   };
+}
+
+/**
+ * Fills a committed API key's value in from `protocol_asset_keys` (#1900).
+ *
+ * The stored manifest carries a key asset's name and type and never its value,
+ * so a committed inspection would otherwise answer with no value at all — and
+ * a value is exactly what `inspect` is for here: the editor's map preview
+ * builds the same Mapbox request the interview will. This is the researcher
+ * preview the issue admits decryption for, and the only read path that makes
+ * one.
+ *
+ * A staged key has not been sealed yet and is answered out of this process's
+ * memory by `StagedResourceRegistry.inspect`, so an inspection that already
+ * carries a value is passed through untouched.
+ */
+async function withCommittedAssetKey(
+  session: ProtocolBuilderSession,
+  resourceId: string,
+  outcome: ResourceOutcome<Inspection>,
+): Promise<ResourceOutcome<Inspection>> {
+  if (outcome.status !== 'ok') return outcome;
+  if (outcome.data.descriptor.kind !== 'apikey') return outcome;
+  if (outcome.data.value !== undefined) return outcome;
+  const value = await openAssetKey(session.tenantDb, session.cipher, {
+    teamId: session.tenantDb.teamId,
+    protocolId: session.protocolId,
+    assetId: resourceId,
+  });
+  // A manifest entry with no sealed row is a protocol written before this
+  // existed, or one whose key was never promoted: the descriptor is still the
+  // truth about the asset, so it is answered without a value rather than as a
+  // missing resource.
+  if (value === undefined) return outcome;
+  return { status: 'ok', data: { ...outcome.data, value } };
 }
 
 /**

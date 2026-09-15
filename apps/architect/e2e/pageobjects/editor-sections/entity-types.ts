@@ -9,8 +9,9 @@ import { expect, type Page } from '@playwright/test';
 // that has both.
 //
 // "Create a new {node|edge} type" opens the package's `CodebookEntityEditor`,
-// whose name field is labelled "{Node|Edge} type name", whose icon is a text
-// field named "Interface icon", and whose submit reads "Save entity".
+// whose name field is labelled "{Node|Edge} type name", whose icon is a
+// searchable combobox named "Icon" inside its "Interface icon" group, and
+// whose submit reads "Save entity" from the dialog's footer.
 async function selectOrCreateEntityType(
   page: Page,
   entityType: 'node' | 'edge',
@@ -54,11 +55,18 @@ async function selectOrCreateEntityType(
     .getByRole('textbox', { name: `${entityLabel} type name` })
     .fill(name);
   if (opts.icon) {
-    // The icon is named rather than picked from a gallery: the editor takes
-    // the icon's own name and refuses one no interface can draw.
-    await dialog
-      .getByRole('textbox', { name: 'Interface icon' })
-      .fill(opts.icon);
+    // The icon is picked from the icons themselves, so the name is typed into
+    // the picker's SEARCH and the match is clicked. The popup portals out of
+    // the dialog, so its options are looked up on the page.
+    await dialog.getByRole('combobox', { name: 'Icon' }).click();
+    await page.getByPlaceholder('Search icons…').fill(opts.icon);
+    await page
+      .getByRole('option', { name: opts.icon, exact: true })
+      .first()
+      .click();
+    await expect(dialog.getByRole('combobox', { name: 'Icon' })).toHaveText(
+      new RegExp(opts.icon),
+    );
   }
   await dialog.getByRole('button', { name: 'Save entity' }).click();
   // Answered BEFORE the dialog is waited out: a type created here is chosen
@@ -106,4 +114,45 @@ export async function selectOrCreateEdgeType(
   name: string,
 ): Promise<void> {
   await selectOrCreateEntityType(page, 'edge', name);
+}
+
+/**
+ * Makes the held node type draw itself as a different shape depending on one
+ * of its attributes.
+ *
+ * The mapping lives in the same dialog the type's name and colour do
+ * (`@codaco/protocol-builder`'s `CodebookEntityEditor`, "Node appearance"), is
+ * switched on by the "Map attribute to shape" toggle, and follows one
+ * attribute chosen through the shared attribute window — which opens OVER this
+ * dialog, so its rows are looked up on the page rather than inside it. Saving
+ * writes the codebook section immediately; it is not part of the stage's own
+ * save.
+ */
+export async function mapNodeShapeToAttribute(
+  page: Page,
+  options: {
+    attribute: string;
+    /** One value label of that attribute, and the shape it is drawn as. */
+    shapes: { value: string; shape: string }[];
+  },
+): Promise<void> {
+  const edit = 'Edit this node type';
+  await page.getByRole('button', { name: edit, exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: edit });
+  await dialog.getByRole('switch', { name: 'Map attribute to shape' }).click();
+  await dialog.getByRole('button', { name: 'Select attribute' }).click();
+  await page
+    .getByRole('option', { name: options.attribute, exact: true })
+    .click();
+  for (const { value, shape } of options.shapes) {
+    // A radio group of node swatches, as Architect had it — not a select. The
+    // group is named for the answer it maps; each swatch is named for the
+    // shape it offers.
+    await dialog
+      .getByRole('radiogroup', { name: `Shape for ${value}`, exact: true })
+      .getByRole('radio', { name: `Select shape ${shape}`, exact: true })
+      .click();
+  }
+  await dialog.getByRole('button', { name: 'Save entity' }).click();
+  await dialog.waitFor({ state: 'detached' });
 }

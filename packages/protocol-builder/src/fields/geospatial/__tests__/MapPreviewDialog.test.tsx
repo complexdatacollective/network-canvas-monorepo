@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -20,30 +20,31 @@ import {
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 
-/** The fixture's stored key, whose value must never reach the editor. */
+/** The fixture's stored key, which the map is drawn with. */
 const TOKEN_ASSET = 'mapbox_token';
 
-/** The value behind it, which the asset manifest holds and this must not see. */
-const SECRET =
+/**
+ * The value the fixture protocol's asset manifest holds for it.
+ *
+ * The repository's one permitted Mapbox token (`TESTING_MAPBOX_TOKEN`, a
+ * sandbox key restricted to the project's own domains); `check-mapbox-tokens`
+ * allows no other anywhere in the tree. Written out here rather than imported
+ * because it lives in Architect, which this package does not depend on — and
+ * the fixture protocol is the oracle either way.
+ */
+const KEY_VALUE =
   'pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbXRqdnd4dnowY2M5MnlzZWNqYjNlZG5rIn0.KH3OS_O2Hk6gAbDjKGPAJg';
 
-/** What a host that CAN serve a credentialled style answers with. */
-const HOSTED_STYLE = 'https://host.example/map-style/mapbox_token?session=abc';
-
 /**
- * Whether this test is running against a host that can draw a map, and what it
- * serves when it can.
+ * Whether this test replaces what the host answers for the key, and with what.
  *
- * The package's own in-memory host deliberately cannot: the contract's
- * resource procedures consume secret material and never hand it back, so its
- * `preview` answers `unsupported-kind` for a key. That is the refusal path,
- * and it is exercised straight through the harness. A host that HAS built the
- * other side — resolving the stored id to a style it credentialled itself — is
- * the only way to reach everything past it, so exactly that one call is
- * replaced here, for exactly that one asset id. Every other resource call in
- * the editor is the real one.
+ * The in-memory host reads the value out of the fixture protocol's own asset
+ * manifest, which is what every host does — so nearly everything here runs
+ * against the real client. The one state the fixture cannot produce is a
+ * manifest entry holding no value at all, which is a hand-edited or truncated
+ * protocol; exactly that one call is replaced for it.
  */
-let servedStyle: string | undefined;
+let keyWithoutAValue = false;
 
 vi.mock('../../../resources/client.tsx', async (importOriginal) => {
   const actual =
@@ -58,14 +59,22 @@ vi.mock('../../../resources/client.tsx', async (importOriginal) => {
       // object every render would re-run every effect that reads a resource.
       // oxlint-disable-next-line react-hooks/rules-of-hooks
       return useMemo(() => {
-        const url = servedStyle;
-        if (url === undefined) return client;
+        if (!keyWithoutAValue) return client;
         return {
           ...client,
-          resolvePreview: (resourceId: string) =>
+          inspect: (resourceId: string) =>
             resourceId === TOKEN_ASSET
-              ? Promise.resolve(resourceOk({ resourceId, url }))
-              : client.resolvePreview(resourceId),
+              ? Promise.resolve(
+                  resourceOk({
+                    descriptor: {
+                      id: resourceId,
+                      kind: 'apikey' as const,
+                      name: 'Mapbox Token',
+                      status: 'committed' as const,
+                    },
+                  }),
+                )
+              : client.inspect(resourceId),
         };
       }, [client]);
     },
@@ -99,7 +108,7 @@ const openMap = async (harness: StageEditorHarness): Promise<void> => {
 
 beforeEach(() => {
   resetMapboxMock();
-  servedStyle = undefined;
+  keyWithoutAValue = false;
 });
 
 describe('the Mapbox SDK this suite runs against', () => {
@@ -114,7 +123,6 @@ describe('the Mapbox SDK this suite runs against', () => {
   });
 
   it('builds no map at all until a dialog asks for one', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor();
     await harness.opened();
 
@@ -123,15 +131,25 @@ describe('the Mapbox SDK this suite runs against', () => {
 });
 
 describe('setting the starting view on a map', () => {
-  it('draws the style the host resolved for the stored key', async () => {
-    servedStyle = HOSTED_STYLE;
-    const harness = openEditor();
+  /**
+   * The map is the participant's map: the chosen key's own value and the
+   * basemap the stage is configured to show, which is the pair Architect built
+   * its map from and the pair the interview runtime builds the participant's
+   * from. The framing is the whole purpose of this dialog, and a view framed on
+   * a satellite basemap is a different decision from the same view framed on a
+   * street map — so it has to be the right basemap from the first frame.
+   */
+  it('builds the map with the chosen key and the basemap the stage shows', async () => {
+    const harness = openEditor({
+      style: 'mapbox://styles/mapbox/satellite-v9',
+    });
 
     await openMap(harness);
 
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
     expect(mapsBuilt()[0]).toMatchObject({
-      style: HOSTED_STYLE,
+      accessToken: KEY_VALUE,
+      style: 'mapbox://styles/mapbox/satellite-v9',
       center: [-74, 40.7],
       zoom: 10,
     });
@@ -140,29 +158,37 @@ describe('setting the starting view on a map', () => {
   });
 
   /**
-   * The contract's resource procedures consume secret material and hand back
-   * only an id, so there is no path by which a key could reach the map.
-   * Asserted against everything the map was built from, and against the page,
-   * because "we never pass it" is exactly the kind of claim that stops being
-   * true quietly.
+   * A stage with no basemap chosen is drawn on Mapbox's own street map, which
+   * is what Architect's dialog did and what the schema's default resolves to.
    */
-  it('never hands the key itself to the map, or to the page', async () => {
-    servedStyle = HOSTED_STYLE;
+  it('falls back to the street map when the stage names no basemap', async () => {
+    const harness = openEditor({ style: undefined });
+
+    await openMap(harness);
+
+    await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
+    expect(mapsBuilt()[0]).toMatchObject({
+      accessToken: KEY_VALUE,
+      style: 'mapbox://styles/mapbox/streets-v12',
+    });
+  });
+
+  /**
+   * The value goes to the map constructor and nowhere a reader can see it.
+   * Asserted against the page because "it only reaches the SDK" is exactly the
+   * kind of claim that stops being true quietly.
+   */
+  it('puts the key in the map and nowhere on the page', async () => {
     const harness = openEditor();
 
     await openMap(harness);
 
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
-    const built = mapsBuilt()[0] ?? {};
-    expect(Object.hasOwn(built, 'accessToken')).toBe(false);
-    // Every option the map was given, except the DOM node it draws into.
-    const { container: _container, ...options } = built;
-    expect(JSON.stringify(options)).not.toContain(SECRET);
-    expect(document.body.innerHTML).not.toContain(SECRET);
+    expect(mapsBuilt()[0]?.accessToken).toBe(KEY_VALUE);
+    expect(document.body.innerHTML).not.toContain(KEY_VALUE);
   });
 
   it('offers the view only once the map is readable and has been moved', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor();
     await openMap(harness);
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
@@ -206,7 +232,6 @@ describe('setting the starting view on a map', () => {
    * they had just pointed at.
    */
   it('accepts a view panned past the antimeridian as a place the stage can save', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor();
     await openMap(harness);
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
@@ -229,7 +254,6 @@ describe('setting the starting view on a map', () => {
   });
 
   it('tears the map down when the dialog is closed', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor();
     await openMap(harness);
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
@@ -240,29 +264,41 @@ describe('setting the starting view on a map', () => {
   });
 
   /**
-   * The package's own host, unmocked: it refuses to preview secret material,
-   * which is the honest answer for a host that never hands a stored key back.
-   * The researcher is told so and told what to do instead, and no map is
-   * built.
+   * A protocol whose manifest entry for the key holds no value — hand-edited,
+   * or truncated on the way in. There is nothing to draw a map with, so the
+   * researcher is told that and sent to the coordinate boxes behind the
+   * dialog, exactly as released Architect did for an unavailable key.
    */
-  it('says the map is unavailable, and builds none, when the host cannot serve one', async () => {
+  it('says the key could not be read, and builds no map, when the protocol holds no value for it', async () => {
+    keyWithoutAValue = true;
     const harness = openEditor();
 
     await openMap(harness);
 
     expect(
-      await screen.findByText(/secret has no preview/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.',
+      await screen.findByText(
+        'The map could not be drawn because the chosen API key could not be read. Choose a different key, or type the coordinates instead.',
       ),
     ).toBeInTheDocument();
     expect(mapsBuilt()).toEqual([]);
   });
 
+  /**
+   * A stage still naming a key the protocol no longer holds. Said inside the
+   * dialog, in the host's own words: the picker behind it reports the same
+   * absence, and a researcher who opened the map has to read it here.
+   */
+  it('reports a key the protocol no longer has, and builds no map', async () => {
+    const harness = openEditor({ tokenAssetId: 'a-key-that-is-gone' });
+
+    await openMap(harness);
+
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(await dialog.findByText(/no such resource/i)).toBeInTheDocument();
+    expect(mapsBuilt()).toEqual([]);
+  });
+
   it('asks for a key before a map, and builds none without one', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor({ tokenAssetId: undefined });
 
     await openMap(harness);
@@ -276,7 +312,6 @@ describe('setting the starting view on a map', () => {
   });
 
   it('reports a map that failed to draw, without offering its view', async () => {
-    servedStyle = HOSTED_STYLE;
     const harness = openEditor();
     await openMap(harness);
     await waitFor(() => expect(mapsBuilt()).toHaveLength(1));

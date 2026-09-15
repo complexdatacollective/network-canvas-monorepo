@@ -2,12 +2,20 @@ import { useCallback } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
+import BinAttributeField, {
+  type BinAttributeSlot,
+  binAttributePickIssue,
+} from '../../../fields/BinAttributeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import RichTextField from '../../../fields/RichTextField.tsx';
 import type {
   RowEditorProps,
@@ -17,16 +25,10 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
-import BinAttributeField, {
-  type BinAttributeSlot,
-  binAttributePickIssue,
-} from '../../ordinal-bin/sections/BinAttributeField.tsx';
+import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 import BinSortOrders from '../../ordinal-bin/sections/BinSortOrders.tsx';
 
@@ -48,43 +50,28 @@ const BIN_LIMIT = 8;
 
 /** What only a Categorical Bin says; the words both bins use are in `binMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.categoricalBinGuidance',
-    defaultMessage:
-      'The participant drags each person into one of the bins below, so write a question the bins are the answers to — “what kind of contact do you have with this person?” rather than a yes or no question.',
-    description:
-      'Guidance shown above the box where a researcher writes a Categorical Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question whose answers are the bins.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinPlaceholder',
-    defaultMessage: 'What type of contact do you have most with this person?',
+    defaultMessage: 'Enter your prompt...',
     description:
-      'Example question in the empty box where a researcher writes a Categorical Bin prompt.',
-  },
-  fieldHint: {
-    id: 'protocolBuilder.censusPrompts.categoricalBinFieldHint',
-    defaultMessage:
-      'The participant sorts everyone into bins for one question at a time, in this order.',
-    description:
-      'Guidance under the list of prompts in a Categorical Bin stage, where a bin is one named answer the participant drags a network member into, and the bins have no order among them.',
+      'Placeholder shown in the empty box where a researcher writes a Categorical Bin prompt. The trailing dots are an ellipsis written as three full stops.',
   },
   binsTitle: {
     id: 'protocolBuilder.censusPrompts.categoricalBinBinsTitle',
-    defaultMessage: 'The bins',
+    defaultMessage: 'Categorical response',
     description:
       'Heading of the group that picks the attribute whose values are the bins the participant drags people into.',
   },
   binsDescription: {
     id: 'protocolBuilder.censusPrompts.categoricalBinBinsDescription',
     defaultMessage:
-      'Choose the attribute whose values the participant sorts people into.',
+      'Choose the categorical attribute and configure the option values shown as bins.',
     description:
       'Description of the group that picks the attribute whose values are the bins the participant drags people into. An attribute is one thing an interview records about a network member.',
   },
   binsHint: {
     id: 'protocolBuilder.censusPrompts.categoricalBinBinsHint',
-    defaultMessage:
-      "Each of this attribute's values becomes a bin, and dropping someone into a bin records that value for them.",
+    defaultMessage: 'Select a categorical attribute.',
     description:
       'Guidance under the attribute picker in a Categorical Bin prompt, saying what happens to the attribute’s values in the interview.',
   },
@@ -104,27 +91,33 @@ const messages = defineMessages({
   },
   otherTitle: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherTitle',
-    defaultMessage: 'A bin for anything else',
+    defaultMessage: 'Follow-up other option',
     description:
       'Heading of the optional group that adds one more bin for people none of the attribute’s values describe.',
   },
   otherDescription: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherDescription',
     defaultMessage:
-      'Add a bin for people none of the values above describe, and ask the participant what to record instead.',
+      'Collect a participant-entered value when a node is placed in an other bin.',
     description:
       'Description of the optional group that adds one more bin for people none of the attribute’s values describe.',
   },
   otherAttributeLabel: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherAttributeLabel',
-    defaultMessage: 'Attribute the answer is stored in',
+    defaultMessage: 'Other attribute',
     description:
       'Label of the control that picks which attribute holds what the participant types into the follow-up bin.',
+  },
+  otherValidationDescription: {
+    id: 'protocolBuilder.categoricalBin.otherValidationDescription',
+    defaultMessage: 'Enable validation of the other attribute.',
+    description:
+      'Description of the nested section holding the rules the typed answer to the follow-up “other” bin has to satisfy. Said of the other attribute rather than of “the attribute”, because the prompt above it binds a second one.',
   },
   otherAttributeHint: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherAttributeHint',
     defaultMessage:
-      'The participant types their own answer, so this is a text attribute.',
+      "Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option.",
     description:
       'Guidance under the control that picks which attribute holds what the participant types into the follow-up bin, saying why only text attributes are offered.',
   },
@@ -156,22 +149,22 @@ const messages = defineMessages({
   },
   otherBinLabel: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherBinLabel',
-    defaultMessage: 'Bin label',
+    defaultMessage: 'Other bin label',
     description:
       'Label of the box a researcher writes the follow-up bin’s own name into — the words drawn on that bin in the interview.',
   },
   otherBinHint: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherBinHint',
     defaultMessage:
-      'Shown on the bin itself, so it has to read as somewhere to put a person the other bins do not fit.',
+      "Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above.",
     description:
       'Guidance under the box a researcher writes the follow-up bin’s own name into.',
   },
   otherBinPlaceholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherBinPlaceholder',
-    defaultMessage: 'Other',
+    defaultMessage: 'Enter a label (such as "other") for this bin...',
     description:
-      'Example name in the empty box where a researcher names the follow-up bin.',
+      'Placeholder shown in the empty box where a researcher names the follow-up bin. The trailing dots are an ellipsis written as three full stops.',
   },
   otherBinRequired: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherBinRequired',
@@ -187,15 +180,17 @@ const messages = defineMessages({
   },
   otherPromptHint: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherPromptHint',
-    defaultMessage: 'Asked as soon as someone is dropped into this bin.',
+    defaultMessage:
+      'Enter a question prompt to show when the other option is triggered.',
     description:
       'Guidance under the box a researcher writes the follow-up bin’s own question into, saying when the participant reads it.',
   },
   otherPromptPlaceholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherPromptPlaceholder',
-    defaultMessage: 'What type of contact do you have with this person?',
+    defaultMessage:
+      'Enter a question prompt to show when the other option is triggered...',
     description:
-      'Example question in the empty box where a researcher writes the follow-up bin’s own question.',
+      'Placeholder shown in the empty box where a researcher writes the follow-up bin’s own question. The trailing dots are an ellipsis written as three full stops.',
   },
   otherPromptRequired: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherPromptRequired',
@@ -228,21 +223,6 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * What the participant is doing while they answer, said before the researcher
- * writes the question rather than after it.
- */
-function CategoricalBinGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
-/**
  * One Categorical Bin question: what to ask, which attribute's values become
  * the bins, what happens to an answer none of them covers, and the two orders
  * the people are met in.
@@ -273,8 +253,9 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<CategoricalBinGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
+        title={intl.formatMessage(censusMessages.promptTextTitle)}
+        description={intl.formatMessage(censusMessages.promptTextDescription)}
       />
       <Section
         title={intl.formatMessage(messages.binsTitle)}
@@ -325,6 +306,15 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           requiredMessage={intl.formatMessage(messages.otherAttributeRequired)}
           createLabel={intl.formatMessage(messages.otherAttributeCreateLabel)}
         />
+        <CodebookVariableValidationSection
+          subject={subject}
+          variableId={
+            typeof otherVariable === 'string' && otherVariable !== ''
+              ? otherVariable
+              : undefined
+          }
+          description={messages.otherValidationDescription}
+        />
         <Field<typeof RichTextField>
           name={OTHER_LABEL_FIELD}
           component={RichTextField}
@@ -372,8 +362,16 @@ export default function CategoricalBinPromptsSection() {
    * sentence about where its answers are stored would say nothing the
    * researcher can act on yet.
    */
+  const binOptions = useOptionsRowCommit(
+    BINS_SLOT.name,
+    // The bins are the node type's own attribute, which the stage names.
+    () => subject,
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       for (const slot of [BINS_SLOT, OTHER_SLOT]) {
         const issue = binAttributePickIssue({
           protocolContext,
@@ -387,9 +385,13 @@ export default function CategoricalBinPromptsSection() {
           return { refused: { fieldErrors: { [slot.name]: [issue] } } };
         }
       }
-      return { row };
+      // After the picks, because the values are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot draw has no list to
+      // write anywhere. The follow-up answer is typed rather than chosen, so
+      // only the bins carry one.
+      return await binOptions.commit(row, context);
     },
-    [identity.id, protocolContext, subject],
+    [binOptions, identity.id, protocolContext, subject],
   );
 
   return (
@@ -397,8 +399,7 @@ export default function CategoricalBinPromptsSection() {
       PromptEditor={CategoricalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={binMessages.binDescription}
-      fieldHint={messages.fieldHint}
+      expand={binOptions.expand}
     />
   );
 }

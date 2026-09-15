@@ -100,8 +100,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -131,36 +131,33 @@
     "@codaco/studio-client#build": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts",
-        ".env*",
         "index.html",
         "src/**",
+        // Vite copies public/ into dist verbatim, so the maintenance page the
+        // web image serves is a build input like any source file.
+        "public/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
       ],
-      "env": [
-        "NODE_ENV",
-        "POSTHOG_PERSONAL_API_KEY",
-        "POSTHOG_PROJECT_ID",
-        "POSTHOG_CLI_BINARY_PATH"
-      ],
+      "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
+    // The generic `build` inputs do not cover scripts/, and this build runs
+    // one: after vite, `scripts/render-schema-ddl.ts` renders the DDL
+    // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
+    // change to the rendering would replay a cached bundle carrying the old
+    // statements.
     "@codaco/studio-server#build": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts"
+        "src/**",
+        "scripts/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
       ],
-      "env": [
-        "NODE_ENV",
-        "POSTHOG_PERSONAL_API_KEY",
-        "POSTHOG_PROJECT_ID",
-        "POSTHOG_CLI_BINARY_PATH"
-      ],
+      "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
     "@codaco/interviewer#build": {
@@ -168,8 +165,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -411,7 +408,9 @@
       // covers it. The agent-skills test walks .claude/skills and
       // .agents/skills; the release-test suites read .claude/workflows; the
       // changeset guards read .changeset; the release guards read the fresco
-      // and studio deployment trees.
+      // and studio deployment trees; the CI workflow guard reads
+      // apps/studio/stack-test and the self-host guide the `studio-stack` job
+      // runs.
       "inputs": [
         "scripts/**",
         ".github/**",
@@ -423,8 +422,8 @@
         "pnpm-workspace.yaml",
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
-        "apps/studio/deployment/**",
-        "workers/studio-ingress/src/**",
+        "apps/studio/stack-test/**",
+        "apps/studio/docs/self-host/**",
         "tooling/vitest/**",
         "!**/node_modules/**"
       ],
@@ -513,8 +512,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -535,8 +534,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -558,7 +557,7 @@
     "@codaco/studio-client#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "*.config.ts",
@@ -571,7 +570,7 @@
     "@codaco/studio-server#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "scripts/**",

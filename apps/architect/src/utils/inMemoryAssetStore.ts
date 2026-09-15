@@ -19,6 +19,10 @@ export const putMemoryAsset = (asset: ExtractedAsset, scope: string): void => {
   });
 };
 
+export const deleteMemoryAsset = (scope: string, assetId: string): void => {
+  memoryAssets.delete(assetKey(scope, assetId));
+};
+
 export const getMemoryAsset = (
   scope: string,
   assetId: string,

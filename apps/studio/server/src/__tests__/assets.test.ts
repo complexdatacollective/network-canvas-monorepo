@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 
+import { createApp } from '../app.ts';
 import {
   type AssetStore,
   createAssetRoutes,
@@ -12,10 +13,9 @@ import {
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 
-// Integration suite against a real S3-compatible endpoint — the dev MinIO
-// from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object
+// Integration suite against a real S3-compatible endpoint — the Garage the
+// development stack runs (or whatever S3_* points at). Skips when no object
 // store is reachable, the same pattern as studio-sync's Postgres-backed
 // suites: unit lanes stay green without Docker; run the server's dev script
 // to exercise this for real.
@@ -78,7 +78,7 @@ const spaUpload = (
   },
 });
 
-// Both cases refuse before the store is consulted, so they need no MinIO.
+// Both cases refuse before the store is consulted, so they need no Garage.
 describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
     const app = createApp(readEnv(), { auth: stubAuthService() });
@@ -227,7 +227,6 @@ describe.skipIf(!reachable)('asset storage', () => {
 function memoryStore(): AssetStore {
   const objects = new Map<string, { bytes: Uint8Array; mediaType: string }>();
   return {
-    async checkHealth() {},
     async put(bytes, mediaType) {
       const hash = createHash('sha256').update(bytes).digest('hex');
       if (!objects.has(hash)) objects.set(hash, { bytes, mediaType });
@@ -246,6 +245,9 @@ function memoryStore(): AssetStore {
         mediaType: stored.mediaType,
         size: stored.bytes.byteLength,
       };
+    },
+    async head() {
+      // An in-memory store is always reachable.
     },
   };
 }

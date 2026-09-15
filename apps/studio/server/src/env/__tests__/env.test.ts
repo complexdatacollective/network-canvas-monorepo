@@ -1,17 +1,22 @@
-import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { parseEnv } from 'node:util';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
+import { Effect } from 'effect';
+import { parse as parseConnectionString } from 'pg-connection-string';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
+import { Environment, isLocalDatabase, readEnv } from '../../env.ts';
+import { KeyringError } from '../../secrets/keyring.ts';
 import {
-  isLocalDatabase,
-  readEnv,
-  readMigrationDatabase,
-  readMigrationAllowedLogins,
-  readMigrationAdministrativeLogins,
-} from '../../env.ts';
-import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
+  DEV,
+  DEV_DATABASE_URL,
+  DEV_REDIS_URL,
+  DEV_S3_ENDPOINT,
+  DEV_SMTP_URL,
+} from '../development.ts';
+import { resolve } from '../resolve.ts';
 
 // The suite runs with the committed .env.development loaded (see
 // vitest.config.ts), so it starts from the same environment `pnpm dev` gets
@@ -21,267 +26,94 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('bootstrap configuration', () => {
-  it('keeps setup disabled until a canonical random token is configured', () => {
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', '');
-    expect(readEnv().bootstrapToken).toBeUndefined();
-    const token = randomBytes(32).toString('base64url');
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
-    expect(readEnv().bootstrapToken).toBe(token);
-  });
-
-  it.each([
-    'short',
-    'a'.repeat(43),
-    'A'.repeat(43) + '=',
-    'A'.repeat(42),
-    'A'.repeat(44),
-  ])(
-    'refuses truncated, padded, or noncanonical bootstrap credentials',
-    (token) => {
-      vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
-      expect(() => readEnv()).toThrow('Invalid environment variables');
-    },
-  );
-
-  it('withholds the credential from the lane without auth or a database', () => {
-    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', 'malformed-and-unused');
-    expect(
-      readEnv({ withoutDatabaseOrAuth: true }).bootstrapToken,
-    ).toBeUndefined();
-  });
-});
-
-describe('operational configuration', () => {
-  it('defaults to one combined process and accepts only explicit runtime roles', () => {
-    vi.stubEnv('STUDIO_ROLE', '');
-    expect(readEnv().role).toBe('both');
-    for (const role of ['web', 'worker', 'both']) {
-      vi.stubEnv('STUDIO_ROLE', role);
-      expect(readEnv().role).toBe(role);
-    }
-    vi.stubEnv('STUDIO_ROLE', 'background');
-    expect(() => readEnv()).toThrow('Invalid environment variables');
-  });
-
-  it('keeps metrics off until a separate credential is configured', () => {
-    vi.stubEnv('STUDIO_METRICS_TOKEN', '');
-    expect(readEnv().metricsToken).toBeUndefined();
-    vi.stubEnv(
-      'STUDIO_METRICS_TOKEN',
-      'operator-token-of-at-least-32-characters',
-    );
-    expect(readEnv().metricsToken).toBe(
-      'operator-token-of-at-least-32-characters',
-    );
-  });
-
-  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
-    'refuses unusable metrics credentials',
-    (token) => {
-      vi.stubEnv('STUDIO_METRICS_TOKEN', token);
-      expect(() => readEnv()).toThrow('Invalid environment variables');
-    },
-  );
-
-  it.each(['proxy.example.test', '10.0.0.0/33', '::1/129'])(
-    'refuses invalid proxy entries %s',
-    (proxy) => {
-      vi.stubEnv('TRUSTED_PROXIES', proxy);
-      expect(() => readEnv()).toThrow('Invalid environment variables');
-    },
-  );
-
-  it('requires an authenticated ingress boundary before managed proxy trust', () => {
-    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'managed');
-    vi.stubEnv('TRUSTED_PROXIES', 'fdaa::/16');
-    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
-    expect(() => readEnv()).toThrow(
-      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
-    );
-
-    vi.stubEnv(
-      'STUDIO_MANAGED_INGRESS_SECRET',
-      'synthetic-managed-ingress-secret-at-least-32-characters',
-    );
-    expect(readEnv().managedIngressSecret).toBe(
-      'synthetic-managed-ingress-secret-at-least-32-characters',
-    );
-
-    vi.stubEnv('TRUSTED_PROXIES', '');
-    expect(() => readEnv()).toThrow(
-      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
-    );
-  });
-
-  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
-    'refuses unusable managed ingress credentials',
-    (secret) => {
-      vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', secret);
-      expect(() => readEnv()).toThrow('Invalid environment variables');
-    },
-  );
-});
-
 describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
-    // Integration runs can point DATABASE_URL at an isolated local container.
-    // This unit test specifically describes the committed defaults, so load
-    // those values explicitly rather than assuming the caller exported none.
-    const defaults = parseEnv(
-      readFileSync(
-        new URL('../../../.env.development', import.meta.url),
-        'utf8',
-      ),
-    );
-    for (const [name, value] of Object.entries(defaults))
-      vi.stubEnv(name, value);
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
-    expect(env.maintenanceDb).toEqual({ url: DEV_DATABASE_URL });
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
+    expect(env.redis).toBe(DEV_REDIS_URL);
     expect(env.devDefaults).toBe(true);
   });
 
-  it('delivers magic links to the console', () => {
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'console' });
+  it('reads no rate limit out of the environment at all', () => {
+    // The limits are constants (src/rate-limit/scopes.ts), so a variable named
+    // like one of the eleven that were removed is now an ordinary unknown
+    // variable: it configures nothing, and the resolved environment carries no
+    // limit for anything to have read it into.
+    vi.stubEnv('RATE_LIMIT_SIGN_IN_EMAIL', '5/10m');
+    expect(readEnv()).not.toHaveProperty('rateLimits');
   });
 
-  it('tolerates the unpaired EMAIL_FROM it supplies for the Mailpit loop', () => {
-    // .env.development sets EMAIL_FROM but no SMTP_URL, so that adding
-    // SMTP_URL alone locally completes the pair.
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'console' });
-  });
-
-  it('completes the SMTP pair when only SMTP_URL is added', () => {
-    vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
-    expect(readEnv().auth?.mailer).toEqual({
+  it('delivers magic links through the development stack’s mail sink', () => {
+    // Mailpit, from docker-compose.dev.yml. The worker therefore exercises
+    // the same SMTP path a deployment does, rather than a console mailer no
+    // deployment ever runs, and the links are read at the Mailpit UI.
+    expect(readEnv({ withMail: true }).mail).toEqual({
       kind: 'smtp',
-      url: 'smtp://localhost:1025',
+      url: DEV_SMTP_URL,
       from: DEV.emailFrom,
     });
   });
+
+  it('falls back to the console mailer when the sink is taken away', () => {
+    // Working without Docker's mail sink leaves EMAIL_FROM unpaired, which
+    // outside the development lane is a boot error.
+    vi.stubEnv('SMTP_URL', '');
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
+  });
+
+  it('turns telemetry off, where a deployment leaves it on', () => {
+    expect(readEnv().telemetry).toBe(false);
+    vi.stubEnv('STUDIO_TELEMETRY', '');
+    expect(readEnv().telemetry).toBe(true);
+  });
 });
 
-describe('migration environment', () => {
-  it.each([undefined, '', '[]', 'not-json', '["duplicate","duplicate"]'])(
-    'requires explicit production database enrollment despite validation skip (%s)',
-    (value) => {
-      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-      vi.stubEnv('EMAIL_FROM', '');
-      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
-      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
-      expect(() => readEnv()).toThrow('STUDIO_DATABASE_ALLOWED_LOGINS');
-      vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
-      vi.stubEnv('STUDIO_DEV_DEFAULTS', 'true');
-      expect(readEnv().databaseAllowedLogins).toBeUndefined();
-      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-      expect(
-        readEnv({ withoutDatabaseOrAuth: true }).databaseAllowedLogins,
-      ).toBeUndefined();
-    },
-  );
-  it('defaults administrative enrollment to empty and preserves an explicit non-owner operator', () => {
-    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    vi.stubEnv('EMAIL_FROM', '');
-    const allowed = ['owner', 'operator', 'runtime'];
-    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
-    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', undefined);
-    expect(readEnv().databaseAdministrativeLogins).toEqual([]);
-    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
-    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '');
-    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
-    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '["operator"]');
-    expect(readEnv().databaseAdministrativeLogins).toEqual(['operator']);
-    expect(readMigrationAdministrativeLogins(allowed)).toEqual(['operator']);
-  });
-
-  it.each([
-    'null',
-    '{}',
-    '[1]',
-    '["operator","operator"]',
-    '["private-unenrolled-canary"]',
-    'not-json',
-  ])(
-    'refuses malformed or unenrolled administrative configuration privately (%s)',
-    (value) => {
-      const allowed = ['owner', 'operator', 'runtime'];
-      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-      vi.stubEnv('EMAIL_FROM', '');
-      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
-      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
-      vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', value);
-      for (const read of [
-        () => readEnv(),
-        () => readMigrationAdministrativeLogins(allowed),
-      ]) {
-        let failure: unknown;
-        try {
-          read();
-        } catch (error) {
-          failure = error;
-        }
-        expect(failure).toEqual(
-          new Error(
-            'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS must be a JSON array of unique names enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
-          ),
-        );
-        expect(String(failure)).not.toContain('private-unenrolled-canary');
-      }
-    },
-  );
-
-  it('supplies the same validated production enrollment to admission and offline migration', () => {
-    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    vi.stubEnv('EMAIL_FROM', '');
-    vi.stubEnv(
-      'STUDIO_DATABASE_ALLOWED_LOGINS',
-      '["studio_migrator","studio_runtime","studio_backup_login"]',
-    );
-    expect(readEnv().databaseAllowedLogins).toEqual(
-      readMigrationAllowedLogins(),
-    );
-  });
-
-  it.each([
-    undefined,
-    '',
-    'operator,runtime',
-    '[]',
-    '[1]',
-    '["operator","operator"]',
-    '["' + 'x'.repeat(64) + '"]',
-    '["' + 'é'.repeat(32) + '"]',
-    '["\\u0000"]',
-  ])('refuses missing or invalid explicit login enrollment (%s)', (value) => {
-    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
-    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
-    expect(() => readMigrationAllowedLogins()).toThrow();
-  });
-
-  it('preserves arbitrary quoted login names from the explicit JSON enrollment', () => {
-    const logins = ['operator-name', 'runtime"$studio_roles$'];
-    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(logins));
-    expect(readMigrationAllowedLogins()).toEqual(logins);
-  });
-
-  it('requires a database even when application validation is disabled', () => {
-    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
-    vi.stubEnv('DATABASE_URL', '');
-    expect(() => readMigrationDatabase()).toThrow();
-  });
-
-  it('reads only the database for an offline migration command', () => {
-    vi.stubEnv('DATABASE_URL', 'postgres://operator@localhost/studio');
-    vi.stubEnv('BETTER_AUTH_SECRET', '');
-    vi.stubEnv('PUBLIC_URL', '');
-    vi.stubEnv('SMTP_URL', '');
-    expect(readMigrationDatabase()).toEqual({
-      url: 'postgres://operator@localhost/studio',
+// Only the worker sends mail (#1895), so only the worker's read may see the
+// transport: the web process must not be able to construct one by accident,
+// and a deployment's SMTP credentials must not be readable from a process
+// that has no use for them.
+describe('the mail transport', () => {
+  it('is withheld from a read that did not ask for it', () => {
+    vi.stubEnv('SMTP_URL', 'smtp://user:password@smtp.example.org:587');
+    vi.stubEnv('EMAIL_FROM', 'studio@studio.example');
+    expect(readEnv().mail).toBeUndefined();
+    expect(readEnv({ withMail: true }).mail).toEqual({
+      kind: 'smtp',
+      url: 'smtp://user:password@smtp.example.org:587',
+      from: 'studio@studio.example',
     });
+  });
+
+  it('does not refuse a half configuration it was not asked to read', () => {
+    // The pairing rule belongs to the process that would send through it. A
+    // deployment that half-configures mail must not take the web process down
+    // with a variable the web process never uses.
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
+    vi.stubEnv('SMTP_URL', '');
+    expect(readEnv().mail).toBeUndefined();
+    expect(() => readEnv({ withMail: true })).toThrow(
+      /SMTP_URL is required when EMAIL_FROM/,
+    );
+  });
+
+  it('leaves magic-link sign-in enabled with no transport configured', () => {
+    // Delivery is the worker's, and with none configured a sign-in email
+    // waits on the queue (#1895). What the capability reports is whether the
+    // method exists, which is a question about auth alone.
+    vi.stubEnv('SMTP_URL', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    const env = readEnv({ withMail: true });
+    expect(env.auth).toBeDefined();
+    expect(env.mail).toEqual({ kind: 'console' });
+
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    const deployed = readEnv({ withMail: true });
+    expect(deployed.auth).toBeDefined();
+    expect(deployed.mail).toEqual({ kind: 'refuse' });
   });
 });
 
@@ -316,17 +148,14 @@ describe('the development marker', () => {
 
   it('leaves a remote database alone once the marker is gone', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    vi.stubEnv(
-      'STUDIO_DATABASE_ALLOWED_LOGINS',
-      '["studio_migrator","studio_runtime"]',
-    );
-    // Without the marker the file's unpaired EMAIL_FROM is a deployment
-    // mistake in its own right, so this is the whole lane being left behind.
+    // The lane being left behind takes its mail sink with it: without either
+    // variable a deployment has no transport and mail queues.
+    vi.stubEnv('SMTP_URL', '');
     vi.stubEnv('EMAIL_FROM', '');
     vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
-    const env = readEnv();
+    const env = readEnv({ withMail: true });
     expect(env.devDefaults).toBe(false);
-    expect(env.auth?.mailer).toEqual({ kind: 'refuse' });
+    expect(env.mail).toEqual({ kind: 'refuse' });
   });
 
   it('is what enables the console mailer, not NODE_ENV', () => {
@@ -334,81 +163,18 @@ describe('the development marker', () => {
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    vi.stubEnv(
-      'STUDIO_DATABASE_ALLOWED_LOGINS',
-      '["studio_migrator","studio_runtime"]',
-    );
+    vi.stubEnv('SMTP_URL', '');
     vi.stubEnv('EMAIL_FROM', '');
-    expect(readEnv().auth?.mailer).toEqual({ kind: 'refuse' });
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'refuse' });
   });
 
   it('is what tolerates an unpaired EMAIL_FROM, not NODE_ENV', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    vi.stubEnv(
-      'STUDIO_DATABASE_ALLOWED_LOGINS',
-      '["studio_migrator","studio_runtime"]',
-    );
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
-    expect(() => readEnv()).toThrow(
-      'SMTP_URL or POSTMARK_SERVER_TOKEN is required when EMAIL_FROM is set',
+    expect(() => readEnv({ withMail: true })).toThrow(
+      /SMTP_URL is required when EMAIL_FROM/,
     );
-  });
-});
-
-describe('Postmark mail configuration', () => {
-  it.each(['managed', 'self-hosted'])(
-    'selects the configured Postmark sender in %s mode',
-    (mode) => {
-      vi.stubEnv('STUDIO_DEPLOYMENT_MODE', mode);
-      vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
-      expect(readEnv().auth?.mailer).toEqual({
-        kind: 'postmark',
-        serverToken: 'synthetic-token',
-        messageStream: 'outbound',
-        from: DEV.emailFrom,
-      });
-      vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'studio-transactional');
-      expect(readEnv().auth?.mailer).toMatchObject({
-        messageStream: 'studio-transactional',
-      });
-    },
-  );
-
-  it('refuses ambiguous transport selection even in development', () => {
-    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
-    vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
-    expect(() => readEnv()).toThrow(
-      'Configure only one of SMTP_URL or POSTMARK_SERVER_TOKEN',
-    );
-  });
-
-  it('requires the sender identity and the server token as a complete configuration', () => {
-    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'outbound');
-    expect(() => readEnv()).toThrow(
-      'POSTMARK_SERVER_TOKEN is required when POSTMARK_MESSAGE_STREAM is set',
-    );
-    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
-    vi.stubEnv('EMAIL_FROM', '');
-    expect(() => readEnv()).toThrow(
-      'EMAIL_FROM is required when POSTMARK_SERVER_TOKEN is set',
-    );
-  });
-
-  it.each([
-    ['POSTMARK_SERVER_TOKEN', 'private-token\ncanary'],
-    ['POSTMARK_SERVER_TOKEN', 'private-token'.repeat(100)],
-    ['POSTMARK_MESSAGE_STREAM', 'stream with spaces'],
-    ['POSTMARK_MESSAGE_STREAM', 'x'.repeat(31)],
-  ])('refuses invalid %s without disclosing its value', (name, value) => {
-    vi.stubEnv(name, value);
-    expect(() => readEnv()).toThrow('Invalid environment variables');
-  });
-
-  it('withholds mail configuration entirely from the entrypoint without auth', () => {
-    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'invalid\nsecret-canary');
-    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'invalid stream');
-    expect(readEnv({ withoutDatabaseOrAuth: true }).auth).toBeUndefined();
   });
 });
 
@@ -420,55 +186,12 @@ describe('database and auth', () => {
     expect(readEnv().db).toEqual({
       url: 'postgres://app@localhost:5433/other',
     });
-    expect(readEnv().maintenanceDb).toEqual({
-      url: 'postgres://app@localhost:5433/other',
-    });
-  });
-
-  it('keeps a separately configured maintenance login distinct from the app login', () => {
-    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/other');
-    vi.stubEnv(
-      'STUDIO_MAINTENANCE_DATABASE_URL',
-      'postgres://maintenance@localhost:5433/other',
-    );
-    expect(readEnv().maintenanceDb).toEqual({
-      url: 'postgres://maintenance@localhost:5433/other',
-    });
-  });
-
-  it('admits a worker with only its maintenance login', () => {
-    vi.stubEnv('STUDIO_ROLE', 'worker');
-    vi.stubEnv('DATABASE_URL', '');
-    vi.stubEnv(
-      'STUDIO_MAINTENANCE_DATABASE_URL',
-      'postgres://maintenance@localhost:5433/other',
-    );
-    const env = readEnv();
-    expect(env.db).toBeUndefined();
-    expect(env.maintenanceDb).toEqual({
-      url: 'postgres://maintenance@localhost:5433/other',
-    });
-    expect(env.auth?.baseUrl).toBe('http://localhost:5173');
-  });
-
-  it('refuses a web process with only a maintenance login', () => {
-    vi.stubEnv('STUDIO_DEV_DEFAULTS', 'false');
-    vi.stubEnv('STUDIO_ROLE', 'web');
-    vi.stubEnv('DATABASE_URL', '');
-    vi.stubEnv(
-      'STUDIO_MAINTENANCE_DATABASE_URL',
-      'postgres://maintenance@localhost:5433/other',
-    );
-    expect(() => readEnv()).toThrow(
-      'DATABASE_URL is required for a web-capable process',
-    );
   });
 
   it('is unconfigured without DATABASE_URL, and auth follows it down', () => {
     vi.stubEnv('DATABASE_URL', '');
     const env = readEnv();
     expect(env.db).toBeUndefined();
-    expect(env.maintenanceDb).toBeUndefined();
     expect(env.auth).toBeUndefined();
   });
 
@@ -489,10 +212,6 @@ describe('database and auth', () => {
 
   it('splits TRUSTED_PROXIES and drops blank entries', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' 10.0.0.0/8 , ,192.168.0.1 ');
-    vi.stubEnv(
-      'STUDIO_MANAGED_INGRESS_SECRET',
-      'synthetic-managed-ingress-secret-at-least-32-characters',
-    );
     expect(readEnv().auth?.trustedProxies).toEqual([
       '10.0.0.0/8',
       '192.168.0.1',
@@ -501,8 +220,94 @@ describe('database and auth', () => {
 
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
-    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
+  });
+});
+
+// The compose stack (#1909) delivers the database password as a file secret,
+// so it is in neither `docker inspect` nor any process environment. What
+// reaches the pools and pg-boss is still one connection string: the password
+// is folded into DATABASE_URL here, once, at boot.
+describe('the database password file', () => {
+  const passwordFile = (contents: string): string => {
+    const path = join(
+      mkdtempSync(join(tmpdir(), 'studio-password-')),
+      'postgres-password',
+    );
+    writeFileSync(path, contents);
+    return path;
+  };
+
+  it('puts the file’s password into a URL that carries none', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(readEnv().db).toEqual({
+      url: 'postgres://app:s3cret@localhost:5433/studio',
+    });
+  });
+
+  it('strips the trailing newline a shell redirection leaves', () => {
+    // The Postgres image strips exactly this from the same file when it sets
+    // the password, so a file written with `> file` must mean the same thing
+    // on both sides of the connection.
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret\n'));
+    expect(readEnv().db?.url).toBe(
+      'postgres://app:s3cret@localhost:5433/studio',
+    );
+  });
+
+  it('survives a password full of characters a URL gives meaning to', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('p@ss:w/ord#1?2'));
+    // Read back the way node-postgres reads it, rather than asserting on the
+    // encoded form: what matters is that pg ends up with the same bytes the
+    // file held.
+    expect(parseConnectionString(readEnv().db!.url).password).toBe(
+      'p@ss:w/ord#1?2',
+    );
+  });
+
+  it('refuses a URL that carries a password as well', () => {
+    // There would be no way to say which was meant, and the wrong answer is
+    // an authentication failure far from the configuration that caused it.
+    vi.stubEnv('DATABASE_URL', 'postgres://app:inline@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/carries a password and/);
+  });
+
+  it('refuses a connection form with nowhere to put a password', () => {
+    // A libpq keyword string or a bare socket path has no authority to hold
+    // one. Inserting nothing and carrying on would fail as an authentication
+    // error with no hint that the file was never read.
+    vi.stubEnv('DATABASE_URL', 'host=/var/run/postgresql dbname=studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/not a URL a password can be inserted/);
+  });
+
+  it('refuses a file it cannot read, naming it', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', '/nonexistent/postgres-password');
+    expect(() => readEnv()).toThrow(
+      /\/nonexistent\/postgres-password, which could not be read/,
+    );
+  });
+
+  it('refuses an empty file rather than connecting without a password', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('\n'));
+    expect(() => readEnv()).toThrow(/which is empty/);
+  });
+
+  it('refuses the file without a connection to insert it into', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/but DATABASE_URL is not/);
+  });
+
+  it('leaves a URL that carries its own password alone', () => {
+    vi.stubEnv('DATABASE_PASSWORD_FILE', '');
+    expect(readEnv().db).toEqual({ url: DEV_DATABASE_URL });
   });
 });
 
@@ -603,11 +408,93 @@ describe('process configuration', () => {
     vi.stubEnv('PORT', '70000');
     expect(() => readEnv()).toThrow();
   });
+});
 
-  it('keeps validating when SKIP_ENV_VALIDATION says not to skip', () => {
-    vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+// What a misconfigured deployment is told. The schema decodes with
+// `errors: 'all'` and every variable carries its own refusal message, so the
+// report is one line per bad variable — and never the value, because half of
+// these variables are credentials and a boot failure is written to the log of
+// every container that restarts.
+describe('the refusal a bad environment gets', () => {
+  it('names every bad variable at once, not the first', () => {
     vi.stubEnv('PORT', 'http');
-    expect(() => readEnv()).toThrow();
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
+    vi.stubEnv('S3_ENDPOINT', 'localhost:9100');
+
+    let message = '';
+    try {
+      readEnv();
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain('PORT');
+    expect(message).toContain('STUDIO_DEPLOYMENT_MODE');
+    expect(message).toContain('S3_ENDPOINT');
+    expect(message).toContain('must be a whole number between 0 and 65535');
+    expect(message).toContain('must be managed or self-hosted');
+    expect(message).toContain('must be an http:// or https:// URL');
+  });
+
+  it('says what is wrong with a secret without printing it', () => {
+    // Effect's own message for a refused value quotes the value. These are
+    // credentials: a deployment whose signing secret is too short must not
+    // have the secret it tried written into its boot log.
+    vi.stubEnv('BETTER_AUTH_SECRET', 'too-short-but-still-a-secret');
+
+    let message = '';
+    try {
+      readEnv();
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain('BETTER_AUTH_SECRET');
+    expect(message).toContain('must be at least 32 characters');
+    expect(message).not.toContain('too-short-but-still-a-secret');
+  });
+
+  it('treats an empty value as unset rather than as a value to validate', () => {
+    // How a Compose file's `FOO=` reads, and how every case in this suite
+    // clears a variable.
+    vi.stubEnv('S3_ENDPOINT', '');
+    vi.stubEnv('S3_REGION', '');
+    vi.stubEnv('S3_BUCKET', '');
+    vi.stubEnv('S3_ACCESS_KEY_ID', '');
+    vi.stubEnv('S3_SECRET_ACCESS_KEY', '');
+    expect(readEnv().s3).toBeUndefined();
+  });
+});
+
+// The pattern's service shape, beside `readEnv` rather than instead of it:
+// nothing in the server runs under Effect yet, so this is the sanctioned way
+// in for the first thing that does.
+describe('the Environment layer', () => {
+  it('decodes and resolves the committed development defaults', async () => {
+    const program = Effect.gen(function* () {
+      const env = yield* Environment;
+      return env;
+    });
+    const env = await Effect.runPromise(
+      program.pipe(Effect.provide(Environment.layer)),
+    );
+    expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+    expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
+    // Withheld from the plain layer, exactly as it is from a plain `readEnv`.
+    expect(env.mail).toBeUndefined();
+  });
+
+  it('reads the mail transport only through the worker’s layer', async () => {
+    const env = await Effect.runPromise(
+      Effect.gen(function* () {
+        return yield* Environment;
+      }).pipe(Effect.provide(Environment.layerWithMail)),
+    );
+    expect(env.mail).toEqual({
+      kind: 'smtp',
+      url: DEV_SMTP_URL,
+      from: DEV.emailFrom,
+    });
   });
 });
 
@@ -620,7 +507,7 @@ describe('the deployment mode', () => {
   it('is self-hosted when the variable is unset', () => {
     vi.stubEnv('STUDIO_DEPLOYMENT_MODE', '');
     // The fail-closed direction, and the reason no default is declared in
-    // variables.ts: a managed deployment that forgets the variable 404s its
+    // schema.ts: a managed deployment that forgets the variable 404s its
     // own pricing page on the first smoke request, where the other default
     // would have an institution's own instance quietly publishing one.
     expect(readEnv().deploymentMode).toBe('self-hosted');
@@ -636,6 +523,81 @@ describe('the deployment mode', () => {
     // direction.
     vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
     expect(() => readEnv()).toThrow();
+  });
+});
+
+// Every Studio pool runs as a role it pins through pg's `options` startup
+// parameter, and node-postgres lets a connection string's own `options`
+// override it — which would run the web process and the worker as the
+// connecting login, in development the superuser that row-level security does
+// not apply to.
+describe('the pinned role', () => {
+  it('refuses a DATABASE_URL that would override it', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?options=-c%20role%3Dpostgres',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+    // The message has to say what to take out, because the parameter is more
+    // often inherited from a hosting provider's string than typed by hand.
+    expect(() => readEnv()).toThrow(/Remove `options` from the connection/);
+  });
+
+  it('refuses it among other connection parameters', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio&options=-csearch_path%3Dpublic',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts a connection string that leaves the parameter alone', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@127.0.0.1:54318/studio_dev?application_name=studio',
+    );
+    expect(readEnv().db?.url).toContain('application_name=studio');
+  });
+
+  it('refuses it in a connection string with no host', () => {
+    // The form that says "the default Unix socket", which a hosting provider's
+    // socket configuration produces. `new URL` rejects it outright, so reading
+    // the string that way left this one through — pg reads it perfectly well,
+    // and would have sent the `options` it carries.
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://postgres:spike@/studio_dev?options=-crole%3Dpostgres',
+    );
+    expect(() => readEnv()).toThrow(
+      /DATABASE_URL must not carry an `options` parameter/,
+    );
+  });
+
+  it('accepts the two formats that cannot carry the parameter', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+
+    // The bare socket form: its whole grammar is a socket directory and a
+    // database name, so there is nowhere in it to write a parameter.
+    vi.stubEnv('DATABASE_URL', '/var/run/postgresql studio_dev');
+    expect(readEnv().db?.url).toBe('/var/run/postgresql studio_dev');
+
+    // A libpq keyword DSN, which node-postgres does not accept at all: its
+    // parser reads the whole string as one long database name, so the
+    // `options=` written here is inert rather than tolerated. Asserting the
+    // `options` spelling specifically, because the review that asked for this
+    // guard believed pg honoured it.
+    vi.stubEnv(
+      'DATABASE_URL',
+      'host=/var/run/postgresql dbname=studio_dev options=-crole%3Dpostgres',
+    );
+    expect(readEnv().db?.url).toContain('options=');
   });
 });
 
@@ -675,5 +637,112 @@ describe('the local-database judgement', () => {
       isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
     ).toBe(false);
     expect(isLocalDatabase('not a url')).toBe(false);
+  });
+});
+
+// The keyring is the whole of Studio's key custody (#1900). It is read here,
+// once, before anything is written under it: a deployment whose keyring is
+// missing or malformed has to fail while it still has the one it was using,
+// not halfway through writing a secret it will not be able to read back.
+describe('the secrets keyring', () => {
+  const configured = {
+    DATABASE_URL: DEV_DATABASE_URL,
+    BETTER_AUTH_SECRET: DEV.authSecret,
+    PUBLIC_URL: DEV.baseUrl,
+  };
+
+  function refusal(act: () => unknown): string {
+    try {
+      act();
+    } catch (error: unknown) {
+      return error instanceof Error ? error.message : String(error);
+    }
+    throw new Error('expected a refusal');
+  }
+
+  it('parses the fixture the committed development file supplies', () => {
+    expect(readEnv().secrets?.currentId).toBe(DEV.secretsKey.split(':')[0]);
+    expect(readEnv().secrets?.ids()).toEqual(['dev']);
+  });
+
+  it('refuses both variables at once rather than choosing one', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY_FILE', '/run/secrets/studio_secrets_key');
+    expect(() => readEnv()).toThrow(
+      /STUDIO_SECRETS_KEY and STUDIO_SECRETS_KEY_FILE are both set; set exactly one/,
+    );
+  });
+
+  it('reads the file when the file is the one that is set', () => {
+    const read = vi.fn(() => `${testKeyringEntry('file-1')}\n`);
+    const env = resolve(
+      { ...configured, STUDIO_SECRETS_KEY_FILE: '/run/secrets/keyring' },
+      { readSecretsFile: read },
+    );
+    expect(read).toHaveBeenCalledExactlyOnceWith('/run/secrets/keyring');
+    expect(env.secrets?.currentId).toBe('file-1');
+  });
+
+  it('reads a keyring off disk, one entry per line', () => {
+    // Through `readEnv`, so the real file read is what runs: the mounted
+    // Compose secret is the deployed path, and an injected reader cannot say
+    // whether it works.
+    const directory = mkdtempSync(join(tmpdir(), 'studio-secrets-'));
+    const path = join(directory, 'studio_secrets_key');
+    try {
+      writeFileSync(
+        path,
+        `${testKeyringEntry('file-1')}\n${testKeyringEntry('file-2')}\n`,
+      );
+      vi.stubEnv('STUDIO_SECRETS_KEY', '');
+      vi.stubEnv('STUDIO_SECRETS_KEY_FILE', path);
+      expect(readEnv().secrets?.ids()).toEqual(['file-1', 'file-2']);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('names the path, and nothing the read said, when the file is unreadable', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    const path = join(tmpdir(), 'studio-secrets-key-that-is-not-there');
+    vi.stubEnv('STUDIO_SECRETS_KEY_FILE', path);
+    const message = refusal(() => readEnv());
+    expect(message).toBe(`STUDIO_SECRETS_KEY_FILE could not be read: ${path}`);
+    // A filesystem error can quote what it was reading, and this file is
+    // entirely key material.
+    expect(message).not.toContain('ENOENT');
+  });
+
+  it('refuses a database with no keyring, and says how to make one', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    const message = refusal(() => readEnv());
+    expect(message).toContain('STUDIO_SECRETS_KEY_FILE');
+    expect(message).toContain('STUDIO_SECRETS_KEY');
+    expect(message).toContain('openssl rand -base64 32');
+    expect(message).toContain('k1:<value>');
+    // The one rule a self-hoster has to carry away from this refusal.
+    expect(message).toContain(
+      'Back the keyring up with the database: without it every stored secret is unreadable.',
+    );
+  });
+
+  it('is undefined where there is no database to hold a secret', () => {
+    vi.stubEnv('STUDIO_SECRETS_KEY', '');
+    vi.stubEnv('DATABASE_URL', '');
+    expect(readEnv().secrets).toBeUndefined();
+  });
+
+  it('is parsed even with no database, so a mistake in it surfaces early', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    expect(readEnv().secrets?.currentId).toBe('dev');
+    vi.stubEnv('STUDIO_SECRETS_KEY', 'k1:not-a-key');
+    expect(() => readEnv()).toThrow(KeyringError);
+  });
+
+  it('reports what is wrong with a keyring without echoing it', () => {
+    const entry = testKeyringEntry('dev');
+    vi.stubEnv('STUDIO_SECRETS_KEY', `${entry},${entry}`);
+    const message = refusal(() => readEnv());
+    expect(message).toContain('key id "dev" twice');
+    expect(message).not.toContain(entry.split(':')[1]);
   });
 });

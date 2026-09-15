@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useId } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
@@ -241,7 +242,7 @@ function EntityCard({
             {onEditEntity !== undefined && (
               <Button
                 type="button"
-                variant="outline"
+                color="primary"
                 size="sm"
                 aria-label={intl.formatMessage(messages.editSubject, {
                   entity: subject.entity,
@@ -266,8 +267,9 @@ function EntityCard({
               {onCreateVariable !== undefined && (
                 <Button
                   type="button"
-                  variant="dashed"
+                  color="primary"
                   size="sm"
+                  icon={<Plus aria-hidden="true" />}
                   aria-label={intl.formatMessage(
                     messages.createAttributeForSubject,
                     { entity: subject.entity, name },
@@ -302,6 +304,7 @@ function EntityCard({
                       <Button
                         type="button"
                         variant="text"
+                        color="dynamic"
                         size="sm"
                         aria-label={intl.formatMessage(
                           messages.editAttributeForSubject,
@@ -377,13 +380,17 @@ export default function CodebookSurface({
               <Button
                 type="button"
                 color="primary"
+                size="sm"
+                icon={<Plus aria-hidden="true" />}
                 onClick={() => onCreateEntity('node')}
               >
                 {intl.formatMessage(messages.createNodeType)}
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                color="primary"
+                size="sm"
+                icon={<Plus aria-hidden="true" />}
                 onClick={() => onCreateEntity('edge')}
               >
                 {intl.formatMessage(messages.createEdgeType)}
@@ -391,7 +398,9 @@ export default function CodebookSurface({
               {ego === undefined && (
                 <Button
                   type="button"
-                  variant="outline"
+                  color="primary"
+                  size="sm"
+                  icon={<Plus aria-hidden="true" />}
                   onClick={() => onCreateEntity('ego')}
                 >
                   {intl.formatMessage(messages.addEgoAttributes)}

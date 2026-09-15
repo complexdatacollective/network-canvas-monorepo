@@ -1,48 +1,69 @@
-import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 
-import { SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
-import { readMigrations } from './db/migrations/artifact.ts';
-import { migrateDatabase } from './db/migrations/migrate.ts';
+import { migrateDatabase, type SchemaDdl } from './db/migrate.ts';
 import { createOwnerPool } from './db/pool.ts';
-import {
-  readMigrationAllowedLogins,
-  readMigrationAdministrativeLogins,
-  readMigrationDatabase,
-} from './env.ts';
+import { readEnv } from './env.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
+import { issueBootstrapToken, printBootstrapToken } from './setup/bootstrap.ts';
+import { STUDIO_VERSION } from './version.ts';
 
-// Vite bundles this as dist/migrate.js; the image carries migrations beside
-// dist. It is never imported by the web server's startup path.
-if (process.argv.length > 2) throw new Error('Usage: migrate (no arguments)');
-const migrations = await readMigrations(
-  fileURLToPath(new URL('../migrations', import.meta.url)),
-);
-const allowedLogins = readMigrationAllowedLogins();
-const administrativeLogins = readMigrationAdministrativeLogins(allowedLogins);
-const pool = createOwnerPool(readMigrationDatabase());
+// The image's third entry: `studio-api migrate`, the one-shot that creates the
+// schema (#1909). It runs once per deployment, never per replica, which is why
+// it is a command and not boot work — the web process and the worker only
+// verify the fingerprint (src/boot.ts).
+//
+// It connects as the login in DATABASE_URL rather than as either pinned role:
+// the statements create those roles, so the login needs `CREATEROLE` the first
+// time, exactly as `apply-schema` documents for a repository checkout.
+
+const env = readEnv();
+
+if (!env.db) {
+  // oxlint-disable-next-line no-console -- command diagnostics
+  console.error(
+    'DATABASE_URL is required for migrate: there is no database to create the schema in.',
+  );
+  process.exit(1);
+}
+
+// oxlint-disable-next-line no-console -- command output
+console.log(`Network Canvas Studio migrate ${STUDIO_VERSION}`);
+
+/**
+ * Written by `scripts/render-schema-ddl.ts` after `vite build`, so it sits
+ * beside the emitted `dist/migrate.js` — read through `import.meta.url` rather
+ * than the working directory, which a container runtime may set to anything.
+ */
+const ddl = JSON.parse(
+  await readFile(new URL('./schema-ddl.json', import.meta.url), 'utf8'),
+) as SchemaDdl;
+
+const pool = createOwnerPool(env.db);
 try {
-  const admission = await pool.query<{ permitted: boolean }>(
-    `SELECT current_user = session_user AND (
-       session_user = pg_catalog.pg_get_userbyid(database.datdba)
-       OR session_user = ANY($1::pg_catalog.text[])
-     ) AS permitted FROM pg_catalog.pg_database database
-     WHERE database.datname = pg_catalog.current_database()`,
-    [administrativeLogins],
-  );
-  if (admission.rows[0]?.permitted !== true)
-    throw new Error(
-      'A distinct Studio migration operator must be explicitly enrolled in STUDIO_DATABASE_ADMINISTRATIVE_LOGINS.',
-    );
-  const completed = await migrateDatabase(
-    pool,
-    migrations,
-    SCHEMA_FINGERPRINT,
-    allowedLogins,
-    administrativeLogins,
-  );
-  const message = completed.length
-    ? `Applied Studio migrations: ${completed.join(', ')}`
-    : 'Studio migrations already current.';
-  process.stdout.write(`${message}\n`);
+  await migrateDatabase(pool, ddl, {
+    // oxlint-disable-next-line no-console -- command output
+    log: (line) => console.log(line),
+  });
+  // After the schema, before anything runs against it (#1900): the check
+  // `apply-schema` runs in a checkout, so a database restored from a backup
+  // that does not match the keyring is caught by the command an operator ran
+  // by hand, with the output in front of them, rather than by the next
+  // container start. `readEnv` above already refused to run without a
+  // keyring at all. Before the bootstrap token, so a refused database never
+  // prints a token nobody should use.
+  await verifySecretKeysOrExit(env);
+  // oxlint-disable-next-line no-console -- command output
+  console.log('Stored secrets are readable with the configured keyring.');
+  // First-run bootstrap (#1909): on a database nobody owns yet, issue the
+  // token `/setup` spends and print it once — rotating any earlier one, so a
+  // lost token is recovered by running this again. An owned instance issues
+  // nothing and prints nothing. After `migrateDatabase`, on the pool: the
+  // installation table exists only once its transaction has committed.
+  printBootstrapToken(await issueBootstrapToken(pool), env.auth?.baseUrl);
+} catch (error) {
+  // oxlint-disable-next-line no-console -- command diagnostics
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
 } finally {
   await pool.end();
 }

@@ -5,7 +5,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -21,12 +20,7 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '@codaco/protocol-builder/markdown/markdownAdapter';
+import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 import {
@@ -116,7 +110,7 @@ const messages = defineMessages({
 export type OptionValue = VariableOptions[number];
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+const OptionLabelControl = OptionLabelField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -154,14 +148,6 @@ const useOptionsContext = () => {
     throw new Error('Option rows must be rendered inside Options.');
   }
   return context;
-};
-
-const RICH_TEXT_TOOLBAR = {
-  headings: false,
-  history: true,
-  links: false,
-  lists: false,
-  thematicBreak: false,
 };
 
 const Option = ({
@@ -202,15 +188,6 @@ const Option = ({
     hasAutoOpenedRef.current = true;
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
-
-  const labelContent = useMemo(
-    () =>
-      markdownToRichTextContent(
-        typeof item.label === 'string' ? item.label : '',
-        true,
-      ),
-    [item.label],
-  );
 
   const handleFinishEditing = () => {
     if (!isOptionComplete(item)) {
@@ -343,27 +320,19 @@ const Option = ({
       <RowField
         name={`${rowFieldName}.label`}
         label={intl.formatMessage(messages.label)}
-        component={FrescoRichTextEditorField}
+        component={OptionLabelControl}
         placeholder={intl.formatMessage(messages.enterALabel)}
-        changeMode="input"
-        toolbarOptions={RICH_TEXT_TOOLBAR}
-        value={labelContent}
+        value={typeof item.label === 'string' ? item.label : ''}
         onChange={(value: unknown) => {
-          // Stored canonically so two labels that read identically are also
-          // identical bytes on export — see shared-consts' `canonical-text`.
-          const label = toCanonicalText(
-            richTextContentToMarkdown(
-              value as RichTextContent | undefined,
-              true,
-            ),
-          );
-          // The editor emits a change as it mounts; committing that would
-          // rewrite the whole array — dirtying the stage and adding a draft
-          // timeline entry — merely by opening a row. The comparison is
-          // canonical too, so opening a row whose stored label predates this
-          // normalization is not mistaken for an edit.
-          if (label === toCanonicalText(item.label ?? '')) return;
-          onUpdate?.({ label } as Partial<OptionValue>);
+          // Canonical, escaped and held to one line already: the package's
+          // `OptionLabelField` owns all three for every surface that authors an
+          // option label, and withholds the change the editor emits as it
+          // mounts — which would otherwise rewrite the whole array, dirtying
+          // the stage and adding a draft timeline entry, merely by opening a
+          // row.
+          onUpdate?.({
+            label: typeof value === 'string' ? value : '',
+          } as Partial<OptionValue>);
         }}
         validation={{ required: true, uniqueArrayAttribute: true }}
         allValues={allValues}

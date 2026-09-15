@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { commonCatalogs } from '@codaco/app-i18n/common';
@@ -13,6 +13,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import {
+  attributeField,
+  chooseAttribute,
+} from '../../testing/attributePicker.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import {
   expectNoLocaleLeaks,
@@ -22,7 +26,8 @@ import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
-import CodebookVariableValidationEditor from '../validation/CodebookVariableValidationEditor.tsx';
+import VariableValidationEditor from '../validation/VariableValidationEditor.tsx';
+import type { ValidationMap } from '../variableValidation.ts';
 import { ruleMapPrecheck } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 
@@ -228,7 +233,20 @@ const PERSON_DOCUMENT: SectionDoc = {
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
-  variables: {},
+  variables: {
+    // One attribute of each shape-mapping kind, so the mapping below this type
+    // is something the sweep can actually open.
+    ethnicity: {
+      name: 'Ethnicity',
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      options: [
+        { label: 'Asian', value: 'asian' },
+        { label: 'White', value: 'white' },
+      ],
+    },
+    age: { name: 'Age', type: 'number', component: 'Number' },
+  },
 };
 
 /** A refusal that names no holder, so the editor reads the package's words. */
@@ -237,6 +255,33 @@ const refused = async (): Promise<CodebookWriteOutcome> => ({
   message: codebookRefusalMessage({ kind: 'held' }),
   refusal: { kind: 'unexplained' },
 });
+
+/**
+ * The rule editor with somebody holding its map, as every host does.
+ *
+ * The editor is controlled: it hands a new map to its host and renders what it
+ * is handed back. A test that never writes the map back cannot reach the row's
+ * own refusal, because the row states it about the value the map holds.
+ */
+function HeldRules({
+  variables,
+  seed,
+}: Readonly<{
+  variables: Readonly<Record<string, unknown>>;
+  seed: ValidationMap;
+}>) {
+  const [rules, setRules] = useState<ValidationMap>(seed);
+  return (
+    <VariableValidationEditor
+      entity="node"
+      variableType="number"
+      currentVariableId="age"
+      allVariables={variables}
+      value={rules}
+      onChange={setRules}
+    />
+  );
+}
 
 describe('the codebook editors swept for English', () => {
   it('leaves no English in the entity editor, its choice lists or its failure alert', async () => {
@@ -257,11 +302,36 @@ describe('the codebook editors swept for English', () => {
     // Anchors: a sweep over an editor that failed to render passes vacuously,
     // so name one string per surface the sweep is supposed to be looking at.
     expect(
-      screen.getByRole('heading', { name: 'Crear tipo de nodo', level: 2 }),
+      screen.getByRole('heading', { name: 'Identidad del tipo' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Apariencia de los nodos' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
-    expect(screen.getByRole('option', { name: 'Círculo' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: 'Seleccionar forma Círculo' }),
+    ).toBeInTheDocument();
     expectNoLocaleLeaks('the entity editor', protocolStrings(PERSON_DOCUMENT));
+
+    // The shape mapping is behind a switch, so nothing above has read a word
+    // of it. Both branches are opened, because each has copy of its own.
+    await user.click(
+      screen.getByRole('switch', { name: 'Asignar formas según un atributo' }),
+    );
+    await chooseAttribute(user, attributeField('Atributo'), 'Ethnicity');
+    expect(screen.getByText('Forma para cada valor')).toBeVisible();
+    expectNoLocaleLeaks(
+      'the entity editor mapping one answer at a time',
+      protocolStrings(PERSON_DOCUMENT),
+    );
+
+    await chooseAttribute(user, attributeField('Atributo'), 'Age');
+    expect(screen.getByText('Umbrales')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Añadir umbral' }));
+    expectNoLocaleLeaks(
+      'the entity editor mapping by threshold',
+      protocolStrings(PERSON_DOCUMENT),
+    );
 
     await user.click(screen.getByRole('button', { name: 'Guardar entidad' }));
 
@@ -641,7 +711,7 @@ describe('the codebook editors swept for English', () => {
     ).toBeVisible();
   });
 
-  it('leaves no English in the validation editor or its rule list', async () => {
+  it('leaves no English in the validation rule list', async () => {
     const user = userEvent.setup();
     const variables: Readonly<Record<string, unknown>> = {
       age: {
@@ -653,36 +723,24 @@ describe('the codebook editors swept for English', () => {
       height: { name: 'Height', type: 'number', component: 'Number' },
     };
     const document: SectionDoc = { ...PERSON_DOCUMENT, variables };
-    renderInSpanish(
-      <CodebookVariableValidationEditor
-        openId="es-validation"
-        subject={{ entity: 'node', type: 'person' }}
-        variableId="age"
-        authoritativeEntityDocument={document}
-        allSubjectVariables={variables}
-        onSubmitDocument={refused}
-      />,
-    );
+    renderInSpanish(<HeldRules variables={variables} seed={{ minValue: 0 }} />);
 
     const minimum = screen.getByRole('spinbutton', { name: 'Valor mínimo' });
     expect(minimum).toBeVisible();
-    expectNoLocaleLeaks('the validation editor', protocolStrings(document));
+    expectNoLocaleLeaks('the validation rule list', protocolStrings(document));
 
-    // The submit stays disabled until the draft differs from the authority,
-    // so the refusal is only reachable through an actual edit.
+    // Leaving a rule's box empty is what makes the row state its own refusal,
+    // which is the one sentence this editor writes for itself.
     await user.clear(minimum);
-    await user.type(minimum, '3');
-    await user.click(
-      screen.getByRole('button', { name: 'Guardar validación' }),
-    );
+    await user.tab();
 
     expect(
       await screen.findByText(
-        'Se está editando ahora mismo una sección necesaria para este cambio.',
+        'Introduce un valor para «Valor mínimo» o desactiva la regla.',
       ),
     ).toBeVisible();
     expectNoLocaleLeaks(
-      'the validation editor after a refused save',
+      'the validation rule list stating a refusal',
       protocolStrings(document),
     );
   });

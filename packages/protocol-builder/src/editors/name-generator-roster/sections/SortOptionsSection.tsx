@@ -64,12 +64,6 @@ const messages = defineMessages({
     description:
       'Button that adds the roster’s starting-order rule. Whole rather than a generic "Add", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
-  orderEmptyState: {
-    id: 'protocolBuilder.sortOptions.orderEmptyState',
-    defaultMessage: 'No sort rules have been created yet.',
-    description:
-      'Shown in place of the starting-order rule while the roster has none.',
-  },
   sortableLabel: {
     id: 'protocolBuilder.sortOptions.sortableLabel',
     defaultMessage: 'Sortable properties',
@@ -88,12 +82,6 @@ const messages = defineMessages({
     defaultMessage: 'Add new sortable property',
     description:
       'Button that offers the participant one more attribute to reorder the roster by. Whole rather than a generic "Add", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
-  },
-  sortableEmptyState: {
-    id: 'protocolBuilder.sortOptions.sortableEmptyState',
-    defaultMessage: 'No items available.',
-    description:
-      'Shown in place of the sortable-attribute list while none is offered.',
   },
   attributeColumn: {
     id: 'protocolBuilder.sortOptions.attributeColumn',
@@ -276,7 +264,6 @@ export default function SortOptionsSection() {
         properties={orderProperties}
         options={orderOptions}
         maxItems={1}
-        emptyStateMessage={intl.formatMessage(messages.orderEmptyState)}
         {...orderValidation}
       />
       <Field<typeof OptionalList>
@@ -290,7 +277,6 @@ export default function SortOptionsSection() {
         // An orphan counts: the row holding it is one of the rows this limit
         // is counting, and it has to stay removable.
         maxItems={(columns.names?.length ?? 0) + sortableOrphans.options.length}
-        emptyStateMessage={intl.formatMessage(messages.sortableEmptyState)}
         {...sortableValidation}
       />
     </BuilderSection>

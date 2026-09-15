@@ -7,6 +7,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -60,19 +61,28 @@ export function RecoverByResettingDialog({
   onCancel,
   onReset,
 }: RecoverByResettingDialogProps) {
-  if (!open) return null;
-
+  // Kept mounted and closed by `open`, NOT unmounted: the exit animation is
+  // run by the `AnimatePresence` inside the dialog, so returning null here —
+  // which is what this did — took the animation away with it and the dialog
+  // vanished instead of closing. `ResetFormWhenClosed` is what then stops the
+  // form outliving the dialog, since the store sits outside it.
   return (
     <FormStoreProvider>
-      <RecoverByResettingDialogContent onCancel={onCancel} onReset={onReset} />
+      <ResetFormWhenClosed open={open} />
+      <RecoverByResettingDialogContent
+        open={open}
+        onCancel={onCancel}
+        onReset={onReset}
+      />
     </FormStoreProvider>
   );
 }
 
 function RecoverByResettingDialogContent({
+  open,
   onCancel,
   onReset,
-}: Omit<RecoverByResettingDialogProps, 'open'>) {
+}: RecoverByResettingDialogProps) {
   const intl = useAppIntl();
   const { revoke } = useAuth();
   const formId = useId();
@@ -83,7 +93,7 @@ function RecoverByResettingDialogContent({
 
   return (
     <Dialog
-      open
+      open={open}
       title={intl.formatMessage(messages.resetAllAppData)}
       description={intl.formatMessage(
         messages.thisPermanentlyDeletesEveryProtocolAndRecorded,

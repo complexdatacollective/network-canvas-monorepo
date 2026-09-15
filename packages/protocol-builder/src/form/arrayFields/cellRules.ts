@@ -139,3 +139,33 @@ export const invalidVariableName = (
 export const cellIssues = (
   ...issues: readonly (string | undefined)[]
 ): string[] => issues.filter((issue) => issue !== undefined);
+
+const duplicateLabelMessage = defineMessage({
+  id: 'protocolBuilder.option.duplicateLabelRow',
+  defaultMessage: 'Labels must be unique',
+  description:
+    'Shown under one option’s label cell when another option in the same list already reads the same way. Terse because it sits inside a row.',
+});
+
+/**
+ * What one option's label cell complains about: nothing written, or another
+ * option in the same list a participant would read the same way.
+ *
+ * Shared by every surface that authors an option label — the inline list a
+ * form-field, composer, bin or tie-strength row mounts, and the codebook's own
+ * attribute editor — so the complaint a researcher reads, and the moment they
+ * read it, does not depend on which door they came through. The array-level
+ * and codebook-write counterparts of the same rule are
+ * `hasDuplicateOptionLabels`; this is the one that says it where they are
+ * typing.
+ */
+export const optionLabelIssues = (
+  value: unknown,
+  rows: readonly unknown[],
+): string[] =>
+  cellIssues(
+    requiredCell(value),
+    isDuplicatedInColumn(rows, 'label', value)
+      ? createMessageError(duplicateLabelMessage)
+      : undefined,
+  );

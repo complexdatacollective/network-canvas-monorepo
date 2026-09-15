@@ -29,37 +29,37 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.alterLimits.description',
     defaultMessage:
-      'Limit how many people this stage may name, counted across the whole stage.',
+      'Set the minimum or maximum number of alters that can be named across the whole stage.',
     description:
       'Description of the nomination-limits section. A stage is one step of an interview, and it may ask several questions; the cap covers all of them together.',
   },
   minLabel: {
     id: 'protocolBuilder.alterLimits.minLabel',
-    defaultMessage: 'Fewest people',
+    defaultMessage: 'Minimum number of alters',
     description:
       'Label of the box holding the smallest number of people this step of the interview may name.',
   },
   minHint: {
     id: 'protocolBuilder.alterLimits.minHint',
-    defaultMessage: 'Leave empty for no minimum.',
+    defaultMessage: '0 = no minimum',
     description:
       'Guidance under the box holding the smallest number of people this step of the interview may name.',
   },
   maxLabel: {
     id: 'protocolBuilder.alterLimits.maxLabel',
-    defaultMessage: 'Most people',
+    defaultMessage: 'Maximum number of alters',
     description:
       'Label of the box holding the largest number of people this step of the interview may name.',
   },
   maxHint: {
     id: 'protocolBuilder.alterLimits.maxHint',
-    defaultMessage: 'Leave empty for no maximum.',
+    defaultMessage: 'Leave empty for no maximum',
     description:
       'Guidance under the box holding the largest number of people this step of the interview may name.',
   },
   maxPlaceholder: {
     id: 'protocolBuilder.alterLimits.maxPlaceholder',
-    defaultMessage: 'No limit',
+    defaultMessage: 'Infinity',
     description:
       'Placeholder shown in the empty maximum box, saying what an unanswered maximum means: the stage may name as many people as the participant wants to.',
   },
@@ -79,9 +79,9 @@ const messages = defineMessages({
   noEndAnswered: {
     id: 'protocolBuilder.alterLimits.noEndAnswered',
     defaultMessage:
-      'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+      'Set the minimum number of alters, the maximum number of alters, or both. Switch these limits off if this stage has no limit.',
     description:
-      'Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. Names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank.',
+      'Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. It names the two boxes by their own labels, and it names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank.',
   },
   minBelowZero: {
     id: 'protocolBuilder.alterLimits.minBelowZero',

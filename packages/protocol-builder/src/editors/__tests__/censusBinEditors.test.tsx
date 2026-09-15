@@ -5,6 +5,7 @@ import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
+import { attributeField } from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -89,7 +90,16 @@ const COMMON: SectionDoc = {
 
 /** One control a researcher writes a prompt key through. */
 type Control = Readonly<{
-  role: 'textbox' | 'combobox' | 'switch' | 'radio';
+  /**
+   * What the researcher reaches for.
+   *
+   * `attribute` is not an ARIA role: an attribute is chosen in a window the
+   * field's trigger opens, and that trigger is named for what it does —
+   * "Select attribute" — rather than for the question it answers. So the
+   * picker is named here the way the researcher reads it, by the label of the
+   * FIELD, and found through that.
+   */
+  role: 'textbox' | 'combobox' | 'switch' | 'radio' | 'attribute';
   /** Its accessible name, as the researcher reads it. */
   name: string;
   /**
@@ -223,7 +233,7 @@ const NAME_GENERATOR_PROMPT_CONTROLS: Readonly<
 > = {
   text: [{ role: 'textbox', name: 'Prompt text' }],
   additionalAttributes: [
-    { role: 'combobox', name: 'Create or select an attribute' },
+    { role: 'attribute', name: 'Create or select an attribute' },
     { role: 'radio', name: 'True', checked: true },
   ],
 };
@@ -349,13 +359,13 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      edgeVariable: [{ role: 'combobox', name: 'Attribute' }],
-      negativeLabel: [{ role: 'textbox', name: 'Decline answer' }],
+      edgeVariable: [{ role: 'attribute', name: 'Ordinal attribute' }],
+      negativeLabel: [{ role: 'textbox', name: 'Decline option' }],
     },
     rewrite: {
       key: 'negativeLabel',
       value: 'Never met',
-      write: (harness) => retype(harness, 'Decline answer', 'Never met'),
+      write: (harness) => retype(harness, 'Decline option', 'Never met'),
     },
   },
   {
@@ -387,16 +397,16 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      bucketSortOrder: sortRuleControls('Order of the people asked about'),
-      binSortOrder: sortRuleControls('Order of the people to choose from'),
+      // The bins' two sections verbatim: Architect mounts the same two here
+      // and overrides only their descriptions.
+      bucketSortOrder: sortRuleControls('Bucket order'),
+      binSortOrder: sortRuleControls('Bin order'),
     },
     rewrite: {
       key: 'bucketSortOrder',
       value: [{ property: 'name', direction: 'desc' }],
       write: async (harness) => {
-        const group = screen.getByRole('region', {
-          name: 'Order of the people asked about',
-        });
+        const group = screen.getByRole('region', { name: 'Bucket order' });
         await harness.user.selectOptions(
           within(group).getByRole('combobox', { name: 'Direction' }),
           'desc',
@@ -430,7 +440,7 @@ const CASES: readonly EditorCase[] = [
     prompt: ORDINAL_BIN_PROMPT,
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
-      variable: [{ role: 'combobox', name: 'Attribute' }],
+      variable: [{ role: 'attribute', name: 'Attribute' }],
       // `ord-color-seq-1` is the first swatch of the schema's own sequence.
       color: [{ role: 'radio', name: 'Sea Green', checked: true }],
       bucketSortOrder: sortRuleControls('Bucket order'),
@@ -470,27 +480,27 @@ const CASES: readonly EditorCase[] = [
     prompt: CATEGORICAL_BIN_PROMPT,
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
-      variable: [{ role: 'combobox', name: 'Attribute' }],
+      variable: [{ role: 'attribute', name: 'Attribute' }],
       otherVariable: [
-        { role: 'switch', name: 'A bin for anything else', checked: true },
+        { role: 'switch', name: 'Follow-up other option', checked: true },
         {
-          role: 'combobox',
-          name: 'Attribute the answer is stored in',
-          within: 'A bin for anything else',
+          role: 'attribute',
+          name: 'Other attribute',
+          within: 'Follow-up other option',
         },
       ],
       otherOptionLabel: [
         {
           role: 'textbox',
-          name: 'Bin label',
-          within: 'A bin for anything else',
+          name: 'Other bin label',
+          within: 'Follow-up other option',
         },
       ],
       otherVariablePrompt: [
         {
           role: 'textbox',
           name: 'Follow-up question',
-          within: 'A bin for anything else',
+          within: 'Follow-up other option',
         },
       ],
       bucketSortOrder: sortRuleControls('Bucket order'),
@@ -499,7 +509,7 @@ const CASES: readonly EditorCase[] = [
     rewrite: {
       key: 'otherOptionLabel',
       value: 'Anything else',
-      write: (harness) => retype(harness, 'Bin label', 'Anything else'),
+      write: (harness) => retype(harness, 'Other bin label', 'Anything else'),
     },
   },
   {
@@ -546,7 +556,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Roster source',
       'Prompt collection',
-      'Card details',
+      'Card display',
       'Roster sorting',
       'Roster search',
       'Nomination limits',
@@ -554,7 +564,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Detalles de las tarjetas',
+      'Visualización de tarjetas',
       'Orden de la lista',
       'Búsqueda en la lista',
       'Límites de nominación',
@@ -592,13 +602,30 @@ const CASES: readonly EditorCase[] = [
   },
 ];
 
+/** The two names an attribute picker's trigger goes by, held or not. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
 /** Asserts one named control is mounted, and switched on where it must be. */
 function expectControl(control: Control): void {
-  const scope =
+  const scopeElement =
     control.within === undefined
-      ? screen
-      : within(screen.getByRole('region', { name: control.within }));
-  const found = scope.getAllByRole(control.role, { name: control.name });
+      ? document.body
+      : screen.getByRole('region', { name: control.within });
+  if (control.role === 'attribute') {
+    // Mounted means the researcher can reach the choice: the field is on
+    // screen AND it offers the trigger that opens the window, rather than the
+    // sentence a picker with nothing to offer shows in its place.
+    expect(
+      within(attributeField(control.name, scopeElement)).getByRole('button', {
+        name: isPickerTrigger,
+      }),
+    ).toBeInTheDocument();
+    return;
+  }
+  const found = within(scopeElement).getAllByRole(control.role, {
+    name: control.name,
+  });
   if (control.checked === true) {
     for (const element of found) expect(element).toBeChecked();
   }
@@ -894,6 +921,147 @@ describe('the family’s editors, swept under es', () => {
         renderStageEditor({ stageId, locale: 'es', registry: editor }),
         optionalSections,
       );
+    },
+  );
+});
+
+/**
+ * What Architect calls the group a prompt's question is written in, and what
+ * it calls the connection control inside or beside it.
+ *
+ * Neither is one string. Architect heads the group "Prompt configuration"
+ * where the connection an answer creates is chosen in the same group, and
+ * "Participant prompt" where the group holds only the question; it names the
+ * connection control "Created edge type" in the two censuses answered yes or
+ * no, and "Edge type" in the one answered on a scale. The package rendered one
+ * heading, one description and one label for all five, which is what this
+ * pins.
+ *
+ * A `title` of `undefined` means the dialog is the group: Dyad Census asks
+ * about one topic, so its own title names it and its description says what it
+ * decides, rather than a group inside it restating the title.
+ */
+const PROMPT_GROUPS = [
+  {
+    interfaceName: 'DyadCensus',
+    stageId: 'dyad-census-1',
+    editor: dyadCensusStageEditor,
+    title: undefined,
+    description:
+      'Write the participant prompt and select the edge type created by an affirmative response.',
+    edgeGroup: undefined,
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'OneToManyDyadCensus',
+    stageId: 'one-to-many-dyad-census-1',
+    editor: oneToManyDyadCensusStageEditor,
+    title: 'Prompt configuration',
+    description:
+      'Write the participant prompt and select the edge type created for chosen nodes.',
+    edgeGroup: 'Prompt configuration',
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'TieStrengthCensus',
+    stageId: 'tie-strength-census-1',
+    editor: tieStrengthCensusStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Explain the relationship participants should evaluate for each pair.',
+    edgeGroup: 'Edge creation',
+    edgeLabel: 'Edge type',
+  },
+  {
+    interfaceName: 'OrdinalBin',
+    stageId: 'ordinal-bin-1',
+    editor: ordinalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeGroup: undefined,
+    edgeLabel: undefined,
+  },
+  {
+    interfaceName: 'CategoricalBin',
+    stageId: 'categorical-bin-1',
+    editor: categoricalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeGroup: undefined,
+    edgeLabel: undefined,
+  },
+] as const satisfies readonly {
+  interfaceName: StageType;
+  stageId: FixtureStageId;
+  editor: Partial<StageEditorRegistry>;
+  /** Absent where the dialog itself is the group — see above. */
+  title: string | undefined;
+  description: string;
+  /**
+   * The group the connection control is rendered in, where the family renders
+   * it in one of its own — a group beside the prompt in the census answered on
+   * a scale, and none at all where it sits with the question.
+   */
+  edgeGroup: string | undefined;
+  edgeLabel: string | undefined;
+}[];
+
+/** The two interfaces whose prompt box Architect left unannotated. */
+const BINS: readonly string[] = ['ordinal-bin-1', 'categorical-bin-1'];
+
+describe('the group a census or bin prompt is written in', () => {
+  it.each(PROMPT_GROUPS)(
+    'heads a $interfaceName prompt the way Architect does',
+    async ({ stageId, editor, title, description, edgeGroup, edgeLabel }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
+
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Edit prompt' }),
+      );
+      const dialogEl = await screen.findByRole('dialog');
+      const dialog = within(dialogEl);
+
+      // Scoped to the group the description belongs to rather than to the
+      // dialog around it: WHICH group holds the connection control is the
+      // thing Architect differs on, so a search of the whole dialog would pass
+      // just as well with the control moved back out of the prompt group.
+      let promptGroup;
+      if (title === undefined) {
+        promptGroup = dialog;
+        expect(dialogEl).toHaveAccessibleDescription(description);
+        // The dialog IS the group, so there is no group inside it at all.
+        expect(dialog.queryAllByRole('region')).toEqual([]);
+      } else {
+        expect(
+          dialog.getByRole('heading', { name: title }),
+        ).toBeInTheDocument();
+        promptGroup = within(dialog.getByRole('region', { name: title }));
+        expect(promptGroup.getByText(description)).toBeInTheDocument();
+      }
+      if (edgeLabel !== undefined) {
+        const holder =
+          edgeGroup === undefined
+            ? promptGroup
+            : within(dialog.getByRole('region', { name: edgeGroup }));
+        expect(
+          holder.getByRole('radiogroup', { name: edgeLabel }),
+        ).toBeInTheDocument();
+      }
+      // The outer group is the tie-strength dialog's alone: the two dyad
+      // censuses share the connection control and are not wrapped in it.
+      expect(
+        dialog.queryByRole('region', { name: 'Tie-strength response' }),
+      ).toEqual(stageId === 'tie-strength-census-1' ? expect.anything() : null);
+      // The two bins raise nothing above the prompt box. Released Architect
+      // rendered the shared `PromptText` section there with no alert and no
+      // hint, and the notices the rebuild put there were its own invention —
+      // the same class of copy as the hints the first parity PR removed.
+      if (BINS.includes(stageId)) {
+        expect(promptGroup.queryByRole('status')).toBeNull();
+        expect(promptGroup.queryByRole('alert')).toBeNull();
+      }
     },
   );
 });

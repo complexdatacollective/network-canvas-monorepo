@@ -4,23 +4,23 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { operationalLogger } from '../observability/logger.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM = 'audit-list-team';
-const OTHER_TEAM = 'audit-list-other';
+const TEAM = uniqueTeamId('audit-list-team');
+const OTHER_TEAM = uniqueTeamId('audit-list-other');
 const T0 = '2026-08-30T10:00:00.000Z';
 const T1 = '2026-08-30T11:00:00.000Z';
 const T2 = '2026-08-30T12:00:00.000Z';
@@ -128,6 +128,18 @@ function poolWithClientBudget(
   });
 }
 
+/** The structured `detail` of a `process.emitWarning` call, parsed. */
+function warningDetail(options: string | object | undefined): unknown {
+  if (typeof options !== 'object' || options === null) {
+    throw new Error('expected structured audit warning options');
+  }
+  const detail = Reflect.get(options, 'detail');
+  if (typeof detail !== 'string') {
+    throw new Error('expected structured audit warning detail');
+  }
+  return JSON.parse(detail);
+}
+
 /** The next free per-team sequence, so a direct seed cannot collide. */
 async function nextSequence(pool: pg.Pool, teamId: string): Promise<number> {
   const rows = await pool.query<{ next: string }>(
@@ -192,7 +204,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     client = createRpcClient(
       createApp(readEnv(), {
         auth,
-        invitationDeliveryAvailable: true,
         pool: appPool,
       }),
     );
@@ -699,7 +710,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const demotedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(demoted),
@@ -776,7 +786,6 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const promotedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(promoted),
@@ -847,11 +856,10 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     );
 
     const warning = vi
-      .spyOn(operationalLogger, 'diagnostic')
+      .spyOn(process, 'emitWarning')
       .mockImplementation(() => undefined);
     const unrecordedClient = createRpcClient(
       createApp(readEnv(), {
-        invitationDeliveryAvailable: true,
         // One client for the transaction that decides the denial; the append
         // that must record it then cannot acquire one.
         pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),
@@ -872,14 +880,24 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     }
 
     const lost = calls.filter(
-      ([code]) => code === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+      ([, options]) =>
+        typeof options === 'object' &&
+        options !== null &&
+        Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
     );
-    expect(lost).toEqual([
-      [
-        'STUDIO_AUDIT_DENIAL_EVENT_LOST',
-        { teamId: TEAM, requestId: expect.stringMatching(/^[0-9a-f-]{36}$/) },
-      ],
-    ]);
+    expect(lost).toHaveLength(1);
+    expect(lost[0]?.[0]).toBe(
+      'Required audit.read_denied event was not recorded; the read stayed denied.',
+    );
+    expect(warningDetail(lost[0]?.[1])).toEqual({
+      eventType: 'audit.read_denied',
+      procedure: 'audit.list',
+      teamId: TEAM,
+      actorId: unrecorded.userId,
+      requestId: expect.any(String),
+      causeName: 'Error',
+      causeMessage: 'test client budget exhausted',
+    });
 
     // The signal exists precisely because nothing was recorded.
     expect(

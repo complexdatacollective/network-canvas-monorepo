@@ -1,7 +1,3 @@
-import type { Page } from '@playwright/test';
-
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
@@ -10,90 +6,39 @@ import {
   selectOrCreateEdgeType,
   selectOrCreateNodeType,
 } from '../../pageobjects/editor-sections/entity-types.js';
+import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
-// The two codebook types this pedigree binds are SEEDED rather than authored
-// here, which is the one thing this spec cannot do from the editor. The
-// "Family member data" and "Relationship data" sections mount the package's
-// `EntityTypePickerField` directly, and that control deliberately offers no
-// create-a-type affordance — creating a codebook entity is the Codebook
-// screen's job, and only the sections built on `SubjectSection` put a
-// "Create new node type" button beside the picker. So a Family Pedigree
-// cannot be given its types from inside the stage editor at all; seeding them
-// keeps this spec about the pedigree editor rather than about the codebook
-// screen, and every part of the STAGE is still authored below.
+// Nothing is seeded: this pedigree is built on an empty protocol, and the two
+// codebook types it binds are AUTHORED from inside the stage editor, through
+// the type picker's own "Create new {node|edge} type" button. That button is
+// part of `EntityTypePickerField` itself, so every stage that picks a type
+// offers it — which is what stops a Family Pedigree on a fresh protocol from
+// dead-ending at "No node types currently defined", with nothing on screen
+// saying where node types come from.
 //
-// Their ids are uuid-shaped on purpose. `normalizeStage` replaces every uuid
-// it meets with a placeholder numbered by where it first appears, so a seeded
-// uuid normalises exactly as a freshly minted one did and the committed
-// snapshot is unchanged; a readable key like `person` would reach the snapshot
-// verbatim. The types carry no attributes — all eight are created through the
-// editor below, as before.
-const PERSON_TYPE_ID = '3b1a5c7e-2d4f-4a86-9c1b-7e05d2f61a38';
-const FAMILY_EDGE_TYPE_ID = '9d2c4e61-7a03-4b58-8f2d-1c6b9a03e7f4';
-
-function protocolWithPedigreeTypes(): CurrentProtocol {
-  return {
-    ...emptyProtocol(),
-    codebook: {
-      node: {
-        [PERSON_TYPE_ID]: {
-          name: 'person',
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-        },
-      },
-      edge: {
-        [FAMILY_EDGE_TYPE_ID]: {
-          name: 'family_edge',
-          color: 'edge-color-seq-1',
-        },
-      },
-    },
-  };
-}
-
-// Each of the pedigree's attribute slots picks from the codebook, and creates
-// what it needs beside the picker rather than through a shared spotlight:
-// `SlotVariableField` renders a `VariablePickerField` (a native select of the
-// attributes of the chosen type) and a `CreateVariableButton` next to it,
-// named for the slot it fills ("Create a new display label attribute", …).
-// That button opens the codebook's own attribute editor with the type locked
-// to what the slot binds — so the type control offers nothing to choose, a
-// slot with a canonical value set shows those values read-only, and the only
-// control to fill is "Attribute name". The dialog carries the button's own
-// words as its title, "Create attribute" commits the codebook write, and the
-// slot binds the new attribute as soon as it lands.
+// Each of the pedigree's attribute slots picks from the codebook and invents
+// what it needs from the picker's OWN create row — no create control sits
+// beside a picker any more. `SlotVariableField` hands the picker the props
+// `useCreateAttributeForSlot` answers with, and what the row does next is
+// decided by the kind of answer the slot binds:
 //
-// The create button is a SIBLING of the field rather than inside it, so it is
-// resolved on the page by its own name — which names the slot, so each of the
-// eight is unambiguous without scoping.
-async function createSlotAttribute(
-  page: Page,
-  createLabel: string,
-  attributeName: string,
-): Promise<void> {
-  await page.getByRole('button', { name: createLabel, exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: createLabel });
-  await dialog
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(attributeName);
-  const submit = dialog.getByRole('button', {
-    name: 'Create attribute',
-    exact: true,
-  });
-  await submit.click();
-  // The codebook write is a round trip to the host, and the next slot's dialog
-  // animates in over this one's exit — so wait for this dialog to leave the
-  // DOM rather than for it to be hidden.
-  await submit.waitFor({ state: 'detached' });
-}
+// - `text` and `boolean` slots (display label, participant identifier,
+//   relationship, active status, gestational carrier) are finished by a name,
+//   so the row writes the codebook and binds the result with no dialog at all.
+// - The three whose VALUES the interface owns (biological sex, relationship
+//   type, gamete role) are `categorical` with `lockedOptions`, which a name
+//   cannot finish — so the row escalates to the codebook's own editor, titled
+//   with the slot's own words and opened already holding the typed name. Those
+//   values arrive seeded and read-only, so the name is still the whole of the
+//   authoring; nothing is entered in the editor beyond pressing "Create
+//   attribute".
 
 test('creates a valid FamilyPedigree stage from scratch', async ({
   architectPage,
   seed,
 }) => {
-  await seed(protocolWithPedigreeTypes());
+  await seed(emptyProtocol());
   await gotoProtocol(architectPage);
 
   const editor = new StageEditor(architectPage);
@@ -134,46 +79,39 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // (same reasoning as NetworkComposer's optional Group-hulls/Edge
   // Configuration sections).
   //
-  // The seeded types are PICKED here rather than created: the shared helper
-  // takes its existing-type branch, which clicks the chip named for the type
-  // and requires the control to report itself checked before anything bound to
-  // it is driven.
+  // The type is CREATED here: the codebook has none, so the shared helper
+  // takes its create branch, which presses the picker's own button, names the
+  // type in the codebook editor the button opens, and answers the stage's
+  // question about what choosing it costs.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // "Family member data" renders the node type picker and, once a type is
   // chosen, FOUR attribute slots at once (nodeLabelVariable / egoVariable /
   // relationshipVariable / biologicalSexVariable —
   // `PedigreeNodeConfigurationSection.tsx`). Each is a `SlotVariableField`,
-  // which is why every attribute below is created through the slot's own
-  // create button rather than through one shared picker.
+  // which is why every attribute below is created through that slot's own
+  // picker rather than through one shared control.
   //
   // The slots' types are fixed by the interface, not chosen here: text
   // (`nodeLabelVariable`, `relationshipVariable`), boolean (`egoVariable`,
   // `isActiveVariable`, `isGestationalCarrierVariable`) and categorical
   // (`biologicalSexVariable`, `relationshipTypeVariable`, `gameteRoleVariable`,
-  // whose canonical values the interface owns and locks). The editor is opened
-  // with `allowedVariableTypes` holding that one type and `lockedOptions`
-  // holding those values, so no type is picked and no option is authored for
-  // any of the eight — the name is the whole of the authoring.
-  await createSlotAttribute(
-    architectPage,
-    'Create a new display label attribute',
-    'name',
-  );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new participant identifier attribute',
-    'is_ego',
-  );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new relationship attribute',
+  // whose canonical values the interface owns and locks). So no type is picked
+  // and no option is authored for any of the eight — the name is the whole of
+  // the authoring, whether the row writes it directly or hands it to the
+  // editor.
+  await createAttribute(editor.field('nodeConfig.nodeLabelVariable'), 'name');
+  await createAttribute(editor.field('nodeConfig.egoVariable'), 'is_ego');
+  await createAttribute(
+    editor.field('nodeConfig.relationshipVariable'),
     'relationship_to_ego',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new biological sex attribute',
+  await createAttribute(
+    editor.field('nodeConfig.biologicalSexVariable'),
     'biologicalSex',
+    {
+      title: 'Create a new biological sex attribute',
+    },
   );
 
   await expectFullWidthAttributePicker('nodeConfig.egoVariable');
@@ -182,30 +120,32 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // member form switched off, so it registers nothing and the saved stage
   // carries no `form` key.
   await expect(
-    architectPage.getByRole('switch', { name: 'Family member form' }),
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
   ).not.toBeChecked();
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');
 
-  await createSlotAttribute(
-    architectPage,
-    'Create a new relationship type attribute',
+  await createAttribute(
+    editor.field('edgeConfig.relationshipTypeVariable'),
     'relationshipType',
+    {
+      title: 'Create a new relationship type attribute',
+    },
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new active status attribute',
+  await createAttribute(
+    editor.field('edgeConfig.isActiveVariable'),
     'isActive',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new gestational carrier attribute',
+  await createAttribute(
+    editor.field('edgeConfig.isGestationalCarrierVariable'),
     'isGestationalCarrier',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new gamete role attribute',
+  await createAttribute(
+    editor.field('edgeConfig.gameteRoleVariable'),
     'gameteRole',
+    {
+      title: 'Create a new gamete role attribute',
+    },
   );
 
   await expectFullWidthAttributePicker('edgeConfig.relationshipTypeVariable');

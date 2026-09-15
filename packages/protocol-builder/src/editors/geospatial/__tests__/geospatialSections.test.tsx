@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  inventAttribute,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
+import {
   expectMapboxMocked,
   mapsBuilt,
   resetMapboxMock,
@@ -55,23 +61,6 @@ const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
 
 /** The node type both of them are about. */
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-
-/**
- * The attributes a prompt's dialog is offering, by id.
- *
- * Without the select's own "choose something" entry, which is presentation
- * rather than an attribute the researcher may record an answer in.
- */
-const offeredAttributes = (
-  dialog: ReturnType<typeof within>,
-): (string | undefined)[] =>
-  [
-    ...dialog
-      .getByRole('combobox', { name: 'Location attribute' })
-      .querySelectorAll('option'),
-  ]
-    .map((option) => option.value)
-    .filter((value) => value !== '');
 
 /**
  * Rewrites one section of the protocol as somebody else's change.
@@ -167,10 +156,10 @@ describe('the map a geospatial stage shows', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(5));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Map access',
-      'Map layer',
+      'Map layers',
       'Prompt collection',
       'Map appearance',
-      'Starting map view',
+      'Map starting position',
     ]);
   });
 
@@ -203,6 +192,25 @@ describe('the map a geospatial stage shows', () => {
   });
 
   /**
+   * A researcher without a Mapbox account cannot finish this stage, and the
+   * only way out of that is the documentation. Architect linked it from this
+   * hint, so the words have to arrive as a link a researcher can follow, not
+   * as the tags the message writes them in.
+   */
+  it('sends a researcher without a key to the interface documentation', async () => {
+    openEditor();
+
+    const documentation = await screen.findByRole('link', {
+      name: 'documentation',
+    });
+
+    expect(documentation).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial/',
+    );
+  });
+
+  /**
    * The one thing this field exists to do: the property a participant's answer
    * is stored as is read from the layer itself, not typed. The harness serves
    * the real bytes of `regions.geojson`, whose features carry `name`, so a
@@ -223,11 +231,11 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Basemap' }),
+      screen.getByRole('combobox', { name: 'Mapbox style' }),
       'mapbox://styles/mapbox/dark-v11',
     );
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Show public transport' }),
+      screen.getByRole('switch', { name: 'Show public transit' }),
     );
     const zoom = screen.getByRole('spinbutton', { name: 'Starting zoom' });
     await harness.user.clear(zoom);
@@ -251,9 +259,7 @@ describe('the map a geospatial stage shows', () => {
   it('saves the highlight colour selectable areas are drawn in', async () => {
     const harness = openEditor();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'Highlight color 1' }),
-    );
+    await harness.user.click(screen.getByRole('radio', { name: 'Sea Green' }));
 
     const request = await harness.submit();
     expect(mapOptionsOf(request?.stageDocument ?? {}).color).toBe(
@@ -273,7 +279,7 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     );
 
     const request = await harness.submit();
@@ -298,7 +304,7 @@ describe('the map a geospatial stage shows', () => {
     });
 
     expect(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     ).toBeChecked();
   });
 
@@ -325,10 +331,63 @@ describe('the map a geospatial stage shows', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * One decision with one name, as released Architect asked it
+   * (`sections/MapOptions.tsx:361-393`): a starting view is where the map is
+   * centred AND how far in, and the rebuild asked it as two separately named
+   * fields. Architect offered the map alone; the three typed numbers stay,
+   * because they are the only way to set an exact view and they keep working
+   * where no map can be drawn.
+   */
+  it('asks the starting view as Architect’s single named group', async () => {
+    const harness = openEditor();
+    await harness.opened();
+
+    const view = screen.getByRole('group', { name: 'Initial map view' });
+    // Anchored on both sides, so a sentence with anything else in it fails.
+    // "Required" is the field's own marker and the gap after it the empty
+    // error slot, which every required control in the package carries.
+    expect(view).toHaveAccessibleDescription(
+      /^Required Configure the initial map view to adjust where it will be centered and zoomed to\.\s*$/,
+    );
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Longitude' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Latitude' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Starting zoom' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('button', {
+        name: 'Set the starting view on a map',
+      }),
+    ).toBeInTheDocument();
+
+    // And no second field beside it: the rebuild's pair is gone.
+    expect(screen.queryByRole('group', { name: 'Starting center' })).toBeNull();
+    // The whole list of named groups in the section, so a second field beside
+    // this one fails here rather than passing on a lookup by name. The
+    // section's own fieldset is unnamed and is not one of them.
+    const named = within(
+      screen.getByRole('region', { name: 'Map starting position' }),
+    ).getAllByRole('group', { name: /.+/ });
+    expect(named).toEqual([view]);
+  });
+
+  /**
+   * The zoom keeps a registered field of its own inside that group: the
+   * protocol stores it beside the centre rather than within it, and only a
+   * registered path is read back, written and refused where the researcher set
+   * it.
+   */
   it('refuses a zoom the map cannot show, in the control’s own words', async () => {
     const harness = openEditor();
 
-    const zoom = screen.getByRole('spinbutton', { name: 'Starting zoom' });
+    const zoom = within(
+      screen.getByRole('group', { name: 'Initial map view' }),
+    ).getByRole('spinbutton', { name: 'Starting zoom' });
     await harness.user.clear(zoom);
     await harness.user.type(zoom, '30');
 
@@ -346,6 +405,29 @@ describe('the places a geospatial stage asks about', () => {
     expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
+  /**
+   * The dialog's fields sit in the titled group Architect gave them
+   * (`sections/GeospatialPrompts/PromptFields.tsx:111-128`): the question the
+   * participant is asked stands on its own, and what the answer is STORED in
+   * is a decision of its own, with a sentence saying so.
+   */
+  it('groups the answer’s attribute under Architect’s heading', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    const group = dialog.getByRole('region', { name: 'Location response' });
+    expect(group).toHaveAccessibleDescription(
+      "Choose the location attribute that stores the participant's selection.",
+    );
+    expect(group).toContainElement(attributeField('Location attribute', group));
+    // The question itself is outside it, as Architect had it.
+    expect(
+      within(group).queryByRole('textbox', { name: 'Prompt text' }),
+    ).toBeNull();
+  });
+
   it('adds a prompt recording an existing location attribute', async () => {
     const harness = openEditor();
     await harness.opened();
@@ -358,13 +440,11 @@ describe('the places a geospatial stage asks about', () => {
     );
     // The attribute the stage's own prompt already records is not among them:
     // this list is what is left.
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['workplace']),
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Location attribute' }),
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
       'workplace',
-    );
+    ]);
+    await chooseAttributeById(harness.user, picker, 'workplace');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -395,9 +475,15 @@ describe('the places a geospatial stage asks about', () => {
     await harness.opened();
 
     const dialog = await openPrompt(harness, 'Create new prompt');
+    // Nothing to choose — and the field says so where the chosen attribute
+    // would be. The trigger stays, because inventing one is still offered from
+    // inside the window, which is the answer to having nothing free.
     expect(
-      dialog.queryByRole('combobox', { name: 'Location attribute' }),
-    ).toBeNull();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual([]);
     expect(
       dialog.getByText(
         'No location attribute is free for this prompt. Create one to record where the participant chooses.',
@@ -420,8 +506,8 @@ describe('the places a geospatial stage asks about', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
     expect(
-      dialog.getByRole('combobox', { name: 'Location attribute' }),
-    ).toHaveValue('location');
+      within(attributeField('Location attribute')).getByText('location'),
+    ).toBeVisible();
 
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
@@ -460,10 +546,13 @@ describe('the places a geospatial stage asks about', () => {
       },
     }));
 
-    const dialog = await openPrompt(harness, 'Create new prompt');
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['workplace']),
-    );
+    await openPrompt(harness, 'Create new prompt');
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual(['workplace']);
   });
 
   /**
@@ -486,9 +575,12 @@ describe('the places a geospatial stage asks about', () => {
     addLocationAttribute(harness, 'workplace');
 
     const before = await openPrompt(harness, 'Create new prompt');
-    await waitFor(() =>
-      expect(offeredAttributes(before)).toEqual(['workplace']),
-    );
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual(['workplace']);
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -510,13 +602,124 @@ describe('the places a geospatial stage asks about', () => {
 
     const after = await openPrompt(harness, 'Create new prompt');
     expect(
-      after.queryByRole('combobox', { name: 'Location attribute' }),
-    ).toBeNull();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual([]);
     expect(
       after.getByText(
         'No location attribute is free for this prompt. Create one to record where the participant chooses.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The save-time half of that same rule, for the state the picker cannot
+   * prevent.
+   *
+   * Filtering the list only decides what is offered at the moment it renders.
+   * A form elsewhere that starts collecting the attribute WHILE the row dialog
+   * stands open — a collaborator's field, an import replayed underneath — is
+   * never offered here at all, and without a gate the row closes on a conflict
+   * only protocol validation would report, long after the edit. Architect
+   * refuses it at the control that resolves it.
+   */
+  it('refuses a prompt whose attribute a form elsewhere starts collecting', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Work?',
+    );
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'workplace',
+    ]);
+    await chooseAttributeById(harness.user, picker, 'workplace');
+
+    // Somebody else's form field, arriving after the pick was made. The
+    // picker takes the attribute off its own list as the revision arrives,
+    // which is what has to be waited for: the pick stays in the field, and
+    // that is precisely the row the gate exists to refuse.
+    asCollaborator(harness, ALTER_FORM, (stage) => ({
+      ...stage,
+      form: {
+        fields: [
+          ...(Array.isArray(
+            (stage.form as Record<string, unknown> | undefined)?.fields,
+          )
+            ? ((stage.form as Record<string, unknown>).fields as unknown[])
+            : []),
+          { variable: 'workplace', prompt: 'Where do they work?' },
+        ],
+      },
+    }));
+    // The picker saying so is how this test knows the revision has arrived;
+    // the pick itself stays in the field, which is the row the gate refuses.
+    expect(
+      await dialog.findByText(
+        'This attribute is not available here. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        '"workplace" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * A conflict the protocol ARRIVED with is not one this edit introduced, and
+   * the prompt holding it is not where a researcher can resolve it — the form
+   * collecting the attribute is on another stage they may not be able to
+   * reach. So a prompt re-saved on the attribute it was already saved with
+   * still saves, exactly as Architect's unchanged-pick escape does.
+   */
+  it('still saves a prompt re-saved on the attribute it arrived with', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'location',
+      'workplace',
+    ]);
+
+    // The form starts collecting BOTH: the free attribute leaving the picker
+    // is how this test knows the revision arrived, and the prompt's own
+    // attribute — kept in the list because the field holds it — is the one
+    // the gate must let past.
+    asCollaborator(harness, ALTER_FORM, (stage) => ({
+      ...stage,
+      form: {
+        fields: [
+          ...(Array.isArray(
+            (stage.form as Record<string, unknown> | undefined)?.fields,
+          )
+            ? ((stage.form as Record<string, unknown>).fields as unknown[])
+            : []),
+          { variable: 'workplace', prompt: 'Where do they work?' },
+          { variable: 'location', prompt: 'Where do they live?' },
+        ],
+      },
+    }));
+    expect(await offeredAttributes(harness.user, picker)).toEqual(['location']);
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
   });
 
   /**
@@ -529,15 +732,14 @@ describe('the places a geospatial stage asks about', () => {
     const harness = openEditor();
 
     const dialog = await openPrompt(harness, 'Create new prompt');
-    await harness.user.click(
-      dialog.getByRole('button', { name: 'Create a new location attribute' }),
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Where were you born?',
     );
-    const nameBox = await screen.findByRole('textbox', {
-      name: 'Attribute name',
-    });
-    await harness.user.type(nameBox, 'born');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+    await inventAttribute(
+      harness.user,
+      attributeField('Location attribute'),
+      'born',
     );
 
     await waitFor(() => {
@@ -553,11 +755,25 @@ describe('the places a geospatial stage asks about', () => {
     const created = Object.entries(
       harness.hostCodebook().node?.person?.variables ?? {},
     ).find(([, variable]) => variable.name === 'born')?.[0];
+    // The picker shows the researcher's NAME for the attribute, and the prompt
+    // stores its id, so both are read: the field for what is on screen, and the
+    // saved stage for the reference that outlives the dialog.
     await waitFor(() =>
       expect(
-        dialog.getByRole('combobox', { name: 'Location attribute' }),
-      ).toHaveValue(created),
+        within(attributeField('Location attribute')).getByText('born'),
+      ).toBeVisible(),
     );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    const prompts = request?.stageDocument.prompts;
+    expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
+      text: 'Where were you born?',
+      variable: created,
+    });
   });
 
   it('refuses a stage that asks nothing', async () => {

@@ -2,11 +2,34 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import CategoricalBinPromptsSection from '../CategoricalBinPromptsSection.tsx';
+
+/** The label of the field the bins' own attribute is chosen in. */
+const BINS_LABEL = 'Attribute';
+
+/** The two names the picker's trigger goes by, held or not. */
+const TRIGGER = /^(Select|Change) attribute$/u;
+
+/**
+ * The field the bins' attribute is chosen in, once the prompt has drawn it.
+ *
+ * A scope rather than a control: the attribute is picked in a window the
+ * field's trigger opens, so everything a test does to it, it does through
+ * here.
+ */
+const findBinsField = async (): Promise<HTMLElement> => {
+  await screen.findByText(BINS_LABEL, { selector: 'label' });
+  return attributeField(BINS_LABEL);
+};
 
 const openSection = () => ({
   stageId: 'categorical-bin-1' as const,
@@ -42,13 +65,13 @@ describe('the questions a categorical bin asks', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
-    expect(
-      [...picker.querySelectorAll('option')]
-        .map((option) => option.value)
-        .filter((value) => value !== ''),
-    ).toEqual(['contactType']);
-    expect(picker).toHaveValue('contactType');
+    const picker = await findBinsField();
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'contactType',
+    ]);
+    await waitFor(() =>
+      expect(within(picker).getByText('contactType')).toBeVisible(),
+    );
   });
 
   /**
@@ -104,7 +127,9 @@ describe('the questions a categorical bin asks', () => {
         'This type has no categorical attributes yet. Create one to say what the bins are.',
       ),
     ).toBeInTheDocument();
-    expect(dialog.queryByRole('combobox', { name: 'Attribute' })).toBeNull();
+    // Nothing to open a window over, either: with nothing to choose and no way
+    // to create one here, the field says so in place of its trigger.
+    expect(dialog.queryByRole('button', { name: TRIGGER })).toBeNull();
     expect(dialog.queryByText('contactStyle')).toBeNull();
   });
 
@@ -145,8 +170,9 @@ describe('the questions a categorical bin asks', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'Who most?',
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findBinsField(),
       'contactType',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -179,19 +205,20 @@ describe('the questions a categorical bin asks', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     expect(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     ).toBeDisabled();
 
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField(BINS_LABEL),
       'contactType',
     );
 
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeEnabled(),
     );
   });
@@ -227,16 +254,18 @@ describe('the questions a categorical bin asks', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
+    await waitFor(() =>
+      expect(
+        within(attributeField('Other attribute')).getByText(
+          'relationship_to_ego',
+        ),
+      ).toBeVisible(),
+    );
     expect(
-      screen.getByRole('combobox', {
-        name: 'Attribute the answer is stored in',
-      }),
-    ).toHaveValue('relationship_to_ego');
-    expect(
-      screen.getByRole('textbox', { name: 'Bin label' }),
+      screen.getByRole('textbox', { name: 'Other bin label' }),
     ).toHaveTextContent('Other');
     expect(
       screen.getByRole('textbox', { name: 'Follow-up question' }),
@@ -271,12 +300,12 @@ describe('the questions a categorical bin asks', () => {
     await screen.findByRole('dialog');
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     );
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -314,15 +343,15 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     await screen.findByRole('dialog');
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
   };
 
   const followUpGroup = (): HTMLElement =>
-    screen.getByRole('region', { name: 'A bin for anything else' });
+    screen.getByRole('region', { name: 'Follow-up other option' });
 
-  it('opens its rules rather than the bins’ own', async () => {
+  it('rules the follow-up’s answer rather than the bins’ own', async () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
@@ -335,25 +364,21 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     await openFollowUp(harness);
 
+    const followUp = within(followUpGroup());
     await harness.user.click(
-      within(followUpGroup()).getByRole('button', {
-        name: 'Set rules for this answer',
-      }),
+      followUp.getByRole('switch', { name: 'Validation' }),
     );
 
-    // The attribute the editor opened on is the FOLLOW-UP's, not the bins':
-    // both controls are in the same row, and only the field each was given
-    // tells them apart. The editor says which one it is about in its own
-    // heading, which is the researcher's evidence too.
+    // Both attributes are picked in this one dialog, and only the field each
+    // control was given tells them apart — so the evidence is the rule
+    // catalogue on offer. `relationship_to_ego` is typed text; `contactType`
+    // is chosen from a list, and the rules about how many are chosen belong to
+    // it alone.
     expect(
-      await screen.findByRole('heading', {
-        name: 'Edit validation for relationship_to_ego',
-      }),
+      await followUp.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', {
-        name: 'Edit validation for contactType',
-      }),
+      followUp.queryByRole('switch', { name: 'Minimum selection' }),
     ).toBeNull();
   });
 
@@ -376,11 +401,9 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
 
     const group = within(followUpGroup());
     expect(
-      group.getByRole('button', { name: 'Set rules for this answer' }),
+      group.getByRole('switch', { name: 'Validation' }),
     ).toBeInTheDocument();
-    expect(
-      group.queryByRole('button', { name: 'Change this attribute’s values' }),
-    ).toBeNull();
+    expect(group.queryByRole('region', { name: 'Choice values' })).toBeNull();
   });
 
   /**
@@ -407,19 +430,21 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     await openFollowUp(harness);
 
-    const bins = within(screen.getByRole('region', { name: 'The bins' }));
+    const bins = within(
+      screen.getByRole('region', { name: 'Categorical response' }),
+    );
     // The values behind the bins stay editable: those the interview does read.
     expect(
-      bins.getByRole('button', { name: 'Change this attribute’s values' }),
+      bins.getByRole('region', { name: 'Choice values' }),
     ).toBeInTheDocument();
-    expect(
-      bins.queryByRole('button', { name: 'Set rules for this answer' }),
-    ).toBeNull();
+    expect(bins.queryByRole('switch', { name: 'Validation' })).toBeNull();
     // Both attributes are picked in this one dialog, so counting is what says
-    // the remaining control belongs to the follow-up rather than to the bins.
+    // the remaining section belongs to the follow-up rather than to the bins —
+    // and that the dialog offers ONE way to reach an attribute's rules rather
+    // than a section and a button that both claim to.
     expect(
-      within(screen.getByRole('dialog')).getAllByRole('button', {
-        name: 'Set rules for this answer',
+      within(screen.getByRole('dialog')).getAllByRole('switch', {
+        name: 'Validation',
       }),
     ).toHaveLength(1);
   });
@@ -448,7 +473,7 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -546,11 +571,11 @@ describe('a categorical bin with more bins than fit on one screen', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     if (followUpBin) {
       await waitFor(() =>
         expect(
-          screen.getByRole('switch', { name: 'A bin for anything else' }),
+          screen.getByRole('switch', { name: 'Follow-up other option' }),
         ).toBeChecked(),
       );
     }
@@ -642,7 +667,52 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     // And still read-only: the list is shown INSTEAD of the control that would
     // edit it, rather than beside it.
     expect(
-      screen.queryByRole('button', { name: 'Change this attribute’s values' }),
+      screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The follow-up bin is the one place in this interface where the participant
+ * TYPES an answer, so the attribute's own rules are all that stand between
+ * them and an answer the study cannot use. Architect edits them right there,
+ * under its own description
+ * (`sections/CategoricalBinPrompts/PromptFields.tsx:399-410`).
+ */
+describe('the rules the follow-up attribute’s answers have to satisfy', () => {
+  it('edits them under the follow-up picker, and writes them', async () => {
+    const harness = renderStageEditor(
+      binningPeople({
+        id: 'prompt-a',
+        text: 'What kind of contact?',
+        variable: 'contactType',
+        otherVariable: 'relationship_to_ego',
+        otherOptionLabel: 'Other',
+        otherVariablePrompt: 'Which?',
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+
+    // `relationship_to_ego` carries no rules, so the section mounts closed and
+    // its own description says what switching it on is for.
+    await harness.user.click(
+      await dialog.findByRole('switch', { name: 'Validation' }),
+    );
+    expect(
+      dialog.getByText('Enable validation of the other attribute.'),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      await dialog.findByRole('switch', { name: 'Required answer' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.relationship_to_ego,
+      ).toMatchObject({ validation: { required: true } }),
+    );
   });
 });

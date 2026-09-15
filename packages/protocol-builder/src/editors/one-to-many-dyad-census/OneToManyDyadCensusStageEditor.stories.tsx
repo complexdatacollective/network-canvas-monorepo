@@ -48,9 +48,7 @@ export const Editing: Story = {
     await expect(
       canvas.getByRole('radio', { name: 'Remove them from the list' }),
     ).toBeChecked();
-    await expect(
-      canvas.queryByRole('textbox', { name: 'Introduction heading' }),
-    ).toBeNull();
+    await expect(canvas.queryByRole('textbox', { name: 'Title' })).toBeNull();
   },
 };
 

@@ -86,6 +86,19 @@
 @custom-variant short (@media (max-height: 760px));
 
 @layer base {
+  :root {
+    /*
+     * How tall the sticky navigation bar is. `NavShell` measures the real
+     * header and overwrites this before the first paint; the value here is
+     * what a screen resolves to until it does, so a declaration reading the
+     * variable is never dropped for being unresolvable — which would put the
+     * stage editor's section list back underneath the bar.
+     *
+     * 108px is the header's own border box on every route at a desktop width,
+     * so the fallback is the measurement rather than a guess short of it.
+     */
+    --architect-nav-height: 6.75rem;
+  }
   html,
   body {
     @apply h-full w-full text-base;

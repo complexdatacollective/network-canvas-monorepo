@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicies,
+  teamIsolationPolicy,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
@@ -31,8 +31,7 @@ const { studies } = STUDY_TABLES;
 // application encryption key (#1246 driver 2 — "PII encrypted in the
 // application, keys never held by the database"), with a key id for rotation.
 // Hashing it would make signing impossible. This is the only recoverable
-// kind of team-scoped recoverable secret; OAuth credentials use the same
-// integration namespace with their own account-bound scope.
+// secret in the design.
 const webhookSubscriptions = pgTable(
   'webhook_subscriptions',
   {
@@ -45,13 +44,13 @@ const webhookSubscriptions = pgTable(
     // AES-256-GCM ciphertext of the signing secret. NOT a hash: the server
     // must reproduce the secret to sign every outgoing request.
     secretCiphertext: bytea('secret_ciphertext').notNull(),
-    // Names the key that produced the ciphertext, so rotation is a per-row
-    // property. Its namespace is the integration key set, kept separate from
-    // the participant PII key set (`participants.pii_key_id`): an outbound
-    // integration secret and a participant's contact details must never be
-    // recoverable with the same key.
+    // Names the entry in the deployment's keyring (#1900) that produced the
+    // ciphertext, so rotation is a per-row property: an added entry becomes
+    // current, `rotate-secrets` re-seals the rows still naming the old one,
+    // and boot refuses to serve while any id here is one the keyring cannot
+    // produce. There is no participant PII key set to keep this separate
+    // from — contact details are plain columns.
     secretKeyId: text('secret_key_id').notNull(),
-    secretAlgorithm: text('secret_algorithm').notNull(),
     state: text('state').notNull().default('active'),
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),
     lastFailureAt: timestamp('last_failure_at', { withTimezone: true }),
@@ -103,12 +102,11 @@ const webhookSubscriptions = pgTable(
     check(
       'webhook_subscriptions_lengths_check',
       sql`char_length(${table.secretKeyId}) BETWEEN 1 AND 64
-          AND ${table.secretAlgorithm} = 'aes-256-gcm.v1'
-          AND octet_length(${table.secretCiphertext}) BETWEEN 29 AND 512
+          AND octet_length(${table.secretCiphertext}) BETWEEN 1 AND 512
           AND char_length(${table.createdByUserId}) BETWEEN 1 AND 255
           AND (${table.description} IS NULL OR char_length(${table.description}) BETWEEN 1 AND 500)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -124,12 +122,9 @@ const webhookDeliveries = pgTable(
     eventType: text('event_type').notNull(),
     // Thin by policy: event type, resource ids, team. Never a body.
     payload: jsonb('payload').notNull(),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     lastStatusCode: smallint('last_status_code'),
@@ -145,9 +140,6 @@ const webhookDeliveries = pgTable(
       columns: [table.subscriptionId, table.teamId],
       foreignColumns: [webhookSubscriptions.id, webhookSubscriptions.teamId],
     }),
-    index('webhook_deliveries_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(sql`delivered_at IS NULL AND failed_at IS NULL`),
     index('webhook_deliveries_team_id_created_at_idx').on(
       table.teamId,
       table.createdAt.desc(),
@@ -157,17 +149,10 @@ const webhookDeliveries = pgTable(
       sql`jsonb_typeof(${table.payload}) = 'object'
           AND pg_column_size(${table.payload}) <= 4096`,
     ),
-    check(
-      'webhook_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // A delivery ends once, one way: delivered or given up on, never both.
     check(
       'webhook_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}) <= 1
-          AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}) <= 1`,
     ),
     check(
       'webhook_deliveries_lengths_check',
@@ -177,7 +162,7 @@ const webhookDeliveries = pgTable(
           AND (${table.lastStatusCode} IS NULL OR ${table.lastStatusCode} BETWEEN 100 AND 599)
           AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -246,7 +231,7 @@ CREATE OR REPLACE TRIGGER webhook_deliveries_subscription_wants_event
 ${tenantTablesSql(['webhook_subscriptions', 'webhook_deliveries'])}
 
 -- Commands enqueue a delivery inside their audited transaction; only the
--- maintenance dispatcher advances its state. The revocation binds only where
+-- maintenance worker advances its state. The revocation binds only where
 -- this sidecar runs after db/access.ts's blanket grant over ALL TABLES, which
 -- is where team_invitation_deliveries' matching revocation sits; the payload
 -- trigger above holds for every role regardless.

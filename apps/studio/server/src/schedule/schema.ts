@@ -16,7 +16,6 @@
 // a fallback for participants with no recorded zone.
 import { sql } from 'drizzle-orm';
 import {
-  bytea,
   check,
   date,
   foreignKey,
@@ -34,7 +33,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicies,
+  teamIsolationPolicy,
   TENANT_ROLES,
   tenantTablesSql,
 } from '@codaco/studio-sync/rls';
@@ -196,7 +195,7 @@ const studySchedules = pgTable(
       sql`char_length(${table.name}) BETWEEN 1 AND 120
           AND ${table.name} ~ '[^[:space:]]'`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -272,7 +271,7 @@ const scheduleOccurrences = pgTable(
           AND ${table.expiresAt} > ${table.scheduledFor}
           AND char_length(${table.resolvedTimeZone}) BETWEEN 1 AND 64`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -351,21 +350,21 @@ const messageTemplates = pgTable(
       'message_templates_locale_check',
       sql`char_length(${table.locale}) BETWEEN 2 AND 35 AND ${table.version} >= 1`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
-// The send outbox, copying `team_invitation_deliveries`' lease/attempt/
-// terminal-timestamp shape exactly.
+// The send outbox, copying `team_invitation_deliveries`' attempt/terminal-
+// timestamp shape exactly. It records what was asked for and how it ended;
+// scheduling the attempts is the job queue's, not the row's.
 //
-// The recipient address is deliberately absent. `team_invitation_deliveries`
-// snapshots an email because an invitation's address *is* its identity and no
-// participant record exists. Here a participant record does exist, the address
-// is encrypted PII (#1258, #1263) that "never leaves the PII boundary
-// unaudited" (#1305), and snapshotting it into a long-lived operational table
-// would put plaintext PII in the outbox, in backups, and in every operator's
-// reach. The dispatcher resolves the address from the participant record inside
-// the send, under the audited PII-read path.
+// The recipient address is snapshotted, exactly as `team_invitation_deliveries`
+// snapshots an invitation's email. A delivery has to record where it actually
+// went: the participant's address may be corrected or erased afterwards, and
+// an outbox that resolved the address at read time would then report a send
+// that never happened to that address. It is also what the suppression list
+// joins on, so a delivery can be checked against an opt-out recorded for an
+// address no participant row carries any more.
 const messageDeliveries = pgTable(
   'message_deliveries',
   {
@@ -379,22 +378,20 @@ const messageDeliveries = pgTable(
     templateId: uuid('template_id').notNull(),
     kind: text('kind').notNull(),
     channel: text('channel').notNull(),
-    // HMAC of the normalized recipient address under the deployment's
-    // blind-index key (#1246 driver 2). Never reversible; joins the
-    // suppression list without storing an address.
-    recipientBlindIndex: bytea('recipient_blind_index').notNull(),
-    blindIndexKeyId: text('blind_index_key_id').notNull(),
+    // The normalised address (`normalizeContactAddress` in
+    // src/study/contact.ts), written at enqueue and immutable afterwards. A
+    // plain column since #1900: contact details are protected by the
+    // deployment rather than by the application, so the outbox can hold the
+    // address it addressed rather than a digest of it.
+    recipientAddress: text('recipient_address').notNull(),
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
     provider: text('provider'),
     providerMessageId: text('provider_message_id'),
+    // What the worker has already tried. Which attempt is next, and when, is
+    // the job queue's; this counter is the row's own record of the history.
     attemptCount: integer('attempt_count').notNull().default(0),
-    availableAt: timestamp('available_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    leaseOwner: uuid('lease_owner'),
-    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
@@ -448,19 +445,14 @@ const messageDeliveries = pgTable(
       columns: [table.templateId, table.teamId],
       foreignColumns: [messageTemplates.id, messageTemplates.teamId],
     }),
-    index('message_deliveries_dispatch_idx')
-      .on(table.availableAt, table.leaseExpiresAt)
-      .where(
-        sql`sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL`,
-      ),
     index('message_deliveries_team_id_study_id_created_at_idx').on(
       table.teamId,
       table.studyId,
       table.createdAt.desc(),
     ),
-    index('message_deliveries_team_id_recipient_blind_index_idx').on(
+    index('message_deliveries_team_id_recipient_address_idx').on(
       table.teamId,
-      table.recipientBlindIndex,
+      table.recipientAddress,
     ),
     check(
       'message_deliveries_kind_check',
@@ -481,29 +473,26 @@ const messageDeliveries = pgTable(
     ),
     check(
       'message_deliveries_hash_check',
-      sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
-          AND octet_length(${table.recipientBlindIndex}) = 32
-          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
+      sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'`,
     ),
-    check(
-      'message_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
-    ),
+    // A delivery ends once, one way: sent, failed, suppressed or uncertain —
+    // never two of them at the same time.
     check(
       'message_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
-          AND (
-            num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
-            OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
-          )`,
+      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1`,
     ),
+    // The address bound is the same 3-to-320 window `participants_email_check`
+    // applies, because this column holds what that one held: shorter than
+    // `a@b` is not an address at all, and 320 is the longest an RFC 5321
+    // address can be.
     check(
       'message_deliveries_lengths_check',
-      sql`(${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)
+      sql`char_length(${table.recipientAddress}) BETWEEN 3 AND 320
+          AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)
           AND (${table.providerMessageId} IS NULL
                OR char_length(${table.providerMessageId}) BETWEEN 1 AND 255)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -555,19 +544,24 @@ const messageDeliveryEvents = pgTable(
       'message_delivery_events_provider_event_id_check',
       sql`char_length(${table.providerEventId}) BETWEEN 1 AND 255`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
-// Deployment-wide opt-out and suppression, keyed by independently versioned
-// blind index. Participant/team erasure must not permit sending again.
-// Only the maintenance sender/provider boundary can inspect this global set.
+// Opt-out and suppression, keyed by the normalised address rather than by a
+// participant, so it survives participant erasure and applies to every study
+// in the team: someone who asked not to be contacted has asked the team, not
+// one of its studies, and the record has to outlive the row that named them.
 const participantContactOptouts = pgTable(
   'participant_contact_optouts',
   {
+    teamId: text('team_id').notNull(),
     channel: text('channel').notNull(),
-    recipientBlindIndex: bytea('recipient_blind_index').notNull(),
-    blindIndexKeyId: text('blind_index_key_id').notNull(),
+    // `normalizeContactAddress` in src/study/contact.ts, the same form
+    // `message_deliveries.recipient_address` and `participants.email` hold —
+    // the join between the three is an equality, so one spelling or nothing
+    // suppresses.
+    recipientAddress: text('recipient_address').notNull(),
     source: text('source').notNull(),
     optedOutAt: timestamp('opted_out_at', { withTimezone: true })
       .notNull()
@@ -575,11 +569,7 @@ const participantContactOptouts = pgTable(
   },
   (table) => [
     primaryKey({
-      columns: [
-        table.channel,
-        table.blindIndexKeyId,
-        table.recipientBlindIndex,
-      ],
+      columns: [table.teamId, table.channel, table.recipientAddress],
     }),
     check(
       'participant_contact_optouts_channel_check',
@@ -590,10 +580,10 @@ const participantContactOptouts = pgTable(
       sql`${table.source} IN ('participant_reply', 'provider', 'researcher')`,
     ),
     check(
-      'participant_contact_optouts_blind_index_check',
-      sql`octet_length(${table.recipientBlindIndex}) = 32
-          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
+      'participant_contact_optouts_address_check',
+      sql`char_length(${table.recipientAddress}) BETWEEN 3 AND 320`,
     ),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -758,8 +748,7 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
     OR NEW.template_id IS DISTINCT FROM OLD.template_id
     OR NEW.kind IS DISTINCT FROM OLD.kind
     OR NEW.channel IS DISTINCT FROM OLD.channel
-    OR NEW.recipient_blind_index IS DISTINCT FROM OLD.recipient_blind_index
-    OR NEW.blind_index_key_id IS DISTINCT FROM OLD.blind_index_key_id
+    OR NEW.recipient_address IS DISTINCT FROM OLD.recipient_address
     OR NEW.rendered_body_hash IS DISTINCT FROM OLD.rendered_body_hash
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
   )
@@ -833,16 +822,11 @@ ${tenantTablesSql([
   'message_templates',
   'message_deliveries',
   'message_delivery_events',
+  'participant_contact_optouts',
 ])}
 
--- Suppression is global and never a team-visible directory. A maintenance
--- sender checks it by exact blind index; the ordinary app cannot enumerate
--- addresses suppressed by other teams or undo their suppression.
-REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON participant_contact_optouts FROM ${TENANT_ROLES.app};
-GRANT SELECT, INSERT, UPDATE, DELETE ON participant_contact_optouts TO ${TENANT_ROLES.maintenance};
-
 -- Commands enqueue inside their audited transaction; only the maintenance
--- dispatcher advances send state, exactly as for invitation delivery.
+-- worker advances send state, exactly as for invitation delivery.
 --
 -- DELETE is NOT revoked, and must not be: the participant foreign key is NO
 -- ACTION, so an erasure that cannot delete a participant's deliveries cannot

@@ -1,8 +1,7 @@
-import { type ComponentType, useCallback, useMemo, useState } from 'react';
+import { type ComponentType, useCallback, useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
@@ -22,6 +21,7 @@ import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
   type AttributeValue,
+  type CreateAttributeOutcome,
   type VariableOption,
 } from '../../form/arrayFields/AssignAttributes.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
@@ -267,25 +267,22 @@ function AdditionalAttributes({
   // Answered as a variable id, or as nothing at all: the row commits its own
   // `variable` cell only when the codebook write actually landed, so a refusal
   // leaves the row naming nothing rather than an attribute that does not
-  // exist. The refusal is kept and shown, because the row cannot carry one —
-  // it is handed a variable id or nothing — and a create that silently did
-  // nothing would leave the researcher pressing the button again.
+  // exist. The reason travels back WITH the outcome rather than being shown
+  // here: the name was typed in the picker's window, the window stays open on
+  // it, and this section is inert behind it while it does — so a sentence left
+  // here is one the researcher cannot read until they have given up on the
+  // name it was written about.
   const createVariable = useCreateCodebookVariable(subject);
-  const [createProblem, setCreateProblem] = useState<string | undefined>(
-    undefined,
-  );
   const createStampVariable = useCallback(
-    async (variableName: string) => {
+    async (variableName: string): Promise<CreateAttributeOutcome> => {
       const outcome = await createVariable({
         name: variableName,
         type: STAMP_TYPE,
       });
       if (outcome.status === 'refused') {
-        setCreateProblem(outcome.message);
-        return undefined;
+        return { status: 'refused', message: outcome.message };
       }
-      setCreateProblem(undefined);
-      return outcome.variableId;
+      return { status: 'created', variableId: outcome.variableId };
     },
     [createVariable],
   );
@@ -342,11 +339,6 @@ function AdditionalAttributes({
         // what it has just refused in red.
         custom={validation.custom}
       />
-      {createProblem !== undefined && (
-        <Alert variant="destructive" className="my-7">
-          <AlertDescription>{createProblem}</AlertDescription>
-        </Alert>
-      )}
     </Section>
   );
 }

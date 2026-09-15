@@ -19,69 +19,54 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const anonymisationMessages = defineMessages({
   explanationTitle: {
     id: 'protocolBuilder.anonymisation.explanationTitle',
-    defaultMessage: 'Passphrase explanation',
+    defaultMessage: 'Task explanation',
     description:
       'Heading of the section where a researcher writes what a participant reads before being asked to choose a passphrase — the secret that protects some of their own answers.',
   },
   explanationDescription: {
     id: 'protocolBuilder.anonymisation.explanationDescription',
     defaultMessage:
-      'Explain what the passphrase protects and what happens if it is lost, before the participant is asked to choose one.',
+      'Explain the anonymisation process to participants before they enter their passphrase.',
     description:
       'Description under the heading of the passphrase-explanation section, telling the researcher what this explanation has to cover.',
   },
   explanationHeadingLabel: {
     id: 'protocolBuilder.anonymisation.explanationHeadingLabel',
-    defaultMessage: 'Explanation heading',
+    defaultMessage: 'Title',
     description:
       'Label of the field holding the heading at the top of the screen where a participant is asked for a passphrase.',
   },
-  explanationHeadingHint: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingHint',
-    defaultMessage:
-      'The heading at the top of the screen that asks for a passphrase.',
-    description:
-      'Guidance under the explanation-heading field, saying where in the interview that heading appears.',
-  },
   explanationHeadingPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationHeadingPlaceholder',
-    defaultMessage: 'This interview protects some of your answers',
+    defaultMessage: 'This interview uses enhanced privacy protection',
     description:
       'Placeholder shown in the empty explanation-heading field. An example of the heading a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
   },
   explanationBodyLabel: {
     id: 'protocolBuilder.anonymisation.explanationBodyLabel',
-    defaultMessage: 'Explanation',
+    defaultMessage: 'Body',
     description:
       'Label of the field holding the prose a participant reads before being asked to choose a passphrase.',
-  },
-  explanationBodyHint: {
-    id: 'protocolBuilder.anonymisation.explanationBodyHint',
-    defaultMessage:
-      'Say which answers the passphrase protects, who can read them, and that the answers cannot be recovered without it. This is the only thing the participant reads before choosing one.',
-    description:
-      'Guidance under the explanation field, listing what the participant has to be told. "Recovered" is literal: an answer whose passphrase is forgotten is gone for good.',
   },
   explanationBodyPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationBodyPlaceholder',
     defaultMessage:
-      'Some of your answers are stored so that only you can unlock them. Choose a passphrase you will remember: without it, those answers cannot be read again.',
+      "Enter your passphrase below, and click the 'continue' button.",
     description:
       'Placeholder shown in the empty explanation field. An example of the prose a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
   },
 
   passphraseRulesTitle: {
     id: 'protocolBuilder.anonymisation.passphraseRulesTitle',
-    defaultMessage: 'Passphrase rules',
+    defaultMessage: 'Passphrase validation',
     description:
       'Heading of the section where a researcher decides what a participant’s passphrase has to look like. The requirements are lengths only: a shortest and a longest.',
   },
   passphraseRulesDescription: {
     id: 'protocolBuilder.anonymisation.passphraseRulesDescription',
-    defaultMessage:
-      'Require the passphrase to be a certain length. Without any rules, a participant may choose anything.',
+    defaultMessage: 'Choose which validation rules apply to the passphrase.',
     description:
-      'Description under the heading of the passphrase-rules section. This capability can be switched off entirely, which is what "without any rules" means.',
+      'Description under the heading of the passphrase-rules section. A validation rule is a requirement the participant’s passphrase has to meet; here they are lengths only.',
   },
   passphraseRulesFieldLabel: {
     id: 'protocolBuilder.anonymisation.passphraseRulesFieldLabel',
@@ -139,16 +124,16 @@ export const anonymisationMessages = defineMessages({
   encryptedAttributesDescription: {
     id: 'protocolBuilder.anonymisation.encryptedAttributesDescription',
     defaultMessage:
-      'Choose which text attributes are protected by the participant’s passphrase.',
+      'Select the text attributes for each node type that should be encrypted.',
     description:
       'Description under the heading of the encrypted-attributes section. Only attributes holding text can be encrypted, which is why they are named as text attributes here.',
   },
   storageNotice: {
     id: 'protocolBuilder.anonymisation.storageNotice',
     defaultMessage:
-      'An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.',
+      'Values for encrypted attributes are not stored in the database.',
     description:
-      'Notice at the top of the encrypted-attributes section, warning the researcher that encryption applies to their own copy of the data too: an answer whose passphrase is lost cannot be exported or recovered by anyone.',
+      'Notice at the top of the encrypted-attributes section, telling the researcher where an encrypted answer does NOT end up: the database holds only the protected form, so nothing readable is kept there.',
   },
   noTypesEmptyState: {
     id: 'protocolBuilder.anonymisation.noTypesEmptyState',
@@ -181,5 +166,39 @@ export const anonymisationMessages = defineMessages({
     defaultMessage: '{attributeName} is no longer encrypted.',
     description:
       'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
+  },
+
+  typeSwitchDescription: {
+    id: 'protocolBuilder.anonymisation.typeSwitchDescription',
+    defaultMessage:
+      'Enable encryption for attributes belonging to this node type.',
+    description:
+      'Description under one node type’s own switch in the encrypted-attributes section, saying what switching it on is for. A node type is a kind of thing an interview records, such as "person".',
+  },
+  clearTypeConfirmTitle: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmTitle',
+    defaultMessage: 'This will clear selected attributes',
+    description:
+      'Title of the confirmation shown when a researcher switches encryption off for a whole node type, which un-encrypts every attribute of that type at once.',
+  },
+  clearTypeConfirmDescription: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmDescription',
+    defaultMessage:
+      'This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?',
+    description:
+      'Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as "person".',
+  },
+  clearTypeConfirmLabel: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmLabel',
+    defaultMessage: 'Clear encrypted attributes',
+    description:
+      'Label of the button that confirms un-encrypting every attribute of one node type at once.',
+  },
+  clearedTypeAnnouncement: {
+    id: 'protocolBuilder.anonymisation.clearedTypeAnnouncement',
+    defaultMessage:
+      'No attribute of the {typeName} type is encrypted any more.',
+    description:
+      'Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type.',
   },
 });

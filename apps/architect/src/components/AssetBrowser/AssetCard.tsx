@@ -7,6 +7,7 @@ import {
   KeyRound,
   Share2,
   Trash2,
+  Upload,
   Video,
 } from 'lucide-react';
 import {
@@ -87,6 +88,22 @@ const messages = defineMessages({
     defaultMessage: 'Unused',
     description: 'Visible text in components / AssetBrowser / AssetCard.',
   },
+  missing: {
+    id: 'architect.assetBrowser.assetCard.missing',
+    defaultMessage: 'File missing',
+    description: 'Visible text in components / AssetBrowser / AssetCard.',
+  },
+  replace: {
+    id: 'architect.assetBrowser.assetCard.replace',
+    defaultMessage: 'Add the file for {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  replaceResource: {
+    id: 'architect.assetBrowser.assetCard.replaceResource',
+    defaultMessage: 'Add the missing file',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
 });
 
 type AssetType = 'image' | 'video' | 'audio' | 'network' | 'apikey' | 'geojson';
@@ -95,6 +112,13 @@ type AssetCardProps = {
   id: string;
   isCurrent?: boolean;
   isUsed?: boolean;
+  /**
+   * The protocol declares this resource but no file is stored for it — it came
+   * from an archive that did not contain one. Everything else about the
+   * resource is intact, so the card shows it and offers the one action that
+   * resolves it.
+   */
+  isUnresolved?: boolean;
   name: string;
   source?: string;
   type: AssetType;
@@ -102,6 +126,7 @@ type AssetCardProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: ((id: string) => void) | null;
   onPreview?: ((id: string) => void) | null;
+  onReplace?: ((id: string) => void) | null;
 };
 
 const ASSET_TYPE_BADGE_COLORS = {
@@ -272,6 +297,7 @@ const AssetCard = ({
   id,
   isCurrent = false,
   isUsed = false,
+  isUnresolved = false,
   name,
   source,
   type,
@@ -279,6 +305,7 @@ const AssetCard = ({
   onDelete = null,
   onDownload = null,
   onPreview = null,
+  onReplace = null,
 }: AssetCardProps) => {
   const intl = useAppIntl();
   const typeLabel = intl.formatMessage(assetMetadataMessages[type]);
@@ -307,9 +334,30 @@ const AssetCard = ({
     [id, onDownload],
   );
 
+  const handleReplace = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      onReplace?.(id);
+    },
+    [id, onReplace],
+  );
+
   const actions = useMemo(
     () => [
-      onPreview && (
+      isUnresolved && onReplace && (
+        <IconButton
+          key="replace"
+          icon={<Upload />}
+          aria-label={intl.formatMessage(messages.replace, { name: name })}
+          title={intl.formatMessage(messages.replaceResource)}
+          color="primary"
+          variant="text"
+          size="sm"
+          onClick={handleReplace}
+          onMouseDown={stopCardSelection}
+        />
+      ),
+      !isUnresolved && onPreview && (
         <IconButton
           key="preview"
           icon={<Eye />}
@@ -322,7 +370,7 @@ const AssetCard = ({
           onMouseDown={stopCardSelection}
         />
       ),
-      onDownload && (
+      !isUnresolved && onDownload && (
         <IconButton
           key="download"
           icon={<Download />}
@@ -361,11 +409,14 @@ const AssetCard = ({
       handleDelete,
       handleDownload,
       handlePreview,
+      handleReplace,
+      isUnresolved,
       isUsed,
       name,
       onDelete,
       onDownload,
       onPreview,
+      onReplace,
       intl,
     ],
   );
@@ -386,13 +437,22 @@ const AssetCard = ({
     >
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} source={source} type={type} />
-        {!isUsed && (
+        {isUnresolved ? (
           <Badge
             variant="destructive"
             className="absolute top-3 left-3 border-0"
           >
-            {intl.formatMessage(messages.unused)}
+            {intl.formatMessage(messages.missing)}
           </Badge>
+        ) : (
+          !isUsed && (
+            <Badge
+              variant="destructive"
+              className="absolute top-3 left-3 border-0"
+            >
+              {intl.formatMessage(messages.unused)}
+            </Badge>
+          )
         )}
       </div>
 

@@ -163,7 +163,6 @@ export const TEST_SHARDS = [
       { name: '@codaco/documentation', seconds: 7.9 },
       { name: '@codaco/app-i18n', seconds: 3.7 },
       { name: '@codaco/interface-images', seconds: 6.1 },
-      { name: 'studio-managed-ingress-worker', seconds: 1.8 },
     ],
   },
 ];

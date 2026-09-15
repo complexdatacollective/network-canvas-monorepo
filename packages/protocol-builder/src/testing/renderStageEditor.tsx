@@ -27,7 +27,10 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { saveStageMessages } from '../editors/saveStageAction.tsx';
+import {
+  saveStageAction,
+  saveStageMessages,
+} from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
@@ -38,6 +41,9 @@ import type {
   StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
+  StageSection,
+  StageSectionsStore,
+  StageSectionStatus,
 } from '../stage-editor-contract.ts';
 import type { StageCreation } from '../stageDocument.ts';
 import {
@@ -51,6 +57,7 @@ import {
   type InMemoryHost,
 } from './host/createInMemoryHost.ts';
 import type { HostPrincipal } from './host/protocolStore.ts';
+import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
@@ -263,7 +270,13 @@ export type StageEditorHarness = RenderResult &
         unowned?: readonly string[];
       }>,
     ): Promise<SavedStage>;
-    /** The section outline, in the order it is rendered. */
+    /**
+     * The sections the editor publishes to its host, in page order.
+     *
+     * The package draws no list of them — that is the host's — so this reads
+     * the store the action slot is handed and says each state in the English
+     * a host's list would use. See {@link SECTION_STATE_WORDS}.
+     */
     outline(): { title: string; state: string }[];
     /**
      * Hands the stage's lock to somebody else while this editor still believes
@@ -425,12 +438,21 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
-     * three ways above mounted it. Left out, an editor or a registry is
-     * mounted with no chrome at all — a named editor under test usually brings
-     * its own save control for the harness to click — while `sections` keeps
-     * the harness's own submit button, which is the only control that path has.
+     * three ways above mounted it. Left out, the editor is given the same
+     * fallback save control `defineStageEditor` would have chosen for it —
+     * while `sections` keeps the harness's own submit button, which is the
+     * only control that path has.
      */
     actions?: StageEditorActions;
+    /**
+     * Mounts the editor with its action slot EMPTY, as a spectator view is.
+     *
+     * The slot is filled on every other path, because it is where the editor
+     * publishes its sections and `outline()` reads them from there — so
+     * `outline()` answers with nothing here. For the one question this is for:
+     * what an editor does when the host hands it no chrome of its own.
+     */
+    withoutActionChrome?: true;
     /**
      * Accessible name of the control that saves the stage.
      *
@@ -626,6 +648,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   }
 
   const saved: SavedStage[] = [];
+  const sectionsProbe = createSectionsProbe();
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
   const formId = nextStageFormId();
   const editId = nextEditId();
@@ -656,6 +679,10 @@ export function renderStageEditor<T extends StageType = StageType>(
                   stageDocument: store.read(id).document,
                 });
               }}
+              captureSections={sectionsProbe.wrap}
+              {...(options.withoutActionChrome === undefined
+                ? {}
+                : { withoutActionChrome: options.withoutActionChrome })}
               {...(options.actions === undefined
                 ? {}
                 : { actions: options.actions })}
@@ -843,7 +870,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       }
       return written;
     },
-    outline: () => readOutline(view.container),
+    outline: () => readOutline(sectionsProbe.read()),
     takeOverLock: () => {
       store.release(stageSectionId, HARNESS_PRINCIPAL);
       store.acquire(stageSectionId, COLLABORATOR);
@@ -1000,6 +1027,8 @@ function HarnessEditor<T extends StageType>({
   editor: Editor,
   sections,
   registry,
+  captureSections,
+  withoutActionChrome,
 }: Readonly<{
   target: StageEditTarget;
   /** This harness's own form id. See `nextStageFormId`. */
@@ -1012,7 +1041,19 @@ function HarnessEditor<T extends StageType>({
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
+  /** Wraps whichever chrome is rendered, to read the sections store off it. */
+  captureSections: (inner: StageEditorActions) => StageEditorActions;
+  withoutActionChrome?: true;
 }>) {
+  // The slot is filled on every path, because the harness reads the editor's
+  // sections through it: what a test asked for if it asked for anything,
+  // otherwise the same fallback save control the editor would have chosen for
+  // itself — and nothing at all for the one call that is about an empty slot.
+  const chrome =
+    withoutActionChrome === true
+      ? undefined
+      : captureSections(actions ?? saveStageAction);
+
   if (sections === undefined && Editor === undefined) {
     return (
       <StageEditor
@@ -1021,7 +1062,7 @@ function HarnessEditor<T extends StageType>({
         editId={editId}
         onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
-        {...(actions === undefined ? {} : { actions })}
+        {...(chrome === undefined ? {} : { actions: chrome })}
       />
     );
   }
@@ -1031,20 +1072,28 @@ function HarnessEditor<T extends StageType>({
       <StageEditSession target={target} formId={formId} onSaved={onSaved}>
         {Editor === undefined ? (
           <StageEditorShell
-            actions={
-              // This harness's own id, which is what the shell hands the slot
-              // anyway: read from the prop rather than out of the context so
-              // the name means one thing in this component.
-              actions ??
-              (() => <SubmitButton form={formId}>{submitLabel}</SubmitButton>)
-            }
+            {...(chrome === undefined
+              ? {}
+              : {
+                  actions:
+                    // This harness's own id, which is what the shell hands the
+                    // slot anyway: read from the prop rather than out of the
+                    // context so the name means one thing in this component.
+                    actions === undefined
+                      ? captureSections(() => (
+                          <SubmitButton form={formId}>
+                            {submitLabel}
+                          </SubmitButton>
+                        ))
+                      : chrome,
+                })}
           >
             {sections}
           </StageEditorShell>
         ) : (
           <NamedEditorUnderTest
             editor={Editor}
-            {...(actions === undefined ? {} : { actions })}
+            {...(chrome === undefined ? {} : { actions: chrome })}
           />
         )}
       </StageEditSession>
@@ -1265,27 +1314,68 @@ function readOwnedKeys(form: HTMLFormElement | null): string[] {
   return [...keys].toSorted();
 }
 
-function readOutline(container: HTMLElement): {
+/**
+ * What each state of a section is called in a harness assertion.
+ *
+ * The package no longer names these — the section list is the host's, and so
+ * are its words — but three hundred assertions read the state as a phrase, and
+ * a state is a state whatever a host calls it. Declared here, in English,
+ * keyed by the state so a new one cannot be added without being named: the
+ * words are the harness's own reading of the store rather than anything on
+ * screen, which is why a Spanish harness still reports "Finished" while the
+ * section TITLE beside it stays translated.
+ */
+const SECTION_STATE_WORDS: Record<StageSectionStatus, string> = {
+  error: 'Has a problem',
+  incomplete: 'Not finished',
+  complete: 'Finished',
+  switchedOff: 'Switched off',
+  unavailable: 'Not available yet',
+};
+
+/**
+ * The sections the editor published, read as the phrases a host would say.
+ *
+ * Problems are decoded and joined exactly as a host's list reads them out:
+ * they arrive as encoded descriptors, and a sentence the schema refused is
+ * only useful to a test in the words a researcher would see.
+ */
+function readOutline(sections: readonly StageSection[]): {
   title: string;
   state: string;
 }[] {
-  // By role alone, not by the landmark's own name: THIS harness mounts exactly
-  // one navigation, and the name is copy — read under a locale that translates
-  // it, a name-matched query would find nothing and report an editor with no
-  // sections at all, which is a passing assertion about the wrong thing.
-  //
-  // Scoped to this harness's own container rather than read off `screen`,
-  // which is the whole document: a test mounting two harnesses got the first
-  // one's outline from both of them.
-  const [nav] = within(container).queryAllByRole('navigation');
-  if (nav === undefined) return [];
-  return [...nav.querySelectorAll('button')].map((button) => {
-    const [title, state] = [...button.querySelectorAll('span')];
+  return sections.map((section) => {
+    const word = SECTION_STATE_WORDS[section.status];
     return {
-      title: title?.textContent ?? '',
-      state: state?.textContent ?? '',
+      title: section.title,
+      state:
+        section.problems.length === 0
+          ? word
+          : `${word}. ${section.problems.map((problem) => readMessage(problem)).join(' ')}`,
     };
   });
+}
+
+/**
+ * The sections store the open editor published, captured from the action slot.
+ *
+ * The slot is the one place a host is handed it, so the harness wraps whatever
+ * chrome the test asked for rather than giving itself a second route into the
+ * same store. It answers with nothing before the stage has opened, because
+ * until then the shell has rendered no slot to be called.
+ */
+function createSectionsProbe(): Readonly<{
+  wrap: (inner: StageEditorActions) => StageEditorActions;
+  read: () => readonly StageSection[];
+}> {
+  let published: StageSectionsStore | undefined;
+  return {
+    wrap: (inner) => (context) => {
+      published = context.sections;
+      return inner(context);
+    },
+    read: () => published?.getSnapshot() ?? [],
+  };
 }
 
 function refusalOnScreen(root: Element | Document): boolean {

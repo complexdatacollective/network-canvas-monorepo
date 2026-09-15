@@ -54,6 +54,28 @@ describe('what the participant sees behind the nodes', () => {
     });
   });
 
+  /**
+   * Architect frames the chosen picture as the canvas it will be drawn on —
+   * 16:9, in the interview theme (`Form/Fields/Image.tsx:9`) — and the
+   * rebuilt field showed it as a plain thumbnail on the editor's own white
+   * card. A researcher cannot tell from that how much of their image the
+   * canvas keeps, or what it will look like against the interview's dark
+   * ground.
+   */
+  it('frames the chosen image as the interview canvas', async () => {
+    renderStageEditor(openImage());
+
+    const preview = await screen.findByAltText(CANVAS_IMAGE_NAME);
+    const frame = preview.closest('[data-theme-interview]');
+
+    expect(frame).not.toBeNull();
+    // The picture is inside the frame rather than the frame being the picture:
+    // a frame that WAS the image would be the thumbnail again, at whatever
+    // shape the file happens to be.
+    expect(frame).not.toBe(preview);
+    expect(frame?.className).toContain('aspect-video');
+  });
+
   it('changes the number of circles the researcher asked for', async () => {
     const harness = renderStageEditor(openCircles());
 

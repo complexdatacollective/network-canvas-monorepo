@@ -26,7 +26,7 @@ const messages = defineMessages({
   },
   someAssetsCouldNotBeExported: {
     id: 'architect.storageUnavailableBanner.someAssetsCouldNotBeExported',
-    defaultMessage: 'Some assets could not be exported',
+    defaultMessage: 'Some resources could not be read',
     description: 'The title text in components / StorageUnavailableBanner.',
   },
   oK: {
@@ -50,7 +50,7 @@ const finalMessages = defineMessages({
   skippedAssets: {
     id: 'architect.final.components.StorageUnavailableBanner.skippedAssets',
     defaultMessage:
-      'Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.',
+      'These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.',
     description: 'Researcher-facing Architect control or feedback.',
   },
 });
@@ -85,19 +85,17 @@ const StorageUnavailableBanner = () => {
             // so a failed download must surface rather than fail silently.
             void dispatch(exportNetcanvas())
               .unwrap()
-              .then(({ skippedAssets }) => {
-                if (skippedAssets.length === 0) return;
+              .then((result) => {
+                if (result.status !== 'unresolved-assets') return;
                 void openDialog({
                   type: 'acknowledge',
-                  intent: 'warning',
+                  intent: 'destructive',
                   title: createElement(AppMessage, {
                     message: messages.someAssetsCouldNotBeExported,
                   }),
                   description: createElement(AppErrorMessage, {
                     error: createMessageError(finalMessages.skippedAssets, {
-                      assetList: {
-                        list: skippedAssets.map((asset) => asset.name),
-                      },
+                      assetList: { list: result.assetNames },
                     }),
                   }),
                   actions: {

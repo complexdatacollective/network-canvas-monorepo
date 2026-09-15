@@ -1,18 +1,19 @@
 import { safe } from '@orpc/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testCipher, testKeyring } from './support/secrets.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -94,6 +95,19 @@ describe('principal resolution', () => {
     });
   });
 
+  it('offers magic-link sign-in even where no mail transport is configured', async () => {
+    // Delivery is the worker's (#1895): with no transport anywhere, a sign-in
+    // email waits on the queue rather than the method being withdrawn. The
+    // capability answers whether the method exists, and `mail` is the worker's
+    // resolution — the web process's read leaves it undefined entirely.
+    const base = readEnv();
+    const client = createRpcClient(
+      createApp({ ...base, mail: { kind: 'refuse' } }),
+    );
+    const status = await client.status();
+    expect(status.auth.magicLink).toBe(true);
+  });
+
   it('lists configured OAuth providers in the RPC status', async () => {
     const base = readEnv();
     if (!base.auth) throw new Error('dev env must configure auth');
@@ -115,22 +129,21 @@ describe('principal resolution', () => {
 
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
-    role: 'both',
-    telemetry: false,
     port: 3000,
-    metricsToken: undefined,
-    trustedProxies: [],
     host: '0.0.0.0',
-    clientDist: undefined,
+    workerHealthPort: 3001,
     s3: undefined,
     db: undefined,
-    maintenanceDb: undefined,
     auth: undefined,
+    mail: undefined,
+    // No database, so nothing to hold a secret and nothing to encrypt it with.
+    secrets: undefined,
+    redis: undefined,
+    trustedProxies: undefined,
     devDefaults: false,
+    telemetry: true,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
-    databaseAllowedLogins: undefined,
-    databaseAdministrativeLogins: [],
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
@@ -192,6 +205,50 @@ function callBetterAuthOrganizationRoute(
 }
 
 describe.skipIf(!db)('magic-link sign-in', () => {
+  it('queues the email for the worker rather than sending it', async () => {
+    if (!db) throw new Error('unreachable');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const jobs = await scratch.createJobClient();
+      // The production wiring: createApp builds the auth service from the
+      // pool and the job client, and no mailer exists for it to reach for —
+      // src/__tests__/process-separation.test.ts pins that nodemailer is not
+      // even in this process's module graph.
+      const app = createApp(env, { jobs, pool: scratch.app });
+      const email = `queued-${Date.now()}@example.com`;
+
+      const send = await app.request('/api/auth/sign-in/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+        },
+        body: JSON.stringify({ email, callbackURL: '/' }),
+      });
+      expect(send.status).toBe(200);
+
+      const queued = await scratch.pool.query<{ name: string; data: unknown }>(
+        `select name, data from ${scratch.jobSchema}.job_common`,
+      );
+      expect(queued.rows).toEqual([
+        {
+          name: 'sign-in-email',
+          data: { email, url: expect.stringContaining('/api/auth/magic-link') },
+        },
+      ]);
+
+      // The link in the payload is the real one: the worker sends what is
+      // here, so a job carrying anything else would sign nobody in.
+      const { url } = queued.rows[0]!.data as { url: string };
+      const verify = await app.request(url);
+      expect([302, 200]).toContain(verify.status);
+      expect(verify.headers.get('set-cookie')).toBeTruthy();
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
   it('signs in end to end: send, verify, session, me', async () => {
     if (!db) throw new Error('unreachable');
     const scratch = await createScratchSchema(db);
@@ -218,9 +275,9 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 describe.skipIf(!db)('email/password sign-in', () => {
   // Exercises the seed script's credential account (src/db/seed.ts) against
   // the real better-auth handler end to end — the same path that regressed
-  // silently when the account table was missing better-auth's `issuer`
-  // column (auth-schema.ts), because until this account existed nothing in
-  // this suite ever queried that table by provider.
+  // silently when the account table did not match better-auth's own account
+  // key (auth-schema.ts), because until this account existed nothing in this
+  // suite ever queried that table by provider.
   //
   // Seeded once for every case here; none of them writes anything another can
   // see. `tiny` because these cases need the admin, a team and that team's
@@ -230,6 +287,9 @@ describe.skipIf(!db)('email/password sign-in', () => {
   // container. The bound stays generous: it is here to fail a seed that has
   // hung, not one sharing a machine.
   const SEEDING_TIMEOUT_MS = 180_000;
+
+  /** Well past what this file asks for, so repeated local runs never meet it. */
+  const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
   let app: ReturnType<typeof createApp>;
@@ -251,11 +311,22 @@ describe.skipIf(!db)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool, { scale: 'tiny' });
-    const auth = createBetterAuthService(env.auth, scratch.pool, {
-      sendMagicLink: () => Promise.resolve(),
+    await seed(scratch.pool, { scale: 'tiny', secrets: testKeyring() });
+    const auth = createBetterAuthService(
+      env.auth,
+      scratch.pool,
+      () => Promise.resolve(),
+      testCipher(),
+    );
+    // Every case here signs the one seeded account in, so they all count
+    // against one `sign_in_email` bucket — and the shipped limit is five in
+    // ten minutes, which a developer re-running this file would reach on the
+    // third run. The limiter is not what this file is about, so it states a
+    // limit of its own rather than sharing the constant's window (#1909).
+    app = createApp(env, {
+      auth,
+      limits: { sign_in_email: SIGN_IN_ALLOWANCE },
     });
-    app = createApp(env, { auth });
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {

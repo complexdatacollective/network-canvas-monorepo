@@ -10,6 +10,7 @@ import {
   type AuthCapabilities,
   type DeploymentStatus,
   getInstanceStatus,
+  type InstallationReader,
 } from './domain.ts';
 
 // The public data API (#1248): resource-shaped REST for researchers and
@@ -99,15 +100,18 @@ const generator = new OpenAPIGenerator({
 export function createApiV1(
   auth: AuthCapabilities,
   deployment: DeploymentStatus,
+  readInstallation: InstallationReader,
 ) {
-  // The public API exposes only name/version. Auth capabilities, deployment
-  // and the runtime telemetry decision belong to the SPA's status RPC; the
-  // placeholder decision here is never serialized or consumed by the client.
+  // The domain's status includes auth capabilities, the deployment block and
+  // the first-run setup flag for the SPA; this surface's Status schema
+  // deliberately names none of them, so all three are stripped from the
+  // published API (output schemas are the serialization allowlist). The
+  // instance's own name is not stripped: it is what this surface has always
+  // reported, and first-run setup only changes where it comes from.
   const apiRouter = {
-    status: os.status.handler(() => {
-      const { name, version } = getInstanceStatus(auth, deployment, false);
-      return { name, version };
-    }),
+    status: os.status.handler(async () =>
+      getInstanceStatus(auth, deployment, await readInstallation()),
+    ),
   };
 
   const handler = new OpenAPIHandler(apiRouter, {

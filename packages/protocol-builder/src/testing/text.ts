@@ -16,3 +16,17 @@ export const exactlyText =
     element !== null &&
     element.textContent === text &&
     ![...element.children].some((child) => child.textContent === text);
+
+/**
+ * What a markdown box holds, as the participant will read it.
+ *
+ * An option label, a prompt and every other piece of participant-facing text
+ * in the builder is authored in a rich-text control, which is a contenteditable
+ * document rather than an input — so it has no `value` at all, and
+ * `toHaveValue` reports `undefined` against one however it was filled in. The
+ * text is what a test asking what the researcher wrote actually means, and it
+ * is the markdown's MEANING rather than its source: a label written
+ * `**Very** close` reads `Very close`, with the emphasis carried by an element
+ * a caller can ask about separately.
+ */
+export const richTextOf = (box: HTMLElement): string => box.textContent ?? '';

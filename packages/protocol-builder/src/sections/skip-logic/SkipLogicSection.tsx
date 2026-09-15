@@ -3,11 +3,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
+import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
 import StageDestinationPickerField from '../../fields/StageDestinationPickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { NO_RULES_MESSAGE } from '../../rules/ruleSet.ts';
-import { QueryRuleSetField } from '../../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 

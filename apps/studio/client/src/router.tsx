@@ -3,8 +3,8 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
-  Outlet,
   notFound,
+  Outlet,
   redirect,
   useRouterState,
   type RouterHistory,
@@ -19,8 +19,11 @@ import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
 import StudioLocaleSwitcher from './i18n/StudioLocaleSwitcher.tsx';
-import { orpc } from './lib/api.ts';
-import { fetchDeploymentMode } from './lib/deployment.ts';
+import {
+  fetchDeploymentMode,
+  fetchSetupRequirement,
+  topologyGuard,
+} from './lib/deployment.ts';
 import {
   landingRedirect,
   resolveLandingDestination,
@@ -39,11 +42,11 @@ import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
-import Setup, { SetupNotFound } from './routes/Setup.tsx';
+import NotFoundScreen from './routes/NotFoundScreen.tsx';
+import Setup, { SetupClosed } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
-import TeamSettings from './routes/TeamSettings.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
 import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
@@ -108,6 +111,11 @@ function RootLayout() {
 
 const rootRoute = createRootRouteWithContext<ShellContext>()({
   component: RootLayout,
+  // Every refusal in the tree lands here: an address that matches no route,
+  // and one the topology gate below turned down. Declared on the root so a
+  // gated route renders a whole screen rather than an apology inside chrome
+  // that still links to what was just refused.
+  notFoundComponent: NotFoundScreen,
 });
 
 // UNBUILT DESTINATIONS
@@ -429,6 +437,19 @@ const screens = defineMessages({
     description:
       'What the Billing screen at /billing will do, shown on it while it is not yet built.',
   },
+  teamSettingsTitle: {
+    id: 'studio.screens.teamSettingsTitle',
+    defaultMessage: 'Team settings',
+    description:
+      'Name of the Team settings screen at /settings, used as its heading.',
+  },
+  teamSettingsDescription: {
+    id: 'studio.screens.teamSettingsDescription',
+    defaultMessage:
+      "The team's name, the defaults every new study inherits from it, and deleting the team.",
+    description:
+      'What the Team settings screen at /settings will do, shown on it while it is not yet built.',
+  },
   teamSettingsApiTitle: {
     id: 'studio.screens.teamSettingsApiTitle',
     defaultMessage: 'API access',
@@ -712,11 +733,6 @@ const marketingRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if ((await fetchDeploymentMode(context.queryClient)) === 'managed') return;
 
-    const setup = await context.queryClient.fetchQuery(
-      orpc.setup.status.queryOptions(),
-    );
-    if (setup.state === 'ready') throw redirect({ to: '/setup' });
-
     const session = await context.queryClient.fetchQuery(sessionQueryOptions);
     if (session === 'signedOut') throw redirect({ to: '/sign-in' });
     throw landingRedirect(await resolveLandingDestination(context.queryClient));
@@ -724,9 +740,15 @@ const marketingRoute = createRoute({
   component: Marketing,
 });
 
+// Every route below whose path §10.4 gives to ONE topology carries
+// `topologyGuard`, which refuses it on the other with `notFound()`. The server
+// used to refuse these at the HTTP layer from the same list; since #1909 it
+// serves no page path at all, so this is the only reader the classification
+// has on the request path. `routeTable.test.tsx` proves both directions.
 const pricingRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/pricing',
+  beforeLoad: topologyGuard('/pricing'),
   component: screenPlaceholder({
     title: screens.pricingTitle,
     description: screens.pricingDescription,
@@ -737,6 +759,7 @@ const pricingRoute = createRoute({
 const legalRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/legal/$document',
+  beforeLoad: topologyGuard('/legal/$document'),
   component: screenPlaceholder({
     title: screens.legalTitle,
     description: screens.legalDescription,
@@ -791,6 +814,7 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up',
+  beforeLoad: topologyGuard('/sign-up'),
   component: screenPlaceholder({
     title: screens.signUpTitle,
     description: screens.signUpDescription,
@@ -801,6 +825,7 @@ const signUpRoute = createRoute({
 const signUpTeamRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/team',
+  beforeLoad: topologyGuard('/sign-up/team'),
   component: screenPlaceholder({
     title: screens.signUpTeamTitle,
     description: screens.signUpTeamDescription,
@@ -811,6 +836,7 @@ const signUpTeamRoute = createRoute({
 const signUpPlanRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/plan',
+  beforeLoad: topologyGuard('/sign-up/plan'),
   component: screenPlaceholder({
     title: screens.signUpPlanTitle,
     description: screens.signUpPlanDescription,
@@ -821,6 +847,7 @@ const signUpPlanRoute = createRoute({
 const signUpCheckoutRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/checkout',
+  beforeLoad: topologyGuard('/sign-up/checkout'),
   component: screenPlaceholder({
     title: screens.signUpCheckoutTitle,
     description: screens.signUpCheckoutDescription,
@@ -831,6 +858,7 @@ const signUpCheckoutRoute = createRoute({
 const signUpCompleteRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/complete',
+  beforeLoad: topologyGuard('/sign-up/complete'),
   component: screenPlaceholder({
     title: screens.signUpCompleteTitle,
     description: screens.signUpCompleteDescription,
@@ -847,15 +875,31 @@ const invitationRoute = createRoute({
   },
 });
 
+/**
+ * First-run setup (#1909), which exists only while nobody owns this instance.
+ *
+ * `/setup` is classified self-host-only (§10.4), so the HTTP gate already
+ * 404s it on the managed service; this guard is the other half, and the half
+ * that can change while the process runs: the moment an owner exists the
+ * screen must stop being a way in, on the instance where it was legitimately
+ * reachable a moment ago. `notFound()` rather than a redirect, because the
+ * address is genuinely not there — and with a component of its own, since the
+ * client has no global not-found screen and the person most likely to open a
+ * stale `/setup` is the operator who just completed it.
+ */
 const setupRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/setup',
-  beforeLoad: async ({ context }) => {
-    if ((await fetchDeploymentMode(context.queryClient)) === 'managed')
+  beforeLoad: async (options) => {
+    // The topology first: on the managed service the route is not there at
+    // all, whatever the instance's setup state.
+    await topologyGuard('/setup')(options);
+    if (!(await fetchSetupRequirement(options.context.queryClient))) {
       throw notFound();
+    }
   },
-  notFoundComponent: SetupNotFound,
   component: Setup,
+  notFoundComponent: SetupClosed,
 });
 
 const noTeamRoute = createRoute({
@@ -1154,6 +1198,9 @@ const teamAuditRoute = createRoute({
 const teamBillingRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/billing',
+  // The registered path, not this route's `/billing` segment: the
+  // classification is written in full route paths.
+  beforeLoad: topologyGuard('/team/$teamId/billing'),
   component: areaPlaceholder({
     title: screens.teamBillingTitle,
     description: screens.teamBillingDescription,
@@ -1164,10 +1211,11 @@ const teamBillingRoute = createRoute({
 const teamSettingsRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings',
-  component: () => {
-    const { teamId } = teamSettingsRoute.useParams();
-    return <TeamSettings key={teamId} teamId={teamId} />;
-  },
+  component: areaPlaceholder({
+    title: screens.teamSettingsTitle,
+    description: screens.teamSettingsDescription,
+    issue: '#1249',
+  }),
 });
 
 const teamSettingsApiRoute = createRoute({

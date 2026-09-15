@@ -23,26 +23,6 @@ export const TeamInvitationIdSchema = z
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
 
-/** Canonical base64url encoding of 32 cryptographically random bytes. */
-export const BootstrapTokenSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
-export const CompleteSetupInputSchema = z.strictObject({
-  token: BootstrapTokenSchema,
-  instanceName: z.string().min(1).max(120).regex(/\S/),
-  ownerName: z.string().min(1).max(120).regex(/\S/),
-  ownerEmail: z.email().max(254),
-  ownerPassword: z.string().min(12).max(128),
-});
-export type CompleteSetupInput = z.infer<typeof CompleteSetupInputSchema>;
-export const SetupStatusSchema = z.strictObject({
-  state: z.enum(['ready', 'complete', 'unavailable']),
-});
-export type SetupStatus = z.infer<typeof SetupStatusSchema>;
-export const CompleteSetupResultSchema = z.strictObject({
-  state: z.literal('complete'),
-});
-
 // Read through `StatusSchema`; the server's `DeploymentStatus` and the
 // client's view of it are both inferred from that one output type.
 const DeploymentSchema = z.object({
@@ -57,6 +37,10 @@ const DeploymentSchema = z.object({
 });
 
 export const StatusSchema = z.object({
+  /**
+   * What this instance calls itself: the name its owner gave it at first-run
+   * setup, or the product name until one is given (#1909).
+   */
   name: z.string(),
   version: z.string(),
   auth: z.object({
@@ -66,7 +50,47 @@ export const StatusSchema = z.object({
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
   deployment: DeploymentSchema,
-  telemetry: z.boolean(),
+  /**
+   * First-run bootstrap (#1909). `required` is true exactly while this
+   * instance has no owner — which is what `/setup` is for, and what makes the
+   * route a real screen rather than a not-found. Public, like the rest of
+   * status: whether an instance has been set up is not a secret, and the token
+   * that completes setup never leaves the operator's terminal.
+   */
+  setup: z.object({
+    required: z.boolean(),
+  }),
+});
+
+/** The instance's own name, as `/setup` stores it. */
+const InstanceNameSchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .refine((name) => name.trim().length > 0, {
+    error: 'Instance name must contain a non-whitespace character',
+  });
+
+/**
+ * What `/setup` submits: the token from the schema step, the instance's name,
+ * and the first owner's account.
+ *
+ * The password bound is better-auth's own minimum (8) and its maximum (128);
+ * refusing here means the form can say so rather than the provider refusing
+ * an account this procedure has already decided to create.
+ */
+export const CompleteSetupInputSchema = z.object({
+  token: z.string().min(1).max(256),
+  instanceName: InstanceNameSchema,
+  owner: z.object({
+    name: z.string().min(1).max(320),
+    email: z.email().max(320),
+    password: z.string().min(8).max(128),
+  }),
+});
+
+export const CompleteSetupResultSchema = z.object({
+  instanceName: InstanceNameSchema,
 });
 
 export const MeSchema = z.object({

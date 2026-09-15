@@ -19,21 +19,14 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.removeAfterConsideration.description',
     defaultMessage:
-      'Decide what happens to a person once the participant has finished considering them.',
+      'Choose whether a focal node remains available after it has been considered.',
     description: 'Description of the section named above.',
   },
   fieldLabel: {
     id: 'protocolBuilder.removeAfterConsideration.fieldLabel',
-    defaultMessage: 'After a person has been considered',
+    defaultMessage: 'Removal behavior',
     description:
       'Label of the two-answer control that decides what becomes of a person the participant has already been asked about.',
-  },
-  fieldHint: {
-    id: 'protocolBuilder.removeAfterConsideration.fieldHint',
-    defaultMessage:
-      'Removing them keeps the remaining choices short. Keeping them lets the participant revisit an answer.',
-    description:
-      'Guidance under that control, giving the reason to prefer each of its two answers.',
   },
   removeLabel: {
     id: 'protocolBuilder.removeAfterConsideration.removeLabel',
@@ -72,7 +65,6 @@ export default function RemoveAfterConsiderationSection() {
         name={FIELD}
         component={BooleanField}
         label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(messages.fieldHint)}
         required={REQUIRED}
         options={[
           { value: true, label: intl.formatMessage(messages.removeLabel) },

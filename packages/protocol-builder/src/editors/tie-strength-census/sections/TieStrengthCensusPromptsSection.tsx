@@ -17,6 +17,10 @@ import {
   hasValidatedUse,
   interfaceOwnedPickIssue,
 } from '../../../codebook/variableRoles.ts';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import {
@@ -31,25 +35,36 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import AttributeCodebookControls, {
+  useRowValue,
+} from '../../../sections/AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  attributeOptionsFieldFor,
+} from '../../../sections/AttributeValueFields.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
+import EdgeTypeSection, {
   CREATE_EDGE_FIELD,
   edgeSubjectOf,
   missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
+} from '../../dyad-census/sections/EdgeTypeSection.tsx';
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
 
 /** The strength is a point on a scale, so only an ordinal attribute holds it. */
 const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
+
+/**
+ * A tie-strength prompt keeps no input control of its own: the participant taps
+ * one of the scale's points and the value is written as it is. So the key named
+ * here is one the row never holds, and the codebook's own control is what the
+ * attribute's settings are keyed on.
+ */
+const NO_ROW_COMPONENT = 'component';
 
 /**
  * How many points the scale itself can carry. The decline answer is drawn
@@ -61,36 +76,61 @@ const SCALE_LIMIT = 5;
 
 /** What only a Tie-Strength Census says; the shared words are in `censusMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.tieStrengthGuidance',
-    defaultMessage:
-      'The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.',
-    description:
-      'Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthPlaceholder',
-    defaultMessage: 'How close are these two people?',
+    defaultMessage: 'Enter text for the prompt here...',
     description:
-      'Example question in the empty box where a researcher writes a Tie-Strength Census prompt.',
+      'Placeholder shown in the empty box where a researcher writes a Tie-Strength Census prompt. The trailing dots are an ellipsis written as three full stops.',
+  },
+  promptTextDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextDescription',
+    defaultMessage:
+      'Explain the relationship participants should evaluate for each pair.',
+    description:
+      'Description of the group holding the question one Tie-Strength Census prompt shows the participant.',
+  },
+  promptTextHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextHint',
+    defaultMessage:
+      'Refer clearly to the two people shown and phrase the prompt for a yes or no response.',
+    description:
+      'Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for.',
+  },
+  edgeLabel: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthEdgeLabel',
+    defaultMessage: 'Edge type',
+    description:
+      'Label of the control that picks which kind of connection a Tie-Strength Census prompt rates. Architect names this control differently here than in the two censuses whose answer is a yes or a no.',
+  },
+  responseTitle: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthResponseTitle',
+    defaultMessage: 'Tie-strength response',
+    description:
+      'Heading of the group in a tie-strength prompt’s dialog holding everything an affirmative answer creates. Also names the group to assistive technology.',
+  },
+  responseDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthResponseDescription',
+    defaultMessage:
+      'Configure the edge and ordinal value created by an affirmative response.',
+    description:
+      'Description of the tie-strength response group. An ordinal value is one point of a scale the participant answers on.',
   },
   edgeTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeTitle',
-    defaultMessage: 'Connection rated',
+    defaultMessage: 'Edge creation',
     description:
       'Heading of the group that says which kind of connection the participant’s answer on the scale describes.',
   },
   edgeDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeDescription',
-    defaultMessage:
-      'Choose the kind of connection an answer on the scale records between the pair.',
+    defaultMessage: 'Choose the edge type created between the two nodes.',
     description:
       'Description of the group that says what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
   },
   edgeHint: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeHint',
     defaultMessage:
-      'A connection of this type is created between the two people whenever the participant answers on the scale.',
+      'Select or create the edge type before configuring its ordinal attribute.',
     description:
       'Guidance under the control that picks what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
   },
@@ -102,29 +142,22 @@ const messages = defineMessages({
   },
   scaleTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleTitle',
-    defaultMessage: 'The scale',
+    defaultMessage: 'Response attribute',
     description:
       'Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most.',
   },
   scaleDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleDescription',
     defaultMessage:
-      'Choose the attribute whose ordered values the participant answers on.',
+      'Choose the ordinal attribute whose options participants use to rate the relationship.',
     description:
       'Description of the group that picks the attribute whose ordered values are the points of the scale. The attribute belongs to the connection this prompt creates, not to either person.',
   },
   scaleLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleLabel',
-    defaultMessage: 'Attribute',
+    defaultMessage: 'Ordinal attribute',
     description:
       'Label of the control that picks which attribute of the connection holds the participant’s answer. An attribute is one thing an interview records.',
-  },
-  scaleHint: {
-    id: 'protocolBuilder.censusPrompts.tieStrengthScaleHint',
-    defaultMessage:
-      'The participant taps one of this attribute’s values, and it is recorded on the connection.',
-    description:
-      'Guidance under the attribute picker in a Tie-Strength Census prompt, saying where the participant’s answer is stored.',
   },
   scaleRequired: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleRequired',
@@ -143,7 +176,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel',
     defaultMessage: 'Create a new attribute',
     description:
-      'Button that opens the codebook editor for inventing the attribute whose ordered values become the points of the scale. Also the title of the dialog it opens.',
+      'Names the act of inventing the attribute whose ordered values become the points of the scale, and titles the codebook editor the attribute picker’s create row opens for it.',
   },
   scaleGoneRefusal: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleGoneRefusal',
@@ -167,35 +200,33 @@ const messages = defineMessages({
   },
   declineTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineTitle',
-    defaultMessage: 'Answering that there is no connection',
+    defaultMessage: 'Decline response',
     description:
       'Heading of the group holding the words the participant chooses to say the two people in front of them are not connected.',
   },
   declineDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineDescription',
-    defaultMessage:
-      'Give the participant a way to say these two people are not connected at all.',
+    defaultMessage: 'Set the option participants use to decline edge creation.',
     description:
       'Description of the group holding the words the participant chooses to say the two people in front of them are not connected.',
   },
   declineLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineLabel',
-    defaultMessage: 'Decline answer',
+    defaultMessage: 'Decline option',
     description:
       'Label of the box a researcher writes the words the participant chooses to say the two people are not connected into.',
   },
   declineHint: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineHint',
-    defaultMessage:
-      'Shown at the end of the scale. Choosing it records no connection between the pair.',
+    defaultMessage: 'This option appears on the far right of the screen.',
     description:
       'Guidance under the box a researcher writes the decline answer into, saying where the participant sees it and what choosing it does.',
   },
   declinePlaceholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder',
-    defaultMessage: 'They don’t know each other',
+    defaultMessage: 'Enter text for the negative label here...',
     description:
-      'Example wording in the empty box where a researcher writes the decline answer.',
+      'Placeholder shown in the empty box where a researcher writes the decline answer. The trailing dots are an ellipsis written as three full stops.',
   },
   declineRequired: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineRequired',
@@ -209,17 +240,6 @@ const SCALE_GONE = createMessageError(messages.scaleGoneRefusal);
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
-
-function TieStrengthGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
 
 /**
  * Throws the scale away when the connection it describes changes.
@@ -271,6 +291,12 @@ function ScaleField({
     SCALE_FIELD,
   ] as const);
   const subject = useMemo(() => edgeSubjectOf(createEdge), [createEdge]);
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: SCALE_TYPE,
+    title: intl.formatMessage(messages.scaleCreateLabel),
+    onCreated: (variableId) => setFieldValue(SCALE_FIELD, variableId),
+  });
   const picked = asString(edgeVariable) ?? committed;
 
   const allVariables = useMemo(
@@ -301,12 +327,27 @@ function ScaleField({
     );
   }, [allVariables, identity.id, picked, protocolContext, subject]);
 
-  // Read from the codebook rather than from the row: the values belong to the
-  // attribute, so a collaborator adding a sixth changes what this stage shows.
+  // The list the researcher is LOOKING at. The points are edited inline in
+  // this dialog and saving closes it, so a warning counted from the stored
+  // list would appear only once they can no longer see the list it is about —
+  // which is after the decision it exists to inform.
+  //
+  // The codebook's own list stands in wherever there is no control holding
+  // one: an attribute whose values another interface owns is shown read-only,
+  // and a collaborator adding a sixth still changes what this stage draws.
   const pickedVariable =
     picked === undefined ? undefined : allVariables[picked];
-  const valueCount =
-    pickedVariable?.type === SCALE_TYPE ? pickedVariable.options.length : 0;
+  const draftedPoints = useRowValue(attributeOptionsFieldFor(SCALE_FIELD));
+  const valueCount = Array.isArray(draftedPoints)
+    ? draftedPoints.length
+    : pickedVariable?.type === SCALE_TYPE
+      ? pickedVariable.options.length
+      : 0;
+
+  // An attribute whose VALUES another interface owns is still a legitimate
+  // scale — a family pedigree's relationship kinds, say — but its points are
+  // that interface's to decide, so they are shown rather than offered for
+  // editing.
 
   // The scale belongs to the connection, so there is nothing to choose from
   // until the connection type is known — and it is that type's own attributes
@@ -322,22 +363,35 @@ function ScaleField({
         name={SCALE_FIELD}
         component={VariablePickerField}
         label={intl.formatMessage(messages.scaleLabel)}
-        hint={intl.formatMessage(messages.scaleHint)}
         options={options}
         emptyMessage={intl.formatMessage(messages.scaleEmpty)}
         initialValue={committed}
         required={intl.formatMessage(messages.scaleRequired)}
+        {...createProps}
       />
       {/*
-        The codebook's own attribute editor rather than a name box: an ordinal
-        attribute IS its list of ordered values, and the schema refuses one
-        with fewer than two.
+        The create row escalates to the codebook's own attribute editor rather
+        than creating from the typed name: an ordinal attribute IS its list of
+        ordered values, and the schema refuses one with fewer than two.
       */}
-      <CreateVariableButton
+      {editor}
+      {/*
+        The points ARE the stage: a scale whose values cannot be read from here
+        sends the researcher to the codebook screen to find out what their own
+        question asks. Reached rather than inlined, for the reason every
+        codebook edit in this package is — the attribute lives in another
+        section of the protocol and commits on its own.
+      */}
+      <AttributeCodebookControls
         subject={subject}
-        variableType={SCALE_TYPE}
-        label={intl.formatMessage(messages.scaleCreateLabel)}
-        onCreated={(variableId) => setFieldValue(SCALE_FIELD, variableId)}
+        variableField={SCALE_FIELD}
+        committedVariable={committed}
+        componentField={NO_ROW_COMPONENT}
+      />
+      <AttributeValueFields
+        subject={subject}
+        variableId={picked}
+        optionsField={attributeOptionsFieldFor(SCALE_FIELD)}
       />
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
@@ -368,30 +422,38 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<TieStrengthGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
+        title={intl.formatMessage(censusMessages.promptTextTitle)}
+        description={intl.formatMessage(messages.promptTextDescription)}
+        hint={intl.formatMessage(messages.promptTextHint)}
       />
-      <CreateEdgeField
-        title={intl.formatMessage(messages.edgeTitle)}
-        description={intl.formatMessage(messages.edgeDescription)}
-        hint={intl.formatMessage(messages.edgeHint)}
-        requiredMessage={intl.formatMessage(messages.edgeRequired)}
-      />
-      <ScaleField committed={asString(item[SCALE_FIELD])} />
       <Section
-        title={intl.formatMessage(messages.declineTitle)}
-        description={intl.formatMessage(messages.declineDescription)}
+        title={intl.formatMessage(messages.responseTitle)}
+        description={intl.formatMessage(messages.responseDescription)}
       >
-        <Field<typeof RichTextField>
-          name={DECLINE_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.declineLabel)}
-          hint={intl.formatMessage(messages.declineHint)}
-          placeholder={intl.formatMessage(messages.declinePlaceholder)}
-          singleLine
-          initialValue={asString(item[DECLINE_FIELD])}
-          required={intl.formatMessage(messages.declineRequired)}
+        <EdgeTypeSection
+          title={intl.formatMessage(messages.edgeTitle)}
+          description={intl.formatMessage(messages.edgeDescription)}
+          label={intl.formatMessage(messages.edgeLabel)}
+          hint={intl.formatMessage(messages.edgeHint)}
+          requiredMessage={intl.formatMessage(messages.edgeRequired)}
         />
+        <ScaleField committed={asString(item[SCALE_FIELD])} />
+        <Section
+          title={intl.formatMessage(messages.declineTitle)}
+          description={intl.formatMessage(messages.declineDescription)}
+        >
+          <Field<typeof RichTextField>
+            name={DECLINE_FIELD}
+            component={RichTextField}
+            label={intl.formatMessage(messages.declineLabel)}
+            hint={intl.formatMessage(messages.declineHint)}
+            placeholder={intl.formatMessage(messages.declinePlaceholder)}
+            singleLine
+            initialValue={asString(item[DECLINE_FIELD])}
+            required={intl.formatMessage(messages.declineRequired)}
+          />
+        </Section>
       </Section>
     </>
   );
@@ -416,8 +478,14 @@ export default function TieStrengthCensusPromptsSection() {
    * The connection type is asked about first: the scale hangs off it, so with
    * the type gone there is no codebook to judge the attribute against.
    */
+  const scaleOptions = useOptionsRowCommit(SCALE_FIELD, (row) =>
+    edgeSubjectOf(row[CREATE_EDGE_FIELD]),
+  );
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       const edgeIssue = missingEdgeTypeIssue(
         protocolContext.codebook.edge ?? {},
         row[CREATE_EDGE_FIELD],
@@ -461,11 +529,16 @@ export default function TieStrengthCensusPromptsSection() {
         subject,
         variableId,
       );
-      return owned === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      if (owned !== undefined) {
+        return { refused: { fieldErrors: { [SCALE_FIELD]: [owned] } } };
+      }
+
+      // Last, because the response options are the picked attribute's: a
+      // prompt refused for naming an attribute it cannot scale has no list to
+      // write anywhere.
+      return await scaleOptions.commit(row, context);
     },
-    [identity.id, protocolContext],
+    [identity.id, protocolContext, scaleOptions],
   );
 
   return (
@@ -473,8 +546,7 @@ export default function TieStrengthCensusPromptsSection() {
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={censusMessages.pairDescription}
-      fieldHint={censusMessages.pairFieldHint}
+      expand={scaleOptions.expand}
     />
   );
 }

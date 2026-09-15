@@ -12,6 +12,7 @@
   "protocolBuilder.contentBlock.videoHint",
   "protocolBuilder.contentBlock.audioHint",
   "protocolBuilder.contentBlock.textHint",
+  "protocolBuilder.contentBlock.sectionTitle",
   "protocolBuilder.promptsSection.waitingDescription",
   "protocolBuilder.nameGeneratorPrompts.textHint",
   "protocolBuilder.networkCanvas.backgroundCirclesHint",

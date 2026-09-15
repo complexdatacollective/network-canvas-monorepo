@@ -10,6 +10,7 @@ import {
   runAuditedCommand,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore } from '../team/store.ts';
 import { addStage, moveStage } from './draft-structure.ts';
@@ -134,11 +135,16 @@ export function createAuditedProtocol(
     protocolId: string;
     draftId: string;
   },
+  /** The store seals API-key assets, so it always takes one (#1900). */
+  cipher: SecretsCipher,
 ): Promise<CreatedProtocol> {
   const protocolName = ProtocolNameSchema.parse(input.name).trim();
   return runAuditedCommand(context, async (client, auditContext) => {
     await lockProtocolCreationActor(client, context);
-    const result = await new ProtocolStore(context.tenantDb).createProtocol(
+    const result = await new ProtocolStore(
+      context.tenantDb,
+      cipher,
+    ).createProtocol(
       {
         protocol: emptyProtocol(protocolName),
         protocolId: input.protocolId,

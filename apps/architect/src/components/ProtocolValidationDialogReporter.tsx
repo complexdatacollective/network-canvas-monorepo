@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   collapseProtocolHistory,
@@ -58,7 +59,15 @@ type OpenEvent = Extract<ProtocolValidationDialogEvent, { type: 'open' }>;
 
 const ProtocolValidationDialogReporter = () => {
   const intl = useAppIntl();
-  const [currentEvent, setCurrentEvent] = useState<OpenEvent | null>(null);
+  // The event is held across the close so the dialog animates out: rendered
+  // only while there was an event, closing unmounted it in the same tick and
+  // took the `AnimatePresence` running the exit with it.
+  const {
+    session: currentEvent,
+    openSession,
+    closeSession,
+    onSessionExited,
+  } = useDialogSession<OpenEvent>();
   const currentEventRef = useRef<OpenEvent | null>(null);
 
   useEffect(() => {
@@ -67,13 +76,13 @@ const ProtocolValidationDialogReporter = () => {
         if (event.type === 'close') {
           if (currentEventRef.current?.id === event.id) {
             currentEventRef.current = null;
-            setCurrentEvent(null);
+            closeSession();
           }
           continue;
         }
 
         currentEventRef.current = event;
-        setCurrentEvent(event);
+        openSession(event);
       }
     };
 
@@ -86,7 +95,7 @@ const ProtocolValidationDialogReporter = () => {
   const finish = (action: () => void) => {
     const event = currentEvent;
     currentEventRef.current = null;
-    setCurrentEvent(null);
+    closeSession();
     action();
     event.onClose();
   };
@@ -94,7 +103,7 @@ const ProtocolValidationDialogReporter = () => {
   const returnToStart = () => {
     const event = currentEvent;
     currentEventRef.current = null;
-    setCurrentEvent(null);
+    closeSession();
     event.onReturnToStart();
     event.onClose();
 
@@ -112,7 +121,8 @@ const ProtocolValidationDialogReporter = () => {
 
   return (
     <Dialog
-      open
+      open={currentEvent.open}
+      onExitComplete={onSessionExited}
       dismissible={false}
       accent="destructive"
       title={intl.formatMessage(messages.misconfiguredProtocol)}

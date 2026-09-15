@@ -85,6 +85,7 @@
   },
   "scripts": {
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",

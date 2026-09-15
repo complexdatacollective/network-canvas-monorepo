@@ -24,19 +24,6 @@ function renderAllLink(chunks: ReactNode) {
   );
 }
 
-function renderArticleLink(chunks: ReactNode) {
-  return (
-    <NativeLink
-      href={externalLinks.publications}
-      target="_blank"
-      rel="noreferrer"
-      className="font-bold"
-    >
-      {chunks}
-    </NativeLink>
-  );
-}
-
 function renderThreadLink(chunks: ReactNode) {
   return (
     <NativeLink
@@ -67,7 +54,6 @@ export function Publications({
         <Paragraph margin="none">
           {t.rich('introduction', {
             all: renderAllLink,
-            article: renderArticleLink,
           })}
         </Paragraph>
         <Paragraph margin="none" className="mt-3">

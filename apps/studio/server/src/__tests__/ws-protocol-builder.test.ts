@@ -33,6 +33,7 @@ import {
   reachableDb,
   seedTeam,
 } from './support/postgres.ts';
+import { testCipher } from './support/secrets.ts';
 
 const db = await reachableDb();
 const env = readEnv();
@@ -62,14 +63,8 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   let origin: string;
   let url: string;
 
-  /** The proof the managed ingress boundary requires of every request. */
   function handshake(from: string) {
-    return {
-      origin: from,
-      headers: {
-        'x-studio-managed-ingress-proof': env.managedIngressSecret ?? '',
-      },
-    };
+    return { origin: from };
   }
 
   /**
@@ -174,6 +169,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     ) as CurrentProtocol;
     const created = await new ProtocolStore(
       createTenantDb(scratch.app, TEAM_ID),
+      testCipher(),
     ).createProtocol({ protocol });
     protocolId = created.protocolId;
 

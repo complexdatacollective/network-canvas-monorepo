@@ -5,11 +5,32 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  inventAttribute,
+  offeredAttributes,
+  openAttributePicker,
+} from '../../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import TieStrengthCensusPromptsSection from '../TieStrengthCensusPromptsSection.tsx';
+
+/** The label of the field a prompt's scale is chosen in. */
+const SCALE_LABEL = 'Ordinal attribute';
+
+/**
+ * The field the scale is chosen in, once the prompt has drawn it.
+ *
+ * A scope rather than a control: the scale is picked in a window the field's
+ * trigger opens, so everything a test does to it, it does through here.
+ */
+const findScaleField = async (): Promise<HTMLElement> => {
+  await screen.findByText(SCALE_LABEL, { selector: 'label' });
+  return attributeField(SCALE_LABEL);
+};
 
 const openSection = () => ({
   stageId: 'tie-strength-census-1' as const,
@@ -44,6 +65,37 @@ async function addOption(
   );
 }
 
+/**
+ * Adds a point to the scale where the prompt itself edits it: the inline list
+ * under the picker, which opens each new row for editing and closes it again.
+ */
+async function addInlinePoint(
+  harness: StageEditorHarness,
+  values: ReturnType<typeof within>,
+  label: string,
+  value: number,
+) {
+  await harness.user.click(
+    values.getByRole('button', { name: 'Create new option' }),
+  );
+  // Pasted rather than typed: the keystrokes prove nothing here and each one
+  // re-renders the prompt around the list, which is what made this the
+  // slowest test in the file.
+  await writeInto(
+    harness,
+    await screen.findByRole('textbox', { name: 'Label' }),
+    label,
+  );
+  await writeInto(
+    harness,
+    screen.getByRole('textbox', { name: 'Value' }),
+    String(value),
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
+  );
+}
+
 describe('the questions a tie-strength census asks about a pair', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openSection());
@@ -64,16 +116,109 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
     // The scale is the CONNECTION's attribute, not the person's.
-    const picker = screen.getByRole('combobox', { name: 'Attribute' });
+    const picker = await findScaleField();
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'closeness',
+    ]);
+    await waitFor(() =>
+      expect(within(picker).getByText('closeness')).toBeVisible(),
+    );
     expect(
-      [...picker.querySelectorAll('option')]
-        .map((option) => option.value)
-        .filter((value) => value !== ''),
-    ).toEqual(['closeness']);
-    expect(picker).toHaveValue('closeness');
-    expect(
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
     ).toHaveTextContent("Don't know each other");
+  });
+
+  /**
+   * Everything an affirmative answer creates sits in one titled group, as
+   * released Architect had it
+   * (`sections/TieStrengthCensusPrompts/PromptFields.tsx:364-476`): the
+   * connection, the strength recorded on it, and the way out for a pair with
+   * no connection are one decision with three parts. The question itself is
+   * outside it.
+   */
+  it('wraps the three response decisions in Architect’s own group', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const response = await screen.findByRole('region', {
+      name: 'Tie-strength response',
+    });
+    expect(response).toHaveAccessibleDescription(
+      'Configure the edge and ordinal value created by an affirmative response.',
+    );
+    for (const name of [
+      'Edge creation',
+      'Response attribute',
+      'Decline response',
+    ]) {
+      expect(
+        within(response).getByRole('region', { name }),
+      ).toBeInTheDocument();
+    }
+    // The prompt text is asked outside the group, as Architect asked it.
+    expect(
+      within(response).queryByRole('textbox', { name: 'Prompt text' }),
+    ).toBeNull();
+  });
+
+  /**
+   * Architect puts this sentence under the prompt box itself (a `hint` on the
+   * "Prompt text" field), not in the notice above it: it is about how to
+   * phrase the question, which is what a researcher is doing while the box
+   * has focus.
+   */
+  it('says under the prompt box what the question has to name', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+    ).toHaveAccessibleDescription(
+      // The field's required marker is read out first, so the hint is matched
+      // as the end of the description rather than the whole of it.
+      /Refer clearly to the two people shown and phrase the prompt for a yes or no response\.\s*$/,
+    );
+  });
+
+  /**
+   * And says it only once. Architect raises no notice above the prompt box in
+   * this family — the two dyad censuses are the ones that do — so a second
+   * sentence here would be this package's own, sitting above a hint that
+   * already covers the same ground: the notice this package used to raise
+   * asked for a question every point of the scale could answer, while
+   * Architect's hint asks for one answered yes or no, and a researcher read
+   * both and could satisfy neither.
+   *
+   * Scoped to the prompt group and asked by ROLE rather than by the sentence
+   * the notice used to carry: an `Alert` is a live region wherever it is
+   * raised, so this fails for any notice put back here, not only for the one
+   * that was taken away. The scale's own over-five warning lives in a
+   * different group and is out of scope by construction.
+   */
+  it('raises no notice above the prompt box', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const promptGroup = within(
+      await screen.findByRole('region', { name: 'Participant prompt' }),
+    );
+
+    // The box itself has to be there, or an emptied group would pass this.
+    expect(
+      promptGroup.getByRole('textbox', { name: 'Prompt text' }),
+    ).toBeInTheDocument();
+    expect([
+      ...promptGroup.queryAllByRole('status'),
+      ...promptGroup.queryAllByRole('alert'),
+    ]).toEqual([]);
   });
 
   /**
@@ -88,7 +233,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await screen.findByRole('radio', { name: 'knows' });
     expect(
-      screen.queryByRole('combobox', { name: 'Attribute' }),
+      screen.queryByText(SCALE_LABEL, { selector: 'label' }),
     ).not.toBeInTheDocument();
 
     await harness.user.click(
@@ -122,21 +267,28 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue('closeness');
+    const scale = await findScaleField();
+    await waitFor(() =>
+      expect(within(scale).getByText('closeness')).toBeVisible(),
+    );
 
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
 
     // The new connection type has no ordinal attributes at all, so the picker
-    // has nothing to offer and nothing left over from the old one.
+    // has nothing to offer and nothing left over from the old one — it says so
+    // in place of the control, rather than holding the scale it was opened on.
     await waitFor(() =>
       expect(
-        screen.queryByRole('option', { name: /closeness/ }),
+        within(attributeField(SCALE_LABEL)).queryByText('closeness'),
       ).not.toBeInTheDocument(),
     );
+    expect(
+      within(attributeField(SCALE_LABEL)).getByText(
+        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+      ),
+    ).toBeVisible();
 
     // And the prompt refuses here, naming the pick it is missing, rather than
     // being accepted and refused by the stage save.
@@ -159,7 +311,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -170,6 +322,92 @@ describe('the questions a tie-strength census asks about a pair', () => {
       createEdge: 'knows',
       edgeVariable: 'closeness',
     });
+  });
+
+  /**
+   * The points ARE the stage: a tie-strength census asks one question and
+   * records the answer as one of the scale's values, so a researcher reading
+   * the prompt has to be able to see what those values say — and change them.
+   * Architect showed the list under this very picker; without it the points
+   * were reachable only from the codebook screen.
+   *
+   * They belong to the codebook attribute rather than to the prompt, so the
+   * change lands in the connection type's own section.
+   */
+  it('shows the scale’s points beside the prompt and writes an edit to them', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await findScaleField();
+
+    // Inline under the picker, as Architect had it: the list is part of the
+    // prompt being written rather than something behind a button.
+    const values = within(
+      await screen.findByRole('region', { name: 'Choice values' }),
+    );
+    await harness.user.click(
+      values.getByRole('button', { name: 'Edit option 1' }),
+    );
+    const label = await screen.findByRole('textbox', { name: 'Label' });
+    expect(label).toHaveTextContent('Very close');
+    await harness.user.clear(label);
+    await harness.user.type(label, 'Inseparable');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Finish editing option' }),
+    );
+    // The row's own save is what writes it, which is Architect's write model
+    // too: the list belongs to the codebook attribute and commits under that
+    // section's lock, from the prompt the researcher was writing.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().edge?.knows?.variables?.closeness,
+      ).toMatchObject({
+        options: [
+          { label: 'Inseparable', value: 3 },
+          { label: 'Somewhat close', value: 2 },
+          { label: 'Not close', value: 1 },
+        ],
+      }),
+    );
+  });
+
+  /**
+   * The warning about a scale too long to read is about the list the
+   * researcher is LOOKING at, not the one the codebook last stored.
+   *
+   * The points are edited inline in this very dialog, and saving closes it —
+   * so a warning drawn from the stored list appears only after the researcher
+   * can no longer see it, which is after the decision it exists to inform.
+   */
+  it('warns about a scale grown past what fits, before it is saved', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const values = within(
+      await screen.findByRole('region', { name: 'Choice values' }),
+    );
+    // The fixture's scale has three points, so five is still within what the
+    // screen draws and nothing is said yet.
+    await addInlinePoint(harness, values, 'Very distant', 4);
+    await addInlinePoint(harness, values, 'Distant', 5);
+    expect(
+      screen.queryByText('More answers than fit on one screen'),
+    ).toBeNull();
+
+    await addInlinePoint(harness, values, 'Not at all', 6);
+
+    expect(
+      await screen.findByText('More answers than fit on one screen'),
+    ).toBeInTheDocument();
+    // Said while the dialog is still open holding the list it is about, which
+    // is the whole point of saying it now.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('refuses a prompt with no way to decline, and says which one', async () => {
@@ -184,8 +422,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findScaleField(),
       'closeness',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -210,13 +449,14 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findScaleField(),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'Not at all',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -245,7 +485,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await writeInto(
       harness,
-      await screen.findByRole('textbox', { name: 'Decline answer' }),
+      await screen.findByRole('textbox', { name: 'Decline option' }),
       'Never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -282,34 +522,32 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new attribute' }),
-    );
-    await harness.user.type(
+    await inventAttribute(harness.user, await findScaleField(), 'trust');
+    expect(
       await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'trust',
-    );
+    ).toHaveValue('trust');
     await addOption(harness, 1, 'Some', 1);
     await addOption(harness, 2, 'Lots', 2);
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
-    await waitFor(() =>
-      expect(
-        within(picker).getByRole('option', { name: 'trust' }),
-      ).toBeInTheDocument(),
-    );
+    const picker = await findScaleField();
     // The prompt is pointing at it rather than at the scale it opened on, and
     // the row dialog it was created from is still the only dialog on screen.
-    expect(
-      within(picker).getByRole('option', { selected: true }),
-    ).toHaveTextContent('trust');
+    await waitFor(() =>
+      expect(within(picker).getByText('trust')).toBeVisible(),
+    );
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+    // And it is on OFFER, not merely held: the attribute reached the list the
+    // picker builds out of the codebook.
+    const spotlight = await openAttributePicker(harness.user, picker);
+    expect(
+      within(spotlight).getByRole('option', { name: 'trust' }),
+    ).toBeVisible();
 
     // The connection type is where it landed, not the person and not the stage.
     expect(
@@ -339,7 +577,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
 
     harness.receiveCodebookUpdate({
       edge: {
@@ -465,11 +703,12 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
 
-    // Still the prompt's own pick, and still on offer: blanking it would hide
-    // the reference the researcher has to repair.
-    expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue(SCALE_VARIABLE);
+    // Still the prompt's own pick, and still shown: blanking it would hide the
+    // reference the researcher has to repair.
+    const scale = await findScaleField();
+    await waitFor(() =>
+      expect(within(scale).getByText(SCALE_VARIABLE)).toBeVisible(),
+    );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 

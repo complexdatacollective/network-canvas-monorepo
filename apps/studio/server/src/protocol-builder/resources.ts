@@ -15,7 +15,6 @@ import {
   type ResourceGatewayFailureSchema,
   type ResourceInspectionSchema,
   type ResourcePreviewSchema,
-  type ResourceSecretStorageSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -24,9 +23,9 @@ import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-type Inspection = z.output<typeof ResourceInspectionSchema>;
+/** Exported so the router can fill a committed API key's value in (#1900). */
+export type Inspection = z.output<typeof ResourceInspectionSchema>;
 type Preview = z.output<typeof ResourcePreviewSchema>;
-type SecretStorage = z.output<typeof ResourceSecretStorageSchema>;
 type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
 
 export type ResourceOutcome<TData> =
@@ -46,7 +45,6 @@ export type PromotionPlan = {
 
 type StagedEntry = {
   descriptor: Descriptor;
-  handle?: string;
   bytes?: Blob;
   secret?: string;
 };
@@ -131,15 +129,7 @@ function descriptorFromManifestEntry(
  * per edit; nothing in here can reach another's, because another's is a
  * different object.
  */
-/**
- * Studio writes a promoted API key's value into the asset manifest, which
- * travels with the protocol. Only the host knows that, which is why the
- * contract asks.
- */
-export const SECRET_STORAGE: SecretStorage = 'plaintext';
-
 export class StagedResources {
-  readonly secretStorage = SECRET_STORAGE;
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
   readonly #mintId: () => string;
@@ -163,19 +153,13 @@ export class StagedResources {
   stage(
     requestId: string,
     request: StageRequest,
-  ): ResourceOutcome<{ descriptor: Descriptor; handle?: string }> {
+  ): ResourceOutcome<{ descriptor: Descriptor }> {
     const key = `${request.kind}\u0000${requestId}`;
     const existingId = this.#byRequest.get(key);
     const existing =
       existingId === undefined ? undefined : this.#staged.get(existingId);
     if (existing !== undefined) {
-      return {
-        status: 'ok',
-        data: {
-          descriptor: existing.descriptor,
-          ...(existing.handle === undefined ? {} : { handle: existing.handle }),
-        },
-      };
+      return { status: 'ok', data: { descriptor: existing.descriptor } };
     }
     if (request.kind === 'content' && request.bytes.size === 0) {
       // An empty file promotes into a manifest entry an interview would try to
@@ -204,7 +188,6 @@ export class StagedResources {
               name: request.name,
               status: 'staged',
             },
-            handle: `staged-secret:${id}`,
             secret: request.value,
           }
         : {
@@ -221,13 +204,7 @@ export class StagedResources {
           };
     this.#staged.set(id, entry);
     this.#byRequest.set(key, id);
-    return {
-      status: 'ok',
-      data: {
-        descriptor: entry.descriptor,
-        ...(entry.handle === undefined ? {} : { handle: entry.handle }),
-      },
-    };
+    return { status: 'ok', data: { descriptor: entry.descriptor } };
   }
 
   /**
@@ -239,7 +216,6 @@ export class StagedResources {
   async plan(
     store: AssetStore | undefined,
     resourceIds: readonly string[],
-    secretHandles: readonly string[] | undefined,
   ): Promise<ResourceOutcome<PromotionPlan>> {
     const entries: Record<string, unknown> = {};
     const promoted: Descriptor[] = [];
@@ -249,21 +225,6 @@ export class StagedResources {
         return failure('not-found', 'no such staged resource', resourceId);
       }
       if (entry.secret !== undefined) {
-        // The handle staging answered with is the only way to promote the
-        // secret behind it. A staged resource id is listed to everyone in the
-        // protocol; the value it stands for is not, and writing it into the
-        // manifest is what puts a credential into the file the researcher
-        // sends on.
-        if (
-          entry.handle === undefined ||
-          secretHandles?.includes(entry.handle) !== true
-        ) {
-          return failure(
-            'invalid-request',
-            'promoting a staged secret needs the handle staging returned',
-            resourceId,
-          );
-        }
         entries[resourceId] = {
           name: entry.descriptor.name,
           type: 'apikey',
@@ -338,9 +299,14 @@ export class StagedResources {
   /** This edit's staged resource, or the protocol's committed one. */
   inspect(assets: SectionDoc, resourceId: string): ResourceOutcome<Inspection> {
     const staged = this.#staged.get(resourceId);
-    return staged === undefined
-      ? committedInspection(assets, resourceId)
-      : { status: 'ok', data: { descriptor: staged.descriptor } };
+    if (staged === undefined) return committedInspection(assets, resourceId);
+    return {
+      status: 'ok',
+      data: {
+        descriptor: staged.descriptor,
+        ...(staged.secret === undefined ? {} : { value: staged.secret }),
+      },
+    };
   }
 
   /**
@@ -354,9 +320,6 @@ export class StagedResources {
   ): Promise<ResourceOutcome<Preview>> {
     const staged = this.#staged.get(resourceId);
     if (staged === undefined) return committedPreview(assets, resourceId);
-    if (staged.descriptor.kind === 'apikey') {
-      return failure('unsupported-kind', 'a secret has no preview', resourceId);
-    }
     if (staged.bytes === undefined) {
       return failure(
         'not-found',
@@ -399,7 +362,19 @@ export function committedInspection(
   if (descriptor === undefined) {
     return failure('not-found', 'no such resource', resourceId);
   }
-  return { status: 'ok', data: { descriptor } };
+  // An API key's value is in the manifest — promotion put it there, and the
+  // interview runtime reads it back from the published protocol to build the
+  // same map the editor is previewing.
+  const entry = assets[resourceId];
+  const value =
+    descriptor.kind === 'apikey' && isRecord(entry) ? entry.value : undefined;
+  return {
+    status: 'ok',
+    data: {
+      descriptor,
+      ...(typeof value === 'string' ? { value } : {}),
+    },
+  };
 }
 
 export function committedPreview(
@@ -409,9 +384,6 @@ export function committedPreview(
   const descriptor = committedDescriptor(assets, resourceId);
   if (descriptor === undefined) {
     return failure('not-found', 'no such resource', resourceId);
-  }
-  if (descriptor.kind === 'apikey') {
-    return failure('unsupported-kind', 'a secret has no preview', resourceId);
   }
   const hash =
     descriptor.source === undefined

@@ -166,8 +166,6 @@ export const ResourceKindSchema = z.enum([
 
 export const ResourceStatusSchema = z.enum(['committed', 'staged']);
 
-export const ResourceSecretStorageSchema = z.enum(['plaintext', 'vault']);
-
 export const ResourceDescriptorSchema = z.object({
   id: z.string().min(1),
   kind: ResourceKindSchema,
@@ -259,7 +257,6 @@ export const ResourcePromotionRequestSchema = z.object({
   /** The edit these resources were staged for; only its own can be promoted. */
   editId: EditIdSchema,
   resourceIds: z.array(z.string().min(1)).min(1),
-  secretHandles: z.array(z.string().min(1)).optional(),
 });
 
 export const SubmitInputSchema = z.object({
@@ -362,12 +359,6 @@ export const ResourceListInputSchema = z.object({
 });
 
 export const ResourceListSchema = z.object({
-  /**
-   * Where this host puts a promoted secret's value. A researcher pasting an
-   * API key is deciding whether to put a credential into a file they will send
-   * to other people, and only the host knows which it is.
-   */
-  secretStorage: ResourceSecretStorageSchema,
   resources: z.array(ResourceDescriptorSchema),
 });
 
@@ -396,11 +387,10 @@ export const StageResourceInputSchema = z.object({
       kind: z.literal('secret'),
       name: z.string().min(1),
       /**
-       * Consumed by the host: no resource procedure ever answers with it and
-       * no descriptor carries it, so a picker only ever holds the asset id.
-       * Where it goes at promotion is what `secretStorage` names — a
-       * `plaintext` host writes it into the asset manifest, which is part of
-       * the protocol the researcher then sends to other people.
+       * The key itself. A picker holds only the asset id, because that is what
+       * a stage field stores — but the value is not hidden from the editor:
+       * `inspect` answers with it, and promotion writes it into the asset
+       * manifest, which is part of the protocol the researcher sends on.
        */
       value: z.string().min(1),
     }),
@@ -409,8 +399,6 @@ export const StageResourceInputSchema = z.object({
 
 export const StagedResourceSchema = z.object({
   descriptor: ResourceDescriptorSchema,
-  /** Present for a staged secret; names it without carrying its value. */
-  handle: z.string().min(1).optional(),
 });
 
 export const ResourceDiscardInputSchema = z.object({
@@ -444,6 +432,22 @@ export const ResourceScopedInputSchema = z.object({
 
 export const ResourceInspectionSchema = z.object({
   descriptor: ResourceDescriptorSchema,
+  /**
+   * An `apikey` resource's own value.
+   *
+   * `inspect` is where a resource says what it IS, kind by kind — the variable
+   * names in a network, a picture's dimensions, a recording's length — and a
+   * key's value is that same sort of fact. It is here rather than in `preview`
+   * because a preview answers with a URL something renders from, and a key is
+   * not one.
+   *
+   * There is no secrecy to keep: every host writes the value into the asset
+   * manifest at promotion, which is the file the researcher sends to other
+   * people, and both interview runtimes read it back from there to build a
+   * map. An editor that could not read it could only draw the map the
+   * participant will not see.
+   */
+  value: z.string().optional(),
   variableNames: z.array(z.string()).optional(),
   counts: z.object({ nodes: z.number(), edges: z.number() }).optional(),
   dimensions: z.object({ width: z.number(), height: z.number() }).optional(),

@@ -28,6 +28,7 @@ import {
   RECONNECT_GRACE_MS,
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
+import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { ProtocolStore } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -37,6 +38,7 @@ import {
   reachableDb,
   seedTeam,
 } from './support/postgres.ts';
+import { testCipher } from './support/secrets.ts';
 
 const db = await reachableDb();
 
@@ -167,7 +169,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   /** Set while a test needs the object store to be the thing that is down. */
   let storeUnreachable = false;
   const assetStore: AssetStore = {
-    checkHealth: () => Promise.resolve(),
     put: (bytes, mediaType) => {
       if (storeUnreachable) {
         return Promise.reject(new Error('the object store is unreachable'));
@@ -183,6 +184,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       });
     },
     get: () => Promise.resolve(null),
+    head: () =>
+      storeUnreachable
+        ? Promise.reject(new Error('the object store is unreachable'))
+        : Promise.resolve(),
   };
   /**
    * The clock the lease keeper reads, so a test can reach the idle bound
@@ -233,6 +238,13 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     Promise.resolve(
       revoked.has(userId) ? [] : [{ teamId: TEAM_ID, role: 'owner' as const }],
     );
+  /**
+   * The same answer for the team-scoped procedures, which resolve a named team
+   * rather than searching the caller's memberships — `protocols.draft` is the
+   * one this suite reaches, to read back what a promotion stored.
+   */
+  const membership = (userId: string) =>
+    Promise.resolve(revoked.has(userId) ? null : { role: 'owner' });
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -262,7 +274,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     reference = strippableVariable(protocol);
     unstrippable = soleVariablePrompt(protocol);
     tenantDb = createTenantDb(scratch.app, TEAM_ID);
-    const store = new ProtocolStore(tenantDb);
+    const store = new ProtocolStore(tenantDb, testCipher());
     const created = await store.createProtocol({ protocol });
     protocolId = created.protocolId;
     const { ego: _ego, ...codebook } = protocol.codebook;
@@ -288,13 +300,19 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
           socialProviders: [],
         },
         {
-          auth: stubAuthService({ listMemberships: memberships }),
+          auth: stubAuthService({
+            listMemberships: memberships,
+            getMembership: membership,
+          }),
           deployment: { mode: 'self-hosted', billing: false },
-          telemetry: false,
-          invitationDeliveryAvailable: false,
+          // Nothing here reads `status`; the installation row is the
+          // first-run bootstrap's (#1909), and an unset one is "no
+          // installation to report".
+          readInstallation: () => Promise.resolve(null),
           pool: scratch.app,
           protocolBuilder: createProtocolBuilderRuntime(() => now),
           assetStore,
+          cipher: testCipher(),
         },
       );
     router = createRpcRouter(
@@ -305,13 +323,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         socialProviders: [],
       },
       {
-        auth: stubAuthService({ listMemberships: memberships }),
+        auth: stubAuthService({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
         deployment: { mode: 'self-hosted', billing: false },
-        telemetry: false,
-        invitationDeliveryAvailable: false,
+        readInstallation: () => Promise.resolve(null),
         pool: scratch.app,
         protocolBuilder: runtime,
         assetStore,
+        cipher: testCipher(),
       },
     );
     clients = new Map([
@@ -610,8 +631,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
 
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
@@ -623,11 +642,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Names a secret' },
       revision: held.revision,
-      promote: {
-        editId: EDIT,
-        resourceIds: [staged.data.descriptor.id],
-        secretHandles: [handle],
-      },
+      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
     });
 
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
@@ -696,50 +711,218 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
   });
 
-  it('promotes a staged secret only for the handle staging answered with', async () => {
-    const stage = await createStage(ADA, 'Promotes a secret it cannot name');
+  /**
+   * A staged key is still in the host's memory; a promoted one has been sealed
+   * into `protocol_asset_keys` and is opened again here (#1900). Either way
+   * `inspect` answers with the value, because that is what the stage editor's
+   * map preview frames its view on.
+   */
+  it('hands a staged and a promoted API key back through inspect', async () => {
+    const stage = await createStage(ADA, 'Reads its key back');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
       editId: EDIT,
-      requestId: 'unhandled-secret',
-      request: { kind: 'secret', name: 'Another token', value: 'pk.other' },
+      requestId: 'readable-secret',
+      request: { kind: 'secret', name: 'Readable token', value: 'pk.readable' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    const whileStaged = await asClient(ADA).protocolBuilder.resources.inspect({
+      protocolId,
+      editId: EDIT,
+      resourceId,
+    });
+    expect(whileStaged.status === 'ok' && whileStaged.data.value).toBe(
+      'pk.readable',
+    );
+
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
       sectionId: stage.sectionId,
     });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.submit({
-        protocolId,
-        requestId: randomUUID(),
-        sectionId: stage.sectionId,
-        document: held.document,
-        revision: held.revision,
-        promote: {
-          editId: EDIT,
-          resourceIds: [staged.data.descriptor.id],
-        },
-      }),
-    );
-
-    // The staged id is listed to everyone in the protocol; the value it stands
-    // for is not, and writing it into the manifest is what puts a credential
-    // into the file the researcher sends on.
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.data.failure.reason).toBe('invalid-request');
-    const assets = await asClient(ADA).protocolBuilder.getSection({
+    await asClient(ADA).protocolBuilder.submit({
       protocolId,
-      sectionId: 'assets',
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Reads its key back' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
     });
-    expect(assets.document[staged.data.descriptor.id]).toBeUndefined();
+
+    const committed = await asClient(ADA).protocolBuilder.resources.inspect({
+      protocolId,
+      resourceId,
+    });
+    expect(committed.status === 'ok' && committed.data.value).toBe(
+      'pk.readable',
+    );
     await asClient(ADA).protocolBuilder.releaseLock({
       protocolId,
       sectionId: stage.sectionId,
     });
+  });
+
+  it('seals a promoted API key instead of writing it into the protocol', async () => {
+    // Deliberately not Mapbox-token shaped: `pnpm check:mapbox-tokens` scans
+    // every tracked file for `<pk|sk|tk>.eyJ….…`, and a fixture wearing that
+    // shape fails the repository-wide guard whether or not it is a real token.
+    const SECRET = 'map-key-never-at-rest';
+    const stage = await createStage(ADA, 'Seals its key');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'sealed-secret',
+      request: { kind: 'secret', name: 'Sealed token', value: SECRET },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Seals its key' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    // The manifest entry names the asset and carries no value.
+    const manifest = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    const entry = (manifest?.document as Record<string, unknown> | undefined)?.[
+      resourceId
+    ];
+    expect(entry).toEqual({ name: 'Sealed token', type: 'apikey' });
+
+    // Exactly one sealed row, and it opens to what was staged.
+    const sealed = await tenantDb.query(
+      `SELECT key_id FROM protocol_asset_keys
+       WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
+      [TEAM_ID, protocolId, resourceId],
+    );
+    expect(sealed.rowCount).toBe(1);
+    await expect(
+      openAssetKey(tenantDb, testCipher(), {
+        teamId: TEAM_ID,
+        protocolId,
+        assetId: resourceId,
+      }),
+    ).resolves.toBe(SECRET);
+
+    // No section row anywhere holds it — not the head manifest, not the
+    // revision the promotion replaced, and not the event log a watcher
+    // replays from.
+    const sections = await tenantDb.query(
+      `SELECT doc::text AS doc FROM sections`,
+    );
+    for (const row of sections.rows as { doc: string }[]) {
+      expect(row.doc).not.toContain(SECRET);
+    }
+    const events = await tenantDb.query(
+      `SELECT doc::text AS doc FROM protocol_events WHERE doc IS NOT NULL`,
+    );
+    for (const row of events.rows as { doc: string }[]) {
+      expect(row.doc).not.toContain(SECRET);
+    }
+
+    // And the researcher-facing read of the whole draft carries none of it.
+    const draft = await asClient(ADA).protocols.draft({
+      teamId: TEAM_ID,
+      protocolId,
+      draftId,
+    });
+    expect(JSON.stringify(draft)).not.toContain(SECRET);
+  });
+
+  it('admits a submit of the assets section carrying a redacted API key', async () => {
+    // A stored `apikey` entry has no `value`, which the shared assets schema
+    // requires, so the host's shape check refused every later edit of the
+    // manifest once a key had been promoted into it (#1900) — adding a file
+    // asset beside one, or renaming anything in it.
+    const SECRET = 'map-key-submitted-beside';
+    const stage = await createStage(ADA, 'Keeps its key');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'redacted-beside',
+      request: { kind: 'secret', name: 'Beside token', value: SECRET },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Keeps its key' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    // The manifest as the editor now reads it: the key entry, redacted.
+    const manifest = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect((manifest.document as Record<string, unknown>)[resourceId]).toEqual({
+      name: 'Beside token',
+      type: 'apikey',
+    });
+
+    const submitted = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: 'assets',
+      document: {
+        ...manifest.document,
+        districts: {
+          name: 'Districts',
+          type: 'geojson',
+          source: 'districts.geojson',
+        },
+      },
+      revision: manifest.revision,
+    });
+    expect(submitted.revision).toBeDefined();
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+
+    // The placeholder the shape check was given is never written.
+    const sections = await tenantDb.query(
+      `SELECT doc::text AS doc FROM sections`,
+    );
+    for (const row of sections.rows as { doc: string }[]) {
+      expect(row.doc).not.toContain(SECRET);
+      expect(row.doc).not.toContain(ASSET_KEY_PLACEHOLDER);
+    }
+    // And the key is still sealed and still opens under the same asset id.
+    await expect(
+      openAssetKey(tenantDb, testCipher(), {
+        teamId: TEAM_ID,
+        protocolId,
+        assetId: resourceId,
+      }),
+    ).resolves.toBe(SECRET);
   });
 
   it('answers a discard with the status alone', async () => {
@@ -922,8 +1105,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const manifest = await asClient(GRACE).protocolBuilder.acquireLock({
       protocolId,
       sectionId: 'assets',
@@ -945,7 +1126,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
           promote: {
             editId: EDIT,
             resourceIds: [staged.data.descriptor.id],
-            secretHandles: [handle],
           },
         }),
       );
@@ -1032,8 +1212,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
 
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId,
@@ -1045,11 +1223,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         title: 'Carries a secret',
         items: [],
       },
-      promote: {
-        editId: EDIT,
-        resourceIds: [staged.data.descriptor.id],
-        secretHandles: [handle],
-      },
+      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
     });
 
     expect(created.promoted?.map((entry) => entry.status)).toEqual([
@@ -1118,8 +1292,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const document = {
       type: 'Information',
       label: 'Made once',
@@ -1129,7 +1301,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const promote = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
-      secretHandles: [handle],
     };
     // The id the retry repeats: one intent, asked twice, because the answer
     // to the first attempt can be lost on its way back.
@@ -1174,8 +1345,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       request: { kind: 'secret', name: 'Resubmitted', value: 'pk.resubmitted' },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const handle = staged.data.handle;
-    if (handle === undefined) throw new Error('a secret has no handle');
     const held = await asClient(ADA).protocolBuilder.acquireLock({
       protocolId,
       sectionId: stage.sectionId,
@@ -1183,7 +1352,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const promote = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
-      secretHandles: [handle],
     };
     const requestId = randomUUID();
     const written = await asClient(ADA).protocolBuilder.submit({
@@ -1297,9 +1465,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         promote: {
           editId: OTHER_EDIT,
           resourceIds: [staged.data.descriptor.id],
-          ...(staged.data.handle === undefined
-            ? {}
-            : { secretHandles: [staged.data.handle] }),
         },
       }),
     );

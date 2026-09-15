@@ -7,6 +7,7 @@ import {
   VariableSchema,
 } from '@codaco/protocol-validation';
 import {
+  hasDuplicateOptionLabels,
   normalizeForComparison,
   VariableNameSchema,
 } from '@codaco/shared-consts';
@@ -337,16 +338,18 @@ const categoricalOptionIssue = (
     seen.add(comparableValue);
   }
 
-  const labels = new Set<string>();
-  for (const { label } of variable.options) {
-    const comparableLabel = normalizeForComparison(label);
-    if (labels.has(comparableLabel)) {
-      return Object.freeze({
-        path: Object.freeze(['options']),
-        message: createMessageError(messages.optionsDuplicateLabel),
-      });
-    }
-    labels.add(comparableLabel);
+  // The write's own reading of the same question the row cell asks while the
+  // researcher is typing. Not the same code — the cell compares one row
+  // against its siblings (`isDuplicatedInColumn`), this compares a whole list
+  // — and they agree for every label a protocol can hold, which is what makes
+  // the refusal here the one the row already showed rather than a second
+  // surprise. Asked here as well as there because a caller writing straight to
+  // the codebook never met the cell.
+  if (hasDuplicateOptionLabels(variable.options)) {
+    return Object.freeze({
+      path: Object.freeze(['options']),
+      message: createMessageError(messages.optionsDuplicateLabel),
+    });
   }
 
   if (

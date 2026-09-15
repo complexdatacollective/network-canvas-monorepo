@@ -1,6 +1,10 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  createRowIn,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   openPrompt,
@@ -71,7 +75,7 @@ describe('the canvas sections, read in Spanish', () => {
 
     expect(
       screen.getByText(
-        'Escribe las tareas que el participante realiza en el lienzo y arrástralas al orden en que las hace.',
+        'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
   });
@@ -84,15 +88,27 @@ describe('the canvas sections, read in Spanish', () => {
     });
 
     const prompt = await openPrompt(harness, 0, 'Editar pregunta');
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This prompt already positions by an attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      prompt.getByRole('combobox', { name: 'Atributo de posición' }),
+      within(
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed, and in their language: the sections no longer carry a
+    // create control of their own.
     expect(
-      prompt.getByRole('button', {
-        name: 'Crear un nuevo atributo de posición',
-      }),
-    ).toBeInTheDocument();
-    expect(prompt.getByText('Marcar el nodo')).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
+    expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
   });
 
   /**

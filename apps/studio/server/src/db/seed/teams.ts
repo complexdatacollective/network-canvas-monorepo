@@ -8,12 +8,21 @@ import type pg from 'pg';
 
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
+import type { OAuthTokenColumn, SecretsCipher } from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
-import { seedTime, seedUuid, shiftDays } from './rng.ts';
+import { seedHex, seedTime, seedUuid, shiftDays } from './rng.ts';
 
 const SEED_ADMIN_NAME = 'Studio Admin';
 export const SEED_ADMIN_EMAIL = 'admin@studio.test';
 export const SEED_ADMIN_PASSWORD = 'studio-admin-not-for-production';
+
+/**
+ * What a seeded instance calls itself. The seed also makes the admin its
+ * owner, which closes first-run setup (#1909): every `pnpm dev` boot comes up
+ * as an instance somebody already set up, so `/setup` is a not-found there
+ * rather than an open door onto a database full of synthetic studies.
+ */
+const SEED_INSTANCE_NAME = 'Studio (development)';
 
 const TEAM_COUNT = 5;
 const MIN_MEMBERS_PER_TEAM = 2;
@@ -22,13 +31,6 @@ const MAX_MEMBERS_PER_TEAM = 6;
 // The seeded admin is every team's only owner; the other members exercise
 // the remaining roles.
 const NON_OWNER_ROLES = TEAM_ROLES.filter((role) => role !== 'owner');
-
-// better-auth's own `createLocalAccountIssuer('credential')`
-// (@better-auth/core/db, not a direct dependency here) — the synthetic
-// `issuer` key its adapter matches a credential account by, alongside
-// providerId and accountId. See the comment on auth-schema.ts's `issuer`
-// column.
-const CREDENTIAL_ISSUER = 'local:credential';
 
 export type SeedTeamMember = {
   memberId: string;
@@ -80,13 +82,30 @@ function uniqueEmail(
 }
 
 /**
+ * The installation row, owned. Written here because the owner is the seeded
+ * admin and this is the phase that creates them; the wipe truncates this table
+ * like any other, so it is reinstated on every seed rather than surviving one.
+ */
+async function insertOwnedInstallation(
+  client: pg.ClientBase,
+  input: { ownerUserId: string; createdAt: Date },
+): Promise<void> {
+  await client.query(
+    `insert into installation (id, name, owner_user_id, created_at, updated_at)
+     values (1, $1, $2, $3, $3)`,
+    [SEED_INSTANCE_NAME, input.ownerUserId, input.createdAt],
+  );
+}
+
+/**
  * The `credential` provider account better-auth's own email/password sign-up
  * would create, hashed with the same `better-auth/crypto` function it
  * verifies against — so this password works through the real sign-in
  * endpoint, not just as a stored value.
  *
- * The hash is the one value in the whole seed that is not reproducible: scrypt
- * draws a fresh salt per call, which no PRNG seed reaches.
+ * The hash is not reproducible: scrypt draws a fresh salt per call, which no
+ * PRNG seed reaches. It is one of the two columns the determinism case in
+ * `seed.test.ts` leaves out of its dumps; the other is `audit_events.id`.
  */
 async function insertCredentialAccount(
   client: pg.ClientBase,
@@ -94,10 +113,64 @@ async function insertCredentialAccount(
 ): Promise<void> {
   const password = await hashPassword(input.password);
   await client.query(
-    `insert into account (id, "accountId", "providerId", issuer, "userId", password, "createdAt", "updatedAt")
-     values ($1, $2, 'credential', $3, $2, $4, $5, $5)`,
-    [seedUuid(), input.userId, CREDENTIAL_ISSUER, password, input.createdAt],
+    `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     values ($1, $2, 'credential', $2, $3, $4, $4)`,
+    [seedUuid(), input.userId, password, input.createdAt],
   );
+}
+
+/** Google's `iss`, the value better-auth stores for a Google account. */
+
+/**
+ * A linked Google account for the seeded admin, with its three tokens sealed
+ * the way `withSecretsAdapter` seals them on a real sign-in.
+ *
+ * Written straight to the table rather than through better-auth: there is no
+ * Google to complete an OAuth exchange with, and what the seed exists to
+ * produce here is a row of the shape the dump-and-search test and the rotation
+ * command have to cope with. The same cipher seals it, so a `rotate-secrets`
+ * run over a seeded database rotates this row like any other.
+ *
+ * The admin can still sign in with the password: better-auth matches a
+ * credential account by (providerId, accountId), and this row's are different.
+ */
+export async function seedAdminOAuthAccount(
+  client: pg.ClientBase,
+  cipher: SecretsCipher,
+  input: { userId: string; createdAt: Date },
+): Promise<string[]> {
+  const accountId = `seed-google-${seedHex(8)}`;
+  // Shaped like the real thing — Google's access tokens start `ya29.`, its
+  // refresh tokens `1//`, and an id token is a JWT — so a dump search that
+  // finds one of these would have found a real token too.
+  const tokens = {
+    accessToken: `ya29.seed-${seedHex(16)}`,
+    refreshToken: `1//seed-${seedHex(16)}`,
+    idToken: `eyJhbGciOiJSUzI1NiJ9.seed-${seedHex(16)}`,
+  } as const;
+  const sealed = (column: OAuthTokenColumn) =>
+    cipher.sealOAuthToken(
+      { providerId: 'google', accountId, column },
+      tokens[column],
+    );
+
+  await client.query(
+    `insert into account
+       (id, "accountId", "providerId", "userId",
+        "accessToken", "refreshToken", "idToken", scope, "createdAt", "updatedAt")
+     values ($1, $2, 'google', $3, $4, $5, $6, 'openid email profile', $7, $7)`,
+    [
+      seedUuid(),
+      accountId,
+      input.userId,
+      sealed('accessToken'),
+      sealed('refreshToken'),
+      sealed('idToken'),
+      input.createdAt,
+    ],
+  );
+
+  return Object.values(tokens);
 }
 
 export async function seedTeams(
@@ -183,6 +256,10 @@ export async function seedTeams(
   await insertCredentialAccount(client, {
     userId: adminId,
     password: adminPassword,
+    createdAt,
+  });
+  await insertOwnedInstallation(client, {
+    ownerUserId: adminId,
     createdAt,
   });
   await insertRows(

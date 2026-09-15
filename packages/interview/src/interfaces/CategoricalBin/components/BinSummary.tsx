@@ -1,5 +1,5 @@
 'use client';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 import { AppMessage } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -10,6 +10,12 @@ import { interfaceMessages } from '../../messages';
 
 type BinSummaryProps = {
   nodes: NcNode[];
+  /**
+   * The text element itself, which lays out at its natural height even while
+   * the bin is holding its container at zero. Callers measuring how much room
+   * the summary needs have to read it here.
+   */
+  ref?: Ref<HTMLParagraphElement>;
 };
 
 const renderSummaryName = (chunks: ReactNode[]) => (
@@ -17,13 +23,13 @@ const renderSummaryName = (chunks: ReactNode[]) => (
 );
 const renderSummaryCount = (chunks: ReactNode[]) => <span>{chunks}</span>;
 
-const BinSummary = ({ nodes }: BinSummaryProps) => {
+const BinSummary = ({ nodes, ref }: BinSummaryProps) => {
   const firstNode = nodes[0];
   const label = useNodeLabel(firstNode);
   const otherCount = nodes.length - 1;
 
   return (
-    <Paragraph margin="none" className="catbin-summary-text">
+    <Paragraph ref={ref} margin="none" className="catbin-summary-text">
       <AppMessage
         message={interfaceMessages.binSummary}
         values={{

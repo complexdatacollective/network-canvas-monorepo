@@ -475,7 +475,6 @@ export const VariablePill = ({
 
       <Modal
         open={editing}
-        forceBackdrop
         backdropClassName="z-30"
         onOpenChange={(open) => {
           if (!open) {

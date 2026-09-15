@@ -24,12 +24,12 @@
     "es": "Selecciona el tipo de nodo que creará esta etapa.",
     "from": "74a07e626 architect.sections.nodeType.selectTheTypeOfNodeThat"
   },
-  "protocolBuilder.subjectSection.nodeCreateLabel": {
+  "protocolBuilder.entitySelect.nodeCreateLabel": {
     "en": "Create new node type",
     "es": "Crear nuevo tipo de nodo",
     "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: node)"
   },
-  "protocolBuilder.subjectSection.edgeCreateLabel": {
+  "protocolBuilder.entitySelect.edgeCreateLabel": {
     "en": "Create new edge type",
     "es": "Crear nuevo tipo de vínculo",
     "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: edge)"
@@ -123,11 +123,6 @@
     "en": "Edit item",
     "es": "Editar elemento",
     "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem, sentence case"
-  },
-  "protocolBuilder.contentBlock.sectionTitle": {
-    "en": "Item details",
-    "es": "Detalles del elemento",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.itemDetails"
   },
   "protocolBuilder.contentBlock.sectionDescription": {
     "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
@@ -284,11 +279,6 @@
     "es": "Establece el orden inicial de la lista. Sin una regla, los nodos conservan su orden en el archivo de datos.",
     "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.setTheRosterSInitialSortOrder"
   },
-  "protocolBuilder.sortOptions.orderEmptyState": {
-    "en": "No sort rules have been created yet.",
-    "es": "Todavía no se han creado reglas de orden.",
-    "from": "74a07e626 architect.additional.sections.binSortOrderSection.noSortRulesHaveBeenCreated"
-  },
   "protocolBuilder.sortOptions.sortableLabel": {
     "en": "Sortable properties",
     "es": "Propiedades ordenables",
@@ -303,11 +293,6 @@
     "en": "Add new sortable property",
     "es": "Añadir nueva propiedad ordenable",
     "from": "74a07e626 architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortableProperty"
-  },
-  "protocolBuilder.sortOptions.sortableEmptyState": {
-    "en": "No items available.",
-    "es": "No hay elementos disponibles.",
-    "from": "74a07e626 architect.defaults.components.Form.arrayFields.MultiSelect.emptyStateMessage"
   },
   "protocolBuilder.sortOptions.labelPlaceholder": {
     "en": "Label",
@@ -628,5 +613,65 @@
     "en": "Use a network data file",
     "es": "Usar un archivo de datos de red",
     "from": "74a07e626 architect.form.fields.dataSource.useANetworkDataFile"
+  },
+  "protocolBuilder.formFields.atLeastOne": {
+    "en": "You must create at least one item.",
+    "es": "Debes crear al menos un elemento.",
+    "from": "74a07e626 architect.arrayValidation.required"
+  },
+  "protocolBuilder.formFields.attributeTaken": {
+    "en": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
+    "es": "Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.",
+    "from": "74a07e626 architect.arrayValidation.duplicateField"
+  },
+  "protocolBuilder.contentBlock.kindVideo": {
+    "en": "Video",
+    "es": "Video",
+    "from": "74a07e626 architect.sections.contentGrid.options.config.video"
+  },
+  "protocolBuilder.variablePicker.renameTrigger": {
+    "en": "Edit attribute name: {label}",
+    "es": "Editar nombre del atributo: {label}",
+    "from": "74a07e626 architect.variablePill.editAttributeName"
+  },
+  "protocolBuilder.variablePicker.renameDialogName": {
+    "en": "Edit attribute name",
+    "es": "Editar nombre del atributo",
+    "from": "74a07e626 architect.variablePill.editAttributeName62aa3"
+  },
+  "protocolBuilder.variablePicker.renameFieldLabel": {
+    "en": "Attribute name",
+    "es": "Nombre del atributo",
+    "from": "74a07e626 architect.variablePill.attributeName"
+  },
+  "protocolBuilder.variablePicker.renamePlaceholder": {
+    "en": "Enter an attribute name...",
+    "es": "Introduce un nombre de atributo...",
+    "from": "74a07e626 architect.variablePill.enterAnAttributeName"
+  },
+  "protocolBuilder.variablePicker.renameSubmit": {
+    "en": "Save Changes",
+    "es": "Guardar cambios",
+    "from": "74a07e626 architect.variablePill.saveChanges"
+  },
+  "protocolBuilder.variablePicker.renameRequired": {
+    "en": "You must enter an attribute name",
+    "es": "Debes introducir un nombre de atributo",
+    "from": "74a07e626 architect.final.components.VariablePill.required"
+  },
+  "protocolBuilder.variablePicker.renameEditing": {
+    "en": "Editing attribute {name}",
+    "es": "Editando el atributo {name}",
+    "from": "74a07e626 architect.variablePill.editing"
+  },
+  "protocolBuilder.variablePicker.renameCancelled": {
+    "en": "Attribute name edit cancelled",
+    "es": "Se ha cancelado la edición del nombre del atributo",
+    "from": "74a07e626 architect.variablePill.cancelled"
+  },
+  "protocolBuilder.variablePicker.renamed": {
+    "en": "Attribute renamed to {name}",
+    "es": "Se ha cambiado el nombre del atributo a {name}",
+    "from": "74a07e626 architect.variablePill.renamed"
   }
 }

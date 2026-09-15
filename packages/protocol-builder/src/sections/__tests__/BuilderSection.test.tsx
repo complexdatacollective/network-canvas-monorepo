@@ -37,7 +37,7 @@ function RosterSource() {
     <BuilderSection title="Roster source">
       <Field<typeof RadioGroup>
         name="dataSource"
-        label="Roster data file"
+        label="Roster data source"
         component={RadioGroup}
         options={[
           { value: 'roster_data', label: 'Roster' },
@@ -162,16 +162,16 @@ function CardDetails() {
     <>
       <RosterSource />
       <BuilderSection
-        title="Card details"
+        title="Card display"
         capability={CARDS}
         resetOn="dataSource"
       >
         {showAttributes ? (
           <Field<typeof MultiSelect>
             name="cardOptions.additionalProperties"
-            label="Attributes shown on a card"
+            label="Additional display properties"
             component={MultiSelect}
-            addButtonLabel="Add new card detail"
+            addButtonLabel="Add new display property"
             properties={CARD_COLUMNS}
             options={() =>
               FILE_COLUMNS[typeof dataSource === 'string' ? dataSource : ''] ??
@@ -301,19 +301,19 @@ describe('a capability that only means anything against something else', () => {
     // The stage arrives with a card detail, which is what opens the section —
     // and the list holding it has not been asked for yet.
     expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
+      await screen.findByRole('switch', { name: 'Card display' }),
     ).toBeChecked();
 
     await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'Card details' }),
+        screen.getByRole('switch', { name: 'Card display' }),
       ).not.toBeChecked(),
     );
 
     // Asked for again, against the columns the new file actually has.
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Card details' }),
+      screen.getByRole('switch', { name: 'Card display' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Choose the attributes' }),
@@ -351,20 +351,20 @@ describe('a capability that only means anything against something else', () => {
   it('saves no container at all for a capability switched back on empty', async () => {
     const harness = renderStageEditor(openListSection());
     expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
+      await screen.findByRole('switch', { name: 'Card display' }),
     ).toBeChecked();
 
     await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'Card details' }),
+        screen.getByRole('switch', { name: 'Card display' }),
       ).not.toBeChecked(),
     );
 
     // Back on, and the list asked for — so a control IS mounted under
     // `cardOptions`, holding nothing. Nothing is entered into it.
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Card details' }),
+      screen.getByRole('switch', { name: 'Card display' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Choose the attributes' }),
@@ -397,25 +397,25 @@ describe('a capability the researcher switches off', () => {
   it('adds the first row to an empty list, and saves only that row', async () => {
     const harness = renderStageEditor(openListSection());
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Card details' }),
+      await screen.findByRole('switch', { name: 'Card display' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Clear card details' }),
     );
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'Card details' }),
+        screen.getByRole('switch', { name: 'Card display' }),
       ).not.toBeChecked(),
     );
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Card details' }),
+      screen.getByRole('switch', { name: 'Card display' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Choose the attributes' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Add new card detail' }),
+      await screen.findByRole('button', { name: 'Add new display property' }),
     );
 
     const attributes = screen.getAllByRole('combobox', { name: 'Attribute' });

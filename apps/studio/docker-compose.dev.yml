@@ -1,0 +1,43 @@
+# The development lane's override of the reference stack (#1909).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml ...
+#
+# `pnpm --filter @codaco/studio-server dev` applies it for you and starts only
+# the four services below; `traefik`, `web`, `api` and `worker` stay stopped,
+# because in development those run from source with watch and HMR.
+#
+# All it does is publish the four backing services on the host loopback so
+# those processes can reach them, and add a mail sink. It is an override file
+# rather than a Compose profile because port publishing cannot be made
+# conditional on a profile — a profile can add a service, not change one the
+# stack also runs.
+#
+# Every published port is bound to 127.0.0.1 explicitly: these are development
+# credentials, and a `0.0.0.0` bind would put a seeded database and an open
+# object store on whatever network the laptop is on.
+
+services:
+  postgres:
+    ports:
+      # The port packages/studio-sync's conformance suite expects, so one
+      # container serves the app and that suite.
+      - '127.0.0.1:54318:5432'
+
+  garage:
+    ports:
+      - '127.0.0.1:9100:3900'
+
+  valkey:
+    ports:
+      - '127.0.0.1:63790:6379'
+
+  # Sign-in and invitation mail in development. The worker sends through it
+  # like any other SMTP transport rather than printing links to the console,
+  # so the delivery path under test is the one deployments run; the messages
+  # are readable at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.28@sha256:c6cf0b06eb516a0b80a8a5251f945c131e6beb8396112964404f62856487f5bd
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'

@@ -1571,3 +1571,34 @@ test('a journey whose agent throws cannot vanish from coverage', async () => {
   assert.ok(res.deadJourneys.includes('security-vault'));
   assert.ok(res.certificationGaps.some((a) => a.includes('vanished')));
 });
+
+test('every journey prompt numbers its checks 1..N to match expectedChecks', async () => {
+  // The synthesis rejects a report whose check count or numbering differs from
+  // expectedChecks, so a prompt that lists an extra or sub-lettered item (a
+  // "4d." between 4 and 5) makes a faithful journey report INCOMPLETE on every
+  // run — security-vault returned 11 checks for 10 expected on 2026-09-15.
+  // Only execution validates prompt text, so pin the one property the guard
+  // depends on: the numbered items each journey prompt lists are exactly 1..N.
+  const prompts = {};
+  const canned = makeAgent(
+    Object.fromEntries(
+      Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+    ),
+  );
+  await run(async (prompt, opts) => {
+    if (opts.label.startsWith('journey:'))
+      prompts[opts.label.slice(8)] = prompt;
+    return canned(prompt, opts);
+  }, {});
+  for (const [key, expected] of Object.entries(EXPECTED_CHECKS)) {
+    assert.ok(prompts[key], `${key} prompt was not rendered`);
+    const numbering = [...prompts[key].matchAll(/^(\d+[a-z]?)\. /gm)].map(
+      (m) => m[1],
+    );
+    assert.deepEqual(
+      numbering,
+      Array.from({ length: expected }, (_, i) => String(i + 1)),
+      `${key} prompt lists checks ${numbering.join(', ')}`,
+    );
+  }
+});

@@ -28,6 +28,10 @@ import { createAppRouter } from '../../router.tsx';
 const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   deployment: { mode: 'managed', billing: false },
+  // First-run setup (#1909), read at call time like `deployment`: `/setup` is
+  // a real screen while an instance has no owner and a not-found once it has.
+  setup: { required: true },
+  complete: vi.fn(),
   getSession: vi.fn(),
   // Read at call time, so a test can put the researcher in no team, or in
   // several, before it renders.
@@ -98,14 +102,6 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
-    setup: {
-      status: {
-        queryOptions: () => ({
-          queryKey: ['setup'],
-          queryFn: () => ({ state: 'complete' }),
-        }),
-      },
-    },
     me: {
       queryOptions: () => ({
         queryKey: ['me'],
@@ -137,6 +133,7 @@ vi.mock('../../lib/api.ts', () => ({
           // Read at call time, so a test can put the client on a self-hosted
           // instance before it renders.
           deployment: fixtures.deployment,
+          setup: fixtures.setup,
         }),
       }),
     },
@@ -198,33 +195,6 @@ vi.mock('../../lib/api.ts', () => ({
     // `NavItem` renders no count for a zero, and each row's accessible name
     // stays the label these cases look it up by.
     audit: {
-      alerts: {
-        settings: {
-          queryOptions: () => ({
-            queryKey: ['audit-alert-settings'],
-            queryFn: () => ({
-              revision: null,
-              recipients: [],
-              eligibleMembers: [],
-              eligibleMembersTruncated: false,
-              emailAvailable: true,
-            }),
-          }),
-        },
-        list: {
-          infiniteOptions: (options: {
-            initialPageParam: string | undefined;
-            getNextPageParam: (page: {
-              nextCursor: string | null;
-            }) => string | undefined;
-          }) => ({
-            queryKey: ['audit-alert-list'],
-            queryFn: () => ({ items: [], nextCursor: null }),
-            initialPageParam: options.initialPageParam,
-            getNextPageParam: options.getNextPageParam,
-          }),
-        },
-      },
       list: {
         infiniteOptions: (options: {
           initialPageParam: string | undefined;
@@ -249,7 +219,11 @@ vi.mock('../../lib/api.ts', () => ({
       },
     },
   },
-  rpcClient: { protocols: {}, team: {} },
+  rpcClient: {
+    protocols: {},
+    team: {},
+    setup: { complete: fixtures.complete },
+  },
 }));
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
@@ -265,6 +239,8 @@ type Destination = {
   signedOut?: true;
   /** Screens only a session belonging to no team at all can reach (§6.4). */
   teamless?: true;
+  /** Screens only a self-hosted instance serves (§10.4) — `/setup`. */
+  selfHosted?: true;
 };
 
 /** Every destination in §5.2, in the order the design tables them. */
@@ -290,7 +266,12 @@ const DESTINATIONS: Destination[] = [
     url: `/invitations/${INVITATION_ID}`,
     heading: 'Accept team invitation',
   },
-  { path: '/setup', url: '/setup', heading: 'First-run setup' },
+  {
+    path: '/setup',
+    url: '/setup',
+    heading: 'First-run setup',
+    selfHosted: true,
+  },
   { path: '/no-team', url: '/no-team', heading: 'No team yet', teamless: true },
 
   // Participant
@@ -565,6 +546,7 @@ const HEADER = ['/team/$teamId', '/gallery', '/templates'];
 
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
+  fixtures.setup = { required: true };
   fixtures.teams = [fixtures.TEAM];
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
@@ -577,6 +559,58 @@ beforeEach(() => {
  * resolution is the half of it that decides where a session goes. Both are
  * asserted here rather than at the screens, because both are guards.
  */
+/**
+ * `/setup` is the one route whose existence turns over while the process runs:
+ * it is a screen on an instance nobody owns and gone the moment somebody does
+ * (#1909). Both halves are the guard's, so both are asserted here.
+ */
+describe('first-run setup', () => {
+  // A self-hosted instance throughout: `/setup` is classified self-host-only,
+  // so on the managed service the topology guard refuses it before the setup
+  // guard runs — that direction is asserted in topologyGate.test.tsx.
+  beforeEach(() => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+  });
+
+  it('offers the form while the instance has no owner', async () => {
+    const router = renderAt('/setup');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'First-run setup' }),
+    ).toBeInTheDocument();
+    // The five things setting an instance up takes. Their labels are what a
+    // person reads, so they are what this looks the fields up by.
+    expect(screen.getByLabelText(/Setup token/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Name of this instance/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Your name/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Your email address/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Choose a password/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Set up this instance' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/setup');
+  });
+
+  it('is a not-found screen once somebody owns the instance', async () => {
+    fixtures.setup = { required: false };
+
+    renderAt('/setup');
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Setup is complete',
+      }),
+    ).toBeInTheDocument();
+    // No way back in: the form is gone, and what is left points at sign-in.
+    expect(screen.queryByLabelText(/Setup token/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
+  });
+});
+
 describe('the root, by topology', () => {
   it('renders marketing on the managed service, signed in', async () => {
     const router = renderAt('/');
@@ -661,11 +695,16 @@ describe('every destination in §5.2', () => {
 
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
-    async ({ url, heading, signedOut, teamless }) => {
-      if (url === '/setup')
-        fixtures.deployment = { mode: 'self-hosted', billing: false };
+    async ({ url, heading, signedOut, teamless, selfHosted }) => {
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
+      }
+      // The managed default below would refuse this route outright (§10.4):
+      // first-run configuration of the whole instance is self-hosted only, and
+      // `topologyGuard` answers it with the not-found screen on the managed
+      // service. The screen it renders when it IS served is what this asserts.
+      if (selfHosted) {
+        fixtures.deployment = { mode: 'self-hosted', billing: false };
       }
       // §6.4's fourth case, which `/no-team` is the screen for: its guard
       // sends a researcher who does belong to a team to that team, so the

@@ -2,6 +2,10 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { protocolAuthoringLinks } from '../../../interfaces/documentation.ts';
+import {
+  attributeField,
+  inventAttribute,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import FormFieldsSection from '../FormFieldsSection.tsx';
@@ -19,9 +23,6 @@ import FormFieldsSection from '../FormFieldsSection.tsx';
  * they are about to make is permanent.
  */
 
-/** The picker option standing for an attribute that does not exist yet. */
-const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
-
 const openAlterForm = () => ({
   stageId: 'alter-form-1' as const,
   sections: <FormFieldsSection subject="node" />,
@@ -32,7 +33,11 @@ const openField = async (
   name: string,
 ) => {
   await harness.user.click(screen.getAllByRole('button', { name })[0]!);
-  return within(await screen.findByRole('dialog'));
+  // The element as well as its queries: the attribute picker's window opens
+  // over this dialog, and a helper reaching into the row has to say which of
+  // the two it means.
+  const element = await screen.findByRole('dialog');
+  return { ...within(element), element };
 };
 
 /**
@@ -107,16 +112,11 @@ describe('the guidance under the input control', () => {
     const harness = renderStageEditor(openAlterForm());
     const dialog = await openField(harness, 'Create new form field');
 
+    const picker = attributeField('Attribute', dialog.element);
+    await inventAttribute(harness.user, picker, 'nickname');
+    await within(picker).findByText('nickname');
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
       'text',
     );
 

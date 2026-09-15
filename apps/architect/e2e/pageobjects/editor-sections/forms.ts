@@ -1,4 +1,6 @@
-import { type Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
+
+import { createAttribute } from './variables.js';
 
 // AlterForm/AlterEdgeForm/EgoForm's `form.fields` array is authored by
 // `@codaco/protocol-builder`'s `FormFieldsSection`
@@ -12,6 +14,44 @@ import { type Locator } from '@playwright/test';
 // honest about which list it is driving. The dialog it opens is a page-level
 // portal, so everything after that is reached through `section.page()` and
 // scoped by the dialog's own accessible name instead.
+export async function openFormFieldDialog(section: Locator): Promise<Locator> {
+  const page = section.page();
+  await section
+    .getByRole('button', { name: 'Create new form field', exact: true })
+    .click();
+  // A brand-new row's dialog is titled "Create form field"; the same dialog
+  // reads "Edit form field" for a row that already exists (`rowDialog.tsx`'s
+  // `addTitle`/`editTitle`). Naming it here is what makes the fields below
+  // unambiguous without a second scope.
+  return page.getByRole('dialog', { name: 'Create form field' });
+}
+
+/**
+ * The half of the field dialog that shows the question as the participant will
+ * meet it.
+ *
+ * A named region (`FieldPreviewPane`), beside the named form the settings are
+ * in — so a test reading the preview and a test filling in the settings cannot
+ * reach each other's controls, which matters because the two render the same
+ * roles: a question box on the left and the box that answers it on the right.
+ */
+export function fieldPreview(dialog: Locator): Locator {
+  return dialog.getByRole('region', { name: 'Interactive preview' });
+}
+
+/**
+ * The other half: the field's own settings.
+ *
+ * Scope every settings control to this rather than to the dialog, wherever the
+ * control the participant answers with is of the same kind as a control the
+ * researcher fills in — a slider, a date box, a set of options. Both halves
+ * are on screen at once, and an unscoped query would resolve to two elements.
+ */
+export function fieldSettings(dialog: Locator): Locator {
+  return dialog.getByRole('form', { name: 'Configuration' });
+}
+
+/** Authors one whole form field, from an attribute that does not exist yet. */
 export async function addFormField(
   section: Locator,
   opts: {
@@ -23,15 +63,7 @@ export async function addFormField(
     inputControl?: string;
   },
 ): Promise<void> {
-  const page = section.page();
-  await section
-    .getByRole('button', { name: 'Create new form field', exact: true })
-    .click();
-  // A brand-new row's dialog is titled "Create form field"; the same dialog
-  // reads "Edit form field" for a row that already exists (`rowDialog.tsx`'s
-  // `addTitle`/`editTitle`). Naming it here is what makes the fields below
-  // unambiguous without a second scope.
-  const dialog = page.getByRole('dialog', { name: 'Create form field' });
+  const dialog = await openFormFieldDialog(section);
   await inventAttributeInFieldDialog(dialog, opts);
   const prompt = dialog.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
@@ -98,8 +130,9 @@ export type InventAttributeOptions = {
   /**
    * Fills in whatever the codebook editor asks for beyond a name — the values
    * of a list, the two ends of a scale. Called with the editor dialog, after
-   * its "Attribute name" is filled and before "Create attribute" is pressed.
-   * Only reached for the types in `NEEDS_CODEBOOK_EDITOR`.
+   * the name it opened holding has been read back and before "Create
+   * attribute" is pressed. Only reached for the types in
+   * `NEEDS_CODEBOOK_EDITOR`.
    */
   inEditor?: (editor: Locator) => Promise<void>;
 };
@@ -108,18 +141,21 @@ export type InventAttributeOptions = {
  * Fill in the codebook half of an open form-field dialog: an attribute that
  * does not exist yet, and the control the participant answers it with.
  *
- * There is no attribute search here. `FormFieldEditor`
- * (`sections/form-fields/FormFieldsSection.tsx`) asks which attribute the
- * answer is recorded under through a native `<select>`
- * (`fields/VariablePickerField.tsx` -> fresco-ui's `NativeSelectField`, so
- * `selectOption` drives it directly) listing the subject's collectable
- * codebook attributes plus one sentinel option, "Create a new attribute…".
- * Choosing that option IS the request to invent one, and it reveals:
+ * `FormFieldEditor` (`sections/form-fields/FormFieldsSection.tsx`) asks which
+ * attribute the answer is recorded under through the attribute picker
+ * (`fields/VariablePickerField.tsx`), and passes it an `onCreateOption` — so
+ * inventing one here is the window's own create row, taken on the name typed
+ * into its search box. The row decides nothing and promises everything: it
+ * writes the name onto the field row and closes the window, and what is left
+ * to ask appears underneath:
  *
- * - "Kind of answer" — the codebook type, asked first because it decides what
- *   else the attribute needs; and then either
- * - "Attribute name", for a kind a name finishes, or
- * - the codebook editor's own button, for a kind it does not.
+ * - "Kind of answer" — the codebook type, asked next because it decides what
+ *   else the attribute needs; and, for a kind a name cannot finish, the
+ *   codebook editor's own button.
+ *
+ * There is no "Attribute name" box on the row at all any more: the name was
+ * taken in the window, and the editor — where one opens — arrives already
+ * holding it.
  *
  * "Input control" lists only the controls that type allows and arrives already
  * showing the first of them, so selecting it says which one is meant rather
@@ -145,12 +181,18 @@ export async function inventAttributeInFieldDialog(
     );
   }
 
-  // `exact: true` on every name: "Attribute" is also the heading of the
-  // dialog's first Section and the prefix of "Attribute name", and a
-  // substring match would resolve to more than one control.
-  await dialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .selectOption({ label: 'Create a new attribute…' });
+  // Addressed by the field's own name rather than by its label: "Attribute" is
+  // also the heading of the dialog's first Section and the prefix of
+  // "Attribute name".
+  //
+  // `createAttribute` rather than a choose-or-create: this helper's whole job
+  // is to INVENT, and a name the subject already holds has to fail here rather
+  // than quietly bind the attribute that was already there and leave the
+  // controls below unanswered.
+  await createAttribute(
+    dialog.locator('[data-field-name="variable"]'),
+    opts.variableName,
+  );
   await dialog
     .getByRole('combobox', { name: 'Kind of answer', exact: true })
     .selectOption({ label: variableType });
@@ -162,9 +204,14 @@ export async function inventAttributeInFieldDialog(
     // button's own words as its title (`AttributeCodebookControls`'s
     // `editorTitle`) — which is what tells the two apart while both are open.
     const editor = page.getByRole('dialog', { name: openLabel, exact: true });
-    await editor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill(opts.variableName);
+    // Read back rather than typed. The row carries the name the create row
+    // took and seeds the editor with it (`AttributeCodebookControls`'s
+    // `initialDraft={{ name: inventing.name }}`), and this is the only place
+    // the suite reads that seeding end to end — a helper that filled the box
+    // itself would pass just as well with it broken.
+    await expect(
+      editor.getByRole('textbox', { name: 'Attribute name', exact: true }),
+    ).toHaveValue(opts.variableName);
     await opts.inEditor?.(editor);
     await editor
       .getByRole('button', { name: 'Create attribute', exact: true })
@@ -173,10 +220,6 @@ export async function inventAttributeInFieldDialog(
     // "Input control" is derived from the attribute the row now points at,
     // and it is not on screen at all while one is still being invented.
     await editor.waitFor({ state: 'detached' });
-  } else {
-    await dialog
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill(opts.variableName);
   }
 
   await dialog

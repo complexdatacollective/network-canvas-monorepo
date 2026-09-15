@@ -41,13 +41,13 @@ describe('a section resetting on a path a command cannot address', () => {
           />
         </BuilderSection>
         <BuilderSection
-          title="Roster order"
+          title="Roster sorting"
           capability={SORTING}
           resetOn="prompts[0].text"
         >
           <Field
             name="sortOptions.sortOrder"
-            label="Starting order"
+            label="Sort rule"
             component={InputField}
           />
         </BuilderSection>

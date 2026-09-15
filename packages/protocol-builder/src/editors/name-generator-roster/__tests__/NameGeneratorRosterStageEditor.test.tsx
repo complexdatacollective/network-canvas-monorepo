@@ -33,12 +33,10 @@ describe('creating a roster name generator', () => {
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Roster Name Generator'),
     );
-    // Nothing about the list can be decided before the file it is a list of.
-    expect(
-      screen.getByText(
-        'Choose a roster data file before deciding what its cards show.',
-      ),
-    ).toBeInTheDocument();
+    // Nothing about the list can be decided before the file it is a list of,
+    // which the section says by being unusable rather than by a sentence of
+    // its own — as Architect's does.
+    expect(screen.getByRole('switch', { name: 'Card display' })).toBeDisabled();
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.click(

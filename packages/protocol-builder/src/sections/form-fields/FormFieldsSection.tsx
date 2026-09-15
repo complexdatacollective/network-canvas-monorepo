@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import {
   type ComponentType,
   createContext,
@@ -30,8 +31,16 @@ import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
 import {
   useCreateCodebookVariable,
   useSetVariableComponent,
+  useSetVariableOptions,
   useWhereTheAnswerLands,
 } from '../../codebook/useCodebookVariableEdits.ts';
+import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
+import DraftVariableValidationSection from '../../codebook/validation/DraftVariableValidationSection.tsx';
+import {
+  isOptionListToWrite,
+  optionsForShape,
+  optionsShapeFor,
+} from '../../codebook/variableOptions.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -39,12 +48,14 @@ import {
 import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
 import {
   draftUnvalidatedElsewhereMessage,
+  isValidationMap,
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   variableDisplayName,
 } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import VariablePickerField, {
+  type CreateOptionOutcome,
   type VariablePickerOption,
   createdUnassigned,
 } from '../../fields/VariablePickerField.tsx';
@@ -57,6 +68,7 @@ import {
   rowId,
   rowsOf,
   rowTemplate,
+  type RowAsideProps,
   type RowEditorProps,
   type RowListConfig,
   type RowPreviewProps,
@@ -73,7 +85,11 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
+import AttributeValueFields, {
+  ATTRIBUTE_OPTIONS_FIELD,
+} from '../AttributeValueFields.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
+import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
 import {
   controlsForType,
   isCollectableType,
@@ -83,6 +99,15 @@ import {
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
+import FieldPreviewPane from './FieldPreviewPane.tsx';
+import {
+  CREATE_FIRST_REFUSALS,
+  INVENTED_TYPE_NOTICE,
+  NEW_VARIABLE,
+  NEW_VARIABLE_NAME,
+  NEW_VARIABLE_VALIDATION,
+  useInventingAttribute,
+} from './inventedAttribute.ts';
 
 /**
  * Where an interface that holds a whole form keeps it.
@@ -95,37 +120,11 @@ const DEFAULT_FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 
 /**
- * The picker option that stands for an attribute that does not exist yet.
- *
- * A sentinel rather than a second control, because "which attribute does this
- * field collect?" is one question however it is answered — and a researcher
- * who has just looked through the list for a name and not found it is already
- * looking at the place to say so. It is never written to the protocol:
- * `useCommitFormField` replaces it with the created attribute's own id before
- * the row is committed.
- *
- * Spelled with a `#`, which is the whole of why this value and not another
- * one. An attribute's record key is the researcher's — `VariableNameSchema` is
- * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this section mints are only what IT
- * creates, so an imported or hand-written protocol may key an attribute
- * anything that regex allows. A sentinel inside that alphabet is a name the
- * codebook may legally hold: the picker would then offer the real attribute
- * and this option under one value, choosing the attribute would read as a
- * request to invent one, and saving would create a second attribute beside it.
- * `#` is outside the alphabet, so no attribute can ever be called this.
+ * The kind of answer an invented attribute holds, asked outright here — the
+ * one part of an invention this family decides that the composer's does not,
+ * where it follows from the input control instead. Its name and its rules are
+ * the shared keys, and mean the same thing on either row.
  */
-const NEW_VARIABLE = '#create-new-attribute';
-
-/**
- * Row keys that describe the CODEBOOK rather than the field.
- *
- * A form field holds only its attribute, its question and its hints; what that
- * attribute is called, what kind of answer it holds and which control collects
- * it all belong to the codebook. They are authored here because this is where
- * the researcher is looking, written through `useCommitFormField`, and stripped
- * from the row before it reaches the protocol.
- */
-const NEW_VARIABLE_NAME = '_newVariableName';
 const NEW_VARIABLE_TYPE = '_newVariableType';
 const INPUT_CONTROL = '_component';
 
@@ -150,8 +149,7 @@ const renderInputControlsLink = (chunks: ReactNode) => (
 const messages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.formFields.atLeastOne',
-    defaultMessage:
-      'Add at least one field. A form with no fields collects nothing.',
+    defaultMessage: 'You must create at least one item.',
     description:
       'Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member.',
   },
@@ -175,20 +173,6 @@ const messages = defineMessages({
       'Two fields collect the same attribute. Each attribute may be collected once per form.',
     description:
       'Refusal shown above a form’s list of fields when two of them record their answers under the same attribute, which would leave only one of the answers.',
-  },
-  createWithValuesFirst: {
-    id: 'protocolBuilder.formFields.createWithValuesFirst',
-    defaultMessage:
-      'Create this attribute and the values it offers before adding the field that collects it.',
-    description:
-      'Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
-  },
-  createWithSettingsFirst: {
-    id: 'protocolBuilder.formFields.createWithSettingsFirst',
-    defaultMessage:
-      'Create this attribute and what it accepts before adding the field that collects it.',
-    description:
-      'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
   },
   title: {
     id: 'protocolBuilder.formFields.title',
@@ -316,31 +300,6 @@ const messages = defineMessages({
     description:
       'Refusal shown under the kind-of-answer control when nothing has been chosen.',
   },
-  newNameLabel: {
-    id: 'protocolBuilder.formFields.newNameLabel',
-    defaultMessage: 'Attribute name',
-    description:
-      'Label of the field naming an attribute the researcher is inventing.',
-  },
-  newNameHint: {
-    id: 'protocolBuilder.formFields.newNameHint',
-    defaultMessage:
-      'How this attribute is named in the codebook and in exported data.',
-    description:
-      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards.',
-  },
-  newNamePlaceholder: {
-    id: 'protocolBuilder.formFields.newNamePlaceholder',
-    defaultMessage: 'Nickname',
-    description:
-      'Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored.',
-  },
-  newNameRequired: {
-    id: 'protocolBuilder.formFields.newNameRequired',
-    defaultMessage: 'Name the attribute this field collects.',
-    description:
-      'Refusal shown under the new-attribute name field when it has been left empty.',
-  },
   promptLabel: {
     id: 'protocolBuilder.formFields.promptLabel',
     defaultMessage: 'Question text',
@@ -416,12 +375,6 @@ const messages = defineMessages({
     description:
       'Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute.',
   },
-  createNewOption: {
-    id: 'protocolBuilder.formFields.createNewOption',
-    defaultMessage: 'Create a new attribute…',
-    description:
-      'The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis.',
-  },
   attributeLabel: {
     id: 'protocolBuilder.formFields.attributeLabel',
     defaultMessage: 'Attribute',
@@ -442,7 +395,7 @@ const messages = defineMessages({
   attributeTaken: {
     id: 'protocolBuilder.formFields.attributeTaken',
     defaultMessage:
-      'Another field in this form already collects this attribute. Choose a different one, or edit that field instead.',
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     description:
       'Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen.',
   },
@@ -466,13 +419,6 @@ const messages = defineMessages({
     description:
       'Warning body explaining why the input-control list is narrow for an attribute that already exists. variableType is the attribute’s kind, already translated.',
   },
-  newTypeNotice: {
-    id: 'protocolBuilder.formFields.newTypeNotice',
-    defaultMessage:
-      'The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).',
-    description:
-      'Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated.',
-  },
 });
 
 const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
@@ -484,11 +430,11 @@ const MALFORMED_FIELD = createMessageError(messages.malformedField);
 const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
 const CREATE_WITH_VALUES_FIRST = createMessageError(
-  messages.createWithValuesFirst,
+  CREATE_FIRST_REFUSALS.createWithValuesFirst,
 );
 
 const CREATE_WITH_SETTINGS_FIRST = createMessageError(
-  messages.createWithSettingsFirst,
+  CREATE_FIRST_REFUSALS.createWithSettingsFirst,
 );
 
 const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
@@ -886,6 +832,7 @@ export default function FormFieldsSection({
     rowUnderEdit,
     intl,
   );
+  const expandFormField = useExpandFormField(codebookSubject);
   const refuseRowIssue = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
@@ -902,18 +849,23 @@ export default function FormFieldsSection({
     () => ({
       Preview: FormFieldPreview,
       Editor: FormFieldEditor,
+      Aside: FormFieldPreviewPane,
       addTitle: messages.addTitle,
       editTitle: messages.editTitle,
       formId: 'form-field-editor',
       name: fieldsPath,
+      // The answers the attribute already offers, so the save can tell a list
+      // the researcher WROTE from the one the control was seeded with — see
+      // `useCommitFormField`.
+      expand: expandFormField,
       beforeSave: async (row, context) => {
         const issues = refuseRowIssue(row, context);
         if (issues !== undefined) return { refused: { fieldErrors: issues } };
-        return commitCodebookHalf(row);
+        return commitCodebookHalf(row, context);
       },
       normalize: normalizeFormField,
     }),
-    [commitCodebookHalf, fieldsPath, refuseRowIssue],
+    [commitCodebookHalf, expandFormField, fieldsPath, refuseRowIssue],
   );
   const scope = useMemo(
     () => ({
@@ -987,11 +939,50 @@ function normalizeFormField(value: RowValues): RowValues {
   const {
     [NEW_VARIABLE_NAME]: _name,
     [NEW_VARIABLE_TYPE]: _type,
+    [NEW_VARIABLE_VALIDATION]: _validation,
     [INPUT_CONTROL]: _component,
+    [ATTRIBUTE_OPTIONS_FIELD]: _options,
     ...field
   } = cleaned;
   if (field.showValidationHints === false) delete field.showValidationHints;
   return field;
+}
+
+/**
+ * The row as its dialog opens on it, carrying the answers its attribute holds.
+ *
+ * `AttributeValueFields` seeds the answers control from the codebook, so the
+ * row ends up holding the attribute's whole list whether or not the researcher
+ * touched it. Recorded here, the list is handed back to the save as
+ * `openedOn`, which is the only way that save can tell a list somebody WROTE
+ * from one they were merely shown — and a save about the question's wording
+ * that wrote the seeded snapshot back would take away an answer a collaborator
+ * had added in the meantime. `useOptionsRowCommit` does the same for the
+ * prompt families that author a list the same way.
+ */
+function useExpandFormField(
+  codebookSubject: CodebookSubject | undefined,
+): (row: RowValues) => RowValues {
+  const protocolContext = useProtocolContext();
+
+  return useCallback(
+    (row: RowValues): RowValues => {
+      const variableId = typeof row.variable === 'string' ? row.variable : '';
+      if (codebookSubject === undefined || variableId === '') return row;
+      const held = variablesForSubject(protocolContext, codebookSubject)[
+        variableId
+      ];
+      const asOpened =
+        held === undefined ? undefined : Reflect.get(held, 'options');
+      // Absent stays absent: a yes-or-no attribute that names no answers
+      // carries no `options` key at all, and a row holding the key with
+      // nothing under it is not the same row.
+      return asOpened === undefined
+        ? row
+        : { ...row, [ATTRIBUTE_OPTIONS_FIELD]: asOpened };
+    },
+    [codebookSubject, protocolContext],
+  );
 }
 
 /**
@@ -1009,10 +1000,11 @@ function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
   rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
-): (row: RowValues) => Promise<RowSaveOutcome> {
+): (row: RowValues, context: RowSaveContext) => Promise<RowSaveOutcome> {
   const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
+  const setOptions = useSetVariableOptions();
   // Both writes below are round trips, and both are ABOUT the attribute the
   // row's picker names, which is the attribute the row commits: the dialog is
   // the only thing that can change a row of a stage this editor holds. One
@@ -1023,7 +1015,10 @@ function useCommitFormField(
   );
 
   return useCallback(
-    async (value: RowValues): Promise<RowSaveOutcome> => {
+    async (
+      value: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       // An attribute the codebook editor has to author is only ever made
       // there, so nothing here can create one from a name and a type. Said in
       // its own words rather than left to the schema, which would answer a
@@ -1078,6 +1073,60 @@ function useCommitFormField(
                 },
               }
             : { refused: { formErrors: [outcome.message] } };
+        }
+        // The answers the attribute offers, which this row authored inline
+        // under the question that asks for them. After the control, because
+        // the control is what decides whether the attribute holds a list at
+        // all — a boolean moved to a toggle holds none, and a list written
+        // before that move would be written onto a shape that cannot carry it.
+        //
+        // Filed on the list itself, where the researcher typed it: the
+        // refusals it can earn are about the values — an interface that owns
+        // them, a collaborator holding the section — and they are what has to
+        // be corrected.
+        const draftOptions = value[ATTRIBUTE_OPTIONS_FIELD];
+        if (draftOptions !== undefined && codebookSubject !== undefined) {
+          const held = variablesForSubject(protocolContext, codebookSubject)[
+            variableId
+          ];
+          // The list this row opened holding, and only while it still collects
+          // the attribute it opened on: a picker moved elsewhere re-seeds the
+          // control from THAT attribute, and what the row opened on says
+          // nothing about the list on screen.
+          const boundAsOpened = context.openedOn.variable === variableId;
+          const asOpened = boundAsOpened
+            ? context.openedOn[ATTRIBUTE_OPTIONS_FIELD]
+            : held === undefined
+              ? undefined
+              : Reflect.get(held, 'options');
+          // Two blank answers are what a researcher who has written nothing
+          // sees AND what one who has just cleared both sees, and those save
+          // differently — so the list the row opened on settles it, the same
+          // way the codebook's own editor settles it.
+          const writing = optionsForShape(
+            optionsShapeFor(held?.type, component),
+            draftOptions,
+            asOpened,
+          );
+          // Nothing the researcher wrote, so nothing to write: the control was
+          // showing them the codebook's own answers and they left them alone.
+          // A write of the same list is still a revision a collaborator has to
+          // merge — and one made from a stale seed would take away an answer
+          // they had added since this dialog opened.
+          if (!boundAsOpened || !isEqual(writing, asOpened)) {
+            const written = await setOptions(
+              codebookSubject,
+              variableId,
+              writing,
+            );
+            if (written.status === 'refused') {
+              return {
+                refused: {
+                  fieldErrors: { [ATTRIBUTE_OPTIONS_FIELD]: written.message },
+                },
+              };
+            }
+          }
         }
         // The control belongs to the attribute rather than to the field, so
         // this write reaches every form that collects it — and the row it was
@@ -1137,11 +1186,39 @@ function useCommitFormField(
         };
       }
 
-      const outcome = await createVariable({ name, type, component });
+      // The rules go with the create, as Architect's own does
+      // (`Form/fieldCommit.ts:168-172`): a researcher who has just said this
+      // answer is required said it about the attribute being made, and a
+      // second write afterwards is a save that can half succeed.
+      const validation = value[NEW_VARIABLE_VALIDATION];
+      // And so do the two words a yes-or-no answer offers, for the same
+      // reason: they were written beside the question in the same gesture as
+      // the name, and a second write afterwards is a save that can half
+      // succeed. `optionsForShape` settles the one question the draft cannot —
+      // two blank fields are what a researcher who has written nothing sees,
+      // and an attribute that names neither answer is the one that offers Yes
+      // and No, which the schema spells as no `options` key at all.
+      const invented = optionsForShape(
+        optionsShapeFor(type, component),
+        value[ATTRIBUTE_OPTIONS_FIELD],
+        undefined,
+      );
+      const outcome = await createVariable({
+        name,
+        type,
+        component,
+        ...(isValidationMap(validation) && Object.keys(validation).length > 0
+          ? { validation }
+          : {}),
+        ...(isOptionListToWrite(invented) ? { options: invented } : {}),
+      });
       if (outcome.status === 'refused') {
-        return {
-          refused: { fieldErrors: { [NEW_VARIABLE_NAME]: outcome.message } },
-        };
+        // On the picker, which is where the name was typed and the only
+        // control on this surface that is about the attribute's existence.
+        // The name box this used to be filed against is gone: inventing an
+        // attribute is now one act inside the picker's own window, which has
+        // closed by the time a deferred create is refused.
+        return { refused: { fieldErrors: { variable: outcome.message } } };
       }
       // Which codebook the attribute went into was decided when the researcher
       // pressed Add, and a collaborator can repoint the stage at another type
@@ -1378,9 +1455,22 @@ function hasUnvalidatedUseFor(
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
+  const protocolContext = useProtocolContext();
+  const { readOnly } = useStageEditorForm();
   const { subject, rowUnderEdit } = useFormFieldsScope();
+  // The attributes a comparison rule may be pointed at, for the validation
+  // section below.
+  const subjectVariables = useMemo(
+    () =>
+      subject === undefined
+        ? {}
+        : variablesForSubject(protocolContext, subject),
+    [protocolContext, subject],
+  );
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  const inventedName =
+    asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
   const typeOptions = useMemo(
     () =>
       TYPE_OPTIONS.map(({ value, label }) => ({
@@ -1401,10 +1491,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
+  // The control the row holds right now, which is what the codebook will
+  // record — so it is also what decides which list of answers the attribute
+  // has (a boolean moved to a toggle has none).
+  const liveControl = asString(useRowValue(INPUT_CONTROL));
   useControlThatFollowsTheAttribute(
     control.binding,
     control.seeded,
-    asString(useRowValue(INPUT_CONTROL)),
+    liveControl,
   );
   // What every codebook write this row makes is about. Written on every render
   // rather than from an effect, the way the shared list keeps its own view of
@@ -1442,26 +1536,19 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             required={intl.formatMessage(messages.newTypeRequired)}
           />
         )}
-        {inventing && !inventingInTheEditor && (
-          <Field<typeof InputField>
-            name={NEW_VARIABLE_NAME}
-            component={InputField}
-            label={intl.formatMessage(messages.newNameLabel)}
-            hint={intl.formatMessage(messages.newNameHint)}
-            placeholder={intl.formatMessage(messages.newNamePlaceholder)}
-            initialValue={asString(item[NEW_VARIABLE_NAME]) ?? ''}
-            required={intl.formatMessage(messages.newNameRequired)}
-          />
-        )}
-        {/* The input control belongs to an attribute that exists. While one
-            is still being invented in the codebook editor, there is nothing
-            yet for a control to be chosen for. */}
-        {!inventingInTheEditor && <InputControlField control={control} />}
         <AttributeCodebookControls
           subject={subject}
           committedVariable={item.variable}
           componentField={INPUT_CONTROL}
-          {...(inventingInTheEditor ? { inventingType: newType } : {})}
+          {...(inventing
+            ? {
+                inventing: {
+                  type: newType,
+                  name: inventedName,
+                  rulesField: NEW_VARIABLE_VALIDATION,
+                },
+              }
+            : {})}
         />
       </Section>
       <Section
@@ -1495,9 +1582,65 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           inline
           initialValue={item.showValidationHints === true}
         />
+        {/* Last in this section, as Architect has it
+            (`sections/Form/FieldFields.tsx` puts `InputControlFields` after
+            the validation-hints toggle): how the participant answers follows
+            what they are asked. The control belongs to an attribute that
+            exists — while one is still being invented in the codebook editor
+            there is nothing yet for a control to be chosen for. */}
+        {!inventingInTheEditor && <InputControlField control={control} />}
       </Section>
+      {/* The answers the attribute offers, under the question that asks for
+          them, as Architect had them
+          (`sections/Form/VariableDefinitionFields.tsx`'s "Choice values" and
+          "Boolean values"). Written to the codebook attribute by this row's
+          own save. */}
+      <AttributeValueFields
+        subject={subject}
+        variableId={control.chosen === '' ? undefined : control.chosen}
+        rowComponent={liveControl ?? ''}
+        {...(inventing && !inventingInTheEditor ? { invented: newType } : {})}
+      />
+      {/* Architect's own last section of this dialog
+          (`sections/Form/FieldFields.tsx`): the rules the participant's answer
+          has to satisfy, authored where the question is rather than behind a
+          button. They belong to the codebook attribute, so a bound attribute's
+          rules commit under the codebook section's own lock; an attribute this
+          row is still inventing has no record to write to, and its rules ride
+          along with the create. */}
+      {inventing
+        ? isCollectableType(newType) &&
+          !inventingInTheEditor && (
+            <DraftVariableValidationSection
+              entity={subject?.entity ?? 'node'}
+              variableType={newType}
+              variableName={inventedName}
+              rulesField={NEW_VARIABLE_VALIDATION}
+              initialValue={item[NEW_VARIABLE_VALIDATION]}
+              allVariables={subjectVariables}
+              disabled={readOnly}
+            />
+          )
+        : control.chosen !== '' && (
+            <CodebookVariableValidationSection
+              subject={subject}
+              variableId={control.chosen}
+            />
+          )}
     </>
   );
+}
+
+/**
+ * The preview beside this family's fields.
+ *
+ * Here rather than in the pane because whose codebook the form collects into
+ * is the SECTION's answer — a Family Pedigree names its node type somewhere a
+ * row could not find — and the shared list threads no props of its own.
+ */
+function FormFieldPreviewPane({ item }: RowAsideProps) {
+  const { subject } = useFormFieldsScope();
+  return <FieldPreviewPane subject={subject} item={item} />;
 }
 
 /**
@@ -1633,7 +1776,7 @@ function InputControlField({
         (inventing ? (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              {intl.formatMessage(messages.newTypeNotice, {
+              {intl.formatMessage(INVENTED_TYPE_NOTICE, {
                 variableType: intl.formatMessage(typeLabel),
                 strong: renderStrong,
               })}
@@ -1782,16 +1925,20 @@ function AttributePicker({
     useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const inventing = useInventingAttribute(item);
+  const inventedName =
+    asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
+  const inventedType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  const namesInUse = useSubjectVariableNames(subject);
 
   const roleMap = useUnvalidatedWriterMap(answeredFor);
 
   const options = useMemo(() => {
-    // The ONLY way to an empty list: every other path appends the
-    // create-a-new-one sentinel, so a pool with nothing in it still has one
-    // option. It is unreachable from the researcher's side — the section is
-    // disabled without a subject, so no row dialog can be opened — and the
-    // picker is left to say what an empty list means rather than a second
-    // sentence being written for a state nothing can render.
+    // Nothing to offer and nothing to invent, which the picker says for
+    // itself. Unreachable from the researcher's side — the section is disabled
+    // without a subject, so no row dialog can be opened — which is why no
+    // sentence is written for it here.
     if (subject === undefined) return NO_OPTIONS;
     const siblings = new Set(
       rowsOf(fields)
@@ -1809,36 +1956,78 @@ function AttributePicker({
         label: variable.name,
         type: variable.type,
       }));
-    return [
-      ...excludeUnvalidatedUses(roleMap, subject, pool, committed).filter(
-        ({ value }) =>
-          value === committed ||
-          // A slot bound in this session writes unvalidated just as a saved one
-          // does; the protocol simply does not hold it yet. Asked the same way
-          // as the save-time gate, so the picker cannot offer what the dialog
-          // is about to refuse.
-          (!siblings.has(value) &&
-            !draftUnvalidated.has(value) &&
-            // And nothing the interface around this form collects itself: a
-            // field bound to one is a question no participant is ever asked.
-            !reserved.has(value)),
-      ),
-      {
-        value: NEW_VARIABLE,
-        label: intl.formatMessage(messages.createNewOption),
-      },
-    ];
+    return excludeUnvalidatedUses(roleMap, subject, pool, committed).filter(
+      ({ value }) =>
+        value === committed ||
+        // A slot bound in this session writes unvalidated just as a saved one
+        // does; the protocol simply does not hold it yet. Asked the same way
+        // as the save-time gate, so the picker cannot offer what the dialog
+        // is about to refuse.
+        (!siblings.has(value) &&
+          !draftUnvalidated.has(value) &&
+          // And nothing the interface around this form collects itself: a
+          // field bound to one is a question no participant is ever asked.
+          !reserved.has(value)),
+    );
   }, [
     committed,
     draftUnvalidated,
     editIndex,
     fields,
-    intl,
     protocolContext,
     reserved,
     roleMap,
     subject,
   ]);
+
+  /**
+   * The attribute being invented, as the one thing the picker can show for it.
+   *
+   * The control shows what the row holds, and while the row is inventing
+   * something that is a name and nothing else — so the option standing for it
+   * is offered only while it is held, and carries the kind of answer as soon
+   * as the researcher has chosen one, which is what colours the pill.
+   */
+  const offered = useMemo(
+    () =>
+      inventing
+        ? [
+            ...options,
+            {
+              value: NEW_VARIABLE,
+              label: inventedName,
+              ...(isCollectableType(inventedType)
+                ? { type: inventedType }
+                : {}),
+            },
+          ]
+        : options,
+    [inventedName, inventedType, inventing, options],
+  );
+
+  /**
+   * Taking the picker's create row, which here decides nothing and promises
+   * everything.
+   *
+   * The attribute is not written now. What kind of answer it holds and which
+   * control collects it are the next two questions this dialog asks, and the
+   * codebook cannot hold an attribute without them — so the name is kept on
+   * the row and `useCommitFormField` creates the attribute as the row is
+   * saved, which is where a refusal from the codebook is reported. Architect
+   * defers the same create for the same reason (`Form/fieldCommit.ts`).
+   *
+   * `created` rather than an outcome of its own, because that is what the
+   * window is being told: the act the researcher asked for has happened as far
+   * as this dialog is concerned, and the window closes on the name they typed.
+   */
+  const invent = useCallback(
+    (variableName: string): Promise<CreateOptionOutcome> => {
+      setFieldValue('variable', NEW_VARIABLE);
+      setFieldValue(NEW_VARIABLE_NAME, variableName);
+      return Promise.resolve({ status: 'created' });
+    },
+    [setFieldValue],
+  );
 
   return (
     <Field<typeof VariablePicker>
@@ -1846,9 +2035,10 @@ function AttributePicker({
       component={VariablePicker}
       label={intl.formatMessage(messages.attributeLabel)}
       hint={intl.formatMessage(messages.attributeHint)}
-      options={options}
+      options={offered}
       initialValue={committed}
       required={intl.formatMessage(messages.attributeRequired)}
+      {...(subject === undefined ? {} : { onCreateOption: invent, namesInUse })}
     />
   );
 }
@@ -1885,16 +2075,4 @@ function FormFieldPreview({ item }: RowPreviewProps) {
       </div>
     </div>
   );
-}
-
-/**
- * Whether this row is inventing an attribute right now.
- *
- * The live choice, falling back to the committed one for the render before the
- * picker has registered — otherwise a row saved mid-invention would open with
- * its name and type controls missing, and saving it again would drop them.
- */
-function useInventingAttribute(item: RowEditorProps['item']): boolean {
-  const chosen = useRowValue('variable');
-  return (chosen ?? item.variable) === NEW_VARIABLE;
 }

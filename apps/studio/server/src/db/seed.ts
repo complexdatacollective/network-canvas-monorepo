@@ -4,12 +4,8 @@ import type pg from 'pg';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import { refreshProjectionsForSessions } from '../network/projections.ts';
-import {
-  developmentKeyConfiguration,
-  loadDevelopmentRoot,
-} from '../pii/development.ts';
-import { verifyEncryptionKeyTransaction } from '../pii/initialize.ts';
-import { type EncryptionKeys, loadEncryptionKeys } from '../pii/keys.ts';
+import { createSecretsCipher, type SecretsCipher } from '../secrets/cipher.ts';
+import type { Keyring } from '../secrets/keyring.ts';
 import { seedAssets, seedTemplates } from './seed/assets.ts';
 import { seedAuditEvents } from './seed/audit.ts';
 import {
@@ -25,7 +21,7 @@ import {
   seedSessionsAndNetworks,
 } from './seed/network.ts';
 import { seedProtocolLine, type SeededVersion } from './seed/protocols.ts';
-import { seedTime } from './seed/rng.ts';
+import { seedBytes, seedTime } from './seed/rng.ts';
 import {
   closeStudy,
   publishConsentDocuments,
@@ -37,6 +33,7 @@ import {
 import {
   SEED_ADMIN_EMAIL,
   SEED_ADMIN_PASSWORD,
+  seedAdminOAuthAccount,
   seedTeams,
 } from './seed/teams.ts';
 
@@ -48,7 +45,7 @@ import {
 // real collected networks, consent, scheduling and messaging, tokens,
 // templates, webhooks, experiments, feedback, monitoring rollups and audit
 // history. Every call pins the faker PRNG below, so two runs produce
-// reproducible synthetic data (encrypted secrets retain fresh random nonces). The wipe and every insert share one transaction, so a
+// byte-identical data. The wipe and every insert share one transaction, so a
 // failure part-way leaves the previous dataset in place rather than an emptied
 // or half-filled one.
 //
@@ -70,12 +67,41 @@ export { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD };
 export type SeedScale = 'tiny' | 'demo' | 'large';
 
 export type SeedOptions = {
+  /**
+   * The deployment's keyring. Required, and required of every caller rather
+   * than defaulted: the seed writes real sealed webhook secrets, and a seed
+   * that quietly invented key material of its own would leave rows the running
+   * instance cannot open — which the boot check would then refuse to serve
+   * behind.
+   */
+  secrets: Keyring;
   /** Defaults to SEED_ADMIN_PASSWORD. */
   adminPassword?: string;
   /** Defaults to `demo`. */
   scale?: SeedScale;
-  /** Registered deployment keys; omitted only for synthetic development data. */
-  encryptionKeys?: EncryptionKeys;
+  /**
+   * Draw the secret envelopes' nonces from the pinned PRNG instead of
+   * `crypto.randomBytes`, so two runs write byte-identical rows. Default
+   * false, and set only by the local development paths and by the tests that
+   * compare two dumps.
+   *
+   * Opt-in because the same command can be pointed at a real deployment:
+   * `scripts/seed.ts --force` seals with THAT deployment's keyring, and a
+   * predictable nonce is a broken nonce whatever the plaintext is worth. The
+   * determinism is a convenience for a local dump comparison, so it is asked
+   * for where the target is known to be local rather than taken by default.
+   */
+  reproducible?: boolean;
+};
+
+export type SeedResult = {
+  /**
+   * Every secret this seed wrote, in plaintext: the webhook signing secrets,
+   * the admin's three OAuth tokens, and each team's protocol API key.
+   * Returned so the dump-and-search test knows what to search the database
+   * for; nothing else needs them, and they are never printed.
+   */
+  plaintextSecrets: string[];
 };
 
 const FAKER_SEED = 20260902;
@@ -136,7 +162,7 @@ async function wipe(client: pg.ClientBase): Promise<void> {
     begin
       for r in
         select tablename from pg_tables
-        where schemaname = current_schema() and tablename NOT IN ('schemaFingerprint', 'encryption_key_verifications', 'credential_audit_events', 'studio_instance', 'user', 'teams')
+        where schemaname = current_schema() and tablename <> 'schemaFingerprint'
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;
@@ -144,12 +170,6 @@ async function wipe(client: pg.ClientBase): Promise<void> {
           execute format('truncate table %I restart identity cascade', r.tablename);
         end if;
       end loop;
-      -- studio_instance is the permanent setup-completion marker. Its two
-      -- ownership FKs are deliberately ON DELETE SET NULL, so remove their
-      -- former synthetic parents after every referencing table is empty rather
-      -- than truncating a parent with CASCADE into the marker.
-      delete from "user";
-      delete from teams;
     end $$;
   `);
 }
@@ -194,17 +214,26 @@ type SeedTotals = {
   sessions: number;
   auditEvents: number;
   anonymousLinks: string[];
+  plaintextSecrets: string[];
 };
 
 async function populate(
   client: pg.PoolClient,
   adminPassword: string,
   scale: (typeof SCALES)[SeedScale],
-  encryptionKeys: EncryptionKeys,
+  cipher: SecretsCipher,
 ): Promise<SeedTotals> {
   await wipe(client);
 
   const teams = await seedTeams(client, adminPassword);
+  // One linked Google account for the admin, so every one of the three secret
+  // stores has rows in a seeded database. Beside the team seeding rather than
+  // inside it: the tokens are sealed, and `seedTeams` has no business knowing
+  // about the cipher.
+  const oauthTokens = await seedAdminOAuthAccount(client, cipher, {
+    userId: teams[0]!.adminUserId,
+    createdAt: seedTime(-399),
+  });
   const totals: SeedTotals = {
     teams: teams.length,
     studies: 0,
@@ -213,12 +242,14 @@ async function populate(
     sessions: 0,
     auditEvents: 0,
     anonymousLinks: [],
+    plaintextSecrets: [...oauthTokens],
   };
 
   for (const team of teams) {
     await scopeToTeam(client, team.id);
 
-    const line = await seedProtocolLine(client, team.id);
+    const line = await seedProtocolLine(client, team.id, cipher);
+    totals.plaintextSecrets.push(line.plaintextAssetKey);
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );
@@ -255,15 +286,17 @@ async function populate(
       earliestSessionByParticipant(sessions),
     );
 
-    await seedScheduling(client, team, studies, encryptionKeys);
+    await seedScheduling(client, team, studies);
     await seedApiTokens(client, team, studies);
-    await seedWebhooks(
-      client,
-      team,
-      studies,
-      sessions,
-      withdrawals,
-      encryptionKeys,
+    totals.plaintextSecrets.push(
+      ...(await seedWebhooks(
+        client,
+        team,
+        studies,
+        sessions,
+        withdrawals,
+        cipher,
+      )),
     );
     await seedExperiments(client, team, studies, sessions);
     await seedFeedback(client, team, studies);
@@ -294,32 +327,30 @@ async function populate(
 
 export async function seed(
   pool: pg.Pool,
-  options: SeedOptions = {},
-): Promise<void> {
+  options: SeedOptions,
+): Promise<SeedResult> {
   const adminPassword = options.adminPassword ?? SEED_ADMIN_PASSWORD;
   const scale = SCALES[options.scale ?? 'demo'];
-  const encryptionKeys =
-    options.encryptionKeys ??
-    (await loadEncryptionKeys(
-      developmentKeyConfiguration,
-      loadDevelopmentRoot,
-    ));
   faker.seed(FAKER_SEED);
+
+  // The one place in the application that can hand the cipher its randomness,
+  // and only when the caller asks: every other caller takes `crypto.randomBytes`,
+  // because a nonce that is not unpredictable is a broken nonce. With
+  // `reproducible`, the whole corpus is synthetic and local, and `seed.test.ts`
+  // seeds two scratch schemas and compares ordered dumps of every table (all
+  // but better-auth's scrypt password hash, which no PRNG seed reaches) — so
+  // the seed draws its nonces from the same pinned PRNG as everything else it
+  // writes. Nothing outside this module may pass `random`.
+  const cipher = createSecretsCipher(
+    options.secrets,
+    options.reproducible === true ? { random: seedBytes } : {},
+  );
 
   const client = await pool.connect();
   let totals: SeedTotals;
   try {
     await client.query('begin');
-    const role = await client.query<{ role: string }>(
-      'SELECT current_user AS role',
-    );
-    const owner = role.rows[0]?.role;
-    if (!owner || owner === 'studio_app' || owner === 'studio_maintenance')
-      throw new Error('Synthetic seeding requires the schema owner.');
-    await client.query("SELECT set_config('role', 'studio_maintenance', true)");
-    await verifyEncryptionKeyTransaction(client, encryptionKeys, false);
-    await client.query("SELECT set_config('role', $1, true)", [owner]);
-    totals = await populate(client, adminPassword, scale, encryptionKeys);
+    totals = await populate(client, adminPassword, scale, cipher);
     await client.query('commit');
   } catch (error) {
     await client.query('rollback');
@@ -343,4 +374,6 @@ export async function seed(
   ];
   // oxlint-disable-next-line no-console -- the deploy-time and dev-boot seed's own progress output
   console.log(lines.join('\n'));
+
+  return { plaintextSecrets: totals.plaintextSecrets };
 }

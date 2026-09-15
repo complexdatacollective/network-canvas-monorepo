@@ -1,31 +1,17 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useCallback } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import {
-  EdgeColorSequence,
-  NodeColorSequence,
-} from '@codaco/protocol-validation';
-import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
-import CodebookEntityEditor from '../../codebook/components/CodebookEntityEditor.tsx';
-import type { CodebookEntityDraft } from '../../codebook/editing.ts';
-import { useCreateCodebookEntity } from '../../codebook/writes.ts';
 import {
   type EntitySubject,
   EntitySubjectPickerField,
   type EntityTypeChangeConfirmation,
-  useConfirmEntityTypeChange,
 } from '../../fields/EntityTypePickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useAskStageHasAnyValue } from '../../form/stageFormHooks.ts';
-import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import {
@@ -59,12 +45,6 @@ const messages = defineMessages({
     id: 'protocolBuilder.subjectSection.nodeFieldHint',
     defaultMessage: 'Select the type of node that this stage will create.',
     description: 'Guidance under the node-type control.',
-  },
-  nodeCreateLabel: {
-    id: 'protocolBuilder.subjectSection.nodeCreateLabel',
-    defaultMessage: 'Create new node type',
-    description:
-      'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens.',
   },
   nodeChangeTitle: {
     id: 'protocolBuilder.subjectSection.nodeChangeTitle',
@@ -121,12 +101,6 @@ const messages = defineMessages({
     defaultMessage: 'Edge type',
     description:
       'Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each.',
-  },
-  edgeCreateLabel: {
-    id: 'protocolBuilder.subjectSection.edgeCreateLabel',
-    defaultMessage: 'Create new edge type',
-    description:
-      'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens.',
   },
   edgeChangeTitle: {
     id: 'protocolBuilder.subjectSection.edgeChangeTitle',
@@ -189,7 +163,6 @@ type SubjectWords = Readonly<{
   fieldLabel: MessageDescriptor;
   /** Absent where Architect gives the control no hint — the edge type. */
   fieldHint?: MessageDescriptor;
-  createLabel: MessageDescriptor;
   /** What the researcher is asked before a change that costs them the stage. */
   changeTitle: MessageDescriptor;
   changeDescription: MessageDescriptor;
@@ -212,7 +185,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     description: messages.nodeDescription,
     fieldLabel: messages.nodeFieldLabel,
     fieldHint: messages.nodeFieldHint,
-    createLabel: messages.nodeCreateLabel,
     changeTitle: messages.nodeChangeTitle,
     changeDescription: messages.nodeChangeDescription,
     changeConfirm: messages.nodeChangeConfirm,
@@ -224,7 +196,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     title: messages.edgeTitle,
     description: messages.edgeDescription,
     fieldLabel: messages.edgeFieldLabel,
-    createLabel: messages.edgeCreateLabel,
     changeTitle: messages.edgeChangeTitle,
     changeDescription: messages.edgeChangeDescription,
     changeConfirm: messages.edgeChangeConfirm,
@@ -233,43 +204,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     firstChoiceConfirm: messages.edgeFirstChoiceConfirm,
   }),
 });
-
-/**
- * A brand-new type the researcher only has to name.
- *
- * Every property the schema requires is pre-filled, because the point of
- * creating a type from inside a stage is to get back to configuring the stage:
- * the colour, shape and icon are all editable afterwards from the codebook.
- *
- * The colour is the next one along the palette, counting the types the
- * codebook already holds — two types drawn in the same colour are two a
- * participant cannot tell apart on a canvas, and picking one out of a palette
- * is not what creating a type from inside a stage is for. It wraps once the
- * palette runs out, which is the point at which no distinct colour is left to
- * give.
- */
-export function newEntityDraft(
-  entity: SubjectEntity,
-  existingTypes: number,
-): CodebookEntityDraft {
-  if (entity === 'edge') {
-    const palette = EdgeColorSequence;
-    return {
-      name: '',
-      color: palette[existingTypes % palette.length] ?? palette[0],
-    };
-  }
-  const palette = NodeColorSequence;
-  return {
-    name: '',
-    color: palette[existingTypes % palette.length] ?? palette[0],
-    shape: { default: 'circle' },
-    // The icon an interface draws on the control that adds one of these. A
-    // node type is a member of the network, and this is the one every
-    // interface has always shown for one.
-    icon: 'add-a-person',
-  };
-}
 
 export type SubjectSectionProps = Readonly<{
   entity: SubjectEntity;
@@ -371,216 +305,8 @@ export default function SubjectSection({
           hint={words.fieldHint && intl.formatMessage(words.fieldHint)}
           required={REQUIRED}
         />
-        <CreateSubjectType
-          entity={entity}
-          words={words}
-          intl={intl}
-          confirmChange={confirmChange}
-        />
       </BuilderSection>
       {filter && <NetworkFilterSection />}
-    </>
-  );
-}
-
-/**
- * Creates a codebook type and selects it on this stage.
- *
- * The type is created through the host's own atomic create, which is what
- * puts a new section into the protocol and mints its id. Selecting it
- * afterwards is an ordinary form
- * change rather than part of that edit, and deliberately so: a host keeps the
- * stored protocol valid, and a stage that has just been pointed at a brand-new
- * type has no prompts, no form and no panels for it — an invalid stage, which
- * a host is right to refuse. Saved as one edit this could never succeed for
- * any interface whose schema requires the configuration the change throws
- * away, which is all of them. So the type lands in the codebook, the stage
- * points at it locally, and the researcher configures it before saving.
- *
- * Which is why the SELECTION is asked about, and separately from the create.
- * It moves the stage's subject exactly as the picker does, and costs the stage
- * exactly what the picker costs it, so it asks the picker's own question — a
- * researcher who created a type to use somewhere else, or who realises what it
- * would cost while reading the question, keeps the stage they had and the type
- * they made.
- */
-function CreateSubjectType({
-  entity,
-  words,
-  intl,
-  confirmChange,
-}: Readonly<{
-  entity: SubjectEntity;
-  words: SubjectWords;
-  intl: IntlShape;
-  /** The picker's own question, asked before this selects the new type. */
-  confirmChange: () => EntityTypeChangeConfirmation | undefined;
-}>) {
-  const { readOnly, storeApi } = useStageEditorForm();
-  const codebook = useProtocolContext().codebook;
-  const createEntity = useCreateCodebookEntity();
-  const [session, setSession] = useState<{
-    key: string;
-    typeId: string;
-  } | null>(null);
-  /**
-   * Whether a create is in flight, which is a fact this host has for itself:
-   * the editor owns the draft and this owns request execution, so the request
-   * passes through here on its way out and its answer on the way back.
-   */
-  const [submitting, setSubmitting] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  /**
-   * Every type name the protocol already carries, of BOTH kinds.
-   *
-   * Node and edge types share one namespace — the rule Architect's own type
-   * editor has always applied — because a name is how a researcher tells one
-   * from another everywhere it matters: the codebook lists them by name, an
-   * export names them, and a rule or a form naming one reads as naming the
-   * other. Judged against the kind being created alone, a node could be given
-   * an edge's name, and the editor's deliberate folding of case and Unicode
-   * form would let a pair through that nobody reading the codebook could tell
-   * apart.
-   *
-   * Read map by map rather than by a computed key: the codebook's two maps
-   * hold different definition types, and one indexed by a union is a union of
-   * maps nothing can be read out of without narrowing it again.
-   */
-  const existingEntityNames = useMemo(
-    () =>
-      [
-        ...Object.values(codebook.node ?? {}),
-        ...Object.values(codebook.edge ?? {}),
-      ].map((definition) => definition.name),
-    [codebook],
-  );
-
-  const confirmEntityTypeChange = useConfirmEntityTypeChange();
-
-  const selectCreatedType = useCallback(
-    (typeId: string) => {
-      // Written into the form rather than dispatched, so it is the researcher's
-      // own unsaved change — which is what lets the subject-change reset run
-      // over it and clear the configuration that belonged to the old type.
-      const select = () =>
-        storeApi
-          .getState()
-          .setFieldValue(
-            'subject',
-            entity === 'node'
-              ? { entity: 'node', type: typeId }
-              : { entity: 'edge', type: typeId },
-          );
-
-      // Read BEFORE anything moves, like the picker reads it: it is a question
-      // about what the stage is carrying now.
-      const question = confirmChange();
-      if (question === undefined) {
-        select();
-        setSession(null);
-        return;
-      }
-
-      void (async () => {
-        // Asked while the create dialog is still open, and it closes on either
-        // answer: the type has been created and there is nothing left to do in
-        // there, and the dialog outliving the question is what keeps focus on
-        // a live control — the confirm returns focus to the Save it was raised
-        // from, and the dialog then returns it to its own trigger.
-        // The created type travels with the question: a "yes" is judged on the
-        // codebook as it stands when it is given, and a collaborator deleting
-        // this type while the researcher reads the question is exactly what
-        // that judgement is for.
-        const confirmed = await confirmEntityTypeChange(question, {
-          entityType: entity,
-          typeId,
-        });
-        if (confirmed) select();
-        setSession(null);
-      })();
-    },
-    [confirmChange, confirmEntityTypeChange, entity, storeApi],
-  );
-
-  return (
-    <>
-      {/*
-        The trigger goes when editing does, because a create nobody may start
-        is not on offer. An editor already OPEN stays, because the draft inside
-        it is the researcher's own work and nowhere else: they opened it
-        because the type they need does not exist yet, and unmounting it with
-        the trigger would throw the name they were typing away without a word.
-        `CodebookEntityEditor` takes `readOnly` for exactly this — interaction
-        stops, the draft does not — and it is the rule the row dialogs follow
-        when the stage becomes read-only.
-      */}
-      {!readOnly && (
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-        >
-          {intl.formatMessage(words.createLabel)}
-        </Button>
-      )}
-      {session !== null && (
-        <Dialog
-          open
-          title={intl.formatMessage(words.createLabel)}
-          size="readable"
-          // A request in flight refuses every way out, because the dialog is
-          // about to show what the host made of it. Escape, a press outside
-          // and the close button all arrive at `closeDialog`, so refusing
-          // there covers all three — and `dismissible` takes the close button
-          // away rather than leaving a control on screen that does nothing.
-          // Dismissed mid-flight, the handler awaiting the request stays alive
-          // and a success arriving afterwards still selects the new type on
-          // the stage: the researcher would watch everything describing the
-          // old type disappear, for a type they never saw arrive.
-          dismissible={!submitting}
-          closeDialog={() => {
-            if (submitting) return;
-            setSession(null);
-          }}
-          finalFocus={() => triggerRef.current}
-        >
-          <CodebookEntityEditor
-            mode="create"
-            sessionKey={session.key}
-            subject={
-              entity === 'node'
-                ? { entity: 'node', type: session.typeId }
-                : { entity: 'edge', type: session.typeId }
-            }
-            initialDraft={newEntityDraft(
-              entity,
-              Object.keys(codebook[entity] ?? {}).length,
-            )}
-            readOnly={readOnly}
-            existingEntityNames={existingEntityNames}
-            onSubmit={async (document) => {
-              setSubmitting(true);
-              try {
-                return await createEntity(entity, document);
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-            onApplied={(outcome) => {
-              // The id the HOST minted, read off the write: it is the host's to
-              // issue, and the stage has to name the type it actually created.
-              const ref = parseSectionId(outcome.sectionId);
-              if (ref.kind === 'codebookNode' || ref.kind === 'codebookEdge') {
-                selectCreatedType(ref.typeId);
-              }
-            }}
-            onCancel={() => setSession(null)}
-          />
-        </Dialog>
-      )}
     </>
   );
 }

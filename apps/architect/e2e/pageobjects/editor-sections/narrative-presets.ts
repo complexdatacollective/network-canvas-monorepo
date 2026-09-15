@@ -1,7 +1,8 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
+import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 
 // A narrative stage's presets and the permissions beneath them, as
 // `@codaco/protocol-builder` renders them.
@@ -12,76 +13,28 @@ import { addPrompt } from './prompts.js';
 // `NarrativePresetFields` fills that dialog with five always-open groups —
 // there are no capability switches inside it any more, so nothing has to be
 // turned on before it can be filled in:
-// - "Preset identity" holds "Preset name" (`label`).
-// - "Node positions" holds the picker "Position attribute" (`layoutVariable`)
-//   and the button "Create a new position attribute" beside it.
-// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`)
-//   and NO create button: a preset groups by a categorical attribute the
-//   protocol already collects, so there is nothing here to invent.
-// - "Connections" holds the tick list "Connection types shown"
-//   (`edges.display`), and "Highlighted nodes" the tick list "Highlight
-//   attributes" (`highlight`). Both name codebook entries, and both drop the
-//   key entirely when nothing is ticked.
+// - "Preset identity" holds "Preset label" (`label`).
+// - "Node layout" holds the picker "Layout attribute" (`layoutVariable`),
+//   whose create row writes the `layout` attribute itself — a position is
+//   finished by its name, so no editor opens.
+// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`),
+//   which offers no creation at all: a preset groups by a categorical
+//   attribute the protocol already collects, so a fresh one would draw a
+//   single hull holding everybody. Its window has no create row, and its
+//   search box says "Find an attribute…" rather than "Find or create".
+// - "Displayed edges" holds the tick list "Edge types" (`edges.display`), and
+//   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
+//   Both name codebook entries, and both drop the key entirely when nothing is
+//   ticked.
 //
-// The behaviours are no longer one section: what the participant may DO is
-// `CanvasPermissionsSection` ("Canvas interaction" — "Allow drawing on the
-// canvas" at `behaviours.freeDraw`, "Allow moving nodes" at
-// `behaviours.allowRepositioning`), while how the stage arranges nodes when it
-// opens is the shared `NodeLayoutSection` ("Node layout"), which is not a
-// switch at all but a choice of "Layout mode" between "Manual mode" and
-// "Automatic mode" written to `behaviours.automaticLayout`. The Narrative
-// template seeds automaticLayout and allowRepositioning true.
-
-/**
- * Chooses a codebook attribute in one of the preset dialog's pickers.
- *
- * `VariablePickerField` is handed options and no `onCreateOption` here, so it
- * is a native `<select>` over the attributes that exist (or a sentence, and no
- * `<select>` at all, when the type has none of the kind). Where the group
- * offers a `CreateVariableButton`, `createLabel` names it: it opens the
- * codebook's own attribute editor — "Attribute name", submitted with "Create
- * attribute" — in a dialog titled with the button's own label.
- */
-async function chooseAttribute(
-  page: Page,
-  field: Locator,
-  opts: { name: string; createLabel?: string; scope: Locator },
-): Promise<void> {
-  const select = field.locator('select');
-  if (await select.count()) {
-    // Compared whole rather than by substring: an attribute called "group"
-    // must not be answered by an existing "group_size".
-    const offered = await select.locator('option').allInnerTexts();
-    if (offered.includes(opts.name)) {
-      await select.selectOption({ label: opts.name });
-      await expect(field.locator('option:checked')).toHaveText(opts.name);
-      return;
-    }
-  }
-  if (opts.createLabel === undefined) {
-    throw new Error(
-      `The attribute "${opts.name}" is not offered here and this control cannot create one. Add it to the codebook first.`,
-    );
-  }
-  await opts.scope
-    .getByRole('button', { name: opts.createLabel, exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: opts.createLabel,
-    exact: true,
-  });
-  await editor
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(opts.name);
-  await editor
-    .getByRole('button', { name: 'Create attribute', exact: true })
-    .click();
-  // The write goes to the codebook under its section's own lock and the id
-  // comes back afterwards, so the picker holds the new attribute only once the
-  // editor has closed.
-  await editor.waitFor({ state: 'detached' });
-  await expect(field.locator('option:checked')).toHaveText(opts.name);
-}
+// The behaviours are one section again, as released Architect had them:
+// `CanvasPermissionsSection` ("Narrative behaviors") holds three switches, in
+// Architect's order — "Automatic layout" at `behaviours.automaticLayout`,
+// "Free-draw" at `behaviours.freeDraw` and "Allow repositioning" at
+// `behaviours.allowRepositioning`. There is no "Layout mode" list on a
+// narrative stage: the shared `NodeLayoutSection` is the sociogram's. The
+// Narrative template seeds automaticLayout and allowRepositioning true, so the
+// automatic-layout switch opens ON and turning it off is a click.
 
 export async function addNarrativePreset(
   editor: StageEditor,
@@ -98,18 +51,20 @@ export async function addNarrativePreset(
     editor.field('presets'),
     async () => {
       await page
-        .getByRole('textbox', { name: 'Preset name', exact: true })
+        .getByRole('textbox', { name: 'Preset label', exact: true })
         .fill(spec.label);
-      await chooseAttribute(page, editor.field('layoutVariable'), {
-        name: spec.layoutVariable,
-        createLabel: 'Create a new position attribute',
-        scope: editor.section('Node positions'),
-      });
+      await chooseOrCreateAttribute(
+        editor.field('layoutVariable'),
+        spec.layoutVariable,
+      );
       if (spec.groupVariable) {
-        await chooseAttribute(page, editor.field('groupVariable'), {
-          name: spec.groupVariable,
-          scope: editor.section('Node grouping'),
-        });
+        // Chosen and never created: this picker has no create row, so a
+        // grouping attribute the codebook does not hold fails on the row that
+        // is not there rather than being invented behind the spec's back.
+        await chooseAttribute(
+          editor.field('groupVariable'),
+          spec.groupVariable,
+        );
       }
       for (const edgeName of spec.displayEdges ?? []) {
         await editor
@@ -135,14 +90,13 @@ export async function setNarrativeBehaviours(
   if (opts.freeDraw) {
     await editor
       .field('behaviours.freeDraw')
-      .getByRole('switch', { name: 'Allow drawing on the canvas', exact: true })
+      .getByRole('switch', { name: 'Free-draw', exact: true })
       .click();
   }
   if (opts.automaticLayout === false) {
     await editor
       .field('behaviours.automaticLayout')
-      .getByRole('listbox', { name: 'Layout mode', exact: true })
-      .getByRole('option', { name: /^Manual mode/ })
+      .getByRole('switch', { name: 'Automatic layout', exact: true })
       .click();
   }
 }

@@ -40,7 +40,6 @@ export default function TaskExplanationSection() {
         label={intl.formatMessage(
           anonymisationMessages.explanationHeadingLabel,
         )}
-        hint={intl.formatMessage(anonymisationMessages.explanationHeadingHint)}
         placeholder={intl.formatMessage(
           anonymisationMessages.explanationHeadingPlaceholder,
         )}
@@ -51,7 +50,6 @@ export default function TaskExplanationSection() {
         name={BODY_FIELD}
         component={RichTextField}
         label={intl.formatMessage(anonymisationMessages.explanationBodyLabel)}
-        hint={intl.formatMessage(anonymisationMessages.explanationBodyHint)}
         placeholder={intl.formatMessage(
           anonymisationMessages.explanationBodyPlaceholder,
         )}

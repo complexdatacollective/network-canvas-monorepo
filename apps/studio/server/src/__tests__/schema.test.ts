@@ -1,9 +1,17 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { applySchema, computeSchemaFingerprint } from '../../scripts/apply.ts';
+import { JOB_QUEUES, JOB_SCHEMA } from '@codaco/studio-sync/jobs';
+
+import {
+  applySchema,
+  computeSchemaFingerprint,
+  renderJobStatements,
+  renderSchemaStatements,
+} from '../../scripts/apply.ts';
 import {
   readSchemaDocsSection,
   STUDIO_ERD_PATH,
@@ -11,14 +19,23 @@ import {
 } from '../../scripts/schema-docs.ts';
 import { ACCESS_SIDECAR_SQL } from '../db/access.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
+import { createPool } from '../db/pool.ts';
 import {
   checkSchema,
   SIDECARS,
   SCHEMA_TABLES,
   type StaleSchema,
   schemaProblemMessage,
+  staleDatabaseMessage,
 } from '../db/schema.ts';
 import type { DbEnv } from '../env.ts';
+import { createJobClient } from '../jobs/client.ts';
+import { JOB_SCHEMA_VERSION } from '../jobs/queues.ts';
+import {
+  declaredQueueRows,
+  installedQueueRows,
+  queueRowFor,
+} from './support/job-queues.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -45,6 +62,19 @@ describe('fingerprint constant', () => {
 
   it('is resynced by a script package.json declares', () => {
     expect(readManifestScripts()).toHaveProperty('sync-fingerprint');
+  });
+
+  // A pg-boss upgrade or a queue change is a schema change like any other, so
+  // both have to move the fingerprint every process checks at boot.
+  it('covers pg-boss and the queues declared on it', async () => {
+    const jobStatements = renderJobStatements().join('\n');
+    expect(jobStatements).toContain(JSON.stringify(JOB_QUEUES));
+    expect(jobStatements).toContain(`VALUES ('${JOB_SCHEMA_VERSION}')`);
+
+    const publicOnly = createHash('sha256')
+      .update((await renderSchemaStatements()).join('\n'))
+      .digest('hex');
+    expect(await computeSchemaFingerprint()).not.toBe(publicOnly);
   });
 
   it('applies audit immutability after every general privilege grant', () => {
@@ -109,6 +139,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('sections_hold_no_asset_keys');
     expect(readmeSection).toContain('assets_metadata_immutable');
     expect(readmeSection).toContain('asset_references_published_immutable');
     expect(readmeSection).toContain('template_versions_immutable');
@@ -212,6 +243,7 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain('sidecar trigger sections_hold_no_asset_keys');
     expect(svg).toContain('sidecar trigger assets_metadata_immutable');
     expect(svg).toContain(
       'sidecar trigger asset_references_published_immutable',
@@ -355,8 +387,8 @@ describe('generated schema documentation', () => {
     expect(readManifestScripts()).toHaveProperty('generate:erd');
   });
 
-  it.each(['generate:migration', 'db:reset'])(
-    'regenerates before %s executes',
+  it.each(['apply-schema', 'db:reset'])(
+    'regenerates before %s touches the database',
     (script) => {
       expect(readManifestScripts()[script]).toMatch(
         /^pnpm run sync-fingerprint && /,
@@ -365,14 +397,20 @@ describe('generated schema documentation', () => {
   );
 });
 
-async function withScratch(
-  make: (db: DbEnv) => Promise<{ pool: pg.Pool; dispose: () => Promise<void> }>,
-  run: (pool: pg.Pool) => Promise<void>,
+async function withScratch<
+  Scratch extends { pool: pg.Pool; dispose: () => Promise<void> },
+>(
+  make: (db: DbEnv) => Promise<Scratch>,
+  // The scratch itself is the second argument rather than the first because
+  // almost every case here needs only the owner pool; what wants the whole
+  // thing is the case that connects as another role, which needs the scratch
+  // database's own URL.
+  run: (pool: pg.Pool, scratch: Scratch) => Promise<void>,
 ): Promise<void> {
   if (!db) throw new Error('unreachable: probe guaranteed db');
   const scratch = await make(db);
   try {
-    await run(scratch.pool);
+    await run(scratch.pool, scratch);
   } finally {
     await scratch.dispose();
   }
@@ -381,108 +419,11 @@ async function withScratch(
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
-  it('requires versioned history by default for a current development fingerprint', async () => {
-    await withScratch(createScratchDatabase, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query(
-        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
-      );
-      const enrollment = (
-        await pool.query<{ login: string }>('SELECT session_user AS login')
-      ).rows[0]!;
-      expect(
-        await checkSchema(pool, { allowedLogins: [enrollment.login] }),
-      ).toMatchObject({
-        kind: 'stale',
-        reason: 'unversioned',
-        found: SCHEMA_FINGERPRINT,
-      });
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
-    });
-  });
-
-  it('does not accept a view as versioned history', async () => {
-    await withScratch(createScratchDatabase, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query(
-        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
-      );
-      const identity = (
-        await pool.query<{ login: string }>('SELECT session_user AS login')
-      ).rows[0]!;
-      await pool.query(
-        'CREATE SCHEMA studio_migrations; CREATE VIEW studio_migrations.history AS SELECT 1 AS position',
-      );
-      expect(
-        (
-          await pool.query(
-            "SELECT relkind FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'studio_migrations' AND relation.relname = 'history'",
-          )
-        ).rows,
-      ).toEqual([{ relkind: 'v' }]);
-      expect(
-        await checkSchema(pool, { allowedLogins: [identity.login] }),
-      ).toMatchObject({
-        kind: 'stale',
-        reason: 'unsafe-evidence',
-      });
-      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
-        {
-          kind: 'stale',
-          reason: 'unsafe-evidence',
-        },
-      );
-    });
-  });
-
-  it('checks the exact resolved fingerprint namespace behind an empty search-path prefix before reading it', async () => {
-    await withScratch(createScratchDatabase, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query(`CREATE SCHEMA empty_search_path_prefix;
-        CREATE FUNCTION public.fingerprint_namespace_read_trap()
-          RETURNS text LANGUAGE plpgsql AS
-          'BEGIN RAISE EXCEPTION ''fingerprint view read before shape check''; END';
-        ALTER TABLE public."schemaFingerprint"
-          RENAME TO fingerprint_namespace_storage;
-        CREATE VIEW public."schemaFingerprint" AS
-          SELECT id, fingerprint_namespace_read_trap() AS fingerprint, "appliedAt"
-          FROM public.fingerprint_namespace_storage`);
-      const client = await pool.connect();
-      try {
-        await client.query(
-          'SET search_path = empty_search_path_prefix, public',
-        );
-        expect(
-          (
-            await client.query<{ schema: string }>(
-              `SELECT namespace.nspname AS schema
-                 FROM pg_class relation
-                 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-                WHERE relation.oid = to_regclass('"schemaFingerprint"')`,
-            )
-          ).rows,
-        ).toEqual([{ schema: 'public' }]);
-        await expect(
-          client.query('SELECT * FROM "schemaFingerprint"'),
-        ).rejects.toThrow('fingerprint view read before shape check');
-        expect(
-          await checkSchema(client, { allowUnversioned: true }),
-        ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
-      } finally {
-        client.release();
-      }
-    });
-  });
-
   it('reads current on a provisioned schema carrying every table', async () => {
     await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
 
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
 
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
@@ -493,24 +434,19 @@ describe.skipIf(!db)('schema verification', () => {
         'api_tokens',
         'asset_references',
         'assets',
-        'audit_alert_deliveries',
-        'audit_alert_dispatch_budget',
         'audit_alert_outbox',
-        'audit_alert_recipients',
-        'audit_alert_settings',
         'audit_events',
         'audit_export_jobs',
         'command_log',
         'consent_documents',
         'consent_items',
-        'credential_audit_events',
         'drafts',
         'edges',
-        'encryption_key_verifications',
         'experiment_assignments',
         'experiment_exposures',
         'experiments',
         'feedback_reports',
+        'installation',
         'interview_links',
         'interview_sessions',
         'leases',
@@ -523,6 +459,7 @@ describe.skipIf(!db)('schema verification', () => {
         'participant_consents',
         'participant_contact_optouts',
         'participants',
+        'protocol_asset_keys',
         'protocol_drafts',
         'protocol_events',
         'protocol_versions',
@@ -537,7 +474,6 @@ describe.skipIf(!db)('schema verification', () => {
         'session_snapshots',
         'session_stats',
         'studies',
-        'studio_instance',
         'study_role_grants',
         'study_schedules',
         'study_stage_rollups',
@@ -583,18 +519,10 @@ describe.skipIf(!db)('schema verification', () => {
       for (const [, privileges, table, roles] of revocations) {
         for (const privilege of privileges!.split(',').map((p) => p.trim())) {
           for (const role of roles!.split(',').map((r) => r.trim())) {
-            // PUBLIC is ACL grantee 0, not a pg_roles identity accepted by
-            // has_table_privilege. Check its grant directly rather than skip it.
-            const held =
-              role === 'PUBLIC'
-                ? await pool.query<{ held: boolean }>(
-                    `SELECT EXISTS (SELECT 1 FROM pg_class AS relation CROSS JOIN LATERAL aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) AS access WHERE relation.oid = $1::regclass AND access.grantee = 0 AND access.privilege_type = $2) AS held`,
-                    [table, privilege],
-                  )
-                : await pool.query<{ held: boolean }>(
-                    `select has_table_privilege($1, $2, $3) as held`,
-                    [role, table, privilege],
-                  );
+            const held = await pool.query<{ held: boolean }>(
+              `select has_table_privilege($1, $2, $3) as held`,
+              [role, table, privilege],
+            );
             expect(
               held.rows[0]?.held,
               `${role} still holds ${privilege} on ${table}`,
@@ -607,9 +535,7 @@ describe.skipIf(!db)('schema verification', () => {
 
   it('reports a never-provisioned database as absent', async () => {
     await withScratch(createScratchSchema, async (pool) => {
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'absent',
-      });
+      expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
     });
   });
 
@@ -620,7 +546,7 @@ describe.skipIf(!db)('schema verification', () => {
         'deadbeef'.repeat(8),
       ]);
 
-      const state = await checkSchema(pool, { allowUnversioned: true });
+      const state = await checkSchema(pool);
       expect(state.kind).toBe('stale');
       expect(state).toMatchObject({
         reason: 'mismatch',
@@ -634,13 +560,11 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
 
-      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
-        {
-          kind: 'stale',
-          reason: 'unstamped',
-          found: null,
-        },
-      );
+      expect(await checkSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unstamped',
+        found: null,
+      });
     });
   });
 
@@ -649,12 +573,10 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('delete from "schemaFingerprint"');
 
-      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
-        {
-          kind: 'stale',
-          reason: 'unstamped',
-        },
-      );
+      expect(await checkSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unstamped',
+      });
     });
   });
 
@@ -666,12 +588,10 @@ describe.skipIf(!db)('schema verification', () => {
       // recognisable by the "user" table alone, but still not ours to stamp.
       await pool.query('drop table "user" cascade');
 
-      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
-        {
-          kind: 'stale',
-          reason: 'unstamped',
-        },
-      );
+      expect(await checkSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unstamped',
+      });
     });
   });
 });
@@ -719,7 +639,7 @@ describe.skipIf(!db)('the user locale column', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
-  it('keys accounts on (issuer, accountId), both required', async () => {
+  it('keys accounts on (providerId, accountId), uniquely', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
       await pool.query(
@@ -727,28 +647,27 @@ describe.skipIf(!db)('schema application', () => {
          VALUES ('u1', 'Researcher', 'researcher@example.org', true)`,
       );
       await pool.query(
-        `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
-         VALUES ('google', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
+        `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+         VALUES ('google', 'sub-google', 'google', 'u1', now())`,
       );
 
-      // better-auth 1.7 keys every account lookup on (issuer, accountId): an
-      // account without an issuer is unmatchable, and two accounts under one
-      // key would make the lookup ambiguous.
+      // The same subject under a different provider is a different account.
+      await pool.query(
+        `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+         VALUES ('microsoft', 'sub-google', 'microsoft', 'u1', now())`,
+      );
+
+      // Two rows under one key would make every better-auth account lookup
+      // ambiguous — it throws rather than picking one.
       await expect(
         pool.query(
           `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
-           VALUES ('no-issuer', 'sub-2', 'google', 'u1', now())`,
+           VALUES ('dup', 'sub-google', 'google', 'u1', now())`,
         ),
-      ).rejects.toMatchObject({ column: 'issuer' });
-      await expect(
-        pool.query(
-          `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
-           VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
-        ),
-      ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
+      ).rejects.toMatchObject({
+        constraint: 'account_providerId_accountId_idx',
       });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -756,9 +675,7 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);
       expect(outcome.statements.length).toBeGreaterThan(0);
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -767,9 +684,7 @@ describe.skipIf(!db)('schema application', () => {
       await applySchema(pool);
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -786,9 +701,233 @@ describe.skipIf(!db)('schema application', () => {
          where table_schema = 'public' and table_name = 'protocols'`,
       );
       expect(columns.rows.map((r) => r.column_name)).toContain('name');
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+    });
+  });
+
+  const jobQueueRows = (pool: pg.Pool) => installedQueueRows(pool, JOB_SCHEMA);
+
+  it('installs pg-boss and every declared queue', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+    });
+  });
+
+  it('brings a queue whose options drifted back to the declaration', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // A queue's options are data in its row, so drift is what a hand-run
+      // statement — or a declaration that changed between deployments — leaves
+      // behind. Reapplying has to reconcile it the way a push reconciles a
+      // column, which is the half of syncJobQueues that creation never reaches.
+      await pool.query(
+        `update ${JOB_SCHEMA}.queue
+         set retry_limit = 99, expire_seconds = 123, notify = not notify
+         where name = 'sign-in-email'`,
+      );
+      // The other half of "equal to the declaration": every option below is
+      // one `protocol-store-gc` does not declare, so reconciliation has to
+      // send pg-boss the default for it. An update carrying only the
+      // declaration would leave all of these exactly as they are — a queue
+      // still notifying, still dead-lettering and still retrying because some
+      // earlier deployment said so.
+      await pool.query(
+        `update ${JOB_SCHEMA}.queue
+         set retry_delay = 42, retry_backoff = true, retention_seconds = 60,
+             deletion_seconds = 60, warning_queued = 5, heartbeat_seconds = 30,
+             notify = true, dead_letter = 'invitation-delivery-dead-letter'
+         where name = 'protocol-store-gc'`,
+      );
+
+      await applySchema(pool);
+
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+    });
+  });
+
+  it('keeps the defaults it reconciles against level with pg-boss', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // pg-boss's own `create_queue`, given the options `createQueue(name, {})`
+      // passes it: the manager defaults `policy` in JavaScript and leaves every
+      // other option to the function, so this row is what a queue with nothing
+      // declared about it looks like. Called directly rather than through a
+      // PgBoss instance because a test constructing one of those is what
+      // src/jobs/__tests__/source-policy.test.ts refuses.
+      //
+      // Reconciliation is only "equal to the declaration" if the values it
+      // sends for the undeclared options are these, so an upgrade that moves a
+      // default has to be noticed here rather than in a deployment.
+      await pool.query(
+        `select ${JOB_SCHEMA}.create_queue($1, '{"policy":"standard"}'::jsonb)`,
+        ['pg-boss-defaults'],
+      );
+
+      expect(
+        await installedQueueRows(pool, JOB_SCHEMA, ['pg-boss-defaults']),
+      ).toEqual([queueRowFor('pg-boss-defaults')]);
+    });
+  });
+
+  /**
+   * What the application role has to be able to do after an apply: create a
+   * job, through the same client the web process uses. It proves the grants
+   * survived — or were re-applied after — whatever the apply did to the
+   * schema, which the owner pool cannot answer for, being a superuser here.
+   */
+  async function enqueueAsApplication(scratchDb: DbEnv): Promise<void> {
+    const jobs = createJobClient(scratchDb);
+    const app = createPool(scratchDb);
+    try {
+      const connection = await app.connect();
+      try {
+        await connection.query('BEGIN');
+        await jobs.enqueue(connection, 'protocol-store-gc', {});
+        await connection.query('COMMIT');
+      } finally {
+        connection.release();
+      }
+    } finally {
+      await jobs.stop();
+      await app.end();
+    }
+  }
+
+  it('replaces a pg-boss schema installed at another version', async () => {
+    await withScratch(createScratchDatabase, async (pool, scratch) => {
+      await applySchema(pool);
+      const queued = await pool.query<{ id: string }>(
+        `insert into ${JOB_SCHEMA}.job_common (name, data)
+         values ('protocol-store-gc', '{}'::jsonb) returning id`,
+      );
+      // What an upgrade to a pg-boss whose schema moved looks like from here:
+      // the tables are a version this build cannot use, so they are dropped
+      // and rebuilt rather than migrated (the pre-release posture), and the
+      // jobs go with them.
+      await pool.query(
+        `update ${JOB_SCHEMA}.version set version = version - 1`,
+      );
+
+      await applySchema(pool);
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+      const jobs = await pool.query(
+        `select id from ${JOB_SCHEMA}.job_common where id = $1`,
+        [queued.rows[0]!.id],
+      );
+      expect(jobs.rowCount).toBe(0);
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+
+      // The drop took the grants with it, so the reinstall has to put them
+      // back: a database the web process cannot enqueue into is one this
+      // apply had no business stamping.
+      await enqueueAsApplication(scratch.db);
+      const requeued = await pool.query<{ name: string }>(
+        `select name from ${JOB_SCHEMA}.job_common`,
+      );
+      expect(requeued.rows).toEqual([{ name: 'protocol-store-gc' }]);
+    });
+  });
+
+  it('replaces a pg-boss schema that lost its version row', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // A version table with nothing in it says nothing about what the tables
+      // beside it are. Treating that as "not installed" would re-run the
+      // construction plan over them, which fails on CREATE TYPE (42710) and
+      // leaves the database unstampable.
+      await pool.query(`delete from ${JOB_SCHEMA}.version`);
+
+      await expect(applySchema(pool)).resolves.toBeDefined();
+
+      const version = await pool.query<{ version: number }>(
+        `select version from ${JOB_SCHEMA}.version`,
+      );
+      expect(version.rows).toEqual([{ version: JOB_SCHEMA_VERSION }]);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+    });
+  });
+
+  it('lets the application enqueue and nothing else', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+
+      const privileges = await pool.query<Record<string, boolean>>(
+        `select
+           has_schema_privilege('studio_app', '${JOB_SCHEMA}', 'USAGE') as app_schema,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'INSERT') as app_insert,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.queue', 'SELECT') as app_queue,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'id', 'SELECT') as app_id,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'start_after', 'SELECT') as app_start_after,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'name', 'SELECT') as app_name,
+           has_column_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'data', 'SELECT') as app_data,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'UPDATE') as app_update,
+           has_table_privilege('studio_app', '${JOB_SCHEMA}.job_common', 'DELETE') as app_delete,
+           has_table_privilege('studio_maintenance', '${JOB_SCHEMA}.job_common', 'UPDATE') as maintenance_update,
+           has_table_privilege('studio_maintenance', '${JOB_SCHEMA}.schedule', 'INSERT') as maintenance_schedule`,
+      );
+      expect(privileges.rows[0]).toEqual({
+        app_schema: true,
+        app_insert: true,
+        app_queue: true,
+        // The two columns the insert reads back, and nothing else: the job's
+        // queue name says which team's work is waiting, so the role that
+        // serves requests is not given it either.
+        app_id: true,
+        app_start_after: true,
+        app_name: false,
+        app_data: false,
+        app_update: false,
+        app_delete: false,
+        maintenance_update: true,
+        maintenance_schedule: true,
       });
+    });
+  });
+
+  it('leaves an installed pg-boss schema and its queues alone', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      const queued = await pool.query<{ id: string }>(
+        `insert into ${JOB_SCHEMA}.job_common (name, data)
+         values ('protocol-store-gc', '{}'::jsonb) returning id`,
+      );
+      const created = await pool.query<{ name: string; created_on: Date }>(
+        `select name, created_on from ${JOB_SCHEMA}.queue order by name`,
+      );
+
+      const again = await applySchema(pool);
+      expect(again.statements).toEqual([]);
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      // A reinstall would have dropped the schema, taking the queued job and
+      // the queues' creation times with it.
+      expect(
+        (
+          await pool.query(
+            `select id from ${JOB_SCHEMA}.job_common where id = $1`,
+            [queued.rows[0]!.id],
+          )
+        ).rowCount,
+      ).toBe(1);
+      expect(
+        (
+          await pool.query<{ name: string; created_on: Date }>(
+            `select name, created_on from ${JOB_SCHEMA}.queue order by name`,
+          )
+        ).rows,
+      ).toEqual(created.rows);
+      expect(await jobQueueRows(pool)).toEqual(declaredQueueRows());
     });
   });
 
@@ -796,9 +935,7 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await Promise.all([applySchema(pool), applySchema(pool)]);
 
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
     });
@@ -813,53 +950,57 @@ describe('schema problem message', () => {
     appliedAt: new Date('2026-08-13T00:00:00.000Z'),
   };
 
-  it('names scripts package.json declares', () => {
-    const message = schemaProblemMessage(stale);
-    expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain('docker compose run --rm studio migrate');
+  // A message is only as useful as its next step, and the two readers have
+  // different ones. A checkout has the pnpm scripts and drizzle-kit; a
+  // deployment has neither — it has the image and the `migrate` command in it
+  // (#1909). Each lane is therefore checked for the remedies it can run AND
+  // against the ones it cannot, because a message naming a command that is not
+  // installed is worse than a short one.
+  const PNPM_REMEDIES = [
+    'pnpm --filter @codaco/studio-server db:reset',
+    'pnpm --filter @codaco/studio-server apply-schema',
+  ];
+
+  it('names scripts package.json declares, in a checkout', () => {
+    const message = schemaProblemMessage(stale, 'development');
+    for (const remedy of PNPM_REMEDIES) expect(message).toContain(remedy);
 
     const scripts = readManifestScripts();
     expect(scripts).toHaveProperty('db:reset');
-    expect(scripts).toHaveProperty('migrate');
+    expect(scripts).toHaveProperty('apply-schema');
   });
 
-  it('directs an unstamped database to recovery without a migration retry', () => {
-    const message = schemaProblemMessage({ ...stale, reason: 'unstamped' });
-    expect(message).toContain('no fingerprint');
-    expect(message).toContain('Preserve the original database');
-    expect(message).toContain('restore a consistent backup');
-    expect(message).toContain('export using its original Studio build');
-    expect(message).toContain('new empty database');
-    expect(message).toContain(
-      'Only for a disposable local development database',
+  it('names the image commands, in a deployment', () => {
+    // Where this is read — a container log — none of the above exists.
+    const message = schemaProblemMessage({ kind: 'absent' }, 'deployed');
+    expect(message).toContain('studio-api migrate');
+    expect(message).toContain('docker compose run --rm migrate');
+    for (const remedy of PNPM_REMEDIES) expect(message).not.toContain(remedy);
+  });
+
+  it('refuses a stale database in a deployment with what migrate says', () => {
+    // One verdict, one wording: `studio-api migrate` throws this exact text
+    // (src/db/migrate.ts), so an operator who reads the boot refusal and then
+    // runs migrate is not left working out whether they mean the same thing.
+    expect(schemaProblemMessage(stale, 'deployed')).toBe(
+      staleDatabaseMessage(stale),
     );
-    expect(message).not.toContain('docker compose run --rm studio migrate');
+    expect(schemaProblemMessage(stale, 'deployed')).toContain('#1901');
+    for (const remedy of PNPM_REMEDIES) {
+      expect(schemaProblemMessage(stale, 'deployed')).not.toContain(remedy);
+    }
   });
 
-  it('directs an unversioned fingerprint to recovery without treating it as a migration', () => {
-    const message = schemaProblemMessage({ ...stale, reason: 'unversioned' });
-    expect(message).toContain('no versioned migration history');
-    expect(message).toContain('Preserve the original database');
-    expect(message).toContain('new empty database');
-    expect(message).not.toContain('docker compose run --rm studio migrate');
+  it('explains an unstamped database differently', () => {
+    for (const lane of ['development', 'deployed'] as const) {
+      expect(
+        schemaProblemMessage({ ...stale, reason: 'unstamped' }, lane),
+      ).toContain('no fingerprint');
+    }
   });
 
-  it('directs unsafe migration evidence to verified-backup recovery without echoing evidence', () => {
-    const message = schemaProblemMessage({
-      ...stale,
-      reason: 'unsafe-evidence',
-      found: null,
-      appliedAt: null,
-    });
-    expect(message).toContain('unsupported relation shape');
-    expect(message).toContain('Restore a verified backup');
-    expect(message).not.toContain(stale.found!);
-    expect(message).not.toContain('docker compose run --rm studio migrate');
-  });
-
-  it('explains an absent schema with both remedies', () => {
-    const message = schemaProblemMessage({ kind: 'absent' });
-    expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain('docker compose run --rm studio migrate');
+  it('explains an absent schema with both remedies of its lane', () => {
+    const message = schemaProblemMessage({ kind: 'absent' }, 'development');
+    for (const remedy of PNPM_REMEDIES) expect(message).toContain(remedy);
   });
 });

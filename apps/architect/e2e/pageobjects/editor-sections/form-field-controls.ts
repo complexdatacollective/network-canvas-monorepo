@@ -1,5 +1,6 @@
 import { expect, type Locator } from '@playwright/test';
 
+import { writeRichText } from '../rich-text.js';
 import { inventAttributeInFieldDialog } from './forms.js';
 import { type OptionRow } from './variables.js';
 
@@ -13,14 +14,16 @@ import { type OptionRow } from './variables.js';
 //
 // - A form field row says which attribute it collects and how it asks for it.
 //   Everything ABOUT the attribute — its values, what its control accepts, the
-//   rules an answer must satisfy — belongs to the codebook and is reached
-//   through `AttributeCodebookControls`, rendered inside the row dialog as a
-//   row of buttons named for what they open.
-// - Those buttons are offered against an attribute that EXISTS. While one is
-//   still being invented the row holds a sentinel, so `Set rules for this
-//   answer` and `Set what this field accepts` are not on screen at all — which
-//   is why anything beyond values and scale labels needs the field to be added
-//   first and then reopened. See `addConfiguredFormField`'s two phases.
+//   rules an answer must satisfy — belongs to the codebook. Values and what a
+//   control accepts are reached through `AttributeCodebookControls`, rendered
+//   inside the row dialog as a row of buttons named for what they open; the
+//   rules are a nested "Validation" section at the end of the same dialog.
+// - Both are offered against an attribute that EXISTS. While one is still
+//   being invented the row holds a sentinel, so `Set what this field accepts`
+//   is not on screen at all and the Validation section is the draft one the
+//   row carries — which is why anything beyond values and scale labels needs
+//   the field to be added first and then reopened. See
+//   `addConfiguredFormField`'s two phases.
 // - "Create this attribute and its values" / "Create this attribute and what
 //   it accepts" are the exception: a list of answers and a scale cannot be
 //   made from a name, so those two are authored during creation (forms.ts's
@@ -50,23 +53,26 @@ export type FormFieldSpec = {
 
 /**
  * Open the rules a participant's answer has to satisfy, for the attribute the
- * given form-field dialog collects, and hand back the editor.
+ * given form-field dialog collects, and hand back the section holding them.
  *
- * The rules used to be a section of the field dialog itself. They are the
- * CODEBOOK's — one attribute is checked the same way wherever it is asked for
- * — so they now live behind this button, in an editor of their own
- * (`CodebookVariableValidationEditor`) whose own submit reads "Save
- * validation". The button is offered only for an attribute that already
- * exists, which is what makes this reachable from a reopened field and not
- * from the dialog that invents one.
+ * A nested, toggleable "Validation" section at the end of the field dialog, as
+ * Architect had it (`sections/ValidationSection.tsx`) — not a dialog of its
+ * own, and with no submit: the rules belong to the CODEBOOK attribute and each
+ * answerable change is written to it as the researcher makes it. The section is
+ * rendered only against an attribute that exists, which is what makes this
+ * reachable from a reopened field and not from the dialog that invents one.
+ *
+ * Switched on if it is not already: an attribute that arrives carrying rules
+ * has it open, and clicking then would clear them.
  */
 export async function openValidationSection(dialog: Locator): Promise<Locator> {
-  const label = 'Set rules for this answer';
-  await dialog.getByRole('button', { name: label, exact: true }).click();
-  // The editor takes the button's own words as its title
-  // (`AttributeCodebookControls`'s `editorTitle`), which is what tells it from
-  // the field dialog underneath while both are open.
-  const rules = dialog.page().getByRole('dialog', { name: label, exact: true });
+  const label = 'Validation';
+  const toggle = dialog.getByRole('switch', { name: label, exact: true });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute('aria-checked')) !== 'true') {
+    await toggle.click();
+  }
+  const rules = dialog.getByRole('region', { name: label, exact: true });
   await expect(rules).toBeVisible();
   return rules;
 }
@@ -75,9 +81,13 @@ export async function openValidationSection(dialog: Locator): Promise<Locator> {
  * Fill an attribute editor's list of allowed values.
  *
  * `VariableEditor`'s own rows, not the array field forms use elsewhere: each
- * row is a pair of plain inputs named "Option {n} label" / "Option {n} value"
- * (1-based), and "Create new option" appends an empty one. Nothing is committed until
- * the editor's own submit, so the rows are filled in one pass.
+ * row is named "Option {n} label" / "Option {n} value" (1-based), and "Create
+ * new option" appends an empty one. Nothing is committed until the editor's
+ * own submit, so the rows are filled in one pass.
+ *
+ * The label is a markdown box, not an input — the interview renders an option
+ * label as markdown wherever it shows one — so it is written the way every
+ * markdown value in this suite is written.
  */
 async function fillCodebookOptions(
   editor: Locator,
@@ -90,9 +100,13 @@ async function fillCodebookOptions(
   for (const [index, row] of rows.entries()) {
     await add.click();
     const position = index + 1;
-    await editor
-      .getByRole('textbox', { name: `Option ${position} label`, exact: true })
-      .fill(row.label);
+    await writeRichText(
+      editor.getByRole('textbox', {
+        name: `Option ${position} label`,
+        exact: true,
+      }),
+      row.label,
+    );
     await editor
       .getByRole('textbox', { name: `Option ${position} value`, exact: true })
       .fill(row.value);
@@ -107,18 +121,27 @@ async function fillCodebookOptions(
  * the researcher's to write. The quotation marks in those names are the
  * typographic pair the catalog uses (`VariableBooleanAnswerFields`'s
  * `answerLabel`/`negativeLabel`), not the ASCII one.
+ *
+ * Takes whichever surface holds the pair — the row's own dialog, or the
+ * codebook editor — because the same fieldset is rendered in both.
+ *
+ * The words are markdown, and the sample protocol's consent answers are the
+ * reason it matters: they read `**Yes**. I wish to participate…`, so the
+ * emphasis has to be typed into the box for the protocol to hold a bold run
+ * rather than four escaped asterisks.
  */
 async function setBooleanAnswer(
   editor: Locator,
   records: 'true' | 'false',
   spec: BooleanOptionSpec,
 ): Promise<void> {
-  await editor
-    .getByRole('textbox', {
+  await writeRichText(
+    editor.getByRole('textbox', {
       name: `Label for “${records}”`,
       exact: true,
-    })
-    .fill(spec.label);
+    }),
+    spec.label,
+  );
   if (spec.negative === 'omit') return;
   const negative = editor.getByRole('switch', {
     name: `Style “${records}” as negative`,
@@ -205,14 +228,12 @@ export async function addConfiguredFormField(
 
   const booleanOptions = spec.booleanOptions;
   if (booleanOptions) {
-    await inCodebookEditor(
-      editDialog,
-      'Change this attribute’s answer labels',
-      async (editor) => {
-        await setBooleanAnswer(editor, 'true', booleanOptions.positive);
-        await setBooleanAnswer(editor, 'false', booleanOptions.negative);
-      },
-    );
+    // Authored in the ROW's own dialog rather than through a codebook editor
+    // opened from it: the words on a yes-or-no attribute's two answers are
+    // shown beside the question that asks them (`AttributeValueFields`), and
+    // the row's own save is what records them on the attribute.
+    await setBooleanAnswer(editDialog, 'true', booleanOptions.positive);
+    await setBooleanAnswer(editDialog, 'false', booleanOptions.negative);
   }
 
   const dateMin = spec.dateMin;
@@ -230,13 +251,15 @@ export async function addConfiguredFormField(
 
   if (spec.required) {
     const rules = await openValidationSection(editDialog);
-    await rules
-      .getByRole('checkbox', { name: 'Required answer', exact: true })
-      .check();
-    await rules
-      .getByRole('button', { name: 'Save validation', exact: true })
-      .click();
-    await rules.waitFor({ state: 'detached' });
+    const required = rules.getByRole('switch', {
+      name: 'Required answer',
+      exact: true,
+    });
+    await required.click();
+    // The switch carries the rule, and the section writes it to the codebook
+    // as it moves — there is no submit to wait for, so what says the gesture
+    // landed is the switch holding it.
+    await expect(required).toBeChecked();
   }
 
   await editDialog.getByRole('button', { name: 'Save', exact: true }).click();

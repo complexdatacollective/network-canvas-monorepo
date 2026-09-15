@@ -1,8 +1,9 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
+import { alreadyProtecting } from './anonymisationFixtures.tsx';
 
 const openEditor = () =>
   renderStageEditor({
@@ -33,15 +34,14 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Explicación de la frase de contraseña',
+        name: 'Explicación de la tarea',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: 'Encabezado de la explicación' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Cuerpo' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'El encabezado que aparece arriba en la pantalla donde se pide la frase de contraseña.',
+        'Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.',
       ),
     ).toBeInTheDocument();
   });
@@ -52,7 +52,10 @@ describe('the anonymisation sections, read in Spanish', () => {
    * out of the Spanish fails here rather than reading as a plausible heading.
    */
   it('splices a codebook type into the Spanish group name', async () => {
-    openEditor();
+    const harness = openEditor();
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'person' }),
+    );
 
     expect(
       await screen.findByRole('group', {
@@ -61,6 +64,72 @@ describe('the anonymisation sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Atributos cifrados' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The two sentences the encrypted-attributes section says about storage and
+   * about one type's switch, in Architect's own words.
+   *
+   * Read in Spanish and as literals, so a catalog that lost either — or an
+   * `es` entry left behind at the package's invented sentence — fails here
+   * rather than in the fixture alone: the fixture proves the catalog carries
+   * the string, this proves the section still puts it on screen.
+   */
+  it('says where an encrypted value is not kept, and what a type’s switch does', async () => {
+    openEditor();
+
+    expect(
+      await screen.findByText(
+        'Los valores de los atributos cifrados no se guardan en la base de datos.',
+      ),
+    ).toBeInTheDocument();
+    // Read off the switch itself rather than as loose text: every node type
+    // carries this sentence, and the one that matters is the one the switch
+    // being read announces.
+    expect(
+      screen.getByRole('switch', { name: 'person' }),
+    ).toHaveAccessibleDescription(
+      'Activar el cifrado de atributos pertenecientes a este tipo de nodo.',
+    );
+  });
+
+  /**
+   * The three parts of the clear confirmation, in Architect's own Spanish.
+   *
+   * Read off the screen rather than out of the catalog: the title and the
+   * button travel as plain strings through `useDialog().confirm()`, so a
+   * section that formatted them once and held the result would still read
+   * English here, and the description carries the researcher's own type name
+   * spliced into the translated sentence rather than into the English one.
+   */
+  it('asks in Spanish before it un-encrypts a whole type', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      locale: 'es',
+      registry: anonymisationStageEditor,
+      client: alreadyProtecting('name'),
+    });
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('group', { name: 'Atributos cifrados de person' }),
+        ).getByRole('checkbox', { name: 'name' }),
+      ).toBeChecked(),
+    );
+
+    await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+
+    expect(
+      await screen.findByText('Se borrará la selección de atributos'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Se desmarcarán todos los atributos cifrados del tipo de nodo person. ¿Quieres continuar?',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Borrar atributos cifrados' }),
     ).toBeInTheDocument();
   });
 
@@ -74,7 +143,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     await harness.user.click(
       await screen.findByRole('switch', {
-        name: 'Reglas de la frase de contraseña',
+        name: 'Validación de la frase de contraseña',
       }),
     );
 

@@ -2,13 +2,13 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import PassphraseRulesField, {
+  passphraseRulesIssue,
+} from '../../../fields/PassphraseRulesField.tsx';
 import BuilderSection, {
   type SectionCapability,
 } from '../../../sections/BuilderSection.tsx';
 import { anonymisationMessages } from './anonymisationMessages.ts';
-import PassphraseRulesControl, {
-  passphraseRulesIssue,
-} from './PassphraseRulesControl.tsx';
 
 /** The schema keeps the passphrase rules under one optional key. */
 const VALIDATION_FIELD = 'validation';
@@ -50,12 +50,21 @@ export default function PassphraseRulesSection() {
       )}
       capability={capability}
     >
-      <Field<typeof PassphraseRulesControl>
+      {/* The rule list sits directly under the section's own heading, as
+          Architect's does (`sections/Anonymisation/AnonymisationValidation.tsx`
+          renders the shared `Validations` with no control label of its own).
+          The field is still registered — it is what carries the rules into the
+          stage document and what refuses a save over a length no passphrase
+          could have — and its label is what names the list for assistive
+          technology, so it is hidden rather than dropped: said aloud it would
+          repeat the heading immediately above it. */}
+      <Field<typeof PassphraseRulesField>
         name={VALIDATION_FIELD}
-        component={PassphraseRulesControl}
+        component={PassphraseRulesField}
         label={intl.formatMessage(
           anonymisationMessages.passphraseRulesFieldLabel,
         )}
+        labelHidden
         hint={intl.formatMessage(
           anonymisationMessages.passphraseRulesFieldHint,
         )}

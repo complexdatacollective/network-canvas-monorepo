@@ -1,0 +1,137 @@
+# The object-store swap (#1909): docs/self-host/swap.md, "A managed bucket".
+#
+# A second Garage — the same image and digest as the stack's — stands in for a
+# managed bucket, on a network of its own with its own credentials, its own
+# region and its own RPC and admin secrets. The five `S3_*` variables in the
+# environment file `up.sh` writes are the whole swap; everything below is the
+# tidying the guide describes as following it.
+#
+# The stub is bootstrapped by the SAME script the stack's `garage-init` runs —
+# the `garage-init` config declared inline in `docker-compose.yml`, referenced
+# rather than copied. That script addresses the admin API as `http://garage`,
+# so the stub carries `garage` as a network alias on the external network,
+# where the stack's own Garage does not exist. A copy of the script here would
+# be a second bootstrap to keep in step with the one deployments run, which is
+# the opposite of testing the contract.
+
+services:
+  external-garage:
+    image: dxflrs/garage:v2.1.0@sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
+    restart: unless-stopped
+    # A volume for the same reason the stack's Garage has one: the image is
+    # built FROM scratch and carries no /var/lib/garage for Garage to write
+    # its metadata and data directories into.
+    volumes:
+      - external-garage-data:/var/lib/garage
+    configs:
+      - source: external-garage-config
+        target: /etc/garage.toml
+        # Garage refuses a configuration file carrying secrets that is readable
+        # by anyone but its owner, and Compose's default for a config is 0444.
+        mode: 0400
+    networks:
+      external:
+        aliases:
+          # What `garage-init` asks for. Only containers on this network see
+          # it, and the stack's own `garage` is disabled below, so no name
+          # resolves to two stores.
+          - garage
+
+  # `garage-init`'s script, its image and its environment keys, against the
+  # stub. Profile `migrate` like the one it mirrors, so it runs as part of
+  # `docker compose run --rm migrate` and not on a plain `up`.
+  external-garage-init:
+    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+    profiles: [migrate]
+    entrypoint: ['/bin/sh', '/garage-init.sh']
+    environment:
+      GARAGE_ADMIN_TOKEN: ${EXTERNAL_GARAGE_ADMIN_TOKEN}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    configs:
+      - source: garage-init
+        target: /garage-init.sh
+    networks:
+      # Only the external network: `garage` must resolve to the stub and to
+      # nothing else.
+      - external
+    depends_on:
+      external-garage:
+        condition: service_started
+
+  # "Then delete the `garage` and `garage-init` services…" — a profile no
+  # command enables, which `assert.sh` holds by asserting neither container
+  # exists.
+  garage:
+    profiles: [unused]
+  garage-init:
+    profiles: [unused]
+
+  api:
+    # The base file's `garage: service_started` entry would survive a merging
+    # override and then fail the command, because no profile enables it.
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  worker:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  # "…and the `garage-init` entry in `migrate`'s `depends_on`". Replaced by the
+  # stub's own one-shot: a managed bucket exists before Studio is pointed at
+  # it, and this is the stub reaching that state.
+  migrate:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      external-garage-init:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - external
+
+configs:
+  external-garage-config:
+    content: |
+      replication_factor = 1
+
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+
+      rpc_bind_addr = "[::]:3901"
+      rpc_secret = "${EXTERNAL_GARAGE_RPC_SECRET}"
+
+      [s3_api]
+      api_bind_addr = "[::]:3900"
+      # Not the stack Garage's region. Studio signs for whatever S3_REGION
+      # names, so a request still being signed for the stack's own store would
+      # be refused here rather than pass by coincidence.
+      s3_region = "${S3_REGION}"
+      root_domain = ".s3.external"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
+      admin_token = "${EXTERNAL_GARAGE_ADMIN_TOKEN}"
+
+volumes:
+  external-garage-data:
+
+networks:
+  external:
+    name: ${EXTERNAL_NETWORK}
+    ipam:
+      config:
+        - subnet: ${EXTERNAL_SUBNET}

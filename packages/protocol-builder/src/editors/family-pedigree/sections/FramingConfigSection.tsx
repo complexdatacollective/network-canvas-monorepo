@@ -68,34 +68,62 @@ const boldTerm = (chunks: ReactNode) => <strong>{chunks}</strong>;
  * what every field is seeded from as it mounts, so a clear that lived only in
  * the form would hand the old terminology back the moment the researcher
  * returned to a fixed framing.
+ *
+ * Coming BACK is its own act, and it puts the SAVED terminology back — or the
+ * canonical framing, for a stage that was saved as a participant choice. A
+ * round trip through the other branch is not a decision to stop using the
+ * words the stage already uses, and leaving the control empty refused the save
+ * of a stage the researcher had changed nothing about. The value is written
+ * here rather than left to the control's own `initialValue` because the
+ * discard tombstones the form field, and a tombstone is exactly what stops a
+ * re-registering control from taking its initial value.
  */
 export default function FramingConfigSection() {
   const intl = useAppIntl();
-  const { committedFields } = useStageEditorForm();
+  const { committedFields, savedFields, storeApi } = useStageEditorForm();
   const chosenMode = useStageValue(MODE_FIELD);
   const mode = chosenMode ?? 'fixed';
   const discardStageValues = useDiscardStageValues();
   const isFixed = mode === 'fixed';
-  // The AGREED framing, not the live one: an initial value that moved with the
-  // control would re-register the field on every change.
+  // The document's mode, not the live one: an initial value that moved with
+  // the control would re-register the field on every change. This control is
+  // mounted for the whole edit, so it takes its initial value once.
   const committedMode: unknown = get(committedFields, MODE_FIELD);
-  const committedValue: unknown = get(committedFields, VALUE_FIELD);
+  /**
+   * What a fixed framing says, here and on every return to it.
+   *
+   * Read from the stage as the protocol last STORED it, which is the only
+   * document that still holds it: the discard below writes the mode change
+   * structurally, so the working document has no terminology in it by the time
+   * the researcher comes back. A default the researcher saved is their value —
+   * they read it, the stage was valid, they saved — so opening on gamete,
+   * choosing gendered and saving means gendered is what a return to a fixed
+   * framing puts back, not the canonical one.
+   */
+  const savedValue: unknown = get(savedFields, VALUE_FIELD);
+  const seededValue =
+    typeof savedValue === 'string' ? savedValue : DEFAULT_FRAMING;
 
   const wasFixed = useRef(isFixed);
   useEffect(() => {
     const leaving = wasFixed.current && !isFixed;
+    const returning = !wasFixed.current && isFixed;
     wasFixed.current = isFixed;
     // Only the researcher LEAVING the fixed branch throws anything away. The
     // first render is a stage being opened on what it was saved with, which
     // already has whatever terminology belongs to its own framing.
-    if (!leaving) return;
-    // The mode in front of the terminology it cost, in one write, so the
-    // document never holds half a framing.
-    discardStageValues([VALUE_FIELD], {
-      path: MODE_FIELD,
-      value: chosenMode,
-    });
-  }, [chosenMode, discardStageValues, isFixed]);
+    if (leaving) {
+      // The mode in front of the terminology it cost, in one write, so the
+      // document never holds half a framing.
+      discardStageValues([VALUE_FIELD], {
+        path: MODE_FIELD,
+        value: chosenMode,
+      });
+      return;
+    }
+    if (!returning) return;
+    storeApi.getState().setFieldValue(VALUE_FIELD, seededValue);
+  }, [chosenMode, discardStageValues, isFixed, seededValue, storeApi]);
 
   const modeOptions = useMemo(
     () =>
@@ -155,13 +183,9 @@ export default function FramingConfigSection() {
           name={VALUE_FIELD}
           component={NativeSelectField}
           label={intl.formatMessage(pedigreeMessages.framingValueLabel)}
-          // Falls back to the canonical framing so switching back from a
-          // participant choice always registers a value the union accepts.
-          initialValue={
-            typeof committedValue === 'string'
-              ? committedValue
-              : DEFAULT_FRAMING
-          }
+          // Falls back to the canonical framing so a stage saved as a
+          // participant choice registers a value the union accepts.
+          initialValue={seededValue}
           options={framingOptions}
           required={REQUIRED}
         />

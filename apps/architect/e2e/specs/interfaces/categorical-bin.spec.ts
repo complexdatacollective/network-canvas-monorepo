@@ -2,8 +2,15 @@ import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
-import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
+import {
+  mapNodeShapeToAttribute,
+  selectOrCreateNodeType,
+} from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import {
+  authorOptions,
+  createAttribute,
+} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -40,9 +47,9 @@ function toCodebookVariable(value: unknown): CodebookVariable {
 }
 
 // Walks `codebook.node.*.variables` (rather than looking the node type id up
-// separately) for the given variable id — confirms the prompt dialog's
-// "Create a new attribute" flow actually persisted the attribute + its values
-// into the codebook, not just closed its editor without error.
+// separately) for the given variable id — confirms the prompt dialog's create
+// row actually persisted the attribute + its values into the codebook, not
+// just closed its editor without error.
 function findNodeCodebookVariable(
   protocol: Record<string, unknown>,
   variableId: string,
@@ -61,6 +68,35 @@ function findNodeCodebookVariable(
     }
   }
   throw new Error(`no codebook.node variable found with id "${variableId}"`);
+}
+
+/**
+ * The `shape` of the node type that owns the given attribute.
+ *
+ * Walked the same way its variables are, because the type id is minted by the
+ * create row and is not a fact this spec knows.
+ */
+function findNodeShape(
+  protocol: Record<string, unknown>,
+  variableId: string,
+): Record<string, unknown> {
+  const { codebook } = protocol;
+  if (!isRecord(codebook) || !isRecord(codebook.node)) {
+    throw new Error('protocol JSON has no codebook.node object');
+  }
+  for (const nodeType of Object.values(codebook.node)) {
+    if (
+      isRecord(nodeType) &&
+      isRecord(nodeType.variables) &&
+      variableId in nodeType.variables
+    ) {
+      if (!isRecord(nodeType.shape)) {
+        throw new Error('the node type has no shape definition');
+      }
+      return nodeType.shape;
+    }
+  }
+  throw new Error(`no codebook.node type found owning "${variableId}"`);
 }
 
 test('creates a valid CategoricalBin stage from scratch', async ({
@@ -83,65 +119,42 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // The shared `PromptTextField` the whole census/bin family renders
   // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // "The bins" is a `BinAttributeField`: a picker over the node type's
-  // existing categorical attributes, plus a `CreateVariableButton` labelled
-  // "Create a new attribute" that opens the codebook's own attribute editor
-  // (VariableEditor). The editor is opened with `allowedVariableTypes:
-  // ['categorical']`, so its "Attribute type" select is already on Categorical
-  // and is never touched here; the values are authored in place — one "Add
-  // option" press per value, each row exposing its own numbered "Option N
-  // label"/"Option N value" boxes — and committed by "Create attribute".
-  // Nothing is pre-seeded, so both rows are added below.
+  // The bins picker (labelled "Attribute") is a `BinAttributeField`: a picker
+  // over the node type's existing categorical attributes, whose own create row
+  // is the only way to invent one. A bin attribute IS its list of values — the
+  // schema refuses fewer than two — so the row cannot finish it from a name and
+  // escalates to the codebook's own editor (VariableEditor), titled "Create a
+  // new attribute" and opened with `allowedVariableTypes: ['categorical']`, so
+  // its "Attribute type" select is already on Categorical and is never touched
+  // here. Nothing is pre-seeded, so both value rows are added below.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Group these');
-    // Scoped to the attribute editor's own dialog: the prompt dialog behind it
-    // is still mounted, and the stage behind that.
-    const attributeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new attribute',
-      exact: true,
+    await createAttribute(editor.field('variable'), 'group', {
+      title: 'Create a new attribute',
+      author: authorOptions([
+        { label: 'Family', value: 'family' },
+        { label: 'Friends', value: 'friends' },
+      ]),
     });
-    await architectPage
-      .getByRole('button', { name: 'Create a new attribute', exact: true })
-      .click();
-    await attributeEditor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill('group');
-    for (const [index, option] of [
-      { label: 'Family', value: 'family' },
-      { label: 'Friends', value: 'friends' },
-    ].entries()) {
-      await attributeEditor
-        .getByRole('button', { name: 'Create new option', exact: true })
-        .click();
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} label`,
-          exact: true,
-        })
-        .fill(option.label);
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} value`,
-          exact: true,
-        })
-        .fill(option.value);
-    }
-    await attributeEditor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    // The dialog holds itself open until the codebook write lands, renaming
-    // its submit while the request is in flight — so the DIALOG going is the
-    // signal that the attribute exists and has been bound to this prompt, not
-    // the button. Waiting matters for the reason prompts.ts gives: the prompt
-    // dialog behind this one must not be driven through a modal still on
-    // screen.
-    await attributeEditor.waitFor({ state: 'hidden' });
-    // Deliberately NOT switching on the "A bin for anything else" section
+    // Deliberately NOT switching on the "Follow-up other option" section
     // (`toggleable`, `defaultOpen={committedOther !== undefined}` — closed
     // here since `otherVariable` is unset): opening it would add three more
     // required fields (`otherVariable`, `otherOptionLabel`,
     // `otherVariablePrompt`) this spec doesn't need to exercise. There is no
     // `color` field on CategoricalBin at all (unlike OrdinalBin).
+  });
+
+  // The node type this stage is about can also draw itself from that same
+  // attribute — the "Node appearance" group of its own dialog, which Architect
+  // carried and this package had not. Done here rather than in a spec of its
+  // own because the mapping needs an attribute a shape can follow, and this is
+  // where one exists.
+  await mapNodeShapeToAttribute(architectPage, {
+    attribute: 'group',
+    shapes: [
+      { value: 'Family', shape: 'Square' },
+      { value: 'Friends', shape: 'Diamond' },
+    ],
   });
 
   await editor.expectNoIssues();
@@ -168,7 +181,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     );
   }
   expect(prompt.variable).not.toBe('');
-  // The untouched "A bin for anything else" fields must not have leaked in.
+  // The untouched "Follow-up other option" fields must not have leaked in.
   expect(prompt).not.toHaveProperty('otherVariable');
 
   // Confirm the attribute editor actually persisted the categorical attribute
@@ -181,6 +194,17 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     'Family',
     'Friends',
   ]);
+
+  // And the shape mapping reached the codebook, as the mapping variant the
+  // runtime reads for a categorical answer.
+  expect(findNodeShape(protocol, prompt.variable).dynamic).toEqual({
+    variable: prompt.variable,
+    type: 'discrete',
+    map: [
+      { value: 'family', shape: 'square' },
+      { value: 'friends', shape: 'diamond' },
+    ],
+  });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'categorical-bin-stage.json',
