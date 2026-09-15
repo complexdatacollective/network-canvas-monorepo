@@ -12,7 +12,8 @@ import { Hono } from 'hono';
 import type { S3Env } from './env.ts';
 
 // Asset storage (#1246/#1278, 2026-08-11): content-addressed bytes in
-// S3-compatible object storage — R2 managed, MinIO self-hosted/dev. Objects
+// S3-compatible object storage — R2 managed, Garage self-hosted and in
+// development (#1909). Objects
 // are keyed by content hash, so retrieval is immutable-cacheable by
 // construction. Asset bytes ride these plain HTTP routes rather than the RPC
 // surface: files don't belong in RPC payloads, and retrieval must be

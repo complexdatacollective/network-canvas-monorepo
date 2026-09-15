@@ -31,6 +31,15 @@ export const serverSchemas = {
   WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).optional(),
 
   /**
+   * Whether this instance reports anonymous usage telemetry. Declared ahead of
+   * the reporting it governs (#1897) so the development lane can carry the
+   * opt-out from the start and no deployment ever meets a version of Studio
+   * that reports before the variable existed. Unset resolves to `true` in
+   * `resolve.ts`; the committed development file sets it to `false`.
+   */
+  STUDIO_TELEMETRY: z.stringbool().optional(),
+
+  /**
    * Which of the two topologies this process is serving. Read at run time by
    * every entrypoint, so the managed deployment sets it in the container
    * environment rather than at build time. Unset resolves to `self-hosted` in
@@ -63,6 +72,14 @@ export const serverSchemas = {
    * `docker inspect` and out of any log that prints the environment.
    */
   STUDIO_SECRETS_KEY_FILE: z.string().min(1).optional(),
+
+  /**
+   * The compose stack's way of delivering the database password: a Compose
+   * file secret path rather than a value, so the password is in neither
+   * `docker inspect` nor the process environment. `resolve.ts` reads the file
+   * once and produces the effective connection string from the two.
+   */
+  DATABASE_PASSWORD_FILE: z.string().min(1).optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented

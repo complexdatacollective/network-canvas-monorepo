@@ -1,0 +1,549 @@
+# Network Canvas Studio — the reference stack (#1909).
+#
+# This is the whole deployment. A self-hoster downloads two files — this one
+# and `.env.example`, renamed to `.env` — creates the two secret files named
+# below, and runs:
+#
+#   docker compose up -d
+#   docker compose run --rm migrate
+#
+# Between those two commands `api` and `worker` restart in a loop — there is no
+# schema for them to verify yet, and `docker compose ps` says `Restarting (1)`
+# — which is expected and stops the moment `migrate` has run.
+#
+# Read `migrate`'s output: besides creating the schema it prints the first-run
+# setup token, which is what `/setup` takes to create the first owner account.
+# It is printed once and only stored hashed, but it is never lost for good —
+# re-running `migrate` while the instance still has no owner issues a fresh one
+# (and an instance that has an owner issues none).
+#
+# The managed service runs this same file, with its own `.env` pointing the
+# object-store variables at a managed bucket. There is no second topology and
+# no orchestrator: splitting a service onto another host means changing one
+# URL in the Traefik service block below and giving that host a private
+# address.
+#
+# Requires Docker Engine 25.0 or newer with Compose v2.23.1 or newer — older
+# versions cannot read the inline `configs: content:` blocks this file uses to
+# keep the Traefik and Garage configuration in one downloadable file.
+#
+# ── The swappable elements ────────────────────────────────────────────────
+#
+# Three of the four are swapped from `.env` alone: `DATABASE_URL`, `REDIS_URL`
+# and `S3_ENDPOINT` each default to the stack's own service, so setting one
+# points Studio elsewhere without a line of this file changing. Deleting the
+# service it replaced is then tidying, not part of the swap.
+#
+#   Database       set `DATABASE_URL`. The password stays in the
+#                  `postgres-password` file secret — `DATABASE_PASSWORD_FILE`
+#                  still names it, and a URL carrying one as well is refused —
+#                  so put the managed instance's password there. Then delete
+#                  the `postgres` service and the `postgres-data` volume.
+#   Object store   set `S3_ENDPOINT` and the other four `S3_*` variables. Then
+#                  delete the `garage` service, the `garage-init` one-shot,
+#                  `migrate`'s `depends_on` entry for it, the `garage-config`
+#                  and `garage-init` configs, and the `garage-data` volume.
+#   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. Then
+#                  delete the `valkey` service and the `depends_on` entries
+#                  naming it.
+#   Ingress        the one that is not a variable, because it is a routing
+#                  table rather than an address: delete the `traefik` service,
+#                  the `traefik-dynamic` config and the published ports, and
+#                  reproduce that routing table in an institution's own proxy
+#                  against `web` and `api`.
+#
+# ── Where the secrets live ────────────────────────────────────────────────
+#
+# Two Compose file secrets, mounted read-only under /run/secrets, so neither
+# appears in `docker inspect`, in the process environment, or in a log:
+#
+#   secrets/postgres-password     the database password. Postgres reads it
+#                                 through POSTGRES_PASSWORD_FILE; the server
+#                                 reads it through DATABASE_PASSWORD_FILE and
+#                                 inserts it into DATABASE_URL, which
+#                                 therefore carries no password itself.
+#   secrets/studio-secrets-key    the keyring every stored secret is
+#                                 encrypted under (#1900). Back it up with the
+#                                 database: a dump restored without it
+#                                 recovers no secrets.
+#
+# Both are gitignored. `secrets/README.md` says how to generate them.
+
+name: studio
+
+# One environment for the three processes built from the studio-api image, so
+# the API, the worker and the migrate one-shot cannot drift apart. `migrate`
+# needs BETTER_AUTH_SECRET and PUBLIC_URL as well as the database, because it
+# reads the same environment every other process does.
+x-studio-env: &studio-env
+  NODE_ENV: production
+  PUBLIC_URL: https://${STUDIO_HOSTNAME}
+  # These three name the swappable backing services, and each defaults to the
+  # stack's own. Setting one in `.env` is the whole swap — nothing in this file
+  # changes, though the service it replaces can then be deleted.
+  #
+  # No password in the database URL, deliberately: it is in the file secret
+  # below, and a URL carrying one as well is refused at boot. That holds for a
+  # managed Postgres too — put its password in the same file.
+  DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}}
+  REDIS_URL: ${REDIS_URL:-redis://valkey:6379}
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
+  DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+  STUDIO_SECRETS_KEY_FILE: /run/secrets/studio_secrets_key
+  S3_REGION: ${S3_REGION}
+  S3_BUCKET: ${S3_BUCKET}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+  SMTP_URL: ${SMTP_URL:-}
+  EMAIL_FROM: ${EMAIL_FROM:-}
+  # Traefik is the only thing that reaches the API, and it is on this network.
+  TRUSTED_PROXIES: ${STACK_SUBNET}
+  # Optional; unset means the provider is not offered on the sign-in screen.
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+  MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+  MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
+
+x-studio-secrets: &studio-secrets
+  - postgres_password
+  - studio_secrets_key
+
+services:
+  # The only service with published ports. Its static configuration is the
+  # command flags; its routing table is the `traefik-dynamic` config below,
+  # read through the file provider. It is given no Docker socket: the routing
+  # is fixed, and a container-discovery provider would let any container on
+  # this network publish a route by setting a label.
+  traefik:
+    image: traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d
+    restart: unless-stopped
+    command:
+      - --entryPoints.web.address=:80
+      - --entryPoints.web.http.redirections.entryPoint.to=websecure
+      - --entryPoints.web.http.redirections.entryPoint.scheme=https
+      - --entryPoints.websecure.address=:443
+      # HTTP-01, so the stack needs no DNS credentials — only that
+      # STUDIO_HOSTNAME resolves to this host and port 80 is reachable. The
+      # challenge is answered on the `web` entrypoint ahead of the redirection
+      # above.
+      - --certificatesResolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesResolvers.le.acme.storage=/acme/acme.json
+      - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      # No dashboard and no API: this instance routes one hostname and has
+      # nothing an operator needs to inspect over HTTP.
+      - --api=false
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      - --log.level=INFO
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - traefik-acme:/acme
+    configs:
+      - source: traefik-dynamic
+        target: /etc/traefik/dynamic.yml
+    depends_on:
+      - web
+      - api
+
+  # nginx and the built client. It proxies nothing and needs no environment:
+  # Traefik routes the API's paths past it, so the browser sees one origin.
+  web:
+    image: ${STUDIO_WEB_IMAGE}
+    restart: unless-stopped
+
+  api:
+    image: ${STUDIO_API_IMAGE}
+    restart: unless-stopped
+    command: [serve]
+    environment: *studio-env
+    secrets: *studio-secrets
+    # Liveness, not readiness: it consults nothing, so the container runtime
+    # does not restart a healthy process because Postgres is down.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      # Started, not healthy: the Garage image is scratch-based and can run no
+      # healthcheck. The API tolerates an unreachable object store (asset
+      # routes refuse and readiness reports it) rather than failing to boot.
+      garage:
+        condition: service_started
+
+  # The same image, the same environment, a different command. It routes no
+  # traffic and publishes no port; its health listener binds 127.0.0.1 inside
+  # the container and exists only for the check below.
+  worker:
+    image: ${STUDIO_API_IMAGE}
+    restart: unless-stopped
+    command: [worker]
+    environment: *studio-env
+    secrets: *studio-secrets
+    # Readiness, not liveness: the pg-boss connection is the one thing a
+    # process that answers no request cannot otherwise be asked about.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      garage:
+        condition: service_started
+
+  # Rate-limit counters only (#1909). Persistence is off on purpose: a counter
+  # that survives a restart is a counter that outlives the abuse it was
+  # measuring, and the limiter fails open when Valkey is unreachable anyway.
+  valkey:
+    image: valkey/valkey:8.1-alpine@sha256:d2e18f3410b6f616de1417f570fa55261af2898b9c5b2cfb6781ce2373ea43d1
+    restart: unless-stopped
+    command: ['valkey-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      # The postgres:18 image moved PGDATA below /var/lib/postgresql, so the
+      # parent is the image's supported persistence path.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Single-node Garage: the S3-compatible store asset bytes live in. It
+  # publishes no port — only the API and the bootstrap one-shot below reach
+  # it, over this network.
+  garage:
+    image: dxflrs/garage:v2.1.0@sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
+    restart: unless-stopped
+    volumes:
+      - garage-data:/var/lib/garage
+    configs:
+      - source: garage-config
+        target: /etc/garage.toml
+        # Garage refuses a configuration file that carries secrets and is
+        # readable by anyone but its owner. Compose's default for a config is
+        # 0444, which that check rejects.
+        mode: 0400
+    # No healthcheck: the image is built FROM scratch and has no shell, so
+    # there is nothing to run one with. `garage-init` waits for the admin API
+    # itself.
+
+  # Applies the cluster layout, imports the access key and creates the bucket,
+  # through Garage's admin API — the image has no shell to run `garage` in.
+  # Every step is idempotent, because `migrate` depends on this one and so it
+  # runs on every schema application rather than only the first.
+  garage-init:
+    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+    profiles: [migrate]
+    entrypoint: ['/bin/sh', '/garage-init.sh']
+    environment:
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    configs:
+      - source: garage-init
+        target: /garage-init.sh
+    depends_on:
+      garage:
+        condition: service_started
+
+  # `docker compose run --rm migrate`. Creates this build's schema in an empty
+  # database, is a no-op against a current one, and refuses one another build
+  # created. On an instance that still has no owner it also prints the
+  # first-run setup token, so its output is worth reading rather than only its
+  # exit code. It bootstraps Garage first, through the dependency below, so a
+  # first run is one command.
+  migrate:
+    image: ${STUDIO_API_IMAGE}
+    profiles: [migrate]
+    command: [migrate]
+    environment: *studio-env
+    secrets: *studio-secrets
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
+
+configs:
+  # Traefik's routing table. Inline so a self-hoster downloads two files
+  # rather than three.
+  traefik-dynamic:
+    content: |
+      http:
+        routers:
+          # Highest priority and NO middleware, deliberately: the deploy
+          # script and the container runtime must always read the real status
+          # and the named failing check. Put the maintenance page in front of
+          # these and an upgrade would report a healthy API that is not there.
+          health:
+            rule: "Host(`${STUDIO_HOSTNAME}`) && (Path(`/healthz`) || Path(`/readyz`))"
+            service: api
+            priority: 1000
+            entryPoints: [websecure]
+            tls:
+              certResolver: le
+
+          # Everything the server answers. `/ws` is a Path rather than a
+          # PathPrefix because it is one endpoint, and Traefik proxies the
+          # WebSocket upgrade with no further configuration.
+          api:
+            rule: "Host(`${STUDIO_HOSTNAME}`) && (PathPrefix(`/rpc`) || PathPrefix(`/api`) || PathPrefix(`/storage`) || Path(`/ws`))"
+            service: api
+            priority: 100
+            middlewares: [maintenance]
+            entryPoints: [websecure]
+            tls:
+              certResolver: le
+
+          # Every page path, including `/`. The client is a single-page app,
+          # so nginx serves its shell for routes that are not files.
+          web:
+            rule: "Host(`${STUDIO_HOSTNAME}`)"
+            service: web
+            priority: 10
+            entryPoints: [websecure]
+            tls:
+              certResolver: le
+
+        middlewares:
+          # While the API container is being replaced it answers nothing, and
+          # Traefik's own 502 is a blank page. This serves the static
+          # maintenance page from the web container instead — which depends on
+          # nothing that is being upgraded — for the seconds the window lasts.
+          maintenance:
+            errors:
+              status: ["502-503"]
+              service: web
+              query: /maintenance.html
+              # A stopped API container is a connection error, which Traefik
+              # reports as 502. "Bad gateway" is not what is happening — the
+              # instance is temporarily unavailable — and 503 is also what the
+              # API itself answers with once maintenance mode exists (#1901),
+              # so a client and a monitor see one status for the whole window
+              # however it started.
+              statusRewrites:
+                "502-503": 503
+
+        services:
+          api:
+            loadBalancer:
+              servers:
+                - url: "http://api:3000"
+          web:
+            loadBalancer:
+              servers:
+                - url: "http://web:80"
+
+  garage-config:
+    content: |
+      # One node, one copy of every object. Durability on a single-host
+      # deployment comes from the volume and the backups, not from Garage.
+      replication_factor = 1
+
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+
+      # The node-to-node port. Required even with one node, and never
+      # published: nothing outside this network speaks Garage's RPC.
+      rpc_bind_addr = "[::]:3901"
+      # Shared between nodes in a multi-node cluster; with one node it is
+      # still required, and still a secret.
+      rpc_secret = "${GARAGE_RPC_SECRET}"
+
+      [s3_api]
+      api_bind_addr = "[::]:3900"
+      s3_region = "${S3_REGION}"
+      root_domain = ".s3.garage"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
+      admin_token = "${GARAGE_ADMIN_TOKEN}"
+
+  garage-init:
+    # Every `$$` below is one literal `$` in the script: Compose interpolates
+    # the content of a config exactly as it interpolates the rest of this file,
+    # so an unescaped `$VAR` would be replaced with the empty string here and
+    # never reach the shell.
+    content: |
+      # Bootstraps a single-node Garage through its admin API (v2). The image
+      # is FROM scratch, so there is no `garage` binary to run in it and no
+      # shell to run one with; this runs in a curl image on the same network.
+      #
+      # No jq in that image either. Every value read here is a flat scalar, so
+      # the JSON is split on its structural characters and the wanted key
+      # matched as a whole line — which does not depend on where the field
+      # sits in the document.
+      set -eu
+
+      ADMIN="http://garage:3903"
+
+      fail() {
+          echo "garage-init: $$1" >&2
+          exit 1
+      }
+
+      # Sets STATUS and BODY. A non-2xx is not fatal here: two callers read a
+      # "not found" as "not created yet" and carry on.
+      request() {
+          _method="$$1"
+          _path="$$2"
+          _body="$${3:-}"
+          if [ -n "$$_body" ]; then
+              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
+                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+                  -H 'Content-Type: application/json' \
+                  -d "$$_body" -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
+          else
+              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
+                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+                  -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
+          fi
+          STATUS=$$(printf '%s' "$$_response" | tail -n 1)
+          BODY=$$(printf '%s' "$$_response" | sed '$$d')
+      }
+
+      # As above, but a non-2xx stops the run and says what was asked and what
+      # came back: a half-bootstrapped object store is worse than none.
+      require() {
+          request "$$1" "$$2" "$${3:-}"
+          case "$$STATUS" in
+          2*) ;;
+          *) fail "$$1 $$2 returned $$STATUS: $$BODY" ;;
+          esac
+      }
+
+      # $$1 key, $$2 document, $$3 a basic regular expression the value must
+      # match whole. Garage pretty-prints its responses, so the whitespace
+      # around the key, the colon and the value is all optional.
+      string_field() {
+          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
+              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\"\\($$3\\)\"[[:space:]]*\$$/\\1/p" |
+              head -n 1
+      }
+
+      number_field() {
+          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
+              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\)[[:space:]]*\$$/\\1/p" |
+              head -n 1
+      }
+
+      echo 'garage-init: waiting for Garage to answer its admin API...'
+      attempt=0
+      until curl -sS -f -o /dev/null \
+          -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+          "$$ADMIN/v2/GetClusterStatus"; do
+          attempt=$$((attempt + 1))
+          [ "$$attempt" -lt 60 ] || fail "Garage's admin API at $$ADMIN did not answer after 60 attempts"
+          sleep 1
+      done
+
+      # A node id is a 64-character hex public key, which nothing else in the
+      # status document is.
+      require GET /v2/GetClusterStatus
+      node_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
+      [ -n "$$node_id" ] || fail "could not read this node's id from GetClusterStatus: $$BODY"
+
+      # The layout version increments only when a layout is applied, and only
+      # this script ever writes one, so a version above zero means the node
+      # already has its role. A previous run that staged a role but failed
+      # before applying it leaves the version at zero, and is redone here.
+      require GET /v2/GetClusterLayout
+      layout_version=$$(number_field version "$$BODY")
+      [ -n "$$layout_version" ] || fail "could not read the layout version from GetClusterLayout: $$BODY"
+
+      if [ "$$layout_version" -eq 0 ]; then
+          echo "garage-init: assigning node $$node_id a role"
+          # Capacity is advertised, not reserved: with one node it only has to
+          # be large enough for Garage to shard across its partitions.
+          require POST /v2/UpdateClusterLayout \
+              "{\"roles\":[{\"id\":\"$$node_id\",\"zone\":\"studio\",\"capacity\":107374182400,\"tags\":[]}]}"
+          require POST /v2/ApplyClusterLayout "{\"version\":$$((layout_version + 1))}"
+      else
+          echo "garage-init: cluster layout version $$layout_version is already applied"
+      fi
+
+      request GET "/v2/GetKeyInfo?id=$$S3_ACCESS_KEY_ID"
+      if [ "$$STATUS" = 200 ]; then
+          echo "garage-init: access key $$S3_ACCESS_KEY_ID already exists"
+      else
+          echo "garage-init: importing access key $$S3_ACCESS_KEY_ID"
+          require POST /v2/ImportKey \
+              "{\"accessKeyId\":\"$$S3_ACCESS_KEY_ID\",\"secretAccessKey\":\"$$S3_SECRET_ACCESS_KEY\",\"name\":\"studio\"}"
+      fi
+
+      # `id` is the bucket's own identifier — the access keys listed in the
+      # same document carry theirs under `accessKeyId`.
+      request GET "/v2/GetBucketInfo?globalAlias=$$S3_BUCKET"
+      if [ "$$STATUS" = 200 ]; then
+          echo "garage-init: bucket $$S3_BUCKET already exists"
+      else
+          echo "garage-init: creating bucket $$S3_BUCKET"
+          require POST /v2/CreateBucket "{\"globalAlias\":\"$$S3_BUCKET\"}"
+      fi
+      bucket_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
+      [ -n "$$bucket_id" ] || fail "could not read the id of bucket $$S3_BUCKET: $$BODY"
+
+      # Granting a permission that is already granted is a no-op, so this runs
+      # unconditionally rather than reading the current grants back first.
+      require POST /v2/AllowBucketKey \
+          "{\"bucketId\":\"$$bucket_id\",\"accessKeyId\":\"$$S3_ACCESS_KEY_ID\",\"permissions\":{\"read\":true,\"write\":true,\"owner\":true}}"
+
+      echo "garage-init: bucket $$S3_BUCKET is ready for key $$S3_ACCESS_KEY_ID"
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres-password
+  studio_secrets_key:
+    file: ./secrets/studio-secrets-key
+
+volumes:
+  traefik-acme:
+  postgres-data:
+  garage-data:
+
+networks:
+  # Named so TRUSTED_PROXIES can say which addresses may set X-Forwarded-For:
+  # Traefik is the only thing that reaches the API, and it is on this subnet.
+  default:
+    ipam:
+      config:
+        - subnet: ${STACK_SUBNET}

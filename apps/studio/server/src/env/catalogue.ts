@@ -4,10 +4,14 @@ import type { VariableName } from './variables.ts';
 // a variable to `variables.ts` without documenting it fails `pnpm typecheck`.
 
 /**
- * `scripts/dev-pg.ts` and `scripts/dev-s3.ts` import these values rather than
- * restating them, so the containers and the generated `.env.development`
- * cannot drift apart. The Postgres port and credentials are also what
- * `packages/studio-sync`'s conformance suite expects.
+ * `scripts/dev.ts` imports these values rather than restating them: it exports
+ * them into the environment the development compose stack is interpolated
+ * with, so the containers and the generated `.env.development` cannot drift
+ * apart. Every credential here is published and points at a container on this
+ * machine.
+ *
+ * The Postgres port and credentials are also what `packages/studio-sync`'s
+ * conformance suite expects.
  */
 export const DEV = {
   pgHost: '127.0.0.1',
@@ -15,12 +19,30 @@ export const DEV = {
   pgUser: 'postgres',
   pgPassword: 'spike',
   pgDatabase: 'studio_dev',
-  // 9100 so Fresco's dev MinIO (9000) and this one can run side by side.
+  // 9100 so Fresco's dev object store (9000) and this one can run side by
+  // side. Garage's S3 API, published on the host loopback by
+  // docker-compose.dev.yml.
   s3Port: 9100,
-  s3Region: 'us-east-1',
+  // Garage signs requests for whatever region its configuration names, and
+  // the development stack configures it from this value — so the two cannot
+  // disagree, and `garage` is the name Garage itself defaults to.
+  s3Region: 'garage',
   s3Bucket: 'studio-dev',
-  s3AccessKeyId: 'minioadmin',
-  s3SecretAccessKey: 'minioadmin',
+  // Garage's key format: `GK` and 24 hex characters, then 64 hex characters
+  // of secret. Fixed rather than generated so the value in `.env.development`
+  // is the value the container is bootstrapped with.
+  s3AccessKeyId: 'GK000000000000000073646576',
+  s3SecretAccessKey:
+    '0000000000000000000000000073747564696f2d6465762d6e6f742d70726f64',
+  garageRpcSecret:
+    '000000000000000000000073747564696f2d6465762d6761726167652d727063',
+  garageAdminToken:
+    '00000000000000000073747564696f2d6465762d6761726167652d61646d696e',
+  valkeyPort: 63790,
+  // Mailpit, from docker-compose.dev.yml: SMTP in, and a browser UI to read
+  // what came out.
+  smtpPort: 1025,
+  mailpitUiPort: 8025,
   authSecret: 'studio-dev-secret-not-for-production',
   /**
    * The development keyring (#1900). Its 32 bytes are the ASCII of
@@ -37,6 +59,7 @@ export const DEV = {
 
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;
 export const DEV_S3_ENDPOINT = `http://localhost:${DEV.s3Port}`;
+export const DEV_SMTP_URL = `smtp://127.0.0.1:${DEV.smtpPort}`;
 
 export const GROUPS = [
   'Process',
@@ -100,6 +123,15 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`.',
     example: '3001',
   },
+  STUDIO_TELEMETRY: {
+    group: 'Process',
+    summary:
+      'Whether this instance reports anonymous usage telemetry. Declared here so the development lane can turn it off; nothing reads it until #1897 builds the reporting it governs.',
+    deployment:
+      'Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.',
+    devDefault: 'false',
+    example: 'true',
+  },
   STUDIO_DEPLOYMENT_MODE: {
     group: 'Process',
     summary:
@@ -150,7 +182,15 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     deployment:
       'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead.',
     devDefault: DEV_DATABASE_URL,
-    example: 'postgres://user:password@host:5432/studio',
+    example: 'postgres://user@host:5432/studio',
+  },
+  DATABASE_PASSWORD_FILE: {
+    group: 'Database',
+    summary:
+      'Path of a file holding the password for `DATABASE_URL`, which must then carry none.',
+    deployment:
+      'How the reference compose stack delivers the database password: a Compose file secret at `/run/secrets/postgres_password`, so it appears neither in `docker inspect` nor in any process environment. The file is read once at boot and its password inserted into `DATABASE_URL`. Setting it while `DATABASE_URL` also carries a password is a boot error — there would be no way to tell which was meant. Trailing newlines are stripped, matching what the Postgres image does with the same file.',
+    example: '/run/secrets/postgres_password',
   },
 
   STUDIO_SECRETS_KEY: {
@@ -191,7 +231,8 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Read by the worker process, which sends every message Studio sends; the web process never reads it. Unset ⇒ the worker boots without its mail workers and says so, and sign-in and invitation mail queues until one is configured. In development the worker’s console mailer prints the links instead. A sign-in or invitation link is never written to the log outside development.',
+      'Read by the worker process, which sends every message Studio sends; the web process never reads it. Unset ⇒ the worker boots without its mail workers and says so, and sign-in and invitation mail queues until one is configured. A sign-in or invitation link is never written to the log outside development.',
+    devDefault: DEV_SMTP_URL,
     example: 'smtp://user:password@smtp.example.org:587',
   },
   EMAIL_FROM: {

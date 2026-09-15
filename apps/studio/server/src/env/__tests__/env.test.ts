@@ -2,12 +2,18 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { parse as parseConnectionString } from 'pg-connection-string';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { isLocalDatabase, readEnv } from '../../env.ts';
 import { KeyringError } from '../../secrets/keyring.ts';
-import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
+import {
+  DEV,
+  DEV_DATABASE_URL,
+  DEV_S3_ENDPOINT,
+  DEV_SMTP_URL,
+} from '../catalogue.ts';
 import { resolve } from '../resolve.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -28,23 +34,28 @@ describe('development defaults', () => {
     expect(env.devDefaults).toBe(true);
   });
 
-  it('delivers magic links to the console, for the process that sends them', () => {
-    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
-  });
-
-  it('tolerates the unpaired EMAIL_FROM it supplies for the Mailpit loop', () => {
-    // .env.development sets EMAIL_FROM but no SMTP_URL, so that adding
-    // SMTP_URL alone locally completes the pair.
-    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
-  });
-
-  it('completes the SMTP pair when only SMTP_URL is added', () => {
-    vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
+  it('delivers magic links through the development stack’s mail sink', () => {
+    // Mailpit, from docker-compose.dev.yml. The worker therefore exercises
+    // the same SMTP path a deployment does, rather than a console mailer no
+    // deployment ever runs, and the links are read at the Mailpit UI.
     expect(readEnv({ withMail: true }).mail).toEqual({
       kind: 'smtp',
-      url: 'smtp://localhost:1025',
+      url: DEV_SMTP_URL,
       from: DEV.emailFrom,
     });
+  });
+
+  it('falls back to the console mailer when the sink is taken away', () => {
+    // Working without Docker's mail sink leaves EMAIL_FROM unpaired, which
+    // outside the development lane is a boot error.
+    vi.stubEnv('SMTP_URL', '');
+    expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'console' });
+  });
+
+  it('turns telemetry off, where a deployment leaves it on', () => {
+    expect(readEnv().telemetry).toBe(false);
+    vi.stubEnv('STUDIO_TELEMETRY', '');
+    expect(readEnv().telemetry).toBe(true);
   });
 });
 
@@ -125,8 +136,9 @@ describe('the development marker', () => {
 
   it('leaves a remote database alone once the marker is gone', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
-    // Without the marker the file's unpaired EMAIL_FROM is a deployment
-    // mistake in its own right, so this is the whole lane being left behind.
+    // The lane being left behind takes its mail sink with it: without either
+    // variable a deployment has no transport and mail queues.
+    vi.stubEnv('SMTP_URL', '');
     vi.stubEnv('EMAIL_FROM', '');
     vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
     const env = readEnv({ withMail: true });
@@ -139,6 +151,7 @@ describe('the development marker', () => {
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('SMTP_URL', '');
     vi.stubEnv('EMAIL_FROM', '');
     expect(readEnv({ withMail: true }).mail).toEqual({ kind: 'refuse' });
   });
@@ -196,6 +209,93 @@ describe('database and auth', () => {
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
+  });
+});
+
+// The compose stack (#1909) delivers the database password as a file secret,
+// so it is in neither `docker inspect` nor any process environment. What
+// reaches the pools and pg-boss is still one connection string: the password
+// is folded into DATABASE_URL here, once, at boot.
+describe('the database password file', () => {
+  const passwordFile = (contents: string): string => {
+    const path = join(
+      mkdtempSync(join(tmpdir(), 'studio-password-')),
+      'postgres-password',
+    );
+    writeFileSync(path, contents);
+    return path;
+  };
+
+  it('puts the file’s password into a URL that carries none', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(readEnv().db).toEqual({
+      url: 'postgres://app:s3cret@localhost:5433/studio',
+    });
+  });
+
+  it('strips the trailing newline a shell redirection leaves', () => {
+    // The Postgres image strips exactly this from the same file when it sets
+    // the password, so a file written with `> file` must mean the same thing
+    // on both sides of the connection.
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret\n'));
+    expect(readEnv().db?.url).toBe(
+      'postgres://app:s3cret@localhost:5433/studio',
+    );
+  });
+
+  it('survives a password full of characters a URL gives meaning to', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('p@ss:w/ord#1?2'));
+    // Read back the way node-postgres reads it, rather than asserting on the
+    // encoded form: what matters is that pg ends up with the same bytes the
+    // file held.
+    expect(parseConnectionString(readEnv().db!.url).password).toBe(
+      'p@ss:w/ord#1?2',
+    );
+  });
+
+  it('refuses a URL that carries a password as well', () => {
+    // There would be no way to say which was meant, and the wrong answer is
+    // an authentication failure far from the configuration that caused it.
+    vi.stubEnv('DATABASE_URL', 'postgres://app:inline@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/carries a password and/);
+  });
+
+  it('refuses a connection form with nowhere to put a password', () => {
+    // A libpq keyword string or a bare socket path has no authority to hold
+    // one. Inserting nothing and carrying on would fail as an authentication
+    // error with no hint that the file was never read.
+    vi.stubEnv('DATABASE_URL', 'host=/var/run/postgresql dbname=studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/not a URL a password can be inserted/);
+  });
+
+  it('refuses a file it cannot read, naming it', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', '/nonexistent/postgres-password');
+    expect(() => readEnv()).toThrow(
+      /\/nonexistent\/postgres-password, which could not be read/,
+    );
+  });
+
+  it('refuses an empty file rather than connecting without a password', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('\n'));
+    expect(() => readEnv()).toThrow(/which is empty/);
+  });
+
+  it('refuses the file without a connection to insert it into', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/but DATABASE_URL is not/);
+  });
+
+  it('leaves a URL that carries its own password alone', () => {
+    vi.stubEnv('DATABASE_PASSWORD_FILE', '');
+    expect(readEnv().db).toEqual({ url: DEV_DATABASE_URL });
   });
 });
 
