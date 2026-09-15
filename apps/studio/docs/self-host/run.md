@@ -87,13 +87,14 @@ so a file written by a shell redirection is fine.
 one or more `id:base64(32 bytes)` entries, separated by commas or newlines, the
 first being the current one. The `k1` above is the entry's id — a label of up to
 64 letters, digits, `.`, `_` and `-`, starting with a letter or digit, that you
-will recognise later; it never contains a `:`. Rotation adds a second entry at the front; one is what you
-start with. The reader that uses it lands with
-[#1900](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1900)
-(PR
-[#1914](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1914));
-the file must exist now regardless, because the stack mounts it as a declared
-secret and Compose resolves every declared secret before it starts anything.
+will recognise later; it never contains a `:`. One entry is what you start
+with. To rotate, add a new entry at the front, restart the stack, and run
+`docker compose run --rm --no-deps api rotate-secrets`, which re-encrypts every
+stored secret under the new entry and reports success only once it has counted
+that nothing is left under the old one; remove the old entry after that. Every
+Studio process refuses to start while a stored secret names an entry the
+keyring no longer holds, so a rotation finished out of order is caught before
+anything is served.
 
 > **Back the keyring up with the database, from the day you create it.** A dump
 > restored without it recovers no secrets: webhook signing secrets, protocol

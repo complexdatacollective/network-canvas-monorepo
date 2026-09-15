@@ -21,6 +21,7 @@ import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput } from '../audit/events.ts';
 import { emptyProtocol } from '../protocol/sectionize.ts';
 import { ProtocolStore } from '../protocol/store.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore, type LockedMember } from '../team/store.ts';
 
@@ -183,6 +184,8 @@ export async function createAuditedStudy(
     protocolId: string;
     draftId: string;
   },
+  /** The store seals API-key assets, so it always takes one (#1900). */
+  cipher: SecretsCipher,
 ): Promise<CreatedStudy> {
   const studyName = StudyNameSchema.parse(input.name).trim();
   const reservation = await reserveDeniedStudyCreation(context);
@@ -217,6 +220,7 @@ export async function createAuditedStudy(
         // The protocol line first: `studies.protocol_id` references it.
         const protocol = await new ProtocolStore(
           context.tenantDb,
+          cipher,
         ).createProtocol(
           {
             protocol: emptyProtocol(studyName),

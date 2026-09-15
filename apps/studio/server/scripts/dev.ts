@@ -159,8 +159,16 @@ function bootstrapObjectStore(): void {
 // anything else; a non-local target is left alone.
 async function resetAndSeed(): Promise<void> {
   loadEnvFiles();
-  const { db } = readEnv();
+  const { db, secrets } = readEnv();
   if (!db) throw new Error('DATABASE_URL is unset; nothing to reset.');
+  // Unreachable once `db` is present — `resolve()` refuses a DATABASE_URL with
+  // no keyring (#1900) — but narrowed rather than asserted, for the same
+  // reason `db` is: the seed seals real webhook secrets with it.
+  if (!secrets) {
+    throw new Error(
+      'No secrets keyring is configured; the seed cannot seal the secrets it writes.',
+    );
+  }
   const url = new URL(db.url);
   const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
   if (!isLocalDatabase(db.url)) {
@@ -171,7 +179,9 @@ async function resetAndSeed(): Promise<void> {
   }
   const pool = createOwnerPool(db);
   try {
-    await resetSchemaAndSeed(pool);
+    // The database this resets is local by construction, so the seed can
+    // take the pinned PRNG's nonces and write the same rows every boot.
+    await resetSchemaAndSeed(pool, { secrets, reproducible: true });
     console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();

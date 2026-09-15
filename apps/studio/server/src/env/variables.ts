@@ -59,6 +59,21 @@ export const serverSchemas = {
   DATABASE_URL: z.string().min(1).optional(),
 
   /**
+   * The keyring every stored secret is encrypted with (#1900), as
+   * `<id>:<base64 of 32 bytes>` entries. Shape is not checked here: the parse
+   * that produces the keyring is the only thing that can say whether a value
+   * is usable, and it reports what is wrong without ever echoing the value.
+   */
+  STUDIO_SECRETS_KEY: z.string().min(1).optional(),
+
+  /**
+   * Where to read the same value from instead. The reference stack mounts it
+   * as a Compose file secret, which is how the keyring stays out of
+   * `docker inspect` and out of any log that prints the environment.
+   */
+  STUDIO_SECRETS_KEY_FILE: z.string().min(1).optional(),
+
+  /**
    * The compose stack's way of delivering the database password: a Compose
    * file secret path rather than a value, so the password is in neither
    * `docker inspect` nor the process environment. `resolve.ts` reads the file

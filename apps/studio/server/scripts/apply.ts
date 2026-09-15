@@ -162,7 +162,7 @@ export type ResetOptions = SeedOptions & {
  */
 export async function resetSchemaAndSeed(
   pool: pg.Pool,
-  options: ResetOptions = {},
+  options: ResetOptions,
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');

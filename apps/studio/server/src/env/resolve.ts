@@ -4,6 +4,7 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
+import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -54,6 +55,14 @@ export type StudioEnv = {
    * transport is configured" for the worker, which is the `refuse` kind.
    */
   mail: MailerEnv | undefined;
+  /**
+   * The keyring every stored secret is encrypted with (#1900). Undefined only
+   * where there is no database to hold a secret: a deployment that has one and
+   * no keyring is refused here rather than allowed to write values it could
+   * not read back, and both entrypoints refuse again at boot for the key ids
+   * already in use.
+   */
+  secrets: Keyring | undefined;
   devDefaults: boolean;
   /**
    * Whether this instance reports anonymous usage telemetry. Nothing reads it
@@ -345,12 +354,68 @@ function resolveAuth(raw: RawEnv, db: DbEnv | undefined): AuthEnv | undefined {
 }
 
 /**
+ * The keyring, or nothing where there is no database to hold a secret.
+ *
+ * Read before anything is written under it rather than lazily at the first
+ * secret: a deployment whose keyring is missing or malformed must fail at
+ * boot, while it still has the one it was using, and not halfway through its
+ * first webhook subscription.
+ */
+function resolveSecrets(
+  raw: RawEnv,
+  db: DbEnv | undefined,
+  readSecretsFile: (path: string) => string,
+): Keyring | undefined {
+  if (raw.STUDIO_SECRETS_KEY && raw.STUDIO_SECRETS_KEY_FILE) {
+    // Never a guess about which one was meant: the two would usually hold the
+    // same keyring, and the time they do not is the time it matters.
+    throw new Error(
+      'STUDIO_SECRETS_KEY and STUDIO_SECRETS_KEY_FILE are both set; set exactly one.',
+    );
+  }
+
+  const path = raw.STUDIO_SECRETS_KEY_FILE;
+  if (path) {
+    let text: string;
+    try {
+      text = readSecretsFile(path);
+    } catch {
+      // The path, and nothing the read said: a filesystem error can quote the
+      // content it was reading, and this file is entirely key material.
+      throw new Error(`STUDIO_SECRETS_KEY_FILE could not be read: ${path}`);
+    }
+    return parseKeyring(text);
+  }
+
+  // Parsed even with no database configured: a mistake in it is worth catching
+  // wherever it is set, and the parse is a base64 decode rather than anything
+  // a boot would notice.
+  if (raw.STUDIO_SECRETS_KEY) return parseKeyring(raw.STUDIO_SECRETS_KEY);
+
+  if (!db) return undefined;
+  throw new Error(
+    'A secrets keyring is required when DATABASE_URL is set: set ' +
+      'STUDIO_SECRETS_KEY_FILE to a file holding it, or STUDIO_SECRETS_KEY to ' +
+      'its value. Generate the first entry with `openssl rand -base64 32` and ' +
+      'write it as `k1:<value>`. Back the keyring up with the database: ' +
+      'without it every stored secret is unreadable.',
+  );
+}
+
+/**
  * `withMail` says the caller read `SMTP_URL` and `EMAIL_FROM` rather than
  * withholding them (see `readEnv`). Resolution cannot infer it: under the
  * development defaults an unset `SMTP_URL` means the console mailer, which is
  * indistinguishable here from the web process never having read the variable.
+ *
+ * `readSecretsFile` is the one filesystem read this module does. It defaults
+ * to reading the file; it is injectable so the environment tests can exercise
+ * the file lane and its refusals without writing key material to disk.
  */
-export type ResolveOptions = { withMail?: boolean };
+export type ResolveOptions = {
+  withMail?: boolean;
+  readSecretsFile?: (path: string) => string;
+};
 
 export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
@@ -387,6 +452,12 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
     );
   }
 
+  const secrets = resolveSecrets(
+    raw,
+    db,
+    options.readSecretsFile ?? ((path) => readFileSync(path, 'utf8')),
+  );
+
   return {
     port: raw.PORT ?? DEFAULT_PORT,
     host: raw.HOST ?? DEFAULT_HOST,
@@ -395,6 +466,7 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
     db,
     auth: resolveAuth(raw, db),
     mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,
+    secrets,
     devDefaults,
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,

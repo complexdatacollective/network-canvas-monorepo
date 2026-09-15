@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
 import {
@@ -51,7 +52,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
   beforeAll(async () => {
     ({ db, maintenance, tenantDb, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(tenantDb);
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();

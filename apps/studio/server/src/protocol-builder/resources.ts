@@ -23,7 +23,8 @@ import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-type Inspection = z.output<typeof ResourceInspectionSchema>;
+/** Exported so the router can fill a committed API key's value in (#1900). */
+export type Inspection = z.output<typeof ResourceInspectionSchema>;
 type Preview = z.output<typeof ResourcePreviewSchema>;
 type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
 

@@ -10,6 +10,7 @@ import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
 import { ProtocolStore } from '../protocol/store.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import { seesEveryTeamStudy, type ActorMembership } from '../study/tenancy.ts';
 import type { ProtocolBuilderSession } from './host.ts';
 
@@ -20,6 +21,8 @@ export type ResolveProtocolInput = {
   connectionId: string;
   clientSessionId: string;
   memberships: readonly ActorMembership[];
+  /** Carried onto the session: what seals an API-key asset on write (#1900). */
+  cipher: SecretsCipher;
 };
 
 /**
@@ -36,7 +39,7 @@ export async function resolveProtocolSession(
 ): Promise<ProtocolBuilderSession | null> {
   for (const membership of input.memberships) {
     const tenantDb = createTenantDb(pool, membership.teamId);
-    const store = new ProtocolStore(tenantDb);
+    const store = new ProtocolStore(tenantDb, input.cipher);
     const reachable = await store.isReachableByCaller(input.protocolId, {
       actorUserId: input.principal.userId,
       seesEveryStudy: seesEveryTeamStudy(membership.role),
@@ -51,6 +54,7 @@ export async function resolveProtocolSession(
       protocolId: input.protocolId,
       draftId,
       tenantDb,
+      cipher: input.cipher,
       principal: input.principal,
       requestId: input.requestId,
       connectionId: input.connectionId,

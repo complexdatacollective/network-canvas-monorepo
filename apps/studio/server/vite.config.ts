@@ -5,10 +5,13 @@ import { defineConfig } from 'vite';
 // installs them as source and Node refuses to type-strip under node_modules —
 // anything left external here dies at boot in the image.
 //
-// Three entries, one image (#1895, #1909): `dist/index.js` serves users,
-// `dist/worker.js` runs background jobs, and `dist/migrate.js` creates the
-// schema. `ssr: true` rather than a path, because the entries are named by
-// `rollupOptions.input` — a string would name only one of them.
+// Four entries, one image (#1895, #1909, #1900): `dist/index.js` serves users,
+// `dist/worker.js` runs background jobs, `dist/migrate.js` creates the schema,
+// and `dist/rotate-secrets.js` re-keys the stored secrets and exits. The
+// image's entrypoint (`bin/studio-api`) `exec`s one of them per run, so a
+// deployment names a command rather than a path into this bundle. `ssr: true`
+// rather than a path, because the entries are named by `rollupOptions.input`
+// — a string would name only one of them.
 export default defineConfig({
   build: {
     ssr: true,
@@ -17,9 +20,10 @@ export default defineConfig({
     target: 'node24',
     rollupOptions: {
       input: {
-        index: 'src/index.ts',
-        worker: 'src/worker.ts',
-        migrate: 'src/migrate.ts',
+        'index': 'src/index.ts',
+        'worker': 'src/worker.ts',
+        'migrate': 'src/migrate.ts',
+        'rotate-secrets': 'src/rotate-secrets.ts',
       },
       output: {
         // Beside the entries, not under `assets/`. Several entries mean rollup

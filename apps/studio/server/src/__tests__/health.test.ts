@@ -7,6 +7,7 @@ import { migrateDatabase } from '../db/migrate.ts';
 import { resolve } from '../env/resolve.ts';
 import { readiness } from '../health.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
+import { testKeyringEntry } from './support/secrets.ts';
 
 // Liveness and readiness on the web process (#1897, #1909). The worker serves
 // the same two routes on a loopback listener of its own, which only a real
@@ -121,6 +122,9 @@ describe('the web process routes', () => {
       resolve({
         NODE_ENV: 'test',
         DATABASE_URL: 'postgres://studio:studio@127.0.0.1:59999/studio',
+        // A database needs a keyring (#1900); the check under test never
+        // reaches it.
+        STUDIO_SECRETS_KEY: testKeyringEntry('test-1'),
         ...AUTH,
       }),
     );
@@ -155,6 +159,8 @@ describe.skipIf(!db)('the web process against a real database', () => {
       const env = resolve({
         NODE_ENV: 'test',
         DATABASE_URL: scratch.db.url,
+        // A database needs a keyring (#1900); nothing here opens a secret.
+        STUDIO_SECRETS_KEY: testKeyringEntry('test-1'),
         ...AUTH,
       });
 

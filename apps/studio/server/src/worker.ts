@@ -8,6 +8,7 @@ import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
 import { createJobWorker, type JobWorker } from './jobs/worker.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The worker entry: the same image as src/index.ts, started with a different
@@ -85,38 +86,60 @@ function stopWaiting(): void {
   waiting = undefined;
 }
 
+/**
+ * Everything this process does, once the schema is current and the keyring
+ * has been shown to produce every key id in use. An arrow rather than a
+ * declaration so that the `db`/`auth` guard above narrows inside it: a
+ * hoisted function could be called before the guard ran, and TypeScript is
+ * right to say so.
+ */
+const startWorker = (): void => {
+  stopWaiting();
+  worker = createJobWorker({
+    db,
+    maintenancePool,
+    // `refuse` is the resolved shape of "no transport is configured", and a
+    // mailer that rejects every send would turn each mail job into a retry
+    // loop ending in a dead letter. Absent instead: registerJobs says so at
+    // boot and the jobs wait for a worker that has one (#1895).
+    mailer:
+      env.mail && env.mail.kind !== 'refuse'
+        ? createMailer(env.mail)
+        : undefined,
+    publicBaseUrl: auth.baseUrl,
+  });
+  void worker.start().then(
+    () => {
+      jobsStarted = true;
+      // oxlint-disable-next-line no-console -- boot log
+      console.log(`Network Canvas Studio worker ${STUDIO_VERSION} started`);
+      return undefined;
+    },
+    (error: unknown) => {
+      // Nothing this process does works without pg-boss, so a failed start
+      // is a failed boot: exiting lets the deployment restart it rather than
+      // leaving a container up that runs no jobs.
+      // oxlint-disable-next-line no-console -- boot diagnostics
+      console.error('Could not start the job worker:', error);
+      process.exit(1);
+    },
+  );
+};
+
 await awaitCurrentSchema(maintenancePool, env, {
   onCurrent: () => {
-    stopWaiting();
-    worker = createJobWorker({
-      db,
-      maintenancePool,
-      // `refuse` is the resolved shape of "no transport is configured", and a
-      // mailer that rejects every send would turn each mail job into a retry
-      // loop ending in a dead letter. Absent instead: registerJobs says so at
-      // boot and the jobs wait for a worker that has one (#1895).
-      mailer:
-        env.mail && env.mail.kind !== 'refuse'
-          ? createMailer(env.mail)
-          : undefined,
-      publicBaseUrl: auth.baseUrl,
-    });
-    void worker.start().then(
-      () => {
-        jobsStarted = true;
-        // oxlint-disable-next-line no-console -- boot log
-        console.log(`Network Canvas Studio worker ${STUDIO_VERSION} started`);
-        return undefined;
-      },
-      (error: unknown) => {
-        // Nothing this process does works without pg-boss, so a failed start
-        // is a failed boot: exiting lets the deployment restart it rather than
-        // leaving a container up that runs no jobs.
+    // Beside the fingerprint check and for the same reason (#1900): the
+    // worker is what signs webhook deliveries, so a keyring that cannot
+    // produce a stored key id would turn every delivery for that team into a
+    // failed job. The keep-alive interval is deliberately still held — the
+    // check is asynchronous, and `startWorker` is what releases it.
+    void verifySecretKeysOrExit(env, maintenancePool)
+      .then(() => startWorker())
+      .catch((error: unknown) => {
         // oxlint-disable-next-line no-console -- boot diagnostics
-        console.error('Could not start the job worker:', error);
+        console.error('Boot checks failed:', error);
         process.exit(1);
-      },
-    );
+      });
   },
 });
 

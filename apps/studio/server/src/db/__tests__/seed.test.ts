@@ -6,9 +6,11 @@ import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
   createScratchSchema,
+  dumpSchemaRows,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
 import { sha256Hex } from '../seed/rng.ts';
 
@@ -69,6 +71,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
   let pool: pg.Pool;
   let elapsedMs = 0;
   let adminId = '';
+  let plaintextSecrets: string[] = [];
 
   beforeAll(async () => {
     if (!db) return;
@@ -76,7 +79,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
     pool = scratch.pool;
     await provisionScratchSchema(pool);
     const started = performance.now();
-    await seed(pool);
+    ({ plaintextSecrets } = await seed(pool, { secrets: testKeyring() }));
     elapsedMs = performance.now() - started;
     const admin = await pool.query<{ id: string }>(
       `select id from "user" where email = $1`,
@@ -341,14 +344,56 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
-  it('leaves participant PII columns null and codes well-formed', async () => {
+  it('writes plain contact columns and codes well-formed', async () => {
+    // Every participant is reachable by email, and every address is stored in
+    // the one normalised spelling the opt-out join depends on.
     await expect(
       count(
         pool,
         `select count(*)::int as n from participants
-         where num_nonnulls(email_ciphertext, phone_ciphertext, name_ciphertext,
-                            attributes_ciphertext, email_index, phone_index,
-                            pii_key_id, pii_algorithm) > 0`,
+         where email is null or email <> lower(btrim(email))`,
+      ),
+    ).resolves.toBe(0);
+    // Some but not all carry a phone, so the corpus holds both the
+    // SMS-reachable and the email-only case …
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants where phone is not null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants where phone is null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    // … and every phone that is there is E.164, which is the only form an SMS
+    // provider takes.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where phone is not null and phone !~ '^\\+[1-9][0-9]{6,14}$'`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where name is null or name !~ '[^[:space:]]'`,
+      ),
+    ).resolves.toBe(0);
+    // The attribute bag is an object with something in it: a seed that wrote
+    // `{}` everywhere would satisfy the column's own check and give a filter
+    // in the UI nothing to bite on.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participants
+         where jsonb_typeof(attributes) <> 'object'
+            or attributes->>'cohort' is null
+            or attributes->>'referral' is null`,
       ),
     ).resolves.toBe(0);
     await expect(
@@ -461,7 +506,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
            and not exists (
              select 1 from participant_contact_optouts o
              where o.team_id = d.team_id and o.channel = d.channel
-               and o.recipient_blind_index = d.recipient_blind_index
+               and o.recipient_address = d.recipient_address
                and o.opted_out_at <= d.created_at)`,
       ),
     ).resolves.toBe(0);
@@ -479,7 +524,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
-          and o.recipient_blind_index = d.recipient_blind_index
+          and o.recipient_address = d.recipient_address
          where o.opted_out_at <= d.created_at and d.suppressed_at is null`,
       ),
     ).resolves.toBe(0);
@@ -489,7 +534,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
-          and o.recipient_blind_index = d.recipient_blind_index
+          and o.recipient_address = d.recipient_address
          where o.opted_out_at > d.created_at and d.suppressed_at is null`,
       ),
     ).resolves.toBeGreaterThan(0);
@@ -988,6 +1033,130 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
+  it('seals every webhook secret under the current key and can open it again', async () => {
+    const keyring = testKeyring();
+    // Every row names the current entry, never an older one: the seed writes
+    // under whatever is current, which is the state `rotate-secrets` leaves
+    // behind and the state the boot check expects to find.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_subscriptions
+         where secret_key_id <> $1`,
+        [keyring.currentId],
+      ),
+    ).resolves.toBe(0);
+
+    const subscriptions = await pool.query<{
+      id: string;
+      team_id: string;
+      secret_ciphertext: Buffer;
+      secret_key_id: string;
+    }>(
+      `select id, team_id, secret_ciphertext, secret_key_id
+       from webhook_subscriptions order by id limit 1`,
+    );
+    const row = subscriptions.rows[0];
+    expect(row).toBeDefined();
+    if (!row) throw new Error('unreachable: the seed writes subscriptions');
+
+    // The round trip is the assertion that matters: the bytes in the column
+    // are a real envelope over a real secret, bound to this row's identity,
+    // not opaque filler that happens to be the right length.
+    const opened = testCipher(keyring).openWebhookSecret(
+      { teamId: row.team_id, subscriptionId: row.id },
+      { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+    );
+    expect(plaintextSecrets).toContain(opened);
+    expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
+    // The column does not hold what the round trip returned.
+    expect(row.secret_ciphertext.toString('utf8')).not.toContain(opened);
+  });
+
+  it('links a Google account for the admin with its tokens sealed', async () => {
+    const keyring = testKeyring();
+    const rows = await pool.query<{
+      accountId: string;
+      accessToken: string;
+      refreshToken: string;
+      idToken: string;
+    }>(
+      `select "accountId", "accessToken", "refreshToken", "idToken"
+       from account where "providerId" = 'google' and "userId" = $1`,
+      [adminId],
+    );
+    expect(rows.rowCount).toBe(1);
+    const row = rows.rows[0]!;
+
+    const cipher = testCipher(keyring);
+    for (const column of ['accessToken', 'refreshToken', 'idToken'] as const) {
+      const stored = row[column];
+      expect(stored.startsWith(`studio-secret:${keyring.currentId}:`)).toBe(
+        true,
+      );
+      // The round trip, as for the webhook secrets: the column holds a real
+      // envelope bound to this account and column, not opaque filler.
+      const opened = cipher.openOAuthToken(
+        { providerId: 'google', accountId: row.accountId, column },
+        stored,
+      );
+      expect(plaintextSecrets).toContain(opened);
+      expect(stored).not.toContain(opened);
+    }
+  });
+
+  it('seals one protocol API key per team and stores no value in a section', async () => {
+    const keyring = testKeyring();
+    const teams = await count(pool, `select count(*)::int as n from teams`);
+    await expect(
+      count(pool, `select count(*)::int as n from protocol_asset_keys`),
+    ).resolves.toBe(teams);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from protocol_asset_keys where key_id <> $1`,
+        [keyring.currentId],
+      ),
+    ).resolves.toBe(0);
+
+    const stored = await pool.query<{
+      team_id: string;
+      protocol_id: string;
+      asset_id: string;
+      ciphertext: Buffer;
+      key_id: string;
+    }>(
+      `select team_id, protocol_id, asset_id, ciphertext, key_id
+       from protocol_asset_keys order by team_id limit 1`,
+    );
+    const row = stored.rows[0]!;
+    const opened = testCipher(keyring).openAssetKey(
+      {
+        teamId: row.team_id,
+        protocolId: row.protocol_id,
+        assetId: row.asset_id,
+      },
+      { ciphertext: row.ciphertext, keyId: row.key_id },
+    );
+    expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
+    expect(plaintextSecrets).toContain(opened);
+
+    // The manifest entry survives in the stored document; only its value is
+    // gone. Asked of every section row, because a key must not be at rest in
+    // any revision — not only the one the draft currently points at.
+    const apikeyEntries = `from sections s, jsonb_each(s.doc) e
+       where jsonb_typeof(e.value) = 'object' and e.value ->> 'type' = 'apikey'`;
+    await expect(
+      count(pool, `select count(*)::int as n ${apikeyEntries}`),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n ${apikeyEntries} and e.value ? 'value'`,
+      ),
+    ).resolves.toBe(0);
+  });
+
   it('appends a dense audit sequence per team and no unbacked outbox rows', async () => {
     const sequences = await pool.query<{ team_id: string; ok: boolean }>(
       `select team_id,
@@ -1007,7 +1176,86 @@ describe.skipIf(!db)('the seeded dataset', () => {
   });
 });
 
+/**
+ * The four columns the seed does not choose, and therefore cannot reproduce.
+ * Every one of them is a consequence of the seed writing through real code
+ * rather than around it, which is the trade it makes everywhere: two are
+ * allocated inside a writer it calls, and two are wall-clock stamps that
+ * belong to the operation rather than to the data.
+ *
+ * Everything else — every other id, every timestamp, every encryption nonce —
+ * comes from the pinned PRNG or the fixed anchor, which is what this case
+ * exists to hold the seed to. Adding a column here is a decision, not
+ * bookkeeping: it says a value is not the seed's to pick.
+ */
+const IRREPRODUCIBLE = {
+  // better-auth's `hashPassword` draws a fresh scrypt salt per call, and
+  // `AuditStore.append` allocates an event id with `randomUUID()`; both are
+  // documented where they are written (`seed/teams.ts`, `seed/audit.ts`).
+  account: ['password'],
+  audit_events: ['id'],
+  // When the projection was computed, which is now, in both runs. The seed
+  // calls the real `refreshProjectionsForSessions`; the counts it derives are
+  // compared, and they are what the seeded data determines.
+  session_stats: ['computed_at'],
+  // Not the seed's row at all — `applySchema` stamps it, and the seed's wipe
+  // skips the table for that reason. The fingerprint itself is still
+  // compared, which is worth having: it says both runs seeded one schema.
+  schemaFingerprint: ['appliedAt'],
+} as const;
+
 describe.skipIf(!db)('seed', () => {
+  it(
+    'writes byte-identical data on two runs',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const dumps: Map<string, string[]>[] = [];
+      for (let run = 0; run < 2; run += 1) {
+        const { pool, dispose } = await createScratchSchema(db);
+        try {
+          await provisionScratchSchema(pool);
+          // The only thing that makes two dumps comparable: without it the
+          // secret envelopes take fresh CSPRNG nonces, as they do in a
+          // deployment.
+          await seed(pool, {
+            secrets: testKeyring(),
+            scale: 'tiny',
+            reproducible: true,
+          });
+          dumps.push(
+            await dumpSchemaRows(pool, { omitColumns: IRREPRODUCIBLE }),
+          );
+        } finally {
+          await dispose();
+        }
+      }
+
+      const [first, second] = dumps as [
+        Map<string, string[]>,
+        Map<string, string[]>,
+      ];
+      // Reported as a list of table names and the first row that differs,
+      // rather than as one `toEqual` over the corpus: a failure has to be
+      // readable, and the corpus is tens of thousands of rows.
+      expect([...second.keys()]).toEqual([...first.keys()]);
+      const differences = [...first].flatMap(([table, rows]) => {
+        const other = second.get(table) ?? [];
+        if (rows.length !== other.length) {
+          return [`${table}: ${rows.length} rows, then ${other.length}`];
+        }
+        const index = rows.findIndex((row, at) => row !== other[at]);
+        return index === -1
+          ? []
+          : [`${table}: row ${index}\n  ${rows[index]}\n  ${other[index]}`];
+      });
+      expect(differences).toEqual([]);
+      // The dump is worth comparing: a helper that returned nothing would
+      // make every line above pass.
+      expect([...first.values()].flat().length).toBeGreaterThan(1000);
+    },
+    SEEDING_TIMEOUT_MS,
+  );
+
   it(
     'hashes a per-instance admin password when one is given',
     async () => {
@@ -1016,6 +1264,7 @@ describe.skipIf(!db)('seed', () => {
       try {
         await provisionScratchSchema(pool);
         await seed(pool, {
+          secrets: testKeyring(),
           scale: 'tiny',
           adminPassword: 'chosen-for-this-instance',
         });

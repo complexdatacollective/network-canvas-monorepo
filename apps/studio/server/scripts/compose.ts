@@ -36,14 +36,6 @@ export const localComposeFile = fileURLToPath(
 );
 const secretsDirectory = fileURLToPath(new URL('secrets/', studioRoot));
 
-/**
- * The keyring the encryption work (#1900) reads through
- * `STUDIO_SECRETS_KEY_FILE`, which the compose file mounts as a file secret.
- * This is the value `.env.development` carries as `STUDIO_SECRETS_KEY` once
- * that issue lands; it is published, and is a development fixture only.
- */
-const DEV_SECRETS_KEY = 'dev:c3R1ZGlvLWRldi1rZXlyaW5nLW5vdC1mb3ItcHJvZCE=';
-
 export type ComposeResult = {
   status: number;
   stdout: string;
@@ -134,7 +126,11 @@ export function writeSecretsIfAbsent(): void {
   mkdirSync(secretsDirectory, { recursive: true });
   const files: [name: string, contents: string, what: string][] = [
     ['postgres-password', DEV.pgPassword, 'the development database password'],
-    ['studio-secrets-key', DEV_SECRETS_KEY, 'the development keyring'],
+    // The same fixture `.env.development` carries as STUDIO_SECRETS_KEY; the
+    // compose file mounts this copy as a file secret and the server reads it
+    // through STUDIO_SECRETS_KEY_FILE (#1900), so a checkout and the stack
+    // open the same development database.
+    ['studio-secrets-key', DEV.secretsKey, 'the development keyring'],
   ];
   for (const [name, contents, what] of files) {
     const path = `${secretsDirectory}${name}`;

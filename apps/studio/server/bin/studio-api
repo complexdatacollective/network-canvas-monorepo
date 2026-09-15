@@ -21,12 +21,12 @@ Usage: studio-api <command>
   migrate          create this build's schema in an empty database
   maintenance on   close the instance to users
   maintenance off  reopen it
-  rotate-secrets   re-encrypt stored secrets under a new keyring
+  rotate-secrets   re-encrypt stored secrets under the keyring's current entry
 USAGE
 }
 
-# The two commands whose implementations land with the issues that define them.
-# A stub rather than an absent command: a deployment that ran one and got
+# A command whose implementation lands with the issue that defines it. A stub
+# rather than an absent command: a deployment that ran it and got
 # "unknown command" would read it as its own mistake, where what it needs to
 # know is that the command exists and this build cannot do it yet. Exit 64 is
 # sysexits' EX_USAGE — the same code an unknown command gets, because in both
@@ -61,7 +61,7 @@ maintenance)
     esac
     ;;
 rotate-secrets)
-    unavailable rotate-secrets 1900
+    exec node /app/dist/rotate-secrets.js "$@"
     ;;
 *)
     echo "studio-api: unknown command '$command'" >&2

@@ -358,14 +358,13 @@ const messageTemplates = pgTable(
 // timestamp shape exactly. It records what was asked for and how it ended;
 // scheduling the attempts is the job queue's, not the row's.
 //
-// The recipient address is deliberately absent. `team_invitation_deliveries`
-// snapshots an email because an invitation's address *is* its identity and no
-// participant record exists. Here a participant record does exist, the address
-// is encrypted PII (#1258, #1263) that "never leaves the PII boundary
-// unaudited" (#1305), and snapshotting it into a long-lived operational table
-// would put plaintext PII in the outbox, in backups, and in every operator's
-// reach. The worker resolves the address from the participant record inside
-// the send, under the audited PII-read path.
+// The recipient address is snapshotted, exactly as `team_invitation_deliveries`
+// snapshots an invitation's email. A delivery has to record where it actually
+// went: the participant's address may be corrected or erased afterwards, and
+// an outbox that resolved the address at read time would then report a send
+// that never happened to that address. It is also what the suppression list
+// joins on, so a delivery can be checked against an opt-out recorded for an
+// address no participant row carries any more.
 const messageDeliveries = pgTable(
   'message_deliveries',
   {
@@ -379,10 +378,12 @@ const messageDeliveries = pgTable(
     templateId: uuid('template_id').notNull(),
     kind: text('kind').notNull(),
     channel: text('channel').notNull(),
-    // HMAC of the normalized recipient address under the deployment's
-    // blind-index key (#1246 driver 2). Never reversible; joins the
-    // suppression list without storing an address.
-    recipientBlindIndex: text('recipient_blind_index').notNull(),
+    // The normalised address (`normalizeContactAddress` in
+    // src/study/contact.ts), written at enqueue and immutable afterwards. A
+    // plain column since #1900: contact details are protected by the
+    // deployment rather than by the application, so the outbox can hold the
+    // address it addressed rather than a digest of it.
+    recipientAddress: text('recipient_address').notNull(),
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
@@ -449,9 +450,9 @@ const messageDeliveries = pgTable(
       table.studyId,
       table.createdAt.desc(),
     ),
-    index('message_deliveries_team_id_recipient_blind_index_idx').on(
+    index('message_deliveries_team_id_recipient_address_idx').on(
       table.teamId,
-      table.recipientBlindIndex,
+      table.recipientAddress,
     ),
     check(
       'message_deliveries_kind_check',
@@ -472,8 +473,7 @@ const messageDeliveries = pgTable(
     ),
     check(
       'message_deliveries_hash_check',
-      sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
-          AND ${table.recipientBlindIndex} ~ '^[0-9a-f]{64}$'`,
+      sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'`,
     ),
     // A delivery ends once, one way: sent, failed, suppressed or uncertain —
     // never two of them at the same time.
@@ -481,9 +481,14 @@ const messageDeliveries = pgTable(
       'message_deliveries_terminal_state_check',
       sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1`,
     ),
+    // The address bound is the same 3-to-320 window `participants_email_check`
+    // applies, because this column holds what that one held: shorter than
+    // `a@b` is not an address at all, and 320 is the longest an RFC 5321
+    // address can be.
     check(
       'message_deliveries_lengths_check',
-      sql`(${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)
+      sql`char_length(${table.recipientAddress}) BETWEEN 3 AND 320
+          AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)
           AND (${table.providerMessageId} IS NULL
                OR char_length(${table.providerMessageId}) BETWEEN 1 AND 255)`,
     ),
@@ -543,14 +548,20 @@ const messageDeliveryEvents = pgTable(
   ],
 );
 
-// Opt-out and suppression, keyed by blind index so it survives participant
-// erasure and applies to every study in the team.
+// Opt-out and suppression, keyed by the normalised address rather than by a
+// participant, so it survives participant erasure and applies to every study
+// in the team: someone who asked not to be contacted has asked the team, not
+// one of its studies, and the record has to outlive the row that named them.
 const participantContactOptouts = pgTable(
   'participant_contact_optouts',
   {
     teamId: text('team_id').notNull(),
     channel: text('channel').notNull(),
-    recipientBlindIndex: text('recipient_blind_index').notNull(),
+    // `normalizeContactAddress` in src/study/contact.ts, the same form
+    // `message_deliveries.recipient_address` and `participants.email` hold —
+    // the join between the three is an equality, so one spelling or nothing
+    // suppresses.
+    recipientAddress: text('recipient_address').notNull(),
     source: text('source').notNull(),
     optedOutAt: timestamp('opted_out_at', { withTimezone: true })
       .notNull()
@@ -558,7 +569,7 @@ const participantContactOptouts = pgTable(
   },
   (table) => [
     primaryKey({
-      columns: [table.teamId, table.channel, table.recipientBlindIndex],
+      columns: [table.teamId, table.channel, table.recipientAddress],
     }),
     check(
       'participant_contact_optouts_channel_check',
@@ -569,8 +580,8 @@ const participantContactOptouts = pgTable(
       sql`${table.source} IN ('participant_reply', 'provider', 'researcher')`,
     ),
     check(
-      'participant_contact_optouts_blind_index_check',
-      sql`${table.recipientBlindIndex} ~ '^[0-9a-f]{64}$'`,
+      'participant_contact_optouts_address_check',
+      sql`char_length(${table.recipientAddress}) BETWEEN 3 AND 320`,
     ),
     teamIsolationPolicy(),
   ],
@@ -737,7 +748,7 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
     OR NEW.template_id IS DISTINCT FROM OLD.template_id
     OR NEW.kind IS DISTINCT FROM OLD.kind
     OR NEW.channel IS DISTINCT FROM OLD.channel
-    OR NEW.recipient_blind_index IS DISTINCT FROM OLD.recipient_blind_index
+    OR NEW.recipient_address IS DISTINCT FROM OLD.recipient_address
     OR NEW.rendered_body_hash IS DISTINCT FROM OLD.rendered_body_hash
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
   )

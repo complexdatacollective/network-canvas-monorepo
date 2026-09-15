@@ -41,6 +41,7 @@ import {
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
+import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -206,6 +207,10 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
   }
   app.use('/rpc/*', createPrincipalMiddleware(auth));
+  // One cipher for the process. Absent only where no keyring was given, which
+  // the env layer allows only where there is no database — and every surface
+  // that would seal or open a secret needs one of those too (#1900).
+  const cipher = env.secrets ? createSecretsCipher(env.secrets) : undefined;
   const rpcRouter = createRpcRouter(authCaps, {
     auth,
     deployment,
@@ -214,6 +219,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     pool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
+    cipher,
   });
   // The plugin puts a `resHeaders` Headers on every call's context and folds
   // whatever a procedure writes into the response. `setup.complete` is its one

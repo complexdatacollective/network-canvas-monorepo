@@ -8,8 +8,9 @@ import type pg from 'pg';
 
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
+import type { OAuthTokenColumn, SecretsCipher } from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
-import { seedTime, seedUuid, shiftDays } from './rng.ts';
+import { seedHex, seedTime, seedUuid, shiftDays } from './rng.ts';
 
 const SEED_ADMIN_NAME = 'Studio Admin';
 export const SEED_ADMIN_EMAIL = 'admin@studio.test';
@@ -109,8 +110,9 @@ async function insertOwnedInstallation(
  * verifies against — so this password works through the real sign-in
  * endpoint, not just as a stored value.
  *
- * The hash is the one value in the whole seed that is not reproducible: scrypt
- * draws a fresh salt per call, which no PRNG seed reaches.
+ * The hash is not reproducible: scrypt draws a fresh salt per call, which no
+ * PRNG seed reaches. It is one of the two columns the determinism case in
+ * `seed.test.ts` leaves out of its dumps; the other is `audit_events.id`.
  */
 async function insertCredentialAccount(
   client: pg.ClientBase,
@@ -122,6 +124,62 @@ async function insertCredentialAccount(
      values ($1, $2, 'credential', $3, $2, $4, $5, $5)`,
     [seedUuid(), input.userId, CREDENTIAL_ISSUER, password, input.createdAt],
   );
+}
+
+/** Google's `iss`, the value better-auth stores for a Google account. */
+const GOOGLE_ISSUER = 'https://accounts.google.com';
+
+/**
+ * A linked Google account for the seeded admin, with its three tokens sealed
+ * the way `withSecretsAdapter` seals them on a real sign-in.
+ *
+ * Written straight to the table rather than through better-auth: there is no
+ * Google to complete an OAuth exchange with, and what the seed exists to
+ * produce here is a row of the shape the dump-and-search test and the rotation
+ * command have to cope with. The same cipher seals it, so a `rotate-secrets`
+ * run over a seeded database rotates this row like any other.
+ *
+ * The admin can still sign in with the password: better-auth matches a
+ * credential account by (issuer, accountId), and this row's are different.
+ */
+export async function seedAdminOAuthAccount(
+  client: pg.ClientBase,
+  cipher: SecretsCipher,
+  input: { userId: string; createdAt: Date },
+): Promise<string[]> {
+  const accountId = `seed-google-${seedHex(8)}`;
+  // Shaped like the real thing — Google's access tokens start `ya29.`, its
+  // refresh tokens `1//`, and an id token is a JWT — so a dump search that
+  // finds one of these would have found a real token too.
+  const tokens = {
+    accessToken: `ya29.seed-${seedHex(16)}`,
+    refreshToken: `1//seed-${seedHex(16)}`,
+    idToken: `eyJhbGciOiJSUzI1NiJ9.seed-${seedHex(16)}`,
+  } as const;
+  const sealed = (column: OAuthTokenColumn) =>
+    cipher.sealOAuthToken(
+      { providerId: 'google', accountId, column },
+      tokens[column],
+    );
+
+  await client.query(
+    `insert into account
+       (id, "accountId", "providerId", issuer, "userId",
+        "accessToken", "refreshToken", "idToken", scope, "createdAt", "updatedAt")
+     values ($1, $2, 'google', $3, $4, $5, $6, $7, 'openid email profile', $8, $8)`,
+    [
+      seedUuid(),
+      accountId,
+      GOOGLE_ISSUER,
+      input.userId,
+      sealed('accessToken'),
+      sealed('refreshToken'),
+      sealed('idToken'),
+      input.createdAt,
+    ],
+  );
+
+  return Object.values(tokens);
 }
 
 export async function seedTeams(

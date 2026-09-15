@@ -10,8 +10,9 @@
 #                                   database, once per deployment
 #                  maintenance on   close the instance to users — a stub until
 #                  maintenance off    #1901 merges
-#                  rotate-secrets   re-encrypt stored secrets — a stub until
-#                                     #1900 merges
+#                  rotate-secrets   re-encrypt every stored secret under the
+#                                   keyring's current entry, once per rotation
+#                                   (#1900)
 #
 #   studio-web   nginx, the built SPA and the maintenance page. It proxies
 #                nothing: Traefik is the single ingress and routes the API's
@@ -66,7 +67,7 @@ FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
-# dist/ carries the three entries and dist/schema-ddl.json beside them: the
+# dist/ carries the four entries and dist/schema-ddl.json beside them: the
 # statements `migrate` executes, rendered at build time because drizzle-kit is
 # a development dependency and `pnpm deploy --prod` installs none.
 COPY --from=builder /repo/apps/studio/server/dist ./dist

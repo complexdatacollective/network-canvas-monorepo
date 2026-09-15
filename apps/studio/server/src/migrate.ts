@@ -4,6 +4,7 @@ import process from 'node:process';
 import { migrateDatabase, type SchemaDdl } from './db/migrate.ts';
 import { createOwnerPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { issueBootstrapToken, printBootstrapToken } from './setup/bootstrap.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -44,6 +45,16 @@ try {
     // oxlint-disable-next-line no-console -- command output
     log: (line) => console.log(line),
   });
+  // After the schema, before anything runs against it (#1900): the check
+  // `apply-schema` runs in a checkout, so a database restored from a backup
+  // that does not match the keyring is caught by the command an operator ran
+  // by hand, with the output in front of them, rather than by the next
+  // container start. `readEnv` above already refused to run without a
+  // keyring at all. Before the bootstrap token, so a refused database never
+  // prints a token nobody should use.
+  await verifySecretKeysOrExit(env);
+  // oxlint-disable-next-line no-console -- command output
+  console.log('Stored secrets are readable with the configured keyring.');
   // First-run bootstrap (#1909): on a database nobody owns yet, issue the
   // token `/setup` spends and print it once — rotating any earlier one, so a
   // lost token is recovered by running this again. An owned instance issues
