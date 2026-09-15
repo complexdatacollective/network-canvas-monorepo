@@ -6,7 +6,12 @@ import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
 
 import { installJobSchema, syncJobQueues } from '../jobs/install.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
-import { checkSchema, SCHEMA_LOCK_KEY, stampFingerprint } from './schema.ts';
+import {
+  checkSchema,
+  SCHEMA_LOCK_KEY,
+  staleDatabaseMessage,
+  stampFingerprint,
+} from './schema.ts';
 
 // `studio-api migrate`, the deployed half of schema application (#1909).
 //
@@ -78,18 +83,6 @@ export function verifySchemaDdl(ddl: SchemaDdl): SchemaDdl {
   return ddl;
 }
 
-/** Where a stale database's refusal is written out, in one place. */
-function staleDatabaseMessage(found: string | null): string {
-  return [
-    'The database was not created by this build.',
-    found === null
-      ? 'It carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
-      : `It records ${found.slice(0, 12)} and this build is ${SCHEMA_FINGERPRINT.slice(0, 12)}.`,
-    'Studio is pre-release and has no migration system yet, so a build cannot upgrade a database another build created (#1901).',
-    'Recreate the database and run migrate against it again, or wait for the migration system.',
-  ].join('\n');
-}
-
 export class StaleDatabase extends Error {}
 
 export type MigrateLogger = (line: string) => void;
@@ -104,9 +97,14 @@ export type MigrateOptions = {
  * pool: the statements create the roles the server runs as, so the login needs
  * `CREATEROLE` the first time (the same requirement `apply-schema` documents).
  *
- * The pool needs at least two free connections. One client holds the advisory
- * lock for the whole run — it is session-scoped, so releasing the client would
- * release the lock — while the queue reconciliation checks out its own.
+ * All or nothing. One client holds the advisory lock for the whole run — it is
+ * session-scoped, so releasing the client would release the lock — and every
+ * write goes through that one client inside one transaction, pg-boss's queue
+ * reconciliation included. A partial application would be worse here than
+ * anywhere else: the next run reads a database with tables and no fingerprint
+ * as `stale` and refuses it, so an operator whose first migrate died halfway
+ * would be told to recreate a database that has never worked. Rolling back to
+ * empty means the next run simply applies.
  */
 export async function migrateDatabase(
   pool: pg.Pool,
@@ -127,35 +125,42 @@ export async function migrateDatabase(
       return { kind: 'current' };
     }
     if (state.kind === 'stale') {
-      throw new StaleDatabase(staleDatabaseMessage(state.found));
+      // The same words every process prints when it boots against such a
+      // database: one verdict, one wording (src/db/schema.ts).
+      throw new StaleDatabase(staleDatabaseMessage(state));
     }
 
-    // One transaction: a failure part-way must not leave a half-built database
-    // that the next run would read as `stale` and refuse. Postgres runs DDL
-    // transactionally, and the suites have executed these same statements as
-    // one multi-statement query into a scratch schema since #1247.
-    log(`Applying ${ddl.statements.length} schema statement(s).`);
+    // Postgres runs DDL transactionally, and pg-boss's construction plan uses
+    // nothing that cannot run in a transaction, so the whole application is
+    // one. The suites have executed the public statements as a single
+    // multi-statement query into a scratch schema since #1247.
     await lock.query('begin');
     try {
+      log(`Applying ${ddl.statements.length} schema statement(s).`);
       await lock.query(ddl.statements.join('\n'));
+
+      // After the schema, because the grants name the roles the sync sidecar
+      // creates, and before the stamp, because a stamped database has to be
+      // one where a process can already enqueue — the order `applySchema`
+      // runs in.
+      log(`Installing the ${JOB_SCHEMA} schema.`);
+      await installJobSchema(lock, JOB_SCHEMA);
+      log('Reconciling the job queues.');
+      await syncJobQueues(lock, JOB_SCHEMA);
+
+      // PR 4 (#1909) prints the first-run bootstrap token here, on a database
+      // that has no owner yet.
+
+      // Last, and inside the transaction with everything it vouches for: a
+      // stamp that could outlive a failed apply is a database that reads as
+      // this build's and is not.
+      await stampFingerprint(lock, ddl.fingerprint);
       await lock.query('commit');
     } catch (error) {
       await lock.query('rollback').catch(() => undefined);
       throw error;
     }
 
-    // After the schema, because the grants name the roles the sync sidecar
-    // creates, and before the stamp, because a stamped database has to be one
-    // where a process can already enqueue — the order `applySchema` runs in.
-    log(`Installing the ${JOB_SCHEMA} schema.`);
-    await installJobSchema(lock, JOB_SCHEMA);
-    log('Reconciling the job queues.');
-    await syncJobQueues(pool, JOB_SCHEMA);
-
-    // PR 4 (#1909) prints the first-run bootstrap token here, on a database
-    // that has no owner yet.
-
-    await stampFingerprint(lock, ddl.fingerprint);
     log('Schema applied.');
     return { kind: 'applied' };
   } finally {

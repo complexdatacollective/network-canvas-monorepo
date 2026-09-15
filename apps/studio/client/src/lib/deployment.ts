@@ -1,4 +1,5 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query';
+import { notFound } from '@tanstack/react-router';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -63,6 +64,40 @@ export async function invalidateInstanceStatus(
   await queryClient.invalidateQueries({
     queryKey: statusQueryOptions.queryKey,
   });
+}
+
+/**
+ * The `beforeLoad` a route gets when the classification says it belongs to one
+ * topology (§10.4): it renders here, or it does not exist here.
+ *
+ * This is the only enforcement there is. The server used to refuse a gated
+ * page path at the HTTP layer, from the same list, but it serves no page paths
+ * at all since #1909 — nginx does, and nginx knows nothing about the mode. So
+ * the classification has exactly one reader on the request path now, and
+ * leaving it to the screens would mean a self-hosted instance rendering a
+ * pricing page and a managed tenant reaching first-run configuration of the
+ * whole instance.
+ *
+ * `notFound()` rather than a redirect, because the honest answer is that the
+ * address is not a place here — a redirect would imply the researcher asked
+ * for the wrong thing. The root route's `notFoundComponent` is what renders
+ * it (`routes/NotFoundScreen.tsx`).
+ *
+ * Takes the route's own registered path — its `$param` spelling, the one the
+ * classification is written in — rather than reading the location, so the
+ * route and the list are compared by the same key the route table's test
+ * checks for completeness.
+ *
+ * Structurally typed on `context` alone so a route that has a guard of its own
+ * can await this first and then run it.
+ */
+export function topologyGuard(
+  routePath: string,
+): (options: { context: { queryClient: QueryClient } }) => Promise<void> {
+  return async ({ context }) => {
+    const mode = await fetchDeploymentMode(context.queryClient);
+    if (!isSurfaceServed(routePath, mode)) throw notFound();
+  };
 }
 
 const BILLING_PATH = '/team/$teamId/billing';

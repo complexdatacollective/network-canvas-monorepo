@@ -188,24 +188,74 @@ export async function stampFingerprint(
   );
 }
 
-export function schemaProblemMessage(state: SchemaProblem): string {
+/**
+ * Which set of remedies the reader can actually run.
+ *
+ * A message is only as useful as its next step, and the two lanes have
+ * different ones: a repository checkout has `pnpm --filter …` scripts and
+ * drizzle-kit, and a deployment has neither — it has the `studio-api` image
+ * and the `migrate` command in it (#1909). Printing the checkout's scripts to
+ * a container log tells an operator to run something that is not there.
+ *
+ * Passed in rather than inferred, and with no default, so every caller decides
+ * which reader it is printing for.
+ */
+export type SchemaRemedyLane = 'development' | 'deployed';
+
+function staleDetail(state: StaleSchema): string {
+  return state.reason === 'unstamped'
+    ? 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
+    : `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`;
+}
+
+/**
+ * Why a deployment will not touch a database another build created, and what
+ * to do instead.
+ *
+ * Here rather than beside `migrate` because both readers need the same words:
+ * `studio-api migrate` refuses with this, and every process that boots against
+ * such a database refuses with it too. Pre-release there is no reconciliation
+ * to offer — there are no databases worth adopting and no migrations to run —
+ * so the remedy is to recreate, and #1901 is the issue that changes that.
+ */
+export function staleDatabaseMessage(state: StaleSchema): string {
+  return [
+    'The database was not created by this build.',
+    staleDetail(state),
+    'Studio is pre-release and has no migration system yet, so a build cannot upgrade a database another build created (#1901).',
+    'Recreate the database and run migrate against it again, or wait for the migration system.',
+  ].join('\n');
+}
+
+export function schemaProblemMessage(
+  state: SchemaProblem,
+  lane: SchemaRemedyLane,
+): string {
   if (state.kind === 'absent') {
     return [
       'The database has no Studio schema.',
       'Create it and start again:',
-      '  pnpm --filter @codaco/studio-server db:reset        (local development)',
-      '  pnpm --filter @codaco/studio-server apply-schema    (a deployed database)',
+      ...(lane === 'deployed'
+        ? [
+            '  docker compose run --rm migrate    (the reference stack)',
+            '  studio-api migrate                 (a container you run yourself)',
+          ]
+        : [
+            '  pnpm --filter @codaco/studio-server db:reset        (local development)',
+            '  pnpm --filter @codaco/studio-server apply-schema    (a database from a checkout)',
+          ]),
     ].join('\n');
   }
 
-  const detail =
-    state.reason === 'unstamped'
-      ? 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
-      : `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`;
+  // A deployment gets the refusal `migrate` itself prints, word for word: the
+  // two are the same verdict about the same database, and an operator reading
+  // one after the other must not have to work out whether they mean the same
+  // thing.
+  if (lane === 'deployed') return staleDatabaseMessage(state);
 
   return [
     'The database was not built from the schema in this build.',
-    detail,
+    staleDetail(state),
     'Studio has no migration system yet: pre-release, drizzle-kit push reconciles the schema in place, or recreate the database.',
     'Then start again:',
     '  pnpm --filter @codaco/studio-server apply-schema    (reconcile in place)',

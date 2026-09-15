@@ -7,6 +7,8 @@ import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { installJobSchema } from '../../jobs/install.ts';
+import { renderJobStatements } from '../../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
@@ -32,6 +34,9 @@ const db = await reachableDb();
 /** Rendering the DDL imports drizzle-kit and diffs the whole schema. */
 const RENDER_TIMEOUT_MS = 180_000;
 const CASE_TIMEOUT_MS = 120_000;
+
+/** One force-drop per scratch database this file created, run one at a time. */
+const DISPOSE_TIMEOUT_MS = 120_000;
 
 describe('the rendered schema DDL', () => {
   it(
@@ -83,9 +88,14 @@ describe.skipIf(!db)('migrate', () => {
     return scratch;
   }
 
+  // Sequential, and given a window of its own: each dispose force-drops a
+  // database, and several at once on one cluster outran the file's default
+  // hook budget once this file grew to five of them.
   afterAll(async () => {
-    await Promise.allSettled(scratches.map((scratch) => scratch.dispose()));
-  });
+    for (const scratch of scratches) {
+      await scratch.dispose().catch(() => undefined);
+    }
+  }, DISPOSE_TIMEOUT_MS);
 
   it(
     'creates a schema every process reads as current',
@@ -171,9 +181,10 @@ describe.skipIf(!db)('migrate', () => {
       // Both fingerprints named, so an operator can tell which build is which,
       // and the reason it will not be reconciled.
       await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        new RegExp(
-          `${other.slice(0, 12)}[\\s\\S]*${SCHEMA_FINGERPRINT.slice(0, 12)}`,
-        ),
+        new RegExp(other.slice(0, 12)),
+      );
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        new RegExp(SCHEMA_FINGERPRINT.slice(0, 12)),
       );
       await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(/#1901/);
 
@@ -182,6 +193,102 @@ describe.skipIf(!db)('migrate', () => {
         'select "fingerprint" from "schemaFingerprint"',
       );
       expect(stamp.rows).toEqual([{ fingerprint: other }]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    "runs pg-boss's construction plan inside the caller's transaction",
+    async () => {
+      // The statement that would otherwise defeat every other guarantee here.
+      // `getConstructionPlans` returns a self-contained `BEGIN…COMMIT` script:
+      // run unaltered on a client that already has a transaction open, its
+      // COMMIT commits THAT transaction — no error, no warning anyone reads —
+      // and everything applied before it becomes durable. `installJobSchema`
+      // strips that outer transaction control, always, so there is no flag a
+      // caller can forget.
+      //
+      // The marker table is the oracle: it is written before the plan and
+      // rolled back after it, so it survives only if something in between
+      // committed.
+      const scratch = await emptyDatabase();
+      const client = await scratch.pool.connect();
+      try {
+        await client.query('begin');
+        await client.query('create table rollback_marker (id int)');
+        await installJobSchema(client, JOB_SCHEMA);
+        await client.query('rollback');
+      } finally {
+        client.release();
+      }
+
+      const after = await scratch.pool.query<{
+        marker: boolean;
+        jobs: boolean;
+      }>(
+        `select to_regclass('rollback_marker') is not null as marker,
+                exists (select 1 from pg_namespace where nspname = $1) as jobs`,
+        [JOB_SCHEMA],
+      );
+      expect(after.rows[0]).toEqual({ marker: false, jobs: false });
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves an empty database behind when a step fails, and applies next time',
+    async () => {
+      // The failure that made atomicity necessary, at the last step that can
+      // have one: a queue whose policy the declaration no longer matches.
+      // `syncJobQueues` refuses that outright — pg-boss cannot change a policy
+      // after creation — and it refuses it AFTER the public schema and
+      // pg-boss's own have been applied.
+      //
+      // A partial application is not a half-working database. The next run
+      // reads tables with no fingerprint as `stale` and REFUSES it, so an
+      // operator whose first migrate died halfway would be told to recreate a
+      // database that had never worked. Rolling back to empty means the next
+      // run simply applies.
+      const scratch = await emptyDatabase();
+      // Installed outside the transaction under test, so the rollback below
+      // cannot be credited with removing it: what has to disappear is
+      // everything `migrate` itself wrote.
+      // Through the server's own renderer rather than pg-boss directly: the
+      // job source policy keeps that import to src/jobs (source-policy.test.ts),
+      // and these are the same two statements `installJobSchema` would run.
+      const [plan, grants] = renderJobStatements();
+      await scratch.pool.query(plan!);
+      await scratch.pool.query(grants!);
+      const [conflicting] = JOB_QUEUES;
+      // Declared `standard`; installed here as `singleton`.
+      await scratch.pool.query(
+        `select ${JOB_SCHEMA}.create_queue($1, $2::jsonb)`,
+        [conflicting.name, JSON.stringify({ policy: 'singleton' })],
+      );
+
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        /policy/,
+      );
+
+      // Nothing `migrate` wrote survives: not the tables, not the stamp.
+      // `checkSchema` reporting `absent` rather than `stale` is the whole
+      // point — `stale` is the verdict that refuses, so a database left
+      // half-applied is one the next run will not fix.
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'absent' });
+      const relations = await scratch.pool.query<{ count: string }>(
+        `select count(*)::text from pg_tables where schemaname = 'public'`,
+      );
+      expect(relations.rows[0]?.count).toBe('0');
+
+      // And with the conflict removed — the remedy `syncJobQueues` names —
+      // the same database applies cleanly.
+      await scratch.pool.query(`select ${JOB_SCHEMA}.delete_queue($1)`, [
+        conflicting.name,
+      ]);
+      expect(await migrateDatabase(scratch.pool, ddl)).toEqual({
+        kind: 'applied',
+      });
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
     },
     CASE_TIMEOUT_MS,
   );

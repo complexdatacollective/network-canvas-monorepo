@@ -3,7 +3,7 @@ import { PgBoss } from 'pg-boss';
 
 import { jobGrantsSql } from '@codaco/studio-sync/jobs';
 
-import { jobDatabaseForPool } from './database.ts';
+import { jobDatabaseFor } from './database.ts';
 import {
   JOB_SCHEMA_VERSION,
   jobQueueDefinitions,
@@ -20,8 +20,42 @@ import {
 // must never reach the bundle — nothing here imports it.
 
 /**
+ * pg-boss's construction plan, with its own transaction control removed.
+ *
+ * `getConstructionPlans` returns a SELF-CONTAINED script: `BEGIN`, its lock
+ * and statement timeouts, the schema, then `COMMIT`. Run as-is on a client
+ * that already has a transaction open, the `BEGIN` is a no-op with a warning
+ * and the `COMMIT` commits the CALLER's transaction — silently. Everything the
+ * caller applied before this point becomes durable and nothing after it can be
+ * rolled back, which is precisely the guarantee `migrate` is built on
+ * (src/db/migrate.ts).
+ *
+ * Both callers of `installJobSchema` hold a transaction open, so the wrapper
+ * is always removed and nothing else is: `SET LOCAL` and the advisory lock are
+ * exactly what one would write inside a transaction anyway, and both end with
+ * it. One path rather than a flag a caller could forget to set.
+ *
+ * The shape is asserted rather than assumed, so a pg-boss release that changes
+ * it fails here — loudly, once — instead of committing half an application
+ * every time this runs.
+ */
+function nestedConstructionPlan(): string {
+  const plan = renderJobStatements()[0]!.trim();
+  if (!plan.startsWith('BEGIN;') || !plan.endsWith('COMMIT;')) {
+    throw new Error(
+      "pg-boss's construction plan is no longer a BEGIN…COMMIT script, so the transaction control this strips cannot be found. Check what it wraps now: run inside a caller's transaction, a COMMIT in it commits that transaction.",
+    );
+  }
+  return plan.slice('BEGIN;'.length, -'COMMIT;'.length);
+}
+
+/**
  * Installs pg-boss's own schema, or replaces it when the installed version is
  * not the one this build ships.
+ *
+ * **Call inside a transaction.** The plan's own is removed (above), so a
+ * caller that is not in one applies it statement by statement and a failure
+ * part-way leaves half a schema.
  *
  * Replacement rather than migration is the pre-release posture the schema
  * takes everywhere: drizzle-kit push reconciles the public schema in place and
@@ -30,7 +64,7 @@ import {
  * count is logged — after release this becomes pg-boss's own migration call.
  */
 export async function installJobSchema(
-  db: pg.Pool | pg.PoolClient,
+  db: pg.PoolClient,
   schema: string,
 ): Promise<void> {
   // Two statements rather than one guarded by `to_regclass`: a query naming a
@@ -66,7 +100,7 @@ export async function installJobSchema(
       );
       await db.query(`drop schema ${schema} cascade`);
     }
-    await db.query(renderJobStatements()[0]!);
+    await db.query(nestedConstructionPlan());
   }
 
   // Re-run on every apply, not only on install: a grant change moves the
@@ -83,13 +117,20 @@ export async function installJobSchema(
  * leaves an option it was not given alone, so an option dropped from a
  * declaration would otherwise keep the value the deployment before this one
  * applied — a queue quietly retrying seven times because it used to.
+ *
+ * A `PoolClient` and not a `Pool`, so every statement pg-boss runs here lands
+ * on the caller's session — and inside its transaction where it has one.
+ * `migrate` wraps the whole application in one (src/db/migrate.ts), and a
+ * reconciliation that had taken a connection of its own would commit queue
+ * rows that a later failure could not take back, leaving a database with
+ * queues and no tables that the next run would refuse as stale.
  */
 export async function syncJobQueues(
-  pool: pg.Pool,
+  client: pg.PoolClient,
   schema: string,
 ): Promise<void> {
   const boss = new PgBoss({
-    db: jobDatabaseForPool(pool),
+    db: jobDatabaseFor(client),
     schema,
     migrate: false,
     supervise: false,

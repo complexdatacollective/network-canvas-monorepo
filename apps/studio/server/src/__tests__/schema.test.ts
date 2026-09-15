@@ -26,6 +26,7 @@ import {
   SCHEMA_TABLES,
   type StaleSchema,
   schemaProblemMessage,
+  staleDatabaseMessage,
 } from '../db/schema.ts';
 import type { DbEnv } from '../env.ts';
 import { createJobClient } from '../jobs/client.ts';
@@ -945,29 +946,57 @@ describe('schema problem message', () => {
     appliedAt: new Date('2026-08-13T00:00:00.000Z'),
   };
 
-  it('names scripts package.json declares', () => {
-    const message = schemaProblemMessage(stale);
-    expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+  // A message is only as useful as its next step, and the two readers have
+  // different ones. A checkout has the pnpm scripts and drizzle-kit; a
+  // deployment has neither — it has the image and the `migrate` command in it
+  // (#1909). Each lane is therefore checked for the remedies it can run AND
+  // against the ones it cannot, because a message naming a command that is not
+  // installed is worse than a short one.
+  const PNPM_REMEDIES = [
+    'pnpm --filter @codaco/studio-server db:reset',
+    'pnpm --filter @codaco/studio-server apply-schema',
+  ];
+
+  it('names scripts package.json declares, in a checkout', () => {
+    const message = schemaProblemMessage(stale, 'development');
+    for (const remedy of PNPM_REMEDIES) expect(message).toContain(remedy);
 
     const scripts = readManifestScripts();
     expect(scripts).toHaveProperty('db:reset');
     expect(scripts).toHaveProperty('apply-schema');
   });
 
-  it('explains an unstamped database differently', () => {
-    expect(schemaProblemMessage({ ...stale, reason: 'unstamped' })).toContain(
-      'no fingerprint',
-    );
+  it('names the image commands, in a deployment', () => {
+    // Where this is read — a container log — none of the above exists.
+    const message = schemaProblemMessage({ kind: 'absent' }, 'deployed');
+    expect(message).toContain('studio-api migrate');
+    expect(message).toContain('docker compose run --rm migrate');
+    for (const remedy of PNPM_REMEDIES) expect(message).not.toContain(remedy);
   });
 
-  it('explains an absent schema with both remedies', () => {
-    const message = schemaProblemMessage({ kind: 'absent' });
-    expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
+  it('refuses a stale database in a deployment with what migrate says', () => {
+    // One verdict, one wording: `studio-api migrate` throws this exact text
+    // (src/db/migrate.ts), so an operator who reads the boot refusal and then
+    // runs migrate is not left working out whether they mean the same thing.
+    expect(schemaProblemMessage(stale, 'deployed')).toBe(
+      staleDatabaseMessage(stale),
     );
+    expect(schemaProblemMessage(stale, 'deployed')).toContain('#1901');
+    for (const remedy of PNPM_REMEDIES) {
+      expect(schemaProblemMessage(stale, 'deployed')).not.toContain(remedy);
+    }
+  });
+
+  it('explains an unstamped database differently', () => {
+    for (const lane of ['development', 'deployed'] as const) {
+      expect(
+        schemaProblemMessage({ ...stale, reason: 'unstamped' }, lane),
+      ).toContain('no fingerprint');
+    }
+  });
+
+  it('explains an absent schema with both remedies of its lane', () => {
+    const message = schemaProblemMessage({ kind: 'absent' }, 'development');
+    for (const remedy of PNPM_REMEDIES) expect(message).toContain(remedy);
   });
 });

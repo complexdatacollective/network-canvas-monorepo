@@ -32,7 +32,12 @@ import {
   type InstallationReader,
 } from './domain.ts';
 import { readEnv } from './env.ts';
-import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
+import {
+  CHECK_TIMEOUT_MS,
+  createHealthRoutes,
+  databaseCheck,
+  schemaCheck,
+} from './health.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
@@ -97,10 +102,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : [],
   };
 
-  // Which topology this deployment is. The client reads it from `status` and
-  // guards its own route tree with it (client/src/lib/deployment.ts). There is
-  // no HTTP gate any more: nginx serves the client (#1909), so this process
-  // sees no page path to refuse.
+  // Which topology this deployment is. This process only REPORTS it, on the
+  // `status` procedure below: there is no HTTP gate any more, because nginx
+  // serves the client (#1909) and no page path reaches here to be refused.
+  // Enforcement is the client's `topologyGuard` (client/src/lib/deployment.ts),
+  // which reads the mode from `status` and answers a route the other topology
+  // owns with TanStack's `notFound()` — so this value is the whole input to
+  // that gate, and a deployment that reported the wrong mode would open the
+  // other topology's surfaces.
   const deployment = getDeploymentStatus(env.deploymentMode);
 
   // The instance's name and whether anybody owns it (#1909), for both status
@@ -138,7 +147,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       ...(assetStore
         ? {
             objectStore: async () => {
-              await assetStore.head();
+              // The same bound the route applies, handed to the SDK as well:
+              // a probe the route stopped waiting on would otherwise keep
+              // retrying and holding a socket, once per check, for as long as
+              // the endpoint stays unreachable.
+              await assetStore.head(AbortSignal.timeout(CHECK_TIMEOUT_MS));
               return 'ok' as const;
             },
           }

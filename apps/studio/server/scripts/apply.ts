@@ -79,9 +79,9 @@ export type ApplyOutcome = {
  *
  * The pool needs at least two free connections: this holds one for the whole
  * apply (the advisory lock is session-scoped, so releasing it would release
- * the lock) while drizzle-kit's push and the queue reconciliation check out
- * their own. A single-connection pool deadlocks here until its connection
- * timeout, not at the first statement.
+ * the lock) while drizzle-kit's push checks out its own. A single-connection
+ * pool deadlocks here until its connection timeout, not at the first
+ * statement.
  */
 export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const fingerprint = await computeSchemaFingerprint();
@@ -114,12 +114,25 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     });
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
-    // After the sidecars, because the grants name the roles the sync sidecar
-    // creates, and before the stamp, because a stamped database has to be one
-    // where a process can already enqueue.
-    await installJobSchema(lock, JOB_SCHEMA);
-    await syncJobQueues(pool, JOB_SCHEMA);
-    await stampFingerprint(lock, fingerprint);
+    // One transaction for everything after the push: `installJobSchema` runs
+    // pg-boss's construction plan with the plan's own transaction control
+    // removed, so it needs the caller's — and the stamp belongs with what it
+    // vouches for either way. The push above stays outside it; drizzle-kit
+    // manages its own statements and this function has never been atomic
+    // across it (see the note above).
+    await lock.query('begin');
+    try {
+      // After the sidecars, because the grants name the roles the sync sidecar
+      // creates, and before the stamp, because a stamped database has to be
+      // one where a process can already enqueue.
+      await installJobSchema(lock, JOB_SCHEMA);
+      await syncJobQueues(lock, JOB_SCHEMA);
+      await stampFingerprint(lock, fingerprint);
+      await lock.query('commit');
+    } catch (error) {
+      await lock.query('rollback').catch(() => undefined);
+      throw error;
+    }
     return { statements: push.sqlStatements, hints: push.hints };
   } finally {
     await lock

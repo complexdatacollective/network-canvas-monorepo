@@ -14,9 +14,17 @@ its hashed assets under a year-long immutable cache, and a static maintenance
 page for the seconds an upgrade replaces the API.
 
 The server no longer serves the client in any topology, and the Netlify entry
-point and its configuration are gone with it. The topology gate that used to
-refuse the other deployment's page paths at the HTTP layer is now the client's
-alone; `CLIENT_DIST` is removed.
+point and its configuration are gone with it. The gate that used to refuse the
+other deployment's page paths at the HTTP layer is now the client's alone: a
+route belonging to one topology answers with a branded not-found screen on the
+other, and an address that matches no route at all gets the same screen instead
+of the router's default text. `CLIENT_DIST` is removed.
+
+`migrate` applies everything in one transaction, so a run that fails part-way
+leaves the database as it found it rather than in a state the next run would
+refuse. A process that will not boot against a database now prints remedies it
+can actually run: the image's commands in a container, the repository's scripts
+in a checkout.
 
 Both processes answer `GET /healthz` (liveness) and `GET /readyz`, which
 reports each dependency — the database, the schema fingerprint, the object

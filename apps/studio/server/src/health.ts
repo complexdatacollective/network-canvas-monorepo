@@ -43,7 +43,7 @@ export type Readiness = {
  * the probe time out with nothing to say — a timed-out probe names no failing
  * dependency, which is the whole point of answering at all.
  */
-const CHECK_TIMEOUT_MS = 1000;
+export const CHECK_TIMEOUT_MS = 1000;
 
 /** One line, bounded: this ends up in a container runtime's status output. */
 function reasonOf(error: unknown): string {
@@ -80,6 +80,14 @@ async function runCheck(check: HealthCheck): Promise<string> {
  * process passes its own pool — the application pool in the web process, the
  * maintenance pool in the worker — so a grant or role problem that only one of
  * them has is reported by that one.
+ *
+ * The query is not cancelled when the bound below fires, and does not need to
+ * be: the pool it runs on already caps what a hung probe can accumulate.
+ * `connectionTimeoutMillis` (10 s, src/db/pool.ts) ends an attempt that never
+ * connects, so probes cannot queue up faster than they expire, and `max` caps
+ * the connections at stake whatever happens — a probe that outlives its
+ * verdict holds one of them and then releases it. The object-store check has
+ * neither bound, which is why that one is aborted for real.
  */
 export function databaseCheck(pool: pg.Pool): HealthCheck {
   return async () => {

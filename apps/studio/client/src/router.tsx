@@ -22,6 +22,7 @@ import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
 import {
   fetchDeploymentMode,
   fetchSetupRequirement,
+  topologyGuard,
 } from './lib/deployment.ts';
 import {
   landingRedirect,
@@ -42,6 +43,7 @@ import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
+import NotFoundScreen from './routes/NotFoundScreen.tsx';
 import Setup, { SetupClosed } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
@@ -110,6 +112,11 @@ function RootLayout() {
 
 const rootRoute = createRootRouteWithContext<ShellContext>()({
   component: RootLayout,
+  // Every refusal in the tree lands here: an address that matches no route,
+  // and one the topology gate below turned down. Declared on the root so a
+  // gated route renders a whole screen rather than an apology inside chrome
+  // that still links to what was just refused.
+  notFoundComponent: NotFoundScreen,
 });
 
 // UNBUILT DESTINATIONS
@@ -734,9 +741,15 @@ const marketingRoute = createRoute({
   component: Marketing,
 });
 
+// Every route below whose path §10.4 gives to ONE topology carries
+// `topologyGuard`, which refuses it on the other with `notFound()`. The server
+// used to refuse these at the HTTP layer from the same list; since #1909 it
+// serves no page path at all, so this is the only reader the classification
+// has on the request path. `routeTable.test.tsx` proves both directions.
 const pricingRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/pricing',
+  beforeLoad: topologyGuard('/pricing'),
   component: screenPlaceholder({
     title: screens.pricingTitle,
     description: screens.pricingDescription,
@@ -747,6 +760,7 @@ const pricingRoute = createRoute({
 const legalRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/legal/$document',
+  beforeLoad: topologyGuard('/legal/$document'),
   component: screenPlaceholder({
     title: screens.legalTitle,
     description: screens.legalDescription,
@@ -801,6 +815,7 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up',
+  beforeLoad: topologyGuard('/sign-up'),
   component: screenPlaceholder({
     title: screens.signUpTitle,
     description: screens.signUpDescription,
@@ -811,6 +826,7 @@ const signUpRoute = createRoute({
 const signUpTeamRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/team',
+  beforeLoad: topologyGuard('/sign-up/team'),
   component: screenPlaceholder({
     title: screens.signUpTeamTitle,
     description: screens.signUpTeamDescription,
@@ -821,6 +837,7 @@ const signUpTeamRoute = createRoute({
 const signUpPlanRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/plan',
+  beforeLoad: topologyGuard('/sign-up/plan'),
   component: screenPlaceholder({
     title: screens.signUpPlanTitle,
     description: screens.signUpPlanDescription,
@@ -831,6 +848,7 @@ const signUpPlanRoute = createRoute({
 const signUpCheckoutRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/checkout',
+  beforeLoad: topologyGuard('/sign-up/checkout'),
   component: screenPlaceholder({
     title: screens.signUpCheckoutTitle,
     description: screens.signUpCheckoutDescription,
@@ -841,6 +859,7 @@ const signUpCheckoutRoute = createRoute({
 const signUpCompleteRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/complete',
+  beforeLoad: topologyGuard('/sign-up/complete'),
   component: screenPlaceholder({
     title: screens.signUpCompleteTitle,
     description: screens.signUpCompleteDescription,
@@ -872,8 +891,13 @@ const invitationRoute = createRoute({
 const setupRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/setup',
-  beforeLoad: async ({ context }) => {
-    if (!(await fetchSetupRequirement(context.queryClient))) throw notFound();
+  beforeLoad: async (options) => {
+    // The topology first: on the managed service the route is not there at
+    // all, whatever the instance's setup state.
+    await topologyGuard('/setup')(options);
+    if (!(await fetchSetupRequirement(options.context.queryClient))) {
+      throw notFound();
+    }
   },
   component: Setup,
   notFoundComponent: SetupClosed,
@@ -1187,6 +1211,9 @@ const teamAuditRoute = createRoute({
 const teamBillingRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/billing',
+  // The registered path, not this route's `/billing` segment: the
+  // classification is written in full route paths.
+  beforeLoad: topologyGuard('/team/$teamId/billing'),
   component: areaPlaceholder({
     title: screens.teamBillingTitle,
     description: screens.teamBillingDescription,
