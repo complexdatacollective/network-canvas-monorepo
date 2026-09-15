@@ -725,6 +725,10 @@ jobs:
         id: hydration-flag
         continue-on-error: true
         run: pnpm check:hydration-flag
+      - name: Check every dialog closes by its open prop, never by unmounting
+        id: dialog-exits
+        continue-on-error: true
+        run: pnpm check:dialog-exits
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -765,7 +769,7 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
-          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/build/posthog-cli-upload-stub.mjs
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/buildtime/posthog-cli-upload-stub.mjs
         run: |
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
@@ -796,6 +800,7 @@ jobs:
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
+          DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
@@ -810,6 +815,7 @@ jobs:
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
+            "dialog-exits=$DIALOG_EXITS_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \

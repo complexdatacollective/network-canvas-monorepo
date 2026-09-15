@@ -5,12 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-import { createPostHogSourceMapsPlugin } from '../../scripts/build/posthog-source-maps-plugin.ts';
+import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
   getPwaCacheReclamationScriptFileName,
   matchRetainedPwaAsset,
-} from '../../scripts/build/pwa-cache-reclamation-plugin.ts';
+} from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -215,7 +215,7 @@ Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
 deploy-time transform in
 `apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
 Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
-is asserted in CI by `scripts/build/assert-pwa-cache-headers.mjs`. Details in
+is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details in
 `apps/architect/RELEASING.md`.
 
 #### Apps that release by mirroring

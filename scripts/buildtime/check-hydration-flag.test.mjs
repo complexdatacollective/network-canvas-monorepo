@@ -3,8 +3,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import { hasHydrationFlagShape } from './check-hydration-flag.mjs';
 
