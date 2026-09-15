@@ -1,6 +1,6 @@
 {
   "name": "@codaco/network-query",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Network filtering and querying for Network Canvas",
   "license": "GPL-3.0-or-later",
   "repository": {
