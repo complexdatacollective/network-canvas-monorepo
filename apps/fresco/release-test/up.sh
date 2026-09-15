@@ -103,6 +103,10 @@ if [ "$RELAY_SINK_SCRIPT" = "relay-payload-sink.mjs" ]; then
     process.stdout.write(new URL(/POSTHOG_HOST = '([^']+)'/.exec(src)[1]).hostname);
   ")"
   openssl req -x509 -newkey rsa:2048 -nodes -days 30     -subj "/CN=$RELAY_HOST"     -addext "subjectAltName=DNS:$RELAY_HOST,DNS:localhost,IP:127.0.0.1"     -keyout "$TLS_DIR/key.pem" -out "$TLS_DIR/cert.pem" 2>/dev/null
+  [ -s "$TLS_DIR/cert.pem" ] && [ -s "$TLS_DIR/key.pem" ] || {
+    echo "[release-test] failed to mint the analytics lane's sink certificate" >&2
+    exit 1
+  }
   chmod 644 "$TLS_DIR/key.pem"
 fi
 

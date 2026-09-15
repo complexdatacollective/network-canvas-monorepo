@@ -17,12 +17,13 @@
 // binds the check ids to a list of its own, so a run that stops performing one
 // fails rather than reporting a shorter list.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
   attempt,
   check,
+  repoRoot,
   completeSetup,
   launch,
   newPage,
@@ -493,13 +494,43 @@ writeFileSync(
 );
 report(result);
 
-/** Every answer the walk gave, as it must appear in exported data. */
+/**
+ * Every answer the walk gave, as it must appear in exported data.
+ *
+ * The bin answers are included as the VALUES the codebook gives their options,
+ * read from the protocol rather than restated: an export carries the value, not
+ * the label, and a walk whose bin placements were not persisted would otherwise
+ * produce an export this check was happy with.
+ */
 function expectedAnswers() {
+  const codebook = JSON.parse(
+    readFileSync(
+      join(
+        repoRoot,
+        'packages/protocols/e2e/fresco-release-test/protocol.json',
+      ),
+      'utf8',
+    ),
+  ).codebook.node.person.variables;
+  const valueOf = (variable, label) => {
+    const option = codebook[variable].options.find(
+      (entry) => entry.label === label,
+    );
+    if (!option)
+      throw new Error(
+        `the protocol has no "${variable}" option labelled "${label}" — the walk is filing people into bins that do not exist`,
+      );
+    return String(option.value);
+  };
   return [
     TRANSCRIPT.egoName,
     ...TRANSCRIPT.people,
-    // Option VALUES are what an export carries, not the labels; the labels are
-    // checked on screen instead.
+    ...Object.values(TRANSCRIPT.context).map((label) =>
+      valueOf('context', label),
+    ),
+    ...Object.values(TRANSCRIPT.closeness).map((label) =>
+      valueOf('closeness', label),
+    ),
   ];
 }
 
