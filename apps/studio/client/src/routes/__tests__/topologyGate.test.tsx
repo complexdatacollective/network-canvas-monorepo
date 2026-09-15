@@ -97,6 +97,10 @@ vi.mock('../../lib/api.ts', () => ({
             emailAndPassword: true,
             socialProviders: [],
           },
+          // Open, so a served `/setup` renders its form rather than its own
+          // "already set up" not-found; what these cases decide is the
+          // topology, and this keeps the second guard out of the way.
+          setup: { required: true },
           // Read at call time, so each case picks the topology before it
           // renders.
           deployment: fixtures.deployment,

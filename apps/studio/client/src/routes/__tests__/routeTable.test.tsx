@@ -566,6 +566,13 @@ beforeEach(() => {
  * (#1909). Both halves are the guard's, so both are asserted here.
  */
 describe('first-run setup', () => {
+  // A self-hosted instance throughout: `/setup` is classified self-host-only,
+  // so on the managed service the topology guard refuses it before the setup
+  // guard runs — that direction is asserted in topologyGate.test.tsx.
+  beforeEach(() => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+  });
+
   it('offers the form while the instance has no owner', async () => {
     const router = renderAt('/setup');
 

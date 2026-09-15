@@ -1,5 +1,5 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query';
-import { notFound } from '@tanstack/react-router';
+import { notFound, rootRouteId } from '@tanstack/react-router';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -96,7 +96,13 @@ export function topologyGuard(
 ): (options: { context: { queryClient: QueryClient } }) => Promise<void> {
   return async ({ context }) => {
     const mode = await fetchDeploymentMode(context.queryClient);
-    if (!isSurfaceServed(routePath, mode)) throw notFound();
+    // Addressed to the ROOT route's not-found, not the nearest one: a route
+    // that has a not-found of its own (`/setup`, whose "already set up" state
+    // is a not-found too) must not render that state for a topology refusal —
+    // on the managed service the page is not there at all.
+    if (!isSurfaceServed(routePath, mode)) {
+      throw notFound({ routeId: rootRouteId });
+    }
   };
 }
 
