@@ -50,7 +50,7 @@ independently:
 | Props | Element and behavior | Use when |
 | --- | --- | --- |
 | \`editable={false}\`, \`animated={false}\` | Non-interactive \`<data>\` with a static type-colored border. | Picker options, query previews, stage configuration, and printable output. This is the default. |
-| \`editable={false}\`, \`animated\` | Non-interactive \`<data>\` with an animated border. | A static on-screen reference needs extra visual emphasis. Never use this for printable output. |
+| \`animated\` | Adds the orbiting gradient border to either element. | Only in the attribute picker, on the value the picker currently holds. Never for a listing, a preview, or printable output. |
 | \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The attribute can be renamed. Provide \`onLabelChange\` to persist edits. |
 | \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from an attribute UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the attribute and edits must update the protocol codebook. |
 
@@ -65,12 +65,8 @@ independently:
   className="max-w-64"
 />
 
-<ConnectedVariablePill
-  animated
-  editable
-  uuid={variableId}
-  className="max-w-80"
-/>
+// Renameable from Architect state; static border, as everywhere but the picker.
+<ConnectedVariablePill editable uuid={variableId} className="max-w-80" />
 \`\`\`
 
 - \`label\` is both the visible name and the machine-readable \`data\` value
@@ -80,7 +76,10 @@ independently:
 - Its containing block provides the default width constraint; long labels
   truncate rather than expanding beyond it.
 - \`className\` composes Tailwind layout constraints such as \`max-w-64\`.
-- \`animated\` changes only the border treatment.
+- \`animated\` changes only the border treatment, and belongs to the attribute
+  picker's held value alone. A pill that is listed rather than held — the
+  codebook table, query previews, stage configuration — keeps the static
+  type-coloured border.
 - \`editable\` changes the semantic element to a button, adds the raised
   interaction affordance and edit tooltip, and enables the editing workflow.
 - On entering edit mode, the pill expands from its current width to
@@ -112,7 +111,8 @@ independently:
     },
     animated: {
       control: 'boolean',
-      description: 'Enables the animated border independently of editing.',
+      description:
+        "Enables the animated border, independently of editing. Reserved for the attribute picker's held value.",
     },
     editable: {
       control: 'boolean',

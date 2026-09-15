@@ -107,8 +107,11 @@ const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
   );
 };
 
+// The animated border belongs to the attribute picker's held value, where it
+// marks the one pill the picker is currently carrying. A codebook row is a
+// plain listing, so its pill takes the static type-coloured treatment.
 const NameCell = ({ row }: CellContext<Variable, unknown>) => (
-  <ConnectedVariablePill animated editable uuid={row.original.id} />
+  <ConnectedVariablePill editable uuid={row.original.id} />
 );
 
 const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
