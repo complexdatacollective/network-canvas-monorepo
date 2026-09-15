@@ -473,8 +473,9 @@ CHECKS (in one or more scripts, fresh profile each run):
 3. install sample protocol: activate card 1, click "Install sample protocol",
    wait for the "Protocol imported" toast; the card then shows protocol
    metadata and a "Start new interview" footer button, and the status row
-   reads "1 protocols". The sample-protocol TEASER no longer reappears (it is
-   auto-dismissed on install).
+   reads "1 protocol" (the count is an ICU plural message, so one protocol is
+   SINGULAR — do not assert "1 protocols"). The sample-protocol TEASER no
+   longer reappears (it is auto-dismissed on install).
 4. re-show teaser: the BEHAVIOURAL half of this check runs before check 3
    installs (sequence it there, report it as check 4): with the sample NOT
    yet installed, Settings (gear, data-testid="settings-trigger") → About →

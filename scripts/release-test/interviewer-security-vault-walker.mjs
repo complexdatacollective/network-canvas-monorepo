@@ -242,6 +242,16 @@ async function setToggle(name, on) {
   await expect(t).toHaveAttribute('aria-checked', String(on));
 }
 
+// The status row's two counts come from ICU plural messages
+// (apps/interviewer/src/components/StatusRow.tsx), so one protocol renders as
+// "1 protocol", not "1 protocols". Build the expected accessible name as a
+// pluralisation-tolerant regex: the counts stay EXACT (that is the assertion's
+// whole point) while the noun's form is free, so changing the seeded counts
+// cannot turn the check into a literal that never matches. The separator is an
+// aria-hidden dot, so the name is the two phrases joined by whitespace.
+const statusRowCounts = (protocols, interviews) =>
+  new RegExp(`^${protocols} protocols?\\s+${interviews} interviews?$`);
+
 async function installSampleProtocol() {
   // Card activation is EFFECT-VERIFIED with retries: the dot click can be
   // swallowed while the deck's entrance spring is still running (observed
@@ -253,12 +263,7 @@ async function installSampleProtocol() {
   // Let the deck's ENTRANCE spring finish before the first interaction —
   // clicks dispatched during it are swallowed (probe-verified: a click 4 s
   // after load activates the card instantly; one at ~2 s does not).
-  await expect(
-    page
-      .getByText('0 protocols')
-      .or(page.getByText(/\d+ protocols/))
-      .first(),
-  ).toBeVisible({
+  await expect(page.getByText(/\d+ protocols?\b/).first()).toBeVisible({
     timeout: 20_000,
   });
   await page.waitForTimeout(2_000);
@@ -960,10 +965,10 @@ try {
   let dataSurvived = true;
   try {
     // The status-row link's accessible name carries both exact counts in one
-    // element ("1 protocols 3 interviews") — bare getByText would strict-mode
-    // collide with the deck card's own "3 interviews" link.
+    // element ("1 protocol 4 interviews") — bare getByText would strict-mode
+    // collide with the deck card's own "4 interviews" link.
     await expect(
-      page.getByRole('link', { name: '1 protocols 4 interviews' }),
+      page.getByRole('link', { name: statusRowCounts(1, 4) }),
     ).toBeVisible({ timeout: 15_000 });
   } catch {
     dataSurvived = false;
@@ -984,7 +989,7 @@ try {
   record(
     'rotate-pin',
     exitGateHeld && wrongCurrentRefused && oldPinRejected && dataSurvived,
-    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived} (1 protocols / 4 interviews exact)`,
+    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived} (1 protocol / 4 interviews exact)`,
   );
 
   // The rotated vault must still DECRYPT the pre-rotation payload — counts

@@ -14,7 +14,7 @@ The configuration lives entirely in this directory:
 | File                  | Role                                                                    |
 | --------------------- | ----------------------------------------------------------------------- |
 | `vm`                  | Host-side driver: `up`, `bootstrap`, `shell`, `sync-claude`, `rebuild`… |
-| `lima.yaml`           | The VM: 12 vCPUs, 32 GiB, ASIF OS disk, **no host mounts**, data disk   |
+| `lima.yaml`           | The VM: 12 vCPUs, 48 GiB, ASIF OS disk, **no host mounts**, data disk   |
 | `provision/system.sh` | Root provisioning: data-disk layout, Docker, `gh`, build tools, sysctls |
 | `provision/user.sh`   | User provisioning: mise, pnpm store location, Claude Code, tmux         |
 | `bootstrap.sh`        | Guest-side: clone the repo, Node + pnpm from the repo's pins, deps      |
