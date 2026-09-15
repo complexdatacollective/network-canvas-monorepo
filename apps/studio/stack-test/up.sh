@@ -49,17 +49,20 @@ fi
 # either value works because the same file is what Postgres is initialised
 # with and what the server reads. Compose resolves every declared secret while
 # it builds the project model, so both files have to exist before any command.
-mkdir -p "$STUDIO_DIR/secrets"
+# Directory private, files readable: the containers run unprivileged and
+# Compose bind-mounts each file as-is, so 600 on a file is EACCES inside the
+# container (found by the first Linux run of this job; macOS hid it).
+mkdir -p "$STUDIO_DIR/secrets" && chmod 700 "$STUDIO_DIR/secrets"
 if [ ! -f "$STUDIO_DIR/secrets/postgres-password" ]; then
   hex 32 > "$STUDIO_DIR/secrets/postgres-password"
-  chmod 600 "$STUDIO_DIR/secrets/postgres-password"
+  chmod 644 "$STUDIO_DIR/secrets/postgres-password"
   say "wrote secrets/postgres-password"
 fi
 if [ ! -f "$STUDIO_DIR/secrets/studio-secrets-key" ]; then
   # The shape docs/self-host/run.md documents: one `id:base64(32 bytes)`
   # keyring entry, `k1` being the id.
   echo "k1:$(openssl rand -base64 32)" > "$STUDIO_DIR/secrets/studio-secrets-key"
-  chmod 600 "$STUDIO_DIR/secrets/studio-secrets-key"
+  chmod 644 "$STUDIO_DIR/secrets/studio-secrets-key"
   say "wrote secrets/studio-secrets-key"
 fi
 
