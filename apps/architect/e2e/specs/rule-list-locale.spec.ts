@@ -66,12 +66,9 @@ for (const { kind, label } of [
     await summary.goto('/protocol/summary');
     const settings = await page.context().newPage();
     await settings.goto('/');
-    await settings
-      .getByRole('combobox', {
-        name: /^(Idioma de la interfaz|Interface language):/,
-      })
-      .click();
-    // Choosing keeps the popover open, so each locale is one click here.
+    const switcher = settings.getByRole('combobox', {
+      name: /^(Idioma de la interfaz|Interface language):/,
+    });
     const language = settings.getByRole('dialog', {
       name: /^(Idioma de la interfaz|Interface language)$/,
     });
@@ -85,7 +82,9 @@ for (const { kind, label } of [
       ['en', 'Bravo, Zulu, and Isabel'],
       ['en-GB', 'Bravo, Zulu and Isabel'],
     ] as const) {
+      await switcher.click();
       await language.getByRole('option', { name: optionNames[locale] }).click();
+      await expect(language).toBeHidden();
       for (const surface of [page, summary]) {
         await expect(surface.locator('html')).toHaveAttribute('lang', locale);
         const values = surface.locator('[data-rule-part="value"]');

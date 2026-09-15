@@ -647,10 +647,6 @@
     "defaultMessage": "Search languages",
     "description": "Placeholder of the search box that filters the list of interface languages."
   },
-  "frescoUi.localeSwitcher.triggerAutomatic": {
-    "defaultMessage": "Auto · {language}",
-    "description": "Visible label of the switcher button while the automatic entry is chosen; {language} is the own name of the language the browser resolves to."
-  },
   "frescoUi.localeSwitcher.triggerName": {
     "defaultMessage": "Interface language: {current}",
     "description": "Accessible name of the switcher button; {current} is the chosen language’s name or the automatic wording."

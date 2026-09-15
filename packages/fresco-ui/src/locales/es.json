@@ -161,7 +161,6 @@
   "frescoUi.localeSwitcher.savedOnDevice": "Guardado en este dispositivo.",
   "frescoUi.localeSwitcher.saving": "Guardando…",
   "frescoUi.localeSwitcher.searchPlaceholder": "Buscar idiomas",
-  "frescoUi.localeSwitcher.triggerAutomatic": "Auto · {language}",
   "frescoUi.localeSwitcher.triggerName": "Idioma de la interfaz: {current}",
   "frescoUi.node.defaultLabel": "Nodo",
   "frescoUi.operatorFilter.add": "Añadir",

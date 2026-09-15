@@ -47,8 +47,9 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 - **\`value\`** / **\`onChange\`** — controlled \`string | null\`. \`null\` is
   the automatic entry, which follows the browser.
 - **\`automaticLocale\`** — the tag automatic resolves to right now, named on
-  the automatic entry ("Automatic (English)") and in the pill ("Auto ·
-  English").
+  the automatic entry ("Automatic (English)"). The pill then shows that
+  language's own name alone ("English"); its accessible name still says it is
+  automatic.
 - **\`display\`** — what the pill shows beside the globe. \`label\` always
   names the current language, \`icon\` never does (an \`IconButton\`), and
   \`responsive\` (the default) names it only while the nearest \`@container\`
@@ -59,8 +60,9 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 - **\`saveState\`** / **\`persistence\`** — the host's persistence outcome,
   shown in a footer: a spinner while \`saving\`, a check mark for \`saved\`
   ("Saved on this device." or "Saved to your account.") that goes away after
-  a moment, and a retry button for \`failed\`. Choosing keeps the popover open
-  so the outcome is read where the choice was made; Escape closes it.
+  a moment, and a retry button for \`failed\`. Choosing closes the popover;
+  the footer reports the outcome the next time it opens, for as long as that
+  outcome stands.
 - **\`side\`** / **\`align\`** — where the popover opens; the Interviewer
   status bar uses \`side="top"\`. An arrow points back at the pill.
 - **\`variant\`** / **\`color\`** / **\`size\`** — the pill's \`Button\`
@@ -143,6 +145,11 @@ const openSwitcher = async (canvasElement: HTMLElement) => {
   return { canvas, trigger, popup };
 };
 
+const choose = async (popup: HTMLElement, name: string | RegExp) => {
+  await userEvent.click(within(popup).getByRole('option', { name }));
+  await waitFor(() => expect(popup).not.toBeInTheDocument());
+};
+
 export const Default: Story = {};
 
 /**
@@ -193,9 +200,9 @@ export const WithSearch: Story = {
 };
 
 /**
- * Choosing an entry reports the tag, moves the check mark and renames the
- * pill while the popover stays open; Escape closes it and returns focus to
- * the pill.
+ * Choosing an entry reports the tag, renames the pill and closes the popover,
+ * which returns focus to the pill; the next open has the check mark on the
+ * new entry. Escape closes it the same way.
  */
 export const OpensAndSelects: Story = {
   args: { value: 'en' },
@@ -203,22 +210,22 @@ export const OpensAndSelects: Story = {
     const { trigger, popup } = await openSwitcher(canvasElement);
     await expect(trigger).toHaveTextContent('English');
 
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
+    await choose(popup, 'Español');
     await expect(trigger).toHaveTextContent('Español');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
-    await expect(popup).toBeVisible();
+    await expect(trigger).toHaveFocus();
+
+    const { popup: reopened } = await openSwitcher(canvasElement);
     await expect(
-      within(popup).getByRole('option', { name: 'Español' }),
+      within(reopened).getByRole('option', { name: 'Español' }),
     ).toHaveAttribute('aria-selected', 'true');
     await expect(
-      within(popup).getByRole('option', { name: 'English' }),
+      within(reopened).getByRole('option', { name: 'English' }),
     ).toHaveAttribute('aria-selected', 'false');
-    await expect(within(popup).queryByText('ES')).not.toBeInTheDocument();
+    await expect(within(reopened).queryByText('ES')).not.toBeInTheDocument();
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(popup).not.toBeInTheDocument());
+    await waitFor(() => expect(reopened).not.toBeInTheDocument());
     await expect(trigger).toHaveFocus();
   },
 };
@@ -250,34 +257,35 @@ export const KeyboardWithoutSearch: Story = {
 };
 
 /**
- * `null` is the automatic entry: the pill names the language the browser
- * resolves to, and the entry itself explains what it follows.
+ * `null` is the automatic entry: the pill names just the language the browser
+ * resolves to, under that language's `lang`, while its accessible name and
+ * the entry itself say what it follows.
  */
 export const AutomaticEntry: Story = {
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
-    await expect(trigger).toHaveTextContent('Auto · English');
+    await expect(trigger).toHaveTextContent(/^English$/);
     await expect(trigger).toHaveAccessibleName(
       'Interface language: Automatic (English)',
     );
+    await expect(trigger.querySelector('[lang]')).toHaveAttribute('lang', 'en');
 
     const options = within(popup).getAllByRole('option');
     await expect(options[0]).toHaveTextContent('Automatic (English)');
     await expect(options[0]).toHaveAttribute('aria-selected', 'true');
 
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
-    await expect(trigger).toHaveTextContent('Español');
+    await choose(popup, 'Español');
+    await expect(trigger).toHaveTextContent(/^Español$/);
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
+    await expect(trigger.querySelector('[lang]')).toHaveAttribute('lang', 'es');
 
-    await userEvent.click(
-      within(popup).getByRole('option', { name: /^Automatic/ }),
-    );
-    await expect(trigger).toHaveTextContent('Auto · English');
+    const { popup: reopened } = await openSwitcher(canvasElement);
+    await choose(reopened, /^Automatic/);
+    await expect(trigger).toHaveTextContent(/^English$/);
     await expect(trigger).toHaveAccessibleName(
       'Interface language: Automatic (English)',
     );
+    await expect(trigger.querySelector('[lang]')).toHaveAttribute('lang', 'en');
   },
 };
 
@@ -446,16 +454,15 @@ function SavingHost({
 
 /**
  * Device storage answers at once: the check mark and "Saved on this device."
- * appear in the footer, then the footer goes away.
+ * are in the footer when the popover next opens, then the footer goes away.
  */
 export const SavesOnDevice: Story = {
   render: (args) => <SavingHost {...args} scenario="device" />,
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
-    const status = within(popup).getByRole('status');
+    await choose(popup, 'Español');
+    const { popup: reopened } = await openSwitcher(canvasElement);
+    const status = within(reopened).getByRole('status');
     await expect(status).toHaveTextContent('Saved on this device.');
     await expect(status).toBeVisible();
     await waitFor(() => expect(status).toBeEmptyDOMElement(), {
@@ -472,13 +479,12 @@ export const SavesToAccount: Story = {
   render: (args) => <SavingHost {...args} scenario="account" />,
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
-    const status = within(popup).getByRole('status');
-    await expect(status).toHaveTextContent('Saving…');
+    await choose(popup, 'Español');
+    const { popup: reopened } = await openSwitcher(canvasElement);
     await waitFor(() =>
-      expect(status).toHaveTextContent('Saved to your account.'),
+      expect(within(reopened).getByRole('status')).toHaveTextContent(
+        'Saved to your account.',
+      ),
     );
   },
 };
@@ -488,10 +494,9 @@ export const Saving: Story = {
   render: (args) => <SavingHost {...args} scenario="saving" />,
   play: async ({ canvasElement }) => {
     const { popup } = await openSwitcher(canvasElement);
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
-    await expect(within(popup).getByRole('status')).toHaveTextContent(
+    await choose(popup, 'Español');
+    const { popup: reopened } = await openSwitcher(canvasElement);
+    await expect(within(reopened).getByRole('status')).toHaveTextContent(
       'Saving…',
     );
   },
@@ -506,11 +511,10 @@ export const SaveFails: Story = {
   render: (args) => <SavingHost {...args} scenario="failed" />,
   play: async ({ canvasElement }) => {
     const { trigger, popup } = await openSwitcher(canvasElement);
-    await userEvent.click(
-      within(popup).getByRole('option', { name: 'Español' }),
-    );
+    await choose(popup, 'Español');
     await expect(trigger).toHaveTextContent('Español');
-    const status = within(popup).getByRole('status');
+    const { popup: reopened } = await openSwitcher(canvasElement);
+    const status = within(reopened).getByRole('status');
     await waitFor(() =>
       expect(status).toHaveTextContent(
         'Couldn’t save. The language applies for now.',
@@ -520,6 +524,7 @@ export const SaveFails: Story = {
     await userEvent.click(
       within(status).getByRole('button', { name: 'Try again' }),
     );
+    await expect(reopened).toBeVisible();
     await expect(status).toHaveTextContent('Saving…');
     await waitFor(() =>
       expect(status).toHaveTextContent('Saved on this device.'),

@@ -154,8 +154,9 @@ async function openSwitcher() {
   });
 }
 
-function choose(popup: HTMLElement, name: RegExp) {
+async function choose(popup: HTMLElement, name: RegExp) {
   fireEvent.click(within(popup).getByRole('option', { name }));
+  await waitFor(() => expect(popup).not.toBeInTheDocument());
 }
 
 /**
@@ -231,10 +232,7 @@ describe('the header language switcher', () => {
       .map((option) => option.textContent);
     expect(names[0]).toContain('Automatic (English)');
     expect(names).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('English (UK)'),
-        expect.stringContaining('EN-GB'),
-      ]),
+      expect.arrayContaining([expect.stringContaining('English (UK)')]),
     );
   });
 
@@ -244,7 +242,7 @@ describe('the header language switcher', () => {
     renderAt('/team/team-a');
 
     await waitFor(() => {
-      expect(switcherTrigger()).toHaveTextContent('EN-GB');
+      expect(switcherTrigger()).toHaveTextContent('English (UK)');
     });
     expect(switcherTrigger()).toHaveAccessibleName(
       'Interface language: English (UK)',
@@ -259,15 +257,16 @@ describe('the header language switcher', () => {
     // preference but did not apply it would pass on the RPC call alone.
     expect(document.documentElement.lang).toBe('en');
 
-    choose(popup, /^English \(UK\)/);
+    await choose(popup, /^English \(UK\)/);
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en-GB');
     });
     expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+    const reopened = await openSwitcher();
     await waitFor(() => {
-      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
+      expect(saveStatus(reopened)).toHaveTextContent('Saved to your account.');
     });
   });
 
@@ -277,10 +276,11 @@ describe('the header language switcher', () => {
     renderAt('/team/team-a');
     const popup = await openSwitcher();
 
-    choose(popup, /^English \(UK\)/);
+    await choose(popup, /^English \(UK\)/);
 
+    const reopened = await openSwitcher();
     await waitFor(() => {
-      expect(saveStatus(popup)).toHaveTextContent(
+      expect(saveStatus(reopened)).toHaveTextContent(
         'Couldn’t save. The language applies for now.',
       );
     });
@@ -288,11 +288,12 @@ describe('the header language switcher', () => {
     // about the account, not about what this browser can render.
     expect(document.documentElement.lang).toBe('en-GB');
     fireEvent.click(
-      within(saveStatus(popup)).getByRole('button', { name: 'Try again' }),
+      within(saveStatus(reopened)).getByRole('button', { name: 'Try again' }),
     );
     await waitFor(() => {
-      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
+      expect(saveStatus(reopened)).toHaveTextContent('Saved to your account.');
     });
+    expect(reopened).toBeInTheDocument();
     expect(fixtures.updateLocale).toHaveBeenCalledTimes(2);
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
   });
@@ -312,7 +313,7 @@ describe('the header language switcher', () => {
     const { queryClient } = renderAt('/team/team-a');
     const popup = await openSwitcher();
 
-    choose(popup, /^English \(UK\)/);
+    await choose(popup, /^English \(UK\)/);
     await waitFor(() => {
       expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
     });
@@ -329,7 +330,7 @@ describe('the header language switcher', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(switcherTrigger()).toHaveTextContent('EN-GB');
+    expect(switcherTrigger()).toHaveTextContent('English (UK)');
     expect(document.documentElement.lang).toBe('en-GB');
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
   });
@@ -357,7 +358,7 @@ describe('a researcher who belongs to no team', () => {
     ).toBeInTheDocument();
 
     const popup = await openSwitcher();
-    choose(popup, /^English \(UK\)/);
+    await choose(popup, /^English \(UK\)/);
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en-GB');

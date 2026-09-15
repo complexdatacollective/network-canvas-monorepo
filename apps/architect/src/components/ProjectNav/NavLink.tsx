@@ -5,7 +5,7 @@ import { cx } from '~/utils/cva';
 
 /** The look of every control in the header's navigation list. */
 export const NAV_ITEM_CLASS_NAME =
-  'relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors';
+  'relative inline-flex cursor-pointer items-center text-base leading-none font-semibold text-current no-underline transition-colors';
 
 type NavLinkProps = {
   href: string;

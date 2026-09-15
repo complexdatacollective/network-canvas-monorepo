@@ -55,12 +55,6 @@ const messages = defineMessages({
     description:
       'Placeholder of the search box that filters the list of interface languages.',
   },
-  triggerAutomatic: {
-    id: 'frescoUi.localeSwitcher.triggerAutomatic',
-    defaultMessage: 'Auto · {language}',
-    description:
-      'Visible label of the switcher button while the automatic entry is chosen; {language} is the own name of the language the browser resolves to.',
-  },
   triggerName: {
     id: 'frescoUi.localeSwitcher.triggerName',
     defaultMessage: 'Interface language: {current}',
@@ -255,13 +249,10 @@ export default function LocaleSwitcher({
   ];
 
   const selected = items.find((item) => item.value === value) ?? items[0]!;
-  const automatic = selected.value === null;
 
-  const triggerLabel = automatic
-    ? intl.formatMessage(messages.triggerAutomatic, {
-        language: autonymOf(automaticLocale),
-      })
-    : selected.autonym;
+  const triggerLocale = selected.value ?? automaticLocale;
+  const triggerLabel =
+    selected.value === null ? autonymOf(automaticLocale) : selected.autonym;
   const triggerName = intl.formatMessage(messages.triggerName, {
     current: selected.autonym,
   });
@@ -286,13 +277,7 @@ export default function LocaleSwitcher({
       onInputValueChange={(next, details) => {
         if (details.reason === 'input-change') setQuery(next);
       }}
-      onOpenChange={(open, details) => {
-        // A choice keeps the popover open so its outcome is read where it was
-        // made; Escape, an outside press, or leaving still close it.
-        if (!open && details.reason === 'item-press') {
-          details.cancel();
-          return;
-        }
+      onOpenChange={(open) => {
         if (!open) {
           setQuery('');
           setNotice(null);
@@ -339,9 +324,12 @@ export default function LocaleSwitcher({
         >
           {renderTrigger ? globe : null}
           <span
-            className={cx('min-w-0 truncate', responsive && RESPONSIVE_HIDDEN)}
-            lang={selected.value ?? undefined}
-            dir={automatic ? undefined : 'auto'}
+            className={cx(
+              'min-w-0 truncate leading-normal',
+              responsive && RESPONSIVE_HIDDEN,
+            )}
+            lang={triggerLocale}
+            dir="auto"
           >
             {triggerLabel}
           </span>

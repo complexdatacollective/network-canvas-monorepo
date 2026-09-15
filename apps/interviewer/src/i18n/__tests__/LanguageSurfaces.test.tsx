@@ -102,17 +102,22 @@ it('exposes a keyboard-operated language picker from the home header', async () 
   });
   await user.click(within(popover).getByRole('option', { name: /^Español/ }));
   expect(document.documentElement).toHaveAttribute('lang', 'es');
-  expect(popover).toHaveAccessibleName('Idioma de la interfaz');
-  expect(within(popover).getAllByRole('status').at(-1)).toHaveTextContent(
+  await waitFor(() => expect(popover).not.toBeInTheDocument());
+  const renamed = screen.getByRole('combobox', {
+    name: 'Idioma de la interfaz: Español',
+  });
+  await waitFor(() => expect(renamed).toHaveFocus());
+  expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
+  await user.keyboard('{Enter}');
+  const reopened = await screen.findByRole('dialog', {
+    name: 'Idioma de la interfaz',
+  });
+  expect(within(reopened).getAllByRole('status').at(-1)).toHaveTextContent(
     'Guardado en este dispositivo.',
   );
   await user.keyboard('{Escape}');
-  await waitFor(() =>
-    expect(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz: Español' }),
-    ).toHaveFocus(),
-  );
-  expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
+  await waitFor(() => expect(reopened).not.toBeInTheDocument());
+  expect(renamed).toHaveFocus();
 });
 
 it('changes language inside an open setup step without losing PIN values, refusal, or retry', async () => {
