@@ -234,7 +234,7 @@ describe('an editor opened in a dialog', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="open-1"
-        dialog={{ title: 'Create node type' }}
+        dialog={{ title: 'Create node type', open: true }}
         subject={SUBJECT}
         initialDraft={{
           name: 'Person',

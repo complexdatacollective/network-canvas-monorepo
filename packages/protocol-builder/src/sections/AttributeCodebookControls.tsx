@@ -15,6 +15,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -290,71 +291,78 @@ export default function AttributeCodebookControls({
    * which is what it is.
    */
   const heldDraftRules = useRowValue(inventing?.rulesField ?? '');
-  const [editing, setEditing] = useState<Readonly<{
-    /** Fresh for every open, so the editor starts from the draft it is given. */
-    openId: string;
-    surface: 'create' | 'defines';
-    /**
-     * The words on the button that opened this, and what the host's record of
-     * the edit is called.
-     *
-     * DESCRIPTORS rather than the sentences they make, formatted where they are
-     * rendered: a formatted string held here would outlive its formatter, and
-     * a language switched under an open editor would leave its title in the
-     * language it was opened in.
-     */
-    label: MessageDescriptor;
-    /**
-     * The attribute's name as it was when the editor opened, for the host's
-     * record. Captured rather than read live, so a rename made INSIDE the
-     * editor does not retitle the edit that is making it.
-     */
-    name: string;
-    /**
-     * The record id a created attribute is minted with, decided when the
-     * editor opens rather than per render — and never shown: a researcher
-     * renames an attribute, and references made of its old name would break
-     * on the rename.
-     */
-    variableId: string;
-    /**
-     * Whose codebook that id is in, and where this editor's save goes.
-     *
-     * Captured for the same reason the id is, because the two are one fact: a
-     * record key belongs to exactly one type — the schema refuses a codebook
-     * that reuses one across types, because the interview flattens every
-     * type's attributes into a single map. Read live instead, a stage a
-     * collaborator repoints mid-edit would send this editor looking its
-     * attribute up in a document the attribute was never in.
-     */
-    subject: CodebookSubject;
-    /**
-     * What the row's attribute picker held when the editor opened, which is
-     * the field a created attribute would be written into.
-     *
-     * Captured with the subject because the pair is one fact — where the
-     * answer was asked from — and read back through `useWhereTheAnswerLands`
-     * when it arrives.
-     */
-    fillsIn: string;
-    /**
-     * That subject's document as it stood when the editor opened, for the
-     * renders after it has gone. See `editingDocument`, which prefers the
-     * live one.
-     */
-    openedDocument: SectionDoc;
-    /**
-     * The input control the editor authors settings FOR, taken from the row at
-     * the moment it opens rather than from the codebook.
-     *
-     * The row is where the control is chosen, and it is not committed until
-     * the row is saved — so a researcher who has just switched a date field
-     * from one picker to the other would otherwise be handed the settings of
-     * the control they have left behind, and the settings they author would be
-     * written beside a control that cannot take them.
-     */
-    component: string;
-  }> | null>(null);
+  const {
+    session: editing,
+    openSession: openEditing,
+    closeSession: closeEditing,
+    onSessionExited: editorExited,
+  } = useDialogSession<
+    Readonly<{
+      /** Fresh for every open, so the editor starts from the draft it is given. */
+      openId: string;
+      surface: 'create' | 'defines';
+      /**
+       * The words on the button that opened this, and what the host's record of
+       * the edit is called.
+       *
+       * DESCRIPTORS rather than the sentences they make, formatted where they are
+       * rendered: a formatted string held here would outlive its formatter, and
+       * a language switched under an open editor would leave its title in the
+       * language it was opened in.
+       */
+      label: MessageDescriptor;
+      /**
+       * The attribute's name as it was when the editor opened, for the host's
+       * record. Captured rather than read live, so a rename made INSIDE the
+       * editor does not retitle the edit that is making it.
+       */
+      name: string;
+      /**
+       * The record id a created attribute is minted with, decided when the
+       * editor opens rather than per render — and never shown: a researcher
+       * renames an attribute, and references made of its old name would break
+       * on the rename.
+       */
+      variableId: string;
+      /**
+       * Whose codebook that id is in, and where this editor's save goes.
+       *
+       * Captured for the same reason the id is, because the two are one fact: a
+       * record key belongs to exactly one type — the schema refuses a codebook
+       * that reuses one across types, because the interview flattens every
+       * type's attributes into a single map. Read live instead, a stage a
+       * collaborator repoints mid-edit would send this editor looking its
+       * attribute up in a document the attribute was never in.
+       */
+      subject: CodebookSubject;
+      /**
+       * What the row's attribute picker held when the editor opened, which is
+       * the field a created attribute would be written into.
+       *
+       * Captured with the subject because the pair is one fact — where the
+       * answer was asked from — and read back through `useWhereTheAnswerLands`
+       * when it arrives.
+       */
+      fillsIn: string;
+      /**
+       * That subject's document as it stood when the editor opened, for the
+       * renders after it has gone. See `editingDocument`, which prefers the
+       * live one.
+       */
+      openedDocument: SectionDoc;
+      /**
+       * The input control the editor authors settings FOR, taken from the row at
+       * the moment it opens rather than from the codebook.
+       *
+       * The row is where the control is chosen, and it is not committed until
+       * the row is saved — so a researcher who has just switched a date field
+       * from one picker to the other would otherwise be handed the settings of
+       * the control they have left behind, and the settings they author would be
+       * written beside a control that cannot take them.
+       */
+      component: string;
+    }>
+  >();
   /**
    * Whether a nested editor's save is with the host right now.
    *
@@ -711,7 +719,7 @@ export default function AttributeCodebookControls({
     trigger?.isConnected === true ? trigger : rowPicker();
 
   const close = () => {
-    setEditing(null);
+    closeEditing();
   };
 
   /**
@@ -776,7 +784,7 @@ export default function AttributeCodebookControls({
     // editor is the start of a different one. Same rule, and the same reason,
     // as the picker's own notice clearing when the researcher types a new name.
     setCreatedElsewhere(undefined);
-    setEditing({
+    openEditing({
       openId: uuid(),
       surface,
       label,
@@ -879,7 +887,11 @@ export default function AttributeCodebookControls({
           is deliberate. `canCreate` is a fact about the ROW — it is false the
           moment the picker names something, which is what the create's own
           `onComplete` does — so leaving that dialog mounted would leave an
-          editor open over an invention that has already happened. The other
+          editor open over an invention that has already happened. That is also
+          why a create that SUCCEEDS still goes without animating out: the row
+          stops inventing in the same render, and the editor has nothing left
+          to draw. Every other way out of either dialog — Cancel, Escape, a
+          press outside — closes it and leaves it to animate away. The other
           two guards are facts about the CODEBOOK, which is live: a
           collaborator deleting the attribute makes them false under a
           researcher who is mid-edit, and closing the editor from under them
@@ -892,7 +904,8 @@ export default function AttributeCodebookControls({
         inventing !== undefined &&
         inventedType !== undefined && (
           <Dialog
-            open
+            open={openEditor.open}
+            onExitComplete={editorExited}
             title={editorTitle}
             size="readable"
             dismissible={!submitting}
@@ -986,7 +999,8 @@ export default function AttributeCodebookControls({
         )}
       {openEditor?.surface === 'defines' && (
         <Dialog
-          open
+          open={openEditor.open}
+          onExitComplete={editorExited}
           title={editorTitle}
           size="readable"
           dismissible={!submitting}

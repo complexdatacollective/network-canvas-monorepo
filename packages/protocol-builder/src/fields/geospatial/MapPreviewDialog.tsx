@@ -34,6 +34,10 @@ export type MapPreviewDialogProps = Readonly<{
   center: unknown;
   zoom: unknown;
   onSave(center: MapCenter, zoom: number): void;
+  /** Whether the dialog is open; false keeps it mounted for the exit. */
+  open: boolean;
+  /** Called once the dialog has finished animating out. */
+  onExitComplete(): void;
   onClose(): void;
 }>;
 
@@ -66,6 +70,8 @@ export default function MapPreviewDialog({
   center,
   zoom,
   onSave,
+  open,
+  onExitComplete,
   onClose,
 }: MapPreviewDialogProps) {
   const intl = useAppIntl();
@@ -163,7 +169,8 @@ export default function MapPreviewDialog({
 
   return (
     <Dialog
-      open
+      open={open}
+      onExitComplete={onExitComplete}
       closeDialog={onClose}
       title={intl.formatMessage(geospatialMessages.viewTitle)}
       size="workspace"

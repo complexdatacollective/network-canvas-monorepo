@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
@@ -14,7 +15,6 @@ import { getCodebook } from '~/selectors/protocol';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
-import IconPicker from './IconPicker';
 import type { ShapeMappingDraft } from './shapeMappingTypes';
 import { ShapePickerControl } from './ShapePicker';
 import ShapeVariableMapping, {

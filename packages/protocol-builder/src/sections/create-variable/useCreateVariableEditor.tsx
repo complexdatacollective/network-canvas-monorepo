@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -136,7 +137,8 @@ export function useCreateVariableEditor({
   const protocolContext = useProtocolContext();
   const protocolSections = useProtocolSections();
   const writeCodebookSection = useCodebookSectionWrite();
-  const [session, setSession] = useState<EditorSession | null>(null);
+  const { session, openSession, closeSession, onSessionExited } =
+    useDialogSession<EditorSession>();
   /**
    * Whether the editor's save is with the host right now.
    *
@@ -198,7 +200,7 @@ export function useCreateVariableEditor({
           resolve({ status: 'refused' });
           return;
         }
-        setSession({
+        openSession({
           key: uuid(),
           variableId: uuid(),
           name: variableName,
@@ -292,7 +294,7 @@ export function useCreateVariableEditor({
   const requestClose = () => {
     if (submitting || session === null) return;
     session.settle({ status: 'refused' });
-    setSession(null);
+    closeSession();
   };
 
   /**
@@ -308,7 +310,8 @@ export function useCreateVariableEditor({
   const editor =
     session === null ? null : (
       <Dialog
-        open
+        open={session.open}
+        onExitComplete={onSessionExited}
         title={title}
         size="readable"
         dismissible={!submitting}
@@ -355,7 +358,7 @@ export function useCreateVariableEditor({
               // The codebook holds it, and the slot it was for has moved on.
               session.settle({ status: 'unassigned' });
             }
-            setSession(null);
+            closeSession();
           }}
         />
       </Dialog>

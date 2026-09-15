@@ -136,6 +136,69 @@ describe('making and changing a codebook type from the control that names it', (
   });
 
   /**
+   * The dialog is closed by being turned off, not by being taken away.
+   *
+   * Both of these dialogs used to be rendered only while there was a session
+   * to edit, so closing one unmounted it in the same tick — and the exit
+   * animation, which belongs to the `AnimatePresence` inside the dialog, went
+   * with it. The dialog vanished rather than closing. What proves the fix is
+   * WHEN it leaves: the click alone can no longer remove it.
+   */
+  it('closes the codebook editor by animating it out, not by dropping it', async () => {
+    const harness = renderStageEditor(pedigreeOnAProtocolWithNoNodeTypes());
+    await harness.opened();
+    clearNodeTypes(harness);
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new node type' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Create new node type',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(dialog).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * And the editor a close leaves behind is never shown again.
+   *
+   * A closed session now OUTLIVES the close, so that its dialog can animate
+   * out — which is exactly how an abandoned draft could come back. Reopening
+   * mints a new session identity, and the editor resets from it.
+   */
+  it('reopens the codebook editor on an empty draft, not on the abandoned one', async () => {
+    const harness = renderStageEditor(pedigreeOnAProtocolWithNoNodeTypes());
+    await harness.opened();
+    clearNodeTypes(harness);
+
+    const openEditor = async () =>
+      harness.user.click(
+        await screen.findByRole('button', { name: 'Create new node type' }),
+      );
+
+    await openEditor();
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'abandoned',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    await openEditor();
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+    ).toHaveValue('');
+  });
+
+  /**
    * Changing the type the stage already holds, from the same control.
    *
    * The editor opens on what the codebook holds rather than on an empty draft,

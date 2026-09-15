@@ -113,7 +113,7 @@ export const InADialog: Story = {
     <CodebookEntityEditor
       mode="update"
       sessionKey="storybook-person-dialog-1"
-      dialog={{ title: 'Edit this node type' }}
+      dialog={{ title: 'Edit this node type', open: true }}
       subject={{ entity: 'node', type: 'person' }}
       initialDraft={PERSON}
       authoritativeDocument={PERSON}
@@ -166,7 +166,7 @@ export const WithAShapeMapping: Story = {
     <CodebookEntityEditor
       mode="update"
       sessionKey="storybook-person-mapping-1"
-      dialog={{ title: 'Edit this node type' }}
+      dialog={{ title: 'Edit this node type', open: true }}
       subject={{ entity: 'node', type: 'person' }}
       initialDraft={PERSON_WITH_SHAPE_MAPPING}
       authoritativeDocument={PERSON_WITH_SHAPE_MAPPING}

@@ -358,7 +358,9 @@ describe('creating the type a stage needs without leaving it', () => {
         },
       ),
     ).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('textbox', { name: 'Icon' })).toHaveValue(icon);
+    expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
+      icon,
+    );
   });
 
   it('puts the new type in the codebook and selects it here', async () => {

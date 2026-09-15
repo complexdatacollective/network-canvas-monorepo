@@ -22,6 +22,8 @@ import { ModalOpenerContext } from './ModalOpener';
  *
  * @param open Whether the modal is open.
  * @param onOpenChange Callback when the open state changes.
+ * @param onExitComplete Called once the close animation has finished and the
+ * surface has left the DOM. See the prop's own note below.
  * @param dismissible Whether the user may dismiss this modal by pressing
  * outside it or pressing Escape. See the prop's own note below.
  * @param backdropClassName Additional classes for the modal backdrop.
@@ -32,12 +34,28 @@ import { ModalOpenerContext } from './ModalOpener';
 export default function Modal({
   open,
   onOpenChange,
+  onExitComplete,
   dismissible = true,
   backdropClassName,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Called once the close animation has finished and this modal's surface has
+   * left the DOM.
+   *
+   * This is what lets a caller whose CONTENT depends on the thing being closed
+   * — the row being edited, the type being created — keep that state until the
+   * animation is over, instead of dropping it on close and unmounting the
+   * modal mid-flight. A surface unmounted that way has no exit animation at
+   * all: it simply vanishes, because the `AnimatePresence` that would run the
+   * exit goes with it.
+   *
+   * Only fires for a close that was animated, which is the only close that
+   * needs waiting for.
+   */
+  onExitComplete?: () => void;
   /**
    * When false, neither an outside press nor Escape closes this modal, and
    * `onOpenChange` is not called for either. The surface inside it is
@@ -142,7 +160,7 @@ export default function Modal({
           onOpenChange(nextOpen);
         }}
       >
-        <AnimatePresence>
+        <AnimatePresence onExitComplete={onExitComplete}>
           {open && (
             <BaseDialog.Portal
               ref={setPortalNode}

@@ -599,6 +599,22 @@
     "defaultMessage": "Warning",
     "description": "Accessible name (SVG title) of the warning icon."
   },
+  "frescoUi.iconPicker.noIconsFound": {
+    "defaultMessage": "No icons found",
+    "description": "Shown in place of the icon list when the search matches no icon name."
+  },
+  "frescoUi.iconPicker.searchIcons": {
+    "defaultMessage": "Search icons…",
+    "description": "Placeholder of the search box inside the icon picker, which filters the icons by name."
+  },
+  "frescoUi.iconPicker.selectAnIcon": {
+    "defaultMessage": "Select an icon…",
+    "description": "Placeholder shown on the icon picker trigger while no icon has been chosen."
+  },
+  "frescoUi.iconPicker.showingSome": {
+    "defaultMessage": "Showing {count, number} of {total, number} icons — search to narrow them down.",
+    "description": "Told to the researcher when there are more icons than the picker lists at once, whether or not they have searched yet."
+  },
   "frescoUi.inputField.decrease": {
     "defaultMessage": "Decrease value",
     "description": "Accessible name of a number field’s decrement stepper, when the caller supplied none."
