@@ -1,11 +1,24 @@
-import { createEnv } from '@t3-oss/env-core';
+import { Context, Effect, Layer } from 'effect';
 
 import { resolve, type StudioEnv } from './env/resolve.ts';
-import { serverSchemas, type VariableName } from './env/variables.ts';
+import { decodeEnvironment, type VariableName } from './env/schema.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
-// module in the app that touches `process.env`, enforced by the repo-wide
-// oxlint `node/no-process-env` rule. Everything else takes a `StudioEnv`.
+// module in the app that touches `process.env`. Everything else takes a
+// `StudioEnv`.
+//
+// Enforced for this server's source by oxlint's `node/no-process-env`,
+// together with a ban on importing `node:process` — the linter only sees
+// `process.env` reached through the global. Both are in the
+// `apps/studio/server/src/**` override in the repository's `.oxlintrc.json`;
+// the repo-wide `no-process-env` entry beside it is inert, because the `node`
+// plugin it belongs to is not in the repo-wide `plugins` list.
+//
+// Two layers of validation, both of them declarative: `src/env/schema.ts` is
+// one Effect `Schema.Struct` saying what each variable must look like, and
+// `src/env/resolve.ts` applies the rules that span several at once
+// (all-or-nothing `S3_*`, the `SMTP_URL`/`EMAIL_FROM` pairing, the database
+// password file, the keyring).
 
 export type {
   AuthEnv,
@@ -44,31 +57,49 @@ export type ReadEnvOptions = {
  * needed the value.
  */
 export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
-  // An explicit opt-in, not a truthiness check: `Boolean('false')` is `true`,
-  // so coercing the raw string would let `SKIP_ENV_VALIDATION=false` disable
-  // validation and hand `resolve()` unparsed strings.
   /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-  const skip = process.env.SKIP_ENV_VALIDATION;
-  const skipValidation = skip === 'true' || skip === '1';
+  const source: Readonly<Record<string, string | undefined>> = process.env;
 
-  /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-  const source = { ...process.env };
-  // Overwritten rather than filtered out: a variable added to variables.ts
-  // later still reaches a read that asked for it, and a read that did not ask
-  // for mail never sees these two whatever else it asked for.
-  const runtimeEnv = options.withMail
-    ? source
-    : {
-        ...source,
-        ...Object.fromEntries(MAIL_VARIABLES.map((name) => [name, undefined])),
-      };
+  // Removed rather than filtered down to a known list: a variable added to
+  // the schema later still reaches a read that asked for it, and a read that
+  // did not ask for mail never sees these two whatever else it asked for.
+  const withheld = new Set<string>(options.withMail ? [] : MAIL_VARIABLES);
+  const visible = Object.fromEntries(
+    Object.entries(source).filter(([name]) => !withheld.has(name)),
+  );
 
-  const raw = createEnv({
-    server: serverSchemas,
-    runtimeEnv,
-    emptyStringAsUndefined: true,
-    skipValidation,
+  return resolve(decodeEnvironment(visible), {
+    withMail: options.withMail === true,
   });
+}
 
-  return resolve(raw, { withMail: options.withMail === true });
+/**
+ * The resolved environment as an Effect service, which is how Effect code asks
+ * for it: `const env = yield* Environment`. Nothing runs under Effect yet —
+ * the server is a Hono app and a pg-boss worker — so nothing consumes this but
+ * its own test. It exists so that the first module that does run under Effect
+ * has a sanctioned way in rather than reaching for `readEnv` from inside a
+ * fiber, and because `Layer` is what makes "decoded and resolved once, at the
+ * edge of the program" a property of the wiring instead of a convention.
+ *
+ * `Layer.effect` rather than `Layer.succeed`: the read must happen when the
+ * layer is built, not when this module is imported, or a failure would be
+ * thrown during module loading where nothing can report it usefully. Layers
+ * are memoised, so a program that provides this one decodes once however many
+ * services ask for it.
+ */
+export class Environment extends Context.Tag(
+  '@codaco/studio-server/Environment',
+)<Environment, StudioEnv>() {
+  /** For a process that does not send mail: the web process, and every script. */
+  static readonly layer = Layer.effect(
+    Environment,
+    Effect.sync(() => readEnv()),
+  );
+
+  /** For the worker, the one process that sends mail (#1895). */
+  static readonly layerWithMail = Layer.effect(
+    Environment,
+    Effect.sync(() => readEnv({ withMail: true })),
+  );
 }

@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import type pg from 'pg';
 
 import { isMissingRoleError } from './db/pool.ts';

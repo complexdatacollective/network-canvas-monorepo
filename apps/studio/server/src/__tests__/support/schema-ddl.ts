@@ -1,14 +1,11 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { renderJobStatements } from '../../jobs/queues.ts';
-
-/* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
-const CI = process.env.CI === 'true';
+import { CI } from './env.ts';
 
 /**
  * The scratch-schema DDL, byte-for-byte what `scripts/apply.ts` renders.

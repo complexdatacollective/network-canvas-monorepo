@@ -5,7 +5,7 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
-import type { RawEnv } from './variables.ts';
+import type { EnvironmentVariables } from './schema.ts';
 
 export type S3Env = {
   endpoint: string;
@@ -195,7 +195,7 @@ function assertPinnedRoleSurvives(url: string): void {
  * Read once, at boot, like every other variable: a file whose contents change
  * under a running process would give different pools different passwords.
  */
-function resolveDatabaseUrl(raw: RawEnv): string | undefined {
+function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
   const url = raw.DATABASE_URL;
   const passwordFile = raw.DATABASE_PASSWORD_FILE;
 
@@ -257,7 +257,7 @@ function resolveDatabaseUrl(raw: RawEnv): string | undefined {
   return parsed.toString();
 }
 
-function resolveS3(raw: RawEnv): S3Env | undefined {
+function resolveS3(raw: EnvironmentVariables): S3Env | undefined {
   const values = {
     endpoint: raw.S3_ENDPOINT,
     region: raw.S3_REGION,
@@ -281,7 +281,10 @@ function resolveS3(raw: RawEnv): S3Env | undefined {
   );
 }
 
-function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
+function resolveMailer(
+  raw: EnvironmentVariables,
+  devDefaults: boolean,
+): MailerEnv {
   if (raw.SMTP_URL) {
     if (!raw.EMAIL_FROM) {
       throw new Error('EMAIL_FROM is required when SMTP_URL is set');
@@ -302,7 +305,7 @@ function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
   return devDefaults ? { kind: 'console' } : { kind: 'refuse' };
 }
 
-function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
+function resolveSocialProviders(raw: EnvironmentVariables): SocialProvidersEnv {
   const providers: SocialProvidersEnv = {};
 
   if (raw.GOOGLE_CLIENT_ID || raw.GOOGLE_CLIENT_SECRET) {
@@ -343,7 +346,10 @@ function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
   return providers;
 }
 
-function resolveAuth(raw: RawEnv, db: DbEnv | undefined): AuthEnv | undefined {
+function resolveAuth(
+  raw: EnvironmentVariables,
+  db: DbEnv | undefined,
+): AuthEnv | undefined {
   // Validated before the database check so a half-configured provider fails
   // fast even on a deployment where auth is otherwise off.
   const socialProviders = resolveSocialProviders(raw);
@@ -376,7 +382,7 @@ function resolveAuth(raw: RawEnv, db: DbEnv | undefined): AuthEnv | undefined {
  * first webhook subscription.
  */
 function resolveSecrets(
-  raw: RawEnv,
+  raw: EnvironmentVariables,
   db: DbEnv | undefined,
   readSecretsFile: (path: string) => string,
 ): Keyring | undefined {
@@ -431,7 +437,10 @@ export type ResolveOptions = {
   readSecretsFile?: (path: string) => string;
 };
 
-export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
+export function resolve(
+  raw: EnvironmentVariables,
+  options: ResolveOptions = {},
+): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
   // Checked against an explicit development or test NODE_ENV rather than

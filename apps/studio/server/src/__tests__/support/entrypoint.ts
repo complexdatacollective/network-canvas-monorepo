@@ -1,7 +1,6 @@
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import { createConnection, createServer } from 'node:net';
 import { dirname, resolve } from 'node:path';
-import process from 'node:process';
 import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 
@@ -44,6 +43,7 @@ export function startEntrypoint(
     process.execPath,
     [resolve(SERVER_ROOT, entry)],
     {
+      /* oxlint-disable-next-line node/no-process-env -- the harness hands this process's whole environment to the child, which is what makes the child a deployment-shaped run of the entrypoint */
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     },

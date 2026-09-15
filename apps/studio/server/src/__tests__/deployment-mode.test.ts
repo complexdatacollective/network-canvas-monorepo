@@ -38,7 +38,7 @@ describe('the deployment mode over RPC', () => {
   );
 
   it('reports self-hosted when nothing is configured', async () => {
-    // The fail-closed direction, and the reason `variables.ts` declares no
+    // The fail-closed direction, and the reason `src/env/schema.ts` declares no
     // default: a managed deployment that forgets the variable 404s its own
     // pricing page on the first smoke request, where the opposite default
     // would have an institution's instance quietly publishing one.

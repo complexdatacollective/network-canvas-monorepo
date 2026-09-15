@@ -27,7 +27,7 @@ import process from 'node:process';
 
 import { createOwnerPool } from '../src/db/pool.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
-import { DEV } from '../src/env/catalogue.ts';
+import { DEV } from '../src/env/development.ts';
 import { resetSchemaAndSeed } from './apply.ts';
 import {
   composeFile,

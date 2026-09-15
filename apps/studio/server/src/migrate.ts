@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import process from 'node:process';
 
 import { migrateDatabase, type SchemaDdl } from './db/migrate.ts';
 import { createOwnerPool } from './db/pool.ts';

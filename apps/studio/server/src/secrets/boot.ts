@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import type pg from 'pg';
 
 import { createMaintenancePool } from '../db/pool.ts';

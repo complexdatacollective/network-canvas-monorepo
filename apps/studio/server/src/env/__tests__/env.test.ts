@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { Effect } from 'effect';
 import { parse as parseConnectionString } from 'pg-connection-string';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
-import { isLocalDatabase, readEnv } from '../../env.ts';
+import { Environment, isLocalDatabase, readEnv } from '../../env.ts';
 import { KeyringError } from '../../secrets/keyring.ts';
 import {
   DEV,
@@ -14,7 +15,7 @@ import {
   DEV_REDIS_URL,
   DEV_S3_ENDPOINT,
   DEV_SMTP_URL,
-} from '../catalogue.ts';
+} from '../development.ts';
 import { resolve } from '../resolve.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -407,11 +408,93 @@ describe('process configuration', () => {
     vi.stubEnv('PORT', '70000');
     expect(() => readEnv()).toThrow();
   });
+});
 
-  it('keeps validating when SKIP_ENV_VALIDATION says not to skip', () => {
-    vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+// What a misconfigured deployment is told. The schema decodes with
+// `errors: 'all'` and every variable carries its own refusal message, so the
+// report is one line per bad variable — and never the value, because half of
+// these variables are credentials and a boot failure is written to the log of
+// every container that restarts.
+describe('the refusal a bad environment gets', () => {
+  it('names every bad variable at once, not the first', () => {
     vi.stubEnv('PORT', 'http');
-    expect(() => readEnv()).toThrow();
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
+    vi.stubEnv('S3_ENDPOINT', 'localhost:9100');
+
+    let message = '';
+    try {
+      readEnv();
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain('PORT');
+    expect(message).toContain('STUDIO_DEPLOYMENT_MODE');
+    expect(message).toContain('S3_ENDPOINT');
+    expect(message).toContain('must be a whole number between 0 and 65535');
+    expect(message).toContain('must be managed or self-hosted');
+    expect(message).toContain('must be an http:// or https:// URL');
+  });
+
+  it('says what is wrong with a secret without printing it', () => {
+    // Effect's own message for a refused value quotes the value. These are
+    // credentials: a deployment whose signing secret is too short must not
+    // have the secret it tried written into its boot log.
+    vi.stubEnv('BETTER_AUTH_SECRET', 'too-short-but-still-a-secret');
+
+    let message = '';
+    try {
+      readEnv();
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain('BETTER_AUTH_SECRET');
+    expect(message).toContain('must be at least 32 characters');
+    expect(message).not.toContain('too-short-but-still-a-secret');
+  });
+
+  it('treats an empty value as unset rather than as a value to validate', () => {
+    // How a Compose file's `FOO=` reads, and how every case in this suite
+    // clears a variable.
+    vi.stubEnv('S3_ENDPOINT', '');
+    vi.stubEnv('S3_REGION', '');
+    vi.stubEnv('S3_BUCKET', '');
+    vi.stubEnv('S3_ACCESS_KEY_ID', '');
+    vi.stubEnv('S3_SECRET_ACCESS_KEY', '');
+    expect(readEnv().s3).toBeUndefined();
+  });
+});
+
+// The pattern's service shape, beside `readEnv` rather than instead of it:
+// nothing in the server runs under Effect yet, so this is the sanctioned way
+// in for the first thing that does.
+describe('the Environment layer', () => {
+  it('decodes and resolves the committed development defaults', async () => {
+    const program = Effect.gen(function* () {
+      const env = yield* Environment;
+      return env;
+    });
+    const env = await Effect.runPromise(
+      program.pipe(Effect.provide(Environment.layer)),
+    );
+    expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+    expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
+    // Withheld from the plain layer, exactly as it is from a plain `readEnv`.
+    expect(env.mail).toBeUndefined();
+  });
+
+  it('reads the mail transport only through the worker’s layer', async () => {
+    const env = await Effect.runPromise(
+      Effect.gen(function* () {
+        return yield* Environment;
+      }).pipe(Effect.provide(Environment.layerWithMail)),
+    );
+    expect(env.mail).toEqual({
+      kind: 'smtp',
+      url: DEV_SMTP_URL,
+      from: DEV.emailFrom,
+    });
   });
 });
 
@@ -424,7 +507,7 @@ describe('the deployment mode', () => {
   it('is self-hosted when the variable is unset', () => {
     vi.stubEnv('STUDIO_DEPLOYMENT_MODE', '');
     // The fail-closed direction, and the reason no default is declared in
-    // variables.ts: a managed deployment that forgets the variable 404s its
+    // schema.ts: a managed deployment that forgets the variable 404s its
     // own pricing page on the first smoke request, where the other default
     // would have an institution's own instance quietly publishing one.
     expect(readEnv().deploymentMode).toBe('self-hosted');

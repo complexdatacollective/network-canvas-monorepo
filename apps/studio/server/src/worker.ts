@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import { serve } from '@hono/node-server';
 
 import { createMailer } from './auth/email.ts';

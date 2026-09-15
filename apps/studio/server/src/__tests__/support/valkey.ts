@@ -1,10 +1,9 @@
-import process from 'node:process';
-
 import { readEnv } from '../../env.ts';
 import {
   createRateLimitStore,
   type RateLimitStore,
 } from '../../rate-limit/store.ts';
+import { CI } from './env.ts';
 
 // Reaching a real Valkey, the way support/postgres.ts reaches a real Postgres:
 // a suite that cannot find one is skipped locally and fails on CI, where the
@@ -16,9 +15,6 @@ import {
 // scopes are keyed by the client address — which is the same address in every
 // process — so a shared key space would have one file's requests spending
 // another's allowance.
-
-/* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
-const CI = process.env.CI === 'true';
 
 function unavailable<T>(reason: string, fallback: T): T {
   if (CI) throw new Error(`the Studio limiter suites cannot run: ${reason}`);

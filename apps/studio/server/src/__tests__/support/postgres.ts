@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import process from 'node:process';
 
 import pg from 'pg';
 import { getConstructionPlans } from 'pg-boss';
@@ -18,12 +17,10 @@ import {
   type JobWorker,
   type JobWorkerDeps,
 } from '../../jobs/worker.ts';
+import { CI } from './env.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
-
-/* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
-const CI = process.env.CI === 'true';
 
 function unavailable(reason: string): null {
   if (CI) throw new Error(`the Studio database suites cannot run: ${reason}`);
