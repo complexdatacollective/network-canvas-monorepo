@@ -42,7 +42,11 @@ const nextConfig: NextConfig = {
   // checkout's pnpm-workspace.yaml and infers the wrong root.
   turbopack: { root: join(import.meta.dirname, '..', '..') },
   // Ships untranspiled TSX from workspace source.
-  transpilePackages: ['@codaco/fresco-ui', '@codaco/interface-images'],
+  transpilePackages: [
+    '@codaco/app-i18n',
+    '@codaco/fresco-ui',
+    '@codaco/interface-images',
+  ],
   images: {
     unoptimized: true,
   },

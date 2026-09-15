@@ -1,4 +1,5 @@
-import { localeCookie, locales, type Locale } from './locales';
+import { isLocale, localeCookie, locales, type Locale } from './locales';
+import { negotiateLocale } from './negotiate';
 
 export function getLocalizedPathname(locale: Locale, pathname: string) {
   const segments = pathname.split('/').filter(Boolean);
@@ -17,9 +18,26 @@ export function getLocaleCookie(locale: Locale) {
   return `${localeCookie.name}=${locale}; Path=/; Max-Age=${localeCookie.maxAge}; SameSite=Lax`;
 }
 
-export function switchLocale(locale: Locale, pathname: string) {
-  document.cookie = getLocaleCookie(locale);
+export function getClearedLocaleCookie() {
+  return `${localeCookie.name}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
+
+export function readLocalePreference(): Locale | null {
+  const stored = document.cookie
+    .split(';')
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith(`${localeCookie.name}=`))
+    ?.slice(localeCookie.name.length + 1);
+
+  return stored !== undefined && isLocale(stored) ? stored : null;
+}
+
+export function switchLocale(locale: Locale | null, pathname: string) {
+  const target = locale ?? negotiateLocale(navigator.languages);
+
+  document.cookie =
+    locale === null ? getClearedLocaleCookie() : getLocaleCookie(locale);
   window.location.assign(
-    `${getLocalizedPathname(locale, pathname)}${window.location.search}${window.location.hash}`,
+    `${getLocalizedPathname(target, pathname)}${window.location.search}${window.location.hash}`,
   );
 }

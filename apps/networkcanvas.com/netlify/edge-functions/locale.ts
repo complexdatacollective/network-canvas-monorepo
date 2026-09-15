@@ -1,8 +1,6 @@
-import { match } from '@formatjs/intl-localematcher';
 import type { Config, Context } from '@netlify/edge-functions';
 
 import {
-  defaultSiteLocale,
   isSiteLocale,
   siteLocales,
   type SiteLocale,
@@ -10,6 +8,7 @@ import {
 
 import { CLASSIC_DOWNLOAD_PATH_PREFIX } from '../../lib/classicDownloads.ts';
 import { localeCookie } from '../../lib/i18n/locales.ts';
+import { negotiateLocale } from '../../lib/i18n/negotiate.ts';
 
 type RequestedLocale = {
   locale: string;
@@ -22,14 +21,6 @@ const legacyDownloadPaths = new Set([
   '/download/',
   '/download.html',
 ]);
-function canonicalizeLocale(value: string) {
-  try {
-    return Intl.getCanonicalLocales(value)[0];
-  } catch {
-    return undefined;
-  }
-}
-
 function parseQuality(parameters: string[]) {
   const qualityParameter = parameters.find((parameter) =>
     parameter.trim().toLowerCase().startsWith('q='),
@@ -45,7 +36,7 @@ function getRequestedLocales(header: string) {
     .split(',')
     .map<RequestedLocale | undefined>((entry, order) => {
       const [language, ...parameters] = entry.split(';');
-      const locale = canonicalizeLocale(language?.trim() ?? '');
+      const locale = language?.trim() ?? '';
       const quality = parseQuality(parameters);
 
       return locale && quality > 0 ? { locale, quality, order } : undefined;
@@ -100,19 +91,9 @@ export function detectLocale(
 ): SiteLocale {
   if (savedLocale && isSiteLocale(savedLocale)) return savedLocale;
 
-  const requestedLocales = getRequestedLocales(
-    request.headers.get('accept-language') ?? '',
+  return negotiateLocale(
+    getRequestedLocales(request.headers.get('accept-language') ?? ''),
   );
-  const matchedLocale = match(
-    requestedLocales,
-    siteLocales,
-    defaultSiteLocale,
-    {
-      algorithm: 'best fit',
-    },
-  );
-
-  return isSiteLocale(matchedLocale) ? matchedLocale : defaultSiteLocale;
 }
 
 export function getLocaleRedirect(request: Request, savedLocale?: string) {
