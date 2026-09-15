@@ -26,7 +26,13 @@ cd "$REPO_ROOT"
 
 build_one() {
   local target="$1" tag="$2"
-  local args=(build -f apps/studio/Dockerfile --target "$target" -t "$tag")
+  # `docker buildx build`, not `docker build`: on a runner the legacy alias
+  # ignores the builder `docker buildx use` selected and builds on the default
+  # `docker` driver, which cannot export a cache — the first CI run failed
+  # exactly there. buildx follows the selected builder (or BUILDX_BUILDER).
+  # `--load` is unconditional: a container-driver builder keeps its output in
+  # the builder unless told to load it, and `up.sh` needs the tags in the daemon.
+  local args=(buildx build -f apps/studio/Dockerfile --target "$target" -t "$tag" --load)
 
   # `--cache-to` is buildx-only, and so is `--cache-from type=gha`. The
   # classic builder silently ignores neither — it fails — so a caller that
@@ -36,10 +42,6 @@ build_one() {
   fi
   if [ -n "${BUILD_CACHE_TO:-}" ]; then
     args+=(--cache-to "${BUILD_CACHE_TO//\{target\}/$target}")
-    # A cache export needs the image loaded into the daemon explicitly:
-    # buildx's default output for `docker build` is the daemon, but naming any
-    # `--cache-to` switches it to the container driver's default of none.
-    args+=(--load)
   fi
 
   echo "[stack-test] building $tag (--target $target)"

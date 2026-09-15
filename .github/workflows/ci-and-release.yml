@@ -1007,8 +1007,10 @@ jobs:
       # runner's default one is the `docker` driver, which cannot — it fails
       # the build rather than ignoring the flag. One `buildx create` rather
       # than a third-party action: this is the whole of what that action would
-      # do here, and `docker build` is buildx on this runner and follows the
-      # selected builder.
+      # do here; `build.sh` calls `docker buildx build`, which follows the
+      # selected builder (`docker build` on this runner does not, and fails).
+      # `docker buildx use` alone was not enough: the first run built on the
+      # default driver and could not export the cache.
       - name: Select a cache-capable builder
         run: docker buildx create --name studio-stack --driver docker-container --use
       # The `gha` cache backend authenticates with the job's runtime token, and
@@ -1032,6 +1034,10 @@ jobs:
             }
       - name: Build the stack images
         env:
+          # Belt and braces with the `buildx create --use` above: buildx reads
+          # this before its saved selection, so the build cannot fall back to
+          # the default driver, whose cache export the first run failed on.
+          BUILDX_BUILDER: studio-stack
           # Scoped per target by the `{target}` placeholder, so the two images
           # do not overwrite each other's cache manifest.
           BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
