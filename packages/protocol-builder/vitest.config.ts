@@ -146,17 +146,20 @@ export default defineConfig({
         test: {
           name: 'storybook',
           testTimeout: 60_000,
+          // One iframe for every file rather than a fresh one per file.
+          // These stories mount whole stage editors, and detached iframes
+          // hold their native resources long enough to take the renderer
+          // down partway through a run.
+          //
+          // Top level rather than under `browser`: Vitest 5 reads it here, and
+          // ignores it in there.
+          isolate: false,
           browser: {
             provider: playwright(),
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
             viewport: BROWSER_VIEWPORT,
-            // One iframe for every file rather than a fresh one per file.
-            // These stories mount whole stage editors, and detached iframes
-            // hold their native resources long enough to take the renderer
-            // down partway through a run.
-            isolate: false,
           },
           exclude: [
             '**/node_modules/**',
