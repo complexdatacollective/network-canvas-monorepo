@@ -14,6 +14,7 @@ import {
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from '../../__tests__/support/postgres.ts';
 import { reachableDeniedAuditStore } from '../../__tests__/support/valkey.ts';
 import {
@@ -190,7 +191,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('accepts an invitation atomically and treats a lost-response replay as unchanged', async () => {
-    const teamId = 'command-accept-invitation';
+    const teamId = uniqueTeamId('command-accept-invitation');
     const invitationId = randomUUID();
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -273,7 +274,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('requires the matching verified account and a live pending invitation', async () => {
-    const teamId = 'command-accept-guards';
+    const teamId = uniqueTeamId('command-accept-guards');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const invitee = identity(teamId, 'invitee', 'member');
@@ -374,7 +375,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('uses the database clock when accepting an invitation from a lagging application host', async () => {
-    const teamId = 'command-accept-database-clock';
+    const teamId = uniqueTeamId('command-accept-database-clock');
     const invitationId = randomUUID();
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -438,7 +439,7 @@ describe.skipIf(!db)('audited team commands', () => {
   it.skipIf(!deniedAuditWindow)(
     'rate-limits immutable wrong-account denial events before the team lock',
     async () => {
-      const teamId = `command-accept-denial-limit-${randomUUID().slice(0, 8)}`;
+      const teamId = uniqueTeamId('command-accept-denial-limit');
       const invitationId = randomUUID();
       await seedTeam(pool, teamId);
       const owner = identity(teamId, 'owner', 'owner');
@@ -584,7 +585,7 @@ describe.skipIf(!db)('audited team commands', () => {
   );
 
   it('serializes concurrent acceptance into one membership and one event', async () => {
-    const teamId = 'command-concurrent-accept';
+    const teamId = uniqueTeamId('command-concurrent-accept');
     const invitationId = randomUUID();
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -624,7 +625,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('changes a role with exact actor, target, before/after, and request context', async () => {
-    const teamId = 'command-role-success';
+    const teamId = uniqueTeamId('command-role-success');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const member = identity(teamId, 'member', 'member');
@@ -682,7 +683,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('snapshots the locked team label instead of joining a later rename', async () => {
-    const teamId = 'command-team-label';
+    const teamId = uniqueTeamId('command-team-label');
     await seedTeam(pool, teamId);
     await pool.query(
       `UPDATE teams SET name = 'Original Research Team' WHERE id = $1`,
@@ -713,7 +714,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rejects an empty event list even from an unsafe untyped caller', async () => {
-    const teamId = 'command-empty-events';
+    const teamId = uniqueTeamId('command-empty-events');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -735,7 +736,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('takes the team audit lock before command work begins', async () => {
-    const teamId = 'command-prework-lock';
+    const teamId = uniqueTeamId('command-prework-lock');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -780,7 +781,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('re-authorizes an actor after waiting for the team audit lock', async () => {
-    const teamId = 'command-actor-revoked';
+    const teamId = uniqueTeamId('command-actor-revoked');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const admin = identity(teamId, 'admin', 'admin');
@@ -830,7 +831,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rejects events whose trusted actor context differs from the command', async () => {
-    const teamId = 'command-event-context';
+    const teamId = uniqueTeamId('command-event-context');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -884,7 +885,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rejects events whose outcome differs from the command decision', async () => {
-    const teamId = 'command-event-outcome';
+    const teamId = uniqueTeamId('command-event-outcome');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -934,7 +935,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('preserves owner and manager authorization invariants', async () => {
-    const teamId = 'command-role-rules';
+    const teamId = uniqueTeamId('command-role-rules');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const admin = identity(teamId, 'admin', 'admin');
@@ -1000,7 +1001,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('commits an immutable denial event before refusing role escalation', async () => {
-    const teamId = 'command-role-denied';
+    const teamId = uniqueTeamId('command-role-denied');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const admin = identity(teamId, 'admin', 'admin');
@@ -1063,7 +1064,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('commits an immutable denial event before refusing an owner invitation from an admin', async () => {
-    const teamId = 'command-owner-invitation-denied';
+    const teamId = uniqueTeamId('command-owner-invitation-denied');
     await seedTeam(pool, teamId);
     const admin = identity(teamId, 'admin', 'admin');
     await seedIdentity(pool, teamId, admin);
@@ -1134,7 +1135,7 @@ describe.skipIf(!db)('audited team commands', () => {
   it.skipIf(!deniedAuditWindow)(
     'bounds repeated denied owner invitations before starting another team transaction',
     async () => {
-      const teamId = `command-owner-invitation-denial-limit-${randomUUID().slice(0, 8)}`;
+      const teamId = uniqueTeamId('command-owner-invitation-denial-limit');
       await seedTeam(pool, teamId);
       const admin = identity(teamId, 'admin', 'admin');
       await seedIdentity(pool, teamId, admin);
@@ -1186,7 +1187,7 @@ describe.skipIf(!db)('audited team commands', () => {
   );
 
   it('does not reject or misclassify a concurrent authorized invitation burst', async () => {
-    const teamId = 'command-authorized-invitation-burst';
+    const teamId = uniqueTeamId('command-authorized-invitation-burst');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -1229,7 +1230,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('records an established member denial without exposing the requested invitation', async () => {
-    const teamId = 'command-invitation-cancellation-denied';
+    const teamId = uniqueTeamId('command-invitation-cancellation-denied');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const member = identity(teamId, 'member', 'member');
@@ -1282,7 +1283,7 @@ describe.skipIf(!db)('audited team commands', () => {
   it.skipIf(!deniedAuditWindow)(
     'bounds repeated denied role-change events before starting another team transaction',
     async () => {
-      const teamId = `command-role-denied-rate-limit-${randomUUID().slice(0, 8)}`;
+      const teamId = uniqueTeamId('command-role-denied-rate-limit');
       await seedTeam(pool, teamId);
       const owner = identity(teamId, 'owner', 'owner');
       const member = identity(teamId, 'member', 'member');
@@ -1320,7 +1321,7 @@ describe.skipIf(!db)('audited team commands', () => {
   );
 
   it('records a bounded failure for last-owner rejection without a false success event', async () => {
-    const teamId = 'command-last-owner';
+    const teamId = uniqueTeamId('command-last-owner');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -1380,7 +1381,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rolls classified domain mutations back to a savepoint before committing their failure event', async () => {
-    const teamId = 'command-domain-savepoint';
+    const teamId = uniqueTeamId('command-domain-savepoint');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -1438,7 +1439,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('keeps one owner when two owners concurrently demote themselves', async () => {
-    const teamId = 'command-concurrent-owners';
+    const teamId = uniqueTeamId('command-concurrent-owners');
     await seedTeam(pool, teamId);
     const firstOwner = identity(teamId, 'first-owner', 'owner');
     const secondOwner = identity(teamId, 'second-owner', 'owner');
@@ -1500,7 +1501,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('creates and cancels an invitation without recording secret material', async () => {
-    const teamId = 'command-invitations';
+    const teamId = uniqueTeamId('command-invitations');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);
@@ -1594,7 +1595,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('cancels and completely audits a legacy multi-role invitation', async () => {
-    const teamId = 'command-cancel-legacy-multi-role';
+    const teamId = uniqueTeamId('command-cancel-legacy-multi-role');
     const invitationId = randomUUID();
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -1639,7 +1640,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rolls the member update back when the audit insert fails', async () => {
-    const teamId = 'command-audit-failure';
+    const teamId = uniqueTeamId('command-audit-failure');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const member = identity(teamId, 'member', 'member');
@@ -1717,7 +1718,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('signals and rolls back when a denial audit insert fails', async () => {
-    const teamId = 'command-denial-audit-failure';
+    const teamId = uniqueTeamId('command-denial-audit-failure');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const member = identity(teamId, 'member', 'member');
@@ -1788,7 +1789,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('retains history after mutable users, memberships, and invitations cascade', async () => {
-    const teamId = 'command-retention';
+    const teamId = uniqueTeamId('command-retention');
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     await seedIdentity(pool, teamId, owner);

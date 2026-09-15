@@ -313,6 +313,20 @@ export function sqlState(error: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * A team id no other run reuses.
+ *
+ * The audit denial window counts in Valkey and outlives the process (#1909),
+ * keyed by (actor, team, operation). A fixture that reuses a fixed team id
+ * across runs inside that window therefore starts with part of its allowance
+ * already spent, and a case that expects a denial event gets a suppressed
+ * attempt instead. Every run gets a scratch schema for the same reason; this
+ * is the same rule applied to the other durable store.
+ */
+export function uniqueTeamId(label: string): string {
+  return `${label}-${randomUUID().slice(0, 8)}`;
+}
+
 export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {
   await db.query(
     `INSERT INTO teams (id, name, slug) VALUES ($1, $1, $1)
