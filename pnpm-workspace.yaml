@@ -295,3 +295,13 @@ minimumReleaseAgeExclude:
   - '@better-auth/prisma-adapter@1.7.5'
   - '@better-auth/telemetry@1.7.5'
   - better-auth@1.7.5
+patchedDependencies:
+  # The addon applies a story's `viewport` parameter by importing `page` from
+  # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
+  # test. The import is wrapped in `.catch(() => ({ page: null }))` and the
+  # function then returns early, so under Vitest 5 the viewport is never set
+  # and nothing is reported: a story asking for a 700px viewport renders at
+  # whatever `browser.viewport` says, and only a story that measures its own
+  # layout notices. `vitest/browser` is the same `page` object under the name
+  # Vitest 5 serves. Drop this once the addon supports Vitest 5.
+  '@storybook/addon-vitest@10.6.0': patches/@storybook__addon-vitest@10.6.0.patch

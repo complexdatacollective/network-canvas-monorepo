@@ -1,6 +1,7 @@
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 // Tests run in real Chromium, which CI runner images don't ship for the
@@ -36,6 +37,7 @@ export default defineConfig({
       enabled: true,
       instances: [{ browser: 'chromium' }],
       headless: true,
+      viewport: BROWSER_VIEWPORT,
     },
   },
 });
