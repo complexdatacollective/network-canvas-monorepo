@@ -29,6 +29,7 @@ import {
 import { lane, postgresContainer } from './lanes.mjs';
 import {
   judgeAuthoredText,
+  judgeInterpolated,
   judgeRendering,
   loadCatalog,
 } from './localization-contract.mjs';
@@ -218,6 +219,32 @@ try {
                   .map(([, source]) => `"${source}"`)
                   .join('; ')}`,
       };
+    }),
+  );
+
+  // The activity feed's structured details, which every other comparison
+  // skips: they name a user, a protocol or a count, so they are written with
+  // placeholders and never appear on a page verbatim. They are also the part
+  // of the interface that holds an audit record, which is why the claim is
+  // that they are PRESENTED in the language while what they record is
+  // unchanged.
+  checks.push(
+    await attempt('localization-reaches-activity-details', async () => {
+      const ids = Object.keys(appEnglish).filter((id) =>
+        id.startsWith('fresco.activity.detail.'),
+      );
+      if (ids.length === 0)
+        return {
+          pass: false,
+          detail: 'the catalog holds no structured activity details at all',
+        };
+      return judgeInterpolated({
+        englishText: inEnglish['/dashboard'],
+        translatedText: await textOf(page, '/dashboard'),
+        english: appEnglish,
+        translated: appSpanish,
+        ids,
+      });
     }),
   );
 

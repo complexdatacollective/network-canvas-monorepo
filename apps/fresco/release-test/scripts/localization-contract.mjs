@@ -143,3 +143,78 @@ export function judgeAuthoredText({ translatedText, authored }) {
           : `protocol-authored text was altered or lost: ${missing.join(' | ')}`,
   };
 }
+
+/**
+ * The longest run of literal text in an interpolated message.
+ *
+ * Messages that name a user, a count or a protocol are written with
+ * placeholders, so they never appear on a page verbatim and `judgeRendering`
+ * skips them — which would leave the structured activity details, the part of
+ * the feed the localization actually had to reach, unchecked. What DOES appear
+ * verbatim is the prose between the placeholders, so that is what is compared.
+ */
+export function longestLiteral(message) {
+  return (
+    String(message ?? '')
+      .split(/\{[^{}]*\}|[{}]/)
+      .map((part) => part.trim())
+      .toSorted((a, b) => b.length - a.length)[0] ?? ''
+  );
+}
+
+/**
+ * Whether interpolated messages — the activity feed's structured details —
+ * arrived in the other language.
+ *
+ * Same shape as `judgeRendering`, and the same floor for the same reason: a
+ * page with none of these on it proves nothing either way.
+ */
+export function judgeInterpolated({
+  englishText,
+  translatedText,
+  english,
+  translated,
+  ids,
+  floor = 1,
+  what = 'the structured details',
+}) {
+  const comparable = ids
+    .map((id) => ({
+      id,
+      source: longestLiteral(english[id]),
+      target: longestLiteral(translated[id]),
+    }))
+    .filter(
+      (entry) =>
+        entry.source.length >= 12 &&
+        entry.target.length >= 12 &&
+        entry.source !== entry.target,
+    );
+  const present = comparable.filter((entry) =>
+    englishText.includes(entry.source),
+  );
+  const stillEnglish = present.filter((entry) =>
+    translatedText.includes(entry.source),
+  );
+  const shown = present.filter((entry) =>
+    translatedText.includes(entry.target),
+  );
+
+  return {
+    pass:
+      present.length >= floor &&
+      stillEnglish.length === 0 &&
+      shown.length >= floor,
+    detail:
+      present.length < floor
+        ? `${what}: only ${present.length} interpolated message(s) were on the English page, so there was nothing to compare`
+        : stillEnglish.length > 0
+          ? `${what}: still English — ${stillEnglish
+              .slice(0, 3)
+              .map((entry) => `${entry.id} ("${entry.source}")`)
+              .join('; ')}`
+          : shown.length < floor
+            ? `${what}: none of the ${present.length} message(s) appeared in the other language`
+            : `${what}: ${shown.length} of ${present.length} interpolated message(s) switched language`,
+  };
+}

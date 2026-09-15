@@ -700,6 +700,7 @@ const expectedScriptChecks = {
   localization: [
     'localization-preference-applies',
     'localization-reaches-validation-and-dialogs',
+    'localization-reaches-activity-details',
     'localization-follows-the-account',
     'localization-seeds-interview-controls',
   ],

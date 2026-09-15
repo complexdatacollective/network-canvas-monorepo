@@ -36,9 +36,8 @@ const {
   evaluateAnalyticsContract,
 } = await import(join(scripts, 'relay-payload-protocol.mjs'));
 
-const { judgeAuthoredText, judgeRendering } = await import(
-  join(scripts, 'localization-contract.mjs')
-);
+const { judgeAuthoredText, judgeInterpolated, judgeRendering, longestLiteral } =
+  await import(join(scripts, 'localization-contract.mjs'));
 
 const { readInterviewExport } = await import(
   join(scripts, 'interview-export-contract.mjs')
@@ -519,6 +518,67 @@ test('a stored value left alone passes', () => {
     preserved: ['stored'],
   });
   assert.equal(judgement.pass, true, judgement.detail);
+});
+
+// The activity feed's structured details are written with placeholders, so
+// they never appear verbatim and the comparison above skips them entirely.
+const interpolated = {
+  english: {
+    'fresco.activity.detail.protocolInstalled':
+      'User {username} installed protocol {protocol}.',
+    'fresco.activity.detail.dataExported':
+      'User {username} exported data for {count, plural, one {# interview} other {# interviews}}.',
+  },
+  spanish: {
+    'fresco.activity.detail.protocolInstalled':
+      '«{username}» instaló el protocolo {protocol}.',
+    'fresco.activity.detail.dataExported':
+      '«{username}» exportó los datos de {count, plural, one {# entrevista} other {# entrevistas}}.',
+  },
+};
+const interpolatedIds = Object.keys(interpolated.english);
+
+test('the literal run of an interpolated message is what can be looked for', () => {
+  assert.equal(
+    longestLiteral(interpolated.english[interpolatedIds[0]]),
+    'installed protocol',
+  );
+  assert.equal(longestLiteral(undefined), '');
+});
+
+test('structured details that switched language pass, and ones that did not fail', () => {
+  const englishFeed = 'User jo installed protocol Study One.';
+  assert.equal(
+    judgeInterpolated({
+      englishText: englishFeed,
+      translatedText: '«jo» instaló el protocolo Study One.',
+      english: interpolated.english,
+      translated: interpolated.spanish,
+      ids: interpolatedIds,
+    }).pass,
+    true,
+  );
+  const untranslated = judgeInterpolated({
+    englishText: englishFeed,
+    translatedText: englishFeed,
+    english: interpolated.english,
+    translated: interpolated.spanish,
+    ids: interpolatedIds,
+  });
+  assert.equal(untranslated.pass, false);
+  assert.match(untranslated.detail, /still English/);
+});
+
+test('a feed with none of those messages on it proves nothing', () => {
+  const judgement = judgeInterpolated({
+    englishText: 'nothing has happened yet',
+    translatedText: 'todavía no ha pasado nada',
+    english: interpolated.english,
+    translated: interpolated.spanish,
+    ids: interpolatedIds,
+  });
+  assert.equal(judgement.pass, false);
+  assert.match(judgement.detail, /nothing to compare/);
 });
 
 test('protocol-authored text that vanished fails', () => {
