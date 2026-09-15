@@ -10,9 +10,9 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
+import type { RateLimiter } from '../rate-limit.ts';
 import type { SecretsCipher } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
-import type { RateLimiter } from '../rate-limit.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Two siblings
@@ -272,11 +272,15 @@ export function createBetterAuthService(
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
   secrets: SecretsCipher,
-): AuthService {
-  const auth = createBetterAuthInstance(env, pool, sendMagicLink, secrets);
   limiter?: RateLimiter,
 ): AuthService {
-  const auth = createBetterAuthInstance(env, pool, sendMagicLink, limiter);
+  const auth = createBetterAuthInstance(
+    env,
+    pool,
+    sendMagicLink,
+    secrets,
+    limiter,
+  );
   const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),

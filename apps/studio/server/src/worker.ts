@@ -8,14 +8,9 @@ import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
 import { createJobWorker, type JobWorker } from './jobs/worker.ts';
-    // Beside the fingerprint check and for the same reason (#1900): the
-    // worker is what signs webhook deliveries, so a keyring that cannot
-    // produce a stored key id would turn every delivery for that team into a
-    // failed job. The keep-alive interval is deliberately still held — the
-    // check is asynchronous, and `startWorker` is what releases it.
-    void verifySecretKeysOrExit(env, maintenancePool)
-      .then(() => startWorker())
-      .catch((error: unknown) => {
+import { createRateLimiter } from './rate-limit.ts';
+import { closeRateLimitStores, getRateLimitStore } from './rate-limit/store.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The worker entry: the same image as src/index.ts, started with a different

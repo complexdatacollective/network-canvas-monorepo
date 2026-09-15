@@ -3,8 +3,8 @@ import type pg from 'pg';
 import type { StudioEnv } from '../env.ts';
 import type { JobClient } from '../jobs/client.ts';
 import { createSignInEmailSender } from '../jobs/sign-in-email.ts';
-import { createSecretsCipher } from '../secrets/cipher.ts';
 import type { RateLimiter } from '../rate-limit.ts';
+import { createSecretsCipher } from '../secrets/cipher.ts';
 import { createBetterAuthService } from './better-auth.ts';
 import { type AuthService, createDisabledAuthService } from './service.ts';
 

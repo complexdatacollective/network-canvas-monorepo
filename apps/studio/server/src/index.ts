@@ -6,8 +6,8 @@ import { awaitCurrentSchema } from './boot.ts';
 import { createPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createJobClient, type JobClient } from './jobs/client.ts';
-import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { closeRateLimitStores } from './rate-limit/store.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The web entry, development and production both: one Node process serving

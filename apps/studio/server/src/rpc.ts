@@ -44,8 +44,8 @@ import {
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import type { SecretsCipher } from './secrets/cipher.ts';
 import type { RateLimiter } from './rate-limit.ts';
+import type { SecretsCipher } from './secrets/cipher.ts';
 import { completeSetup, SetupCommandError } from './setup/commands.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';

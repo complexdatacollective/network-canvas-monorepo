@@ -4,11 +4,11 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
-import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
 import {
   parseRateLimitSpec,
   type RateLimitSettings,
 } from '../rate-limit/scopes.ts';
+import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -67,6 +67,7 @@ export type StudioEnv = {
    * already in use.
    */
   secrets: Keyring | undefined;
+  /**
    * The shared rate-limit store (#1909). Undefined means no store: every limit
    * is disabled and the limiter says so at boot, which is the same posture the
    * store being unreachable takes at run time — a rate limit protects against
