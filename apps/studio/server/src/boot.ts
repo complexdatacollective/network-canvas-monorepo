@@ -47,8 +47,10 @@ export async function awaitCurrentSchema(
   // once the schema is current.
   const exitIfFatal = (state: SchemaState): void => {
     if (state.kind !== 'current' && !env.devDefaults) {
+      // The deployed remedies: this line is read in a container log, where
+      // the checkout's pnpm scripts and drizzle-kit do not exist.
       // oxlint-disable-next-line no-console -- boot diagnostics
-      console.error(schemaProblemMessage(state));
+      console.error(schemaProblemMessage(state, 'deployed'));
       process.exit(1);
     }
   };
@@ -80,6 +82,9 @@ export async function awaitCurrentSchema(
     retry.unref();
   };
 
+  // Everything below `exitIfFatal` is the development lane by construction:
+  // outside it the call above has already ended the process, so the pnpm
+  // remedies these name are remedies the reader can run.
   const waitForSchema = (state: SchemaProblem) => {
     exitIfFatal(state);
     // oxlint-disable-next-line no-console -- boot diagnostics

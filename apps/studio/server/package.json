@@ -2,7 +2,7 @@
   "name": "@codaco/studio-server",
   "version": "0.2.0",
   "private": true,
-  "description": "Network Canvas Studio server — the Node deployable: public data API, internal RPC surface, app WebSocket endpoint, and self-host static serving.",
+  "description": "Network Canvas Studio server — the Node deployable behind the studio-api image: public data API, internal RPC surface, app WebSocket endpoint, background worker, and the schema migrate command.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "repository": {
     "type": "git",
@@ -11,10 +11,13 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev-pg.ts --prepare && concurrently -k -n s3,pg,server,worker \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/worker.ts\"",
-    "build": "vite build",
-    "build:netlify": "vite build --config vite.netlify.config.ts",
+    "dev": "node scripts/dev.ts --prepare && concurrently -k -n stack,server,worker,client \"node scripts/dev.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/worker.ts\" \"pnpm --filter @codaco/studio-client dev\"",
+    "dev:down": "node scripts/dev.ts --down",
+    "dev:stack": "node scripts/dev-stack.ts",
+    "dev:stack:down": "node scripts/dev-stack.ts --down",
+    "build": "vite build && node scripts/render-schema-ddl.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
+    "rotate-secrets": "node --env-file-if-exists=.env src/rotate-secrets.ts",
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:reset": "pnpm run sync-fingerprint && node scripts/db-reset.ts",
@@ -22,8 +25,9 @@
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "generate:erd": "node scripts/generate-schema-docs.ts",
     "check:schema-docs": "node scripts/check-schema-docs.ts",
-    "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
+    "start": "NODE_ENV=production node --env-file-if-exists=.env dist/index.js",
     "start:worker": "NODE_ENV=production node --env-file-if-exists=.env dist/worker.js",
+    "start:migrate": "NODE_ENV=production node --env-file-if-exists=.env dist/migrate.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -66,7 +70,8 @@
     "drizzle-kit": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "yaml": "^2.9.0"
   },
   "engines": {
     "node": ">=24"

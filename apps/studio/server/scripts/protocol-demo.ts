@@ -14,6 +14,7 @@ import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import { ProtocolStore } from '../src/protocol/store.ts';
+import { createSecretsCipher } from '../src/secrets/cipher.ts';
 import { applySchema } from './apply.ts';
 
 // Shows what a protocol looks like inside the store, because no RPC procedure
@@ -133,6 +134,16 @@ if (!env.db) {
   process.exit(1);
 }
 
+// The store seals API-key protocol assets (#1900). `resolve()` already
+// requires a keyring wherever DATABASE_URL is set, so this is unreachable in
+// practice and is here to narrow the type rather than to guard a real case.
+if (!env.secrets) {
+  console.error(
+    'No secrets keyring is configured; set STUDIO_SECRETS_KEY or STUDIO_SECRETS_KEY_FILE.',
+  );
+  process.exit(1);
+}
+
 if (!isLocalDatabase(env.db.url) && !values.force) {
   console.error(
     'Refusing to write demo protocols to a non-local database. Pass --force to do it anyway.',
@@ -147,7 +158,7 @@ const pool = createPool(env.db);
 try {
   const schema = await checkSchema(owner);
   if (schema.kind === 'stale') {
-    console.error(schemaProblemMessage(schema));
+    console.error(schemaProblemMessage(schema, 'development'));
     process.exit(1);
   }
   if (schema.kind === 'absent') {
@@ -163,7 +174,7 @@ try {
      ON CONFLICT (id) DO NOTHING`,
   );
   const tenantDb = createTenantDb(pool, 'demo-team');
-  const store = new ProtocolStore(tenantDb);
+  const store = new ProtocolStore(tenantDb, createSecretsCipher(env.secrets));
 
   // ── 1 ──────────────────────────────────────────────────────────────────
   step(1, 'The protocol document');

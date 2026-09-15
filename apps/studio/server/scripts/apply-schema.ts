@@ -1,5 +1,6 @@
 import { createOwnerPool } from '../src/db/pool.ts';
 import { readEnv } from '../src/env.ts';
+import { verifySecretKeysOrExit } from '../src/secrets/boot.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
@@ -31,6 +32,16 @@ try {
     }
     console.log(`Schema applied (${outcome.statements.length} statements).`);
   }
+  // After the schema, before anything runs against it (#1900): a database
+  // restored from a backup that does not match the keyring is caught by the
+  // command an operator runs by hand, with the output still in front of them,
+  // rather than by the next container start. `readEnv` above has already
+  // refused to run at all without a keyring, which is the other half of the
+  // rule: back it up with the database, because without it every stored secret
+  // is unreadable. Before the bootstrap token, so a refused database never
+  // prints a token nobody should use.
+  await verifySecretKeysOrExit(env);
+  console.log('Stored secrets are readable with the configured keyring.');
   // First-run bootstrap (#1909). After the schema, because the row it writes
   // is part of it, and on every run, because an ownerless instance whose token
   // was lost is recovered by running this again. An owned instance issues

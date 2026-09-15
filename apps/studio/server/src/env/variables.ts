@@ -4,9 +4,9 @@ import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
-// publicly-known development auth secret used to ship inside the built
-// Netlify function. Development values live in the committed
-// `.env.development`, which no deployment path loads.
+// publicly-known development auth secret once shipped inside a built
+// deployable. Development values live in the committed `.env.development`,
+// which no deployment path loads.
 
 export const serverSchemas = {
   NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
@@ -22,14 +22,29 @@ export const serverSchemas = {
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
-  CLIENT_DIST: z.string().min(1).optional(),
 
   /**
-   * Which of the two topologies this process is serving. Read at runtime by
-   * both entrypoints, so the managed deployment sets it in the container (or
-   * Netlify site) environment rather than at build time. Unset resolves to
-   * `self-hosted` in `resolve.ts` — the fail-closed direction, and the reason
-   * the default cannot live here.
+   * The worker's health listener. Port 0 is excluded deliberately, unlike
+   * `PORT`: a container healthcheck has to name the port it polls, and an
+   * ephemeral one could not be named.
+   */
+  WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+
+  /**
+   * Whether this instance reports anonymous usage telemetry. Declared ahead of
+   * the reporting it governs (#1897) so the development lane can carry the
+   * opt-out from the start and no deployment ever meets a version of Studio
+   * that reports before the variable existed. Unset resolves to `true` in
+   * `resolve.ts`; the committed development file sets it to `false`.
+   */
+  STUDIO_TELEMETRY: z.stringbool().optional(),
+
+  /**
+   * Which of the two topologies this process is serving. Read at run time by
+   * every entrypoint, so the managed deployment sets it in the container
+   * environment rather than at build time. Unset resolves to `self-hosted` in
+   * `resolve.ts` — the fail-closed direction, and the reason the default
+   * cannot live here.
    */
   STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
 
@@ -42,6 +57,29 @@ export const serverSchemas = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   DATABASE_URL: z.string().min(1).optional(),
+
+  /**
+   * The keyring every stored secret is encrypted with (#1900), as
+   * `<id>:<base64 of 32 bytes>` entries. Shape is not checked here: the parse
+   * that produces the keyring is the only thing that can say whether a value
+   * is usable, and it reports what is wrong without ever echoing the value.
+   */
+  STUDIO_SECRETS_KEY: z.string().min(1).optional(),
+
+  /**
+   * Where to read the same value from instead. The reference stack mounts it
+   * as a Compose file secret, which is how the keyring stays out of
+   * `docker inspect` and out of any log that prints the environment.
+   */
+  STUDIO_SECRETS_KEY_FILE: z.string().min(1).optional(),
+
+  /**
+   * The compose stack's way of delivering the database password: a Compose
+   * file secret path rather than a value, so the password is in neither
+   * `docker inspect` nor the process environment. `resolve.ts` reads the file
+   * once and produces the effective connection string from the two.
+   */
+  DATABASE_PASSWORD_FILE: z.string().min(1).optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented

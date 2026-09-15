@@ -249,6 +249,52 @@ async function provisionScratchJobSchema(pool: pg.Pool): Promise<void> {
 }
 
 /**
+ * Every row of every table in one schema, rendered as text and sorted within
+ * each table — so two dumps of the same data compare equal whatever order
+ * Postgres hands rows back in, and a search over one covers everything stored.
+ *
+ * Driven off `pg_tables` rather than a list, for the reason the seed's own
+ * wipe is: a table added later has to be in the dump without anyone
+ * remembering to add it. Rows are rendered through `to_jsonb` so a column can
+ * be left out (`omitColumns`) — `t::text` cannot express that, and one column
+ * in the whole model is deliberately not reproducible.
+ *
+ * @param schema defaults to the pool's own `current_schema()`.
+ */
+export async function dumpSchemaRows(
+  pool: pg.Pool,
+  options: {
+    schema?: string;
+    omitColumns?: Readonly<Record<string, readonly string[]>>;
+  } = {},
+): Promise<Map<string, string[]>> {
+  const schema =
+    options.schema ??
+    (await pool.query<{ schema: string }>('select current_schema() as schema'))
+      .rows[0]!.schema;
+
+  const tables = await pool.query<{ name: string }>(
+    `select tablename as name from pg_tables where schemaname = $1 order by 1`,
+    [schema],
+  );
+
+  const dump = new Map<string, string[]>();
+  for (const { name } of tables.rows) {
+    const rows = await pool.query<{ row: string }>(
+      `select (to_jsonb(t) - $1::text[])::text as row
+         from ${pg.escapeIdentifier(schema)}.${pg.escapeIdentifier(name)} t
+        order by 1`,
+      [[...(options.omitColumns?.[name] ?? [])]],
+    );
+    dump.set(
+      name,
+      rows.rows.map((row) => row.row),
+    );
+  }
+  return dump;
+}
+
+/**
  * The SQLSTATE a failure carries, wherever it ended up. Drizzle wraps a driver
  * error, so the code can be a cause or two down, and pg-boss re-emits one from
  * a worker as a plain object rather than an Error. Read through the chain

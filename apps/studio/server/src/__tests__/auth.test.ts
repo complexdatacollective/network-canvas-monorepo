@@ -13,6 +13,7 @@ import {
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testCipher, testKeyring } from './support/secrets.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -130,12 +131,15 @@ describe('unconfigured auth', () => {
   const env: StudioEnv = {
     port: 3000,
     host: '0.0.0.0',
-    clientDist: undefined,
+    workerHealthPort: 3001,
     s3: undefined,
     db: undefined,
     auth: undefined,
     mail: undefined,
+    // No database, so nothing to hold a secret and nothing to encrypt it with.
+    secrets: undefined,
     devDefaults: false,
+    telemetry: true,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
   };
@@ -302,9 +306,12 @@ describe.skipIf(!db)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool, { scale: 'tiny' });
-    const auth = createBetterAuthService(env.auth, scratch.pool, () =>
-      Promise.resolve(),
+    await seed(scratch.pool, { scale: 'tiny', secrets: testKeyring() });
+    const auth = createBetterAuthService(
+      env.auth,
+      scratch.pool,
+      () => Promise.resolve(),
+      testCipher(),
     );
     app = createApp(env, { auth });
   }, SEEDING_TIMEOUT_MS);

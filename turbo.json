@@ -133,6 +133,26 @@
       "inputs": [
         "index.html",
         "src/**",
+        // Vite copies public/ into dist verbatim, so the maintenance page the
+        // web image serves is a build input like any source file.
+        "public/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**"]
+    },
+    // The generic `build` inputs do not cover scripts/, and this build runs
+    // one: after vite, `scripts/render-schema-ddl.ts` renders the DDL
+    // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
+    // change to the rendering would replay a cached bundle carrying the old
+    // statements.
+    "@codaco/studio-server#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"

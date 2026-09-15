@@ -38,6 +38,34 @@ const TIME_ZONES = [
   'Pacific/Auckland',
 ] as const;
 
+/**
+ * Fixed vocabularies for the researcher-defined attribute bag, so a filter or
+ * a group-by in the UI lands on several participants rather than on one each.
+ */
+const PARTICIPANT_COHORTS = ['spring', 'summer', 'autumn', 'winter'] as const;
+const PARTICIPANT_REFERRALS = [
+  'clinic',
+  'community-group',
+  'snowball',
+  'advertisement',
+] as const;
+
+/**
+ * A phone for roughly a third of participants, so the corpus holds both the
+ * SMS-reachable and the email-only case. The `+1555` prefix is the North
+ * American range reserved for fiction, which keeps a synthetic number from
+ * being a real one, and it satisfies `participants_phone_check`'s E.164 shape.
+ *
+ * Drawn from the pinned PRNG rather than from the participant's index, because
+ * every other seeded value is: two runs must agree, and a fixed stride would
+ * also tie which participants have a phone to how many a study happens to
+ * enrol.
+ */
+function seedPhone(): string | null {
+  if (faker.number.int({ min: 0, max: 2 }) !== 0) return null;
+  return `+1555${faker.string.numeric(7)}`;
+}
+
 const STUDY_ROLES = [
   'manager',
   'protocol_designer',
@@ -70,12 +98,31 @@ export type SeedParticipant = {
   timezone: string;
   enrolledAt: Date;
   /**
-   * The synthetic contact address the blind indexes are computed over. The
-   * address itself is never stored: `participants`' PII columns stay NULL
-   * until #1258 chooses a cipher, and a blind index without its ciphertext is
-   * refused by `participants_blind_index_pairing_check`.
+   * The synthetic contact address, stored as `participants.email` and — put
+   * through `normalizeContactAddress` — as the messaging tables' recipient
+   * address. Held here as well as in the column because the messaging seed
+   * builds its opt-outs and deliveries from the participant it has in hand,
+   * never by reading the row back.
+   *
+   * `.invalid` is reserved by RFC 2606 precisely so that synthetic data cannot
+   * reach a real mailbox if a development instance is ever pointed at a live
+   * provider.
    */
   contactAddress: string;
+  /** Present for roughly a third of participants; see `seedPhone`. */
+  phone: string | null;
+  name: string;
+  attributes: SeedParticipantAttributes;
+};
+
+/**
+ * The researcher-defined attribute bag, small and queryable: enough for a
+ * filter or a group-by in the UI to have something real to bite on, and drawn
+ * from a fixed vocabulary so two seeds agree.
+ */
+export type SeedParticipantAttributes = {
+  cohort: string;
+  referral: string;
 };
 
 export type SeedLink = {
@@ -325,7 +372,15 @@ export async function seedStudies(
         code,
         timezone: faker.helpers.arrayElement(TIME_ZONES),
         enrolledAt,
+        // Already lower-case and untrimmed-of-nothing, so it satisfies
+        // `participants_email_check` as written.
         contactAddress: `${code.toLowerCase()}.${team.slug}@participants.invalid`,
+        phone: seedPhone(),
+        name: faker.person.fullName(),
+        attributes: {
+          cohort: faker.helpers.arrayElement(PARTICIPANT_COHORTS),
+          referral: faker.helpers.arrayElement(PARTICIPANT_REFERRALS),
+        },
       });
     }
     for (const participant of participants) {
@@ -336,6 +391,10 @@ export async function seedStudies(
         participant.code,
         participant.timezone,
         participant.enrolledAt,
+        participant.contactAddress,
+        participant.phone,
+        participant.name,
+        JSON.stringify(participant.attributes),
         participant.enrolledAt,
         shiftDays(participant.enrolledAt, 3),
       ]);
@@ -501,6 +560,10 @@ export async function seedStudies(
       'participant_code',
       'timezone',
       'enrolled_at',
+      'email',
+      'phone',
+      'name',
+      'attributes',
       'created_at',
       'updated_at',
     ],

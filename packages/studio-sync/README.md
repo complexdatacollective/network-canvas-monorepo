@@ -26,8 +26,9 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   the SQL granting the two database roles their access to pg-boss's schema.
   Plain data and SQL — it imports no pg-boss, and the server checks the queue
   options against pg-boss's own type at compile time. A queue is part of the
-  schema, so it lives beside the roles and is installed once by the server's
-  `apply-schema`.
+  schema, so it lives beside the roles and is installed once per deployment, by
+  `studio-api migrate` from the image or the server's `apply-schema` from a
+  checkout.
 
 The server/schema modules depend on `pg`; client code must import only
 `./apply` and `./client`.
@@ -46,7 +47,17 @@ transcripts, and a randomized interleaving property — need a reachable
 Postgres and skip with a notice otherwise:
 
 ```bash
-docker run -d -e POSTGRES_PASSWORD=spike -p 54318:5432 postgres:18
+pnpm --filter @codaco/studio-server dev
+```
+
+That starts the Studio development stack, whose Postgres answers on
+`127.0.0.1:54318` with the password `spike` — the port and credentials these
+suites expect, so one container serves both. Stop it again with
+`pnpm --filter @codaco/studio-server dev:down`. For the database alone,
+without the rest of the stack:
+
+```bash
+docker run -d -e POSTGRES_PASSWORD=spike -p 54318:5432 postgres:18-alpine
 ```
 
 (`PGPORT` overrides the port. Each test file creates its own scratch

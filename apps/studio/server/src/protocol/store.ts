@@ -26,10 +26,17 @@ import {
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
+import { assertNoAssetKeyValues } from '../secrets/exclusion.ts';
 import {
   type StudyVisibility,
   studyVisibleToCallerSql,
 } from '../study/store.ts';
+import {
+  sealAssetKeys,
+  stripAssetKeyValues,
+  withPlaceholderAssetKeys,
+} from './asset-keys.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
@@ -137,6 +144,22 @@ function sectionIdentityIssues(
   return issues;
 }
 
+/**
+ * The two public assembly paths (`getDraftDocument`, `getVersionDocument`) go
+ * through here, which is the #1897 exclusion check at the point a document
+ * leaves the store for anything that is not a participant session or a
+ * researcher preview. Neither of those exists yet; when one does, it assembles
+ * and then puts the keys back, and this stays the exit every other reader
+ * takes.
+ */
+function assembleDocumentWithoutKeys(
+  sections: Record<string, SectionDoc>,
+): Record<string, unknown> {
+  const document = assembleProtocolSections(sections);
+  assertNoAssetKeyValues(document);
+  return document;
+}
+
 function assembleOrIssues(
   sections: Record<string, SectionDoc>,
 ):
@@ -173,9 +196,19 @@ function assertNoValidationFailures(sections: Record<string, SectionDoc>) {
 
 export class ProtocolStore {
   private db: TenantDb;
+  /**
+   * Seals the API-key assets of a protocol imported whole (#1900). A
+   * dependency of the store rather than of the one method that uses it,
+   * because a store that cannot seal cannot safely accept a protocol at all:
+   * `createProtocol` is a write boundary, and one constructed without a cipher
+   * would be one whose failure showed up only on the first protocol that
+   * happened to carry a key.
+   */
+  private cipher: SecretsCipher;
 
-  constructor(db: TenantDb) {
+  constructor(db: TenantDb, cipher: SecretsCipher) {
     this.db = db;
+    this.cipher = cipher;
   }
 
   // Sections are write-time validated; the document is not required to pass
@@ -194,7 +227,24 @@ export class ProtocolStore {
     const protocolId = params.protocolId ?? randomUUID();
     const draftId = params.draftId ?? randomUUID();
     const sections = sectionizeProtocol(params.protocol);
+    // While the keys are still in the document: the assets schema requires an
+    // `apikey` entry to carry a non-empty value, so an import missing one is
+    // refused here rather than silently becoming a protocol with a key asset
+    // the store holds nothing for.
     assertNoValidationFailures(sections);
+
+    // The second write boundary (#1900): a whole protocol arriving at once —
+    // an import, or the synthetic-data seed — carries its keys in the asset
+    // manifest, and they must not reach `sections` any more than a promotion's
+    // do. Stripped before the draft rows are inserted, sealed in the same
+    // transaction that inserts them.
+    const assetsSectionId = makeSectionId({ kind: 'assets' });
+    const assets = sections[assetsSectionId];
+    const strippedAssets =
+      assets === undefined ? undefined : stripAssetKeyValues(assets);
+    if (strippedAssets !== undefined) {
+      sections[assetsSectionId] = strippedAssets.doc;
+    }
 
     const teamId = this.db.teamId;
     const create = async (
@@ -224,6 +274,17 @@ export class ProtocolStore {
         }
         throw new ProtocolStoreError(
           `protocol creation identity ${protocolId} is already in use`,
+        );
+      }
+      if (strippedAssets !== undefined && strippedAssets.values.size > 0) {
+        // After the `protocols` row the foreign key names, and before the
+        // sections, so a refused creation seals nothing.
+        await sealAssetKeys(
+          transactionClient,
+          this.cipher,
+          { teamId, protocolId },
+          strippedAssets.values,
+          params.createdAt,
         );
       }
       await insertDraftRows(
@@ -339,7 +400,7 @@ export class ProtocolStore {
 
   async getDraftDocument(draftId: string): Promise<Record<string, unknown>> {
     const { sections } = await this.getDraftSections(draftId);
-    return assembleProtocolSections(sections);
+    return assembleDocumentWithoutKeys(sections);
   }
 
   async getProtocolDraftMetadata(
@@ -398,8 +459,12 @@ export class ProtocolStore {
     if (assembled.document === undefined) {
       return { valid: false, issues: assembled.issues };
     }
+    // Against a placeholder rather than the sealed keys (#1900): what the
+    // canonical validator has to say about an API key is that the asset has
+    // one, and decrypting a researcher's third-party credentials to answer
+    // "is this protocol valid" would put them in memory for no reason.
     const result = await validateProtocol(
-      assembled.document as VersionedProtocol,
+      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
     );
     return result.success
       ? { valid: true }
@@ -441,8 +506,10 @@ export class ProtocolStore {
     if (assembled.document === undefined) {
       return { status: 'invalid', issues: assembled.issues };
     }
+    // The same placeholder substitution `validateDraft` makes, for the same
+    // reason: publication checks the protocol's shape, never the key's value.
     const validation = await validateProtocol(
-      assembled.document as VersionedProtocol,
+      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
     );
     if (!validation.success) {
       return { status: 'invalid', issues: validation.error.issues };
@@ -613,7 +680,7 @@ export class ProtocolStore {
     versionId: string,
   ): Promise<Record<string, unknown>> {
     const { sections } = await this.getVersionSections(versionId);
-    return assembleProtocolSections(sections);
+    return assembleDocumentWithoutKeys(sections);
   }
 
   async listVersions(protocolId: string): Promise<VersionRow[]> {

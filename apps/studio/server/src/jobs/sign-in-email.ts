@@ -38,8 +38,8 @@ export async function enqueueSignInEmail(
 
 /**
  * What `createAuthService` hands better-auth. Without a job client there is no
- * queue to reach — the Netlify lane, which has no database — and refusing is
- * the honest answer: this process cannot send the mail itself.
+ * queue to reach — a process with no database — and refusing is the honest
+ * answer: this process cannot send the mail itself.
  */
 export function createSignInEmailSender(
   jobs: JobClient | undefined,

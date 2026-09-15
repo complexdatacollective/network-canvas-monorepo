@@ -4,18 +4,18 @@ import { WebSocketServer } from 'ws';
 import { createApp } from './app.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { awaitCurrentSchema } from './boot.ts';
-import { mountClient } from './client-assets.ts';
 import { createPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createJobClient, type JobClient } from './jobs/client.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The web entry, development and production both: one Node process serving
-// the public API, the internal RPC surface, /healthz, and the app WebSocket
-// endpoint. Static client assets are served only where they exist — the
-// self-host topology (#1245); the managed topology serves them from the CDN,
-// and development serves them from the Vite dev server, which proxies API
-// paths here so both topologies present a single origin.
+// the public API, the internal RPC surface, /healthz and /readyz, and the app
+// WebSocket endpoint. It serves no client assets at all (#1909): nginx does,
+// from the studio-web image, and development serves them from the Vite dev
+// server — which proxies these paths here, so every topology presents a single
+// origin to the browser.
 //
 // It runs no background work at all (#1895): jobs are created here, inside the
 // transaction that caused them, and executed by the worker process
@@ -39,24 +39,48 @@ const pool = db ? createPool(db) : undefined;
 // is retried by the next enqueue rather than needing a restart.
 const jobs: JobClient | undefined = db ? createJobClient(db) : undefined;
 
+/**
+ * Captured rather than awaited inside `onCurrent`, and awaited here: in a
+ * deployment the schema is current at boot, so the secrets check settles
+ * before the listener below binds and a refusal never reaches a request. In
+ * the development lane `onCurrent` fires later, from the retry, and there is
+ * nothing here to wait for.
+ */
+let checking: Promise<void> | undefined;
+
 if (pool) {
   await awaitCurrentSchema(pool, env, {
     onCurrent: () => {
-      void jobs?.start().catch((error: unknown) => {
-        // Not fatal. A queue that cannot be reached fails the requests that
-        // need it, with the reason, and the next one tries again; refusing the
-        // boot would take down every surface that has nothing to do with
-        // background work.
-        // oxlint-disable-next-line no-console -- boot diagnostics
-        console.error('Could not start the job client:', error);
-      });
+      // Beside the fingerprint check and for the same reason (#1900): a
+      // keyring that cannot produce a key id already in the database would
+      // serve every surface that touches no secret and fail the rest one
+      // request at a time. It runs before the job client starts, because a
+      // queue is the first thing that would act on one.
+      checking = verifySecretKeysOrExit(env)
+        .then(() => startJobs())
+        .catch((error: unknown) => {
+          // oxlint-disable-next-line no-console -- boot diagnostics
+          console.error('Boot checks failed:', error);
+          process.exit(1);
+        });
     },
   });
 }
 
-const app = createApp(env, { jobs, pool });
+await checking;
 
-mountClient(app, env);
+function startJobs(): void {
+  void jobs?.start().catch((error: unknown) => {
+    // Not fatal. A queue that cannot be reached fails the requests that
+    // need it, with the reason, and the next one tries again; refusing the
+    // boot would take down every surface that has nothing to do with
+    // background work.
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.error('Could not start the job client:', error);
+  });
+}
+
+const app = createApp(env, { jobs, pool });
 
 const wsServer = new WebSocketServer({ noServer: true });
 

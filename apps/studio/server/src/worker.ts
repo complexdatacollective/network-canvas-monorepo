@@ -1,17 +1,24 @@
 import process from 'node:process';
 
+import { serve } from '@hono/node-server';
+
 import { createMailer } from './auth/email.ts';
 import { awaitCurrentSchema } from './boot.ts';
 import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
+import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
 import { createJobWorker, type JobWorker } from './jobs/worker.ts';
+import { verifySecretKeysOrExit } from './secrets/boot.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The worker entry: the same image as src/index.ts, started with a different
-// command (#1895). It executes the jobs the web process creates, runs the cron
-// schedules, and binds no port — nothing here serves a request, and it imports
-// neither the HTTP app nor the RPC router, which a source-policy test pins
-// (src/__tests__/process-separation.test.ts).
+// command (#1895). It executes the jobs the web process creates and runs the
+// cron schedules. It serves no surface — it imports neither the HTTP app nor
+// the RPC router, which a source-policy test pins
+// (src/__tests__/process-separation.test.ts) — and the one port it binds is
+// the loopback health listener below, which exists because a container
+// healthcheck is otherwise the one thing that cannot ask a process which
+// answers nothing whether it is working (#1897, #1909).
 //
 // It is also the only process that holds a mail transport, which is why it is
 // the only one that reads SMTP_URL and EMAIL_FROM (`withMail`).
@@ -41,11 +48,37 @@ if (!db || !auth) {
 const maintenancePool = createMaintenancePool(db);
 
 let worker: JobWorker | undefined;
+// `worker.start()` resolves once pg-boss is connected and the handlers are
+// registered. Readiness needs that distinction: an instance that exists but
+// has not started answers nothing, and `getDb()` would still reach Postgres.
+let jobsStarted = false;
 
-// Until pg-boss is running this process owns no timer and no open socket, and
-// the schema retry inside `awaitCurrentSchema` is deliberately unref'd — so
-// without something holding the loop the development lane's wait would end the
-// process rather than wait. Released the moment there is a worker to keep it.
+// 127.0.0.1 by construction, not by configuration: this listener answers the
+// container runtime and nothing else, and a worker is not a service anything
+// routes to. Started before the schema wait so a `docker compose up` can read
+// an honest `failing` — naming the schema — rather than a refused connection.
+const health = serve({
+  fetch: createHealthRoutes({
+    db: databaseCheck(maintenancePool),
+    schema: schemaCheck(maintenancePool),
+    jobs: async () => {
+      if (!worker || !jobsStarted) throw new Error('not started');
+      // pg-boss's own connection rather than the maintenance pool: the point
+      // of this check is that the queue is reachable, and the two use
+      // different pools.
+      await worker.boss.getDb().executeSql('select 1');
+      return 'ok';
+    },
+  }).fetch,
+  port: env.workerHealthPort,
+  hostname: '127.0.0.1',
+});
+
+// The schema retry inside `awaitCurrentSchema` is deliberately unref'd, so the
+// development lane's wait needs something holding the loop open. The health
+// listener above does that now, but this does not depend on it: what keeps a
+// waiting process alive should not be a side effect of a diagnostic surface.
+// Released the moment there is a worker to keep it.
 let waiting: NodeJS.Timeout | undefined = setInterval(() => undefined, 60_000);
 function stopWaiting(): void {
   if (waiting === undefined) return;
@@ -53,37 +86,60 @@ function stopWaiting(): void {
   waiting = undefined;
 }
 
+/**
+ * Everything this process does, once the schema is current and the keyring
+ * has been shown to produce every key id in use. An arrow rather than a
+ * declaration so that the `db`/`auth` guard above narrows inside it: a
+ * hoisted function could be called before the guard ran, and TypeScript is
+ * right to say so.
+ */
+const startWorker = (): void => {
+  stopWaiting();
+  worker = createJobWorker({
+    db,
+    maintenancePool,
+    // `refuse` is the resolved shape of "no transport is configured", and a
+    // mailer that rejects every send would turn each mail job into a retry
+    // loop ending in a dead letter. Absent instead: registerJobs says so at
+    // boot and the jobs wait for a worker that has one (#1895).
+    mailer:
+      env.mail && env.mail.kind !== 'refuse'
+        ? createMailer(env.mail)
+        : undefined,
+    publicBaseUrl: auth.baseUrl,
+  });
+  void worker.start().then(
+    () => {
+      jobsStarted = true;
+      // oxlint-disable-next-line no-console -- boot log
+      console.log(`Network Canvas Studio worker ${STUDIO_VERSION} started`);
+      return undefined;
+    },
+    (error: unknown) => {
+      // Nothing this process does works without pg-boss, so a failed start
+      // is a failed boot: exiting lets the deployment restart it rather than
+      // leaving a container up that runs no jobs.
+      // oxlint-disable-next-line no-console -- boot diagnostics
+      console.error('Could not start the job worker:', error);
+      process.exit(1);
+    },
+  );
+};
+
 await awaitCurrentSchema(maintenancePool, env, {
   onCurrent: () => {
-    stopWaiting();
-    worker = createJobWorker({
-      db,
-      maintenancePool,
-      // `refuse` is the resolved shape of "no transport is configured", and a
-      // mailer that rejects every send would turn each mail job into a retry
-      // loop ending in a dead letter. Absent instead: registerJobs says so at
-      // boot and the jobs wait for a worker that has one (#1895).
-      mailer:
-        env.mail && env.mail.kind !== 'refuse'
-          ? createMailer(env.mail)
-          : undefined,
-      publicBaseUrl: auth.baseUrl,
-    });
-    void worker.start().then(
-      () => {
-        // oxlint-disable-next-line no-console -- boot log
-        console.log(`Network Canvas Studio worker ${STUDIO_VERSION} started`);
-        return undefined;
-      },
-      (error: unknown) => {
-        // Nothing this process does works without pg-boss, so a failed start
-        // is a failed boot: exiting lets the deployment restart it rather than
-        // leaving a container up that runs no jobs.
+    // Beside the fingerprint check and for the same reason (#1900): the
+    // worker is what signs webhook deliveries, so a keyring that cannot
+    // produce a stored key id would turn every delivery for that team into a
+    // failed job. The keep-alive interval is deliberately still held — the
+    // check is asynchronous, and `startWorker` is what releases it.
+    void verifySecretKeysOrExit(env, maintenancePool)
+      .then(() => startWorker())
+      .catch((error: unknown) => {
         // oxlint-disable-next-line no-console -- boot diagnostics
-        console.error('Could not start the job worker:', error);
+        console.error('Boot checks failed:', error);
         process.exit(1);
-      },
-    );
+      });
   },
 });
 
@@ -96,6 +152,7 @@ function shutdown() {
   shuttingDown = true;
   stopWaiting();
   setTimeout(() => process.exit(1), SHUTDOWN_BACKSTOP_MS).unref();
+  health.close();
   void Promise.resolve(worker?.stop())
     .catch((error: unknown) => {
       // oxlint-disable-next-line no-console -- shutdown diagnostics

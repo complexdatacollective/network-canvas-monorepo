@@ -14,8 +14,8 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 
-// Integration suite against a real S3-compatible endpoint — the dev MinIO
-// from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object
+// Integration suite against a real S3-compatible endpoint — the Garage the
+// development stack runs (or whatever S3_* points at). Skips when no object
 // store is reachable, the same pattern as studio-sync's Postgres-backed
 // suites: unit lanes stay green without Docker; run the server's dev script
 // to exercise this for real.
@@ -78,7 +78,7 @@ const spaUpload = (
   },
 });
 
-// Both cases refuse before the store is consulted, so they need no MinIO.
+// Both cases refuse before the store is consulted, so they need no Garage.
 describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
     const app = createApp(readEnv(), { auth: stubAuthService() });
@@ -245,6 +245,9 @@ function memoryStore(): AssetStore {
         mediaType: stored.mediaType,
         size: stored.bytes.byteLength,
       };
+    },
+    async head() {
+      // An in-memory store is always reachable.
     },
   };
 }

@@ -18,36 +18,10 @@ export type {
 export { isLocalDatabase } from './env/resolve.ts';
 
 /**
- * Everything an entrypoint that runs with no database and auth off can act on
- * (src/netlify.ts). Deliberately an allow-list of what such a lane reads
- * rather than a list of what it drops: a variable added to `variables.ts`
- * later is withheld from that lane by default, and being withheld is the safe
- * direction — the lane exists precisely to be unaffected by settings it does
- * not serve.
- */
-const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
-  'NODE_ENV',
-  'STUDIO_DEV_DEFAULTS',
-  'PORT',
-  'HOST',
-  'CLIENT_DIST',
-  // The Netlify lane is the managed service, and its `status` procedure has
-  // to say so; withholding this would make it report `self-hosted` however
-  // the site is configured.
-  'STUDIO_DEPLOYMENT_MODE',
-  'S3_ENDPOINT',
-  'S3_REGION',
-  'S3_BUCKET',
-  'S3_ACCESS_KEY_ID',
-  'S3_SECRET_ACCESS_KEY',
-] as const satisfies readonly VariableName[];
-
-/**
  * The mail transport, which only the worker process sends through (#1895).
- * Withheld from every other read the same way and for the same reason as the
- * list above: a process that cannot send mail should not be able to observe
- * the credentials for it, and a variable withheld here cannot be wired into
- * the web process by accident later.
+ * Withheld from every other read: a process that cannot send mail should not
+ * be able to observe the credentials for it, and a variable withheld here
+ * cannot be wired into the web process by accident later.
  */
 const MAIL_VARIABLES = [
   'SMTP_URL',
@@ -55,19 +29,6 @@ const MAIL_VARIABLES = [
 ] as const satisfies readonly VariableName[];
 
 export type ReadEnvOptions = {
-  /**
-   * Withholds the database and authentication settings from the read entirely,
-   * for an entrypoint that serves neither whatever the deployment defines.
-   *
-   * The discarding has to happen here rather than on the result. Both stages
-   * of the read reject a setting this lane would only throw away: `resolve`
-   * refuses a database without a signing secret or a public URL and a
-   * half-configured social provider, and before that the schema parse refuses
-   * a malformed URL or an under-length secret. Blanking `db` and `auth` on a
-   * `StudioEnv` that was never produced is not a degradation any deployment
-   * can reach.
-   */
-  withoutDatabaseOrAuth?: boolean;
   /**
    * Reads the mail transport, for the one process that sends mail: the worker
    * (#1895). Without it `SMTP_URL` and `EMAIL_FROM` are withheld from the read
@@ -91,19 +52,14 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
   const skipValidation = skip === 'true' || skip === '1';
 
   /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-  const source = process.env;
-  const selected = options.withoutDatabaseOrAuth
-    ? Object.fromEntries(
-        VARIABLES_WITHOUT_DATABASE_OR_AUTH.map((name) => [name, source[name]]),
-      )
-    : { ...source };
-  // Overwritten rather than filtered out, so this composes with the allow-list
-  // above instead of restating it: whatever the lane above selected, a read
-  // that did not ask for mail never sees these two.
+  const source = { ...process.env };
+  // Overwritten rather than filtered out: a variable added to variables.ts
+  // later still reaches a read that asked for it, and a read that did not ask
+  // for mail never sees these two whatever else it asked for.
   const runtimeEnv = options.withMail
-    ? selected
+    ? source
     : {
-        ...selected,
+        ...source,
         ...Object.fromEntries(MAIL_VARIABLES.map((name) => [name, undefined])),
       };
 

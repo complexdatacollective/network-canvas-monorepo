@@ -103,13 +103,34 @@ export async function freePort(): Promise<number> {
   return port;
 }
 
-export function connectionRefused(port: number): Promise<boolean> {
+/**
+ * Whether nothing is listening at `host:port` — a refused connection, or one
+ * that never completes.
+ *
+ * @param host which address to try. The default is the loopback; a caller
+ * proving a listener is NOT published passes one of this machine's external
+ * addresses instead.
+ * @param timeoutMs how long to wait before calling it unreachable. A closed
+ * port answers with RST at once, but a host firewall drops the SYN instead
+ * (macOS does this for the machine's own LAN address), and waiting for an
+ * error that will never arrive would hang the case rather than answer it. The
+ * bound is generous for a connection to this same machine, so a listener that
+ * IS published still connects well inside it.
+ */
+export function connectionRefused(
+  port: number,
+  host = '127.0.0.1',
+  timeoutMs = 2000,
+): Promise<boolean> {
   return new Promise((settled) => {
-    const socket = createConnection({ host: '127.0.0.1', port });
-    socket.on('connect', () => {
+    const socket = createConnection({ host, port });
+    const done = (refused: boolean) => {
+      clearTimeout(timer);
       socket.destroy();
-      settled(false);
-    });
-    socket.on('error', () => settled(true));
+      settled(refused);
+    };
+    const timer = setTimeout(() => done(true), timeoutMs);
+    socket.on('connect', () => done(false));
+    socket.on('error', () => done(true));
   });
 }

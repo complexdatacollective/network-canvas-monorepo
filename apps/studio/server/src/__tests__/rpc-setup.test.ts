@@ -16,6 +16,7 @@ import {
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testCipher } from './support/secrets.ts';
 
 const env = readEnv();
 const db = await reachableDb();
@@ -62,8 +63,11 @@ describe.skipIf(!db)('setup.complete', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    const auth = createBetterAuthService(env.auth, scratch.app, () =>
-      Promise.resolve(),
+    const auth = createBetterAuthService(
+      env.auth,
+      scratch.app,
+      () => Promise.resolve(),
+      testCipher(),
     );
     app = createApp(env, { auth, pool: scratch.app });
     client = createRpcClient(app);

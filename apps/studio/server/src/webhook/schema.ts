@@ -44,11 +44,12 @@ const webhookSubscriptions = pgTable(
     // AES-256-GCM ciphertext of the signing secret. NOT a hash: the server
     // must reproduce the secret to sign every outgoing request.
     secretCiphertext: bytea('secret_ciphertext').notNull(),
-    // Names the key that produced the ciphertext, so rotation is a per-row
-    // property. Its namespace is the integration key set, kept separate from
-    // the participant PII key set (`participants.pii_key_id`): an outbound
-    // integration secret and a participant's contact details must never be
-    // recoverable with the same key.
+    // Names the entry in the deployment's keyring (#1900) that produced the
+    // ciphertext, so rotation is a per-row property: an added entry becomes
+    // current, `rotate-secrets` re-seals the rows still naming the old one,
+    // and boot refuses to serve while any id here is one the keyring cannot
+    // produce. There is no participant PII key set to keep this separate
+    // from — contact details are plain columns.
     secretKeyId: text('secret_key_id').notNull(),
     state: text('state').notNull().default('active'),
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),

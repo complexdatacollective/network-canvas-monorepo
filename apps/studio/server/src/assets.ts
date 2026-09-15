@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -11,7 +12,8 @@ import { Hono } from 'hono';
 import type { S3Env } from './env.ts';
 
 // Asset storage (#1246/#1278, 2026-08-11): content-addressed bytes in
-// S3-compatible object storage — R2 managed, MinIO self-hosted/dev. Objects
+// S3-compatible object storage — R2 managed, Garage self-hosted and in
+// development (#1909). Objects
 // are keyed by content hash, so retrieval is immutable-cacheable by
 // construction. Asset bytes ride these plain HTTP routes rather than the RPC
 // surface: files don't belong in RPC payloads, and retrieval must be
@@ -41,6 +43,20 @@ export type AssetStore = {
     mediaType: string;
     size: number | undefined;
   } | null>;
+  /**
+   * Does the configured bucket answer, with these credentials? What `/readyz`
+   * asks the object store (#1897): resolving means reachable, and anything
+   * thrown is the reason readiness reports. Deliberately a bucket-level probe
+   * rather than a read of some object, because there is no object every
+   * deployment is known to hold.
+   *
+   * `signal` is the readiness deadline, and it reaches the SDK rather than
+   * only the promise: the health route can stop waiting on its own, but the
+   * request would carry on retrying and holding a socket, and a probe every
+   * few seconds against an unreachable endpoint accumulates those. Aborting is
+   * what ends them.
+   */
+  head(signal?: AbortSignal): Promise<void>;
 };
 
 export function createAssetStore(env: S3Env): AssetStore {
@@ -105,6 +121,12 @@ export function createAssetStore(env: S3Env): AssetStore {
         if (isNotFound(error)) return null;
         throw error;
       }
+    },
+
+    async head(signal) {
+      await client.send(new HeadBucketCommand({ Bucket: env.bucket }), {
+        abortSignal: signal,
+      });
     },
   };
 }
