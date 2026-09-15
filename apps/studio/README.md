@@ -484,7 +484,8 @@ stops opening rather than decrypting as that row's secret. There is no general
 `encrypt`/`decrypt`: a caller names the kind of secret it is handling, and
 therefore names the row it belongs to. Both processes refuse to start when a
 key id in the database is not in the keyring, naming it, and
-`studio-api rotate-secrets` re-seals every row under the current entry (see
+`studio-api rotate-secrets` re-seals every row under the current entry
+(`node dist/rotate-secrets.js` in the image until #1909 adds that spelling; see
 [Production](#production)).
 
 What is **not** encrypted in the application, and what protects it instead:
@@ -524,10 +525,10 @@ analytics half is #1897.
 ### Background work
 
 Everything Studio does outside a request is a job on a queue, and a second
-process runs it (#1895). One image, two commands: `studio-api serve` is the web
-process, which serves HTTP, the RPC surface and the WebSocket endpoint and may
-only create jobs, and `studio-api worker` is the worker, which runs the jobs
-and the cron schedules and binds no port. Neither can do the other's work
+process runs it (#1895). One image, two processes: `node dist/index.js` is the
+web process, which serves HTTP, the RPC surface and the WebSocket endpoint and
+may only create jobs, and `node dist/worker.js` is the worker, which runs the
+jobs and the cron schedules and binds no port. Neither can do the other's work
 — the web process constructs pg-boss with supervision, scheduling and migration
 off, and the worker imports neither the HTTP app nor the RPC router, which a
 source test holds it to. `pnpm dev` runs both.
@@ -714,13 +715,11 @@ docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
 
-The image's entrypoint is the `studio-api` dispatcher, so every container
-names a command rather than a path into the bundle. `serve` is the default,
-and background work runs in a second container from that same image (see
-[Background work](#background-work)):
+Background work runs in a second container from that same image, started with
+the worker command (see [Background work](#background-work)):
 
 ```bash
-docker run --rm --no-healthcheck network-canvas-studio worker
+docker run --rm --no-healthcheck network-canvas-studio node dist/worker.js
 ```
 
 `--no-healthcheck` because the image's `HEALTHCHECK` polls `/healthz`, which
@@ -729,23 +728,24 @@ the only process that sends mail, so `SMTP_URL` and `EMAIL_FROM` belong in its
 environment. Process-aware health checks belong to the deployment aspect of
 #1243.
 
-The third command re-encrypts every stored secret under the keyring's current
+A third command re-encrypts every stored secret under the keyring's current
 entry, and is what makes a key rotation safe (see [Secrets](#secrets) for the
 keyring itself). It runs to completion and exits:
 
 ```bash
-docker run --rm --no-healthcheck network-canvas-studio rotate-secrets
+docker run --rm --no-healthcheck network-canvas-studio node dist/rotate-secrets.js
 ```
 
-In the reference stack (#1909) that is `docker compose run --rm --no-deps api
-rotate-secrets`, and from a repo checkout it is `pnpm --filter
-@codaco/studio-server rotate-secrets`. Rotating is three steps: add a new entry
-at the FRONT of the keyring and deploy, so new values are written under it and
-the old one can still be read; run the command, which re-seals every row whose
-key id is not the current one, in batches, and can be rerun until it reports
-zero; then remove the old entry and deploy again. Both processes refuse to
-start while any stored key id is missing from the keyring, naming it, so a
-half-finished rotation is caught before it serves anything.
+#1909's `studio-api` entrypoint (PR #1912) gives these three the spellings
+`serve`, `worker` and `rotate-secrets`, so in the reference stack the rotation
+is `docker compose run --rm --no-deps api rotate-secrets`; from a repo checkout
+it is `pnpm --filter @codaco/studio-server rotate-secrets`. Rotating is three
+steps: add a new entry at the FRONT of the keyring and deploy, so new values
+are written under it and the old one can still be read; run the command, which
+re-seals every row whose key id is not the current one, in batches, and can be
+rerun until it reports zero; then remove the old entry and deploy again. Both
+processes refuse to start while any stored key id is missing from the keyring,
+naming it, so a half-finished rotation is caught before it serves anything.
 
 ### Database schema and seeding
 
@@ -879,7 +879,7 @@ graph LR
 
     subgraph O[Origin region]
         S[studio-server<br/>persistent Node process<br/>WS + leases: single replica]
-        W[studio-server worker<br/>same image, studio-api worker<br/>jobs + cron: scalable]
+        W[studio-server worker<br/>same image, node dist/worker.js<br/>jobs + cron: scalable]
         PG[(Postgres<br/>primary)]
         RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
     end
@@ -911,7 +911,7 @@ graph LR
 
     subgraph H[Researcher-operated host — Docker]
         C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws · /storage]
-        W[studio worker container<br/>same image, studio-api worker<br/>jobs + cron, no port]
+        W[studio worker container<br/>same image, node dist/worker.js<br/>jobs + cron, no port]
         PG[(Postgres<br/>container)]
         M[(MinIO container<br/>or BYO S3 endpoint)]
     end

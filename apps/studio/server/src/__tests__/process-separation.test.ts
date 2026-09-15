@@ -184,8 +184,8 @@ describe('the web process', () => {
   it('cannot re-key the database while it is serving it', () => {
     // Rotation rewrites every stored secret under a maintenance identity, in
     // batches, and is something a person runs once (#1900). A web process that
-    // could reach it is one refactor from doing it on a request; the command
-    // lives behind the dispatcher instead, which loads it and nothing else.
+    // could reach it is one refactor from doing it on a request; it is an
+    // entry of its own instead (src/rotate-secrets.ts, below).
     expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([]);
   });
 
@@ -198,20 +198,36 @@ describe('the web process', () => {
   });
 });
 
-// The dispatcher is the one module that is allowed to reach everything: it is
-// how the image starts each of the three (#1900), and it loads exactly one of
-// them per run. The separation above is what makes that safe — whichever
-// command runs, the other two commands' modules are not in its graph.
-describe('the studio-api dispatcher', () => {
-  const graph = moduleGraph('src/cli.ts');
+// The third entry, and the other side of "the web process cannot re-key the
+// database while it is serving it" above: the rotation is a process of its own
+// (#1900), so the separation runs both ways — the web process cannot reach the
+// rotation, and the rotation loads neither the HTTP surface nor the job
+// worker.
+describe('the rotation process', () => {
+  const graph = moduleGraph('src/rotate-secrets.ts');
 
-  it('can reach every command the image offers', () => {
+  it('is the process that re-keys the stored secrets', () => {
+    // The positive half: "the web process cannot reach the rotation" would be
+    // satisfiable by nothing reaching it at all.
+    expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([
+      'src/secrets/rotate.ts',
+    ]);
+  });
+
+  it('serves nothing and runs no job', () => {
+    // It runs to completion and exits under the maintenance role. An HTTP
+    // surface or the job worker in this graph is how a command becomes a
+    // second server one refactor later.
     expect(
       reached(graph, [
-        'src/index.ts',
-        'src/worker.ts',
-        'src/secrets/rotate.ts',
+        'src/app.ts',
+        'src/rpc.ts',
+        'hono',
+        '@hono/node-server',
+        'ws',
+        'src/jobs/worker.ts',
+        'src/jobs/register.ts',
       ]),
-    ).toEqual(['src/index.ts', 'src/worker.ts', 'src/secrets/rotate.ts']);
+    ).toEqual([]);
   });
 });

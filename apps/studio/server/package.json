@@ -15,7 +15,7 @@
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
-    "rotate-secrets": "node --env-file-if-exists=.env src/cli.ts rotate-secrets",
+    "rotate-secrets": "node --env-file-if-exists=.env src/rotate-secrets.ts",
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:reset": "pnpm run sync-fingerprint && node scripts/db-reset.ts",
