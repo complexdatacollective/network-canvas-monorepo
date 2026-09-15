@@ -139,6 +139,33 @@ const makeContainerFocusable = (
 };
 
 /**
+ * The mounted field one error key names — the element `Field` stamps with the
+ * store's own key, which is the whole of what a field owns in the DOM.
+ *
+ * The one place the lookup lives, so everything that has to find a field by
+ * its error key agrees about which element that is: this, the focus target
+ * below, and the whole-form sweep at the bottom. Architect's Issues panel is
+ * the caller that needs the CONTAINER rather than a control, because what it
+ * reads off a field — the label the researcher knows it by, and an id worth
+ * linking to — belongs to the field, not to whichever control happens to sit
+ * first inside it.
+ *
+ * Returns `undefined` when the field is not in the DOM at all.
+ */
+export const resolveFieldContainer = (
+  fieldName: string,
+  root?: ParentNode | null,
+): HTMLElement | undefined => {
+  const resolveWithin = (scope: ParentNode) =>
+    findFieldContainer(
+      Array.from(scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR)),
+      fieldName,
+    );
+
+  return (root ? resolveWithin(root) : undefined) ?? resolveWithin(document);
+};
+
+/**
  * Where focus should go for ONE named errored field — the same answer
  * `focusFirstError` would reach for that field, through the same tiers.
  *
@@ -158,14 +185,7 @@ export const resolveFieldErrorTarget = (
   fieldName: string,
   root?: ParentNode | null,
 ): HTMLElement | undefined => {
-  const resolveWithin = (scope: ParentNode) =>
-    findFieldContainer(
-      Array.from(scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR)),
-      fieldName,
-    );
-
-  const container =
-    (root ? resolveWithin(root) : undefined) ?? resolveWithin(document);
+  const container = resolveFieldContainer(fieldName, root);
   if (!container) return undefined;
 
   return findOperableControl(container) ?? makeContainerFocusable(container);

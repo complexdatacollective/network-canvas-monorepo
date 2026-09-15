@@ -10,6 +10,7 @@ import { useContext, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import FormStoreProvider, {
   FormStoreContext,
@@ -244,6 +245,114 @@ describe('<Issues />', () => {
         expect(scrollTo).toHaveBeenCalledExactlyOnceWith(anchor);
       },
     );
+  });
+});
+
+/**
+ * A field the way the stage editor actually renders one.
+ *
+ * Every field in the stage editor comes from `@codaco/protocol-builder`, which
+ * builds on fresco-ui's `Field` and renders none of Architect's own
+ * `IssueAnchor`s. A LIST is the shape that broke: the control fresco-ui names
+ * is the list as a whole, and the only thing inside it a person can operate is
+ * an add button that is named by its own words rather than by the field's
+ * label. Stood in for here rather than mounting the real `ArrayField`, which
+ * needs a dialog host and an announcer of its own; what the panel reads — a
+ * labelled `Field` container whose operable control carries no
+ * `aria-labelledby` — is the same either way.
+ */
+function ListControl(_props: Record<string, unknown>) {
+  return (
+    <div>
+      <p>No items have been created yet.</p>
+      <button type="button">Create new prompt</button>
+    </div>
+  );
+}
+
+describe('a field the stage editor renders itself', () => {
+  const FIELD = 'prompts';
+  const MESSAGE = 'Create at least one prompt.';
+
+  const renderListIssue = async () => {
+    const view = renderStageForm({
+      children: (
+        <>
+          <Field<typeof ListControl>
+            name={FIELD}
+            label="Prompts"
+            component={ListControl}
+          />
+          <IssuesHarness />
+        </>
+      ),
+    });
+
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+    return view;
+  };
+
+  const row = () => screen.getAllByTestId('issue')[0]!;
+
+  it('names the field the way the researcher does, not by its store key', async () => {
+    // Before this, the panel could only name a field by reading a `data-name`
+    // off an `IssueAnchor`, or an `aria-labelledby` off the control. A list
+    // has neither, so every row in the stage editor read out the store's
+    // internal path: "prompts", "quickAdd", "subject".
+    await renderListIssue();
+
+    expect(row()).toHaveTextContent(`Prompts - ${MESSAGE}`);
+    expect(row().textContent).not.toContain(FIELD);
+  });
+
+  it('links to an element that is actually on the page', async () => {
+    // The row's `href` was composed as `#field_prompts` — an id only
+    // `IssueAnchor` ever renders, and nothing in the stage editor does. It was
+    // announced as a link, offered to open in a new tab, and went nowhere.
+    await renderListIssue();
+
+    const href = row().querySelector('a')?.getAttribute('href');
+    expect(href).toBeDefined();
+    expect(document.querySelector(href!)).not.toBeNull();
+  });
+
+  it('sends the researcher to the field when the row is taken', async () => {
+    scrollTo.mockClear();
+    await renderListIssue();
+
+    act(() => {
+      row().querySelector('a')!.click();
+    });
+
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+  });
+
+  it('is not a link at all when the field is nowhere on the page', async () => {
+    // A field inside a section that is not mounted cannot be navigated to. The
+    // row still has to say what is wrong — it is the only account the
+    // researcher gets of a refused save — but offering it as a link is a
+    // promise nothing can keep.
+    const view = renderStageForm({ children: <IssuesHarness /> });
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+
+    expect(row()).toHaveTextContent(MESSAGE);
+    expect(row().querySelector('a')).toBeNull();
   });
 });
 
