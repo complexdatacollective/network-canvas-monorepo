@@ -32,8 +32,6 @@ describe.skipIf(!db)('the web entrypoint', () => {
         // The process's own origin, so its trusted-origin check is satisfied
         // by a request made straight to the port it bound.
         PUBLIC_URL: origin,
-        // Nothing is built here; the case is about the API surface.
-        CLIENT_DIST: '',
       });
 
       try {

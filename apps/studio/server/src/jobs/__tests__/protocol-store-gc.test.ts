@@ -149,9 +149,19 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
     // sweep at nothing: there is no caller to pass a different set.
     expect(PROTOCOL_STORE_GC_BOUNDS).toEqual({
       retainManifestsPerDraft: 1000,
-      sectionGraceMs: 86_400_000,
+      sectionGraceMs: 259_200_000,
       commandRetryHorizonMs: 86_400_000,
     });
+  });
+
+  it('keeps a section for longer than a backup interval', () => {
+    // Written as the arithmetic rather than as the constant: the number above
+    // is three days because backups are daily (#1901), so a change that
+    // shortened it would have to disagree with this sentence to pass (#1909).
+    expect(PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs).toBe(72 * 60 * 60 * 1000);
+    expect(PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs).toBeGreaterThan(
+      24 * 60 * 60 * 1000,
+    );
   });
 
   it('registers the sweep once however many workers boot', async () => {
@@ -237,14 +247,15 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
     await awayFromTheHourBoundary();
 
     // Collectable by the production bounds: unreferenced for longer than the
-    // day of grace, and referenced by no version, template or manifest.
+    // three-day grace, and referenced by no version, template or manifest.
     const collectable = `gc-${randomUUID()}`;
-    // Inside the day of grace, so a client still editing against it can commit.
+    // Inside the grace, so a client still editing against it can commit — and
+    // so a daily backup has certainly captured it.
     const recent = `gc-${randomUUID()}`;
     await scratch.maintenance.query(
       `insert into sections (team_id, hash, doc, unreferenced_at)
-       values ($1, $2, '{}'::jsonb, now() - interval '48 hours'),
-              ($1, $3, '{}'::jsonb, now() - interval '1 hour')`,
+       values ($1, $2, '{}'::jsonb, now() - interval '96 hours'),
+              ($1, $3, '{}'::jsonb, now() - interval '48 hours')`,
       [TEAM_ID, collectable, recent],
     );
 
@@ -270,8 +281,8 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
       );
       expect(ran).toHaveLength(1);
       // Not an empty pass: the older row is gone, and the line the deployment
-      // would read says so. One and not two, because the sweep's day of grace
-      // is what keeps the hour-old row.
+      // would read says so. One and not two, because the sweep's three-day
+      // grace is what keeps the two-day-old row.
       expect(ran[0]).toContain('sections 1');
       const kept = await scratch.maintenance.query<{ hash: string }>(
         `select hash from sections where team_id = $1 order by hash`,

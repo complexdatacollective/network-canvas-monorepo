@@ -68,7 +68,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Process',
     summary:
       'Runtime mode. Anything other than `production` leaves development affordances available.',
-    deployment: 'Set to `production` by the Docker image and by Netlify.',
+    deployment: 'Set to `production` by the `studio-api` image.',
     devDefault: 'development',
     example: 'production',
   },
@@ -92,20 +92,20 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     deployment: 'Unset ⇒ `0.0.0.0`.',
     example: '0.0.0.0',
   },
-  CLIENT_DIST: {
+  WORKER_HEALTH_PORT: {
     group: 'Process',
     summary:
-      'Directory of built client assets to serve, resolved against the working directory.',
+      'TCP port the worker process serves `/healthz` and `/readyz` on, bound to `127.0.0.1` only.',
     deployment:
-      'Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client.',
-    example: '../client/dist',
+      'Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`.',
+    example: '3001',
   },
   STUDIO_DEPLOYMENT_MODE: {
     group: 'Process',
     summary:
       'Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404.',
     deployment:
-      'Unset ⇒ `self-hosted`. The managed deployment sets `managed` in its runtime environment — the container environment, or a Netlify site variable, never a build-time one, because both entrypoints read it inside the running process.',
+      'Unset ⇒ `self-hosted`. The managed deployment sets `managed` in the container environment, at run time rather than at build time, because every entrypoint reads it inside the running process.',
     devDefault: 'managed',
     example: 'self-hosted',
   },

@@ -2,7 +2,7 @@
   "name": "@codaco/studio-client",
   "version": "0.2.0",
   "private": true,
-  "description": "Network Canvas Studio client — the static SPA deployable, published to a CDN in the managed topology and embedded in the server image for self-hosting.",
+  "description": "Network Canvas Studio client — the static SPA deployable, served by nginx from the studio-web image in every topology.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "repository": {
     "type": "git",

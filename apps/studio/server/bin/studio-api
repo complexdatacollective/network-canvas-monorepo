@@ -1,0 +1,71 @@
+#!/bin/sh
+# The studio-api image's entrypoint (#1909). One image, several processes: the
+# first argument picks which, so a compose file names a command rather than a
+# path into the bundle, and moving a file inside the image is not a breaking
+# change for every deployment that runs it.
+#
+# POSIX sh, because node:24-slim has no bash.
+#
+# `exec` in every branch: the process this starts must BE pid 1, or a container
+# stop signals this script and the Node process never sees the SIGTERM its
+# graceful shutdown depends on — a deploy would then cut live sync sessions
+# (#1247) and abandon a job mid-send (#1895).
+set -e
+
+usage() {
+    cat >&2 <<'USAGE'
+Usage: studio-api <command>
+
+  serve            the HTTP, RPC and WebSocket process (the default)
+  worker           background jobs and cron schedules
+  migrate          create this build's schema in an empty database
+  maintenance on   close the instance to users
+  maintenance off  reopen it
+  rotate-secrets   re-encrypt stored secrets under the keyring's current entry
+USAGE
+}
+
+# A command whose implementation lands with the issue that defines it. A stub
+# rather than an absent command: a deployment that ran it and got
+# "unknown command" would read it as its own mistake, where what it needs to
+# know is that the command exists and this build cannot do it yet. Exit 64 is
+# sysexits' EX_USAGE — the same code an unknown command gets, because in both
+# cases the answer is that this build will not do what was asked.
+unavailable() {
+    echo "studio-api $1 is not available until #$2 merges" >&2
+    exit 64
+}
+
+command="${1:-serve}"
+shift 2>/dev/null || true
+
+case "$command" in
+serve)
+    exec node /app/dist/index.js "$@"
+    ;;
+worker)
+    exec node /app/dist/worker.js "$@"
+    ;;
+migrate)
+    exec node /app/dist/migrate.js "$@"
+    ;;
+maintenance)
+    case "${1:-}" in
+    on | off)
+        unavailable maintenance 1901
+        ;;
+    *)
+        echo "Usage: studio-api maintenance on|off" >&2
+        exit 64
+        ;;
+    esac
+    ;;
+rotate-secrets)
+    exec node /app/dist/rotate-secrets.js "$@"
+    ;;
+*)
+    echo "studio-api: unknown command '$command'" >&2
+    usage
+    exit 64
+    ;;
+esac

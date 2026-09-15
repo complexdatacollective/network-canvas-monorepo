@@ -1,38 +1,46 @@
 # syntax=docker/dockerfile:1
-# Network Canvas Studio — the self-host artifact (#1245): one image containing
-# the Node server plus the built client assets, which the server serves
-# itself. The managed topology runs this same image behind a CDN that serves
-# the client assets instead; managed backend deploys key on
-# @codaco/studio-server version changes, not on image rebuilds.
+# Network Canvas Studio's two images (#1909), from one pruned build.
 #
-# The image deliberately sets no STUDIO_DEPLOYMENT_MODE, so a self-host gets
-# the fail-closed default and refuses the managed-only surfaces (pricing, the
-# sign-up funnel, billing) with a 404. The managed deployment sets
-# STUDIO_DEPLOYMENT_MODE=managed in its container environment — at runtime, not
-# in this file, which is what lets one image serve both topologies.
+#   studio-api   node:24-slim, the server bundle. Its entrypoint dispatches on
+#                the first argument, so one image runs every Studio process:
 #
-# One image, three things to run (#1895, #1900). The default command below is
-# the web process, which serves users. A deployment starts a second container
-# from this same image for background work, and runs the rotation by hand when
-# it re-keys:
+#                  serve            HTTP, RPC and the WebSocket endpoint
+#                  worker           background jobs and cron schedules (#1895)
+#                  migrate          create this build's schema in an empty
+#                                   database, once per deployment
+#                  maintenance on   close the instance to users — a stub until
+#                  maintenance off    #1901 merges
+#                  rotate-secrets   re-encrypt every stored secret under the
+#                                   keyring's current entry, once per rotation
+#                                   (#1900)
 #
-#   docker run --no-healthcheck network-canvas-studio node dist/worker.js
-#   docker run --rm --no-healthcheck network-canvas-studio node dist/rotate-secrets.js
+#   studio-web   nginx, the built SPA and the maintenance page. It proxies
+#                nothing: Traefik is the single ingress and routes the API's
+#                paths to studio-api and everything else here, so the browser
+#                sees one origin.
 #
-# #1909's `studio-api` entrypoint (PR #1912) gives these three the spellings
-# `serve`, `worker` and `rotate-secrets`, so a deployment will name a command
-# rather than a path into a bundle whose layout is ours to change.
+# The split is the 2026-09-15 ruling on #1909: a Node container for the API and
+# a separate web server for the frontend. Before it, one image served both and
+# the API held a static-file mount; nothing in the server serves client assets
+# any more.
 #
-# `--no-healthcheck` because the HEALTHCHECK below polls /healthz, which
-# neither of those serves: the worker binds no port at all, and the rotation
-# runs to completion and exits. The worker is the only process that sends mail,
-# so SMTP_URL and EMAIL_FROM belong in its environment; the web process never
-# reads them. Both read the keyring (STUDIO_SECRETS_KEY_FILE, mounted as a
-# Compose file secret by the reference stack), and refuse to start without it.
+# Neither image sets STUDIO_DEPLOYMENT_MODE, so a self-host gets the
+# fail-closed default and refuses the managed-only surfaces (pricing, the
+# sign-up funnel, billing). The managed deployment sets it in the container
+# environment — at run time, not here, which is what lets one image serve both
+# topologies.
 #
-# Build from the monorepo root:
+# There is deliberately no image-level HEALTHCHECK: the entrypoint decides
+# which process runs, and a check that suited `serve` would be wrong for
+# `worker` and meaningless for `migrate`. The check belongs to the compose
+# service, and the contract each process offers is in apps/studio/README.md —
+# `serve` answers GET /healthz on PORT, `worker` answers GET /readyz on
+# 127.0.0.1:WORKER_HEALTH_PORT.
 #
-#   docker build -f apps/studio/Dockerfile -t network-canvas-studio .
+# Build both from the monorepo root:
+#
+#   docker build -f apps/studio/Dockerfile --target studio-api -t studio-api .
+#   docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
 
 FROM node:24-slim AS base
 RUN npm install --global pnpm@11.20.0
@@ -55,16 +63,21 @@ COPY --from=pruner /repo/out/full/ .
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
 
-FROM node:24-slim AS runner
+FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
+# dist/ carries the four entries and dist/schema-ddl.json beside them: the
+# statements `migrate` executes, rendered at build time because drizzle-kit is
+# a development dependency and `pnpm deploy --prod` installs none.
 COPY --from=builder /repo/apps/studio/server/dist ./dist
-# The server's default CLIENT_DIST resolves to ../client relative to the
-# bundle — this directory.
-COPY --from=builder /repo/apps/studio/client/dist ./client
+COPY apps/studio/server/bin/studio-api /usr/local/bin/studio-api
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? 3000}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["studio-api"]
+CMD ["serve"]
+
+FROM nginx:1.29-alpine AS studio-web
+COPY --from=builder /repo/apps/studio/client/dist /usr/share/nginx/html
+COPY apps/studio/client/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

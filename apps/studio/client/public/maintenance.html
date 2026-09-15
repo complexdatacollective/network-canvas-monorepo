@@ -1,0 +1,122 @@
+<!doctype html>
+<!--
+  The maintenance page (#1909). Traefik serves this from the web container
+  whenever the API answers 502 or 503, so it is what a researcher sees during
+  the seconds an upgrade replaces the API container, and for as long as an
+  operator holds the instance closed.
+
+  It is deliberately one self-contained file: no script, no stylesheet, no
+  image, no font — nothing hashed, nothing fetched. It is shown precisely when
+  something is wrong, and every reference it made would be one more thing that
+  could be missing. A hashed asset in particular could not survive the deploy
+  that is the commonest reason for showing this page at all.
+
+  That is also why it uses none of @codaco/fresco-ui: those components need
+  React and the Tailwind build, and both arrive in the bundle this page cannot
+  depend on. The four colours below are transcribed from the studio theme
+  (tooling/tailwind/fresco/themes/studio.css: --background, --text, --surface,
+  --outline, in both modes), so the page belongs to Studio rather than
+  inventing a palette; if that theme moves, these follow by hand.
+
+  It is not translated for the same reason: translation happens in the client
+  bundle, and nothing here can load one. Keep the copy short, plain and calm.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Network Canvas Studio is unavailable</title>
+    <style>
+      :root {
+        /* Hex first for anything that cannot read oklch; both are the same
+           colour to within a rounding step. */
+        --background: #fbf9f5;
+        --background: oklch(0.982 0.008 60);
+        --surface: #fdfcfa;
+        --surface: oklch(0.995 0.003 60);
+        --outline: #dcd7cf;
+        --outline: oklch(0.885 0.012 60);
+        --text: #3d3833;
+        --text: oklch(0.3 0.022 60);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #191722;
+          --background: oklch(0.19 0.035 270);
+          --surface: #211f2c;
+          --surface: oklch(0.235 0.038 270);
+          --outline: #353243;
+          --outline: oklch(0.32 0.038 270);
+          --text: #e7e4ef;
+          --text: oklch(0.93 0.018 270);
+        }
+      }
+
+      html {
+        box-sizing: border-box;
+        color-scheme: light dark;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+
+      body {
+        margin: 0;
+        /* No webfont: one would be a request this page cannot rely on. */
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: var(--background);
+        color: var(--text);
+        /* Centred vertically where there is room, and simply at the top of a
+           short screen rather than clipped. */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1.5rem;
+      }
+
+      main {
+        background: var(--surface);
+        border: 1px solid var(--outline);
+        border-radius: 0.875rem;
+        padding: 2rem;
+        max-width: 32rem;
+        width: 100%;
+      }
+
+      h1 {
+        margin: 0 0 0.75rem;
+        /* Scales with the viewport rather than stepping at a breakpoint, so a
+           long translation or a narrow phone never clips it. */
+        font-size: clamp(1.375rem, 1.1rem + 1.4vw, 1.75rem);
+        font-weight: 600;
+        line-height: 1.25;
+      }
+
+      p {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Network Canvas Studio is temporarily unavailable</h1>
+      <p>
+        We are carrying out maintenance on this instance. Please try again in a
+        few minutes.
+      </p>
+    </main>
+  </body>
+</html>

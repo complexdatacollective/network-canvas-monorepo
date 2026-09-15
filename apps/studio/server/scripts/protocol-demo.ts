@@ -158,7 +158,7 @@ const pool = createPool(env.db);
 try {
   const schema = await checkSchema(owner);
   if (schema.kind === 'stale') {
-    console.error(schemaProblemMessage(schema));
+    console.error(schemaProblemMessage(schema, 'development'));
     process.exit(1);
   }
   if (schema.kind === 'absent') {

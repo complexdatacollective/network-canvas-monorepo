@@ -134,21 +134,34 @@ describe('the import inventory', () => {
 describe('the worker process', () => {
   const graph = moduleGraph('src/worker.ts');
 
-  it('loads no HTTP surface at all', () => {
-    // It binds no port and answers nothing. Loading the app or the router
-    // would not make it listen by itself, but it is how a listener arrives
-    // one refactor later — and the import is the observable half of "this
-    // process does not serve requests".
+  it('serves nothing but the health routes', () => {
+    // It does serve HTTP now — the loopback health listener a container
+    // healthcheck polls (#1897) — so "binds no port" is no longer the reading.
+    // What stays true is that it holds none of Studio's surfaces: loading the
+    // app or the RPC router would not make it answer a request by itself, but
+    // it is how one arrives a refactor later, and the import is the observable
+    // half of "this process serves no user".
     expect(
       reached(graph, [
         'src/app.ts',
         'src/rpc.ts',
-        'src/netlify.ts',
-        'hono',
-        '@hono/node-server',
+        'src/api.ts',
+        'src/assets.ts',
+        '@orpc/server',
+        // The WebSocket server is the web process's; nothing upgrades here.
         'ws',
       ]),
     ).toEqual([]);
+  });
+
+  it('answers the healthcheck from a module that reaches no surface', () => {
+    // The positive half: the routes it does serve come from src/health.ts,
+    // whose own graph is checked below. Without this, "no app" would also be
+    // satisfied by a worker that had quietly stopped answering at all.
+    expect(reached(graph, ['src/health.ts', '@hono/node-server'])).toEqual([
+      'src/health.ts',
+      '@hono/node-server',
+    ]);
   });
 
   it('is the process that holds the mail transport', () => {
@@ -158,6 +171,53 @@ describe('the worker process', () => {
       'src/auth/email.ts',
       'nodemailer',
     ]);
+  });
+});
+
+describe('the health routes', () => {
+  const graph = moduleGraph('src/health.ts');
+
+  it('reach neither the app nor the RPC router', () => {
+    // Both processes mount these routes, so this module is the one place a
+    // surface could reach the worker without naming it. Its graph is checked
+    // directly rather than through the worker's, so a future health check that
+    // imported the app would fail here with the reason rather than as a
+    // puzzling entry in the worker's inventory.
+    expect(
+      reached(graph, [
+        'src/app.ts',
+        'src/rpc.ts',
+        'src/api.ts',
+        '@orpc/server',
+        'ws',
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe('the migrate process', () => {
+  const graph = moduleGraph('src/migrate.ts');
+
+  it('carries no drizzle-kit into the image', () => {
+    // The invariant the whole design of `studio-api migrate` rests on (#1909):
+    // drizzle-kit is a development dependency and the image installs
+    // production dependencies only, so a bundle that reached it would fail at
+    // import in the container rather than here. The DDL it executes is
+    // rendered at build time instead, by scripts/render-schema-ddl.ts.
+    expect(
+      reached(graph, [
+        'drizzle-kit',
+        'drizzle-kit/api-postgres',
+        'scripts/apply.ts',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('serves nothing', () => {
+    // A one-shot: it connects, applies, and exits.
+    expect(
+      reached(graph, ['src/app.ts', 'src/rpc.ts', 'hono', '@hono/node-server']),
+    ).toEqual([]);
   });
 });
 

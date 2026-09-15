@@ -239,6 +239,8 @@ type Destination = {
   signedOut?: true;
   /** Screens only a session belonging to no team at all can reach (§6.4). */
   teamless?: true;
+  /** Screens only a self-hosted instance serves (§10.4) — `/setup`. */
+  selfHosted?: true;
 };
 
 /** Every destination in §5.2, in the order the design tables them. */
@@ -264,7 +266,12 @@ const DESTINATIONS: Destination[] = [
     url: `/invitations/${INVITATION_ID}`,
     heading: 'Accept team invitation',
   },
-  { path: '/setup', url: '/setup', heading: 'First-run setup' },
+  {
+    path: '/setup',
+    url: '/setup',
+    heading: 'First-run setup',
+    selfHosted: true,
+  },
   { path: '/no-team', url: '/no-team', heading: 'No team yet', teamless: true },
 
   // Participant
@@ -559,6 +566,13 @@ beforeEach(() => {
  * (#1909). Both halves are the guard's, so both are asserted here.
  */
 describe('first-run setup', () => {
+  // A self-hosted instance throughout: `/setup` is classified self-host-only,
+  // so on the managed service the topology guard refuses it before the setup
+  // guard runs — that direction is asserted in topologyGate.test.tsx.
+  beforeEach(() => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+  });
+
   it('offers the form while the instance has no owner', async () => {
     const router = renderAt('/setup');
 
@@ -682,9 +696,16 @@ describe('every destination in §5.2', () => {
 
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
-    async ({ url, heading, signedOut, teamless }) => {
+    async ({ url, heading, signedOut, teamless, selfHosted }) => {
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
+      }
+      // The managed default below would refuse this route outright (§10.4):
+      // first-run configuration of the whole instance is self-hosted only, and
+      // `topologyGuard` answers it with the not-found screen on the managed
+      // service. The screen it renders when it IS served is what this asserts.
+      if (selfHosted) {
+        fixtures.deployment = { mode: 'self-hosted', billing: false };
       }
       // §6.4's fourth case, which `/no-team` is the screen for: its guard
       // sends a researcher who does belong to a team to that team, so the

@@ -131,7 +131,7 @@ describe('unconfigured auth', () => {
   const env: StudioEnv = {
     port: 3000,
     host: '0.0.0.0',
-    clientDist: undefined,
+    workerHealthPort: 3001,
     s3: undefined,
     db: undefined,
     auth: undefined,

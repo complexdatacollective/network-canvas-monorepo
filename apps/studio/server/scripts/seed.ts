@@ -42,7 +42,7 @@ const pool = createOwnerPool(db);
 try {
   const state = await checkSchema(pool);
   if (state.kind !== 'current') {
-    console.error(schemaProblemMessage(state));
+    console.error(schemaProblemMessage(state, 'development'));
     process.exit(1);
   }
   await seed(pool, {

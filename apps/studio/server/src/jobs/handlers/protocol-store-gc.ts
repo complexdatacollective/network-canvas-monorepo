@@ -17,15 +17,24 @@ import type { HandledJob } from './job.ts';
  *
  * A thousand manifests per draft is far more history than a researcher can
  * reach through the editor and small enough that a long-lived draft does not
- * grow without bound. The two day-long windows are the same number for
- * different reasons: an unreferenced section waits a day before deletion so a
- * client that is mid-edit against it can still commit, and a command-log row
- * survives a day so a client whose acknowledgement was lost can still
- * retransmit and find its recorded result.
+ * grow without bound.
+ *
+ * The two windows answer different questions and are deliberately different
+ * lengths. A command-log row survives a day because that is how long a client
+ * whose acknowledgement was lost has to retransmit and find its recorded
+ * result; nothing but that client reads it.
+ *
+ * A section's grace is three days because a deleted section is not only a
+ * live client's problem: backups are taken daily (#1901), so a window shorter
+ * than the backup interval can delete bytes that no backup ever captured, and
+ * a restore then produces a manifest naming a section that exists nowhere. It
+ * has to exceed the interval, not merely match it — a backup that runs late,
+ * or a sweep that runs just before one, would otherwise close the gap — so
+ * three days for a daily backup (#1909).
  */
 export const PROTOCOL_STORE_GC_BOUNDS: GcOptions = {
   retainManifestsPerDraft: 1000,
-  sectionGraceMs: 86_400_000,
+  sectionGraceMs: 259_200_000,
   commandRetryHorizonMs: 86_400_000,
 };
 

@@ -651,6 +651,14 @@
     "defaultMessage": "Templates",
     "description": "Navigation label for the protocol template library, in the header and everything bar."
   },
+  "studio.notFound.description": {
+    "defaultMessage": "This page is not available on this instance.",
+    "description": "Explanation on the not-found screen. One instance may be a managed one and another self-hosted, and each serves pages the other does not, so the sentence says \"on this instance\" rather than claiming the page does not exist at all."
+  },
+  "studio.notFound.heading": {
+    "defaultMessage": "Page not available",
+    "description": "Heading of the screen shown for an address this instance does not serve."
+  },
   "studio.placeholder.unbuilt": {
     "defaultMessage": "This screen has not been built yet. It is specified in {issue}.",
     "description": "Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253."

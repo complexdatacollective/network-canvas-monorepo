@@ -587,8 +587,8 @@ export function createRpcRouter(
         ),
       // No refusal when nothing can send it: an invitation is queued and goes
       // out when a worker with mail configured returns (#1895, ruling of
-      // 2026-09-14). Where there is no queue at all — the Netlify lane, which
-      // has no database — the auth gate has already refused this call.
+      // 2026-09-14). Where there is no queue at all — a process with no
+      // database — the auth gate has already refused this call.
       createInvitation: os.team.createInvitation
         .use(requireTeam)
         .handler(({ context, input }) =>

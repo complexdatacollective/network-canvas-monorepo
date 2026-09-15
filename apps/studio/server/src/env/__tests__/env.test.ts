@@ -551,12 +551,4 @@ describe('the secrets keyring', () => {
     expect(message).toContain('key id "dev" twice');
     expect(message).not.toContain(entry.split(':')[1]);
   });
-
-  it('is withheld from the lane that serves no database', () => {
-    // The Netlify lane reads an allow-list, and a variable added later is
-    // withheld from it by default. A lane with no database has no secret to
-    // read, so it has no business holding the key to one.
-    vi.stubEnv('STUDIO_SECRETS_KEY', testKeyringEntry('netlify'));
-    expect(readEnv({ withoutDatabaseOrAuth: true }).secrets).toBeUndefined();
-  });
 });

@@ -5,12 +5,13 @@ import { defineConfig } from 'vite';
 // installs them as source and Node refuses to type-strip under node_modules —
 // anything left external here dies at boot in the image.
 //
-// Three entries, one image (#1895, #1900): `dist/index.js` serves users,
-// `dist/worker.js` runs background jobs, and `dist/rotate-secrets.js` re-keys
-// the stored secrets and exits. The image's entrypoint names all three — the
-// `studio-api` shell script from #1909 (PR #1912), which `exec`s one of these
-// files per run. `ssr: true` rather than a path, because the entries are named
-// by `rollupOptions.input` — a string would name only one of them.
+// Four entries, one image (#1895, #1909, #1900): `dist/index.js` serves users,
+// `dist/worker.js` runs background jobs, `dist/migrate.js` creates the schema,
+// and `dist/rotate-secrets.js` re-keys the stored secrets and exits. The
+// image's entrypoint (`bin/studio-api`) `exec`s one of them per run, so a
+// deployment names a command rather than a path into this bundle. `ssr: true`
+// rather than a path, because the entries are named by `rollupOptions.input`
+// — a string would name only one of them.
 export default defineConfig({
   build: {
     ssr: true,
@@ -21,16 +22,17 @@ export default defineConfig({
       input: {
         'index': 'src/index.ts',
         'worker': 'src/worker.ts',
+        'migrate': 'src/migrate.ts',
         'rotate-secrets': 'src/rotate-secrets.ts',
       },
       output: {
-        // Beside the entries, not under `assets/`. Two entries mean rollup
-        // emits a chunk for what they share, and src/version.ts and
-        // src/client-assets.ts resolve `../package.json` and `../client`
-        // against their own module URL — so every emitted file has to stay
-        // exactly one level below the package root, as dist/index.js always
-        // was. A shared chunk one level deeper reads dist/package.json and
-        // fails at boot in the image.
+        // Beside the entries, not under `assets/`. Several entries mean rollup
+        // emits chunks for what they share, and src/version.ts resolves
+        // `../package.json` against its own module URL while src/migrate.ts
+        // resolves `./schema-ddl.json` against its — so every emitted file has
+        // to stay exactly one level below the package root, as dist/index.js
+        // always was. A shared chunk one level deeper reads dist/package.json
+        // and fails at boot in the image.
         chunkFileNames: '[name]-[hash].js',
       },
     },
