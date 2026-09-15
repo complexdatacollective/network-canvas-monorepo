@@ -1,17 +1,5 @@
+import { Download, Eye, Trash2, Upload } from 'lucide-react';
 import {
-  AudioLines,
-  Download,
-  Eye,
-  FileImage,
-  FileJson,
-  KeyRound,
-  Share2,
-  Trash2,
-  Upload,
-  Video,
-} from 'lucide-react';
-import {
-  type ComponentType,
   type MouseEvent,
   useCallback,
   useEffect,
@@ -21,11 +9,18 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+// The type's colour and its stand-in mark are the resource card's whole
+// vocabulary of type, and a stage field's picker shows the same card for the
+// resource it holds — so both read them from one definition.
+import {
+  RESOURCE_KIND_BADGE_COLORS,
+  RESOURCE_KIND_ICONS,
+} from '@codaco/protocol-builder/resources/components/resourceKinds';
 import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
@@ -106,7 +101,7 @@ const messages = defineMessages({
   },
 });
 
-type AssetType = 'image' | 'video' | 'audio' | 'network' | 'apikey' | 'geojson';
+type AssetType = keyof typeof RESOURCE_KIND_BADGE_COLORS;
 
 type AssetCardProps = {
   id: string;
@@ -128,24 +123,6 @@ type AssetCardProps = {
   onPreview?: ((id: string) => void) | null;
   onReplace?: ((id: string) => void) | null;
 };
-
-const ASSET_TYPE_BADGE_COLORS = {
-  image: 'sea-green',
-  video: 'slate-blue',
-  audio: 'neon-coral',
-  network: 'cerulean-blue',
-  apikey: 'mustard',
-  geojson: 'sea-serpent',
-} satisfies Record<AssetType, BadgeColor>;
-
-const ASSET_TYPE_ICONS = {
-  image: FileImage,
-  video: Video,
-  audio: AudioLines,
-  network: Share2,
-  apikey: KeyRound,
-  geojson: FileJson,
-} satisfies Record<AssetType, ComponentType<{ className?: string }>>;
 
 const PREVIEW_URL_TYPES = new Set<AssetType>(['image', 'video']);
 
@@ -249,7 +226,7 @@ const AssetPreview = ({
 }) => {
   const intl = useAppIntl();
   const previewUrl = useAssetPreviewUrl(id, source, type);
-  const Icon = ASSET_TYPE_ICONS[type];
+  const Icon = RESOURCE_KIND_ICONS[type];
 
   if (type === 'image' && previewUrl) {
     return (
@@ -309,7 +286,7 @@ const AssetCard = ({
 }: AssetCardProps) => {
   const intl = useAppIntl();
   const typeLabel = intl.formatMessage(assetMetadataMessages[type]);
-  const typeColor = ASSET_TYPE_BADGE_COLORS[type];
+  const typeColor = RESOURCE_KIND_BADGE_COLORS[type];
   const handleDelete = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
@@ -469,7 +446,15 @@ const AssetCard = ({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
-          <Badge color={typeColor} className="shrink-0">
+          {/*
+            Outlined, not filled: this palette sits in the middle of the
+            lightness range, so a white label on it measures as little as
+            2.28:1 — well under the 4.5:1 a badge's small text needs. The
+            colour stays the type's own (border plus a wash of it), which is
+            what makes a resource recognisable here and in the card a stage
+            field shows for the same resource.
+          */}
+          <Badge variant="outline" color={typeColor} className="shrink-0">
             {typeLabel}
           </Badge>
 

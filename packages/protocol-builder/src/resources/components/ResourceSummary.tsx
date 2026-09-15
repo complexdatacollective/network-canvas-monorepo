@@ -8,6 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
+  RESOURCE_KIND_BADGE_COLORS,
   resourceKindLabel,
   resourceStatusLabel,
 } from './resourceKinds.ts';
@@ -101,7 +102,22 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         <Heading level="h4" margin="none">
           {descriptor.name}
         </Heading>
-        <Badge variant="outline">
+        {/*
+          The type's own colour, which is the colour the protocol's resource
+          library badges it in — so the resource a field holds is recognisably
+          the one the researcher picked out of that library.
+
+          Outlined rather than filled, because this palette cannot carry a
+          white label: sea green measures 2.28:1 against white, well under the
+          4.5:1 a badge's small text needs. `outline` keeps the colour as the
+          border and a wash behind the label and puts the label in the theme's
+          own text colour, which is the one colour the theme guarantees against
+          the surface — see `Badge.tsx`.
+        */}
+        <Badge
+          variant="outline"
+          color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
+        >
           {resourceKindLabel(descriptor.kind, intl)}
         </Badge>
         <Badge>{resourceStatusLabel(descriptor.status, intl)}</Badge>

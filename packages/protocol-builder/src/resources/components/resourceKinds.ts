@@ -1,9 +1,20 @@
 import {
+  AudioLines,
+  FileImage,
+  FileJson,
+  KeyRound,
+  Share2,
+  Video,
+} from 'lucide-react';
+import type { ComponentType } from 'react';
+
+import {
   createMessageError,
   defineMessages,
   type IntlShape,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
+import type { BadgeColor } from '@codaco/fresco-ui/Badge';
 
 import type { ResourceContentKind, ResourceKind } from '../types.ts';
 
@@ -224,6 +235,37 @@ export function resourceStatusLabel(
 ): string {
   return intl.formatMessage(statusMessages[status]);
 }
+
+/**
+ * The colour each resource type is badged in, and the mark that stands in for
+ * a resource with nothing to show.
+ *
+ * One definition for both places a researcher meets a resource as a card — the
+ * protocol's resource library in Architect and the card a stage field shows
+ * for what it holds — because a picture that is sea green in one and mustard
+ * in the other is not a picture of the same thing. They are the card's whole
+ * vocabulary of type, so they belong beside the type's name rather than in
+ * either card.
+ */
+export const RESOURCE_KIND_BADGE_COLORS = Object.freeze({
+  image: 'sea-green',
+  video: 'slate-blue',
+  audio: 'neon-coral',
+  network: 'cerulean-blue',
+  apikey: 'mustard',
+  geojson: 'sea-serpent',
+}) satisfies Readonly<Record<ResourceKind, BadgeColor>>;
+
+export const RESOURCE_KIND_ICONS = Object.freeze({
+  image: FileImage,
+  video: Video,
+  audio: AudioLines,
+  network: Share2,
+  apikey: KeyRound,
+  geojson: FileJson,
+}) satisfies Readonly<
+  Record<ResourceKind, ComponentType<{ className?: string }>>
+>;
 
 export type ResourcePickerCopy = Readonly<{
   selectAction: MessageDescriptor;

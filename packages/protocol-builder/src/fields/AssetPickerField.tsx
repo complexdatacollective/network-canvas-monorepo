@@ -10,8 +10,15 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
+import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+  stateVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { compose, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { useResourceClient } from '../resources/client.tsx';
 import {
@@ -19,16 +26,14 @@ import {
   resourceDownloadName,
 } from '../resources/components/downloadResourceContent.ts';
 import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
+import ResourceCard from '../resources/components/ResourceCard.tsx';
 import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
 import {
   acceptsResourceKind,
-  isPreviewableKind,
   RESOURCE_PICKER_COPY,
   unsupportedResourceKindMessage,
   type ResourcePickerKind,
 } from '../resources/components/resourceKinds.ts';
-import ResourcePreview from '../resources/components/ResourcePreview.tsx';
-import ResourceSummary from '../resources/components/ResourceSummary.tsx';
 import { useResourceAttempt } from '../resources/components/useResourceAttempt.ts';
 import { useResourceInspection } from '../resources/components/useResourceInspection.ts';
 import { useStageResourceUsage } from '../resources/components/useStageResourceUsage.ts';
@@ -40,6 +45,24 @@ import type { ResourceDescriptor } from '../resources/types.ts';
  * id, so no resource is looked up for it.
  */
 const INTERVIEW_NETWORK = 'existing';
+
+/**
+ * The picker's own control chrome: the rounded, bordered, padded box every
+ * other field in the system draws its control inside.
+ *
+ * Taken from `CheckboxGroup` and `RadioGroup`, the two composite fields whose
+ * control is a region rather than a single input — the same composition, so a
+ * roster's data source is framed exactly as the radio group directly above it
+ * is. `controlVariants` shapes a single-line control, so the three rules that
+ * would clip a region are lifted: the box wraps, wraps its text, and is free
+ * to shrink with the field that holds it.
+ */
+const pickerChromeVariants = compose(
+  controlVariants,
+  inputControlVariants,
+  groupSpacingVariants,
+  stateVariants,
+);
 
 const messages = defineMessages({
   /**
@@ -450,7 +473,18 @@ export default function AssetPickerField({
       )}
 
       {showPicker && (
-        <div className="mt-3 flex flex-col gap-3">
+        <div
+          className={cx(
+            pickerChromeVariants({
+              state: getInputState({
+                disabled,
+                readOnly,
+                'aria-invalid': ariaInvalid,
+              }),
+            }),
+            'mt-3 flex w-full min-w-0 flex-col items-start overflow-visible whitespace-normal',
+          )}
+        >
           {selectedId === undefined && (
             <Paragraph margin="none" emphasis="muted">
               {intl.formatMessage(messages.noSelection)}
@@ -489,68 +523,46 @@ export default function AssetPickerField({
             )}
 
           {inspection !== undefined && descriptor !== undefined && (
-            <div className="flex flex-col gap-3">
-              <ResourceSummary inspection={inspection} />
-              {isPreviewableKind(descriptor.kind) &&
-                (canvasBackgroundPreview ? (
-                  <ThemedRegion
-                    theme="interview"
-                    // The ground is the region's own: `theme-base` paints
-                    // `bg-background`, which inside `[data-theme-interview]`
-                    // is the colour a participant sees behind the canvas. A
-                    // `bg-background` repeated here said the same thing twice
-                    // and read as though the frame were painting itself.
-                    className="aspect-video w-full overflow-hidden rounded"
-                  >
-                    <ResourcePreview
-                      resourceId={descriptor.id}
-                      kind={descriptor.kind}
-                      name={descriptor.name}
-                      className="size-full object-contain object-center"
-                    />
-                  </ThemedRegion>
-                ) : (
-                  <ResourcePreview
-                    resourceId={descriptor.id}
-                    kind={descriptor.kind}
-                    name={descriptor.name}
-                  />
-                ))}
-              <div className="flex flex-wrap gap-2">
-                {descriptor.kind !== 'apikey' && (
-                  <Button
-                    type="button"
-                    color="info"
-                    size="sm"
-                    disabled={action.busy}
-                    onClick={handleDownload}
-                  >
-                    {intl.formatMessage(messages.download)}
-                  </Button>
-                )}
-                {descriptor.status === 'staged' ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    color="destructive"
-                    disabled={locked || action.busy}
-                    onClick={handleDiscard}
-                  >
-                    {intl.formatMessage(messages.discard)}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    color="destructive"
-                    size="sm"
-                    disabled={locked}
-                    onClick={handleRemove}
-                  >
-                    {intl.formatMessage(messages.remove)}
-                  </Button>
-                )}
-              </div>
-            </div>
+            <ResourceCard
+              inspection={inspection}
+              previewShape={canvasBackgroundPreview ? 'canvas' : 'thumbnail'}
+              actions={
+                <>
+                  {descriptor.kind !== 'apikey' && (
+                    <Button
+                      type="button"
+                      color="info"
+                      size="sm"
+                      disabled={action.busy}
+                      onClick={handleDownload}
+                    >
+                      {intl.formatMessage(messages.download)}
+                    </Button>
+                  )}
+                  {descriptor.status === 'staged' ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      color="destructive"
+                      disabled={locked || action.busy}
+                      onClick={handleDiscard}
+                    >
+                      {intl.formatMessage(messages.discard)}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      color="destructive"
+                      size="sm"
+                      disabled={locked}
+                      onClick={handleRemove}
+                    >
+                      {intl.formatMessage(messages.remove)}
+                    </Button>
+                  )}
+                </>
+              }
+            />
           )}
 
           {refusal !== undefined && (
