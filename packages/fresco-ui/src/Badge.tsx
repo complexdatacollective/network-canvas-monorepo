@@ -198,12 +198,11 @@ const themedBadgeVariants = cva({
        * Not the theme colour: most of this palette sits in the middle of the
        * lightness range, where the colour reaches neither 4.5:1 against a 14%
        * wash of itself nor against white — cerulean blue is 4.43:1 either way.
-       * The text token is the one colour the theme already guarantees against
-       * the surface this badge sits on, in light and dark alike, and a wash
-       * this thin does not move it.
+       * Inherited rather than read from `--text`, which is the PAGE's ink and
+       * says nothing about a surface that sets its own.
        */
       outline:
-        'text-text border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)]',
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-current',
     },
   },
 });

@@ -161,6 +161,46 @@ describe('a slot whose attribute needs more than a name', () => {
     ).toBeInTheDocument();
   });
 
+  it('leaves the editor it opened on top of it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <OrdinalSlot />,
+    });
+    await harness.opened();
+
+    const dialog = await openAttributePicker(
+      harness.user,
+      attributeField(LABEL),
+    );
+    await harness.user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'closeness',
+    );
+    await harness.user.click(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “closeness”.',
+      }),
+    );
+
+    const editor = await screen.findByRole('dialog', {
+      name: 'Create a new ordinal attribute',
+    });
+
+    const spotlight = document.querySelector<HTMLElement>(
+      '[data-variable-spotlight]',
+    );
+    expect(spotlight).not.toBeNull();
+    if (spotlight === null) return;
+    expect(
+      spotlight.compareDocumentPosition(editor) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(spotlight.className).not.toMatch(/(?:^|[\s:])-?z-/);
+    expect(spotlight.style.zIndex).toBe('');
+  });
+
   /**
    * Closing the editor without saving wrote nothing, which is exactly what the
    * create that opened it was waiting to hear: the researcher gets their name

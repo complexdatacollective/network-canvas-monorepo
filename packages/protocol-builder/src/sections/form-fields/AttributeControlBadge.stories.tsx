@@ -1,13 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
+
 import { VARIABLE_TYPE_OPTIONS } from '../../codebook/variableTypeLabels.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
 
 /**
  * One badge per kind of attribute, each with the first control its type
- * allows, on the surface the row list draws them on.
+ * allows, on the accent surface the row list draws them on.
  *
  * Every colour at once because the badge's colour is the whole of what varies
  * between rows: the a11y check this preview runs over every story is what says
@@ -18,23 +20,23 @@ function EveryAttributeType() {
   return (
     <main className="bg-surface flex flex-col gap-2.5 p-6">
       {VARIABLE_TYPE_OPTIONS.map(({ value }) => (
-        <div key={value}>
+        <Surface key={value} series="accent">
           <AttributeControlBadge
             attribute={{
               type: value,
               component: controlsForType(value)[0]?.value,
             }}
           />
-        </div>
+        </Surface>
       ))}
-      <div>
+      <Surface series="accent">
         <AttributeControlBadge
           attribute={{ type: 'a-type-from-a-later-schema' }}
         />
-      </div>
-      <div>
+      </Surface>
+      <Surface series="accent">
         <AttributeControlBadge attribute={undefined} />
-      </div>
+      </Surface>
     </main>
   );
 }

@@ -573,7 +573,7 @@ export default function VariableSpotlight({
             ? intl.formatMessage(messages.dialogName)
             : undefined
         }
-        className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
+        className="fixed top-10 left-1/2 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
         <MotionSurface
           floating
