@@ -23,6 +23,8 @@ import { rotateSecrets } from '../rotate.ts';
 const db = await reachableDb();
 
 const TEAM = 'team-rotation';
+/** The protocol line every asset key below belongs to. */
+const PROTOCOL = '3f1c9b4e-0a2d-4c5e-9b8a-6d7e5f4c3b2a';
 /** A key id no keyring in this file carries: a half-removed rotation entry. */
 const MISSING = 'gone';
 
@@ -52,6 +54,13 @@ describe.skipIf(!db)('rotating stored secrets', () => {
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ('user-rotation', 'Rotation', 'rotation@example.test', true)`,
     );
+    // `protocol_asset_keys` rows are pinned to a protocol by a composite
+    // foreign key, so the line has to exist before any key can be stored
+    // against it.
+    await pool.query(
+      `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Rotation protocol')`,
+      [PROTOCOL, TEAM],
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -61,6 +70,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
   afterEach(async () => {
     await pool.query('DELETE FROM webhook_subscriptions');
     await pool.query('DELETE FROM account');
+    await pool.query('DELETE FROM protocol_asset_keys');
   });
 
   /** A subscription sealed by `cipher`, returning its id and its plaintext. */
@@ -119,6 +129,44 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     return { id, accountId, tokens };
   }
 
+  /** One sealed API key for `PROTOCOL`, returning its asset id and plaintext. */
+  async function newAssetKey(
+    cipher = before,
+    keyIdOverride?: string,
+  ): Promise<{ assetId: string; value: string }> {
+    const assetId = `asset-${randomUUID()}`;
+    const value = `pk.${randomUUID().replaceAll('-', '')}`;
+    const sealed = cipher.sealAssetKey(
+      { teamId: TEAM, protocolId: PROTOCOL, assetId },
+      value,
+    );
+    await pool.query(
+      `INSERT INTO protocol_asset_keys
+         (team_id, protocol_id, asset_id, ciphertext, key_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        TEAM,
+        PROTOCOL,
+        assetId,
+        sealed.ciphertext,
+        keyIdOverride ?? sealed.keyId,
+      ],
+    );
+    return { assetId, value };
+  }
+
+  const assetKeyRows = async () =>
+    (
+      await pool.query<{
+        asset_id: string;
+        ciphertext: Buffer;
+        key_id: string;
+        updated_at: Date;
+      }>(
+        'SELECT asset_id, ciphertext, key_id, updated_at FROM protocol_asset_keys ORDER BY asset_id',
+      )
+    ).rows;
+
   const subscriptionRows = async () =>
     (
       await pool.query<{
@@ -148,11 +196,17 @@ describe.skipIf(!db)('rotating stored secrets', () => {
   it('re-seals every store under the current key, plaintext unchanged', async () => {
     const subscription = await newSubscription();
     const account = await newAccount();
+    const assetKey = await newAssetKey();
     const stored = (await accountRows())[0]!;
     const storedAt = stored.updatedAt;
+    const assetStoredAt = (await assetKeyRows())[0]!.updated_at;
 
     const counts = await rotateSecrets(maintenance, AFTER);
-    expect(counts).toEqual({ webhook_subscriptions: 1, account: 1 });
+    expect(counts).toEqual({
+      webhook_subscriptions: 1,
+      account: 1,
+      protocol_asset_keys: 1,
+    });
 
     const [rotatedSubscription] = await subscriptionRows();
     expect(rotatedSubscription?.secret_key_id).toBe('test-1');
@@ -177,10 +231,56 @@ describe.skipIf(!db)('rotating stored secrets', () => {
         ),
       ).toBe(account.tokens[column]);
     }
+    const [rotatedAssetKey] = await assetKeyRows();
+    expect(rotatedAssetKey?.key_id).toBe('test-1');
+    expect(
+      after.openAssetKey(
+        {
+          teamId: TEAM,
+          protocolId: PROTOCOL,
+          assetId: assetKey.assetId,
+        },
+        {
+          ciphertext: rotatedAssetKey!.ciphertext,
+          keyId: rotatedAssetKey!.key_id,
+        },
+      ),
+    ).toBe(assetKey.value);
+
     // Rotation changes how a row is stored, not when anyone last changed it:
     // a bumped timestamp would make every audit and every "recently changed"
     // view lie the day a deployment re-keys.
     expect(rotatedAccount?.updatedAt).toEqual(storedAt);
+    expect(rotatedAssetKey?.updated_at).toEqual(assetStoredAt);
+  });
+
+  it('leaves an asset key that is already current byte for byte alone', async () => {
+    // Sealed under the keyring the rotation deploys, so there is nothing to
+    // do: a re-seal under the same key would draw a new nonce and still pass
+    // a count-only assertion.
+    await newAssetKey(after);
+    const stored = await assetKeyRows();
+
+    expect((await rotateSecrets(maintenance, AFTER)).protocol_asset_keys).toBe(
+      0,
+    );
+    expect(await assetKeyRows()).toEqual(stored);
+  });
+
+  it('refuses to rotate an asset key sealed under a missing entry', async () => {
+    const behind = await newAssetKey();
+    await newAssetKey(before, MISSING);
+    const stored = await assetKeyRows();
+
+    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
+      new RegExp(`cannot produce: ${MISSING}`),
+    );
+    // Including the row it could have rotated: the check runs before any
+    // write, so an incomplete keyring rotates nothing rather than some.
+    expect(await assetKeyRows()).toEqual(stored);
+    expect(stored.find((row) => row.asset_id === behind.assetId)?.key_id).toBe(
+      'test-2',
+    );
   });
 
   it('re-seals the tokens a row does have and leaves the others null', async () => {
@@ -204,9 +304,11 @@ describe.skipIf(!db)('rotating stored secrets', () => {
   it('finds nothing to do on a second run, and rewrites no row', async () => {
     await newSubscription();
     await newAccount();
+    await newAssetKey();
     await rotateSecrets(maintenance, AFTER);
     const first = await subscriptionRows();
     const firstAccounts = await accountRows();
+    const firstAssetKeys = await assetKeyRows();
 
     // Idempotent in the strong sense: not merely "reports zero", but leaves
     // the stored bytes identical. A re-seal under the same key would produce
@@ -214,9 +316,11 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     expect(await rotateSecrets(maintenance, AFTER)).toEqual({
       webhook_subscriptions: 0,
       account: 0,
+      protocol_asset_keys: 0,
     });
     expect(await subscriptionRows()).toEqual(first);
     expect(await accountRows()).toEqual(firstAccounts);
+    expect(await assetKeyRows()).toEqual(firstAssetKeys);
   });
 
   it('keeps the batches it committed when a run is interrupted', async () => {
@@ -246,6 +350,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     expect(await rotateSecrets(maintenance, AFTER)).toEqual({
       webhook_subscriptions: 2,
       account: 0,
+      protocol_asset_keys: 0,
     });
     expect(
       (await subscriptionRows()).every((row) => row.secret_key_id === 'test-1'),
@@ -268,6 +373,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
       expect(await rotateSecrets(maintenance, AFTER)).toEqual({
         webhook_subscriptions: 1,
         account: 0,
+        protocol_asset_keys: 0,
       });
       await holder.query('ROLLBACK');
     } finally {
@@ -277,6 +383,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     expect(await rotateSecrets(maintenance, AFTER)).toEqual({
       webhook_subscriptions: 1,
       account: 0,
+      protocol_asset_keys: 0,
     });
     expect(
       (await subscriptionRows()).every((row) => row.secret_key_id === 'test-1'),
@@ -287,11 +394,16 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     await newSubscription();
     await newSubscription(before, MISSING);
     await newAccount();
+    await newAssetKey(before, 'asset-gone');
     // What the boot check compares against the keyring: one set, from every
     // store, however many tables the registry grows to.
     const client = await maintenance.connect();
     try {
-      expect(await secretKeyIdsInUse(client)).toEqual([MISSING, 'test-2']);
+      expect(await secretKeyIdsInUse(client)).toEqual([
+        'asset-gone',
+        MISSING,
+        'test-2',
+      ]);
     } finally {
       client.release();
     }
@@ -303,6 +415,7 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     // stored bytes into a log — and a row like that cannot be opened anyway,
     // which is a failure at its use site.
     await newSubscription(before, 'not a key id');
+    await newAssetKey(before, 'not a key id either');
     await pool.query(
       `INSERT INTO account
          (id, "accountId", "providerId", issuer, "userId", "accessToken", "updatedAt")

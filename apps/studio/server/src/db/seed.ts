@@ -33,6 +33,7 @@ import {
 import {
   SEED_ADMIN_EMAIL,
   SEED_ADMIN_PASSWORD,
+  seedAdminOAuthAccount,
   seedTeams,
 } from './seed/teams.ts';
 
@@ -82,9 +83,10 @@ export type SeedOptions = {
 
 export type SeedResult = {
   /**
-   * The webhook signing secrets this seed wrote, in plaintext. Returned so the
-   * dump-and-search test knows what to search the database for; nothing else
-   * needs them, and they are never printed.
+   * Every secret this seed wrote, in plaintext: the webhook signing secrets,
+   * the admin's three OAuth tokens, and each team's protocol API key.
+   * Returned so the dump-and-search test knows what to search the database
+   * for; nothing else needs them, and they are never printed.
    */
   plaintextSecrets: string[];
 };
@@ -211,6 +213,14 @@ async function populate(
   await wipe(client);
 
   const teams = await seedTeams(client, adminPassword);
+  // One linked Google account for the admin, so every one of the three secret
+  // stores has rows in a seeded database. Beside the team seeding rather than
+  // inside it: the tokens are sealed, and `seedTeams` has no business knowing
+  // about the cipher.
+  const oauthTokens = await seedAdminOAuthAccount(client, cipher, {
+    userId: teams[0]!.adminUserId,
+    createdAt: seedTime(-399),
+  });
   const totals: SeedTotals = {
     teams: teams.length,
     studies: 0,
@@ -219,13 +229,14 @@ async function populate(
     sessions: 0,
     auditEvents: 0,
     anonymousLinks: [],
-    plaintextSecrets: [],
+    plaintextSecrets: [...oauthTokens],
   };
 
   for (const team of teams) {
     await scopeToTeam(client, team.id);
 
     const line = await seedProtocolLine(client, team.id, cipher);
+    totals.plaintextSecrets.push(line.plaintextAssetKey);
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );
@@ -312,10 +323,11 @@ export async function seed(
   // The one place in the application that hands the cipher its randomness:
   // every other caller takes `crypto.randomBytes`, because a nonce that is not
   // unpredictable is a broken nonce. Here the whole corpus is synthetic and
-  // `seed.test.ts` compares two full ordered dumps byte for byte, so the seed
-  // draws its nonces from the same pinned PRNG as everything else it writes.
-  // Nothing sealed here protects anything, and nothing outside this module may
-  // pass `random`.
+  // `seed.test.ts` seeds two scratch schemas and compares ordered dumps of
+  // every table (all but better-auth's scrypt password hash, which no PRNG
+  // seed reaches), so the seed draws its nonces from the same pinned PRNG as
+  // everything else it writes. Nothing sealed here protects anything, and
+  // nothing outside this module may pass `random`.
   const cipher = createSecretsCipher(options.secrets, { random: seedBytes });
 
   const client = await pool.connect();

@@ -6,6 +6,7 @@ import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
   createScratchSchema,
+  dumpSchemaRows,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
@@ -1053,6 +1054,90 @@ describe.skipIf(!db)('the seeded dataset', () => {
     expect(row.secret_ciphertext.toString('utf8')).not.toContain(opened);
   });
 
+  it('links a Google account for the admin with its tokens sealed', async () => {
+    const keyring = testKeyring();
+    const rows = await pool.query<{
+      accountId: string;
+      accessToken: string;
+      refreshToken: string;
+      idToken: string;
+    }>(
+      `select "accountId", "accessToken", "refreshToken", "idToken"
+       from account where "providerId" = 'google' and "userId" = $1`,
+      [adminId],
+    );
+    expect(rows.rowCount).toBe(1);
+    const row = rows.rows[0]!;
+
+    const cipher = testCipher(keyring);
+    for (const column of ['accessToken', 'refreshToken', 'idToken'] as const) {
+      const stored = row[column];
+      expect(stored.startsWith(`studio-secret:${keyring.currentId}:`)).toBe(
+        true,
+      );
+      // The round trip, as for the webhook secrets: the column holds a real
+      // envelope bound to this account and column, not opaque filler.
+      const opened = cipher.openOAuthToken(
+        { providerId: 'google', accountId: row.accountId, column },
+        stored,
+      );
+      expect(plaintextSecrets).toContain(opened);
+      expect(stored).not.toContain(opened);
+    }
+  });
+
+  it('seals one protocol API key per team and stores no value in a section', async () => {
+    const keyring = testKeyring();
+    const teams = await count(pool, `select count(*)::int as n from teams`);
+    await expect(
+      count(pool, `select count(*)::int as n from protocol_asset_keys`),
+    ).resolves.toBe(teams);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from protocol_asset_keys where key_id <> $1`,
+        [keyring.currentId],
+      ),
+    ).resolves.toBe(0);
+
+    const stored = await pool.query<{
+      team_id: string;
+      protocol_id: string;
+      asset_id: string;
+      ciphertext: Buffer;
+      key_id: string;
+    }>(
+      `select team_id, protocol_id, asset_id, ciphertext, key_id
+       from protocol_asset_keys order by team_id limit 1`,
+    );
+    const row = stored.rows[0]!;
+    const opened = testCipher(keyring).openAssetKey(
+      {
+        teamId: row.team_id,
+        protocolId: row.protocol_id,
+        assetId: row.asset_id,
+      },
+      { ciphertext: row.ciphertext, keyId: row.key_id },
+    );
+    expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
+    expect(plaintextSecrets).toContain(opened);
+
+    // The manifest entry survives in the stored document; only its value is
+    // gone. Asked of every section row, because a key must not be at rest in
+    // any revision — not only the one the draft currently points at.
+    const apikeyEntries = `from sections s, jsonb_each(s.doc) e
+       where jsonb_typeof(e.value) = 'object' and e.value ->> 'type' = 'apikey'`;
+    await expect(
+      count(pool, `select count(*)::int as n ${apikeyEntries}`),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n ${apikeyEntries} and e.value ? 'value'`,
+      ),
+    ).resolves.toBe(0);
+  });
+
   it('appends a dense audit sequence per team and no unbacked outbox rows', async () => {
     const sequences = await pool.query<{ team_id: string; ok: boolean }>(
       `select team_id,
@@ -1072,7 +1157,79 @@ describe.skipIf(!db)('the seeded dataset', () => {
   });
 });
 
+/**
+ * The four columns the seed does not choose, and therefore cannot reproduce.
+ * Every one of them is a consequence of the seed writing through real code
+ * rather than around it, which is the trade it makes everywhere: two are
+ * allocated inside a writer it calls, and two are wall-clock stamps that
+ * belong to the operation rather than to the data.
+ *
+ * Everything else — every other id, every timestamp, every encryption nonce —
+ * comes from the pinned PRNG or the fixed anchor, which is what this case
+ * exists to hold the seed to. Adding a column here is a decision, not
+ * bookkeeping: it says a value is not the seed's to pick.
+ */
+const IRREPRODUCIBLE = {
+  // better-auth's `hashPassword` draws a fresh scrypt salt per call, and
+  // `AuditStore.append` allocates an event id with `randomUUID()`; both are
+  // documented where they are written (`seed/teams.ts`, `seed/audit.ts`).
+  account: ['password'],
+  audit_events: ['id'],
+  // When the projection was computed, which is now, in both runs. The seed
+  // calls the real `refreshProjectionsForSessions`; the counts it derives are
+  // compared, and they are what the seeded data determines.
+  session_stats: ['computed_at'],
+  // Not the seed's row at all — `applySchema` stamps it, and the seed's wipe
+  // skips the table for that reason. The fingerprint itself is still
+  // compared, which is worth having: it says both runs seeded one schema.
+  schemaFingerprint: ['appliedAt'],
+} as const;
+
 describe.skipIf(!db)('seed', () => {
+  it(
+    'writes byte-identical data on two runs',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const dumps: Map<string, string[]>[] = [];
+      for (let run = 0; run < 2; run += 1) {
+        const { pool, dispose } = await createScratchSchema(db);
+        try {
+          await provisionScratchSchema(pool);
+          await seed(pool, { secrets: testKeyring(), scale: 'tiny' });
+          dumps.push(
+            await dumpSchemaRows(pool, { omitColumns: IRREPRODUCIBLE }),
+          );
+        } finally {
+          await dispose();
+        }
+      }
+
+      const [first, second] = dumps as [
+        Map<string, string[]>,
+        Map<string, string[]>,
+      ];
+      // Reported as a list of table names and the first row that differs,
+      // rather than as one `toEqual` over the corpus: a failure has to be
+      // readable, and the corpus is tens of thousands of rows.
+      expect([...second.keys()]).toEqual([...first.keys()]);
+      const differences = [...first].flatMap(([table, rows]) => {
+        const other = second.get(table) ?? [];
+        if (rows.length !== other.length) {
+          return [`${table}: ${rows.length} rows, then ${other.length}`];
+        }
+        const index = rows.findIndex((row, at) => row !== other[at]);
+        return index === -1
+          ? []
+          : [`${table}: row ${index}\n  ${rows[index]}\n  ${other[index]}`];
+      });
+      expect(differences).toEqual([]);
+      // The dump is worth comparing: a helper that returned nothing would
+      // make every line above pass.
+      expect([...first.values()].flat().length).toBeGreaterThan(1000);
+    },
+    SEEDING_TIMEOUT_MS,
+  );
+
   it(
     'hashes a per-instance admin password when one is given',
     async () => {

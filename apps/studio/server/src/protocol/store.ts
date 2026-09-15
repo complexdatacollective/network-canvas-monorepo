@@ -27,6 +27,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import type { SecretsCipher } from '../secrets/cipher.ts';
+import { assertNoAssetKeyValues } from '../secrets/exclusion.ts';
 import {
   type StudyVisibility,
   studyVisibleToCallerSql,
@@ -141,6 +142,22 @@ function sectionIdentityIssues(
     }
   }
   return issues;
+}
+
+/**
+ * The two public assembly paths (`getDraftDocument`, `getVersionDocument`) go
+ * through here, which is the #1897 exclusion check at the point a document
+ * leaves the store for anything that is not a participant session or a
+ * researcher preview. Neither of those exists yet; when one does, it assembles
+ * and then puts the keys back, and this stays the exit every other reader
+ * takes.
+ */
+function assembleDocumentWithoutKeys(
+  sections: Record<string, SectionDoc>,
+): Record<string, unknown> {
+  const document = assembleProtocolSections(sections);
+  assertNoAssetKeyValues(document);
+  return document;
 }
 
 function assembleOrIssues(
@@ -267,6 +284,7 @@ export class ProtocolStore {
           this.cipher,
           { teamId, protocolId },
           strippedAssets.values,
+          params.createdAt,
         );
       }
       await insertDraftRows(
@@ -382,7 +400,7 @@ export class ProtocolStore {
 
   async getDraftDocument(draftId: string): Promise<Record<string, unknown>> {
     const { sections } = await this.getDraftSections(draftId);
-    return assembleProtocolSections(sections);
+    return assembleDocumentWithoutKeys(sections);
   }
 
   async getProtocolDraftMetadata(
@@ -662,7 +680,7 @@ export class ProtocolStore {
     versionId: string,
   ): Promise<Record<string, unknown>> {
     const { sections } = await this.getVersionSections(versionId);
-    return assembleProtocolSections(sections);
+    return assembleDocumentWithoutKeys(sections);
   }
 
   async listVersions(protocolId: string): Promise<VersionRow[]> {

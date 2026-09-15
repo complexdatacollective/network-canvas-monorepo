@@ -122,23 +122,30 @@ export async function sealAssetKeys(
   cipher: SecretsCipher,
   scope: ProtocolAssetScope,
   values: AssetKeyValues,
+  /**
+   * Dates the rows for a caller that knows when the protocol was made — the
+   * synthetic-data seed, as for `insertDraftRows`. A live write leaves it
+   * unset and takes the clock.
+   */
+  createdAt?: Date,
 ): Promise<void> {
   for (const [assetId, value] of values) {
     const sealed = cipher.sealAssetKey({ ...scope, assetId }, value);
     await client.query(
       `INSERT INTO protocol_asset_keys
-         (team_id, protocol_id, asset_id, ciphertext, key_id)
-       VALUES ($1, $2, $3, $4, $5)
+         (team_id, protocol_id, asset_id, ciphertext, key_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, now()), COALESCE($6, now()))
        ON CONFLICT (team_id, protocol_id, asset_id) DO UPDATE
          SET ciphertext = EXCLUDED.ciphertext,
              key_id = EXCLUDED.key_id,
-             updated_at = now()`,
+             updated_at = COALESCE($6, now())`,
       [
         scope.teamId,
         scope.protocolId,
         assetId,
         sealed.ciphertext,
         sealed.keyId,
+        createdAt ?? null,
       ],
     );
   }

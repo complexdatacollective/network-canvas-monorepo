@@ -191,11 +191,77 @@ const account: SecretStore = {
 };
 
 /**
- * The finisher adds `protocol_asset_keys` here once its table exists (#1900
- * §5); nothing else has to change for the boot check and the rotation command
- * to cover it.
+ * The sealed `value` of an `apikey` protocol asset, one row per asset of one
+ * protocol. Unlike the other two stores its identity is the whole primary key
+ * — a key is bound to the team, the protocol AND the asset — so every
+ * statement here carries all three.
+ */
+const protocolAssetKeys: SecretStore = {
+  name: 'protocol_asset_keys',
+
+  keyIdsInUse: async (client) => {
+    const rows = await client.query<{ key_id: string }>(
+      'SELECT DISTINCT key_id FROM protocol_asset_keys',
+    );
+    return producibleIds(rows.rows.map((row) => row.key_id));
+  },
+
+  rotateBatch: async (client, cipher, batchSize) => {
+    const rows = await client.query<{
+      team_id: string;
+      protocol_id: string;
+      asset_id: string;
+      ciphertext: Buffer;
+      key_id: string;
+    }>(
+      `SELECT team_id, protocol_id, asset_id, ciphertext, key_id
+         FROM protocol_asset_keys
+        WHERE key_id <> $1
+        LIMIT $2
+          FOR UPDATE SKIP LOCKED`,
+      [cipher.currentKeyId, batchSize],
+    );
+
+    for (const row of rows.rows) {
+      const identity = {
+        teamId: row.team_id,
+        protocolId: row.protocol_id,
+        assetId: row.asset_id,
+      };
+      const resealed = reseal(
+        `protocol_asset_keys ${row.protocol_id} ${row.asset_id}`,
+        () =>
+          cipher.resealAssetKey(identity, {
+            ciphertext: row.ciphertext,
+            keyId: row.key_id,
+          }),
+      );
+      // `updated_at`, as in the other two stores, records when a researcher
+      // last changed the key — not when a deployment last re-keyed it.
+      await client.query(
+        `UPDATE protocol_asset_keys
+            SET ciphertext = $1, key_id = $2
+          WHERE team_id = $3 AND protocol_id = $4 AND asset_id = $5`,
+        [
+          resealed.ciphertext,
+          resealed.keyId,
+          row.team_id,
+          row.protocol_id,
+          row.asset_id,
+        ],
+      );
+    }
+    return rows.rows.length;
+  },
+};
+
+/**
+ * The three places Studio stores a secret. Adding a fourth means adding an
+ * entry here and nothing else: the boot check and the rotation command both
+ * walk this list.
  */
 export const SECRET_STORES: readonly SecretStore[] = [
   webhookSubscriptions,
   account,
+  protocolAssetKeys,
 ];

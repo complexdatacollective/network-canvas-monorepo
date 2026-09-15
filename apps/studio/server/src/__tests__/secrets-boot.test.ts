@@ -28,6 +28,13 @@ const APPLY_TIMEOUT_MS = 180_000;
 const TEAM = 'team-boot';
 /** The id the fixture row is sealed under, which no keyring here can produce. */
 const MISSING_KEY_ID = 'gone';
+/**
+ * A second missing id, on a row in a different store. The refusal has to name
+ * every one of them — an operator who restored one entry and booted again
+ * would otherwise meet the same refusal with nothing new in it.
+ */
+const MISSING_ASSET_KEY_ID = 'gone-asset';
+const PROTOCOL = 'b6e4a1c2-5d3f-4e8a-9c07-1f2b3d4e5a6b';
 
 const ENTRYPOINTS = [
   ['the web process', 'src/index.ts'],
@@ -51,6 +58,19 @@ describe.skipIf(!db)('refusing to boot without the keys in use', () => {
        VALUES ($1, $2, 'https://hooks.example.org/studio', ARRAY['interview.completed'],
                '\\x01020304'::bytea, $3, 'user-boot')`,
       [randomUUID(), TEAM, MISSING_KEY_ID],
+    );
+    // And one in the third store, under an id of its own: the boot check
+    // walks the whole registry, so a store left out of it would leave a
+    // deployment serving a protocol whose API key it cannot open.
+    await applied.pool.query(
+      `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Boot protocol')`,
+      [PROTOCOL, TEAM],
+    );
+    await applied.pool.query(
+      `INSERT INTO protocol_asset_keys
+         (team_id, protocol_id, asset_id, ciphertext, key_id)
+       VALUES ($1, $2, 'mapKey', '\\x05060708'::bytea, $3)`,
+      [TEAM, PROTOCOL, MISSING_ASSET_KEY_ID],
     );
   }, APPLY_TIMEOUT_MS);
 
@@ -123,7 +143,12 @@ describe.skipIf(!db)('refusing to boot without the keys in use', () => {
         STUDIO_SECRETS_KEY: testKeyringEntry('boot-1'),
       });
       expect(code).toBe(1);
-      expect(output).toMatch(new RegExp(`cannot produce: ${MISSING_KEY_ID}`));
+      expect(output).toMatch(
+        // Sorted, so the list reads the same however the stores are ordered.
+        new RegExp(
+          `cannot produce: ${MISSING_KEY_ID}, ${MISSING_ASSET_KEY_ID}`,
+        ),
+      );
       // And what to do about it, because the two remedies are very different
       // things to reach for.
       expect(output).toMatch(/restore the database backup that matches/);
