@@ -156,7 +156,7 @@ export type ResetOptions = SeedOptions & {
 /**
  * The full local reset: drop and recreate the schema, optionally sweep the
  * scratch schemas and databases a crashed test run left behind, reapply the
- * schema, and reseed. Shared by db-reset.ts (on demand) and dev-pg.ts (every
+ * schema, and reseed. Shared by db-reset.ts (on demand) and dev.ts (every
  * `pnpm dev` boot) so the two sequences cannot drift apart. Callers own the
  * non-local safety check — this function always does the drop.
  */

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
@@ -53,6 +55,12 @@ export type StudioEnv = {
    */
   mail: MailerEnv | undefined;
   devDefaults: boolean;
+  /**
+   * Whether this instance reports anonymous usage telemetry. Nothing reads it
+   * yet — #1897 builds the reporting — but it resolves here so the variable
+   * and its opt-out exist before the first version that could report.
+   */
+  telemetry: boolean;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
@@ -151,6 +159,81 @@ function assertPinnedRoleSurvives(url: string): void {
   );
 }
 
+/**
+ * The effective connection string, with the file secret's password folded in.
+ *
+ * The compose stack (#1909) delivers the database password as a Compose file
+ * secret rather than a variable, so it appears in neither `docker inspect` nor
+ * any process environment — but `pg.Pool` and pg-boss both take one connection
+ * string, and pg-boss takes nothing else. Producing the URL here is what lets
+ * `DbEnv` stay `{ url }`, so every consumer is unchanged and none of them has
+ * to know where the password came from.
+ *
+ * Read once, at boot, like every other variable: a file whose contents change
+ * under a running process would give different pools different passwords.
+ */
+function resolveDatabaseUrl(raw: RawEnv): string | undefined {
+  const url = raw.DATABASE_URL;
+  const passwordFile = raw.DATABASE_PASSWORD_FILE;
+
+  if (!url) {
+    if (passwordFile) {
+      throw new Error(
+        'DATABASE_PASSWORD_FILE is set but DATABASE_URL is not; there is no connection to put the password into.',
+      );
+    }
+    return undefined;
+  }
+  if (!passwordFile) return url;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // The forms `new URL` refuses are the ones with no authority to hold a
+    // password — a bare socket path, a libpq keyword DSN. Refusing the
+    // combination says which of the two to change; inserting nothing and
+    // carrying on would fail later as an authentication error with no clue
+    // that the file was never used.
+    throw new Error(
+      'DATABASE_PASSWORD_FILE is set, but DATABASE_URL is not a URL a password can be inserted into (a socket path or keyword connection string has nowhere to put one). Use a postgres:// URL, or drop DATABASE_PASSWORD_FILE and configure the password the way that connection form expects.',
+    );
+  }
+  if (parsed.password !== '') {
+    throw new Error(
+      'DATABASE_URL carries a password and DATABASE_PASSWORD_FILE is also set. Keep one: remove the password from the URL, or unset DATABASE_PASSWORD_FILE.',
+    );
+  }
+
+  let contents: string;
+  try {
+    contents = readFileSync(passwordFile, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which could not be read: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    );
+  }
+  // Trailing newlines only, and for a specific reason: the Postgres image's
+  // own POSTGRES_PASSWORD_FILE reader strips exactly these, so a file written
+  // with a shell redirection sets a password there that must match here.
+  // Anything else in the file is part of the password.
+  const password = contents.replace(/[\r\n]+$/, '');
+  if (password === '') {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which is empty.`,
+    );
+  }
+
+  // The setter applies the userinfo percent-encode set, so a password
+  // containing `@`, `/`, `:` or `#` survives the round trip through the
+  // parser node-postgres uses.
+  parsed.password = password;
+  return parsed.toString();
+}
+
 function resolveS3(raw: RawEnv): S3Env | undefined {
   const values = {
     endpoint: raw.S3_ENDPOINT,
@@ -183,9 +266,11 @@ function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
     return { kind: 'smtp', url: raw.SMTP_URL, from: raw.EMAIL_FROM };
   }
   // Half a mail configuration is a deployment mistake, same as partial S3.
-  // Under the development defaults it is not: `.env.development` supplies
-  // EMAIL_FROM so that adding SMTP_URL alone (the Mailpit loop) completes the
-  // pair, which leaves it harmlessly unpaired until then.
+  // Under the development defaults it is not: the committed file supplies
+  // both, aimed at the Mailpit container the development stack runs, so the
+  // worker exercises the same delivery path a deployment does. A developer
+  // who clears SMTP_URL to work without Docker's mail sink is left with an
+  // unpaired EMAIL_FROM and the console mailer rather than a boot failure.
   if (raw.EMAIL_FROM && !devDefaults) {
     throw new Error('SMTP_URL is required when EMAIL_FROM is set');
   }
@@ -284,7 +369,8 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
     );
   }
 
-  const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
+  const databaseUrl = resolveDatabaseUrl(raw);
+  const db = databaseUrl ? { url: databaseUrl } : undefined;
   if (db) assertPinnedRoleSurvives(db.url);
 
   // The marker travels with a publicly-known signing secret, a console mailer,
@@ -310,6 +396,7 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
     auth: resolveAuth(raw, db),
     mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,
     devDefaults,
+    telemetry: raw.STUDIO_TELEMETRY ?? true,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };

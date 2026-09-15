@@ -111,7 +111,6 @@ describe('job source policy', () => {
     // with a queue; they are listed rather than filtered so that a `send` on
     // something else has to be classified here before it can land.
     expect(callers).toEqual([
-      'apps/studio/server/scripts/dev-s3.ts: send, send, send',
       'apps/studio/server/src/__tests__/assets.test.ts: send',
       'apps/studio/server/src/assets.ts: send, send, send, send',
       `${ENQUEUE_MODULE}: send`,
