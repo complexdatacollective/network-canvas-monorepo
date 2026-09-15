@@ -1,14 +1,11 @@
-import { BookOpenText, Download, Images } from 'lucide-react';
+import { BookOpenText, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { PreviewProtocolButton } from '~/components/protocol-gallery/PreviewProtocolButton';
-import type {
-  ProtocolDownload,
-  ProtocolSupplementaryMaterial,
-} from '~/lib/protocolGallery';
+import type { ProtocolDownload } from '~/lib/protocolGallery';
 import { protocolGalleryPreviewHref } from '~/lib/siteUrls';
 
 function WaveActions({
@@ -72,12 +69,10 @@ export function ProtocolDownloads({
   locale,
   slug,
   downloads,
-  supplementaryMaterials,
 }: {
   locale: string;
   slug: string;
   downloads: ProtocolDownload[];
-  supplementaryMaterials: ProtocolSupplementaryMaterial[];
 }) {
   const t = useTranslations('ProtocolGallery.detail');
   const [firstWave, ...laterWaves] = downloads;
@@ -85,19 +80,6 @@ export function ProtocolDownloads({
 
   const previewHref = (wave: number) =>
     protocolGalleryPreviewHref(locale, slug, wave);
-  const materialActions = supplementaryMaterials.map((material) => (
-    <Button
-      key={material.filename}
-      asChild
-      color="secondary"
-      variant="raised"
-      icon={<Images aria-hidden />}
-    >
-      <a href={material.path} target="_blank" rel="noreferrer">
-        {material.label}
-      </a>
-    </Button>
-  ));
 
   if (laterWaves.length === 0) {
     return (
@@ -106,7 +88,6 @@ export function ProtocolDownloads({
           download={firstWave}
           previewHref={previewHref(firstWave.wave)}
         />
-        {materialActions}
       </div>
     );
   }
@@ -121,9 +102,6 @@ export function ProtocolDownloads({
           label={t('wave', { wave: download.wave })}
         />
       ))}
-      {materialActions.length > 0 ? (
-        <div className="flex flex-wrap gap-3">{materialActions}</div>
-      ) : null}
     </div>
   );
 }

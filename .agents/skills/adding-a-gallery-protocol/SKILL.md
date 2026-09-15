@@ -95,7 +95,6 @@ study almost always changes the stage list.
 | `Featured`                                                         | exactly `yes` or `no`; featured rows sort first under every sort option                                                                                                                         |
 | `Protocol File (asset) Wave N` / `Codebook Summary (asset) Wave N` | optional, but must be filled or empty **as a pair**                                                                                                                                             |
 | `Date Added`                                                       | `Mon. D,YYYY` — an English three-letter month, optional period, then day, comma, year (`Oct. 22,2025`). Drives the newest/oldest sort.                                                          |
-| `Supplementary Material Label` / `Supplementary Material (asset)`  | optional, but must be filled or empty **as a pair**; the asset must be a `.pdf`                                                                                                                 |
 
 Facet values are matched as exact strings, so a new spelling silently creates a
 second facet beside the one it meant to join. Reuse an existing value verbatim —

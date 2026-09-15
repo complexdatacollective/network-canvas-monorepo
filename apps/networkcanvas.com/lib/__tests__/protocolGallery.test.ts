@@ -60,12 +60,6 @@ describe('loadProtocolGallery', () => {
       usesRosters: true,
       fields: ['Social work', 'Aging'],
       edgeGeneration: ['Sociogram'],
-      supplementaryMaterials: [
-        {
-          filename: 'SNAAPS_v1.0 Sample Interview Screenshots.pdf',
-          label: 'Sample interview screenshots',
-        },
-      ],
     });
 
     for (const protocol of protocols) {
@@ -81,11 +75,6 @@ describe('loadProtocolGallery', () => {
         ).toBe(true);
         expect(download.protocolPath).not.toContain('assets.networkcanvas.com');
         expect(download.codebookPath).not.toContain('assets.networkcanvas.com');
-      }
-      for (const material of protocol.supplementaryMaterials) {
-        expect(material.filename).not.toContain('/');
-        expect(material.path).toContain('/protocols/protocol-gallery/');
-        expect(material.path).not.toContain('assets.networkcanvas.com');
       }
     }
   });

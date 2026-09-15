@@ -27,7 +27,7 @@ export function PreviewProtocolButton({ href }: { href: string }) {
   return (
     <Button
       asChild
-      color="secondary"
+      color="success"
       variant="raised"
       icon={<Play aria-hidden />}
     >

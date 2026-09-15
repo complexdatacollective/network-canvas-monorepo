@@ -138,7 +138,6 @@ export default async function ProtocolDetailPage({
                       locale={locale}
                       slug={protocol.slug}
                       downloads={protocol.downloads}
-                      supplementaryMaterials={protocol.supplementaryMaterials}
                     />
                   </div>
                   <Paragraph margin="none" className="mt-8">
