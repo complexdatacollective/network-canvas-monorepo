@@ -39,7 +39,8 @@ export type AuthEnv = {
 export type StudioEnv = {
   port: number;
   host: string;
-  clientDist: string | undefined;
+  /** The worker's loopback health listener; the web process never binds it. */
+  workerHealthPort: number;
   s3: S3Env | undefined;
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
@@ -59,6 +60,9 @@ export type StudioEnv = {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
+// One above the web process's port, because in development both processes run
+// on one host and the worker cannot reuse PORT.
+const DEFAULT_WORKER_HEALTH_PORT = 3001;
 
 /**
  * Unset means self-hosted, the fail-closed direction. Its failure mode is
@@ -300,7 +304,7 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
   return {
     port: raw.PORT ?? DEFAULT_PORT,
     host: raw.HOST ?? DEFAULT_HOST,
-    clientDist: raw.CLIENT_DIST,
+    workerHealthPort: raw.WORKER_HEALTH_PORT ?? DEFAULT_WORKER_HEALTH_PORT,
     s3: resolveS3(raw),
     db,
     auth: resolveAuth(raw, db),

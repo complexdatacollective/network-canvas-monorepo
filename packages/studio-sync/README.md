@@ -26,8 +26,9 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   the SQL granting the two database roles their access to pg-boss's schema.
   Plain data and SQL — it imports no pg-boss, and the server checks the queue
   options against pg-boss's own type at compile time. A queue is part of the
-  schema, so it lives beside the roles and is installed once by the server's
-  `apply-schema`.
+  schema, so it lives beside the roles and is installed once per deployment, by
+  `studio-api migrate` from the image or the server's `apply-schema` from a
+  checkout.
 
 The server/schema modules depend on `pg`; client code must import only
 `./apply` and `./client`.

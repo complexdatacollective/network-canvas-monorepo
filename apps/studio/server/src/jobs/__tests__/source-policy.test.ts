@@ -77,18 +77,20 @@ describe('job source policy', () => {
       .map(({ path }) => path)
       .toSorted();
 
-    // scripts/apply.ts installs pg-boss's schema; support/postgres.ts does the
-    // same for a scratch schema. Everything else reaches a queue through
-    // src/jobs, which is what keeps `send` in one place — including the job
-    // suites themselves, which drive pg-boss through the seams the server
-    // uses rather than constructing their own.
+    // src/jobs/install.ts installs pg-boss's schema and reconciles the queues,
+    // for both callers that apply a schema — scripts/apply.ts from a checkout
+    // and src/db/migrate.ts in the image; support/postgres.ts does the same for
+    // a scratch schema. Everything else reaches a queue through src/jobs, which
+    // is what keeps `send` in one place — including the job suites themselves,
+    // which drive pg-boss through the seams the server uses rather than
+    // constructing their own.
     expect(importers).toEqual([
-      'apps/studio/server/scripts/apply.ts',
       'apps/studio/server/src/__tests__/support/postgres.ts',
       'apps/studio/server/src/jobs/client.ts',
       'apps/studio/server/src/jobs/database.ts',
       'apps/studio/server/src/jobs/enqueue.ts',
       'apps/studio/server/src/jobs/handlers/invitation-delivery.ts',
+      'apps/studio/server/src/jobs/install.ts',
       'apps/studio/server/src/jobs/queues.ts',
       'apps/studio/server/src/jobs/register.ts',
       'apps/studio/server/src/jobs/worker.ts',
@@ -111,7 +113,7 @@ describe('job source policy', () => {
     expect(callers).toEqual([
       'apps/studio/server/scripts/dev-s3.ts: send, send, send',
       'apps/studio/server/src/__tests__/assets.test.ts: send',
-      'apps/studio/server/src/assets.ts: send, send, send',
+      'apps/studio/server/src/assets.ts: send, send, send, send',
       `${ENQUEUE_MODULE}: send`,
     ]);
   });

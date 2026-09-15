@@ -32,6 +32,12 @@ import {
   type InstallationReader,
 } from './domain.ts';
 import { readEnv } from './env.ts';
+import {
+  CHECK_TIMEOUT_MS,
+  createHealthRoutes,
+  databaseCheck,
+  schemaCheck,
+} from './health.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
@@ -58,9 +64,9 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 type CreateAppDeps = {
   auth?: AuthService;
   /**
-   * How a request creates background work (#1895). Absent on an entrypoint
-   * with no database — the Netlify lane — where nothing can be queued and
-   * nothing that would queue anything is reachable, because auth is off.
+   * How a request creates background work (#1895). Absent where there is no
+   * database: nothing can be queued, and nothing that would queue anything is
+   * reachable, because auth is off.
    */
   jobs?: JobClient;
   pool?: pg.Pool;
@@ -96,8 +102,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : [],
   };
 
-  // Which topology this deployment is. The client reads it from `status`;
-  // src/client-assets.ts enforces the same classification at the HTTP layer.
+  // Which topology this deployment is. This process only REPORTS it, on the
+  // `status` procedure below: there is no HTTP gate any more, because nginx
+  // serves the client (#1909) and no page path reaches here to be refused.
+  // Enforcement is the client's `topologyGuard` (client/src/lib/deployment.ts),
+  // which reads the mode from `status` and answers a route the other topology
+  // owns with TanStack's `notFound()` — so this value is the whole input to
+  // that gate, and a deployment that reported the wrong mode would open the
+  // other topology's surfaces.
   const deployment = getDeploymentStatus(env.deploymentMode);
 
   // The instance's name and whether anybody owns it (#1909), for both status
@@ -117,7 +129,35 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     }
   };
 
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
+  // One store for both the /storage routes below and the protocol builder's
+  // content promotions — they name the same bytes — and for the readiness
+  // probe, which is why it is built before the health routes are mounted.
+  const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
+
+  // Liveness and readiness (#1897). The worker serves these same routes on a
+  // loopback listener of its own; what differs is which checks each process
+  // runs, so the checks are assembled by the caller rather than by
+  // createHealthRoutes. The object store is omitted where none is configured:
+  // that surface refuses by design, and reporting it failed would make a
+  // deployment that never wanted one permanently unready.
+  app.route(
+    '/',
+    createHealthRoutes({
+      ...(pool ? { db: databaseCheck(pool), schema: schemaCheck(pool) } : {}),
+      ...(assetStore
+        ? {
+            objectStore: async () => {
+              // The same bound the route applies, handed to the SDK as well:
+              // a probe the route stopped waiting on would otherwise keep
+              // retrying and holding a socket, once per check, for as long as
+              // the endpoint stays unreachable.
+              await assetStore.head(AbortSignal.timeout(CHECK_TIMEOUT_MS));
+              return 'ok' as const;
+            },
+          }
+        : {}),
+    }),
+  );
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -158,9 +198,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
-  // One store for both surfaces: the /storage routes and the protocol
-  // builder's content promotions name the same bytes.
-  const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
   app.route('/storage', createAssetRoutes(assetStore));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),

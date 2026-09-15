@@ -25,10 +25,11 @@ when its boundary moved.
   server through typed oRPC procedures, importing the boundary contract
   type-only.
 - `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
-  (Node 24 baseline), one persistent process serving every surface below, plus
-  static client assets in the self-host topology. A second process built from
-  the same source runs background jobs and nothing else (see
-  [Background work](#background-work)). It owns the database:
+  (Node 24 baseline), one persistent process serving every surface below. It
+  serves no client assets in any topology — nginx does, from the `studio-web`
+  image (#1909). A second process built from the same source runs background
+  jobs and nothing else (see [Background work](#background-work)), and a
+  third creates the schema and exits. It owns the database:
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
 - `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
@@ -555,8 +556,8 @@ Both files yield to the surrounding environment — Node's env-file loader never
 overwrites a variable that is already set — so an exported value beats either
 of them.
 
-No deployment path loads `.env.development`: the Docker image never copies it,
-Netlify injects variables into the process instead, and `pnpm start` reads
+No deployment path loads `.env.development`: the images never copy it, a
+deployment supplies variables to the container instead, and `pnpm start` reads
 only `.env`. That is what makes it safe to key the development conveniences —
 the console mailer, and tolerating an unpaired `EMAIL_FROM` — to the
 `STUDIO_DEV_DEFAULTS` marker that file sets.
@@ -590,14 +591,14 @@ fails `pnpm typecheck`.
 
 ### Process
 
-| Variable                 | What it is                                                                                                                                                                   | Development default | Real deployment                                                                                                                                                                                                                       |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`               | Runtime mode. Anything other than `production` leaves development affordances available.                                                                                     | `development`       | Set to `production` by the Docker image and by Netlify.                                                                                                                                                                               |
-| `STUDIO_DEV_DEFAULTS`    | Marks the process as running against the committed development defaults.                                                                                                     | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                                                                                                                                        |
-| `PORT`                   | TCP port the HTTP server listens on.                                                                                                                                         | —                   | Unset ⇒ 3000.                                                                                                                                                                                                                         |
-| `HOST`                   | Interface the HTTP server binds to.                                                                                                                                          | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                    |
-| `CLIENT_DIST`            | Directory of built client assets to serve, resolved against the working directory.                                                                                           | —                   | Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client.                                                                                                                 |
-| `STUDIO_DEPLOYMENT_MODE` | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404. | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in its runtime environment — the container environment, or a Netlify site variable, never a build-time one, because both entrypoints read it inside the running process. |
+| Variable                 | What it is                                                                                                                                                                   | Development default | Real deployment                                                                                                                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`               | Runtime mode. Anything other than `production` leaves development affordances available.                                                                                     | `development`       | Set to `production` by the `studio-api` image.                                                                                                                                                                                                                     |
+| `STUDIO_DEV_DEFAULTS`    | Marks the process as running against the committed development defaults.                                                                                                     | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                                                                                                                                                                     |
+| `PORT`                   | TCP port the HTTP server listens on.                                                                                                                                         | —                   | Unset ⇒ 3000.                                                                                                                                                                                                                                                      |
+| `HOST`                   | Interface the HTTP server binds to.                                                                                                                                          | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                                                 |
+| `WORKER_HEALTH_PORT`     | TCP port the worker process serves `/healthz` and `/readyz` on, bound to `127.0.0.1` only.                                                                                   | —                   | Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`. |
+| `STUDIO_DEPLOYMENT_MODE` | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404. | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in the container environment, at run time rather than at build time, because every entrypoint reads it inside the running process.                                                                    |
 
 ### Object storage
 
@@ -635,58 +636,115 @@ fails `pnpm typecheck`.
 
 ## Production
 
+Two images, built from one Dockerfile at the monorepo root (#1909):
+
+```bash
+docker build -f apps/studio/Dockerfile --target studio-api -t studio-api .
+docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
+```
+
+`studio-api` carries the server bundle. Its entrypoint dispatches on the first
+argument, so one image runs every Studio process and a deployment names a
+command rather than a path into the bundle:
+
+| Command                  | What it is                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `serve` (the default)    | HTTP, the RPC surface and the WebSocket endpoint; a single replica (#1247)                  |
+| `worker`                 | background jobs and cron schedules; scalable (see [Background work](#background-work))      |
+| `migrate`                | creates this build's schema in an empty database; once per deployment, not once per replica |
+| `maintenance on` / `off` | closes the instance to users. A stub that exits 64 until #1901 merges                       |
+| `rotate-secrets`         | re-encrypts stored secrets under a new keyring. A stub that exits 64 until #1900 merges     |
+
+```bash
+docker run --rm --env-file .env studio-api migrate
+docker run --rm --env-file .env -p 3000:3000 studio-api serve
+docker run --rm --env-file .env studio-api worker
+```
+
+`studio-web` is nginx serving the built client and the maintenance page
+(`apps/studio/client/nginx.conf`). It proxies nothing: Traefik routes the API's
+paths to `studio-api` and everything else to it, so the browser sees one
+origin. Since #1909 the server holds no client assets at all — it serves no
+page path in any topology, and the topology gate that used to live beside the
+static mount is now the client's alone (`client/src/lib/deployment.ts`).
+
+Both halves also run straight from a checkout, which is what the suites and a
+local smoke test use:
+
 ```bash
 pnpm --filter @codaco/studio-client build        # client/dist — static assets
 pnpm --filter @codaco/studio-server build        # server/dist — Node bundle
-pnpm --filter @codaco/studio-server start        # serves both locally
-pnpm --filter @codaco/studio-server start:worker # runs the background jobs
+pnpm --filter @codaco/studio-server start        # the web process
+pnpm --filter @codaco/studio-server start:worker # the background worker
+pnpm --filter @codaco/studio-server start:migrate # the schema one-shot
 ```
 
-The Docker image — the self-host artifact — builds from the monorepo root and
-contains the server bundle plus the built client assets:
+### Health checks
 
-```bash
-docker build -f apps/studio/Dockerfile -t network-canvas-studio .
-docker run --rm -p 3000:3000 network-canvas-studio
+There is no `HEALTHCHECK` in the image, deliberately: the entrypoint decides
+which process runs, and a check that suited `serve` would be wrong for `worker`
+and meaningless for `migrate`. The check belongs to the service, and this is
+the contract each process offers.
+
+| Process  | Check                                           | What it means                                                                                                           |
+| -------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `serve`  | `GET /healthz` on `PORT`                        | Liveness. It consults nothing, so a container runtime does not restart a healthy process because Postgres is down       |
+| `worker` | `GET /readyz` on `127.0.0.1:WORKER_HEALTH_PORT` | Readiness, including the pg-boss connection — the one thing a process that answers no request cannot otherwise be asked |
+
+Both processes serve both routes. `/readyz` runs each of the process's checks
+under a one-second bound and answers with the verdict per check:
+
+```json
+{ "status": "ok", "checks": { "db": "ok", "schema": "ok", "jobs": "ok" } }
 ```
 
-Background work runs in a second container from that same image, started with
-the worker command (see [Background work](#background-work)):
+`status` is `ok`, `degraded` or `failing`, and only `failing` answers 503 — a
+degraded process still serves. The web process checks its application pool, the
+schema fingerprint, and the object store where one is configured; the worker
+checks its maintenance pool, the schema, and whether pg-boss is connected. A
+surface this deployment has not configured is left out rather than reported
+failed: it refuses by design, and a check for it would make an instance that
+never wanted one permanently unready.
 
-```bash
-docker run --rm --no-healthcheck network-canvas-studio node dist/worker.js
-```
-
-`--no-healthcheck` because the image's `HEALTHCHECK` polls `/healthz`, which
-the worker deliberately does not serve: it binds no port at all. The worker is
-the only process that sends mail, so `SMTP_URL` and `EMAIL_FROM` belong in its
-environment. Process-aware health checks belong to the deployment aspect of
-#1243.
+The worker's listener binds `127.0.0.1` and nothing else. It is not a service
+anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the
+healthcheck can name a port — not so the listener can be published.
 
 ### Database schema and seeding
 
-Two steps, run **once per deployment** against `DATABASE_URL` — not once per
-replica, which is why they are commands rather than boot work:
+Run **once per deployment** against `DATABASE_URL` — not once per replica,
+which is why these are commands rather than boot work. A deployment runs
+`migrate` from the image; a checkout runs `apply-schema`:
 
 ```bash
-pnpm --filter @codaco/studio-server apply-schema
+docker run --rm --env-file .env studio-api migrate   # a deployment
+pnpm --filter @codaco/studio-server apply-schema     # a checkout
 pnpm --filter @codaco/studio-server seed
 ```
 
-Both are idempotent and identical in every topology: `apply-schema` is
-`drizzle-kit push` — it reconciles the database to this build's definitions
-and stamps the fingerprint — and `seed` refuses against a database whose
-fingerprint does not match. Three things are worth knowing before you rely on
+All of them are idempotent, and `seed` refuses against a database whose
+fingerprint does not match. Four things are worth knowing before you rely on
 them:
 
-- **Every lane needs `apply-schema`, and it runs from a repo checkout.** The
-  server only verifies the fingerprint at boot — drizzle-kit cannot ship in
-  the server bundle, so no deployment applies schema by booting. A stale or
-  never-provisioned database stops the boot with the remedy; a configured
-  database it cannot reach fails it too. Only the development lane comes up
-  anyway and keeps retrying, because only there is the cause a container that
-  has not finished starting or a `dev-pg` schema provision that has not
-  landed yet (`dev-pg` applies the schema itself when the database has none).
+- **The two schema commands are not interchangeable, and both are honest about
+  which they are.** `apply-schema` is `drizzle-kit push`: it reconciles a
+  database to this build's definitions, whatever state it was in, and it needs
+  a repository checkout because drizzle-kit is a development dependency that
+  must never reach the bundle. `migrate` is the deployed half, and pre-release
+  it can do less: the build renders the statements push would have produced
+  into `dist/schema-ddl.json`, and the command executes them into an _empty_
+  database, is a no-op against a current one, and **refuses** a database some
+  other build created rather than reconciling it — recreate it, or wait for the
+  migration system (#1901), which replaces the internals of this command
+  without changing the command. Both stamp the same fingerprint, and every
+  process refuses a database that does not carry this build's.
+- **No deployment applies schema by booting.** The server only verifies the
+  fingerprint at boot. A stale or never-provisioned database stops the boot
+  with the remedy; a configured database it cannot reach fails it too. Only the
+  development lane comes up anyway and keeps retrying, because only there is
+  the cause a container that has not finished starting or a `dev-pg` schema
+  provision that has not landed yet (`dev-pg` applies the schema itself when
+  the database has none).
 - **The login needs `CREATEROLE` the first time.** `apply-schema` creates the
   `studio_app` and `studio_maintenance` roles the server runs as (see
   [Tenancy](#tenancy)) and grants the login the right to assume them. The
@@ -699,13 +757,6 @@ them:
   GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE;
   ```
 
-- **The Netlify lane has no automation.** Its build command does not touch the
-  database and its function has no boot, so `apply-schema` is a manual step
-  there — and consequently the only place that lane ever detects a stale
-  schema. That lane runs only the web process, and it has no database at all,
-  so nothing can be queued there and there is no worker to run it. Sign-in and
-  team invitations are refused there because auth is off (see the note in
-  `netlify.toml`), not because delivery is unavailable.
 - **`seed` wipes every table and repopulates synthetic content** (faker,
   `src/db/seed.ts` and `src/db/seed/`): five teams with a mix of members
   across every team role, and one fixed admin account —
@@ -777,98 +828,60 @@ with the token it prints.
 
 ## Deployment topologies
 
-Decided 2026-08-11 on #1245. Both topologies run the same artifacts and
-present a single origin; they differ in who serves the static client assets,
-and in which paths exist.
+Decided 2026-08-11 on #1245, and reshaped by the 2026-09-15 ruling on #1909
+into one compose stack. Both topologies run the same two images and present a
+single origin; what differs is which paths exist.
 
-`STUDIO_DEPLOYMENT_MODE` picks the topology at runtime, so one image serves
-both. The managed-only surfaces — marketing, pricing, legal, the sign-up
-funnel and `/team/$teamId/billing` — are refused with a real HTTP 404 on a
-self-hosted instance, and first-run `/setup` is refused on the managed
-service, so no tenant can reach instance configuration. The refusal still
-returns the app shell, so the client renders its branded not-found state
-behind an honest status line. `/` is served in both: a self-hoster's origin
-root is the URL they hand their researchers, and 404ing it would make the
-instance dead at the address people type.
+`STUDIO_DEPLOYMENT_MODE` picks the topology at runtime, so one pair of images
+serves both. The managed-only surfaces — marketing, pricing, legal, the sign-up
+funnel and `/team/$teamId/billing` — are refused on a self-hosted instance, and
+first-run `/setup` is refused on the managed service, so no tenant can reach
+instance configuration. `/` is served in both: a self-hoster's origin root is
+the URL they hand their researchers, and refusing it would make the instance
+dead at the address people type.
 
 The classification is one list, in `@codaco/studio-rpc`'s `surfaces` module —
-the only code both deployables import — read by the server's gate
-(`server/src/client-assets.ts`) and by the client's route tree, so the two
+the only code both deployables import. The server reports the mode over the
+`status` procedure and the client's route tree reads the same list, so the two
 cannot drift. Unset means `self-hosted`, the fail-closed value: a managed
-deployment that forgets the variable 404s its own pricing page on the first
-smoke request, where the opposite default would have an institution's
-instance quietly publishing one.
+deployment that forgets the variable refuses its own pricing page on the first
+smoke request, where the opposite default would have an institution's instance
+quietly publishing one.
+
+Since #1909 the refusal is the client's alone: nginx serves every page path, so
+the server sees none to refuse and the HTTP-layer gate that used to sit beside
+its static mount is gone.
 
 ### Managed service
 
-Cloudflare fronts the single hostname: it serves the client's hashed assets
-from the CDN (retaining old hashes across deploys, so open tabs never lose
-their chunks) and routes the server's paths to the origin — a persistent Node
-process colocated with the Postgres primary. Edge compute is a non-goal;
-replicas serve only reads the query layer marks replica-tolerant (#1246).
+One origin, behind the same ingress a self-hoster runs: the client from the
+`studio-web` container, the API's paths to a `studio-api` container, Postgres,
+and S3-compatible object storage (#1246). There is no CDN in front of the
+client — nginx behind the ingress is enough at the expected scale — and edge
+compute is a non-goal; replicas serve only the reads the query layer marks
+replica-tolerant.
 
-Background jobs run in a second container from the same image, colocated with
-the web process (see [Background work](#background-work)). The web process
-stays a single replica, as it already did: the sync leases it holds and the
-audit denial-rate window it counts are per-process state, and a second replica
-would change what that window means (#1251). Workers have no such state and may
-be scaled — pg-boss hands each job, and each firing of a cron schedule, to
-exactly one of them.
+Background jobs run in a second `studio-api` container, colocated with the web
+process (see [Background work](#background-work)). The web process stays a
+single replica, as it already did: the sync leases it holds and the audit
+denial-rate window it counts are per-process state (#1247). Workers have no
+such state and may be scaled — pg-boss hands each job, and each firing of a
+cron schedule, to exactly one of them.
 
-```mermaid
-graph LR
-    P[Participant / researcher<br/>browser — Studio SPA]
-    X[External tools<br/>Python, R, curl]
-
-    subgraph CF[Cloudflare — one origin]
-        CDN[CDN<br/>static client assets<br/>immutable hashed chunks]
-        RT[Route<br/>/api/* · /rpc · /ws]
-    end
-
-    subgraph O[Origin region]
-        S[studio-server<br/>persistent Node process<br/>WS + leases: single replica]
-        W[studio-server worker<br/>same image, node dist/worker.js<br/>jobs + cron: scalable]
-        PG[(Postgres<br/>primary)]
-        RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
-    end
-
-    R2[(R2 object storage<br/>content-addressed assets)]
-
-    P -->|assets| CDN
-    P -->|"/rpc · /ws (cookie)"| RT
-    X -->|"/api/v1 (PAT)"| RT
-    RT --> S
-    S -->|"rows + jobs (one transaction)"| PG
-    W -->|"jobs + cron"| PG
-    S -.-> RR
-    PG -.->|streaming replication| RR
-    S -->|S3 API| R2
-    CDN -.->|stimuli, signed URLs| R2
-```
+The platform that runs this — the host, image publishing, the deploy workflows
+and staging — is #1910.
 
 ### Self-host
 
-The same server image embeds and serves the client assets itself: the app
-container, a second container from that image running the worker, Postgres, and
-an S3-compatible object store (MinIO by default, or bring your own endpoint) —
-the same shape Fresco self-hosters already run, plus the worker.
-
-```mermaid
-graph LR
-    B[Browser]
-
-    subgraph H[Researcher-operated host — Docker]
-        C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws · /storage]
-        W[studio worker container<br/>same image, node dist/worker.js<br/>jobs + cron, no port]
-        PG[(Postgres<br/>container)]
-        M[(MinIO container<br/>or BYO S3 endpoint)]
-    end
-
-    B -->|one origin| C
-    C --> PG
-    W --> PG
-    C -->|S3 API| M
-```
+The reference stack is a Docker Compose file — Traefik as the only ingress,
+`studio-web`, `studio-api` as both the API and the worker, Postgres, an
+S3-compatible object store, and a `migrate` one-shot — with each of those
+elements swappable for an institution's own service. The compose file a
+self-hoster runs is the compose file the platform runs. It is specified by
+[#1909](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1909)
+and arrives in the next pull request, together with the routing table, the
+maintenance page and the self-host guide; until then the images above are what
+exists, and running them by hand is the only documented way to do it.
 
 The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
@@ -886,8 +899,8 @@ is no single-tenant code path.
 
 | Release contains                 | Deploys                      | Live-session impact              |
 | -------------------------------- | ---------------------------- | -------------------------------- |
-| Client only                      | CDN asset publish            | None                             |
-| Server only (boundary untouched) | Backend                      | WS reconnect + resume            |
+| Client only                      | `studio-web`                 | None                             |
+| Server only (boundary untouched) | `studio-api`                 | WS reconnect + resume            |
 | Additive boundary change         | Server, then client          | WS reconnect + resume            |
 | Breaking boundary change         | Coordinated: server → client | Forced by the compatibility gate |
 
@@ -896,3 +909,7 @@ on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
 protocol's reconnect-and-resume path makes the interruption routine (#1247).
 Managed backend deploys trigger on `@codaco/studio-server` version changes —
 never on image rebuilds — so client-only releases cannot bounce the backend.
+While the API container is being replaced, the ingress serves the static
+maintenance page from `studio-web` (`client/public/maintenance.html`) for every
+path except `/healthz` and `/readyz`, which pass through untouched so the
+deploy and the container runtime always read the real status.
