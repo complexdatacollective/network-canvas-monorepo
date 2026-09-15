@@ -96,7 +96,7 @@ describe('the node availability section, read in Spanish', () => {
     expect(harness.outline()[0]?.title).toBe('Disponibilidad de nodos');
     expect(
       screen.getByText(
-        'Decide qué ocurre con una persona una vez que el participante ha terminado de evaluarla.',
+        'Elige si un nodo focal sigue disponible después de evaluarlo.',
       ),
     ).toBeInTheDocument();
     expect(

@@ -1,6 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -68,13 +72,15 @@ describe('creating a tie-strength census stage', () => {
       'How close are they?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+    await screen.findByText('Ordinal attribute', { selector: 'label' });
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Ordinal attribute'),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'They have never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));

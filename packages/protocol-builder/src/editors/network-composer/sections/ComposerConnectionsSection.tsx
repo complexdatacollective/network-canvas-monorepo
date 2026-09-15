@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useCallback, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import Section from '@codaco/fresco-ui/Section';
 
 import { EntitySubjectPickerField } from '../../../fields/EntityTypePickerField.tsx';
 import {
@@ -28,7 +29,6 @@ import { composerFormFieldMessages } from '../../../sections/form-fields/compose
 import { ComposerFormFieldsControl } from '../../../sections/form-fields/ComposerFormFields.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { composerMessages as messages } from './composerMessages.ts';
-import CreateConnectionTypeButton from './CreateConnectionTypeButton.tsx';
 import { useSetStageValue } from './useSetStageValue.ts';
 
 const EDGES_FIELD = 'edges';
@@ -90,33 +90,45 @@ export default function ComposerConnectionsSection() {
   const intl = useAppIntl();
   const held = useStageValue(EDGES_FIELD);
   const entries = useMemo(() => rowsOf(held), [held]);
-  const setStageValue = useSetStageValue();
-
   /**
-   * A type created from here is meant for THIS canvas, so it becomes drawable
-   * at once rather than being left for the researcher to find in a list that
-   * has just grown. The same rule Architect's own composer follows.
+   * How many questions the last re-point took away, for the notice below, and
+   * WHICH re-point took them.
    *
-   * Nothing to refuse: a type the host has only just minted is not one this
-   * stage can already be drawing.
+   * The count alone is the same value twice when two re-points each drop one,
+   * and a live region whose text has not changed announces nothing — so the
+   * second one would be silent, which is the state this notice exists to end.
+   * The act's own number keys the notice, so each save replaces the node.
    */
-  const drawCreatedType = useCallback(
-    (typeId: string) => {
-      setStageValue(EDGES_FIELD, [
-        ...entries,
-        { id: uuid(), subject: { entity: 'edge', type: typeId } },
-      ]);
-    },
-    [entries, setStageValue],
-  );
+  const [dropped, setDropped] = useState({ questions: 0, act: 0 });
 
   /**
-   * One kind of connection may only be drawable once.
+   * One kind of connection may only be drawable once, and an entry pointed at
+   * another kind does not keep the questions it used to ask.
    *
    * The protocol schema refuses duplicate types in `edges` outright, and a
    * second entry for a type would carry questions the interview could never
    * reach — it resolves a selected connection's form by TYPE. Asked of the
    * LIVE rows, so a type freed by an entry just deleted can be chosen at once.
+   *
+   * The questions go because this dialog renders the type and nothing else:
+   * `documentFromSubmission` keeps what an editor never rendered, which is
+   * right for a value the researcher cannot see and wrong for one whose whole
+   * meaning is the type beside it. Every field of the old form records an
+   * attribute of the OLD edge type, and carrying them over left the stage
+   * asking a "family" connection for what only a "knows" connection has.
+   * Cleared rather than refused: the researcher came here to change the type,
+   * and the questions are asked again below the list once it has.
+   *
+   * An entry that arrived naming NO type is the same act: `edges` tolerates
+   * one — `typeOf` reads it, the preview names it, and its questions are
+   * invisible until a type is given — so the questions it carries are the old
+   * type's just as much, and answering "unchanged" for it left them recording
+   * attributes the chosen type does not have. A row being ADDED reaches the
+   * same branch with no form to lose.
+   *
+   * What it drops is said, because nothing else here reports it: the dialog
+   * shows the type alone, so the questions go from a list the researcher
+   * cannot see while they press Save.
    */
   const rowList = useMemo<RowListConfig>(
     () => ({
@@ -128,17 +140,25 @@ export default function ComposerConnectionsSection() {
           (sibling, index) =>
             index !== context.editIndex && typeOf(sibling) === type,
         );
-        return taken
-          ? {
-              refused: {
-                fieldErrors: {
-                  [SUBJECT_FIELD]: intl.formatMessage(
-                    messages.duplicateConnectionRefusal,
-                  ),
-                },
+        if (taken) {
+          return {
+            refused: {
+              fieldErrors: {
+                [SUBJECT_FIELD]: intl.formatMessage(
+                  messages.duplicateConnectionRefusal,
+                ),
               },
-            }
-          : { row };
+            },
+          };
+        }
+        const openedOn = typeOf(context.openedOn);
+        if (openedOn === type) return { row };
+        setDropped((previous) => ({
+          questions: fieldsOf(context.openedOn).length,
+          act: previous.act + 1,
+        }));
+        const { form: _form, ...repointed } = row;
+        return { row: repointed };
       },
     }),
     [entries, intl],
@@ -149,23 +169,51 @@ export default function ComposerConnectionsSection() {
       title={intl.formatMessage(messages.connectionsTitle)}
       description={intl.formatMessage(messages.connectionsDescription)}
     >
-      <RowList config={rowList}>
-        <Field<typeof ArrayField<RowValues>>
-          name={EDGES_FIELD}
-          component={ArrayField}
-          label={intl.formatMessage(messages.connectionsLabel)}
-          hint={intl.formatMessage(messages.connectionsHint)}
-          getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
-          itemLabel={messages.connectionNoun}
-          emptyStateMessage={intl.formatMessage(messages.connectionsEmptyState)}
-          itemComponent={RowListItem}
-          editorComponent={RowDialog}
-          itemTemplate={rowTemplate()}
-          sortable
-        />
-      </RowList>
-      <CreateConnectionTypeButton onCreated={drawCreatedType} />
+      <Section
+        title={intl.formatMessage(messages.connectionTypesSectionTitle)}
+        description={intl.formatMessage(
+          messages.connectionTypesSectionDescription,
+        )}
+      >
+        <RowList config={rowList}>
+          <Field<typeof ArrayField<RowValues>>
+            name={EDGES_FIELD}
+            component={ArrayField}
+            label={intl.formatMessage(messages.connectionsLabel)}
+            getId={rowId}
+            addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
+            itemLabel={messages.connectionNoun}
+            emptyStateMessage={intl.formatMessage(
+              messages.connectionsEmptyState,
+            )}
+            itemComponent={RowListItem}
+            editorComponent={RowDialog}
+            itemTemplate={rowTemplate()}
+            sortable
+          />
+        </RowList>
+        {/* Always mounted, so a screen reader is watching this region before the
+            notice appears: a live region added to the page at the same moment as
+            its own content is not reliably announced. The `Alert` inside it is
+            presentational because its `info` variant is a `role="status"` of its
+            own, and a second polite region inside this one is announced twice. */}
+        <div role="status" aria-live="polite">
+          {dropped.questions > 0 && (
+            <Alert
+              key={dropped.act}
+              variant="info"
+              role="presentation"
+              className="mb-8"
+            >
+              <AlertDescription>
+                {intl.formatMessage(messages.connectionQuestionsDropped, {
+                  questionCount: dropped.questions,
+                })}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </Section>
       <ConnectionForms entries={entries} />
     </BuilderSection>
   );

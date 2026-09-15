@@ -56,8 +56,27 @@ export const EditingAPrompt: Story = {
     });
     // The scale is the CONNECTION's attribute, not the person's.
     await expect(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue('closeness');
+      panel.querySelector('[data-attribute-type]'),
+    ).toHaveTextContent('closeness');
+
+    // Choosing a different attribute happens in a second overlay, opened from
+    // inside this dialog. It dims the dialog behind it the same way the dialog
+    // dims the editor — Base UI's own default would give a nested overlay no
+    // dimmed layer at all, leaving the spotlight floating over a live-looking
+    // dialog.
+    await expect(
+      document.querySelectorAll('[data-modal-backdrop]'),
+    ).toHaveLength(1);
+
+    await userEvent.click(
+      dialog.getByRole('button', { name: 'Change attribute' }),
+    );
+
+    await waitFor(async () => {
+      await expect(
+        document.querySelectorAll('[data-modal-backdrop]'),
+      ).toHaveLength(2);
+    });
   },
 };
 

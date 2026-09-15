@@ -1,17 +1,15 @@
-// Which URL paths each deployment topology serves. Studio ships one artifact
+// Which URL paths each deployment topology serves. Studio ships one build
 // that answers as two products: the managed service, where marketing, pricing,
 // legal, the sign-up funnel and billing live, and a self-hosted instance,
 // where first-run setup lives and none of the commercial surfaces do.
 //
 // The classification lives here — in the one package both deployables import —
-// so the server's HTTP gate (apps/studio/server/src/client-assets.ts) and the
-// client's route classification cannot drift, and no client→server import is
-// created to share it.
+// so the client's topology guard (apps/studio/client/src/lib/deployment.ts),
+// its route tree and the server's `status` procedure cannot drift, and no
+// client→server import is created to share it.
 //
 // Paths are written in the client router's own spelling (`$param`, not
-// `:param`), because the classification is compared against the route tree;
-// the server translates them for its router at the one place it registers
-// them.
+// `:param`), because the classification is compared against the route tree.
 
 export const DEPLOYMENT_MODES = ['managed', 'self-hosted'] as const;
 export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];

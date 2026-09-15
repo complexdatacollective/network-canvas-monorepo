@@ -4,24 +4,11 @@ import { defineConfig } from 'vite';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
-import {
-  studioSourceMaps,
-  studioClientPrivacy,
-} from '../scripts/telemetry-plugins.ts';
-import { version } from './package.json';
-
 // The server the dev proxy targets — @codaco/studio-server's default port,
 // overridable so a second checkout can run its own pair. Both halves have to
 // agree: give the server the same port through `PORT`.
 const SERVER_ORIGIN =
   process.env.STUDIO_SERVER_ORIGIN ?? 'http://localhost:3000';
-// Matches the committed server development default. It is intentionally a
-// public local-only value; real managed credentials are runtime secrets.
-const DEV_INGRESS_PROOF = 'studio-dev-ingress-proof-not-for-production';
-const serverProxy = {
-  target: SERVER_ORIGIN,
-  headers: { 'x-studio-managed-ingress-proof': DEV_INGRESS_PROOF },
-};
 
 // Client SPA. In development the Vite dev server plays the role the CDN plays
 // in the managed topology (#1245): it serves the SPA and routes the server's
@@ -30,7 +17,7 @@ const serverProxy = {
 //
 //   pnpm --filter @codaco/studio-server dev
 //   pnpm --filter @codaco/studio-client dev
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [
     // Pre-parses every message at build time — defineMessages defaults via
     // the oxc-based formatjs transform, imported locale catalogs likewise —
@@ -38,8 +25,6 @@ export default defineConfig(({ mode }) => ({
     ...appI18n(),
     react(),
     tailwindcss(),
-    studioClientPrivacy(),
-    ...studioSourceMaps(mode, import.meta.dirname, version),
   ],
   resolve: {
     // pnpm can hand prebundled deps a different React copy than the host app
@@ -60,17 +45,15 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     proxy: {
-      '/api': { ...serverProxy },
-      '/rpc': { ...serverProxy },
-      '/storage': { ...serverProxy },
-      '/healthz': { ...serverProxy },
-      '/readyz': { ...serverProxy },
-      '/metrics': { ...serverProxy },
-      '/ws': { ...serverProxy, ws: true },
+      '/api': SERVER_ORIGIN,
+      '/rpc': SERVER_ORIGIN,
+      '/storage': SERVER_ORIGIN,
+      '/healthz': SERVER_ORIGIN,
+      '/ws': { target: SERVER_ORIGIN, ws: true },
     },
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
   },
-}));
+});

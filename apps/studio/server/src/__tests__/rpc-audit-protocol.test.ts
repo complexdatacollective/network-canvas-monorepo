@@ -4,20 +4,21 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const db = await reachableDb();
-const TEAM_ID = 'rpc-audit-protocol-team';
+const TEAM_ID = uniqueTeamId('rpc-audit-protocol-team');
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',

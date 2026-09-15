@@ -1,8 +1,7 @@
 import { parseArgs } from 'node:util';
 
 import { createOwnerPool } from '../src/db/pool.ts';
-import { readEncryptionEnv, readEnv } from '../src/env.ts';
-import { loadEncryptionKeys } from '../src/pii/keys.ts';
+import { readEnv } from '../src/env.ts';
 import { resetSchemaAndSeed } from './apply.ts';
 import { loadEnvFiles } from './load-env-files.ts';
 import { confirmDestructiveTarget } from './target-guard.ts';
@@ -19,11 +18,10 @@ const { values } = parseArgs({
 loadEnvFiles();
 
 const env = readEnv();
-const { db, target } = confirmDestructiveTarget(env, values.force, 'reset');
-const encryption = readEncryptionEnv(env);
-const encryptionKeys = await loadEncryptionKeys(
-  encryption.configuration,
-  encryption.loadRootKey,
+const { db, secrets, target, local } = confirmDestructiveTarget(
+  env,
+  values.force,
+  'reset',
 );
 
 console.log(`Resetting ${target}`);
@@ -32,9 +30,11 @@ const pool = createOwnerPool(db);
 
 try {
   await resetSchemaAndSeed(pool, {
+    secrets,
     adminPassword: env.seedAdminPassword,
-    encryptionKeys,
     sweepScratch: true,
+    // See scripts/seed.ts: deterministic nonces are for a local target only.
+    reproducible: local,
   });
   console.log('Database reset.');
 } finally {

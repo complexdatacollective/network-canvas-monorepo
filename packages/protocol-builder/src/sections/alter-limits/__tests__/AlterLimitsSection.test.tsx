@@ -37,11 +37,11 @@ describe('the nomination limits a name generator may set', () => {
       state: 'Finished',
     });
     expect(
-      screen.getByRole('spinbutton', { name: /Fewest people/ }),
+      screen.getByRole('spinbutton', { name: /Minimum number of alters/ }),
     ).toHaveValue(1);
-    expect(screen.getByRole('spinbutton', { name: /Most people/ })).toHaveValue(
-      8,
-    );
+    expect(
+      screen.getByRole('spinbutton', { name: /Maximum number of alters/ }),
+    ).toHaveValue(8);
   });
 
   it('saves the stage it opened, unchanged', async () => {
@@ -83,11 +83,13 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     await harness.user.type(
-      await screen.findByRole('spinbutton', { name: /Fewest people/ }),
+      await screen.findByRole('spinbutton', {
+        name: /Minimum number of alters/,
+      }),
       '2',
     );
     await harness.user.type(
-      screen.getByRole('spinbutton', { name: /Most people/ }),
+      screen.getByRole('spinbutton', { name: /Maximum number of alters/ }),
       '5',
     );
 
@@ -110,7 +112,7 @@ describe('the nomination limits a name generator may set', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
-    await screen.findByRole('spinbutton', { name: /Fewest people/ });
+    await screen.findByRole('spinbutton', { name: /Minimum number of alters/ });
 
     expect(await harness.submit()).toBeNull();
     // And the refusal reached the protocol as nothing at all: the stage it
@@ -126,7 +128,7 @@ describe('the nomination limits a name generator may set', () => {
     });
     expect(
       await screen.findByText(
-        'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+        'Set the minimum number of alters, the maximum number of alters, or both. Switch these limits off if this stage has no limit.',
       ),
     ).toBeInTheDocument();
   });
@@ -139,7 +141,9 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     await harness.user.type(
-      await screen.findByRole('spinbutton', { name: /Most people/ }),
+      await screen.findByRole('spinbutton', {
+        name: /Maximum number of alters/,
+      }),
       '5',
     );
 
@@ -164,11 +168,13 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     await harness.user.type(
-      await screen.findByRole('spinbutton', { name: /Fewest people/ }),
+      await screen.findByRole('spinbutton', {
+        name: /Minimum number of alters/,
+      }),
       '6',
     );
     await harness.user.type(
-      screen.getByRole('spinbutton', { name: /Most people/ }),
+      screen.getByRole('spinbutton', { name: /Maximum number of alters/ }),
       '2',
     );
 
@@ -190,7 +196,9 @@ describe('the nomination limits a name generator may set', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
-    const max = await screen.findByRole('spinbutton', { name: /Most people/ });
+    const max = await screen.findByRole('spinbutton', {
+      name: /Maximum number of alters/,
+    });
     await harness.user.type(max, '-5');
     expect(max).toHaveValue(-5);
 
@@ -211,7 +219,9 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     await harness.user.type(
-      await screen.findByRole('spinbutton', { name: /Most people/ }),
+      await screen.findByRole('spinbutton', {
+        name: /Maximum number of alters/,
+      }),
       '0',
     );
 
@@ -231,7 +241,7 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     const min = await screen.findByRole('spinbutton', {
-      name: /Fewest people/,
+      name: /Minimum number of alters/,
     });
     await harness.user.type(min, '-5');
     expect(min).toHaveValue(-5);
@@ -259,11 +269,11 @@ describe('the nomination limits a name generator may set', () => {
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
     const min = await screen.findByRole('spinbutton', {
-      name: /Fewest people/,
+      name: /Minimum number of alters/,
     });
     await harness.user.type(min, '6');
     await harness.user.type(
-      screen.getByRole('spinbutton', { name: /Most people/ }),
+      screen.getByRole('spinbutton', { name: /Maximum number of alters/ }),
       '2',
     );
     expect(await harness.submit()).toBeNull();
@@ -323,7 +333,7 @@ describe('the nomination limits a name generator may set', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
-    await screen.findByRole('spinbutton', { name: /Fewest people/ });
+    await screen.findByRole('spinbutton', { name: /Minimum number of alters/ });
 
     expect(
       screen.queryByText('These limits cover the whole stage'),
@@ -349,7 +359,7 @@ describe('the nomination limits a name generator may set', () => {
     );
     await waitFor(() =>
       expect(
-        screen.queryByRole('spinbutton', { name: /Fewest people/ }),
+        screen.queryByRole('spinbutton', { name: /Minimum number of alters/ }),
       ).not.toBeInTheDocument(),
     );
 

@@ -14,9 +14,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import ContentBlockEditor from '../content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../content-blocks/contentBlockTypes.ts';
+import { contentBlocks } from '../content-blocks/contentBlocks.tsx';
 import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
@@ -86,13 +84,15 @@ describe('the shared stage sections, read in Spanish', () => {
     expect(
       screen.getByRole('button', { name: 'Crear nuevo elemento de contenido' }),
     ).toBeInTheDocument();
-    // The outline reads its state out of the same catalog, so a section named
-    // in Spanish and reported in English would fail here rather than pass
-    // halfway.
+    // The section the editor publishes to its host carries the SAME title the
+    // card shows, so a section named in Spanish on screen and published in
+    // English would fail here rather than pass halfway. Its state is the
+    // harness's own English reading of the store — the words belong to
+    // whichever host draws the list, not to this package.
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()[1]).toEqual({
       title: 'Contenido de la página',
-      state: 'Terminado',
+      state: 'Finished',
     });
   });
 
@@ -149,23 +149,18 @@ describe('the shared stage sections, read in Spanish', () => {
   });
 });
 
-/** The blocks as both of their consumers mount them. */
-const pageOfBlocks = (
-  <PageContentSection
-    ItemEditor={ContentBlockEditor}
-    ItemPreview={ContentBlockPreview}
-    slots={contentBlockSlots}
-  />
-);
+/**
+ * The blocks exactly as an interface composes them.
+ *
+ * Through `contentBlocks` rather than by mounting the shared page section with
+ * this family's parts by hand: what a block editor is paired with — its
+ * preview, its slots, the sentence its dialog says — is that function's
+ * business, and a fixture that re-pairs them stops testing what ships the
+ * moment the pairing gains a part.
+ */
+const pageOfBlocks = contentBlocks()();
 
-const introScreenOfBlocks = (
-  <PageContentSection
-    variant="introScreen"
-    ItemEditor={ContentBlockEditor}
-    ItemPreview={ContentBlockPreview}
-    slots={contentBlockSlots}
-  />
-);
+const introScreenOfBlocks = contentBlocks({ variant: 'introScreen' })();
 
 /** A page holding one passage of prose and one picture. */
 const mediaPage = () => ({
@@ -215,21 +210,20 @@ describe('the content-block dialog, read in Spanish', () => {
     );
     const dialog = await screen.findByRole('dialog');
 
-    expect(
-      within(dialog).getByText('Detalles del elemento'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
-      ),
-    ).toBeInTheDocument();
+    // The dialog's own title and the sentence under it — said once now that
+    // the fields are the dialog's only topic, rather than restated by a group
+    // inside it.
+    expect(dialog).toHaveAccessibleName('Crear elemento');
+    expect(dialog).toHaveAccessibleDescription(
+      'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
+    );
     expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
     expect(
       within(dialog).getByText(
         'Elige el tipo de contenido que mostrará este elemento.',
       ),
     ).toBeInTheDocument();
-    for (const kind of ['Imagen', 'Vídeo', 'Audio', 'Texto']) {
+    for (const kind of ['Imagen', 'Video', 'Audio', 'Texto']) {
       expect(
         within(dialog).getByRole('radio', { name: kind }),
       ).toBeInTheDocument();
@@ -296,7 +290,7 @@ describe('the content-block dialog, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
 
-    await chooseKind('Vídeo');
+    await chooseKind('Video');
     expect(
       await within(dialog).findByText(
         'Proporciona el contenido de video para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
@@ -679,7 +673,7 @@ describe('the introduction-screen variant, read in Spanish', () => {
  * asks the participant nothing.
  */
 describe('the prompts section, read in Spanish', () => {
-  it('says what it is waiting for before a subject is chosen', async () => {
+  it('reads in Spanish, and offers no way in, before a subject is chosen', async () => {
     const harness = renderStageEditor({
       create: { type: 'NameGenerator', position: 0 },
       locale: 'es',
@@ -691,11 +685,17 @@ describe('the prompts section, read in Spanish', () => {
       ),
     });
 
+    // Architect keeps one sentence for both states and only switches the
+    // section off, so this is the section's own description, in Spanish, with
+    // the way in unusable.
     expect(
       await screen.findByText(
         'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva pregunta' }),
+    ).toBeDisabled();
     expectNoLocaleLeaks(
       'the prompts section waiting on a subject',
       researcherWords(harness),

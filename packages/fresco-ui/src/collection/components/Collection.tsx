@@ -22,7 +22,12 @@ import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
 import { getInitialSortRules } from '../sorting/initialSortRules';
 import type { SortState } from '../sorting/types';
-import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
+import type {
+  CollectionProps,
+  ItemRenderer,
+  Key,
+  KeyExtractor,
+} from '../types';
 import { StaticRenderer } from './StaticRenderer';
 import { VirtualizedRenderer } from './VirtualizedRenderer';
 
@@ -162,6 +167,21 @@ function CollectionContent<T extends Record<string, unknown>>({
     unknown,
     SortState['sortDirection']
   >((state) => state.sortDirection);
+  /**
+   * Which row is active, subscribed to rather than read off the selection
+   * manager.
+   *
+   * The manager is deliberately stable — it resolves everything through the
+   * store so it need not be rebuilt on every change — so reading `focusedKey`
+   * from it during render answers for whichever render last happened to run.
+   * Arrow keys move focus through the store alone, so this container never
+   * re-rendered and `aria-activedescendant` below stayed at whatever it was
+   * when the list was drawn: absent, for every list a researcher has only
+   * navigated with the keyboard.
+   */
+  const focusedKey = useCollectionStore<unknown, Key | null>(
+    (state) => state.focusedKey,
+  );
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
@@ -203,8 +223,8 @@ function CollectionContent<T extends Record<string, unknown>>({
       ? undefined
       : selectionMode === 'multiple' || undefined,
     'aria-activedescendant':
-      !nativeItemSemantics && selectionManager.focusedKey !== null
-        ? `${collectionId}-item-${selectionManager.focusedKey}`
+      !nativeItemSemantics && focusedKey !== null
+        ? `${collectionId}-item-${focusedKey}`
         : undefined,
     ...(nativeItemSemantics ? {} : collectionProps),
     ...restDndProps,

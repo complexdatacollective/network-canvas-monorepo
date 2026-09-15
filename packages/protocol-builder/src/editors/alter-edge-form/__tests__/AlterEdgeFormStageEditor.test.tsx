@@ -11,6 +11,7 @@ import {
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
+  collectAttribute,
   openField,
   removeRow,
   stageNameInput,
@@ -119,10 +120,7 @@ describe('the editor for a form about each relationship', () => {
     );
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'edgeNotes',
-    );
+    await collectAttribute(harness, dialog, 'edgeNotes');
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -166,7 +164,7 @@ describe('the editor for a form about each relationship', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText(/Add at least one field/),
+      await screen.findByText('You must create at least one item.'),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(

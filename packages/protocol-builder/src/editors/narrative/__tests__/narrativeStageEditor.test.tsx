@@ -1,7 +1,11 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
@@ -63,11 +67,9 @@ describe('the narrative stage editor', () => {
     openNewStage();
 
     expect(
-      await screen.findByRole('switch', { name: 'Allow moving nodes' }),
+      await screen.findByRole('switch', { name: 'Allow repositioning' }),
     ).toBeChecked();
-    expect(
-      screen.getByRole('switch', { name: 'Allow drawing on the canvas' }),
-    ).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Free-draw' })).not.toBeChecked();
   });
 
   /**
@@ -95,11 +97,12 @@ describe('the narrative stage editor', () => {
 
     const preset = await addPreset(harness);
     await harness.user.type(
-      preset.getByRole('textbox', { name: 'Preset name' }),
+      preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
-    await harness.user.selectOptions(
-      preset.getByRole('combobox', { name: 'Position attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Layout attribute'),
       'layout',
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
@@ -121,69 +124,82 @@ describe('the narrative stage editor', () => {
   });
 
   /**
-   * What the editor says the stage does, checked against what the stage does.
+   * Automatic layout is a switch on this interface, as released Architect had
+   * it — not the shared two-card layout-mode picker.
    *
-   * The narrative runtime initialises its layout with `persist: false` and
-   * hands the canvas no drag handler, so a node the participant moves is never
-   * written anywhere; and with automatic layout off it filters out the nodes
-   * the preset's attribute holds no position for and restores the rest from
-   * their stored coordinates, rather than putting every node in a bucket for
-   * the participant to place. A researcher plans a study around what this page
-   * tells them, so wrong copy here is a false claim about what the study
-   * collects, not a typo.
+   * A narrative stage is shown a network that was built elsewhere, so there is
+   * no "manual mode" for it to describe: the cards' choice between placing
+   * nodes by hand and simulating them is a decision the stages that COLLECT
+   * positions make. What is left is one permission among the three this
+   * section grants, which is why it reads first in it.
    */
-  it('describes moving a node as the temporary thing it is', async () => {
+  it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
 
     expect(
-      screen.getByText(/Nothing is recorded/, { exact: false }),
-    ).toBeInTheDocument();
+      screen.queryByRole('listbox', { name: 'Layout mode' }),
+    ).not.toBeInTheDocument();
+
+    const behaviours = within(
+      screen.getByRole('region', { name: 'Narrative behaviors' }),
+    );
+    // In Architect's order, and asserted as the whole list so a switch added
+    // above this one fails here rather than passing on a name lookup.
+    const switches = behaviours.getAllByRole('switch');
+    expect(switches).toHaveLength(3);
+    expect(switches[0]).toBe(
+      behaviours.getByRole('switch', { name: 'Automatic layout' }),
+    );
+    expect(switches[1]).toBe(
+      behaviours.getByRole('switch', { name: 'Free-draw' }),
+    );
+    expect(switches[2]).toBe(
+      behaviours.getByRole('switch', { name: 'Allow repositioning' }),
+    );
+    expect(switches[0]).toHaveAccessibleDescription(
+      /^Position nodes automatically using a force-directed layout\s*$/,
+    );
   });
 
-  it('describes manual layout as a narrative stage performs it', async () => {
+  /** Off is what the protocol says when it says nothing, and on is written. */
+  it('writes the automatic-layout switch to the stage', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
 
-    expect(
-      screen.getByText(
-        /Shows every node at the position already stored in the attribute the preset positions by/,
-      ),
-    ).toBeInTheDocument();
-    // The shared sentence belongs to the stages that COLLECT positions.
-    expect(
-      screen.queryByText(/bucket/, { exact: false }),
-    ).not.toBeInTheDocument();
+    const layout = await screen.findByRole('switch', {
+      name: 'Automatic layout',
+    });
+    expect(layout).toHaveAttribute('aria-checked', 'false');
+    await harness.user.click(layout);
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.behaviours).toMatchObject({
+      automaticLayout: true,
+      freeDraw: true,
+      allowRepositioning: true,
+    });
   });
 
-  /**
-   * Automatic layout is the same force simulation, given different nodes and
-   * different permissions. `Narrative.tsx` simulates `nodesWithLayout` in
-   * either mode, where `Sociogram.tsx` switches to `allNodes` and draws the
-   * unplaced ones in; and it passes `behaviours.allowRepositioning` to the
-   * canvas, so the shared sentence's unconditional "reposition nodes by hand"
-   * is the "Allow moving nodes" switch's to grant.
-   */
-  it('describes automatic layout as a narrative stage performs it', async () => {
-    const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+  /** And a stage that arrives with it on opens with it on. */
+  it('opens a stage that already arranges its nodes with the switch on', async () => {
+    renderStageEditor({
+      stage: {
+        type: 'Narrative',
+        fields: {
+          label: 'Story',
+          subject: { entity: 'node', type: 'person' },
+          behaviours: { automaticLayout: true },
+          presets: [
+            { id: 'preset-1', label: 'Default', layoutVariable: 'layout' },
+          ],
+        },
+      },
+      editor: narrativeEditor,
+    });
 
     expect(
-      screen.getByText(/the rest are left off the canvas, as in manual mode/, {
-        exact: false,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/only if “Allow moving nodes” is switched on/, {
-        exact: false,
-      }),
-    ).toBeInTheDocument();
-    // The shared sentence promises repositioning outright.
-    expect(
-      screen.queryByText(/reposition nodes by hand while it is paused/, {
-        exact: false,
-      }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole('switch', { name: 'Automatic layout' }),
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   /**

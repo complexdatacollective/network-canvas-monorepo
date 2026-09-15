@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -10,6 +11,7 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
+import type { StageSectionsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { stageDocument } from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
@@ -35,6 +37,7 @@ import {
   readStageDraft,
   useStageDraft,
 } from './stageDraftBeacon';
+import StageSectionOutline from './StageSectionOutline';
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -105,7 +108,7 @@ const messages = defineMessages({
   },
 });
 
-type StageEditorChromeProps = Readonly<{
+type StageEditorActionsProps = Readonly<{
   /** The DOM id of the stage form, so the toolbar's save control can submit it. */
   formId: string;
   /** Whether the package opened this stage read-only. */
@@ -117,6 +120,14 @@ type StageEditorChromeProps = Readonly<{
   onCancel: () => void;
 }>;
 
+type StageEditorChromeProps = StageEditorActionsProps &
+  Readonly<{
+    /** The sections of the stage on screen, as the editor publishes them. */
+    sections: StageSectionsStore;
+    /** The route's left column, which the section list is portalled into. */
+    outlineHost: HTMLElement | null;
+  }>;
+
 /**
  * Architect's own chrome, rendered in the editor's action slot.
  *
@@ -124,13 +135,15 @@ type StageEditorChromeProps = Readonly<{
  * read the document as the researcher is typing it: the toolbar's save control
  * belongs to that form, the preview launches what is on screen rather than what
  * was last saved, and the beacon publishes the same reading to the guards
- * outside. Everything it renders is registered elsewhere — the toolbar into the
- * app's own toolbar host — so nothing here occupies the place in the page where
- * the slot happens to sit.
+ * outside. Everything it renders is displayed elsewhere — the toolbar into the
+ * app's own toolbar host, the section list into the route's left column — so
+ * nothing here occupies the place in the page where the slot happens to sit.
  */
 export default function StageEditorChrome({
   formId,
   readOnly,
+  sections,
+  outlineHost,
   stageId,
   insertAtIndex,
   onCancel,
@@ -138,6 +151,8 @@ export default function StageEditorChrome({
   return (
     <>
       <StageDraftPublisher />
+      {outlineHost !== null &&
+        createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -188,7 +203,7 @@ function StageEditorActions({
   stageId,
   insertAtIndex,
   onCancel,
-}: StageEditorChromeProps) {
+}: StageEditorActionsProps) {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();

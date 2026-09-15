@@ -9,6 +9,10 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import SourcePedigreePickerField, {
+  type SourceChangeQuestion,
+  type SourcePedigreeOption,
+} from '../../../fields/SourcePedigreePickerField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import {
@@ -20,10 +24,6 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useOnResearcherChange } from '../../../sections/researcherChange.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
-import SourcePedigreePickerField, {
-  type SourceChangeQuestion,
-  type SourcePedigreeOption,
-} from './SourcePedigreePickerField.tsx';
 import {
   resolveSourceStages,
   type SourceStageOption,
@@ -230,9 +230,6 @@ export default function SourcePedigreeSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(narrativePedigreeMessages.sourceTitle)}
-      description={intl.formatMessage(
-        narrativePedigreeMessages.sourceDescription,
-      )}
     >
       {problem !== null && (
         <Alert variant="destructive">

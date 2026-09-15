@@ -62,10 +62,21 @@ export type AttributeValue = {
   value?: boolean;
 };
 
-/** Creates a codebook variable and answers with its id, or nothing on refusal. */
+/**
+ * Creates a codebook variable and answers with its id, or with why it was
+ * refused.
+ *
+ * The reason travels rather than being left on the section's own surface,
+ * because the researcher is not looking at that surface: they asked from
+ * inside the picker's window, and a refusal is what keeps that window open.
+ */
+export type CreateAttributeOutcome =
+  | Readonly<{ status: 'created'; variableId: string }>
+  | Readonly<{ status: 'refused'; message?: string }>;
+
 export type CreateAttributeVariable = (
   variableName: string,
-) => Promise<string | undefined>;
+) => Promise<CreateAttributeOutcome>;
 
 export type AssignAttributesContextValue = {
   /** Resolved name of the array field these rows belong to. */
@@ -351,6 +362,13 @@ export default function Attribute({
     () => variablesForSubject(protocolContext, subject),
     [protocolContext, subject],
   );
+  // What the picker's create row checks a typed name against. Every name this
+  // type holds, not just the ones a row may bind: the codebook refuses a
+  // duplicate whatever kind of answer the attribute wearing it records.
+  const namesInUse = useMemo(
+    () => Object.values(allVariables).map((held) => held.name),
+    [allVariables],
+  );
 
   const crossClassValidate = useCallback(
     (value: unknown) =>
@@ -404,10 +422,16 @@ export default function Attribute({
         // was opened on: two rows the researcher cannot tell apart are two rows
         // this control described identically.
         const createdFrom = stripManagedProperties(rowRef.current);
-        const created = await onCreateVariable(variableName);
+        const outcome = await onCreateVariable(variableName);
         // The one answer that is a refusal: nothing was written, so the name
-        // is still the researcher's to correct.
-        if (created === undefined) return { status: 'refused' };
+        // is still the researcher's to correct, and the reason travels with it
+        // to wherever they typed it.
+        if (outcome.status === 'refused') {
+          return outcome.message === undefined
+            ? { status: 'refused' }
+            : { status: 'refused', message: outcome.message };
+        }
+        const created = outcome.variableId;
         // Both of these are read when the creation COMPLETES: which row this
         // control now names, and whether the list will still take a write to
         // it. Either can have changed inside the round trip, and neither is
@@ -477,8 +501,7 @@ export default function Attribute({
           aria-invalid={showVariableErrors}
           options={variableOptions}
           onCreateOption={handleCreateOption}
-          entity={subject.entity}
-          type={subject.entity === 'ego' ? undefined : subject.type}
+          namesInUse={namesInUse}
           disabled={disabled || readOnly}
         />
         {variable && (

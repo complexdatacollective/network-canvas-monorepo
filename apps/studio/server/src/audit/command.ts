@@ -1,10 +1,9 @@
 import type pg from 'pg';
 
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
-import { logOperational } from '../observability/logger.ts';
+import type { JobClient } from '../jobs/client.ts';
 import type { AuditEventInput } from './events.ts';
 import { AuditStore, lockAuditTeam } from './store.ts';
 
@@ -12,6 +11,13 @@ export type AuditedCommandContext = {
   tenantDb: TenantDb;
   principal: Principal;
   requestId: string;
+  /**
+   * Background work this command causes, created on the command's own client
+   * so the job and the change that caused it are one transaction (#1895).
+   * Optional because most commands cause none, and because an entrypoint with
+   * no database has no queue to reach.
+   */
+  jobs?: JobClient;
 };
 
 export type LockedAuditedCommandContext = AuditedCommandContext & {
@@ -59,10 +65,25 @@ async function appendRequiredAuditEvent(
   try {
     await auditStore.append(client, event);
   } catch (error) {
-    logOperational('STUDIO_AUDIT_APPEND_FAILED', {
-      teamId: event.teamId,
-      requestId: event.requestId ?? undefined,
-    });
+    const cause =
+      error instanceof Error
+        ? { causeName: error.name, causeMessage: error.message }
+        : { causeName: typeof error, causeMessage: String(error) };
+    process.emitWarning(
+      'Required immutable audit event append failed; transaction will roll back.',
+      {
+        type: 'StudioAuditError',
+        code: 'STUDIO_AUDIT_APPEND_FAILED',
+        detail: JSON.stringify({
+          eventType: event.eventType,
+          eventVersion: event.eventVersion,
+          outcome: event.outcome,
+          teamId: event.teamId,
+          requestId: event.requestId,
+          ...cause,
+        }),
+      },
+    );
     throw error;
   }
 }
@@ -248,78 +269,5 @@ export async function runAuditedMutation<T>(
   return runAuditedCommand(context, async (client, auditContext) => {
     const mutation = await work(client, auditContext);
     return { status: 'succeeded', ...mutation };
-  });
-}
-
-type SystemAuditActor = 'Encryption maintenance' | 'Webhook delivery';
-
-export type SystemAuditEventContext<
-  Actor extends SystemAuditActor = SystemAuditActor,
-> = {
-  teamId: string;
-  teamLabel: string;
-  actorKind: 'system';
-  actorId: null;
-  actorLabel: Actor;
-  requestId: string;
-};
-
-/**
- * The maintenance equivalent of an audited user command. It verifies the
- * database role itself: a caller cannot obtain system authority by supplying
- * an actor label, team ID, or application pool. Returning from this executor
- * proves that its non-empty, context-bound event set committed with the work.
- */
-export function runAuditedSystemMutation<T, Actor extends SystemAuditActor>(
-  context: {
-    tenantDb: TenantDb;
-    actorLabel: Actor;
-    requestId: string;
-  },
-  work: (
-    client: pg.PoolClient,
-    auditContext: SystemAuditEventContext<Actor>,
-  ) => Promise<AuditedMutationResult<T>>,
-): Promise<T> {
-  return context.tenantDb.transaction(async (client) => {
-    const role = await client.query<{ role: string }>(
-      'SELECT current_user AS role',
-    );
-    if (role.rows[0]?.role !== TENANT_ROLES.maintenance)
-      throw new Error('system audit requires the maintenance database role');
-    await lockAuditTeam(client, context.tenantDb.teamId);
-    const team = await client.query<{ name: string }>(
-      'SELECT name FROM teams WHERE id = $1 FOR UPDATE',
-      [context.tenantDb.teamId],
-    );
-    const name = team.rows[0]?.name.trim();
-    if (!name) throw new AuditCommandTeamNotFoundError();
-    const auditContext: SystemAuditEventContext<Actor> = {
-      teamId: context.tenantDb.teamId,
-      teamLabel: name.slice(0, 320),
-      actorKind: 'system',
-      actorId: null,
-      actorLabel: context.actorLabel,
-      requestId: context.requestId,
-    };
-    const mutation = await work(client, auditContext);
-    if (mutation.events.length === 0)
-      throw new Error('an audited system mutation must produce an event');
-    for (const event of mutation.events) {
-      if (
-        event.teamId !== auditContext.teamId ||
-        event.teamLabel !== auditContext.teamLabel ||
-        event.actorKind !== 'system' ||
-        event.actorId !== null ||
-        event.actorLabel !== auditContext.actorLabel ||
-        event.requestId !== auditContext.requestId ||
-        event.outcome !== 'succeeded'
-      )
-        throw new Error(
-          'audit event context does not match its system mutation',
-        );
-      await appendRequiredAuditEvent(client, event);
-    }
-    return mutation.result;
   });
 }

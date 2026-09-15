@@ -86,7 +86,7 @@ vi.mock('../../app', () => ({
 }));
 
 // Imported after mocks so the thunks pick up the mocked collaborators.
-const { openBundledTemplate, openLibraryProtocol } =
+const { openBundledTemplate, openLibraryProtocol, openLocalNetcanvas } =
   await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
 const { takeProtocolUpgrades } = await import('~/utils/protocolUpgradeQueue');
@@ -118,6 +118,8 @@ const makeProtocol = (): CurrentProtocol =>
 describe('userActions', () => {
   beforeEach(() => {
     capture.mockReset();
+    // Asserted as "not called" below, so it must not carry another test's calls.
+    reportError.mockClear();
     setImportInProgress.mockReset();
     validateProtocol.mockReset();
     migrateProtocol.mockReset();
@@ -161,6 +163,114 @@ describe('userActions', () => {
       // And the payload must still carry structural, non-identifying signal.
       const props = failureCall?.[1] as Record<string, unknown>;
       expect(props.error_count).toBe(1);
+    });
+  });
+
+  describe('failures in the file are not reported as Architect defects', () => {
+    // Builds a real .netcanvas whose manifest names a media file the archive
+    // does not contain. This is the archive shape behind the missing-asset
+    // reports in error tracking, so the thunk runs against the genuine
+    // article rather than a stubbed rejection.
+    const netcanvasMissingItsAsset = async (assetName: string) => {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      zip.file(
+        'protocol.json',
+        JSON.stringify({
+          ...makeProtocol(),
+          assetManifest: {
+            'asset-1': {
+              type: 'image',
+              name: assetName,
+              source: 'absent-from-the-zip.png',
+            },
+          },
+        }),
+      );
+      const bytes = await zip.generateAsync({ type: 'arraybuffer' });
+      return new File([bytes], 'My Study.netcanvas');
+    };
+
+    it('records the kind of file failure without reporting an exception', async () => {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      zip.file('notes.txt', 'no protocol in here');
+      const file = new File(
+        [await zip.generateAsync({ type: 'arraybuffer' })],
+        'My Study.netcanvas',
+      );
+
+      const result = await openLocalNetcanvas({ file })(
+        dispatch,
+        () => ({}) as never,
+        undefined,
+      );
+
+      expect(result.payload).toMatchObject({ status: 'error' });
+
+      // A file the researcher chose being unreadable is an answer about that
+      // file. Reporting it as an exception buries Architect's own bugs.
+      expect(reportError).not.toHaveBeenCalled();
+
+      const failureCall = capture.mock.calls.find(
+        ([event]) => event === 'protocol_import_failed',
+      );
+      // A fixed vocabulary, carrying nothing from inside the researcher's file.
+      expect(failureCall?.[1]).toEqual({
+        source: 'local',
+        reason: 'file',
+        error_kind: 'missingProtocol',
+      });
+    });
+
+    it('opens a protocol whose archive was missing a file, naming the resource', async () => {
+      const researcherAuthoredName = 'Clinic Intake Photo';
+      const file = await netcanvasMissingItsAsset(researcherAuthoredName);
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      const result = await openLocalNetcanvas({ file })(
+        dispatch,
+        () => ({}) as never,
+        undefined,
+      );
+
+      // Refusing the whole protocol would leave the researcher with a file
+      // only the tool that broke it can repair, when everything else is
+      // intact. Export refuses until they supply the file, so an incomplete
+      // protocol still cannot travel any further.
+      expect(result.payload).toEqual({
+        status: 'opened',
+        unresolvedAssetNames: [researcherAuthoredName],
+      });
+      expect(setActiveProtocol).toHaveBeenCalled();
+      expect(reportError).not.toHaveBeenCalled();
+    });
+
+    it('still reports a failure it cannot describe', async () => {
+      validateProtocol.mockResolvedValue({
+        success: true,
+        data: makeProtocol(),
+      });
+      // Deliberately worded so `isStorageUnavailableError` does not claim it
+      // (it matches /quota|indexeddb|idbdatabase/): this must land in the
+      // unclassified branch, which is the one under test.
+      putStoredProtocol.mockRejectedValue(new Error('library write failed'));
+
+      await runThunk(openBundledTemplate({ protocol: makeProtocol() }));
+
+      expect(reportError).toHaveBeenCalled();
+      const failureCall = capture.mock.calls.find(
+        ([event]) => event === 'protocol_import_failed',
+      );
+      expect(failureCall?.[1]).toMatchObject({
+        source: 'bundled',
+        reason: 'error',
+      });
     });
   });
 

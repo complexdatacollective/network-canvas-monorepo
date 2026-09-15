@@ -1,0 +1,9 @@
+{
+  "architect.newProtocolDialog.useAShortRecognizableNameOf": "Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
+  "architect.summary.label.initialCenterLatLng": "Initial Center (lat, lng)",
+  "architect.summary.label.selectionColor": "Selection Color",
+  "architect.typeEditor.typeEditor.chooseAColorForThisType": "Choose a color for this {entity, select, node {node} edge {edge} other {ego}} type.",
+  "architect.typeEditor.typeEditor.color": "Color",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Works With\".}}",
+  "architect.typeEditor.typeEditor.typeColor": "Type color"
+}

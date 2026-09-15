@@ -1,6 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -52,8 +56,10 @@ describe('creating a categorical bin stage', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'What kind of contact?',
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+    await screen.findByText('Attribute', { selector: 'label' });
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute'),
       'contactType',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -95,21 +101,26 @@ describe('creating a categorical bin stage', () => {
     );
     await screen.findByRole('dialog');
     await harness.user.click(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     );
 
-    const group = within(
-      await screen.findByRole('region', { name: 'A bin for anything else' }),
-    );
-    await harness.user.selectOptions(
-      await group.findByRole('combobox', {
-        name: 'Attribute the answer is stored in',
-      }),
+    const groupElement = await screen.findByRole('region', {
+      name: 'Follow-up other option',
+    });
+    const group = within(groupElement);
+    // Scoped to the group, because the prompt picks two attributes and both
+    // fields are in the same dialog.
+    await group.findByText('Other attribute', {
+      selector: 'label',
+    });
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Other attribute', groupElement),
       'relationship_to_ego',
     );
     await writeInto(
       harness,
-      group.getByRole('textbox', { name: 'Bin label' }),
+      group.getByRole('textbox', { name: 'Other bin label' }),
       'Something else',
     );
     await writeInto(

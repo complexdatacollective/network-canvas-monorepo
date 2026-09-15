@@ -11,8 +11,7 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
-import { createContactBlindIndex } from '../../pii/contacts.ts';
-import type { EncryptionKeys } from '../../pii/keys.ts';
+import { normalizeContactAddress } from '../../study/contact.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import {
   seedHex,
@@ -474,19 +473,19 @@ async function seedDeliveries(
   study: SeedStudy,
   templates: SeededTemplate[],
   occurrences: SeededOccurrence[],
-  encryptionKeys: EncryptionKeys,
 ): Promise<void> {
-  const blindIndexFor = (address: string) =>
-    createContactBlindIndex(encryptionKeys, { kind: 'email', value: address });
   const optedOut = study.participants.slice(0, 2);
   // When each opted out: a delivery enqueued before that moment went out
   // normally, and only the ones after it are suppressed, so the outbox and
   // the suppression list tell one story in time.
   const optOutMoment = (participant: SeedParticipant) =>
     shiftDays(participant.enrolledAt, 20);
-  const optOutAtByIndex = new Map(
+  // Keyed by the normalised address, which is what the suppression list and
+  // the outbox join on — not by participant id, so a seeded opt-out suppresses
+  // the way a real one does.
+  const optOutAtByAddress = new Map(
     optedOut.map((participant) => [
-      blindIndexFor(participant.contactAddress).value.toString('hex'),
+      normalizeContactAddress(participant.contactAddress),
       optOutMoment(participant),
     ]),
   );
@@ -498,9 +497,9 @@ async function seedDeliveries(
   for (const participant of optedOut) {
     for (const channel of CHANNELS) {
       optOutRows.push([
+        team.id,
         channel,
-        blindIndexFor(participant.contactAddress).keyId,
-        blindIndexFor(participant.contactAddress).value,
+        normalizeContactAddress(participant.contactAddress),
         faker.helpers.arrayElement([
           'participant_reply',
           'provider',
@@ -542,8 +541,10 @@ async function seedDeliveries(
     channel: string;
     createdAt: Date;
   }) => {
-    const blindIndex = blindIndexFor(input.participant.contactAddress);
-    const optOutAt = optOutAtByIndex.get(blindIndex.value.toString('hex'));
+    const recipientAddress = normalizeContactAddress(
+      input.participant.contactAddress,
+    );
+    const optOutAt = optOutAtByAddress.get(recipientAddress);
     const drawn = outcomeFor(ordinal++);
     // A delivery behind a dispatched occurrence was attempted: the schedule
     // says the prompt went out, so the outbox cannot still be waiting to try.
@@ -575,13 +576,11 @@ async function seedDeliveries(
       template.id,
       input.kind,
       input.channel,
-      blindIndex.value,
-      blindIndex.keyId,
+      recipientAddress,
       sha256Hex(render(template, input.participant)),
       provider,
       outcome === 'sent' ? `msg_${seedHex(8)}` : null,
       outcome === 'pending' ? 0 : faker.number.int({ min: 1, max: 3 }),
-      input.createdAt,
       outcome === 'sent' ? terminalAt : null,
       outcome === 'failed' ? terminalAt : null,
       outcome === 'suppressed' ? terminalAt : null,
@@ -669,13 +668,11 @@ async function seedDeliveries(
       'template_id',
       'kind',
       'channel',
-      'recipient_blind_index',
-      'blind_index_key_id',
+      'recipient_address',
       'rendered_body_hash',
       'provider',
       'provider_message_id',
       'attempt_count',
-      'available_at',
       'sent_at',
       'failed_at',
       'suppressed_at',
@@ -704,13 +701,7 @@ async function seedDeliveries(
   await insertRows(
     client,
     'participant_contact_optouts',
-    [
-      'channel',
-      'blind_index_key_id',
-      'recipient_blind_index',
-      'source',
-      'opted_out_at',
-    ],
+    ['team_id', 'channel', 'recipient_address', 'source', 'opted_out_at'],
     optOutRows,
   );
 }
@@ -719,19 +710,11 @@ export async function seedScheduling(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
-  encryptionKeys: EncryptionKeys,
 ): Promise<void> {
   const templates = await seedMessageTemplates(client, team);
   const live = studies.find((study) => study.key === 'live');
   if (live === undefined) return;
   const schedule = await seedSchedule(client, team, live);
   const occurrences = await seedOccurrences(client, team, live, schedule);
-  await seedDeliveries(
-    client,
-    team,
-    live,
-    templates,
-    occurrences,
-    encryptionKeys,
-  );
+  await seedDeliveries(client, team, live, templates, occurrences);
 }

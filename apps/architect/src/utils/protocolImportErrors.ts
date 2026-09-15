@@ -4,6 +4,11 @@ import {
   type IntlShape,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
+import {
+  getProtocolFileErrorKind,
+  isProtocolFileFault,
+  type ProtocolFileErrorKind,
+} from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 const defaultIntl = createAppIntl({ locale: 'en' });
 export type LocalizedText = {
@@ -32,6 +37,43 @@ const importMessages = defineMessages({
     description: 'Researcher-facing Architect control or feedback.',
   },
 });
+
+/**
+ * Why an import failed, when the answer is about the researcher's file or
+ * their device rather than about Architect — the same three cases
+ * `describeImportFailure` can put a sentence to, in the same order.
+ *
+ * `null` means Architect is at fault, and is the only case exception
+ * reporting should see. A damaged archive, a protocol that predates the
+ * oldest supported upgrade, and a private window with no storage are all
+ * outcomes a researcher can act on, and reporting them as exceptions buries
+ * the failures that are genuinely Architect's to fix.
+ *
+ * A failed migration *step* is not one of them, which is why this asks
+ * `isProtocolFileFault` rather than merely whether the error can be
+ * described. `MigrationChain` re-raises everything a migration step throws as
+ * `MigrationStepError`, so our own bug inside a migration is classified
+ * identically to a protocol that cannot be upgraded — and would vanish from
+ * exception tracking exactly when it started happening.
+ */
+export type ImportFailureKind =
+  | ProtocolFileErrorKind
+  | 'tooLarge'
+  | 'storageUnavailable';
+
+export const getImportFailureKind = (
+  error: unknown,
+): ImportFailureKind | null => {
+  if (error instanceof NetcanvasTooLargeError) return 'tooLarge';
+
+  if (isProtocolFileFault(error)) {
+    return getProtocolFileErrorKind(error);
+  }
+
+  if (isStorageUnavailableError(error)) return 'storageUnavailable';
+
+  return null;
+};
 
 /**
  * What a researcher is told when a protocol will not open, and the raw text

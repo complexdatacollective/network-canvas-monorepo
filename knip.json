@@ -1,9 +1,17 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
-  // Claude skill entries are symlinks to the canonical .agents files. Ignore
-  // the mirrored tree so Knip does not analyse every script twice.
-  "ignore": [".claude/skills/**"],
+  // Recognising scripts/vitest.config.ts (see the workspace entry below)
+  // turns on knip's vitest plugin for the root workspace, which widens
+  // analysis to .claude/ and .agents/. Most of .claude/ is gitignored
+  // per-agent orchestration state (.claude/<epic>/, .claude/worktrees/, ...;
+  // see .gitignore) that is never part of the pushed revision but is still
+  // present on disk when the pre-push knip gate checks a clean worktree in
+  // place, so ignore all of .claude/ — including the skills mirror
+  // (symlinks to the canonical .agents files, so Knip does not analyse
+  // every script twice) — except the workflows entries declared below,
+  // which must stay analysed.
+  "ignore": [".claude/**", "!.claude/workflows/**"],
   // The legacy app-build workflow (.github/workflows/legacy-app-build.yml)
   // invokes the electron-builder binary, which is a devDependency of the
   // legacy architect app rather than the root, so knip sees it as unlisted.
@@ -28,7 +36,7 @@
       "entry": [
         "scripts/release-test/interviewer-*-walker.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
-        "scripts/build/posthog-cli-upload-stub.mjs",
+        "scripts/buildtime/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
         // Codex (.codex/hooks.json) and .husky/pre-push, which knip cannot
         // parse. Only the executables are entries, so the shared library's
@@ -46,7 +54,7 @@
         "scripts/**/*.test.mjs",
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
-        "scripts/build/check-mapbox-tokens.mjs",
+        "scripts/buildtime/check-mapbox-tokens.mjs",
         // Recognising scripts/vitest.config.ts turns on knip's vitest plugin
         // for the root workspace, which widens the analysis to .claude/ and
         // .agents/. The files below are invoked by name from skill markdown,
@@ -174,6 +182,7 @@
       // vendored copy sits under node_modules), so nothing imports them.
       "ignore": [
         "legacy/setup-path.d.ts",
+        "modern/browser-viewport.d.ts",
         "modern/setup-path.d.ts",
         "modern/with-animations-enabled.d.ts"
       ]
@@ -222,16 +231,11 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
-      "entry": [
-        "scripts/auth-cli-config.ts!",
-        // Resolved by vite.netlify.config.ts as a build input string, never
-        // by an import — it is the Netlify Function entry.
-        "src/netlify.ts!",
-        // Explicit image commands are bundle input strings, not imports.
-        "src/configure.ts!",
-        "src/diagnostics.ts!"
-      ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
+      // The image's third entry (#1909). src/index.ts and src/worker.ts are
+      // found through the `dev` script, which runs both from source; migrate
+      // is a one-shot no script starts, so it is named here.
+      "entry": ["scripts/auth-cli-config.ts!", "src/migrate.ts!"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [
@@ -271,10 +275,6 @@
       "ignoreBinaries": ["Rscript"]
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {},
-    "workers/studio-ingress": {
-      "entry": ["src/index.mjs!"],
-      "project": ["src/**/*.mjs"]
-    }
+    "workers/posthog-proxy": {}
   }
 }

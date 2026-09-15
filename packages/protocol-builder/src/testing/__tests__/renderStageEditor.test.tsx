@@ -101,7 +101,7 @@ function RosterColumnsSection({
   }, [resources, resourceId]);
 
   return (
-    <BuilderSection title="Card details">
+    <BuilderSection title="Card display">
       <p>
         {unreadable || columns.length === 0
           ? 'That roster could not be read.'

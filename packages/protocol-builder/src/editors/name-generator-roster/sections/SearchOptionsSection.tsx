@@ -11,6 +11,7 @@ import {
   type MessageRule,
   messageRuleValidation,
 } from '@codaco/fresco-ui/form/validation/helpers';
+import Section from '@codaco/fresco-ui/Section';
 
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection, {
@@ -37,38 +38,71 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.searchOptions.description',
     defaultMessage:
-      'Let the participant find someone by typing, and choose what their typing is matched against.',
+      'Configure how participants find and select nodes from the roster.',
     description: 'Description of the roster-search section.',
   },
   waitingDescription: {
     id: 'protocolBuilder.searchOptions.waitingDescription',
-    defaultMessage: 'Choose a roster data file before setting up its search.',
+    defaultMessage: 'Select a roster data source before configuring search.',
     description:
       'Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against.',
   },
+  searchMatchingTitle: {
+    id: 'protocolBuilder.searchOptions.searchMatchingTitle',
+    defaultMessage: 'Search matching',
+    description:
+      'Heading of the group holding which attributes of the data file a participant’s typing is compared against. Also names the group to assistive technology.',
+  },
+  searchMatchingDescription: {
+    id: 'protocolBuilder.searchOptions.searchMatchingDescription',
+    defaultMessage:
+      "Choose the roster attributes considered when matching a participant's search.",
+    description:
+      'Description of the search-matching group. A roster is a list of people imported from a data file.',
+  },
+  matchToleranceTitle: {
+    id: 'protocolBuilder.searchOptions.matchToleranceTitle',
+    defaultMessage: 'Match tolerance',
+    description:
+      'Heading of the group holding how close a participant’s typing has to be to count as a match. Also names the group to assistive technology.',
+  },
+  matchToleranceDescription: {
+    id: 'protocolBuilder.searchOptions.matchToleranceDescription',
+    defaultMessage:
+      "Choose how closely a participant's search must match roster text.",
+    description:
+      'Description of the match-tolerance group. Roster text is what the imported data file holds for each person.',
+  },
+  toleranceNotice: {
+    id: 'protocolBuilder.searchOptions.toleranceNotice',
+    defaultMessage:
+      'If the roster contains many similar nodes, selecting "Exact" or "High accuracy" will help narrow down searches. In contrast, a low accuracy search will allow for typos and spelling mistakes.',
+    description:
+      'Notice above the accuracy scale, saying which end of it suits a roster full of similar people. “Exact” and “High accuracy” are two of the scale’s own choices.',
+  },
   matchLabel: {
     id: 'protocolBuilder.searchOptions.matchLabel',
-    defaultMessage: 'Attributes a search matches',
+    defaultMessage: 'Searchable attributes',
     description:
       'Label of the checkboxes choosing which attributes of the data file a participant’s typing is compared against.',
   },
   matchHint: {
     id: 'protocolBuilder.searchOptions.matchHint',
     defaultMessage:
-      'What the participant types is compared against these. Choose the ones they would actually search for.',
+      "You can configure which attributes are considered when matching roster nodes to the user's query.",
     description:
       'Guidance under the checkboxes choosing what a participant’s search is matched against.',
   },
   toleranceLabel: {
     id: 'protocolBuilder.searchOptions.toleranceLabel',
-    defaultMessage: 'How closely a search must match',
+    defaultMessage: 'Search accuracy',
     description:
       'Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match.',
   },
   toleranceHint: {
     id: 'protocolBuilder.searchOptions.toleranceHint',
     defaultMessage:
-      'A stricter setting narrows a roster of similar people; a looser one forgives typos.',
+      'Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match.',
     description:
       'Guidance under the scale choosing how closely a participant’s search must match.',
   },
@@ -87,19 +121,19 @@ const messages = defineMessages({
   },
   toleranceClose: {
     id: 'protocolBuilder.searchOptions.toleranceClose',
-    defaultMessage: 'Close matches only',
+    defaultMessage: 'High accuracy',
     description:
-      'The second of four search tolerances, between "Exact" and "Allow small differences".',
+      'The second of four search tolerances, between "Exact" and "Medium accuracy". Accuracy here is how closely the participant’s typing has to match.',
   },
   toleranceSmallDifferences: {
     id: 'protocolBuilder.searchOptions.toleranceSmallDifferences',
-    defaultMessage: 'Allow small differences',
+    defaultMessage: 'Medium accuracy',
     description:
-      'The third of four search tolerances, between "Close matches only" and "Allow typos and misspellings".',
+      'The third of four search tolerances, between "High accuracy" and "Low accuracy".',
   },
   toleranceTypos: {
     id: 'protocolBuilder.searchOptions.toleranceTypos',
-    defaultMessage: 'Allow typos and misspellings',
+    defaultMessage: 'Low accuracy',
     description:
       'The loosest of four search tolerances: a word the participant spelled wrongly still finds the person.',
   },
@@ -310,27 +344,43 @@ export default function SearchOptionsSection() {
       resetOn={DATA_SOURCE}
       capability={SEARCH_CAPABILITY}
     >
-      <Alert variant="info" className="my-7">
-        <AlertDescription>
-          {intl.formatMessage(messages.keystrokeNotice)}
-        </AlertDescription>
-      </Alert>
-      <Field<typeof CheckboxGroupField>
-        name={MATCH_PROPERTIES}
-        component={CheckboxGroupField}
-        label={intl.formatMessage(messages.matchLabel)}
-        hint={intl.formatMessage(messages.matchHint)}
-        options={options}
-        custom={matchValidation}
-      />
-      <Field<typeof LikertScaleField>
-        name={FUZZINESS}
-        component={LikertScaleField}
-        label={intl.formatMessage(messages.toleranceLabel)}
-        hint={intl.formatMessage(messages.toleranceHint)}
-        options={tolerances}
-        custom={toleranceValidation}
-      />
+      <Section
+        title={intl.formatMessage(messages.searchMatchingTitle)}
+        description={intl.formatMessage(messages.searchMatchingDescription)}
+      >
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            {intl.formatMessage(messages.keystrokeNotice)}
+          </AlertDescription>
+        </Alert>
+        <Field<typeof CheckboxGroupField>
+          name={MATCH_PROPERTIES}
+          component={CheckboxGroupField}
+          label={intl.formatMessage(messages.matchLabel)}
+          hint={intl.formatMessage(messages.matchHint)}
+          options={options}
+          custom={matchValidation}
+        />
+      </Section>
+
+      <Section
+        title={intl.formatMessage(messages.matchToleranceTitle)}
+        description={intl.formatMessage(messages.matchToleranceDescription)}
+      >
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            {intl.formatMessage(messages.toleranceNotice)}
+          </AlertDescription>
+        </Alert>
+        <Field<typeof LikertScaleField>
+          name={FUZZINESS}
+          component={LikertScaleField}
+          label={intl.formatMessage(messages.toleranceLabel)}
+          hint={intl.formatMessage(messages.toleranceHint)}
+          options={tolerances}
+          custom={toleranceValidation}
+        />
+      </Section>
     </BuilderSection>
   );
 }

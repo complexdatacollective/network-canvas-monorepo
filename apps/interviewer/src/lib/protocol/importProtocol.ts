@@ -1,8 +1,7 @@
-import JSZip from 'jszip';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  createNetcanvasReader,
   type CurrentProtocol,
   detectSchemaVersion,
   type ExtractedAsset,
@@ -11,6 +10,7 @@ import {
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
+  missingAssetsError,
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
@@ -114,10 +114,13 @@ export async function peekProtocolName(
   buffer: Uint8Array,
 ): Promise<string | null> {
   try {
-    const zip = await JSZip.loadAsync(buffer);
-    const json = await zip.file('protocol.json')?.async('string');
-    if (!json) return null;
-    const parsed: unknown = JSON.parse(json);
+    // Goes through the package's loader and reader rather than JSZip directly,
+    // so naming the pending card costs the same bounded inflation as importing
+    // it: this runs on a researcher-supplied file before any size guard, and
+    // an unbudgeted `.async('string')` here would inflate a deflate-bombed
+    // `protocol.json` in full just to read one field off it.
+    const zip = await loadNetcanvasArchive(buffer);
+    const parsed: unknown = await createNetcanvasReader(zip).readProtocol();
     if (!isRecord(parsed)) return null;
     if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
       return parsed.name;
@@ -132,7 +135,18 @@ async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
   const zip = await loadNetcanvasArchive(buffer);
-  return extractProtocolFromZip(zip);
+  const { protocol, assets, missingAssets } = await extractProtocolFromZip(zip);
+
+  // Extraction reports a manifest entry with no file rather than refusing, so
+  // that an authoring tool can open the protocol and let the researcher
+  // re-supply it. Interviewer has no such move: the next thing it does with a
+  // resource is show it to a participant mid-interview, where a stimulus that
+  // never loads is worse than an import that never happened.
+  if (missingAssets.length > 0) {
+    throw missingAssetsError(missingAssets);
+  }
+
+  return { protocol, assets };
 }
 
 // Retain message identity for the host to choose a language at render time.

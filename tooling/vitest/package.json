@@ -10,6 +10,7 @@
   "exports": {
     "./legacy/disable-animations": "./legacy/disable-animations.js",
     "./legacy/setup-path": "./legacy/setup-path.js",
+    "./modern/browser-viewport": "./modern/browser-viewport.js",
     "./modern/disable-animations": "./modern/disable-animations.js",
     "./modern/setup-path": "./modern/setup-path.js",
     "./modern/with-animations-enabled": "./modern/with-animations-enabled.js"

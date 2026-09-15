@@ -49,7 +49,10 @@ vi.mock('~/ducks/modules/userActions/userActions', async () => {
   return {
     exportNetcanvas: createAsyncThunk('fixture/export', async () => {
       fixture.exported();
-      return { skippedAssets: fixture.files };
+      return {
+        status: 'unresolved-assets',
+        assetNames: fixture.files.map((file) => file.name),
+      };
     }),
     deleteLibraryProtocol: vi.fn(),
   };
@@ -57,12 +60,20 @@ vi.mock('~/ducks/modules/userActions/userActions', async () => {
 vi.mock('~/hooks/useProtocolLibrary', () => ({
   useProtocolLibrary: () => ({ protocols: [fixture.protocol], isLoaded: true }),
 }));
-vi.mock('~/utils/bundleProtocol', () => ({
-  downloadProtocolAsNetcanvas: async () => {
-    fixture.downloaded();
-    return fixture.files;
-  },
-}));
+vi.mock('~/utils/bundleProtocol', async (importOriginal) => {
+  // The real error class, because LibraryPanel narrows on `instanceof` — a
+  // look-alike defined here would take the generic failure branch and the
+  // dialog under test would never open.
+  const { UnresolvedAssetsError } =
+    await importOriginal<typeof import('~/utils/bundleProtocol')>();
+  return {
+    UnresolvedAssetsError,
+    downloadProtocolAsNetcanvas: async () => {
+      fixture.downloaded();
+      throw new UnresolvedAssetsError(fixture.files.map((file) => file.name));
+    },
+  };
+});
 
 beforeEach(() => {
   localStorage.clear();
@@ -90,7 +101,7 @@ function ActiveDownload() {
 }
 
 it.each(['active', 'library', 'unsaved'] as const)(
-  'keeps the %s partial-export filename list reactive without altering files or exporting twice',
+  'keeps the %s refused-export filename list reactive without altering files or exporting twice',
   async (surface) => {
     const original = structuredClone({
       files: fixture.files,

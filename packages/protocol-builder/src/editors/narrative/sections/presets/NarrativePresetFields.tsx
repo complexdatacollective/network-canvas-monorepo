@@ -16,6 +16,7 @@ import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
   CATEGORICAL_TYPES,
+  LAYOUT_TYPE,
   LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
@@ -28,7 +29,7 @@ import {
   useStableIdList,
 } from '../../../../sections/canvas/rowValues.ts';
 import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
-import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { narrativePresetMessages as messages } from './narrativePresetMessages.ts';
 
@@ -72,6 +73,12 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   // Writes reach THIS dialog's form, not the stage's: a preset is the
   // researcher's unsaved row until they save it.
   const setRowValue = useFormStore((store) => store.setFieldValue);
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: LAYOUT_TYPE,
+    title: intl.formatMessage(messages.presetCreateLayoutLabel),
+    onCreated: (variableId) => setRowValue(LAYOUT_VARIABLE_FIELD, variableId),
+  });
   const edgeChoicesOffered = useEdgeTypeChoices();
 
   const committedLayout = asText(item[LAYOUT_VARIABLE_FIELD]);
@@ -176,10 +183,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 
   return (
     <>
-      <Section
-        title={intl.formatMessage(messages.presetIdentityTitle)}
-        description={intl.formatMessage(messages.presetIdentityDescription)}
-      >
+      <Section title={intl.formatMessage(messages.presetIdentityTitle)}>
         <Field<typeof InputField>
           name={LABEL_FIELD}
           label={intl.formatMessage(messages.presetNameLabel)}
@@ -191,10 +195,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
         />
       </Section>
 
-      <Section
-        title={intl.formatMessage(messages.presetPositionsTitle)}
-        description={intl.formatMessage(messages.presetPositionsDescription)}
-      >
+      <Section title={intl.formatMessage(messages.presetPositionsTitle)}>
         <Field<typeof VariablePicker>
           name={LAYOUT_VARIABLE_FIELD}
           label={intl.formatMessage(messages.presetLayoutLabel)}
@@ -204,15 +205,9 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           emptyMessage={intl.formatMessage(messages.presetLayoutEmpty)}
           initialValue={committedLayout}
           required={intl.formatMessage(messages.presetLayoutRequired)}
+          {...createProps}
         />
-        <CreateVariableButton
-          subject={subject ?? null}
-          variableType="layout"
-          label={intl.formatMessage(messages.presetCreateLayoutLabel)}
-          onCreated={(variableId) =>
-            setRowValue(LAYOUT_VARIABLE_FIELD, variableId)
-          }
-        />
+        {editor}
       </Section>
 
       <Section
@@ -251,7 +246,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
         <Field<typeof OptionalTickList>
           name={HIGHLIGHT_FIELD}
           label={intl.formatMessage(messages.presetHighlightLabel)}
-          hint={intl.formatMessage(messages.presetHighlightHint)}
           component={OptionalTickList}
           options={highlightChoices}
           initialValue={committedHighlight}

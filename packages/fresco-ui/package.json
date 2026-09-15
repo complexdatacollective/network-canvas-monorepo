@@ -95,6 +95,7 @@
     "./dialogs/DialogProvider": "./src/dialogs/DialogProvider.tsx",
     "./dialogs/DialogTrigger": "./src/dialogs/DialogTrigger.tsx",
     "./dialogs/useDialog": "./src/dialogs/useDialog.tsx",
+    "./dialogs/useDialogSession": "./src/dialogs/useDialogSession.ts",
     "./dialogs/useWizard": "./src/dialogs/useWizard.tsx",
     "./dnd/DndStoreProvider": "./src/dnd/DndStoreProvider.tsx",
     "./dnd/dnd": "./src/dnd/dnd.ts",
@@ -117,6 +118,7 @@
     "./form/Form": "./src/form/Form.tsx",
     "./form/FormErrors": "./src/form/FormErrors.tsx",
     "./form/Hint": "./src/form/Hint.tsx",
+    "./form/ResetFormWhenClosed": "./src/form/ResetFormWhenClosed.tsx",
     "./form/SubmitButton": "./src/form/SubmitButton.tsx",
     "./form/fields/ArrayField/ArrayField": "./src/form/fields/ArrayField/ArrayField.tsx",
     "./form/fields/Boolean": "./src/form/fields/Boolean.tsx",
@@ -126,6 +128,7 @@
     "./form/fields/Combobox/Combobox": "./src/form/fields/Combobox/Combobox.tsx",
     "./form/fields/Combobox/shared": "./src/form/fields/Combobox/shared.ts",
     "./form/fields/DatePicker": "./src/form/fields/DatePicker.tsx",
+    "./form/fields/IconPicker": "./src/form/fields/IconPicker.tsx",
     "./form/fields/InputField": "./src/form/fields/InputField.tsx",
     "./form/fields/LikertScale": "./src/form/fields/LikertScale.tsx",
     "./form/fields/LocaleSelect": "./src/form/fields/LocaleSelect.tsx",
@@ -157,6 +160,7 @@
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
+    "./hooks/useFitText": "./src/hooks/useFitText.ts",
     "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
     "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
@@ -513,6 +517,10 @@
         "types": "./dist/dialogs/useDialog.d.ts",
         "default": "./dist/dialogs/useDialog.js"
       },
+      "./dialogs/useDialogSession": {
+        "types": "./dist/dialogs/useDialogSession.d.ts",
+        "default": "./dist/dialogs/useDialogSession.js"
+      },
       "./dialogs/useWizard": {
         "types": "./dist/dialogs/useWizard.d.ts",
         "default": "./dist/dialogs/useWizard.js"
@@ -601,6 +609,10 @@
         "types": "./dist/form/Hint.d.ts",
         "default": "./dist/form/Hint.js"
       },
+      "./form/ResetFormWhenClosed": {
+        "types": "./dist/form/ResetFormWhenClosed.d.ts",
+        "default": "./dist/form/ResetFormWhenClosed.js"
+      },
       "./form/SubmitButton": {
         "types": "./dist/form/SubmitButton.d.ts",
         "default": "./dist/form/SubmitButton.js"
@@ -636,6 +648,10 @@
       "./form/fields/DatePicker": {
         "types": "./dist/form/fields/DatePicker.d.ts",
         "default": "./dist/form/fields/DatePicker.js"
+      },
+      "./form/fields/IconPicker": {
+        "types": "./dist/form/fields/IconPicker.d.ts",
+        "default": "./dist/form/fields/IconPicker.js"
       },
       "./form/fields/InputField": {
         "types": "./dist/form/fields/InputField.d.ts",
@@ -760,6 +776,10 @@
       "./form/validation/utils/isUnanswered": {
         "types": "./dist/form/validation/utils/isUnanswered.d.ts",
         "default": "./dist/form/validation/utils/isUnanswered.js"
+      },
+      "./hooks/useFitText": {
+        "types": "./dist/hooks/useFitText.d.ts",
+        "default": "./dist/hooks/useFitText.js"
       },
       "./hooks/useHasHydrated": {
         "types": "./dist/hooks/useHasHydrated.d.ts",
@@ -921,6 +941,7 @@
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist",
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "sync-exports": "node scripts/generate-publish-exports.mjs"
   },
   "dependencies": {

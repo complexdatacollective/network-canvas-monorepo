@@ -1,5 +1,3 @@
-import type Zip from 'jszip';
-
 import {
   defineMessages,
   createAppIntl,
@@ -7,62 +5,9 @@ import {
 } from '@codaco/app-i18n/messages';
 import {
   type CurrentProtocol,
-  type VersionedProtocol,
+  type ExtractedAsset,
 } from '@codaco/protocol-validation';
-import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import { type AssetInsertType } from '~/schemas/protocol';
-
-/**
- * Extract apikey assets from a protocol's asset manifest.
- */
-function extractApikeyAssetsFromManifest(
-  assetManifest: CurrentProtocol['assetManifest'],
-): AssetInsertType[] {
-  if (!assetManifest) return [];
-
-  return Object.entries(assetManifest).flatMap(([key, entry]) => {
-    if (entry.type !== 'apikey') return [];
-    return [
-      {
-        assetId: key,
-        key: key,
-        name: entry.name,
-        type: entry.type,
-        url: '',
-        size: 0,
-        value: entry.value,
-      },
-    ];
-  });
-}
-
-// Fetch protocol.json as a parsed object from the protocol zip.
-export const getProtocolJson = async (
-  protocolZip: Zip,
-  formatMessage: (
-    message: MessageDescriptor,
-    values?: Record<string, string | number>,
-  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
-) => {
-  const protocolFile = protocolZip.file('protocol.json');
-  if (!protocolFile) {
-    throw new Error(formatMessage(protocolFileErrorMessages.missingProtocol));
-  }
-  try {
-    const protocolString = await protocolFile.async('string');
-    return JSON.parse(protocolString) as VersionedProtocol;
-  } catch (cause) {
-    throw new Error(formatMessage(protocolFileErrorMessages.damagedJson), {
-      cause,
-    });
-  }
-};
-
-/**
- * Fetch all assets listed in the protocol json from the protocol zip, and
- * return them as a collection of ProtocolAsset objects, which includes useful
- * metadata about the asset.
- */
 
 type FetchedFileAsset = Omit<
   AssetInsertType,
@@ -74,65 +19,75 @@ type ProtocolAssetsResult = {
   apikeyAssets: AssetInsertType[];
 };
 
-export const getProtocolAssets = async (
-  protocolJson: CurrentProtocol,
-  protocolZip: Zip,
-  formatMessage: (
-    message: MessageDescriptor,
-    values?: Record<string, string | number>,
-  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
-): Promise<ProtocolAssetsResult> => {
-  const assetManifest = protocolJson?.assetManifest;
+/**
+ * Split what came out of a `.netcanvas` into the rows Fresco stores.
+ *
+ * Structure of an asset in network canvas protocols:
+ *   - An asset in the manifest is an object whose key is a UID.
+ *   - The ID property is the same as the key (duplicated for convenience :/)
+ *   - Name property is the original file name when added to Architect
+ *   - Source property is the internal path to the file in the zip, which is a
+ *     separate UID + file extension.
+ *   - The type property is one of the NC asset types (e.g. 'image', 'video',
+ *     etc.)
+ * Assets with type 'apikey' are handled differently:
+ *   - They are not actually files. The key itself is stored in the value field.
+ *
+ * Two different documents are involved, deliberately. The bytes come from the
+ * archive, and were resolved against the manifest that shipped inside it —
+ * that is the only manifest whose `source` values describe entries that
+ * actually exist in that zip. The metadata written alongside them comes from
+ * the validated protocol, because that is the document being installed: if an
+ * upgrade ever restates an asset, the stored row should describe the protocol
+ * Fresco will run, not the one the researcher happened to export.
+ *
+ * The two are joined on the manifest key, which no upgrade rewrites — an
+ * upgrade that did would leave every stage's asset reference dangling and fail
+ * validation long before reaching here.
+ */
+export const partitionProtocolAssets = (
+  protocol: CurrentProtocol,
+  extractedAssets: ExtractedAsset[],
+): ProtocolAssetsResult => {
+  const assetManifest = protocol.assetManifest;
 
   if (!assetManifest) {
     return { fileAssets: [], apikeyAssets: [] };
   }
 
-  /**
-   * Structure of an asset in network canvas protocols:
-   *   - An asset in the manifest is an object whose key is a UID.
-   *   - The ID property is the same as the key (duplicated for convinience :/)
-   *   - Name property is the original file name when added to Architect
-   *   - Source property is the internal path to the file in the zip, which is a
-   *     separate UID + file extension.
-   *   - The type property is one of the NC asset types (e.g. 'image', 'video',
-   *     etc.)
-   * Assets with type 'apikey' are handled differently:
-   *   - They are not actually files. The key itself is stored in the value field.
-   */
-  const apikeyAssets = extractApikeyAssetsFromManifest(assetManifest);
-
   const fileAssets: FetchedFileAsset[] = [];
+  const apikeyAssets: AssetInsertType[] = [];
 
-  await Promise.all(
-    Object.entries(assetManifest)
-      .filter(([_, asset]) => asset.type !== 'apikey')
-      .map(async ([key, asset]) => {
-        if (!('source' in asset)) return;
+  for (const [assetId, entry] of Object.entries(assetManifest)) {
+    if (entry.type !== 'apikey') continue;
+    apikeyAssets.push({
+      assetId,
+      key: assetId,
+      name: entry.name,
+      type: entry.type,
+      url: '',
+      size: 0,
+      value: entry.value,
+    });
+  }
 
-        const assetFile = protocolZip.file(`assets/${asset.source}`);
-        if (!assetFile) {
-          throw new Error(
-            formatMessage(protocolFileErrorMessages.missingNamedAsset, {
-              assetName: asset.source,
-            }),
-          );
-        }
-        const file = await assetFile.async('blob').catch((cause: unknown) => {
-          throw new Error(
-            formatMessage(protocolFileErrorMessages.damagedJson),
-            { cause },
-          );
-        });
+  for (const extracted of extractedAssets) {
+    const entry = assetManifest[extracted.id];
+    // An apikey carries a string rather than file data and is handled above.
+    // An id the validated manifest no longer lists was dropped by an upgrade,
+    // so the protocol being installed does not refer to it and Fresco has
+    // nothing to store it against.
+    if (!entry || entry.type === 'apikey') continue;
+    if (typeof extracted.data === 'string') continue;
 
-        fileAssets.push({
-          assetId: key,
-          name: asset.source,
-          type: asset.type,
-          file: new File([file], asset.source), // Convert Blob to File with filename
-        });
-      }),
-  );
+    fileAssets.push({
+      assetId: extracted.id,
+      name: entry.source,
+      type: entry.type,
+      // Convert Blob to File with filename
+      file: new File([extracted.data], entry.source),
+    });
+  }
 
   return { fileAssets, apikeyAssets };
 };

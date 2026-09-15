@@ -1,0 +1,235 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, within } from 'storybook/test';
+
+import type { VariableType } from '@codaco/protocol-validation';
+
+import AttributePill from './AttributePill.tsx';
+
+const EVERY_TYPE: readonly VariableType[] = [
+  'boolean',
+  'categorical',
+  'datetime',
+  'layout',
+  'location',
+  'number',
+  'ordinal',
+  'scalar',
+  'text',
+];
+
+const meta = {
+  title: 'Protocol Builder/Fields/Attribute pill',
+  component: AttributePill,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'One attribute, shown as the researcher’s name for it over the colour and icon of the kind of answer it holds — Architect’s own pill, the same shape, accent colours and type icons its codebook editor has used since it was written. The kind decides what can be asked about an attribute and what a rule can compare it against, so a list of three dozen is unreadable without it. It says nothing to a screen reader about the kind itself: where it renders inside a list row, that row’s accessible name has to be the attribute’s own name, so whoever renders the pill states the kind beside it.',
+      },
+    },
+  },
+  args: { name: 'nominated_early', type: 'boolean' },
+  tags: ['autodocs'],
+} satisfies Meta<typeof AttributePill>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** One attribute, as it reads beside the control that holds it. */
+export const OneAttribute: Story = {};
+
+/**
+ * The nine kinds of answer the protocol schema defines, in the colours and
+ * icons Architect has shown them in since its codebook editor was written — so
+ * a researcher moving between the two apps reads one vocabulary.
+ */
+export const EveryKindOfAnswer: Story = {
+  render: () => (
+    <div className="flex flex-col items-start gap-2 p-4">
+      {EVERY_TYPE.map((type) => (
+        <AttributePill key={type} name={type} type={type} />
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const backgrounds = new Set<string>();
+    const icons = new Set<string>();
+
+    for (const type of EVERY_TYPE) {
+      const pill = await canvas.findByText(type);
+      const root = pill.closest('data');
+      if (!root) throw new Error(`The ${type} pill did not render.`);
+
+      // What a researcher sees: the accent resolved to a real colour rather
+      // than a token that never landed, and an icon file that actually
+      // arrived — a missing asset decodes to a zero-width image.
+      const background = getComputedStyle(root).backgroundColor;
+      await expect(background).not.toBe('rgba(0, 0, 0, 0)');
+      backgrounds.add(background);
+
+      const icon = root.querySelector('img');
+      if (!icon) throw new Error(`The ${type} pill rendered no icon.`);
+      await expect(icon.complete).toBe(true);
+      await expect(icon.naturalWidth).toBeGreaterThan(0);
+      icons.add(icon.currentSrc || icon.src);
+    }
+
+    await expect(backgrounds.size).toBe(EVERY_TYPE.length);
+    await expect(icons.size).toBe(EVERY_TYPE.length);
+  },
+};
+
+/**
+ * A pill for something whose kind of answer is not known — an attribute a row
+ * is still inventing, before the researcher has said what it holds, or a
+ * stored reference no definition reached the control for — takes Architect's
+ * fallback mark: charcoal and a question mark, neither of which claims one of
+ * the nine kinds.
+ */
+export const SomethingWithNoKindOfAnswerYet: Story = {
+  args: { name: 'nickname', type: undefined },
+};
+
+/**
+ * An attribute a rule still names that the codebook no longer describes. The
+ * pill is drawn — a researcher cannot repair what the editor will not show
+ * them — in the destructive accent, so that "we do not know what kind of
+ * answer this holds" and "this attribute is gone" do not look the same.
+ */
+export const NoLongerInTheCodebook: Story = {
+  args: { name: 'closeness', type: undefined, missing: true },
+  play: async ({ canvasElement }) => {
+    const pill = canvasElement.querySelector('data');
+    if (!pill) throw new Error('The pill did not render.');
+
+    // The destructive accent resolved to a real colour, and a different one
+    // from the neutral mark an unknown kind takes — read from the page rather
+    // than from the token, which is what a researcher can actually see.
+    const missing = getComputedStyle(pill).backgroundColor;
+    await expect(missing).not.toBe('rgba(0, 0, 0, 0)');
+
+    const neutral = document.createElement('div');
+    neutral.style.backgroundColor = 'oklch(var(--charcoal))';
+    canvasElement.append(neutral);
+    await expect(missing).not.toBe(getComputedStyle(neutral).backgroundColor);
+    neutral.remove();
+  },
+};
+
+/** The pill is exactly as wide as its name and icon need. */
+export const ContentSized: Story = {
+  args: { name: 'participant_neighbourhood', type: 'text' },
+};
+
+/**
+ * A name longer than the space it is given is clipped rather than allowed to
+ * push the control it sits in wider than its container.
+ */
+export const ANameLongerThanTheSpace: Story = {
+  args: {
+    name: 'how_often_this_person_and_the_participant_speak_in_a_typical_month',
+    type: 'ordinal',
+  },
+  render: (args) => (
+    <div className="w-72 p-4">
+      <AttributePill {...args} />
+    </div>
+  ),
+};
+
+/**
+ * The pill as the rename control Architect made it, at the one mount that
+ * turns it on: the attribute a picker is holding.
+ *
+ * Pressing it zooms the pill into an editor over the page, with the name in a
+ * box, Cancel and Save Changes. It was the ONLY way Architect offered to
+ * rename an existing attribute — its codebook screen had no row editor — so a
+ * researcher who mistyped a name met this or nothing.
+ */
+export const Editable: Story = {
+  args: {
+    name: 'age',
+    type: 'number',
+    editable: true,
+    onRename: () => true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const trigger = canvas.getByRole('button', {
+      name: 'Edit attribute name: age',
+    });
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+  },
+};
+
+/** The editor open on the name, which is what pressing the pill above opens. */
+export const EditingTheName: Story = {
+  args: {
+    name: 'age',
+    type: 'number',
+    editable: true,
+    onRename: () => true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Edit attribute name: age' }),
+    );
+
+    // The editor is a layer over the page, so it is found on the document
+    // rather than in the story's own canvas.
+    const editor = within(
+      await within(document.body).findByRole('dialog', {
+        name: 'Edit attribute name',
+      }),
+    );
+    await expect(
+      editor.getByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('age');
+    // Held until there is something to save, which is Architect's own rule.
+    await expect(
+      editor.getByRole('button', { name: 'Save Changes' }),
+    ).toBeDisabled();
+  },
+};
+
+/**
+ * A name the caller refuses, stated under the box rather than on save: the
+ * researcher is told while they are still looking at what they typed.
+ */
+export const ANameThatCannotBeUsed: Story = {
+  args: {
+    name: 'age',
+    type: 'number',
+    editable: true,
+    onRename: () => true,
+    validateName: () => 'this type already has an attribute called that',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Edit attribute name: age' }),
+    );
+    const editor = within(
+      await within(document.body).findByRole('dialog', {
+        name: 'Edit attribute name',
+      }),
+    );
+    const box = editor.getByRole('textbox', { name: 'Attribute name' });
+    await userEvent.clear(box);
+    await userEvent.type(box, 'height');
+
+    await expect(
+      await within(document.body).findByText(
+        'this type already has an attribute called that',
+      ),
+    ).toBeVisible();
+    await expect(
+      editor.getByRole('button', { name: 'Save Changes' }),
+    ).toBeDisabled();
+  },
+};

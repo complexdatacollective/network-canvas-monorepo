@@ -1,24 +1,7 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
-import {
-  AuditAlertAcknowledgeInputSchema,
-  AuditAlertListInputSchema,
-  AuditAlertListSchema,
-  AuditAlertReadInputSchema,
-  AuditAlertSettingsSchema,
-  UpdateAuditAlertSettingsSchema,
-} from './alerts.ts';
 import { protocolBuilderContract } from './protocolBuilder.ts';
-export {
-  AUDIT_ALERT_MAX_RECIPIENTS,
-  AuditAlertPolicySchema,
-  AuditAlertRecipientsSchema,
-  type AuditAlertItem,
-  type AuditAlertRecipient,
-  type AuditAlertSettings,
-} from './alerts.ts';
-
 import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
@@ -45,7 +28,6 @@ import {
   ProtocolDraftSchema,
   ProtocolSummarySchema,
   StatusSchema,
-  SetupStatusSchema,
   StudyCountsInputSchema,
   StudyCountsSchema,
   StudyDetailSchema,
@@ -67,10 +49,6 @@ export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
-  BootstrapTokenSchema,
-  CompleteSetupInputSchema,
-  type CompleteSetupInput,
-  type SetupStatus,
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
@@ -114,15 +92,23 @@ export {
 
 export const contract = {
   status: oc.output(StatusSchema),
-  /** Self-host first-run setup; both procedures are absent in managed mode. */
+  /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
+  me: oc.output(MeSchema),
+  /**
+   * First-run bootstrap (#1909). Public and session-free by necessity: it runs
+   * on an instance where no account exists yet, and the bootstrap token the
+   * schema step printed is the whole of its authorization.
+   *
+   * A wrong token and a missing one are the same UNAUTHORIZED; an instance
+   * that already has an owner is NOT_FOUND, which is what `/setup` renders as
+   * a not-found screen. On success the response carries the new owner's
+   * session cookie.
+   */
   setup: {
-    status: oc.output(SetupStatusSchema),
     complete: oc
       .input(CompleteSetupInputSchema)
       .output(CompleteSetupResultSchema),
   },
-  /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
-  me: oc.output(MeSchema),
   /**
    * The caller's own account: personal, not team-scoped, so these take no
    * teamId and need only a signed-in user. Deliberately unaudited (2026-09-04
@@ -217,15 +203,6 @@ export const contract = {
    * per-team sequences, never timestamps.
    */
   audit: {
-    alerts: {
-      settings: oc.input(TeamScopedSchema).output(AuditAlertSettingsSchema),
-      updateSettings: oc
-        .input(UpdateAuditAlertSettingsSchema)
-        .output(z.object({ revision: z.uuid() })),
-      list: oc.input(AuditAlertListInputSchema).output(AuditAlertListSchema),
-      markRead: oc.input(AuditAlertReadInputSchema).output(z.void()),
-      acknowledge: oc.input(AuditAlertAcknowledgeInputSchema).output(z.void()),
-    },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
     /**

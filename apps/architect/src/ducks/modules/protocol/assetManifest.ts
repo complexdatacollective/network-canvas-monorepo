@@ -15,7 +15,7 @@ import {
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
 import { getArchitectIntl } from '~/i18n/imperative';
-import { saveAssetWithFallback } from '~/utils/assetUtils';
+import { deleteStoredAsset, saveAssetWithFallback } from '~/utils/assetUtils';
 import type { LocalizedText } from '~/utils/protocolImportErrors';
 import {
   refusedCommitDescriptor,
@@ -107,7 +107,9 @@ const getImportAssetErrorInfo = (
           ? errorMessages.columns
           : code === 'UNSUPPORTED_TYPE'
             ? errorMessages.unsupported
-            : errorMessages.generic;
+            : code === 'REPLACEMENT_TYPE_MISMATCH'
+              ? errorMessages.replacementType
+              : errorMessages.generic;
   return {
     filename,
     code,
@@ -131,6 +133,26 @@ const getImportAssetErrorInfo = (
 export type AssetImport = {
   file: File;
   name?: string;
+  /**
+   * Write this file as the resource that already has this id, instead of
+   * adding a new one.
+   *
+   * Used to supply a file that an imported `.netcanvas` declared but did not
+   * contain. Every stage that refers to the resource refers to it by this id,
+   * so minting a new one would leave all of them pointing at the entry that is
+   * still empty — the researcher would appear to have fixed it and nothing
+   * would change.
+   */
+  replaceAssetId?: string;
+  /**
+   * The type the replaced entry must keep.
+   *
+   * The schema types asset references — a canvas background must name an
+   * `image`, a roster must name a `network` — so accepting a file of another
+   * type would swap a working reference for one that fails validation, on a
+   * protocol the researcher is in the middle of repairing.
+   */
+  expectedType?: AssetType;
 };
 
 export const importAssetAsync = createAsyncThunk<
@@ -140,11 +162,11 @@ export const importAssetAsync = createAsyncThunk<
 >(
   'assetManifest/importAssetAsync',
   async (
-    { file, name: displayName },
+    { file, name: displayName, replaceAssetId, expectedType },
     { dispatch, getState, rejectWithValue },
   ) => {
     const name = displayName ?? file.name;
-    const assetId = uuid();
+    const assetId = replaceAssetId ?? uuid();
 
     // The asset blob is written into a store keyed by protocol id, with no
     // exclusivity check of its own, so a tab that no longer owns the protocol
@@ -206,6 +228,28 @@ export const importAssetAsync = createAsyncThunk<
         return rejectWithValue(refusedBeforeWrite);
       }
 
+      // Decided before anything is written. The type comes from the file's
+      // name, so it costs nothing to ask early — and asking late meant a
+      // replacement of the wrong type had already overwritten the bytes stored
+      // under the existing asset id. The manifest entry kept its old `source`
+      // and type, `getUnresolvedAssetIds` counted the resource as resolved
+      // because a row existed, and the GC retained it because the id was still
+      // referenced: a protocol that previews and exports the wrong file.
+      const assetType = getSupportedAssetType(file.name) as AssetType | false;
+
+      if (!assetType) {
+        throw new Error(`Unsupported asset type for file: ${file.name}`);
+      }
+
+      if (expectedType && assetType !== expectedType) {
+        throw Object.assign(
+          new Error(
+            `Replacement for asset ${assetId} is a ${assetType}, expected ${expectedType}`,
+          ),
+          { code: 'REPLACEMENT_TYPE_MISMATCH' },
+        );
+      }
+
       // Convert File to Blob and create ExtractedAsset
       const blob = new Blob([file], { type: file.type });
       const asset: ExtractedAsset = {
@@ -224,13 +268,6 @@ export const importAssetAsync = createAsyncThunk<
         dispatch(setStorageUnavailable(true));
       }
 
-      // Get asset type for manifest
-      const assetType = getSupportedAssetType(file.name) as AssetType | false;
-
-      if (!assetType) {
-        throw new Error(`Unsupported asset type for file: ${file.name}`);
-      }
-
       const importPayload: ImportAssetCompletePayload = {
         id: assetId,
         filename: file.name, // Used as source in manifest
@@ -243,12 +280,42 @@ export const importAssetAsync = createAsyncThunk<
       // leaves it behind — but an unreferenced blob is collected by the durable
       // save path, whereas a manifest entry added in a tab whose writes are
       // dropped is a resource the researcher can see and never save.
+      //
+      // A repair is the exception: its blob lands under an id the manifest
+      // already carries, so it is referenced, never collected, and leaves the
+      // resource reading as resolved while the entry still names the old file.
+      // Remove it rather than leave that behind. If the tab that took the
+      // protocol has since repaired the same resource this discards its bytes
+      // too — but that resource then reads as missing, which is visible and
+      // repairable, where the state this avoids is silent and exports the
+      // wrong file under the old extension.
       const refusedBeforeCommit = refuseIfNotOwned();
       if (refusedBeforeCommit) {
+        if (replaceAssetId) {
+          await deleteStoredAsset(replaceAssetId);
+        }
         return rejectWithValue(refusedBeforeCommit);
       }
 
-      dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
+      const completed =
+        assetManifestSlice.actions.importAssetComplete(importPayload);
+
+      // A repair is not an undoable edit. The blob it writes lands under an id
+      // the manifest already carries, so it stays referenced and the durable
+      // save path never collects it — an undo would restore an entry naming
+      // the old file on top of bytes that are the new one. That is not
+      // cosmetic for a network resource: `.csv` and `.json` are both
+      // `network`, so the type check above admits the swap and the reader
+      // picks its parser from the extension the manifest was rolled back to.
+      //
+      // There is also nothing to roll back to. Replace is offered only for a
+      // resource whose file is missing, so the state before the repair is the
+      // broken one.
+      dispatch(
+        replaceAssetId
+          ? { ...completed, meta: { skipTimeline: true } }
+          : completed,
+      );
       return importPayload;
     } catch (error) {
       // Deliberately dispatches nothing. A refused import changed no resource,
@@ -375,6 +442,12 @@ const errorMessages = defineMessages({
   generic: {
     id: 'architect.resourceImport.generic',
     defaultMessage: 'Check that it is a supported file type, and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  replacementType: {
+    id: 'architect.resourceImport.replacementType',
+    defaultMessage:
+      'This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.',
     description: 'Researcher-facing Architect control or feedback.',
   },
 });

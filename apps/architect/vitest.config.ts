@@ -9,6 +9,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -137,6 +138,7 @@ export default defineConfig({
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

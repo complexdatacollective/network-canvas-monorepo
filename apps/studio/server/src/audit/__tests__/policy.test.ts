@@ -4,11 +4,17 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
-import { createScanner, SyntaxKind } from 'typescript/unstable/ast';
+import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
 import { contract } from '@codaco/studio-rpc';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
+import {
+  sourceTokens,
+  tokenName,
+  type SourceToken,
+} from '../../__tests__/support/source-tokens.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
 import type { AuthEnv } from '../../env.ts';
 import { SYNC_TRANSACTION_POLICIES } from '../../protocol/sync.ts';
@@ -74,62 +80,6 @@ type TenantBoundaryAccess = {
   line: number;
   sqlVerb?: 'INSERT' | 'UPDATE' | 'DELETE';
 };
-
-type SourceToken = {
-  kind: SyntaxKind;
-  raw: string;
-  value: string;
-  position: number;
-};
-
-// TS 7 exposes its tokenizer independently of the compiler process. Using it
-// here means comments and strings cannot spoof the source-policy inventory,
-// while keeping the test independent of a TypeScript program/typecheck.
-function sourceTokens(source: string): SourceToken[] {
-  const scanner = createScanner(true, undefined, source);
-  const tokens: SourceToken[] = [];
-  const templateBraceDepth: number[] = [];
-  let kind = scanner.scan();
-  while (kind !== SyntaxKind.EndOfFile) {
-    tokens.push({
-      kind,
-      raw: scanner.getTokenText(),
-      value: scanner.getTokenValue(),
-      position: scanner.getTokenStart(),
-    });
-
-    if (kind === SyntaxKind.TemplateHead) {
-      templateBraceDepth.push(0);
-    } else if (kind === SyntaxKind.TemplateTail) {
-      templateBraceDepth.pop();
-    } else if (templateBraceDepth.length > 0) {
-      const index = templateBraceDepth.length - 1;
-      if (kind === SyntaxKind.OpenBraceToken) {
-        templateBraceDepth[index] = (templateBraceDepth[index] ?? 0) + 1;
-      } else if (kind === SyntaxKind.CloseBraceToken) {
-        const depth = templateBraceDepth[index] ?? 0;
-        if (depth === 0) {
-          kind = scanner.reScanTemplateToken(false);
-          continue;
-        }
-        templateBraceDepth[index] = depth - 1;
-      }
-    }
-    kind = scanner.scan();
-  }
-  return tokens;
-}
-
-function tokenName(token: SourceToken | undefined): string | undefined {
-  if (token === undefined) return undefined;
-  return token.kind === SyntaxKind.StringLiteral ||
-    token.kind === SyntaxKind.NoSubstitutionTemplateLiteral ||
-    token.kind === SyntaxKind.TemplateHead ||
-    token.kind === SyntaxKind.TemplateMiddle ||
-    token.kind === SyntaxKind.TemplateTail
-    ? token.value
-    : token.raw;
-}
 
 function isTenantReceiver(token: SourceToken | undefined): boolean {
   const name = tokenName(token);
@@ -272,7 +222,6 @@ describe('audit mutation policy', () => {
   it('classifies every internal RPC mutation and only mutations', () => {
     const reads = new Set([
       'status',
-      'setup.status',
       'me',
       'protocols.draft',
       'protocols.list',
@@ -282,8 +231,6 @@ describe('audit mutation policy', () => {
       'audit.list',
       'audit.get',
       'audit.filterOptions',
-      'audit.alerts.list',
-      'audit.alerts.settings',
       // The protocol-builder host's reads. `watchProtocol` is a subscription
       // rather than a write: it observes revisions, locks and presence, and
       // changes nothing it observes.
@@ -342,19 +289,20 @@ describe('audit mutation policy', () => {
   });
 
   it('classifies the exact configured Better Auth organization route inventory', async () => {
-    // Reads endpoint metadata only; this pool never opens a connection.
     const pool = new pg.Pool();
     const env: AuthEnv = {
       baseUrl: 'http://studio.test',
       secret: randomBytes(32).toString('hex'),
-      mailer: { kind: 'refuse' },
       trustedProxies: undefined,
       socialProviders: {},
     };
     try {
-      const auth = createBetterAuthInstance(env, pool, {
-        sendMagicLink: () => Promise.resolve(),
-      });
+      const auth = createBetterAuthInstance(
+        env,
+        pool,
+        () => Promise.resolve(),
+        testCipher(),
+      );
       const plugin = auth.options.plugins?.find(
         (candidate) => candidate.id === 'organization',
       );
@@ -427,13 +375,11 @@ describe('audit mutation policy', () => {
       );
     });
 
-    // The audit, PII and webhook readers use lockActor to authorize the live
-    // committed membership in the audit transaction. The writable store stays
-    // confined to these reviewed services and the existing command producers.
+    // read-authorization.ts is the one reader: audit reads must authorize the
+    // caller's committed role inside their own transaction, and confining that
+    // lock here keeps the store's write surface out of the RPC router.
     expect(importers.map((file) => relative(REPO_ROOT, file))).toEqual([
       'apps/studio/server/src/audit/read-authorization.ts',
-      'apps/studio/server/src/pii/participants.ts',
-      'apps/studio/server/src/pii/webhooks.ts',
       'apps/studio/server/src/protocol/commands.ts',
       'apps/studio/server/src/study/commands.ts',
       'apps/studio/server/src/team/commands.ts',
@@ -490,9 +436,16 @@ describe('audit mutation policy', () => {
     expect(actual).toEqual({
       'apps/studio/server/src/audit/command.ts': [
         { member: 'transaction', form: 'call', line: 0 },
-        { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/audit/transaction.ts': [
+        { member: 'transaction', form: 'call', line: 0 },
+      ],
+      // Not a tenant transaction: this is better-auth's own adapter handing
+      // out a scoped adapter, which the secrets wrapper re-wraps so the
+      // account writes inside an OAuth sign-up are sealed like every other
+      // one (#1900). The oracle matches `.transaction` on any receiver on
+      // purpose, so a non-tenant one is listed here rather than exempted.
+      'apps/studio/server/src/auth/secrets-adapter.ts': [
         { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/db/schema.ts': [

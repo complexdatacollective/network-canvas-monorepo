@@ -4,21 +4,8 @@ import type { FieldState } from '@codaco/fresco-ui/form/store/types';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
+import type { StageSectionStatus } from '../stage-editor-contract.ts';
 import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
-
-/**
- * What the outline says about one section.
- *
- * Availability is a property of the section itself, so it is decided before
- * any field is consulted. The other three are read off the fields the section
- * currently has on screen, in that order of severity.
- */
-export type SectionOutlineStatus =
-  | 'error'
-  | 'incomplete'
-  | 'complete'
-  | 'switchedOff'
-  | 'unavailable';
 
 /**
  * Why a section is not asking for input.
@@ -76,7 +63,7 @@ export type SectionValidationIssue = SchemaProblem &
  * itself has said what is wrong in the vocabulary of the thing being edited,
  * and the outline saying it again underneath is two accounts of one fault. Any
  * OTHER field of the section being wrong says nothing about this problem — see
- * `SectionOutline`.
+ * `stageSections.ts`, which decides this per problem rather than per section.
  */
 export type OutlineSectionIssue = Readonly<{
   /** The registered name of the field that claimed this problem. */
@@ -503,7 +490,7 @@ export type SectionFieldReader = Readonly<{
 export function sectionOutlineStatus(
   section: OutlineSection,
   reader: SectionFieldReader,
-): SectionOutlineStatus {
+): StageSectionStatus {
   // Availability still comes first. A section the researcher cannot type into
   // is not one they can fix anything in, and a stage waiting on a subject has
   // a problem at almost every path it will eventually own — reporting all of

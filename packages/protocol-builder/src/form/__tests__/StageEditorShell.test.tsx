@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -184,17 +184,17 @@ describe('StageEditorShell', () => {
     ]);
   });
 
-  it('moves focus to the section it was asked to jump to', async () => {
+  it('renders no list of the sections and no second column', async () => {
     const harness = renderEditor();
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
 
-    await harness.user.click(
-      screen.getByRole('button', { name: /^Page content/ }),
-    );
-
-    // The section is a region named by its own heading, so arriving there
-    // announces which section it is.
-    expect(document.activeElement).toHaveAccessibleName('Page content');
+    // The sections are published, and drawn by nobody here: where a list of
+    // them belongs on the page is the host's to decide, so the editor is one
+    // column with nothing beside it. Moving to a section is `focusStageSection`
+    // — see `stageSections.test.tsx`.
+    expect(
+      within(harness.container).queryByRole('navigation'),
+    ).not.toBeInTheDocument();
   });
 
   it('hands the whole stage back when it is saved', async () => {

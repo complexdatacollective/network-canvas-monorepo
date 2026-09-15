@@ -13,6 +13,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import AssetCard from './AssetCard';
+import { useUnresolvedAssetIds } from './useUnresolvedAssets';
 import withAssets from './withAssets';
 const configMessages = defineMessages({
   all: {
@@ -113,6 +114,7 @@ type AssetsProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: (id: string) => void;
   onPreview?: (id: string) => void;
+  onReplace?: (id: string) => void;
   disableDelete?: boolean;
   selected?: string | null;
 };
@@ -126,10 +128,12 @@ const Assets = ({
   onDelete = null,
   onDownload,
   onPreview,
+  onReplace,
   disableDelete = false,
   selected = null,
 }: AssetsProps) => {
   const intl = useAppIntl();
+  const unresolvedAssetIds = useUnresolvedAssetIds();
   const handleDelete = disableDelete ? null : onDelete;
   const selectedAssetType = (assetType ?? 'all') as AssetFilterValue;
 
@@ -155,9 +159,18 @@ const Assets = ({
         return;
       }
 
+      // Activating the card is a second route to Preview, so hiding the button
+      // is not enough: it would open a preview of bytes that are known not to
+      // exist, with a download that cannot work. Send the researcher to the
+      // one action that resolves it instead.
+      if (unresolvedAssetIds.has(selectedKey)) {
+        onReplace?.(selectedKey);
+        return;
+      }
+
       onPreview?.(selectedKey);
     },
-    [onPreview, onSelect],
+    [onPreview, onReplace, onSelect, unresolvedAssetIds],
   );
 
   const renderItem = useCallback(
@@ -169,13 +182,22 @@ const Assets = ({
         source={asset.source}
         type={asset.type}
         isUsed={asset.isUsed}
+        isUnresolved={unresolvedAssetIds.has(asset.id)}
         itemProps={itemProps}
         onPreview={onPreview}
         onDownload={asset.type === 'apikey' ? null : onDownload}
         onDelete={handleDelete}
+        onReplace={onReplace}
       />
     ),
-    [handleDelete, onDownload, onPreview, selected],
+    [
+      handleDelete,
+      onDownload,
+      onPreview,
+      onReplace,
+      selected,
+      unresolvedAssetIds,
+    ],
   );
 
   return (
@@ -225,6 +247,7 @@ type OwnProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: (id: string) => void;
   onPreview?: (id: string) => void;
+  onReplace?: (id: string) => void;
   disableDelete?: boolean;
 };
 

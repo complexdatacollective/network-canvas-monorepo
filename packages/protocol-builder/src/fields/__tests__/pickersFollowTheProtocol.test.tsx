@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -11,6 +11,11 @@ import {
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { EntitySubjectPickerField } from '../EntityTypePickerField.tsx';
@@ -168,14 +173,10 @@ describe('the attribute picker', () => {
       sections: <AttributePicker />,
     });
     await harness.opened();
-    const picker = await screen.findByRole('combobox', {
-      name: 'Attribute this question records',
-    });
-    expect(
-      Array.from(picker.querySelectorAll('option')).map(
-        (option) => option.value,
-      ),
-    ).not.toContain('nominated_early');
+    const picker = attributeField('Attribute this question records');
+    expect(await offeredAttributes(harness.user, picker)).not.toContain(
+      'nominated_early',
+    );
 
     harness.receiveCodebookUpdate({
       node: {
@@ -194,12 +195,10 @@ describe('the attribute picker', () => {
       },
     });
 
-    await waitFor(() =>
-      expect(
-        Array.from(picker.querySelectorAll('option')).map(
-          (option) => option.value,
-        ),
-      ).toContain('nominated_early'),
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, picker)).toContain(
+        'nominated_early',
+      ),
     );
   });
 
@@ -209,10 +208,10 @@ describe('the attribute picker', () => {
       sections: <AttributePicker />,
     });
 
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', {
-        name: 'Attribute this question records',
-      }),
+    await harness.opened();
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute this question records'),
       'age',
     );
     const saved = await harness.submit();
@@ -240,10 +239,10 @@ describe('the attribute picker', () => {
     // Kept, so the save can still be refused rather than quietly writing the
     // blank over the reference the researcher has to resolve.
     expect(
-      await screen.findByRole('combobox', {
-        name: 'Attribute this question records',
-      }),
-    ).toHaveValue('fm_name');
+      within(attributeField('Attribute this question records')).getByText(
+        'fm_name — this attribute is not available here',
+      ),
+    ).toBeVisible();
   });
 });
 

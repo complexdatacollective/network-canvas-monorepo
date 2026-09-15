@@ -33,7 +33,21 @@ const composerSections = (
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
+const KNOWS_SECTION = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+
+const COMPOSER_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'network-composer-1',
+});
+
+const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
+
 const SOCIOGRAM_SECTION = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
+
+const ALTER_FORM_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'alter-form-1',
+});
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -201,14 +215,17 @@ export const retypePersonVariable = (
  */
 export const highlightInASociogram = (
   harness: StageEditorHarness,
-  variableId: string,
+  ...variableIds: readonly string[]
 ): void => {
   const stage = harness.protocolSections()[SOCIOGRAM_SECTION];
   if (stage === undefined) throw new Error('the fixture has no sociogram');
   const prompts = Array.isArray(stage.prompts) ? stage.prompts : [];
   // The fixture's own marking prompt, repointed rather than a new prompt
   // appended: what makes this a conflict is the attribute, and the prompt
-  // around it stays a prompt the schema already accepts.
+  // around it stays a prompt the schema already accepts. A caller asking for
+  // more than one gets copies of that same prompt, which is how a test that
+  // cannot watch its own claim arrive — a picker goes on offering the value it
+  // is holding, whatever the filters say — can watch a second one instead.
   const marking = prompts.findIndex(
     (prompt) =>
       isRecord(prompt) &&
@@ -219,14 +236,114 @@ export const highlightInASociogram = (
   if (!isRecord(held)) {
     throw new Error('the fixture sociogram has no marking prompt');
   }
+  const marked = variableIds.map((variableId, index) => ({
+    ...held,
+    id: index === 0 ? held.id : `${String(held.id)}-marking-${String(index)}`,
+    highlight: { allowHighlighting: true, variable: variableId },
+  }));
   const updated: SectionDoc = {
     ...stage,
-    prompts: prompts.with(marking, {
-      ...held,
-      highlight: { allowHighlighting: true, variable: variableId },
-    }),
+    prompts: [...prompts.with(marking, marked[0] ?? held), ...marked.slice(1)],
   };
   act(() => {
     harness.host.store.applyAsCollaborator(SOCIOGRAM_SECTION, updated);
+  });
+};
+
+/**
+ * A form in ANOTHER stage starting to collect some of this type's attributes,
+ * put there by a collaborator while this editor is open.
+ *
+ * The opposite writer class from the composer's grouping tool, which writes
+ * what the participant lassoes straight onto the node. The protocol is read
+ * live, so this is how the conflict a composer can only be REPOINTED out of
+ * reaches an editor that is already open — and, for a test, the only way to
+ * put it there at all: the fixture protocol collects no categorical attribute
+ * of `person` anywhere.
+ */
+export const collectInAnAlterForm = (
+  harness: StageEditorHarness,
+  ...variableIds: readonly string[]
+): void => {
+  const stage = harness.protocolSections()[ALTER_FORM_SECTION];
+  if (stage === undefined) throw new Error('the fixture has no alter form');
+  const form = isRecord(stage.form) ? stage.form : {};
+  const fields = Array.isArray(form.fields) ? form.fields : [];
+  const updated: SectionDoc = {
+    ...stage,
+    form: {
+      ...form,
+      fields: [
+        ...fields,
+        ...variableIds.map((variable) => ({
+          variable,
+          prompt: `What is this person's ${variable}?`,
+        })),
+      ],
+    },
+  };
+  act(() => {
+    harness.host.store.applyAsCollaborator(ALTER_FORM_SECTION, updated);
+  });
+};
+
+/**
+ * One more kind of connection in the codebook, put there from outside this
+ * editor.
+ *
+ * Cloned from the fixture's own `knows` definition rather than written out, so
+ * it carries whatever a connection type is currently required to have and the
+ * test is about the extra type rather than about the shape of one.
+ */
+export const addEdgeType = (
+  harness: StageEditorHarness,
+  typeId: string,
+): void => {
+  const knows = harness.protocolSections()[KNOWS_SECTION];
+  if (knows === undefined) {
+    throw new Error('the fixture protocol has no "knows" connection type');
+  }
+  harness.receiveCodebookUpdate({
+    edge: { [typeId]: { ...knows, name: typeId, variables: {} } },
+  });
+};
+
+/**
+ * ANOTHER network composer in the protocol, asking about the same node type
+ * with controls of its own.
+ *
+ * A composer field's control lives on the stage, so a second composer is the
+ * only way an attribute can be rendered by a control this editor cannot see —
+ * which is what the rules editor must not read through the codebook's own.
+ * Cloned from the fixture's composer and added to the stage order, because
+ * `orderedStages` is what the protocol context reads.
+ */
+export const composerInAnotherStage = (
+  harness: StageEditorHarness,
+  fields: readonly Record<string, unknown>[],
+): void => {
+  const composer = harness.protocolSections()[COMPOSER_SECTION];
+  const order = harness.protocolSections()[STAGE_ORDER_SECTION];
+  if (composer === undefined || order === undefined) {
+    throw new Error('the fixture protocol has no composer to copy');
+  }
+  const stages = Array.isArray(order.stages) ? order.stages : [];
+  const id = 'network-composer-2';
+  const second: SectionDoc = {
+    ...composer,
+    id,
+    label: 'Second composer',
+    edges: [],
+    nodeForm: { fields: [...fields] },
+  };
+  act(() => {
+    harness.host.store.applyAsCollaborator(
+      sectionId({ kind: 'stage', stageId: id }),
+      second,
+    );
+    harness.host.store.applyAsCollaborator(STAGE_ORDER_SECTION, {
+      ...order,
+      stages: [...stages, id],
+    });
   });
 };

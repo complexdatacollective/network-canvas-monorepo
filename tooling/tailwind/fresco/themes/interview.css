@@ -374,41 +374,44 @@
     align-items: center;
     justify-content: center;
     inline-size: 70cqi;
-    max-block-size: 70cqb;
+    block-size: 70cqb;
+    row-gap: 0.35em;
     overflow: hidden;
   }
 
-  /* Scale the bin title with the bin diameter. clamp() keeps it readable at
-     both extremes (~12px floor at very small bins, ~24px ceiling at large). */
-  .catbin-item :is(h1, h2, h3, h4, h5, h6) {
-    font-size: clamp(0.75rem, 6cqi, 1.5rem);
-  }
-
-  /* The title and the summary each get a fixed share of the inscribed box, so
-     neither can grow into the other's space. Without this the two are laid out
-     by `justify-content: center` inside a clipped box, and content taller than
-     the bin overflows *both* ends — silently carrying the title, which names
-     the bin, off the top edge. The line clamps in the markup normally bite
-     first and end the text in an ellipsis; these caps are the guarantee that
-     holds whatever the clamps measure out to. */
+  /* The label's share of the inscribed box. A bin with members reserves the
+     rest for the summary — from the node count, not from layout, so the label's
+     box never depends on what the summary does with what it is left. */
   .catbin-content :is(h1, h2, h3, h4, h5, h6) {
     flex: 0 0 auto;
-    max-block-size: 40cqb;
+    max-block-size: 100%;
     overflow: hidden;
+  }
+
+  .catbin-content[data-has-summary] {
+    --bin-label-max: 74%;
+  }
+
+  /* Only when the ladder ran out of rungs: fade the clipped edge rather than
+     ending a line mid-word with nothing to say so. */
+  [data-bin-label-truncated] {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 0.75lh), #0000);
   }
 
   .catbin-summary {
     flex: 0 1 auto;
     min-block-size: 0;
-    max-block-size: 30cqb;
     overflow: hidden;
   }
 
-  /* Scale the summary with the bin too, a rung below the title: it is
-     secondary to the bin's own name, and the full membership is one tap away
-     in the expanded panel.
+  /* Crowded out by a label that needed the whole circle. Held out of the flow
+     rather than unmounted, so it stays measurable and can come back. */
+  .catbin-summary[data-crowded-out] {
+    block-size: 0;
+    visibility: hidden;
+  }
 
-     Wrapping flex rather than plain text flow so the name and the count share
+  /* Wrapping flex rather than plain text flow so the name and the count share
      a line whenever both fit ("Amy and 2 others") but the count drops to its
      own line rather than being pulled inside the name's clamp when the name
      is long. The name is clamped on its own element, which makes it a block
@@ -422,11 +425,17 @@
     line-height: 1.3;
   }
 
-  /* Drop the node-count summary once the bin is small enough that both lines
-     no longer fit comfortably. */
+  /* A readability floor on the axis the leftover-room measurement cannot see:
+     below this width the summary is too narrow to read whatever its height. The
+     label takes the room back, or it would be fitted around a reserve nothing
+     is going to use. */
   @container catbin-item (inline-size < 9rem) {
     .catbin-summary {
       display: none;
+    }
+
+    .catbin-content[data-has-summary] {
+      --bin-label-max: 100%;
     }
   }
 

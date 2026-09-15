@@ -9,6 +9,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -57,7 +58,13 @@ describe('the Studio client message catalogs', () => {
     const overrides = JSON.parse(
       readFileSync(join(srcDir, 'locales/en-GB.json'), 'utf8'),
     ) as Record<string, string>;
-    expect(checkOverrideLocale(committedEn, overrides)).toEqual([]);
+    expect(
+      checkOverrideLocale(
+        committedEn,
+        overrides,
+        readTranslationSources(join(srcDir, 'locales'), 'en-GB'),
+      ),
+    ).toEqual([]);
   });
 
   it('keeps en-GB an override rather than a full translation', () => {

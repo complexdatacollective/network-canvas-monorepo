@@ -6,21 +6,15 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { OrdinalColorSequence } from '@codaco/protocol-validation';
 
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
 import { mapStyleOptions } from '../../../fields/geospatial/mapboxStyles.ts';
-import MapCenterField from '../../../fields/geospatial/MapCenterField.tsx';
-import {
-  centerIssue,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  zoomIssue,
-} from '../../../fields/geospatial/mapView.ts';
-import MapZoomField from '../../../fields/geospatial/MapZoomField.tsx';
+import { centerIssue } from '../../../fields/geospatial/mapView.ts';
+import MapViewField from '../../../fields/geospatial/MapViewField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import { ordinalColorOptions } from '../../ordinal-bin/sections/ordinalColors.ts';
 import {
   CENTER_FIELD,
   COLOR_FIELD,
@@ -36,14 +30,6 @@ const centerValidation = {
 };
 
 /**
- * Said under the control rather than left to the schema, which reports the
- * same range against a path once the save has already been refused.
- */
-const zoomValidation = {
-  custom: messageRuleValidation([zoomIssue]),
-};
-
-/**
  * How the map LOOKS, and where it opens.
  *
  * Two more sections of the same `mapOptions` object `MapSourceSection` starts,
@@ -55,6 +41,11 @@ const zoomValidation = {
 export default function MapAppearanceSection() {
   const intl = useAppIntl();
   const tokenAssetId = useStageValue(TOKEN_FIELD);
+  // The basemap chosen in the section above, read live: the starting view is
+  // framed on the map the participant will actually be looking at, so the
+  // preview has to be drawn on the style the researcher has just picked rather
+  // than on whichever one the host credentialled for the key.
+  const chosenStyle = useStageValue(STYLE_FIELD);
 
   // Held for as long as the reader's language does not change: a control's
   // options are part of what it registers with, and a fresh array every render
@@ -62,18 +53,11 @@ export default function MapAppearanceSection() {
   const styleOptions = useMemo(() => mapStyleOptions(intl), [intl]);
 
   // Named rather than only shown, because a colour has to be sayable by people
-  // who are not looking at the control. The stored value is a position in the
-  // theme's ordinal palette, so the position is what the name is built from.
-  const colorOptions = useMemo(
-    () =>
-      OrdinalColorSequence.map((value, index) => ({
-        value,
-        label: intl.formatMessage(geospatialMessages.colorOptionLabel, {
-          position: index + 1,
-        }),
-      })),
-    [intl],
-  );
+  // who are not looking at the control — and named after the hue the theme
+  // resolves each position to, as Architect named them, rather than counted.
+  // The colour picker does the naming, so the ordinal sequence is named in one
+  // place rather than once per picker that offers it.
+  const colorOptions = useMemo(() => ordinalColorOptions(), []);
 
   return (
     <>
@@ -119,28 +103,18 @@ export default function MapAppearanceSection() {
         title={intl.formatMessage(geospatialMessages.viewTitle)}
         description={intl.formatMessage(geospatialMessages.viewDescription)}
       >
-        <Field<typeof MapCenterField>
+        <Field<typeof MapViewField>
           name={CENTER_FIELD}
-          component={MapCenterField}
+          component={MapViewField}
           zoomFieldName={ZOOM_FIELD}
           tokenAssetId={
             typeof tokenAssetId === 'string' ? tokenAssetId : undefined
           }
-          label={intl.formatMessage(geospatialMessages.centerLabel)}
-          hint={intl.formatMessage(geospatialMessages.centerHint)}
+          style={typeof chosenStyle === 'string' ? chosenStyle : undefined}
+          label={intl.formatMessage(geospatialMessages.initialMapViewLabel)}
+          hint={intl.formatMessage(geospatialMessages.initialMapViewHint)}
           required={REQUIRED}
           {...centerValidation}
-        />
-        <Field<typeof MapZoomField>
-          name={ZOOM_FIELD}
-          component={MapZoomField}
-          label={intl.formatMessage(geospatialMessages.zoomLabel)}
-          hint={intl.formatMessage(geospatialMessages.zoomHint, {
-            min: MIN_ZOOM,
-            max: MAX_ZOOM,
-          })}
-          required={REQUIRED}
-          {...zoomValidation}
         />
       </BuilderSection>
     </>

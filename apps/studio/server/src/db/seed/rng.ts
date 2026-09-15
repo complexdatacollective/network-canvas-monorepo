@@ -1,9 +1,11 @@
 // Deterministic primitives for the synthetic-data seed.
 //
-// Every non-cryptographic value the seed writes has to come from the pinned faker PRNG or from
+// Every value the seed writes has to come from the pinned faker PRNG or from
 // the fixed anchor below, because `seed.test.ts` seeds two scratch schemas and
-// compares full ordered dumps. That rules out `node:crypto`'s randomUUID and
-// randomBytes, and it rules out letting Postgres fill a `defaultNow()` column:
+// compares ordered dumps of every table — every column but better-auth's
+// scrypt password hash, whose fresh salt no PRNG seed reaches. That rules out
+// `node:crypto`'s randomUUID and randomBytes, and it rules out letting
+// Postgres fill a `defaultNow()` column:
 // two runs a millisecond apart would disagree. Hashing is still `node:crypto`
 // — a digest of deterministic input is deterministic.
 import { createHash } from 'node:crypto';

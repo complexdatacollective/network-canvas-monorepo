@@ -13,6 +13,7 @@ import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson } from '../../helpers/read-store.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import { chooseAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const SOURCE_STAGE_ID = 'family-pedigree-1';
@@ -222,27 +223,29 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
       // DiseaseRow.tsx's `label` field, which asks for the name the
       // participant reads in the pedigree's key.
       await architectPage
-        .getByRole('textbox', { name: 'Disease name', exact: true })
+        .getByRole('textbox', { name: 'Disease label', exact: true })
         .fill('Condition X');
 
       // fresco-ui's ColorPicker over `NodeColorSequence` renders a radio group
-      // of swatch buttons. The palette's colours are the study's own theme
-      // colours and have no names of their own, so each swatch is named for
-      // its position — "Color 1" is `node-color-seq-1`, which is what the
-      // saved disease carries.
+      // of swatch buttons, each named for the hue the theme gives it, as
+      // released Architect named them. "Neon Coral" is `node-color-seq-1`,
+      // which is what the saved disease carries.
       await architectPage
-        .getByRole('radio', { name: 'Color 1', exact: true })
+        .getByRole('radio', { name: 'Neon Coral', exact: true })
         .click();
 
       // The attribute picker is deliberately pick-only: a disease READS an
       // attribute the source pedigree records, so there is no create
       // affordance beside it (DiseaseRow.tsx says so, and the picker's empty
-      // message points at the pedigree's nomination prompts instead). It lists
-      // only attributes a nomination prompt of the source stage records —
-      // `hasConditionX`, seeded above — as a native select.
-      await architectPage
-        .getByRole('combobox', { name: 'Affected-status attribute' })
-        .selectOption('hasConditionX');
+      // message points at the pedigree's nomination prompts instead). Its
+      // window lists only attributes a nomination prompt of the source stage
+      // records — `hasConditionX`, seeded above.
+      await chooseAttribute(
+        architectPage
+          .getByRole('dialog', { name: 'Create disease' })
+          .locator('[data-field-name="variable"]'),
+        'hasConditionX',
+      );
 
       // "Inheritance pattern" is a native select whose options are written out
       // per pattern rather than derived from the schema token, so

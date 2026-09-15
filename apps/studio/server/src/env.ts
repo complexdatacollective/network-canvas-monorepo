@@ -1,16 +1,24 @@
-import { createEnv } from '@t3-oss/env-core';
+import { Context, Effect, Layer } from 'effect';
 
-import {
-  parseDatabaseAllowedLogins,
-  parseDatabaseAdministrativeLogins,
-} from './env/database-enrollment.ts';
-import { resolveEncryptionEnv, type EncryptionEnv } from './env/encryption.ts';
-import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
-import { serverSchemas, type VariableName } from './env/variables.ts';
+import { resolve, type StudioEnv } from './env/resolve.ts';
+import { decodeEnvironment, type VariableName } from './env/schema.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
-// module in the app that touches `process.env`, enforced by the repo-wide
-// oxlint `node/no-process-env` rule. Everything else takes a `StudioEnv`.
+// module in the app that touches `process.env`. Everything else takes a
+// `StudioEnv`.
+//
+// Enforced for this server's source by oxlint's `node/no-process-env`,
+// together with a ban on importing `node:process` — the linter only sees
+// `process.env` reached through the global. Both are in the
+// `apps/studio/server/src/**` override in the repository's `.oxlintrc.json`;
+// the repo-wide `no-process-env` entry beside it is inert, because the `node`
+// plugin it belongs to is not in the repo-wide `plugins` list.
+//
+// Two layers of validation, both of them declarative: `src/env/schema.ts` is
+// one Effect `Schema.Struct` saying what each variable must look like, and
+// `src/env/resolve.ts` applies the rules that span several at once
+// (all-or-nothing `S3_*`, the `SMTP_URL`/`EMAIL_FROM` pairing, the database
+// password file, the keyring).
 
 export type {
   AuthEnv,
@@ -23,47 +31,24 @@ export type {
 export { isLocalDatabase } from './env/resolve.ts';
 
 /**
- * Everything an entrypoint that runs with no database and auth off can act on
- * (src/netlify.ts). Deliberately an allow-list of what such a lane reads
- * rather than a list of what it drops: a variable added to `variables.ts`
- * later is withheld from that lane by default, and being withheld is the safe
- * direction — the lane exists precisely to be unaffected by settings it does
- * not serve.
+ * The mail transport, which only the worker process sends through (#1895).
+ * Withheld from every other read: a process that cannot send mail should not
+ * be able to observe the credentials for it, and a variable withheld here
+ * cannot be wired into the web process by accident later.
  */
-const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
-  'NODE_ENV',
-  'STUDIO_DEV_DEFAULTS',
-  'PORT',
-  'STUDIO_METRICS_TOKEN',
-  'TRUSTED_PROXIES',
-  'HOST',
-  'CLIENT_DIST',
-  // The Netlify lane is the managed service, and its `status` procedure has
-  // to say so; withholding this would make it report `self-hosted` however
-  // the site is configured.
-  'STUDIO_DEPLOYMENT_MODE',
-  'STUDIO_TELEMETRY',
-  'S3_ENDPOINT',
-  'S3_REGION',
-  'S3_BUCKET',
-  'S3_ACCESS_KEY_ID',
-  'S3_SECRET_ACCESS_KEY',
+const MAIL_VARIABLES = [
+  'SMTP_URL',
+  'EMAIL_FROM',
 ] as const satisfies readonly VariableName[];
 
 export type ReadEnvOptions = {
   /**
-   * Withholds the database and authentication settings from the read entirely,
-   * for an entrypoint that serves neither whatever the deployment defines.
-   *
-   * The discarding has to happen here rather than on the result. Both stages
-   * of the read reject a setting this lane would only throw away: `resolve`
-   * refuses a database without a signing secret or a public URL and a
-   * half-configured social provider, and before that the schema parse refuses
-   * a malformed URL or an under-length secret. Blanking `db` and `auth` on a
-   * `StudioEnv` that was never produced is not a degradation any deployment
-   * can reach.
+   * Reads the mail transport, for the one process that sends mail: the worker
+   * (#1895). Without it `SMTP_URL` and `EMAIL_FROM` are withheld from the read
+   * entirely, so `env.mail` is undefined and a half configuration is neither
+   * resolved nor refused here — the worker's own read is where that is caught.
    */
-  withoutDatabaseOrAuth?: boolean;
+  withMail?: boolean;
 };
 
 /**
@@ -72,81 +57,49 @@ export type ReadEnvOptions = {
  * needed the value.
  */
 export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
-  // An explicit opt-in, not a truthiness check: `Boolean('false')` is `true`,
-  // so coercing the raw string would let `SKIP_ENV_VALIDATION=false` disable
-  // validation and hand `resolve()` unparsed strings.
   /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-  const skip = process.env.SKIP_ENV_VALIDATION;
-  const skipValidation = skip === 'true' || skip === '1';
+  const source: Readonly<Record<string, string | undefined>> = process.env;
 
-  /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-  const source = process.env;
-  const runtimeEnv = options.withoutDatabaseOrAuth
-    ? Object.fromEntries(
-        VARIABLES_WITHOUT_DATABASE_OR_AUTH.map((name) => [name, source[name]]),
-      )
-    : source;
-
-  const raw = createEnv({
-    server: serverSchemas,
-    runtimeEnv,
-    emptyStringAsUndefined: true,
-    skipValidation,
-    // The library default prints the complete validation issues object.
-    // Entry points decide how to report this fixed, value-free failure.
-    onValidationError: () => {
-      throw new Error('Invalid environment variables');
-    },
-  });
-
-  // Proxy admission and Better Auth both consume an address array. Tooling's
-  // validation-skip mode must not pass the raw comma-separated string through
-  // or allow an invalid trust boundary to reach either consumer.
-  const trustedProxies = serverSchemas.TRUSTED_PROXIES.safeParse(
-    runtimeEnv.TRUSTED_PROXIES || undefined,
+  // Removed rather than filtered down to a known list: a variable added to
+  // the schema later still reaches a read that asked for it, and a read that
+  // did not ask for mail never sees these two whatever else it asked for.
+  const withheld = new Set<string>(options.withMail ? [] : MAIL_VARIABLES);
+  const visible = Object.fromEntries(
+    Object.entries(source).filter(([name]) => !withheld.has(name)),
   );
-  if (!trustedProxies.success) throw new Error('Invalid environment variables');
 
-  // This privacy switch is always parsed, even in tooling's validation-skip
-  // mode. A raw 'false' must never become a truthy telemetry decision.
-  return resolve({
-    ...raw,
-    TRUSTED_PROXIES: trustedProxies.data,
-    STUDIO_TELEMETRY: serverSchemas.STUDIO_TELEMETRY.parse(
-      runtimeEnv.STUDIO_TELEMETRY || undefined,
-    ),
+  return resolve(decodeEnvironment(visible), {
+    withMail: options.withMail === true,
   });
 }
 
-/** Offline schema administration needs only database credentials, never auth. */
-export function readMigrationDatabase(): DbEnv {
-  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
-  const url = serverSchemas.DATABASE_URL.parse(process.env.DATABASE_URL);
-  if (!url)
-    throw new Error('DATABASE_URL is required to run Studio migrations.');
-  return { url };
-}
+/**
+ * The resolved environment as an Effect service, which is how Effect code asks
+ * for it: `const env = yield* Environment`. Nothing runs under Effect yet —
+ * the server is a Hono app and a pg-boss worker — so nothing consumes this but
+ * its own test. It exists so that the first module that does run under Effect
+ * has a sanctioned way in rather than reaching for `readEnv` from inside a
+ * fiber, and because `Layer` is what makes "decoded and resolved once, at the
+ * edge of the program" a property of the wiring instead of a convention.
+ *
+ * `Layer.effect` rather than `Layer.succeed`: the read must happen when the
+ * layer is built, not when this module is imported, or a failure would be
+ * thrown during module loading where nothing can report it usefully. Layers
+ * are memoised, so a program that provides this one decodes once however many
+ * services ask for it.
+ */
+export class Environment extends Context.Tag(
+  '@codaco/studio-server/Environment',
+)<Environment, StudioEnv>() {
+  /** For a process that does not send mail: the web process, and every script. */
+  static readonly layer = Layer.effect(
+    Environment,
+    Effect.sync(() => readEnv()),
+  );
 
-/** The operator lane omits development; server/dev tools pass their resolved local evidence. */
-export function readEncryptionEnv(
-  development?: Pick<StudioEnv, 'devDefaults' | 'db'>,
-): EncryptionEnv {
-  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
-  return resolveEncryptionEnv(process.env, development);
-}
-
-/** Read the explicit, precommitted deployment enrollment without inferring logins. */
-export function readMigrationAllowedLogins(): string[] {
-  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
-  const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
-  return parseDatabaseAllowedLogins(source);
-}
-
-/** Optional explicit administrative exceptions for offline operator commands. */
-export function readMigrationAdministrativeLogins(
-  allowedLogins: readonly string[],
-): string[] {
-  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
-  const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
-  return parseDatabaseAdministrativeLogins(source, allowedLogins);
+  /** For the worker, the one process that sends mail (#1895). */
+  static readonly layerWithMail = Layer.effect(
+    Environment,
+    Effect.sync(() => readEnv({ withMail: true })),
+  );
 }

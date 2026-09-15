@@ -41,7 +41,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Cada enfermedad se asigna a un atributo booleano de los familiares de la genealogía de origen. Arrástralas para reordenarlas en la leyenda.',
+        'Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa de genealogía familiar de origen.',
       ),
     ).toBeInTheDocument();
     // The outline reads its headings out of the same catalog, so a section
@@ -55,7 +55,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Nombre de la etapa',
       'Origen de la genealogía',
-      'Enfermedades',
+      'Asignaciones de enfermedades',
       'Estados de riesgo',
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
@@ -102,11 +102,13 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     // inside it.
     const disease = within(await screen.findByRole('dialog'));
     expect(
-      disease.getByRole('textbox', { name: 'Nombre de la enfermedad' }),
+      disease.getByRole('textbox', { name: 'Etiqueta de enfermedad' }),
     ).toBeInTheDocument();
-    // The palette has no names, so each swatch is counted — the one message in
-    // this dialog carrying a placeholder. The count is what a researcher who
-    // cannot see the swatch has to go on, so it is the swatch's own name.
-    expect(disease.getByRole('radio', { name: 'Color 2' })).toBeInTheDocument();
+    // Each swatch is named after the hue the theme gives it, as the released
+    // Architect named them, and the name is translated: what a researcher who
+    // cannot see the swatch has to go on is the colour, not a position.
+    expect(
+      disease.getByRole('radio', { name: 'Turquesa marino' }),
+    ).toBeInTheDocument();
   });
 });

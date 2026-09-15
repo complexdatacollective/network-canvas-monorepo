@@ -170,11 +170,50 @@ message and locale entries in validation/utilities/exporters have an optional
 React dependency. Hosts choosing localized presentation install the peer and
 merge the corresponding catalogs.
 
+## Translation provenance
+
+Changing an English sentence invalidates its translations. Each locale catalog
+has a committed record of the English its entries were made from, in a sibling
+`src/locales/<tag>.source.json`, and the catalog guards fail when a recorded
+sentence no longer matches today's `en.json`.
+
+Without it a reworded English string leaves every translation saying the old
+thing with every other guard still green: the catalog is complete, the ICU
+arguments still match, nothing is blank, and the wrong copy is on screen. This
+is not hypothetical — it shipped a Spanish string telling researchers a
+protocol had been downloaded after the English had been changed to say that no
+file was written at all.
+
+So, when the English behind a translation changes:
+
+1. `pnpm --filter <pkg> i18n:extract` regenerates `en.json`, and the guard
+   starts failing with the id, the English it was translated from, the English
+   it says now, and the translation itself.
+2. Decide, per id, from those three sentences. Most English edits are
+   editorial — a capitalisation, a comma, a synonym — and the translation still
+   says the right thing. Some change the meaning, and the translation has to be
+   rewritten before it goes back in front of a reader.
+3. `pnpm --filter <pkg> i18n:stamp` rewrites the records and prints every pair
+   it accepted. Read that report, and commit it alongside any retranslation;
+   the sidecar diff is the reviewable record of what was accepted.
+
+Read these files from disk; never import one. That is what keeps the English
+copy out of bundles, and the name backs it up: a locale tag cannot contain a
+dot, so no build step that scans a locales directory can mistake
+`es.source.json` for a catalog.
+
+Only the `defaultMessage` is recorded, not the `description`. A description is
+advisory, and it is edited for editorial reasons that do not change the
+sentence a translator produced; coupling the two would fire the guard on
+clarifications and train people to re-stamp without reading, which is the one
+habit that would make this guard worthless.
+
 ## Verification
 
 Run each owner's `i18n:extract` script and commit the generated English catalog.
 The catalog guards check freshness, IDs, translator descriptions, complete
-Spanish, sparse British English, valid ICU, and placeholder/rich-text parity.
+Spanish, sparse British English, valid ICU, placeholder/rich-text parity, and
+that every translation still records the English it was made from.
 Also audit rendered surfaces and copy generated outside JSX: a complete
 catalog cannot find strings that were never extracted. Exercise production
 builds, live locale changes, host preference persistence, and independently

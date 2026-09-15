@@ -99,6 +99,14 @@
     "defaultMessage": "Protocol Validation Failed",
     "description": "The title text in components / protocolOpenDialogs."
   },
+  "architect.additional.protocolOpenDialogs.resourcesMissingDescription": {
+    "defaultMessage": "This protocol refers to files that were not included in it: {assetList}. Everything else opened normally. Add the files again in Resources — until you do, the protocol cannot be downloaded.",
+    "description": "The description text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.resourcesMissingTitle": {
+    "defaultMessage": "Some resources are missing",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
   "architect.additional.protocolOpenDialogs.theProtocolCouldNotBeOpened": {
     "defaultMessage": "The protocol could not be opened due to validation errors:",
     "description": "Visible text in components / protocolOpenDialogs."
@@ -151,6 +159,14 @@
     "defaultMessage": "Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.",
     "description": "The description text in components / AssetBrowser / AssetBrowser."
   },
+  "architect.assetBrowser.assetBrowser.chooseTheMissingFile": {
+    "defaultMessage": "Choose the missing file for this resource",
+    "description": "The aria-label text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.couldNotAddTheFile": {
+    "defaultMessage": "Could not add the file",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
   "architect.assetBrowser.assetBrowser.deleteResource": {
     "defaultMessage": "Delete Resource?",
     "description": "The title text in components / AssetBrowser / AssetBrowser."
@@ -191,12 +207,24 @@
     "defaultMessage": "{name} is in use and cannot be deleted",
     "description": "The aria-label text in components / AssetBrowser / AssetCard."
   },
+  "architect.assetBrowser.assetCard.missing": {
+    "defaultMessage": "File missing",
+    "description": "Visible text in components / AssetBrowser / AssetCard."
+  },
   "architect.assetBrowser.assetCard.preview": {
     "defaultMessage": "Preview {name}",
     "description": "The aria-label text in components / AssetBrowser / AssetCard."
   },
   "architect.assetBrowser.assetCard.previewResource": {
     "defaultMessage": "Preview resource",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replace": {
+    "defaultMessage": "Add the file for {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replaceResource": {
+    "defaultMessage": "Add the missing file",
     "description": "The title text in components / AssetBrowser / AssetCard."
   },
   "architect.assetBrowser.assetCard.thisResourceIsInUseBy": {
@@ -250,6 +278,10 @@
   "architect.assetBrowser.assets.resourceLibrary": {
     "defaultMessage": "Resource library",
     "description": "The aria-label text in components / AssetBrowser / Assets."
+  },
+  "architect.assetBrowser.duplicateRowsWarning.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / AssetBrowser / duplicateRowsWarning."
   },
   "architect.assetBrowser.preview.closePreview": {
     "defaultMessage": "Close preview",
@@ -952,7 +984,7 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.StorageUnavailableBanner.skippedAssets": {
-    "defaultMessage": "Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.Timeline.Timeline.untitledStage": {
@@ -987,8 +1019,8 @@
     "defaultMessage": "Minimum passphrase length",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.final.utils.downloadActiveProtocol.skippedAssets": {
-    "defaultMessage": "Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+  "architect.final.utils.downloadActiveProtocol.unresolvedAssets": {
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.form.arrayFields.option.areYouSureYouWantTo": {
@@ -1324,7 +1356,7 @@
     "description": "Visible text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.someAssetsCouldNotBeIncluded": {
-    "defaultMessage": "Some assets could not be included",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.stages": {
@@ -1344,7 +1376,7 @@
     "description": "Column heading for protocol metadata values."
   },
   "architect.home.libraryPanel.wasDownloadedButThese": {
-    "defaultMessage": "\"{value1}\" was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
+    "defaultMessage": "These resources could not be read, so \"{value1}\" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.",
     "description": "The description text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.whereYourProtocolsAreStored": {
@@ -2367,6 +2399,10 @@
     "defaultMessage": "Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.resourceImport.replacementType": {
+    "defaultMessage": "This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
   "architect.resourceImport.unsupported": {
     "defaultMessage": "That file type is not supported as a resource.",
     "description": "Researcher-facing Architect control or feedback."
@@ -2422,6 +2458,34 @@
   "architect.skipDestination.untitled": {
     "defaultMessage": "Untitled stage",
     "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.stageEditor.sectionOutline.completeStatus": {
+    "defaultMessage": "Finished",
+    "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.errorStatus": {
+    "defaultMessage": "Has a problem",
+    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
+  },
+  "architect.stageEditor.sectionOutline.incompleteStatus": {
+    "defaultMessage": "Not finished",
+    "description": "Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.landmarkLabel": {
+    "defaultMessage": "Stage sections",
+    "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
+  },
+  "architect.stageEditor.sectionOutline.statusWithProblems": {
+    "defaultMessage": "{status}. {problems}",
+    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
+  },
+  "architect.stageEditor.sectionOutline.switchedOffStatus": {
+    "defaultMessage": "Switched off",
+    "description": "Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.unavailableStatus": {
+    "defaultMessage": "Not available yet",
+    "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
   },
   "architect.stageEditor.stageDraftConflictDialog.decideLater": {
     "defaultMessage": "Decide Later",
@@ -2512,7 +2576,7 @@
     "description": "The label text in components / StorageUnavailableBanner."
   },
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": {
-    "defaultMessage": "Some assets could not be exported",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in components / StorageUnavailableBanner."
   },
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": {
@@ -2875,18 +2939,6 @@
     "defaultMessage": "Has skip logic",
     "description": "The alt text in components / Timeline / TimelineStageRow."
   },
-  "architect.typeEditor.iconPicker.noIconsFound": {
-    "defaultMessage": "No icons found",
-    "description": "Visible text in components / TypeEditor / IconPicker."
-  },
-  "architect.typeEditor.iconPicker.searchIcons": {
-    "defaultMessage": "Search icons…",
-    "description": "The placeholder text in components / TypeEditor / IconPicker."
-  },
-  "architect.typeEditor.iconPicker.selectAnIcon": {
-    "defaultMessage": "Select an icon…",
-    "description": "Visible text in components / TypeEditor / IconPicker."
-  },
   "architect.typeEditor.shapePicker.config.circle": {
     "defaultMessage": "Circle",
     "description": "Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated."
@@ -3172,7 +3224,7 @@
     "description": "The label text in utils / downloadActiveProtocol."
   },
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": {
-    "defaultMessage": "Some assets could not be exported",
+    "defaultMessage": "Some resources could not be read",
     "description": "The title text in utils / downloadActiveProtocol."
   },
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": {

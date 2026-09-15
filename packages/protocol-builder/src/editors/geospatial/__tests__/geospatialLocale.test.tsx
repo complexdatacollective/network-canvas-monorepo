@@ -2,6 +2,10 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  attributeField,
+  createRowIn,
+} from '../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
@@ -45,19 +49,21 @@ describe('the geospatial sections, read in Spanish', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(5));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Acceso al mapa',
-      'Capa del mapa',
+      'Capas del mapa',
       'Conjunto de preguntas',
       'Apariencia del mapa',
-      'Vista inicial del mapa',
+      'Posición inicial del mapa',
     ]);
     expect(
-      screen.getByRole('combobox', { name: 'Mapa base' }),
+      screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('spinbutton', { name: 'Zoom inicial' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Permitir buscar en el mapa' }),
+      screen.getByRole('switch', {
+        name: 'Permitir la búsqueda de ubicaciones',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -70,7 +76,9 @@ describe('the geospatial sections, read in Spanish', () => {
   it('names the basemaps the option builder produces', () => {
     openEditor();
 
-    const basemaps = within(screen.getByRole('combobox', { name: 'Mapa base' }))
+    const basemaps = within(
+      screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),
+    )
       .getAllByRole('option')
       .map((option) => option.textContent ?? '');
 
@@ -79,18 +87,25 @@ describe('the geospatial sections, read in Spanish', () => {
   });
 
   /**
-   * Both carry values this package supplies — the ends of Mapbox's zoom scale,
-   * and a swatch's place in the palette — so a placeholder dropped from the
-   * Spanish fails here rather than rendering as `{min}`.
+   * The starting-view group names three numbers and a map at once, so a
+   * translation dropped from the group leaves a Spanish stage with an English
+   * heading over Spanish controls. The swatch beside it is named after its hue
+   * rather than counted, and the name is translated, so a swatch left in
+   * English fails here too.
+   *
+   * The numbers this package splices into its own sentences are covered by the
+   * refusal below, which carries two of them.
    */
-  it('splices the package’s own numbers into the Spanish', () => {
+  it('names the starting view and its swatches in Spanish', () => {
     openEditor();
 
     expect(
-      screen.getByText('0 muestra todo el mundo; 22 es el nivel de calle.'),
+      screen.getByText(
+        'Configura la vista inicial del mapa para ajustar su centro y nivel de zoom.',
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Color de resaltado 1' }),
+      screen.getByRole('radio', { name: 'Verde mar' }),
     ).toBeInTheDocument();
   });
 
@@ -118,15 +133,27 @@ describe('the geospatial sections, read in Spanish', () => {
     // would have nothing to choose and the picker would not be drawn at all.
     // A row's own pick is always offered back, which is the state that has
     // both controls on screen to be named.
-    const dialog = await openPrompt(harness, 'Editar pregunta');
+    await openPrompt(harness, 'Editar pregunta');
 
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This prompt already records a location attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      dialog.getByRole('combobox', { name: 'Atributo de ubicación' }),
+      within(
+        attributeField('Atributo de ubicación', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed, and in their language: the sections no longer carry a
+    // create control of their own.
     expect(
-      dialog.getByRole('button', {
-        name: 'Crear un nuevo atributo de ubicación',
-      }),
-    ).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Atributo de ubicación', screen.getByRole('dialog')),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
   });
 });

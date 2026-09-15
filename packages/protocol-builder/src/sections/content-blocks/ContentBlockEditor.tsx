@@ -1,6 +1,6 @@
 import { type ComponentType, useEffect, useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -8,7 +8,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import Section from '@codaco/fresco-ui/Section';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
@@ -35,19 +34,20 @@ const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
 
+/**
+ * What the item dialog says under its title.
+ *
+ * Exported because it is the dialog's now rather than a heading inside it, and
+ * the dialog is `PageContentSection`'s — see its `itemDescription`.
+ */
+export const contentBlockDescription = defineMessage({
+  id: 'protocolBuilder.contentBlock.sectionDescription',
+  defaultMessage:
+    'Choose the content type, provide what participants will see, and adjust its presentation when available.',
+  description: 'Description under the item dialog’s title.',
+});
+
 const messages = defineMessages({
-  sectionTitle: {
-    id: 'protocolBuilder.contentBlock.sectionTitle',
-    defaultMessage: 'Item details',
-    description:
-      'Heading of the dialog where a researcher says what one piece of a page holds and provides it.',
-  },
-  sectionDescription: {
-    id: 'protocolBuilder.contentBlock.sectionDescription',
-    defaultMessage:
-      'Choose the content type, provide what participants will see, and adjust its presentation when available.',
-    description: 'Description under the block-details heading.',
-  },
   kindLabel: {
     id: 'protocolBuilder.contentBlock.kindLabel',
     defaultMessage: 'Content type',
@@ -251,11 +251,11 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         ? messages.missingResource
         : messages.unpresentableResource;
 
+  // No group of its own: the dialog's title names the item being edited and
+  // `contentBlockDescription` says what these fields decide, so a section
+  // heading here would only say it again.
   return (
-    <Section
-      title={intl.formatMessage(messages.sectionTitle)}
-      description={intl.formatMessage(messages.sectionDescription)}
-    >
+    <>
       {/* Mounted for the whole dialog rather than beside its first message: a
           live region that appears at the same moment as its text is not
           announced. */}
@@ -329,7 +329,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
             initialValue={asString(item.size) ?? ''}
           />
         )}
-    </Section>
+    </>
   );
 }
 

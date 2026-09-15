@@ -46,6 +46,11 @@ import type { AuditEventInput } from '../audit/events.ts';
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import type { Principal } from '../auth/service.ts';
 import {
+  sealAssetKeys,
+  stripAssetKeyValues,
+  withPlaceholderAssetKeyEntries,
+} from '../protocol/asset-keys.ts';
+import {
   lockProtocolActorMembership,
   lockProtocolDraft,
   protocolEventContext,
@@ -57,6 +62,7 @@ import {
   type HeadState,
 } from '../protocol/draft-structure.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
 import {
   appendProtocolEvents,
   type LoggedProtocolEvent,
@@ -73,6 +79,14 @@ export type ProtocolBuilderSession = {
   protocolId: string;
   draftId: string;
   tenantDb: TenantDb;
+  /**
+   * Seals an `apikey` asset's value as the manifest naming it is written, and
+   * opens it again for a preview (#1900). On the session because the write
+   * boundary is `writeSections`, which every write this host makes goes
+   * through, and because sealing binds the team and protocol the session
+   * already resolved.
+   */
+  cipher: SecretsCipher;
   principal: Principal;
   requestId: string;
   /**
@@ -179,6 +193,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const ASSETS = makeSectionId({ kind: 'assets' });
 const STAGE_ORDER = makeSectionId({ kind: 'stageOrder' });
+
+/**
+ * The shape check every write this host admits goes through. The `assets`
+ * section is checked against a copy with each redacted API key's value filled
+ * in (#1900): the shared schema requires an `apikey` entry to carry one, and
+ * what is stored never does — so without the fill the host refused every edit
+ * of a manifest that had ever had a key promoted into it. The filled copy is
+ * used for the check alone; `writeSections` writes what the caller submitted,
+ * minus any key value it strips and seals.
+ */
+function shapeIssues(
+  id: ProtocolSectionId,
+  document: SectionDoc,
+): SectionIssue[] {
+  return sectionShapeIssues(
+    id,
+    id === ASSETS ? withPlaceholderAssetKeyEntries(document) : document,
+  );
+}
 
 function createdSectionId(
   kind: CreatableSectionKind,
@@ -552,6 +585,34 @@ async function writeSections(
     if (document === undefined) removed.push(sectionId);
     else added[sectionId] = document;
   }
+  // The write boundary for API-key assets (#1900). Here rather than at the two
+  // promotion merges because this is the one call every write this host makes
+  // goes through — a submit, a create, and a refactor that rewrites the
+  // manifest alike — and it is upstream of the hash: `advanceDraftManifest`
+  // hashes what it is handed, so stripping the value first means the manifest
+  // chain commits to the redacted document and nothing is broken by the edit.
+  const assets = added[ASSETS];
+  if (assets !== undefined) {
+    const stripped = stripAssetKeyValues(assets);
+    if (stripped.values.size > 0) {
+      // In this transaction, so a refused write seals nothing and a committed
+      // one cannot leave a manifest naming a key the store does not hold — for
+      // an entry that arrived with a value. An entry written without one (the
+      // stored shape, which validation admits) names a key nobody promoted,
+      // and the inspect path reports that as "never promoted" rather than
+      // failing.
+      await sealAssetKeys(
+        client,
+        session.cipher,
+        { teamId, protocolId: session.protocolId },
+        stripped.values,
+      );
+    }
+    added[ASSETS] = stripped.doc;
+    // The event log carries the document it wrote, and a watcher replays from
+    // it, so the redacted one has to be what the rest of this call sees too.
+    writes.set(ASSETS, stripped.doc);
+  }
   if (removed.length > 0) {
     await fenceDraftLeases(client, teamId, session.draftId, removed);
   }
@@ -715,7 +776,7 @@ export async function submit(
           },
         };
       }
-      const issues = sectionShapeIssues(sectionId, document);
+      const issues = shapeIssues(sectionId, document);
       if (issues.length > 0) {
         return {
           status: 'unchanged',
@@ -867,7 +928,7 @@ export async function create(
         input.kind === 'stage' && id !== undefined
           ? { ...input.document, id }
           : input.document;
-      const issues = sectionShapeIssues(target, created);
+      const issues = shapeIssues(target, created);
       if (issues.length > 0) {
         return {
           status: 'unchanged',

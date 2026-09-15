@@ -29,21 +29,20 @@ test('creates a valid Anonymisation stage from scratch', async ({
   //
   // Both halves of the explanation keep their schema paths
   // (`explanationText.title` / `explanationText.body`, TaskExplanationSection.tsx)
-  // while the CONTROLS are now named for what they are: "Explanation heading"
-  // and "Explanation". They are reached through the `data-field-name` seam
-  // because a role+name query for the body would also match the heading, whose
-  // accessible name contains it.
+  // while the CONTROLS carry released Architect's own names, "Title" and
+  // "Body". They are reached through the `data-field-name` seam because names
+  // that generic belong to more than one control on a stage editor.
   await editor
     .field('explanationText.title')
-    .getByRole('textbox', { name: 'Explanation heading', exact: true })
+    .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Protecting Your Privacy');
 
   // The explanation body is a RichText field. `RichTextField` passes its
   // `label` down to the Tiptap editor's accessible name, so the name is the
-  // section's own wording rather than the field's path.
+  // field's own wording rather than its path.
   const explanation = editor
     .field('explanationText.body')
-    .getByRole('textbox', { name: 'Explanation', exact: true });
+    .getByRole('textbox', { name: 'Body', exact: true });
   await expect(explanation).toBeEditable();
   await explanation.fill('Enter your passphrase below, then continue.');
 

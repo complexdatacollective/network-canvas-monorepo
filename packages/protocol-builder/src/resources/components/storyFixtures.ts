@@ -7,7 +7,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
-import type { ResourceKind, ResourceSecretStorage } from '../types.ts';
+import type { ResourceKind } from '../types.ts';
 
 /**
  * The resources every resource-picker story is told the protocol already
@@ -158,8 +158,6 @@ export type StoryHostOptions = Readonly<{
     procedure: 'stage' | 'preview' | 'inspect';
     forever?: boolean;
   }>;
-  /** Where this host says a promoted secret's value comes to rest. */
-  secretStorage?: ResourceSecretStorage;
 }>;
 
 export type StoryHost = Readonly<{
@@ -245,17 +243,6 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
     return refusals === 1;
   };
 
-  const listing: ProtocolBuilderClient['resources']['list'] = async (input) => {
-    const listed = await host.client.resources.list(input);
-    if (listed.status !== 'ok' || options.secretStorage === undefined) {
-      return listed;
-    }
-    return {
-      status: 'ok' as const,
-      data: { ...listed.data, secretStorage: options.secretStorage },
-    };
-  };
-
   /**
    * `preview` also re-states the content type. A manifest entry records a
    * resource's name, kind and filename and not its media type, so the
@@ -296,7 +283,6 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
   // through property access rather than held as own properties.
   const storyResources = new Proxy(host.client.resources, {
     get: (target, property, receiver) => {
-      if (property === 'list') return listing;
       if (property === 'preview') return previewing;
       if (property === 'stage') return staging;
       if (property === 'inspect') return inspecting;

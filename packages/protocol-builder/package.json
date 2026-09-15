@@ -16,15 +16,16 @@
     "./codebook/components/CodebookSurface": "./src/codebook/components/CodebookSurface.tsx",
     "./codebook/components/VariableEditor": "./src/codebook/components/VariableEditor.tsx",
     "./codebook/editing": "./src/codebook/editing.ts",
-    "./codebook/validation/CodebookVariableValidationEditor": "./src/codebook/validation/CodebookVariableValidationEditor.tsx",
     "./codebook/validation/VariableValidationEditor": "./src/codebook/validation/VariableValidationEditor.tsx",
     "./codebook/variableRoles": "./src/codebook/variableRoles.ts",
     "./codebook/variableValidation": "./src/codebook/variableValidation.ts",
     "./codebook/writes": "./src/codebook/writes.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",
+    "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",
+    "./form/stageSections": "./src/form/stageSections.ts",
     "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
@@ -58,6 +59,7 @@
   },
   "scripts": {
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build-storybook": "storybook build",
     "storybook": "storybook dev -p 6010",
     "test": "vitest run --project=unit",
@@ -66,6 +68,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
@@ -88,6 +91,7 @@
   "devDependencies": {
     "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/interview": "workspace:^",
     "@codaco/network-query": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/storybook-config": "workspace:^",
@@ -125,6 +129,7 @@
   "peerDependencies": {
     "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/interview": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "motion": "catalog:",
     "react": "catalog:",

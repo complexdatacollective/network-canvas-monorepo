@@ -1,60 +1,140 @@
 import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
-import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
-import { logOperational } from '../observability/logger.ts';
-import type { EncryptionKeys } from '../pii/keys.ts';
-import type { MagicLinkMailer } from './email.ts';
-import { encryptedAuthAdapter } from './encrypted-adapter.ts';
-import type { AuthService } from './service.ts';
+import type { RateLimiter } from '../rate-limit.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
+import { withSecretsAdapter } from './secrets-adapter.ts';
+import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
-// The only module that imports 'better-auth' (#1245).
+// The only module that builds a better-auth instance (#1245). Two siblings
+// take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
+// its password hasher.
 
-export type BetterAuthInstanceOptions = {
-  encryptionKeys?: EncryptionKeys;
-  deploymentMode?: DeploymentMode;
-};
+/**
+ * The sign-in endpoints whose per-address limit Studio sets rather than
+ * leaving to better-auth's own defaults. better-auth strips its base path
+ * before matching, so these are the paths under `/api/auth`.
+ */
+const SIGN_IN_PATHS = new Set([
+  '/sign-in/email',
+  '/sign-in/magic-link',
+  '/sign-in/social',
+]);
+
+/**
+ * better-auth's rate-limit key is `<ip>|<path>`. The path is what says which
+ * scope a denial belongs to in the limiter's log and in the per-minute
+ * summary; the address half never leaves this process unhashed, because the
+ * limiter hashes the whole key before it becomes key material.
+ */
+function scopeForAuthKey(key: string): string {
+  const path = key.slice(key.lastIndexOf('|') + 1);
+  return SIGN_IN_PATHS.has(path) ? 'sign_in_address' : 'better_auth';
+}
+
+/**
+ * better-auth's limiter, storing its counters where Studio's does (#1909).
+ *
+ * `customStorage` rather than `secondaryStorage`: the latter is the same
+ * switch for sessions, and moving session storage to Valkey would make the
+ * store a correctness dependency — an unreachable Valkey would sign everyone
+ * out. This moves the counters and nothing else, and it takes precedence over
+ * every built-in storage, so the `rateLimit` table better-auth's adapter still
+ * declares is never read or written.
+ *
+ * It fails open for the same reason the rest of the limiter does: the
+ * store's decision is the limiter's, and the limiter allows when it cannot
+ * reach the store.
+ */
+function createAuthRateLimitStorage(limiter: RateLimiter) {
+  return {
+    consume: async (key: string, rule: { window: number; max: number }) => {
+      const decision = await limiter.consume(scopeForAuthKey(key), key, {
+        max: rule.max,
+        windowMs: rule.window * 1000,
+      });
+      return decision.allowed
+        ? { allowed: true, retryAfter: null }
+        : { allowed: false, retryAfter: decision.retryAfterSeconds };
+    },
+  };
+}
+
+/**
+ * How a magic link leaves this process. Declared here rather than taken from
+ * `email.ts`'s mailer, because this process has no mail transport: sending is
+ * the worker's, and what is passed in queues a job for it (#1895).
+ */
+export type SendMagicLink = (input: {
+  email: string;
+  url: string;
+}) => Promise<void>;
 
 export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
-  mailer: MagicLinkMailer,
-  options: BetterAuthInstanceOptions = {},
+  sendMagicLink: SendMagicLink,
+  secrets: SecretsCipher,
+  /**
+   * Where sign-in attempts are counted. Absent means this instance enforces no
+   * limit of its own: the auth CLI's configuration and the suites that are not
+   * about limiting construct one that way. Every server process passes one.
+   */
+  limiter?: RateLimiter,
 ) {
-  const deploymentMode = options.deploymentMode ?? 'self-hosted';
+  const adapter = drizzleAdapter(drizzle({ client: pool }), {
+    provider: 'pg',
+    schema: AUTH_TABLES,
+  });
   return betterAuth({
-    logger: {
-      level: 'warn',
-      log(level) {
-        logOperational(
-          level === 'error' ? 'STUDIO_AUTH_ERROR' : 'STUDIO_AUTH_WARNING',
-        );
-      },
-    },
-    // Better Call otherwise prints unhandled errors after the configured logger.
-    // Let the owned HTTP boundary return a fixed diagnostic instead.
-    onAPIError: { throw: true },
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
-    database: encryptedAuthAdapter(
-      pool,
-      options.encryptionKeys,
-      deploymentMode === 'self-hosted',
-    ),
+    // Wrapped so `account`'s OAuth tokens are sealed in the database and
+    // opened on the way out (#1900); `account.encryptOAuthTokens` stays unset
+    // because it would seal with BETTER_AUTH_SECRET, unrotatable and bound to
+    // no row. Composed here, at the factory, so the wrapper is the adapter
+    // better-auth resolves for every path including its transactions.
+    database: (options: Parameters<typeof adapter>[0]) =>
+      withSecretsAdapter(adapter(options), secrets),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],
-    // Durable security counters live in Postgres, never memory or Redis
-    // (#1246): sign-in attempt limits survive deploys.
-    rateLimit: { enabled: true, storage: 'database' },
+    // Sign-in attempt limits count in the shared store, so they mean the same
+    // thing with one API container and with two (#1909). This supersedes the
+    // 2026-08-13 reading of #1246 that put them in Postgres: the ruling of
+    // 2026-09-15 is Valkey for rate limiting and Postgres for jobs, and the
+    // counters are disposable state — losing them resets a window rather than
+    // losing a record. What #1246 is actually about, the immutable audit log,
+    // is untouched and stays in Postgres.
+    rateLimit: limiter
+      ? {
+          enabled: true,
+          customStorage: createAuthRateLimitStorage(limiter),
+          // better-auth's own default for these paths is three attempts in
+          // ten seconds. Studio's is the `sign_in_address` constant
+          // (src/rate-limit/scopes.ts); the per-email limit is Studio's own
+          // middleware, because better-auth keys only by address and path.
+          customRules: Object.fromEntries(
+            [...SIGN_IN_PATHS].map((path) => [
+              path,
+              {
+                window: limiter.rules.sign_in_address.windowMs / 1000,
+                max: limiter.rules.sign_in_address.max,
+              },
+            ]),
+          ),
+        }
+      : { enabled: false },
     // Without a trusted-proxy list better-auth still trusts a single-value
     // X-Forwarded-For at face value, which a forgery satisfies — one fresh
     // rate-limit bucket per request, so the cap becomes a no-op. Reading no
@@ -80,14 +160,14 @@ export function createBetterAuthInstance(
       }),
     },
     // A third, always-available sign-in method alongside magic-link and
-    // social: the seeded admin account and the self-host bootstrap owner
-    // authenticate with a password. Self-host enrollment is invitation-only
-    // and local password signup is disabled; managed enrollment stays open. Uses
+    // social: the seeded admin account (src/db/seed.ts) needs somewhere to
+    // authenticate with its known password, and open sign-up here matches
+    // the same policy magic-link and social already carry (#1255) — access
+    // control arrives with team invitations (#1256), not a gate here. Uses
     // better-auth's default scrypt hasher (better-auth/crypto), which is the
     // same function the seed script hashes SEED_ADMIN_PASSWORD with.
     emailAndPassword: {
       enabled: true,
-      disableSignUp: deploymentMode === 'self-hosted',
     },
     user: {
       // Studio's per-user UI-language preference, stored on the user row
@@ -101,61 +181,23 @@ export function createBetterAuthInstance(
       },
     },
     account: {
-      additionalFields: {
-        accessTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        accessTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        refreshTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        refreshTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        idTokenKeyId: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-        idTokenAlgorithm: {
-          type: 'string',
-          required: false,
-          input: false,
-          returned: false,
-        },
-      },
-      // Self-hosts do not trust a provider name as proof of an email address.
-      // In particular, an Entra email claim is mutable; the enrollment hook
-      // requires provider-verified email evidence or the existing mailbox-proof
-      // flow. The managed provider policy remains separately configured below.
+      // A Google or Microsoft sign-in whose verified email matches an
+      // existing (verified, e.g. magic-link) user joins that user rather
+      // than erroring: both IdPs verify addresses, so the claim is trusted
+      // as ownership proof even where the id token omits `email_verified`
+      // (some Entra tenants).
       accountLinking: {
         enabled: true,
-        trustedProviders:
-          deploymentMode === 'managed' ? [...SOCIAL_PROVIDERS] : [],
+        trustedProviders: [...SOCIAL_PROVIDERS],
       },
     },
     plugins: [
-      // Self-host creation crosses the shared verified-invitation hook;
-      // existing identities can still sign in without an outstanding invite.
+      // Sign-up is deliberately open for now (recorded on #1255): access
+      // control arrives with team invitations (#1256).
       magicLink({
         expiresIn: 300,
         storeToken: 'hashed',
-        sendMagicLink: ({ email, url }) => mailer.sendMagicLink({ email, url }),
+        sendMagicLink: ({ email, url }) => sendMagicLink({ email, url }),
       }),
       // Teams are better-auth organizations (#1249). The tenant boundary
       // tables keep domain names and snake_case: they are domain tables that
@@ -205,34 +247,43 @@ export function createBetterAuthInstance(
   });
 }
 
+/**
+ * better-auth's answer to "that address already has an account", as this
+ * configuration produces it. The generic duplicate response — a fake success
+ * carrying a synthetic user — is reached only with `requireEmailVerification`
+ * or `autoSignIn: false`, and this instance sets neither, so the real refusal
+ * arrives as this code. Anything else is a failure and is rethrown.
+ */
+const EMAIL_TAKEN_CODE = 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
+
+function isEmailTaken(error: unknown): boolean {
+  if (!isAPIError(error)) return false;
+  const body: unknown = error.body;
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'code' in body &&
+    body.code === EMAIL_TAKEN_CODE
+  );
+}
+
 export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
-  mailer: MagicLinkMailer,
-  options: BetterAuthInstanceOptions = {},
+  sendMagicLink: SendMagicLink,
+  secrets: SecretsCipher,
+  limiter?: RateLimiter,
 ): AuthService {
-  const auth = createBetterAuthInstance(env, pool, mailer, options);
+  const auth = createBetterAuthInstance(
+    env,
+    pool,
+    sendMagicLink,
+    secrets,
+    limiter,
+  );
   const db = drizzle({ client: pool });
   return {
-    handler: async (request) => {
-      try {
-        const response = await auth.handler(request);
-        if (response.status < 500) return response;
-      } catch {
-        // Provider and database errors may contain credentials or identities.
-      }
-      logOperational('STUDIO_AUTH_ERROR');
-      return Response.json(
-        { code: 'STUDIO_AUTH_UNAVAILABLE' },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'Referrer-Policy': 'no-referrer',
-          },
-        },
-      );
-    },
+    handler: (request) => auth.handler(request),
     getSession: async (headers) => {
       const result = await auth.api.getSession({ headers });
       if (!result) return null;
@@ -271,6 +322,43 @@ export function createBetterAuthService(
         .from(members)
         .where(eq(members.user_id, userId))
         .orderBy(members.team_id);
+    },
+    signUpEmail: async ({ name, email, password }): Promise<SignUpOutcome> => {
+      // `returnHeaders` is what makes this usable from a procedure: the
+      // session cookie better-auth would have set on its own response comes
+      // back as headers for the calling surface to carry out.
+      try {
+        const { headers, response } = await auth.api.signUpEmail({
+          body: { name, email, password },
+          returnHeaders: true,
+        });
+        return {
+          kind: 'created',
+          session: { userId: response.user.id, headers },
+        };
+      } catch (error) {
+        if (isEmailTaken(error)) return { kind: 'emailTaken' };
+        throw error;
+      }
+    },
+    signInEmail: async ({ email, password }): Promise<SignInOutcome> => {
+      try {
+        const { headers, response } = await auth.api.signInEmail({
+          body: { email, password },
+          returnHeaders: true,
+        });
+        return {
+          kind: 'signedIn',
+          session: { userId: response.user.id, headers },
+        };
+      } catch (error) {
+        // Every refusal reads the same — wrong password, no such account, a
+        // provider-side policy — because the caller has nothing different to
+        // do about any of them, and `/setup` must not become an oracle for
+        // which addresses have accounts.
+        if (isAPIError(error)) return { kind: 'refused' };
+        throw error;
+      }
     },
   };
 }

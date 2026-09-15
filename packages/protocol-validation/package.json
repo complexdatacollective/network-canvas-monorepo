@@ -44,10 +44,12 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "typecheck": "tsc --build --noEmit",
-    "i18n:extract": "node scripts/extract-i18n.mjs"
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs"
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
+    "jszip": "catalog:",
     "ohash": "^2.0.11",
     "zod": "catalog:"
   },
@@ -59,7 +61,6 @@
     "@types/tar-stream": "^3.1.4",
     "dotenv": "catalog:",
     "gunzip-maybe": "^1.4.2",
-    "jszip": "catalog:",
     "tar-stream": "^3.2.0",
     "tsx": "catalog:",
     "typescript": "catalog:",

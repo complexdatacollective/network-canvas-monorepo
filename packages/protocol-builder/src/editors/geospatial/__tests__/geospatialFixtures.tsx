@@ -43,7 +43,7 @@ export const mapOptionsOf = (
  * Set rather than typed, because these tests are about what the section does
  * with a FINISHED coordinate. What the control does with one as it is being
  * built — where a lone minus sign reads as no number at all — belongs to the
- * field, and `fields/geospatial/__tests__/MapCenterField.test.tsx` types one
+ * field, and `fields/geospatial/__tests__/MapViewField.test.tsx` types one
  * in character by character.
  *
  * Waits for the editor to have been opened first, which `harness.user` does
@@ -87,4 +87,6 @@ export const openPrompt = async (
  * layer arriving. The picker renders a sentence in its place until then.
  */
 export const awaitLayerRead = async (): Promise<HTMLElement> =>
-  waitFor(() => screen.getByRole('combobox', { name: 'Recorded property' }));
+  waitFor(() =>
+    screen.getByRole('combobox', { name: 'Map selection property' }),
+  );

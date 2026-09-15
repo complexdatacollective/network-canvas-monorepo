@@ -156,6 +156,24 @@ export const controlsForType = (
     : [];
 
 /**
+ * Every input control a form can collect an answer with, in the order the
+ * kinds of answer are offered in — simplest first, which is the order
+ * Architect's own new-attribute control list reads in
+ * (`VariableDefinitionFields`: an existing attribute's list is alphabetised
+ * because it is a lookup; a new one's keeps the authored progression).
+ *
+ * For the one row that chooses a control before there is an attribute to
+ * narrow it by: the network composer's, where the control is what DECIDES the
+ * kind of answer rather than the other way round.
+ */
+export const ALL_CONTROLS: readonly Readonly<{
+  value: string;
+  label: MessageDescriptor;
+}>[] = Object.freeze(
+  TYPE_OPTIONS.flatMap(({ value }) => [...controlsForType(value)]),
+);
+
+/**
  * The attribute types that ARE a list of answers.
  *
  * `categoricalOptionsSchema` requires at least two of them, so a categorical

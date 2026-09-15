@@ -353,6 +353,10 @@ describe('dispatching to a named editor', () => {
     const withoutChrome = renderStageEditor({
       stageId: 'information-1',
       registry: { Information: ChromeEditor },
+      // The harness fills the slot everywhere else — it is where the editor
+      // publishes its sections — and the question here is what an editor given
+      // nothing does, which only an empty slot can ask.
+      withoutActionChrome: true,
     });
     expect(withoutChrome.getByText('no chrome')).toBeInTheDocument();
 

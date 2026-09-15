@@ -14,7 +14,13 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
+import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
+import { RULE_VALUE_FIELD } from '../../fields/RuleValueField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
@@ -26,8 +32,6 @@ import RuleEditorDialog, {
   type RuleTypeOption,
 } from '../RuleEditorDialog.tsx';
 import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
-import { QueryRuleSetField } from '../RuleSetField.tsx';
-import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
 import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
 
@@ -205,8 +209,11 @@ const buildNodeAttributeRuleUpTo = async (
   );
   await user.click(await screen.findByRole('radio', { name: 'Person' }));
   await user.click(await screen.findByRole('option', { name: /Attribute/ }));
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Node attribute/ }),
+  // Chosen through the picker's own window, by the id the rule stores: what
+  // every test below reads back is the saved rule, not the words on screen.
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Node attribute')),
     attribute,
   );
   await user.selectOptions(
@@ -242,8 +249,9 @@ const buildEgoRuleUpTo = async (
       name: 'Ego - match one of the ego attributes.',
     }),
   );
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Ego attribute/ }),
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Ego attribute')),
     'egoName',
   );
   await user.selectOptions(
@@ -915,14 +923,15 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
 
     await openExistingRule(user);
 
-    const attribute = await screen.findByRole('combobox', {
-      name: /Node attribute/,
-    });
-    expect(attribute).toHaveValue('home');
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    // The rule's own choice is still held — the trigger offers to CHANGE it
+    // rather than to make one...
     expect(
-      within(attribute).getByRole('option', {
-        name: 'Home — cannot be used in a rule',
-      }),
+      within(attribute).getByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
+    // ...and it is shown named for what is wrong with it.
+    expect(
+      within(attribute).getByText('Home — cannot be used in a rule'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -971,6 +980,36 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
  * accepted by "Finish and Close", and then immediately marked broken by the
  * row the dialog had just closed onto.
  */
+describe('the codebook controls the rule builder does not offer', () => {
+  /**
+   * A rule is about what the protocol already collects, so there is nothing
+   * here to invent a type for — and this picker sits inside a dialog inside a
+   * dialog, where a third one would be a stack nobody can see out of. Every
+   * other mount of `EntityTypePickerField` offers to make a type and to change
+   * the one it holds; this is the one that withdraws both, exactly as
+   * Architect's does (`Query/Rules/RuleEditor.tsx:788`,
+   * `allowCreation={false}`).
+   */
+  it('offers neither making a node type nor changing the one a rule names', async () => {
+    const user = userEvent.setup();
+    renderRuleList([nodeRule('rule-a')]);
+
+    await openExistingRule(user);
+
+    // The picker itself is there, so the two readings below are about the
+    // affordances rather than about a control that never rendered.
+    expect(
+      await screen.findByRole('radiogroup', { name: 'Node type' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create new node type' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Edit this node type' }),
+    ).toBeNull();
+  });
+});
+
 describe('a rule the codebook has moved out from under', () => {
   it('refuses to finish a rule pointed at a type the codebook has lost', async () => {
     const user = userEvent.setup();
@@ -1273,10 +1312,7 @@ describe('a choice that invalidates the choices below it', () => {
       '30',
     );
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: /Node attribute/ }),
-      'height',
-    );
+    await chooseAttributeById(user, attributeField('Node attribute'), 'height');
 
     // The new attribute still offers "is greater than", so an operator left
     // standing here would be one carried over rather than one chosen — and the

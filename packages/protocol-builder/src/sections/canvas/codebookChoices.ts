@@ -29,14 +29,20 @@ export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
  * type list it was asked for, and an array literal written at a call site is a
  * new one on every render.
  */
-export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze(['layout']);
+export const LAYOUT_TYPE = 'layout';
+export const BOOLEAN_TYPE = 'boolean';
+export const CATEGORICAL_TYPE = 'categorical';
+export const TEXT_TYPE = 'text';
+export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze([
+  LAYOUT_TYPE,
+]);
 export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
-  'boolean',
+  BOOLEAN_TYPE,
 ]);
 export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
-  'categorical',
+  CATEGORICAL_TYPE,
 ]);
-export const TEXT_TYPES: readonly VariableType[] = Object.freeze(['text']);
+export const TEXT_TYPES: readonly VariableType[] = Object.freeze([TEXT_TYPE]);
 
 /**
  * Every kind of answer a form can ask for, which is the pool a form field's
@@ -52,6 +58,7 @@ export const COLLECTABLE_TYPES: readonly VariableType[] = Object.freeze(
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_EDGE_TYPES: readonly EdgeTypeChoice[] = Object.freeze([]);
+const NO_NAMES: readonly string[] = Object.freeze([]);
 
 const byLabel = <T extends Readonly<{ value: string; label: string }>>(
   first: T,
@@ -147,8 +154,15 @@ export function useVariableChoices(
         : writerClass === 'validated'
           ? excludeUnvalidatedUses(roleMap, subject, typed, currentValue)
           : typed;
+    // Structural slots are excluded from WRITERS only. An attribute another
+    // interface owns — a pedigree's ego marker — is exactly what a picker
+    // that only reads exists to look at: a narrative preset highlights by it,
+    // groups by it, positions by it, and writes nothing back. Run over a
+    // reading picker the exclusion dropped precisely those.
     return Object.freeze(
-      excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
+      writerClass === undefined
+        ? roleFiltered
+        : excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
     );
   }, [
     currentValue,
@@ -159,6 +173,30 @@ export function useVariableChoices(
     types,
     writerClass,
   ]);
+}
+
+/**
+ * Every attribute name one type already holds, whatever kind of answer it is.
+ *
+ * Wider than `useVariableChoices` on purpose. That narrows to what a control
+ * can USE; this answers what the codebook would refuse, and a name is taken by
+ * a date attribute just as firmly as by a text one. A picker offering to
+ * create an attribute checks the name it was given against this before asking,
+ * so a duplicate is said on the row the researcher typed into rather than
+ * coming back from a round trip.
+ */
+export function useSubjectVariableNames(
+  subject: CodebookSubject | undefined,
+): readonly string[] {
+  const protocolContext = useProtocolContext();
+  return useMemo(() => {
+    if (subject === undefined) return NO_NAMES;
+    return Object.freeze(
+      Object.values(variablesForSubject(protocolContext, subject)).map(
+        (variable) => variable.name,
+      ),
+    );
+  }, [protocolContext, subject]);
 }
 
 /** Every edge type the protocol defines, read live. */

@@ -73,7 +73,7 @@ export const ReadingTheMapLayer: Story = {
     const canvas = within(canvasElement);
 
     const picker = await canvas.findByRole('combobox', {
-      name: 'Recorded property',
+      name: 'Map selection property',
     });
     await expect(
       within(picker).getByRole('option', { name: 'name' }),

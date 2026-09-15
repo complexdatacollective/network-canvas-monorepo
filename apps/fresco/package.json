@@ -22,7 +22,8 @@
     "test:watch": "SKIP_ENV_VALIDATION=true vitest --project=units",
     "typecheck": "SKIP_ENV_VALIDATION=true tsc --noEmit",
     "vercel-build": "pnpm build:platform",
-    "i18n:extract": "node scripts/extract-i18n.mjs"
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",

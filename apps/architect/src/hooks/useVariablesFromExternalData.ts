@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetManifest } from '~/selectors/protocol';
+import { MissingAssetDataError } from '~/utils/assetUtils';
 import {
   getGeoJsonVariables,
   getNetworkVariables,
@@ -98,7 +99,12 @@ function useVariablesFromExternalData(
         });
       })
       .catch((e: Error) => {
-        reportError(e);
+        // A resource whose file never arrived with the protocol is a state the
+        // editor shows and Resources can fix, not a defect to report. Every
+        // other read failure still is one.
+        if (!(e instanceof MissingAssetDataError)) {
+          reportError(e);
+        }
         if (cancelled) return;
         setLoaded({
           dataSource,

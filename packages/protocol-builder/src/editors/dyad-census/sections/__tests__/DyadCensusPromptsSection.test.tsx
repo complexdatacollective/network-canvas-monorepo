@@ -154,7 +154,7 @@ describe('creating a connection type from inside a prompt', () => {
     );
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
       }),
     );
     await harness.user.type(
@@ -195,7 +195,7 @@ describe('creating a connection type from inside a prompt', () => {
     );
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
       }),
     );
     await harness.user.type(

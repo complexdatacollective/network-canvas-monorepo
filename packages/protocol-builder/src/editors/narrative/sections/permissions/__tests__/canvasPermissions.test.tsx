@@ -27,7 +27,7 @@ describe('what the participant may do to a narrative canvas', () => {
 
     await harness.user.click(
       await screen.findByRole('switch', {
-        name: 'Allow drawing on the canvas',
+        name: 'Free-draw',
       }),
     );
 
@@ -44,7 +44,7 @@ describe('what the participant may do to a narrative canvas', () => {
     const harness = renderStageEditor(openPermissions());
 
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Allow moving nodes' }),
+      await screen.findByRole('switch', { name: 'Allow repositioning' }),
     );
 
     const saved = await harness.submit();

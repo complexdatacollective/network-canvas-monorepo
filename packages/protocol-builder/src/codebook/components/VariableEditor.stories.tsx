@@ -250,7 +250,7 @@ function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
         </p>
         <Button
           type="button"
-          variant="outline"
+          color="default"
           onClick={() => {
             setCompletedId(null);
             setOpenId((current) => current + 1);
@@ -336,9 +336,11 @@ export const BooleanAnswers: Story = {
   ...inEnglish,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // A markdown box rather than an input — the interview renders an option
+    // label as markdown wherever it shows one — so what it holds is its text.
     await expect(
       canvas.getByRole('textbox', { name: 'Label for “true”' }),
-    ).toHaveValue('I agree');
+    ).toHaveTextContent('I agree');
 
     await userEvent.click(
       canvas.getByRole('button', { name: 'Save attribute' }),

@@ -4,6 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
@@ -16,7 +17,7 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { useVariableChoices } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
 const TEXT_FIELD = 'text';
@@ -43,7 +44,8 @@ export const promptsOf = (prompts: unknown): readonly unknown[] =>
  * a picker memoises its options on the type list it was asked for, and a
  * literal at the call site is a new array every render.
  */
-const LOCATION_TYPES: readonly VariableType[] = Object.freeze(['location']);
+const LOCATION_TYPE = 'location';
+const LOCATION_TYPES: readonly VariableType[] = Object.freeze([LOCATION_TYPE]);
 
 /** The picker takes an open prop bag from the field wrapper. */
 const VariablePicker = VariablePickerField as ComponentType<
@@ -112,6 +114,13 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
     [offered, recordedByAnotherPrompt],
   );
 
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: LOCATION_TYPE,
+    title: intl.formatMessage(geospatialMessages.createAttributeLabel),
+    onCreated: (variableId) => setRowValue(VARIABLE_FIELD, variableId),
+  });
+
   return (
     <>
       <Field<typeof RichTextField>
@@ -123,24 +132,29 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
         initialValue={asText(item[TEXT_FIELD]) ?? ''}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}
       />
-      <Field<typeof VariablePicker>
-        name={VARIABLE_FIELD}
-        label={intl.formatMessage(geospatialMessages.promptVariableLabel)}
-        hint={intl.formatMessage(geospatialMessages.promptVariableHint)}
-        component={VariablePicker}
-        options={options}
-        emptyMessage={intl.formatMessage(
-          geospatialMessages.promptVariableEmptyState,
+      <Section
+        title={intl.formatMessage(geospatialMessages.locationResponseTitle)}
+        description={intl.formatMessage(
+          geospatialMessages.locationResponseDescription,
         )}
-        initialValue={committedVariable}
-        required={intl.formatMessage(geospatialMessages.promptVariableRequired)}
-      />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="location"
-        label={intl.formatMessage(geospatialMessages.createAttributeLabel)}
-        onCreated={(variableId) => setRowValue(VARIABLE_FIELD, variableId)}
-      />
+      >
+        <Field<typeof VariablePicker>
+          name={VARIABLE_FIELD}
+          label={intl.formatMessage(geospatialMessages.promptVariableLabel)}
+          hint={intl.formatMessage(geospatialMessages.promptVariableHint)}
+          component={VariablePicker}
+          options={options}
+          emptyMessage={intl.formatMessage(
+            geospatialMessages.promptVariableEmptyState,
+          )}
+          initialValue={committedVariable}
+          required={intl.formatMessage(
+            geospatialMessages.promptVariableRequired,
+          )}
+          {...createProps}
+        />
+        {editor}
+      </Section>
     </>
   );
 }

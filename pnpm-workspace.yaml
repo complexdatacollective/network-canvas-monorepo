@@ -103,17 +103,18 @@ catalog:
   # vite-plugin-dts/unplugin-dts needs the TypeScript JavaScript Compiler API,
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
-  '@vitejs/plugin-react': ^6.0.4
-  '@vitest/browser': ^4.1.11
-  '@vitest/browser-playwright': ^4.1.11
-  '@vitest/coverage-v8': ^4.1.11
+  '@vitejs/plugin-react': ^6.1.1
+  '@vitest/browser': ^5.0.0
+  '@vitest/browser-playwright': ^5.0.0
+  '@vitest/coverage-v8': ^5.0.0
   # The engine behind Storybook's a11y addon, used directly by the
   # protocol-builder suite so a heading ladder is judged by the same
   # `heading-order` rule a story is.
   axe-core: ^4.11.4
-  # Pinned: 1.7.1 is the first release whose peer range admits the pinned
-  # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
-  better-auth: 1.7.1
+  # Pinned: 1.7.x is the first line whose peer range admits the pinned
+  # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2); 1.7.5 is also the first to
+  # declare a Vitest 5 peer.
+  better-auth: 1.7.5
   chromatic: ^18.1.0
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
@@ -165,15 +166,9 @@ catalog:
   tsx: ^4.23.1
   typescript: ^7.0.2
   uuid: ^14.0.0
-  # Pinned: rolldown in vite 8.2.0 inlines a member access on a re-exported
-  # namespace object (motion's `Reorder.Group`), tree-shakes the namespace away,
-  # then never emits the inlined binding — the chunk declares `var ReorderGroup`
-  # and never assigns it, so ArrayField renders `undefined` (React #130). Breaks
-  # fresco-ui's Storybook build (9 stories) and so Chromatic. No source-level
-  # workaround exists; unpin once rolldown ships a fix.
-  vite: 8.1.4
-  vite-plugin-dts: ^5.0.3
-  vitest: ^4.1.11
+  vite: ^8.3.0
+  vite-plugin-dts: ^5.1.0
+  vitest: ^5.0.0
   wrangler: ^4.95.0
   ws: ^8.21.2
   # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
@@ -182,9 +177,10 @@ catalog:
   zod: ^4.5.4
   zustand: ^5.0.14
 overrides:
-  # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the pinned
-  # catalog version above rather than letting them float back onto 8.2.0.
-  vite: 8.1.4
+  # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the
+  # catalog version above rather than letting a plugin's looser peer range
+  # pull a second, older Vite into the tree.
+  vite: 'catalog:'
   react-resize-aware: 3.1.3
   cheerio: 1.0.0-rc.12
   immer: ^11.1.8
@@ -194,6 +190,13 @@ overrides:
   # and fresco-ui's declaration emit (vite-plugin-dts) can bind inferred types
   # to the wrong instance (TS2883) depending on hoisting (broke Netlify).
   '@types/react': 'catalog:'
+  # A single workspace-wide zod instance, for the same reason. Published
+  # externals (better-auth, better-call, @codaco/network-exporters, knip) still
+  # ask for 4.4.x, which splits drizzle-orm into two peer-resolved copies; the
+  # one pnpm hoists for drizzle-kit's own types is then not the one
+  # apps/studio/server resolves, and `pushSchema` stops accepting the database
+  # handle it is handed (TS2345).
+  zod: 'catalog:'
   '@types/react-dom': 'catalog:'
   '@microsoft/api-extractor>typescript': npm:@typescript/typescript6@^6.0.2
   'slate>immer': '^5.3.0'
@@ -211,6 +214,11 @@ overrides:
   fast-uri: '^3.1.6'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
+  # electron-builder (app-builder-lib, builder-util, dmg-builder) asks for
+  # js-yaml ^4.1.0 but pnpm keeps re-selecting 4.3.0 for those
+  # peer-suffixed snapshots; 4.3.2 fixes the merge-key CPU exhaustion
+  # (GHSA-2883-xcg3-v3hh).
+  'js-yaml@^4.0.0': '^4.3.2'
   # prisma pins mysql2 to an exact release below the auth-plugin downgrade fix
   # (GHSA-3f6p-5ww8-9rcr); nothing here talks to MySQL, so the driver only
   # needs to resolve to a patched version.
@@ -221,6 +229,18 @@ overrides:
   sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
+peerDependencyRules:
+  allowedVersions:
+    # `@storybook/addon-vitest@10.6` predates Vitest 5 and still pins its peer
+    # ranges to ^3 || ^4, but the only version check it makes is
+    # `satisfies(version, '>=4.0.0')`, and every entry point it imports
+    # (`vitest`, `vitest/config`, `vitest/browser`, `@vitest/browser/context`,
+    # `@vitest/browser-playwright`) is unchanged in 5. The storybook test
+    # projects run against Vitest 5; drop the range back to ^3 || ^4 here if a
+    # future addon release genuinely needs it.
+    '@storybook/addon-vitest>vitest': '5'
+    '@storybook/addon-vitest>@vitest/browser': '5'
+    '@storybook/addon-vitest>@vitest/browser-playwright': '5'
 linkWorkspacePackages: false
 # Supply-chain cooldown: refuse dependency versions younger than this many
 # minutes. 1440 = 24h. This is pnpm 11's built-in default, pinned explicitly so
@@ -267,5 +287,21 @@ minimumReleaseAgeExclude:
   - '@formatjs/cli-native-win32-x64@1.1.18'
   - babel-plugin-formatjs@13.0.3
   - react-intl@10.1.26
+  - '@better-auth/core@1.7.5'
+  - '@better-auth/drizzle-adapter@1.7.5'
+  - '@better-auth/kysely-adapter@1.7.5'
+  - '@better-auth/memory-adapter@1.7.5'
+  - '@better-auth/mongo-adapter@1.7.5'
+  - '@better-auth/prisma-adapter@1.7.5'
+  - '@better-auth/telemetry@1.7.5'
+  - better-auth@1.7.5
 patchedDependencies:
-  drizzle-kit@1.0.0-rc.4: patches/drizzle-kit@1.0.0-rc.4.patch
+  # The addon applies a story's `viewport` parameter by importing `page` from
+  # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
+  # test. The import is wrapped in `.catch(() => ({ page: null }))` and the
+  # function then returns early, so under Vitest 5 the viewport is never set
+  # and nothing is reported: a story asking for a 700px viewport renders at
+  # whatever `browser.viewport` says, and only a story that measures its own
+  # layout notices. `vitest/browser` is the same `page` object under the name
+  # Vitest 5 serves. Drop this once the addon supports Vitest 5.
+  '@storybook/addon-vitest@10.6.0': patches/@storybook__addon-vitest@10.6.0.patch

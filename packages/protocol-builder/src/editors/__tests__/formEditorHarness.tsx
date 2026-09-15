@@ -6,6 +6,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
+import {
+  attributeField,
+  inventAttribute,
+} from '../../testing/attributePicker.ts';
 import type {
   CodebookPatch,
   renderStageEditor,
@@ -47,10 +51,26 @@ export const mountedAs = <T extends StageType>(
 export const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
+/**
+ * A row's open editor: the queries scoped to it, and the element itself.
+ *
+ * The element is carried because the row editor is a `dialog` and the
+ * attribute picker opens a SECOND one on top of it — so a caller that has to
+ * reach back into the row while the picker's window is up names the element it
+ * captured rather than asking the screen for "the dialog".
+ */
+export type RowDialog = ReturnType<typeof within> & { element: HTMLElement };
+
+const rowDialog = (element: HTMLElement): RowDialog =>
+  Object.assign(within(element), { element });
+
 /** Opens a form field's dialog, and scopes queries to it. */
-export const openField = async (harness: Harness, name: string) => {
+export const openField = async (
+  harness: Harness,
+  name: string,
+): Promise<RowDialog> => {
   await harness.user.click(screen.getByRole('button', { name }));
-  return within(await screen.findByRole('dialog'));
+  return rowDialog(await screen.findByRole('dialog'));
 };
 
 /**
@@ -59,12 +79,102 @@ export const openField = async (harness: Harness, name: string) => {
  * arrives with a different number of fields, and the row just added is the one
  * past all of them whatever that number is.
  */
-const openLastField = async (harness: Harness, name: string) => {
+const openLastField = async (
+  harness: Harness,
+  name: string,
+): Promise<RowDialog> => {
   const triggers = screen.getAllByRole('button', { name });
   const trigger = triggers[triggers.length - 1];
   if (trigger === undefined) throw new Error(`There is no "${name}".`);
   await harness.user.click(trigger);
-  return within(await screen.findByRole('dialog'));
+  return rowDialog(await screen.findByRole('dialog'));
+};
+
+/**
+ * The row's Attribute picker, as the field the shared helpers work from.
+ *
+ * The control is a button that opens a window of attributes rather than a
+ * select, so what a caller holds is the FIELD around it — scoped to this row's
+ * dialog, because more than one row editor can be on screen.
+ */
+const attributePicker = (dialog: RowDialog): HTMLElement =>
+  attributeField('Attribute', dialog.element);
+
+/** The two names the picker's trigger goes by, once chosen and before. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
+/**
+ * Opens the picker's window from inside a row editor, and hands it back.
+ *
+ * `openAttributePicker` asks the screen for "the dialog", which is ambiguous
+ * here: a row editor is a dialog of its own and the picker opens a second one
+ * on top of it. The window is the one that is not the row.
+ */
+const openPickerOver = async (
+  harness: Harness,
+  dialog: RowDialog,
+): Promise<HTMLElement> => {
+  await harness.user.click(
+    within(attributePicker(dialog)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  return await waitFor(() => {
+    const window = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (window === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return window;
+  });
+};
+
+/**
+ * Points a row at the attribute the codebook files under this id.
+ *
+ * By id rather than by name because that is what the row stores, and the
+ * window shows the researcher's name for it — so a journey that knows which
+ * reference it is after has nowhere else to say so.
+ */
+export const collectAttribute = async (
+  harness: Harness,
+  dialog: RowDialog,
+  attributeId: string,
+): Promise<void> => {
+  const window = await openPickerOver(harness, dialog);
+  const row = window.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${attributeId}"]`,
+  );
+  if (row === null) {
+    throw new Error(`The window is not offering "${attributeId}".`);
+  }
+  await harness.user.click(row);
+  // The pick is written as the window closes, so a journey that carried on
+  // while it was still up would go on reading the row through it.
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
+};
+
+/**
+ * Starts a row off inventing an attribute of this name, the way a researcher
+ * does: searches the window for it, finds it does not exist, and takes the
+ * create row.
+ *
+ * The attribute is not written here. A row invents one as part of its own
+ * save, so what this leaves behind is a row holding the name — and the picker
+ * showing it, which is what the wait below is for: the window covers the
+ * dialog while it is up.
+ */
+const inventAttributeFromRow = async (
+  harness: Harness,
+  dialog: RowDialog,
+  attributeName: string,
+): Promise<void> => {
+  await inventAttribute(harness.user, attributePicker(dialog), attributeName);
+  await within(attributePicker(dialog)).findByText(attributeName);
 };
 
 /**
@@ -178,22 +288,27 @@ const savedAttribute = (harness: Harness, subject: SectionRef, name: string) =>
  * editor opens on the values the attribute already has, so a new one lands in
  * the row past them.
  */
-const addOption = async (
-  harness: Harness,
-  position: number,
-  label: string,
-  value: string,
-) => {
+/**
+ * Adds one answer to the inline list under the row's attribute picker.
+ *
+ * A new row opens straight into its own editor, so its two cells are the only
+ * ones on screen while it is being written — which is what lets them be
+ * reached by their plain names.
+ */
+const addOption = async (harness: Harness, label: string, value: string) => {
   await harness.user.click(
     screen.getByRole('button', { name: 'Create new option' }),
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    await screen.findByRole('textbox', { name: 'Label' }),
     label,
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    screen.getByRole('textbox', { name: 'Value' }),
     value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
   );
 };
 
@@ -285,20 +400,19 @@ export const authorsValuesFromField = async (
   const categoricalId = seedCategoricalAttribute(harness, subject);
 
   const creating = await openField(harness, 'Create new form field');
-  await harness.user.selectOptions(
-    creating.getByRole('combobox', { name: 'Attribute' }),
-    categoricalId,
-  );
+  await collectAttribute(harness, creating, categoricalId);
 
-  await harness.user.click(
-    await creating.findByRole('button', {
-      name: 'Change this attribute’s values',
-    }),
+  // Inline under the picker, as Architect had it, and written by the ROW's own
+  // save — so the journey each editor proves is the whole one: type a value
+  // where the question is, press the row's own button, and the codebook for
+  // THIS editor's subject holds it.
+  await addOption(harness, 'Somewhere else', 'elsewhere');
+  await harness.user.type(
+    creating.getByRole('textbox', { name: 'Question text' }),
+    'Where do you usually meet?',
   );
-  await addOption(harness, 3, 'Somewhere else', 'elsewhere');
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Save attribute' }),
-  );
+  await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
 
   await waitFor(() =>
     expect(
@@ -323,17 +437,10 @@ export const authorsDateSettingsFromField = async (
   subject: SectionRef,
 ) => {
   const dating = await openField(harness, 'Create new form field');
-  await harness.user.selectOptions(
-    dating.getByRole('combobox', { name: 'Attribute' }),
-    '#create-new-attribute',
-  );
+  await inventAttributeFromRow(harness, dating, 'met_on');
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Kind of answer' }),
     'datetime',
-  );
-  await harness.user.type(
-    await dating.findByRole('textbox', { name: 'Attribute name' }),
-    'met_on',
   );
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Input control' }),

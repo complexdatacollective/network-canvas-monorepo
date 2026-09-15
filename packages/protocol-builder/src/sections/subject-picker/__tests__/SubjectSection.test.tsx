@@ -6,6 +6,7 @@ import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contra
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { newEntityDraft } from '../../../fields/EntityTypePickerField.tsx';
 import type {
   InMemoryClient,
   InMemoryHost,
@@ -17,7 +18,7 @@ import {
 } from '../../__tests__/rowFixtures.tsx';
 import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
-import SubjectSection, { newEntityDraft } from '../SubjectSection.tsx';
+import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
 
 type Harness = ReturnType<typeof renderStageEditor>;
@@ -347,10 +348,17 @@ describe('creating the type a stage needs without leaving it', () => {
       );
     }
     expect(screen.getByRole('radio', { name: hueName })).toBeChecked();
-    expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
-      shape,
-    );
-    expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
+    // The shape is chosen from the shapes themselves, so the swatch named for
+    // the one the draft arrives with is the one marked.
+    expect(
+      within(screen.getByRole('radiogroup', { name: 'Shape' })).getByRole(
+        'radio',
+        {
+          name: `Select shape ${shape[0]?.toUpperCase() ?? ''}${shape.slice(1)}`,
+        },
+      ),
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
       icon,
     );
   });

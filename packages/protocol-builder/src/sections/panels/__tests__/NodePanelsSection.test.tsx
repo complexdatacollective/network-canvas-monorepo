@@ -153,8 +153,7 @@ const panelsOf = (
  * refusal this section decided says its own sentence instead, which is why a
  * test that means the section's refusal also says this one is absent.
  */
-const SCHEMA_REFUSAL =
-  'This stage is not finished, so it was not saved. The sections below say what is missing.';
+const SCHEMA_REFUSAL = 'This stage is not finished, so it was not saved.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
@@ -224,10 +223,8 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
-   * A stage may hold two panels and nothing else in the dialog says which of
-   * them is open, so the source control is numbered — the way Architect
-   * numbers it. A panel being added is the next one, and an existing panel is
-   * the one it is in the list, counting from one.
+   * A panel being added is the next one, and an existing panel is the one it
+   * is in the list, counting from one.
    */
   it('numbers the source control after the panel being added', async () => {
     const harness = renderStageEditor({
@@ -239,20 +236,39 @@ describe('the side panels a name generator shows', () => {
 
     const dialog = await openPanel(harness, 'Add new panel');
 
-    expect(dialog.getByText('Data source for panel 2')).toBeInTheDocument();
+    expect(
+      dialog.getByRole('radiogroup', { name: 'Data source for panel 2' }),
+    ).toBeInTheDocument();
   });
 
-  it('numbers the source control after the panel being edited', async () => {
+  /**
+   * A stage holds two panels at most and their controls are otherwise
+   * identical, so Architect numbers the source control by the panel it belongs
+   * to — "Data source for panel 1", "Data source for panel 2" — and that
+   * number is the only thing telling the two apart to anyone reading the label
+   * or hearing it. One shared sentence would name both the same.
+   */
+  it('numbers each panel’s source control by the panel it belongs to', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+        },
+        {
+          id: 'panel-2',
+          title: 'People from the roster',
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
 
     const first = await openPanel(harness, 'Edit panel', 0);
-    expect(first.getByText('Data source for panel 1')).toBeInTheDocument();
+    expect(
+      first.getByRole('radiogroup', { name: 'Data source for panel 1' }),
+    ).toBeInTheDocument();
     expect(
       first.queryByText('Data source for panel 2'),
     ).not.toBeInTheDocument();
@@ -262,7 +278,9 @@ describe('the side panels a name generator shows', () => {
     );
 
     const second = await openPanel(harness, 'Edit panel', 1);
-    expect(second.getByText('Data source for panel 2')).toBeInTheDocument();
+    expect(
+      second.getByRole('radiogroup', { name: 'Data source for panel 2' }),
+    ).toBeInTheDocument();
   });
 
   /**
