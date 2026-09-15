@@ -353,14 +353,15 @@ describe('a row of a stage editor list, opened in its dialog', () => {
       await screen.findByRole('button', { name: 'Add new panel' }),
     );
 
-    // The title and source render bare, as Architect's panel row does, so the
-    // filter is the only section under the dialog title — two headings, which
-    // is what axe is then asked to have judged.
+    // Both halves of the panel are titled groups — what it is called and who
+    // it lists, then who of them it shows — so three headings, which is what
+    // axe is then asked to have judged.
     expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
       'h2: Create panel',
+      'h3: Configuration',
       'h3: Panel filter',
     ]);
-    await expectHeadingOrder(2);
+    await expectHeadingOrder(3);
   });
 
   it('puts a prompt row’s sections under the dialog title', async () => {

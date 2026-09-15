@@ -857,6 +857,8 @@
   "protocolBuilder.nodePanels.clearConfirm": "Eliminar paneles",
   "protocolBuilder.nodePanels.clearDescription": "Esto borrará la configuración de los paneles y eliminará las reglas de filtro que hayas creado. ¿Quieres continuar?",
   "protocolBuilder.nodePanels.clearTitle": "Esto eliminará la configuración de los paneles",
+  "protocolBuilder.nodePanels.configurationGroupDescription": "Ponle un título a este panel y elige de dónde vienen las personas que muestra.",
+  "protocolBuilder.nodePanels.configurationGroupTitle": "Configuración",
   "protocolBuilder.nodePanels.description": "Configura hasta dos paneles laterales para este generador de nombres.",
   "protocolBuilder.nodePanels.editTitle": "Editar panel",
   "protocolBuilder.nodePanels.emptyState": "No hay paneles laterales configurados.",

@@ -3431,6 +3431,14 @@
     "defaultMessage": "This will delete your panel configuration",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from."
   },
+  "protocolBuilder.nodePanels.configurationGroupDescription": {
+    "defaultMessage": "Name this panel, and choose where the people it lists come from.",
+    "description": "Description of the first half of the side-panel dialog, saying what its two controls settle: what the participant reads above the panel, and whether it lists the people named so far in the interview or the contents of an imported file."
+  },
+  "protocolBuilder.nodePanels.configurationGroupTitle": {
+    "defaultMessage": "Configuration",
+    "description": "Heading of the first half of the dialog for one side panel, holding the panel’s title and the source of the people it lists."
+  },
   "protocolBuilder.nodePanels.description": {
     "defaultMessage": "Configure up to two side panels for this name generator.",
     "description": "Description of the side-panels section. A stage is one step of an interview."

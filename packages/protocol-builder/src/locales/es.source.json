@@ -857,6 +857,8 @@
   "protocolBuilder.nodePanels.clearConfirm": "Remove panels",
   "protocolBuilder.nodePanels.clearDescription": "This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?",
   "protocolBuilder.nodePanels.clearTitle": "This will delete your panel configuration",
+  "protocolBuilder.nodePanels.configurationGroupDescription": "Name this panel, and choose where the people it lists come from.",
+  "protocolBuilder.nodePanels.configurationGroupTitle": "Configuration",
   "protocolBuilder.nodePanels.description": "Configure up to two side panels for this name generator.",
   "protocolBuilder.nodePanels.editTitle": "Edit panel",
   "protocolBuilder.nodePanels.emptyState": "No side panels configured.",
