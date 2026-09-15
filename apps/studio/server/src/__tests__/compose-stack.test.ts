@@ -141,16 +141,38 @@ describe('the reference compose stack', () => {
   it('gives the three Studio processes a database URL with no password in it', () => {
     // The password is the `postgres_password` file secret. A URL that carried
     // one as well would put it in `docker inspect` and in every process
-    // environment — and is refused at boot.
+    // environment — and is refused at boot. That holds for the swapped-in
+    // managed Postgres too, which is why the default below has no password
+    // either.
     for (const name of ['api', 'worker', 'migrate']) {
       const environment = compose.services[name]!.environment!;
       expect({ name, url: environment.DATABASE_URL }).toEqual({
         name,
-        url: 'postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}',
+        url: '${DATABASE_URL:-postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}}',
       });
       expect({ name, file: environment.DATABASE_PASSWORD_FILE }).toEqual({
         name,
         file: '/run/secrets/postgres_password',
+      });
+    }
+  });
+
+  it('lets the three swappable backing services be swapped from .env alone', () => {
+    // The specification's "one service block and one set of variables": each
+    // of these defaults to the stack's own service, so pointing Studio at a
+    // managed Postgres, bucket or Redis is a line in `.env` and not an edit to
+    // the file a self-hoster downloaded. Hard-coding one back would make the
+    // documented swap require a patched compose file.
+    const withDefault = new Map(
+      references(composeSource).map(({ name, hasDefault }) => [
+        name,
+        hasDefault,
+      ]),
+    );
+    for (const name of ['DATABASE_URL', 'REDIS_URL', 'S3_ENDPOINT']) {
+      expect({ name, referencedWithDefault: withDefault.get(name) }).toEqual({
+        name,
+        referencedWithDefault: true,
       });
     }
   });

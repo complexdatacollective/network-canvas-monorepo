@@ -7,6 +7,10 @@
 #   docker compose up -d
 #   docker compose run --rm migrate
 #
+# Between those two commands `api` and `worker` restart in a loop — there is no
+# schema for them to verify yet, and `docker compose ps` says `Restarting (1)`
+# — which is expected and stops the moment `migrate` has run.
+#
 # The managed service runs this same file, with its own `.env` pointing the
 # object-store variables at a managed bucket. There is no second topology and
 # no orchestrator: splitting a service onto another host means changing one
@@ -19,20 +23,28 @@
 #
 # ── The swappable elements ────────────────────────────────────────────────
 #
-#   Ingress        the `traefik` service, the `traefik-dynamic` config, and
-#                  the published ports. Replace it with an institution's own
-#                  proxy by deleting the service and reproducing the routing
-#                  table in `traefik-dynamic` against `web` and `api`.
-#   Database       the `postgres` service and the `postgres-data` volume.
-#                  Replace it with a managed Postgres by deleting both and
-#                  pointing `DATABASE_URL` at the managed instance (put the
-#                  password in the secret file, not in the URL).
-#   Object store   the `garage` service, the `garage-init` one-shot, the
-#                  `garage-config` config, and the `garage-data` volume.
-#                  Replace all four with a managed bucket by setting the five
-#                  `S3_*` variables.
-#   Rate limiting  the `valkey` service. Any Redis 7-compatible server works;
-#                  `REDIS_URL` is the only variable.
+# Three of the four are swapped from `.env` alone: `DATABASE_URL`, `REDIS_URL`
+# and `S3_ENDPOINT` each default to the stack's own service, so setting one
+# points Studio elsewhere without a line of this file changing. Deleting the
+# service it replaced is then tidying, not part of the swap.
+#
+#   Database       set `DATABASE_URL`. The password stays in the
+#                  `postgres-password` file secret — `DATABASE_PASSWORD_FILE`
+#                  still names it, and a URL carrying one as well is refused —
+#                  so put the managed instance's password there. Then delete
+#                  the `postgres` service and the `postgres-data` volume.
+#   Object store   set `S3_ENDPOINT` and the other four `S3_*` variables. Then
+#                  delete the `garage` service, the `garage-init` one-shot,
+#                  `migrate`'s `depends_on` entry for it, the `garage-config`
+#                  and `garage-init` configs, and the `garage-data` volume.
+#   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. Then
+#                  delete the `valkey` service and the `depends_on` entries
+#                  naming it.
+#   Ingress        the one that is not a variable, because it is a routing
+#                  table rather than an address: delete the `traefik` service,
+#                  the `traefik-dynamic` config and the published ports, and
+#                  reproduce that routing table in an institution's own proxy
+#                  against `web` and `api`.
 #
 # ── Where the secrets live ────────────────────────────────────────────────
 #
@@ -60,13 +72,18 @@ name: studio
 x-studio-env: &studio-env
   NODE_ENV: production
   PUBLIC_URL: https://${STUDIO_HOSTNAME}
-  # No password here, deliberately: it is in the file secret below, and a URL
-  # carrying one as well is refused at boot.
-  DATABASE_URL: postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}
+  # These three name the swappable backing services, and each defaults to the
+  # stack's own. Setting one in `.env` is the whole swap — nothing in this file
+  # changes, though the service it replaces can then be deleted.
+  #
+  # No password in the database URL, deliberately: it is in the file secret
+  # below, and a URL carrying one as well is refused at boot. That holds for a
+  # managed Postgres too — put its password in the same file.
+  DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}}
+  REDIS_URL: ${REDIS_URL:-redis://valkey:6379}
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
   DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
   STUDIO_SECRETS_KEY_FILE: /run/secrets/studio_secrets_key
-  REDIS_URL: redis://valkey:6379
-  S3_ENDPOINT: http://garage:3900
   S3_REGION: ${S3_REGION}
   S3_BUCKET: ${S3_BUCKET}
   S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
