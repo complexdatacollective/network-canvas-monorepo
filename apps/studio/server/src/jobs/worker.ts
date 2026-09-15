@@ -6,6 +6,7 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { StudioMailer } from '../auth/email.ts';
 import type { DbEnv } from '../env.ts';
+import type { RateLimitStore } from '../rate-limit/store.ts';
 import { registerJobs } from './register.ts';
 
 // The worker process's pg-boss: it fetches, supervises and schedules, and
@@ -43,6 +44,11 @@ export type JobWorkerDeps = {
   mailer?: StudioMailer;
   /** The browser-facing origin the handlers mint links against. */
   publicBaseUrl: string;
+  /**
+   * Where the rate limiter keeps its counters (#1909). Absent means none is
+   * configured, and the denied-attempts summary then has nothing to read.
+   */
+  rateLimitStore?: RateLimitStore | undefined;
   /** The suites provision a job schema per scratch database. */
   schema?: string;
   /**

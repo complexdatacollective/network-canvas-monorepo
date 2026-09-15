@@ -215,6 +215,7 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
         [INTERNAL_QUEUE, NEVER_THIS_RUN],
       );
       expect(await scheduleRows()).toEqual([
+        { name: 'denied-attempts-summary', key: '' },
         { name: INTERNAL_QUEUE, key: '' },
         { name: 'protocol-store-gc', key: '' },
         { name: 'protocol-store-gc', key: RETIRED_SCHEDULE_KEY },
@@ -227,6 +228,7 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
       // The declared schedule stays, the retired one is gone, and pg-boss's
       // own row is not Studio's to remove.
       expect(await scheduleRows()).toEqual([
+        { name: 'denied-attempts-summary', key: '' },
         { name: INTERNAL_QUEUE, key: '' },
         { name: 'protocol-store-gc', key: '' },
       ]);

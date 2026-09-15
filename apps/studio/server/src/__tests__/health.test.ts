@@ -6,14 +6,17 @@ import { createAssetStore } from '../assets.ts';
 import { migrateDatabase } from '../db/migrate.ts';
 import { resolve } from '../env/resolve.ts';
 import { readiness } from '../health.ts';
+import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { testKeyringEntry } from './support/secrets.ts';
+import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
 // Liveness and readiness on the web process (#1897, #1909). The worker serves
 // the same two routes on a loopback listener of its own, which only a real
 // process can show — that half is in worker-entrypoint.test.ts.
 
 const db = await reachableDb();
+const redis = await reachableRedis(REDIS_DATABASES.health);
 
 /** Rendering the DDL imports drizzle-kit; the migrate itself takes a second. */
 const PROVISION_TIMEOUT_MS = 180_000;
@@ -114,6 +117,51 @@ describe('the web process routes', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: 'ok', checks: {} });
   });
+
+  it('omits the limiter where no rate-limit store is configured', async () => {
+    // The same rule every other unconfigured surface takes: nothing is
+    // enforced, nothing is checked, and an instance that never wanted a store
+    // is not permanently degraded for not having one.
+    const response = await createApp(resolve({ NODE_ENV: 'test' })).request(
+      '/readyz',
+    );
+    expect(await response.json()).toEqual({ status: 'ok', checks: {} });
+  });
+
+  it('is degraded, and still 200, when the rate-limit store is unreachable', async () => {
+    // The limiter fails open (#1909), so the process still serves every
+    // request — it just stops enforcing a limit. Answering 503 here would
+    // take the container out of rotation and turn a rate-limit outage into an
+    // availability one.
+    const app = createApp(
+      resolve({
+        NODE_ENV: 'test',
+        REDIS_URL: `redis://127.0.0.1:${await freePort()}`,
+      }),
+    );
+    const response = await app.request('/readyz');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'degraded',
+      checks: { limiter: 'degraded' },
+    });
+    // And a request still goes through, which is what degraded means here.
+    expect((await app.request('/api/v1/status')).status).toBe(200);
+  });
+
+  it.skipIf(!redis)(
+    'names the limiter ok while the store answers',
+    async () => {
+      const response = await createApp(
+        resolve({ NODE_ENV: 'test', ...(redis ? { REDIS_URL: redis } : {}) }),
+      ).request('/readyz');
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        status: 'ok',
+        checks: { limiter: 'ok' },
+      });
+    },
+  );
 
   it('is 503 and names the database when the pool cannot connect', async () => {
     // An unroutable loopback port: nothing answers it, and nothing real is

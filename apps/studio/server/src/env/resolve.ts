@@ -5,6 +5,10 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
+import {
+  parseRateLimitSpec,
+  type RateLimitSettings,
+} from '../rate-limit/scopes.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -63,6 +67,21 @@ export type StudioEnv = {
    * already in use.
    */
   secrets: Keyring | undefined;
+   * The shared rate-limit store (#1909). Undefined means no store: every limit
+   * is disabled and the limiter says so at boot, which is the same posture the
+   * store being unreachable takes at run time — a rate limit protects against
+   * abuse and is not a correctness guarantee.
+   */
+  redis: string | undefined;
+  /** What each rate-limited scope allows; see src/rate-limit/scopes.ts. */
+  rateLimits: RateLimitSettings;
+  /**
+   * Proxies whose `X-Forwarded-For` may be believed when resolving a client
+   * address. Also on `auth`, which is where better-auth's own resolution reads
+   * it — but the address-keyed rate limits apply to surfaces that exist
+   * without a database, and `auth` does not.
+   */
+  trustedProxies: string[] | undefined;
   devDefaults: boolean;
   /**
    * Whether this instance reports anonymous usage telemetry. Nothing reads it
@@ -74,6 +93,71 @@ export type StudioEnv = {
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
 };
+
+/**
+ * What each scope allows when a deployment says nothing (#1909). Here rather
+ * than in `variables.ts` for the reason stated at the top of that file: a
+ * default declared in a schema is compiled into the production bundle. These
+ * are ordinary operating limits rather than credentials, but the rule holds
+ * for the whole catalogue so that it holds for the ones that matter.
+ *
+ * Each is justified in the catalogue entry beside it, which is what a deployer
+ * reads. The shape they share: a limit that a legitimate burst never reaches,
+ * set low enough that the attack the scope exists to stop is not worth
+ * running.
+ */
+const RATE_LIMIT_DEFAULTS = {
+  signInAddress: '10/10m',
+  signInEmail: '5/10m',
+  invitationAccept: '10/10m',
+  participantRedeemAddress: '20/10m',
+  participantRedeemLink: '5/10m',
+  participantSync: '600/1m',
+  rpcUser: '600/1m',
+  rpcTeam: '3000/1m',
+  storageRead: '2000/5m',
+  publicApi: '300/1m',
+  wsUpgrade: '30/1m',
+} as const;
+
+function resolveRateLimits(raw: RawEnv): RateLimitSettings {
+  const spec = (configured: string | undefined, fallback: string) =>
+    parseRateLimitSpec(configured ?? fallback);
+  return {
+    sign_in_address: spec(
+      raw.RATE_LIMIT_SIGN_IN_ADDRESS,
+      RATE_LIMIT_DEFAULTS.signInAddress,
+    ),
+    sign_in_email: spec(
+      raw.RATE_LIMIT_SIGN_IN_EMAIL,
+      RATE_LIMIT_DEFAULTS.signInEmail,
+    ),
+    invitation_accept: spec(
+      raw.RATE_LIMIT_INVITATION_ACCEPT,
+      RATE_LIMIT_DEFAULTS.invitationAccept,
+    ),
+    participant_redeem_address: spec(
+      raw.RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS,
+      RATE_LIMIT_DEFAULTS.participantRedeemAddress,
+    ),
+    participant_redeem_link: spec(
+      raw.RATE_LIMIT_PARTICIPANT_REDEEM_LINK,
+      RATE_LIMIT_DEFAULTS.participantRedeemLink,
+    ),
+    participant_sync: spec(
+      raw.RATE_LIMIT_PARTICIPANT_SYNC,
+      RATE_LIMIT_DEFAULTS.participantSync,
+    ),
+    rpc_user: spec(raw.RATE_LIMIT_RPC_USER, RATE_LIMIT_DEFAULTS.rpcUser),
+    rpc_team: spec(raw.RATE_LIMIT_RPC_TEAM, RATE_LIMIT_DEFAULTS.rpcTeam),
+    storage_read: spec(
+      raw.RATE_LIMIT_STORAGE_READ,
+      RATE_LIMIT_DEFAULTS.storageRead,
+    ),
+    public_api: spec(raw.RATE_LIMIT_PUBLIC_API, RATE_LIMIT_DEFAULTS.publicApi),
+    ws_upgrade: spec(raw.RATE_LIMIT_WS_UPGRADE, RATE_LIMIT_DEFAULTS.wsUpgrade),
+  };
+}
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
@@ -467,6 +551,11 @@ export function resolve(raw: RawEnv, options: ResolveOptions = {}): StudioEnv {
     auth: resolveAuth(raw, db),
     mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,
     secrets,
+    redis: raw.REDIS_URL,
+    rateLimits: resolveRateLimits(raw),
+    trustedProxies: raw.TRUSTED_PROXIES?.length
+      ? raw.TRUSTED_PROXIES
+      : undefined,
     devDefaults,
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,

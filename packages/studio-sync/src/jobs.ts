@@ -110,6 +110,20 @@ export const JOB_QUEUES = [
     },
   },
   {
+    // Summarising suppressed denied attempts is idempotent and cheap, and a
+    // second run alongside the first would race the first for the same
+    // suppression keys and could write the same summary event twice —
+    // `singleton` lets at most one be active across every worker replica, and
+    // a missed minute is picked up by the next run because the keys outlive
+    // their window by several minutes (#1909).
+    name: 'denied-attempts-summary',
+    options: {
+      policy: 'singleton',
+      retryLimit: 0,
+      expireInSeconds: 60,
+    },
+  },
+  {
     // Sweeping the protocol store is idempotent and unbounded in duration, so
     // a second run alongside the first buys nothing: `singleton` lets at most
     // one be active, and a missed hour is picked up by the next one rather
@@ -138,6 +152,10 @@ export type JobSchedule = {
  */
 export const JOB_SCHEDULES = [
   { queue: 'protocol-store-gc', cron: '0 * * * *', tz: 'UTC' },
+  // Every minute, because the thing it summarises is a one-minute window: a
+  // longer cadence would leave a burst unrecorded for as long as the cadence,
+  // and the job does nothing at all when no window was suppressed.
+  { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
 /** The delivery row's id; the handler loads the address under its own role. */
@@ -157,6 +175,12 @@ export type SignInEmailJob = z.infer<typeof SignInEmailJobSchema>;
 export const ProtocolStoreGcJobSchema = z.strictObject({});
 export type ProtocolStoreGcJob = z.infer<typeof ProtocolStoreGcJobSchema>;
 
+/** The run scans every suppressed window there is; nothing addresses it. */
+export const DeniedAttemptsSummaryJobSchema = z.strictObject({});
+export type DeniedAttemptsSummaryJob = z.infer<
+  typeof DeniedAttemptsSummaryJobSchema
+>;
+
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the
@@ -164,6 +188,7 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery-dead-letter': InvitationDeliveryJobSchema,
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
+  'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
 } as const satisfies Record<JobQueueName, z.ZodType>;
 
 export type JobPayload<Queue extends JobQueueName> = z.infer<
@@ -193,6 +218,7 @@ export const JOB_PAYLOAD_POLICY = {
       'A magic link is minted by better-auth during the sign-in request and is never stored, so there is no row for the handler to load it back from. The address is the account being signed in to, which belongs to no team.',
   },
   'protocol-store-gc': { kind: 'identifiers' },
+  'denied-attempts-summary': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;
 
 // Interpolated into DDL, so it is checked rather than trusted: the scratch

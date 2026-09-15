@@ -12,11 +12,62 @@ import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { SecretsCipher } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
+import type { RateLimiter } from '../rate-limit.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Two siblings
 // take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
 // its password hasher.
+
+/**
+ * The sign-in endpoints whose per-address limit Studio sets rather than
+ * leaving to better-auth's own defaults. better-auth strips its base path
+ * before matching, so these are the paths under `/api/auth`.
+ */
+const SIGN_IN_PATHS = new Set([
+  '/sign-in/email',
+  '/sign-in/magic-link',
+  '/sign-in/social',
+]);
+
+/**
+ * better-auth's rate-limit key is `<ip>|<path>`. The path is what says which
+ * scope a denial belongs to in the limiter's log and in the per-minute
+ * summary; the address half never leaves this process unhashed, because the
+ * limiter hashes the whole key before it becomes key material.
+ */
+function scopeForAuthKey(key: string): string {
+  const path = key.slice(key.lastIndexOf('|') + 1);
+  return SIGN_IN_PATHS.has(path) ? 'sign_in_address' : 'better_auth';
+}
+
+/**
+ * better-auth's limiter, storing its counters where Studio's does (#1909).
+ *
+ * `customStorage` rather than `secondaryStorage`: the latter is the same
+ * switch for sessions, and moving session storage to Valkey would make the
+ * store a correctness dependency — an unreachable Valkey would sign everyone
+ * out. This moves the counters and nothing else, and it takes precedence over
+ * every built-in storage, so the `rateLimit` table better-auth's adapter still
+ * declares is never read or written.
+ *
+ * It fails open for the same reason the rest of the limiter does: the
+ * store's decision is the limiter's, and the limiter allows when it cannot
+ * reach the store.
+ */
+function createAuthRateLimitStorage(limiter: RateLimiter) {
+  return {
+    consume: async (key: string, rule: { window: number; max: number }) => {
+      const decision = await limiter.consume(scopeForAuthKey(key), key, {
+        max: rule.max,
+        windowMs: rule.window * 1000,
+      });
+      return decision.allowed
+        ? { allowed: true, retryAfter: null }
+        : { allowed: false, retryAfter: decision.retryAfterSeconds };
+    },
+  };
+}
 
 /**
  * How a magic link leaves this process. Declared here rather than taken from
@@ -33,6 +84,12 @@ export function createBetterAuthInstance(
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
   secrets: SecretsCipher,
+  /**
+   * Where sign-in attempts are counted. Absent means this instance enforces no
+   * limit of its own: the auth CLI's configuration and the suites that are not
+   * about limiting construct one that way. Every server process passes one.
+   */
+  limiter?: RateLimiter,
 ) {
   const adapter = drizzleAdapter(drizzle({ client: pool }), {
     provider: 'pg',
@@ -52,9 +109,32 @@ export function createBetterAuthInstance(
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],
-    // Durable security counters live in Postgres, never memory or Redis
-    // (#1246): sign-in attempt limits survive deploys.
-    rateLimit: { enabled: true, storage: 'database' },
+    // Sign-in attempt limits count in the shared store, so they mean the same
+    // thing with one API container and with two (#1909). This supersedes the
+    // 2026-08-13 reading of #1246 that put them in Postgres: the ruling of
+    // 2026-09-15 is Valkey for rate limiting and Postgres for jobs, and the
+    // counters are disposable state — losing them resets a window rather than
+    // losing a record. What #1246 is actually about, the immutable audit log,
+    // is untouched and stays in Postgres.
+    rateLimit: limiter
+      ? {
+          enabled: true,
+          customStorage: createAuthRateLimitStorage(limiter),
+          // better-auth's own default for these paths is three attempts in ten
+          // seconds. Studio's is per RATE_LIMIT_SIGN_IN_ADDRESS, which a
+          // deployer can see and change; the per-email limit is Studio's own
+          // middleware, because better-auth keys only by address and path.
+          customRules: Object.fromEntries(
+            [...SIGN_IN_PATHS].map((path) => [
+              path,
+              {
+                window: limiter.rules.sign_in_address.windowMs / 1000,
+                max: limiter.rules.sign_in_address.max,
+              },
+            ]),
+          ),
+        }
+      : { enabled: false },
     // Without a trusted-proxy list better-auth still trusts a single-value
     // X-Forwarded-For at face value, which a forgery satisfies — one fresh
     // rate-limit bucket per request, so the cap becomes a no-op. Reading no
@@ -194,6 +274,9 @@ export function createBetterAuthService(
   secrets: SecretsCipher,
 ): AuthService {
   const auth = createBetterAuthInstance(env, pool, sendMagicLink, secrets);
+  limiter?: RateLimiter,
+): AuthService {
+  const auth = createBetterAuthInstance(env, pool, sendMagicLink, limiter);
   const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),

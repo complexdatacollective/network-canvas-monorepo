@@ -17,7 +17,6 @@ import {
   type DeniedAuditReservation,
   reserveDeniedAuditAttempt,
 } from '../audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput } from '../audit/events.ts';
 import { emptyProtocol } from '../protocol/sectionize.ts';
 import { ProtocolStore } from '../protocol/store.ts';
@@ -25,7 +24,7 @@ import type { SecretsCipher } from '../secrets/cipher.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore, type LockedMember } from '../team/store.ts';
 
-export type StudyCommandErrorCode = 'FORBIDDEN' | 'CONFLICT' | 'OVERLOADED';
+export type StudyCommandErrorCode = 'FORBIDDEN' | 'CONFLICT';
 
 export class StudyCommandError extends Error {
   readonly code: StudyCommandErrorCode;
@@ -148,19 +147,15 @@ type AdmittedDeniedAuditReservation = Extract<
 async function reserveDeniedStudyCreation(
   context: AuditedCommandContext,
 ): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt(
-    {
-      actorId: context.principal.userId,
-      teamId: context.tenantDb.teamId,
-      operation: 'studies.create',
-    },
-    createDeniedAuditSummaryWriter(context, 'studies.create'),
-  );
-  if (!reservation.admitted) {
-    throw new StudyCommandError(
-      reservation.reason === 'overloaded' ? 'OVERLOADED' : 'FORBIDDEN',
-    );
-  }
+  const reservation = await reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.tenantDb.teamId,
+    operation: 'studies.create',
+  });
+  // The caller is refused either way; FORBIDDEN is what the command would have
+  // answered, and answering differently once the window is spent would make
+  // the audit log's own suppression observable from outside.
+  if (!reservation.admitted) throw new StudyCommandError('FORBIDDEN');
   return reservation;
 }
 
@@ -294,10 +289,10 @@ export async function createAuditedStudy(
         return { status: 'succeeded' as const, result: response, events };
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof StudyCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',

@@ -43,6 +43,13 @@ export const DEV = {
   // what came out.
   smtpPort: 1025,
   mailpitUiPort: 8025,
+  // Effectively no limit. Development is where a person reloads a page fifty
+  // times in a minute and where the suite signs in dozens of times, and being
+  // refused for either would only ever be noise: what the limits are for is a
+  // deployment facing the internet, and every one of them is set there. The
+  // store is still exercised — every decision still goes through Valkey — so
+  // a mistake in the limiter itself still shows up locally.
+  rateLimit: '100000/1m',
   authSecret: 'studio-dev-secret-not-for-production',
   /**
    * The development keyring (#1900). Its 32 bytes are the ASCII of
@@ -60,6 +67,7 @@ export const DEV = {
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;
 export const DEV_S3_ENDPOINT = `http://localhost:${DEV.s3Port}`;
 export const DEV_SMTP_URL = `smtp://127.0.0.1:${DEV.smtpPort}`;
+export const DEV_REDIS_URL = `redis://127.0.0.1:${DEV.valkeyPort}`;
 
 export const GROUPS = [
   'Process',
@@ -67,6 +75,7 @@ export const GROUPS = [
   'Database',
   'Secrets',
   'Authentication',
+  'Rate limiting',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -286,6 +295,107 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only.',
     example: 'a-long-random-value-chosen-for-this-instance',
   },
+  REDIS_URL: {
+    group: 'Rate limiting',
+    summary:
+      'Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter.',
+    deployment:
+      'Unset ⇒ there is no limiter store, every limit below is disabled, and the server says so once at boot outside development. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes and nothing else — and the counters are disposable: losing them resets every window rather than losing data.',
+    devDefault: DEV_REDIS_URL,
+    example: 'redis://valkey:6379',
+  },
+  RATE_LIMIT_SIGN_IN_ADDRESS: {
+    group: 'Rate limiting',
+    summary:
+      'Sign-in and magic-link requests per client address, as `count/window`.',
+    deployment:
+      'Unset ⇒ `10/10m`. Ten attempts from one address in ten minutes covers a shared institutional address whose users mistype passwords, and makes credential stuffing from a single host pointless.',
+    devDefault: DEV.rateLimit,
+    example: '10/10m',
+  },
+  RATE_LIMIT_SIGN_IN_EMAIL: {
+    group: 'Rate limiting',
+    summary: 'Sign-in and magic-link requests per email address.',
+    deployment:
+      'Unset ⇒ `5/10m`. An account belongs to one person, and a person who has failed five times in ten minutes needs the reset link rather than a sixth attempt. This is the limit an attacker spreading attempts across addresses meets.',
+    devDefault: DEV.rateLimit,
+    example: '5/10m',
+  },
+  RATE_LIMIT_INVITATION_ACCEPT: {
+    group: 'Rate limiting',
+    summary: 'Team-invitation acceptances per invitation token.',
+    deployment:
+      'Unset ⇒ `10/10m`. An invitation is accepted once; ten allows a reload, a wrong account, and a sign-in in between, and stops a token being brute-forced through one link.',
+    devDefault: DEV.rateLimit,
+    example: '10/10m',
+  },
+  RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS: {
+    group: 'Rate limiting',
+    summary: 'Participation-link redemptions per client address.',
+    deployment:
+      'Unset ⇒ `20/10m`. A lab runs several interviews from one address, so this is deliberately loose; the per-link limit below is what protects a single link. Declared now and enforced when the participant routes land (#1899).',
+    devDefault: DEV.rateLimit,
+    example: '20/10m',
+  },
+  RATE_LIMIT_PARTICIPANT_REDEEM_LINK: {
+    group: 'Rate limiting',
+    summary: 'Participation-link redemptions per link.',
+    deployment:
+      'Unset ⇒ `5/10m`. A link is redeemed once, so five covers a reload and a lost response while making a link identifier not worth guessing. Declared now and enforced when the participant routes land (#1899).',
+    devDefault: DEV.rateLimit,
+    example: '5/10m',
+  },
+  RATE_LIMIT_PARTICIPANT_SYNC: {
+    group: 'Rate limiting',
+    summary: 'Interview sync writes per participant session.',
+    deployment:
+      'Unset ⇒ `600/1m`. Ten writes a second is far above what answering questions produces and far below what a script replaying a session could. Declared now and enforced when the participant routes land (#1899).',
+    devDefault: DEV.rateLimit,
+    example: '600/1m',
+  },
+  RATE_LIMIT_RPC_USER: {
+    group: 'Rate limiting',
+    summary: 'Internal RPC calls per signed-in user.',
+    deployment:
+      'Unset ⇒ `600/1m`. The app issues a burst of calls per screen, so the limit is a ceiling on a runaway client rather than a budget a person can feel: ten calls a second sustained is more than any screen needs.',
+    devDefault: DEV.rateLimit,
+    example: '600/1m',
+  },
+  RATE_LIMIT_RPC_TEAM: {
+    group: 'Rate limiting',
+    summary: 'Internal RPC calls per team, across everyone in it.',
+    deployment:
+      'Unset ⇒ `3000/1m`. A team is many researchers working at once, so this protects the instance rather than the person: it is five times the per-user limit, which one runaway client cannot reach alone.',
+    devDefault: DEV.rateLimit,
+    example: '3000/1m',
+  },
+  RATE_LIMIT_STORAGE_READ: {
+    group: 'Rate limiting',
+    summary:
+      'Reads from `/storage`, per participant session where the request carries one and otherwise per client address.',
+    deployment:
+      'Unset ⇒ `2000/5m`. Generous by design: an interview fetches every stimulus it shows, and an institution often puts a whole building behind one address. Keyed per client address until the participant session token exists (#1899).',
+    devDefault: DEV.rateLimit,
+    example: '2000/5m',
+  },
+  RATE_LIMIT_PUBLIC_API: {
+    group: 'Rate limiting',
+    summary:
+      'Calls to `/api/v1`, per API token where the request carries one and otherwise per client address.',
+    deployment:
+      'Unset ⇒ `300/1m`. Five calls a second suits an analysis script paging through results and leaves the instance responsive to everyone else.',
+    devDefault: DEV.rateLimit,
+    example: '300/1m',
+  },
+  RATE_LIMIT_WS_UPGRADE: {
+    group: 'Rate limiting',
+    summary: 'WebSocket upgrades per signed-in user.',
+    deployment:
+      'Unset ⇒ `30/1m`. A tab opens one socket and reopens it when the network drops, so thirty a minute absorbs a flapping connection while stopping a reconnect loop from becoming a connection storm.',
+    devDefault: DEV.rateLimit,
+    example: '30/1m',
+  },
+
   TRUSTED_PROXIES: {
     group: 'Authentication',
     summary:

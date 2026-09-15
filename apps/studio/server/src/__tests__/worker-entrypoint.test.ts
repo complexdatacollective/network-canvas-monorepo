@@ -19,6 +19,7 @@ import {
 } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { startSilentSmtp } from './support/smtp.ts';
+import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
 type Readiness = { status: string; checks: Record<string, string> };
 
@@ -45,6 +46,7 @@ async function readReadiness(
 }
 
 const db = await reachableDb();
+const redis = await reachableRedis(REDIS_DATABASES.workerEntrypoint);
 
 /** drizzle-kit push against a fresh database, and it shares the CI runner. */
 const APPLY_TIMEOUT_MS = 180_000;
@@ -84,6 +86,10 @@ function startWorker(overrides: Record<string, string>): Entrypoint {
     // back to the development console mailer.
     SMTP_URL: '',
     EMAIL_FROM: '',
+    // No rate-limit store either, unless a case asks for one: with one
+    // configured, readiness carries a `limiter` check as well (#1909), and
+    // these cases are about the database and the queue.
+    REDIS_URL: '',
     ...overrides,
   });
 }
@@ -97,6 +103,7 @@ function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
     NODE_ENV: 'development',
     STUDIO_DEV_DEFAULTS: '1',
+    REDIS_URL: '',
     ...overrides,
   });
 }
@@ -225,6 +232,58 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       }
     },
     READINESS_CASE_TIMEOUT_MS,
+  );
+
+  it('reports the rate-limit store, degraded rather than failing', async () => {
+    // The worker enforces no limit itself, but it holds the store so its
+    // summary job can drain what the API processes suppressed (#1909) — and a
+    // store it cannot reach is degraded, never failing: the limiter fails
+    // open, so every job this process runs still runs.
+    const healthPort = await freePort();
+    const unreachable = await freePort();
+    const worker = startWorker({
+      DATABASE_URL: applied.db.url,
+      WORKER_HEALTH_PORT: String(healthPort),
+      REDIS_URL: `redis://127.0.0.1:${unreachable}`,
+    });
+    try {
+      await worker.waitForOutput(
+        /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+      );
+      const degraded = await readReadiness(healthPort);
+      expect(degraded.status).toBe(200);
+      expect(degraded.body.status).toBe('degraded');
+      expect(degraded.body.checks.limiter).toBe('degraded');
+      expect(degraded.body.checks.jobs).toBe('ok');
+    } finally {
+      worker.child.kill('SIGKILL');
+    }
+  });
+
+  it.skipIf(!redis)(
+    'reports the rate-limit store ok while it answers',
+    async () => {
+      const healthPort = await freePort();
+      const worker = startWorker({
+        DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
+        REDIS_URL: redis ?? '',
+      });
+      try {
+        await worker.waitForOutput(
+          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        );
+        expect(await readReadiness(healthPort)).toEqual({
+          status: 200,
+          body: {
+            status: 'ok',
+            checks: { db: 'ok', schema: 'ok', jobs: 'ok', limiter: 'ok' },
+          },
+        });
+      } finally {
+        worker.child.kill('SIGKILL');
+      }
+    },
   );
 
   it.skipIf(externalAddresses().length === 0)(

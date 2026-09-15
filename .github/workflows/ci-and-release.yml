@@ -539,6 +539,18 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # And the rate-limit store the studio-server suite needs for the same
+      # reason (#1909): its limiter suites refuse to skip under CI, so without
+      # this the seeding run aborts and caches nothing.
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 63790:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -849,6 +861,21 @@ jobs:
           - 54318:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      # The shared rate-limit store (#1909). The suites that exercise it skip
+      # when nothing answers `REDIS_URL` on a developer's machine and throw
+      # here instead, the same way the Postgres suites do: on this runner an
+      # absent store is a broken workflow, not a missing container. The port
+      # matches the committed `.env.development`, which is what the suite
+      # reads.
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 63790:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

@@ -8,7 +8,14 @@ import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { createHealthRoutes, databaseCheck, schemaCheck } from './health.ts';
 import { createJobWorker, type JobWorker } from './jobs/worker.ts';
-import { verifySecretKeysOrExit } from './secrets/boot.ts';
+    // Beside the fingerprint check and for the same reason (#1900): the
+    // worker is what signs webhook deliveries, so a keyring that cannot
+    // produce a stored key id would turn every delivery for that team into a
+    // failed job. The keep-alive interval is deliberately still held — the
+    // check is asynchronous, and `startWorker` is what releases it.
+    void verifySecretKeysOrExit(env, maintenancePool)
+      .then(() => startWorker())
+      .catch((error: unknown) => {
 import { STUDIO_VERSION } from './version.ts';
 
 // The worker entry: the same image as src/index.ts, started with a different
@@ -47,6 +54,13 @@ if (!db || !auth) {
 // own maintenance — the application role may create a job and nothing else.
 const maintenancePool = createMaintenancePool(db);
 
+// The shared rate-limit store (#1909). The worker enforces no limit itself; it
+// holds the store so that the per-minute summary job can drain the suppressed
+// windows the API processes leave behind, and so that readiness reports the
+// same degraded verdict the API does when it cannot be reached.
+const rateLimitStore = env.redis ? getRateLimitStore(env.redis) : undefined;
+const limiter = createRateLimiter(env);
+
 let worker: JobWorker | undefined;
 // `worker.start()` resolves once pg-boss is connected and the handlers are
 // registered. Readiness needs that distinction: an instance that exists but
@@ -61,6 +75,10 @@ const health = serve({
   fetch: createHealthRoutes({
     db: databaseCheck(maintenancePool),
     schema: schemaCheck(maintenancePool),
+    // `degraded`, never `failed`: the limiter fails open, so a worker that
+    // cannot reach it still runs every job it has — only the summary job has
+    // nothing to drain.
+    ...(limiter.configured ? { limiter: limiter.readiness } : {}),
     jobs: async () => {
       if (!worker || !jobsStarted) throw new Error('not started');
       // pg-boss's own connection rather than the maintenance pool: the point
@@ -107,6 +125,7 @@ const startWorker = (): void => {
         ? createMailer(env.mail)
         : undefined,
     publicBaseUrl: auth.baseUrl,
+    rateLimitStore,
   });
   void worker.start().then(
     () => {
@@ -158,7 +177,7 @@ function shutdown() {
       // oxlint-disable-next-line no-console -- shutdown diagnostics
       console.error('Job worker shutdown failed:', error);
     })
-    .then(() => maintenancePool.end())
+    .then(() => Promise.all([maintenancePool.end(), closeRateLimitStores()]))
     .catch(() => undefined)
     .finally(() => {
       process.exit(0);

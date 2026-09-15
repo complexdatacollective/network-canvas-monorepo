@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
@@ -25,6 +25,7 @@ import {
   requirePrincipal,
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
+import { clientAddress, createTrustedProxies } from './client-address.ts';
 import { createPool } from './db/pool.ts';
 import {
   type AuthCapabilities,
@@ -40,6 +41,7 @@ import {
 } from './health.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
+import { createRateLimiter } from './rate-limit.ts';
 import { createRpcRouter } from './rpc.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
@@ -53,6 +55,82 @@ const WS_PATH = '/ws';
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
+// Hono matches a bare prefix and its children separately, the same way
+// STORAGE_PATHS does; the public API needs both for the same reason.
+const API_V1_PATHS = ['/api/v1', '/api/v1/*'];
+
+/**
+ * The two sign-in endpoints that name the account being signed in to. The
+ * per-address limit is better-auth's own (src/auth/better-auth.ts); this is
+ * the other half of the pair — an attacker spreading attempts across a botnet
+ * meets a per-address limit once per host, and a per-email limit every time.
+ *
+ * `/sign-in/social` is absent deliberately: the request names a provider, not
+ * an account, and the identity is not known until the provider answers.
+ */
+const SIGN_IN_EMAIL_PATHS = new Set([
+  '/api/auth/sign-in/email',
+  '/api/auth/sign-in/magic-link',
+]);
+
+/** Accepting an invitation names the token that is being guessed. */
+const ACCEPT_INVITATION_PATH = '/api/auth/organization/accept-invitation';
+
+/** What every refused request answers, in the shape the rest of the API uses. */
+function tooManyRequests(c: Context, retryAfterSeconds: number) {
+  return c.json({ title: 'Too Many Requests', status: 429 }, 429, {
+    'Content-Type': 'application/problem+json',
+    'Retry-After': String(retryAfterSeconds),
+  });
+}
+
+/**
+ * One string field out of a JSON body, read from a clone so the request itself
+ * is still unread when it reaches the handler behind this. A body that is not
+ * JSON, or that names nothing, is not limited here: better-auth is about to
+ * refuse it, and inventing a bucket for an unparseable body would let a
+ * malformed request spend a real caller's allowance.
+ */
+async function readBodyField(
+  c: Context,
+  field: string,
+): Promise<string | null> {
+  try {
+    const body: unknown = await c.req.raw.clone().json();
+    if (typeof body !== 'object' || body === null) return null;
+    const value = (body as Record<string, unknown>)[field];
+    return typeof value === 'string' && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The (scope, subject) an auth POST is limited under, or none. */
+async function authRateLimitSubject(
+  c: Context,
+  path: string,
+): Promise<{
+  scope: 'sign_in_email' | 'invitation_accept';
+  value: string;
+} | null> {
+  if (SIGN_IN_EMAIL_PATHS.has(path)) {
+    const email = await readBodyField(c, 'email');
+    // Lower-cased so one account is one bucket: the local part is formally
+    // case-sensitive, but no identity provider Studio speaks to treats it that
+    // way, and two buckets would double the limit.
+    return email
+      ? { scope: 'sign_in_email', value: email.toLowerCase() }
+      : null;
+  }
+  if (path === ACCEPT_INVITATION_PATH) {
+    const invitationId = await readBodyField(c, 'invitationId');
+    return invitationId
+      ? { scope: 'invitation_accept', value: invitationId }
+      : null;
+  }
+  return null;
+}
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
   string,
   { disposition: 'allowed' | 'blocked' }
@@ -76,6 +154,12 @@ type CreateAppDeps = {
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const app = new Hono<PrincipalVariables>();
 
+  // Every limit this process enforces, counted in the shared store (#1909).
+  // Built before anything is mounted because better-auth's own sign-in limiter
+  // stores its counters through it too.
+  const limiter = createRateLimiter(env);
+  const trustedProxies = createTrustedProxies(env.trustedProxies);
+
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
   // text/plain default.
@@ -87,7 +171,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool, deps.jobs);
+  const auth = deps.auth ?? createAuthService(env, pool, deps.jobs, limiter);
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -157,8 +241,34 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
             },
           }
         : {}),
+      // `degraded`, never `failed`: the limiter fails open, so losing the
+      // store changes what is enforced without making this process unfit to
+      // serve — and taking the container out of rotation for it would turn a
+      // rate-limit outage into an availability one. Omitted entirely where no
+      // store is configured, like every other unconfigured surface.
+      ...(limiter.configured ? { limiter: limiter.readiness } : {}),
     }),
   );
+
+  // Per-email sign-in and per-token invitation acceptance (#1909). better-auth
+  // keys its own limiter by address and path and never looks inside the body,
+  // so the subject these two scopes need has to be read here.
+  app.on('POST', '/api/auth/*', async (c, next) => {
+    const subject = await authRateLimitSubject(
+      c,
+      c.req.path.replace(/\/+$/, ''),
+    );
+    if (subject) {
+      const decision = await limiter.check(subject.scope, subject.value);
+      // The response says nothing the limiter's own log does not: the scope
+      // and how long to wait. Never the address being refused.
+      if (!decision.allowed) {
+        return tooManyRequests(c, decision.retryAfterSeconds);
+      }
+    }
+    await next();
+    return undefined;
+  });
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -179,11 +289,40 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
         });
       }
     }
-    return await auth.handler(c.req.raw);
+    const response = await auth.handler(c.req.raw);
+    // better-auth answers its own rate limit with a `{ message }` body and an
+    // `X-Retry-After` header. Every other refusal on this server is problem
+    // JSON with `Retry-After`, and a caller should not have to know which
+    // limiter refused it in order to read the answer.
+    if (response.status !== 429) return response;
+    const retryAfter = Number(response.headers.get('X-Retry-After'));
+    return tooManyRequests(
+      c,
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.ceil(retryAfter)
+        : Math.ceil(limiter.rules.sign_in_address.windowMs / 1000),
+    );
   });
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
+  //
+  // Limited per token where the request carries one and per client address
+  // otherwise: the token is the account, and an anonymous caller has nothing
+  // else to be. The header is hashed here as well as inside the limiter, so a
+  // credential is never key material even for one call frame.
+  app.on(['GET', ...UNSAFE_METHODS], API_V1_PATHS, async (c, next) => {
+    const authorization = c.req.header('Authorization');
+    const subject = authorization
+      ? `token:${createHash('sha256').update(authorization).digest('hex')}`
+      : `address:${clientAddress(c, trustedProxies)}`;
+    const decision = await limiter.check('public_api', subject);
+    if (!decision.allowed) {
+      return tooManyRequests(c, decision.retryAfterSeconds);
+    }
+    await next();
+    return undefined;
+  });
   app.route('/api/v1', createApiV1(authCaps, deployment, readInstallationRow));
 
   // /storage, not /assets, which the client build claims for its hashed
@@ -199,6 +338,21 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
+  // Reads are limited per client address until a participant session token
+  // exists to key them by (#1899). The limit is deliberately generous: an
+  // interview fetches every stimulus it shows, and an institution often puts a
+  // whole building behind one address.
+  app.on('GET', STORAGE_PATHS, async (c, next) => {
+    const decision = await limiter.check(
+      'storage_read',
+      clientAddress(c, trustedProxies),
+    );
+    if (!decision.allowed) {
+      return tooManyRequests(c, decision.retryAfterSeconds);
+    }
+    await next();
+    return undefined;
+  });
   app.route('/storage', createAssetRoutes(assetStore));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
@@ -220,11 +374,18 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
     cipher,
+    limiter,
   });
   // The plugin puts a `resHeaders` Headers on every call's context and folds
-  // whatever a procedure writes into the response. `setup.complete` is its one
-  // writer: signing the first owner in means carrying better-auth's own
-  // `set-cookie` out of a procedure rather than out of `/api/auth/*`.
+  // whatever a procedure writes into the response. Two things write to it:
+  // `setup.complete`, which signs the first owner in and so has to carry
+  // better-auth's own `set-cookie` out of a procedure rather than out of
+  // `/api/auth/*`, and a call the limiter refuses, which puts `Retry-After`
+  // on its own response (#1909).
+  //
+  // The socket handler below gets no such plugin: a WebSocket frame has no
+  // response headers at all, so a call refused over the socket carries its
+  // retry-after in the error data and nowhere else.
   const rpcHandler = new RPCHandler(rpcRouter, {
     plugins: [new ResponseHeadersPlugin()],
   });
@@ -267,6 +428,20 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   }
   app.use(WS_PATH, createPrincipalMiddleware(auth));
   app.use(WS_PATH, requirePrincipal());
+  // After the principal, because the subject is the user. What this stops is a
+  // reconnect loop becoming a connection storm: a tab opens one socket and
+  // reopens it whenever the network drops.
+  app.use(WS_PATH, async (c, next) => {
+    const principal = c.get('principal');
+    // Unreachable past requirePrincipal; narrowing rather than asserting.
+    if (!principal) return next();
+    const decision = await limiter.check('ws_upgrade', principal.userId);
+    if (!decision.allowed) {
+      return tooManyRequests(c, decision.retryAfterSeconds);
+    }
+    await next();
+    return undefined;
+  });
   app.get(
     WS_PATH,
     upgradeWebSocket(

@@ -26,10 +26,11 @@ export function stubAuthService(overrides?: Partial<AuthService>): AuthService {
 
 /**
  * Signs a fresh user in end to end against a provisioned scratch schema,
- * asserting each step of the flow. The schema must be freshly provisioned:
- * the magic-link limit (5/60s per IP) is durable in Postgres and vitest
- * always resolves to the same localhost key, so counters left by an earlier
- * run in a shared table would 429 the send.
+ * asserting each step of the flow. The better-auth instance it builds is given
+ * no limiter, so it enforces no sign-in limit of its own (#1909) — every
+ * vitest process resolves to the same localhost address, and a shared per-
+ * address bucket would 429 one file's sign-in because another file signed in.
+ * The app's per-email limit still applies, and the address below is fresh.
  */
 export async function signInWithMagicLink(
   env: StudioEnv,

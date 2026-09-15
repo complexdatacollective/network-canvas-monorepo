@@ -6,6 +6,7 @@ import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
+import { resolve } from '../env/resolve.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -138,6 +139,9 @@ describe('unconfigured auth', () => {
     mail: undefined,
     // No database, so nothing to hold a secret and nothing to encrypt it with.
     secrets: undefined,
+    redis: undefined,
+    rateLimits: resolve({}).rateLimits,
+    trustedProxies: undefined,
     devDefaults: false,
     telemetry: true,
     deploymentMode: 'self-hosted',

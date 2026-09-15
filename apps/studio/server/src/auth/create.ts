@@ -4,6 +4,7 @@ import type { StudioEnv } from '../env.ts';
 import type { JobClient } from '../jobs/client.ts';
 import { createSignInEmailSender } from '../jobs/sign-in-email.ts';
 import { createSecretsCipher } from '../secrets/cipher.ts';
+import type { RateLimiter } from '../rate-limit.ts';
 import { createBetterAuthService } from './better-auth.ts';
 import { type AuthService, createDisabledAuthService } from './service.ts';
 
@@ -16,6 +17,8 @@ export function createAuthService(
   env: StudioEnv,
   pool?: pg.Pool,
   jobs?: JobClient,
+  /** Where sign-in attempts are counted (#1909); `createApp` builds it. */
+  limiter?: RateLimiter,
 ): AuthService {
   if (!env.db || !env.auth || !pool) return createDisabledAuthService();
   // `resolve` refuses a configured database without a keyring, so reaching
@@ -32,5 +35,6 @@ export function createAuthService(
     pool,
     createSignInEmailSender(jobs, pool),
     createSecretsCipher(env.secrets),
+    limiter,
   );
 }

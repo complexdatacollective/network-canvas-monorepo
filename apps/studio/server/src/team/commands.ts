@@ -19,7 +19,6 @@ import {
   type DeniedAuditReservation,
   reserveDeniedAuditAttempt,
 } from '../audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
 import { isLockUnavailableError } from '../db/lock.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
@@ -37,8 +36,7 @@ export type TeamCommandErrorCode =
   | 'NO_CHANGE'
   | 'LAST_OWNER'
   | 'INVALID_ROLE'
-  | 'DELIVERY_IN_PROGRESS'
-  | 'OVERLOADED';
+  | 'DELIVERY_IN_PROGRESS';
 
 export class TeamCommandError extends Error {
   readonly code: TeamCommandErrorCode;
@@ -79,19 +77,15 @@ async function reserveDeniedTeamCommand(
   context: AuditedCommandContext,
   operation: DeniedAuditOperation,
 ): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt(
-    {
-      actorId: context.principal.userId,
-      teamId: context.tenantDb.teamId,
-      operation,
-    },
-    createDeniedAuditSummaryWriter(context, operation),
-  );
-  if (!reservation.admitted) {
-    throw new TeamCommandError(
-      reservation.reason === 'overloaded' ? 'OVERLOADED' : 'FORBIDDEN',
-    );
-  }
+  const reservation = await reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.tenantDb.teamId,
+    operation,
+  });
+  // The caller is refused either way; FORBIDDEN is what the command would have
+  // answered, and answering differently once the window is spent would make
+  // the audit log's own suppression observable from outside.
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
   return reservation;
 }
 
@@ -203,10 +197,10 @@ export async function updateTeamMemberRole(
         );
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -338,10 +332,10 @@ export async function createTeamInvitation(
         };
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -460,10 +454,10 @@ export async function cancelTeamInvitation(
         );
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -651,10 +645,10 @@ export async function acceptTeamInvitation(
         );
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',

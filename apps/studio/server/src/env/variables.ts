@@ -2,6 +2,18 @@ import { z } from 'zod';
 
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
+import { RATE_LIMIT_SPEC_PATTERN } from '../rate-limit/scopes.ts';
+
+/**
+ * `count/window` for one rate-limit scope. The default for each is in
+ * `resolve.ts`, not here — see the note above about defaults in this file.
+ */
+const rateLimitSpec = () =>
+  z
+    .string()
+    .regex(RATE_LIMIT_SPEC_PATTERN, 'expected count/window, e.g. 10/10m')
+    .optional();
+
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
 // publicly-known development auth secret once shipped inside a built
@@ -111,6 +123,29 @@ export const serverSchemas = {
    * the one credential that opens every seeded team.
    */
   STUDIO_SEED_ADMIN_PASSWORD: z.string().min(12).optional(),
+
+  /**
+   * The shared rate-limit store (#1909). Every limit Studio enforces counts
+   * here rather than in process memory, which is what makes a limit mean the
+   * same thing with one API container and with two.
+   *
+   * http(s)-style validation for the same reason `S3_ENDPOINT` has it: a bare
+   * `host:port` parses as a URL whose scheme is the hostname, and the failure
+   * would surface as a connection error far from the misconfiguration.
+   */
+  REDIS_URL: z.url({ protocol: /^rediss?$/ }).optional(),
+
+  RATE_LIMIT_SIGN_IN_ADDRESS: rateLimitSpec(),
+  RATE_LIMIT_SIGN_IN_EMAIL: rateLimitSpec(),
+  RATE_LIMIT_INVITATION_ACCEPT: rateLimitSpec(),
+  RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS: rateLimitSpec(),
+  RATE_LIMIT_PARTICIPANT_REDEEM_LINK: rateLimitSpec(),
+  RATE_LIMIT_PARTICIPANT_SYNC: rateLimitSpec(),
+  RATE_LIMIT_RPC_USER: rateLimitSpec(),
+  RATE_LIMIT_RPC_TEAM: rateLimitSpec(),
+  RATE_LIMIT_STORAGE_READ: rateLimitSpec(),
+  RATE_LIMIT_PUBLIC_API: rateLimitSpec(),
+  RATE_LIMIT_WS_UPGRADE: rateLimitSpec(),
 
   TRUSTED_PROXIES: z
     .string()

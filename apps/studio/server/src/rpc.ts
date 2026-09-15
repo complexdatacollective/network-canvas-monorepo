@@ -16,7 +16,6 @@ import {
   type DeniedAuditReservation,
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -46,6 +45,7 @@ import {
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import type { SecretsCipher } from './secrets/cipher.ts';
+import type { RateLimiter } from './rate-limit.ts';
 import { completeSetup, SetupCommandError } from './setup/commands.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
@@ -86,9 +86,40 @@ export type RpcContext = {
    * lock owners and one tab's reconnection is not a third.
    */
   clientSessionId?: string;
+  /**
+   * Headers to put on this call's response, injected by oRPC's
+   * `ResponseHeadersPlugin` (registered on the fetch handler in src/app.ts).
+   * Absent for a call that arrived over the WebSocket, which has no response
+   * headers to set — a refusal there carries its retry-after in the error data
+   * alone (#1909).
+   */
+  resHeaders?: Headers;
 };
 
 const os = implement(contract).$context<RpcContext>();
+
+/**
+ * Refuses a call whose scope has spent its window (#1909).
+ *
+ * `Retry-After` goes on the response through the plugin's `resHeaders`, and
+ * the same number goes in the error's data — which is what a caller over the
+ * WebSocket has, because a frame carries no headers. The client reads one or
+ * the other without having to know which transport it is on.
+ */
+async function enforceRpcLimit(
+  context: RpcContext,
+  limiter: RateLimiter | undefined,
+  scope: 'rpc_user' | 'rpc_team',
+  subject: string,
+): Promise<void> {
+  if (!limiter) return;
+  const decision = await limiter.check(scope, subject);
+  if (decision.allowed) return;
+  context.resHeaders?.set('Retry-After', String(decision.retryAfterSeconds));
+  throw new ORPCError('TOO_MANY_REQUESTS', {
+    data: { retryAfter: decision.retryAfterSeconds },
+  });
+}
 
 const auditStore = new AuditStore();
 
@@ -136,19 +167,15 @@ function auditedContextFor(context: TeamRpcContext): AuditedCommandContext {
 async function admitAuditReadDenial(
   context: TeamRpcContext,
 ): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt(
-    {
-      actorId: context.principal.userId,
-      teamId: context.team.id,
-      operation: 'audit.read',
-    },
-    createDeniedAuditSummaryWriter(auditedContextFor(context), 'audit.read'),
-  );
-  if (!reservation.admitted) {
-    throw new ORPCError(
-      reservation.reason === 'overloaded' ? 'TOO_MANY_REQUESTS' : 'FORBIDDEN',
-    );
-  }
+  const reservation = await reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.team.id,
+    operation: 'audit.read',
+  });
+  // Still FORBIDDEN, not TOO_MANY_REQUESTS: the caller is being refused the
+  // read either way, and telling them which refusals were recorded would make
+  // the audit log's own suppression observable from outside.
+  if (!reservation.admitted) throw new ORPCError('FORBIDDEN');
   return reservation;
 }
 
@@ -213,12 +240,12 @@ async function denyAuditRead(
       resourceLabel: null,
       details: { procedure, reason: 'insufficient_permission' },
     }));
-    reservation.complete('denied');
+    await reservation.complete('denied');
   } catch (error) {
     warnAuditReadDenialLost(context, procedure, error);
     // Not 'denied': no denial event was committed, so this attempt must not
     // consume the window's allowance. The request stays denied either way.
-    reservation.complete('other');
+    await reservation.complete('other');
   }
   throw new ORPCError('FORBIDDEN');
 }
@@ -259,13 +286,13 @@ async function guardAuditRead<T>(
     // Reached with a reservation held only when the committed role turned out
     // to grant the read after all; that is not a denial, so it releases the
     // slot without spending the allowance.
-    reservation?.complete('other');
+    await reservation?.complete('other');
     return result;
   } catch (error) {
     if (error instanceof AuditReadDeniedError) {
       return denyAuditRead(context, procedure, reservation);
     }
-    reservation?.complete('other');
+    await reservation?.complete('other');
     throw error;
   }
 }
@@ -284,11 +311,21 @@ async function assertAuditReadAuthorized(
   throw new AuditReadDeniedError();
 }
 
-const requireUser = os.middleware(({ context, next }) => {
-  const { principal, requestId } = context;
-  if (!principal) throw new ORPCError('UNAUTHORIZED');
-  return next({ context: { principal, requestId } });
-});
+/**
+ * Per-user and per-team RPC limits are enforced inside the three middlewares
+ * that resolve an identity rather than added to each procedure's own chain:
+ * that way a procedure cannot be written without one, and the subject is
+ * already resolved where the check happens. `status` is the only procedure
+ * outside them, and it is the unauthenticated instance descriptor.
+ */
+function createRequireUser(limiter: RateLimiter | undefined) {
+  return os.middleware(async ({ context, next }) => {
+    const { principal, requestId } = context;
+    if (!principal) throw new ORPCError('UNAUTHORIZED');
+    await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
+    return next({ context: { principal, requestId } });
+  });
+}
 
 async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -298,9 +335,6 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
       throw new ORPCError('NOT_FOUND');
     }
     if (!(error instanceof TeamCommandError)) throw error;
-    if (error.code === 'OVERLOADED') {
-      throw new ORPCError('TOO_MANY_REQUESTS');
-    }
     if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
@@ -337,7 +371,6 @@ async function handleAuditedStudyCommand<T>(
       throw new ORPCError('NOT_FOUND');
     }
     if (!(error instanceof StudyCommandError)) throw error;
-    if (error.code === 'OVERLOADED') throw new ORPCError('TOO_MANY_REQUESTS');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
     throw new ORPCError('FORBIDDEN');
   }
@@ -380,9 +413,12 @@ export function createRpcRouter(
      * exactly as they refuse without a pool.
      */
     cipher?: SecretsCipher;
+    /** Where per-user and per-team call limits are counted (#1909). */
+    limiter?: RateLimiter;
   },
 ) {
-  const { auth, deployment, jobs, pool, readInstallation } = deps;
+  const { auth, deployment, jobs, limiter, pool, readInstallation } = deps;
+  const requireUser = createRequireUser(limiter);
 
   // A protocol store can seal, so it always takes the cipher. A router wired
   // without one is a deployment bug rather than an authorization refusal —
@@ -405,6 +441,12 @@ export function createRpcRouter(
   ): Promise<TeamRpcContext> => {
     const { principal } = context;
     if (!principal) throw new ORPCError('UNAUTHORIZED');
+    // Both limits, before the database is touched at all — refusing after a
+    // membership lookup would have spent the work the limit exists to stop.
+    // The caller's own budget is what a runaway client spends; the team's is
+    // the ceiling everyone in it shares.
+    await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
+    await enforceRpcLimit(context, limiter, 'rpc_team', teamId);
     if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
     const membership = await auth.getMembership(principal.userId, teamId);
     if (!membership) throw new ORPCError('FORBIDDEN');
@@ -478,6 +520,9 @@ export function createRpcRouter(
     async ({ context, next }, input: { studyId: string }) => {
       const { principal } = context;
       if (!principal) throw new ORPCError('UNAUTHORIZED');
+      // A study URL names no team, so the team limit cannot be taken before
+      // the tenant is resolved; the caller's own is taken before any query.
+      await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
       if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
       const resolved = await resolveStudy(pool, {
         studyId: input.studyId,
@@ -485,6 +530,7 @@ export function createRpcRouter(
         memberships: await auth.listMemberships(principal.userId),
       });
       if (!resolved) throw new ORPCError('FORBIDDEN');
+      await enforceRpcLimit(context, limiter, 'rpc_team', resolved.teamId);
       return next({
         context: {
           principal,

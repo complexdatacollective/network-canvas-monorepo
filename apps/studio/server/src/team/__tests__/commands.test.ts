@@ -426,7 +426,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('rate-limits immutable wrong-account denial events before the team lock', async () => {
-    const teamId = 'command-accept-denial-limit';
+    const teamId = `command-accept-denial-limit-${randomUUID().slice(0, 8)}`;
     const invitationId = randomUUID();
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -1119,7 +1119,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('bounds repeated denied owner invitations before starting another team transaction', async () => {
-    const teamId = 'command-owner-invitation-denial-limit';
+    const teamId = `command-owner-invitation-denial-limit-${randomUUID().slice(0, 8)}`;
     await seedTeam(pool, teamId);
     const admin = identity(teamId, 'admin', 'admin');
     await seedIdentity(pool, teamId, admin);
@@ -1261,7 +1261,7 @@ describe.skipIf(!db)('audited team commands', () => {
   });
 
   it('bounds repeated denied role-change events before starting another team transaction', async () => {
-    const teamId = 'command-role-denied-rate-limit';
+    const teamId = `command-role-denied-rate-limit-${randomUUID().slice(0, 8)}`;
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
     const member = identity(teamId, 'member', 'member');
