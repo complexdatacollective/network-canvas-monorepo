@@ -136,6 +136,7 @@ describe('unconfigured auth', () => {
     auth: undefined,
     mail: undefined,
     devDefaults: false,
+    telemetry: true,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
   };

@@ -15,7 +15,7 @@ export const auth = createBetterAuthInstance(
     trustedProxies: undefined,
     socialProviders: {},
   },
-  // The dev Postgres from scripts/dev-pg.ts: generate diffs the live schema.
+  // The dev Postgres from scripts/dev.ts: generate diffs the live schema.
   new pg.Pool({ connectionString: DEV_DATABASE_URL }),
   // Nothing is sent from here; the generator only reads the plugin set.
   () => Promise.resolve(),

@@ -47,7 +47,17 @@ transcripts, and a randomized interleaving property — need a reachable
 Postgres and skip with a notice otherwise:
 
 ```bash
-docker run -d -e POSTGRES_PASSWORD=spike -p 54318:5432 postgres:18
+pnpm --filter @codaco/studio-server dev
+```
+
+That starts the Studio development stack, whose Postgres answers on
+`127.0.0.1:54318` with the password `spike` — the port and credentials these
+suites expect, so one container serves both. Stop it again with
+`pnpm --filter @codaco/studio-server dev:down`. For the database alone,
+without the rest of the stack:
+
+```bash
+docker run -d -e POSTGRES_PASSWORD=spike -p 54318:5432 postgres:18-alpine
 ```
 
 (`PGPORT` overrides the port. Each test file creates its own scratch
