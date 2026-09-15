@@ -160,10 +160,12 @@ with their owners, plus the queue declarations beside them:
 - better-auth's tables — `server/src/db/auth-schema.ts`
 - the sync engine's drafts, sections, manifests, leases and command log —
   `packages/studio-sync/src/schema.ts`
-- the protocol store's versioning tables — `server/src/protocol/schema.ts`
+- the protocol store's versioning tables, and the sealed API keys of its
+  `apikey` assets — `server/src/protocol/schema.ts`
 - protocol asset metadata — `server/src/asset/schema.ts`
-- the study spine: studies, waves, participants, interview sessions and
-  interview links — `server/src/study/schema.ts`; study roles —
+- the study spine: studies, waves, participants and their plain contact
+  columns, interview sessions and interview links —
+  `server/src/study/schema.ts`; study roles —
   `server/src/study/roles-schema.ts`
 - the collected network: snapshots, nodes, edges and the per-session rollups —
   `server/src/network/schema.ts`
@@ -461,13 +463,70 @@ once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
 
+### Secrets at rest
+
+Studio encrypts **secrets** in the application and relies on the deployment for
+everything else (#1900). A secret is a value that would let someone act as
+Studio or as a researcher's integration, and there are three:
+
+| What                             | Where it is stored                                 | Opened where                                      |
+| -------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| Webhook signing secrets          | `webhook_subscriptions.secret_ciphertext`          | In the worker, to sign one delivery               |
+| API-key protocol assets          | `protocol_asset_keys`, never in a section document | Assembling a protocol for a session or a preview  |
+| OAuth access, refresh, id tokens | `account`, as `studio-secret:<keyId>:<base64url>`  | Inside the auth adapter, on every read of the row |
+
+AES-256-GCM through Node's own `crypto`, one keyring (see
+[Secrets](#secrets) for the variables), one HKDF-derived subkey per purpose,
+and a key id stored beside every ciphertext. The row's identity is the
+additional authenticated data — team and subscription, team and protocol and
+asset, provider and account and column — so a ciphertext moved to another row
+stops opening rather than decrypting as that row's secret. There is no general
+`encrypt`/`decrypt`: a caller names the kind of secret it is handling, and
+therefore names the row it belongs to. Both processes refuse to start when a
+key id in the database is not in the keyring, naming it, and
+`studio-api rotate-secrets` re-seals every row under the current entry (see
+[Production](#production)).
+
+What is **not** encrypted in the application, and what protects it instead:
+
+- **Participant contact details, names and attributes** are ordinary columns
+  with ordinary indexes. Ruled on 2026-09-14: encrypting contact details does
+  not matter while response data is not encrypted, and the decision can change
+  later — the keyring, envelope, boot check and rotation command are the
+  mechanism that would do it, with a new purpose subkey and a blind index for
+  equality lookups.
+- **Interview responses and collected networks** are not encrypted in the
+  application either (ruled 2026-09-04). They are the bulk of what Studio
+  holds, and encrypting them would end query, export and projection.
+- Both are protected by **encrypted storage volumes for Postgres and the
+  object store, encrypted backup files, TLS to the database, and access
+  control** — requirements this aspect states and the deployment (#1909) and
+  backup (#1901, #1910) aspects carry.
+
+The keyring is backed up **with the database**, and the two must match: a
+database restored beside a keyring that cannot produce its key ids is refused
+at boot rather than served half-readable. Losing the keyring loses every
+stored secret — each researcher re-enters an API key, re-links an OAuth
+account, and a webhook endpoint is given a new signing secret — and nothing
+else: no study, participant, session or network depends on it.
+
+None of this is the interview runtime's **participant passphrase**, which is a
+separate, participant-held, zero-knowledge feature: Studio stores what it
+produces as opaque bytes and has no key for it. It is untouched by any of the
+above.
+
+`src/secrets/exclusion.ts` records the values that must never leave the
+process at all — participant information, API-key asset values, secrets — and
+enforces the asset-key half today, where an assembled protocol document leaves
+the store. The logging, tracing, metrics and analytics half is #1897.
+
 ### Background work
 
 Everything Studio does outside a request is a job on a queue, and a second
-process runs it (#1895). One image, two processes: `node dist/index.js` is the
-web process, which serves HTTP, the RPC surface and the WebSocket endpoint and
-may only create jobs, and `node dist/worker.js` is the worker, which runs the
-jobs and the cron schedules and binds no port. Neither can do the other's work
+process runs it (#1895). One image, two commands: `studio-api serve` is the web
+process, which serves HTTP, the RPC surface and the WebSocket endpoint and may
+only create jobs, and `studio-api worker` is the worker, which runs the jobs
+and the cron schedules and binds no port. Neither can do the other's work
 — the web process constructs pg-boss with supervision, scheduling and migration
 off, and the worker imports neither the HTTP app nor the RPC router, which a
 source test holds it to. `pnpm dev` runs both.
@@ -742,17 +801,22 @@ them:
   each session pins, consent documents and records, scheduling and messaging,
   service tokens, gallery templates, assets, webhooks, experiments, feedback,
   monitoring rollups computed from the seeded sessions, and audit history
-  appended through the real audit writer. Seeded assets are metadata only —
-  no bytes are uploaded, so `/storage/:hash` honestly 404s in development —
-  and the plaintext of the anonymous interview links is printed at the end
-  beside the admin credentials. `--scale=large` raises the volumes to the
-  #1246 load shape and takes minutes; the default `demo` scale runs in a few
-  seconds, which is what makes it affordable on every `pnpm dev` boot. The
-  data is reproducible (`faker.seed()` pins the PRNG and every id and
-  timestamp is drawn from it), so re-running `seed` is a no-op for anyone
-  diffing what changed, not an accumulation of more rows, and the wipe and
-  the inserts share one transaction, so a failure part-way leaves the
-  previous data in place.
+  appended through the real audit writer. Participants carry plain `email`,
+  `phone`, `name` and `attributes` columns, and every secret it writes is a
+  real sealed one — each team's webhook signing secrets and one API-key
+  protocol asset, and a linked Google account for the admin — so it needs the
+  keyring, and a seeded database exercises all three secret stores.
+  Seeded assets are metadata only — no bytes are uploaded, so
+  `/storage/:hash` honestly 404s in development — and the plaintext of the
+  anonymous interview links is printed at the end beside the admin
+  credentials. `--scale=large` raises the volumes to the #1246 load shape and
+  takes minutes; the default `demo` scale runs in a few seconds, which is
+  what makes it affordable on every `pnpm dev` boot. The data is reproducible
+  — `faker.seed()` pins the PRNG, every id, timestamp and encryption nonce is
+  drawn from it, and a test seeds twice and compares the two databases row by
+  row — so re-running `seed` is a no-op for anyone diffing what changed, not
+  an accumulation of more rows, and the wipe and the inserts share one
+  transaction, so a failure part-way leaves the previous data in place.
   **Never point it at a database carrying real data** — it deletes everything
   first. Like `db:reset`, it refuses a non-loopback database unless you pass
   `--force`, and it refuses to give a non-loopback database the published
@@ -814,7 +878,7 @@ graph LR
 
     subgraph O[Origin region]
         S[studio-server<br/>persistent Node process<br/>WS + leases: single replica]
-        W[studio-server worker<br/>same image, node dist/worker.js<br/>jobs + cron: scalable]
+        W[studio-server worker<br/>same image, studio-api worker<br/>jobs + cron: scalable]
         PG[(Postgres<br/>primary)]
         RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
     end
@@ -846,7 +910,7 @@ graph LR
 
     subgraph H[Researcher-operated host — Docker]
         C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws · /storage]
-        W[studio worker container<br/>same image, node dist/worker.js<br/>jobs + cron, no port]
+        W[studio worker container<br/>same image, studio-api worker<br/>jobs + cron, no port]
         PG[(Postgres<br/>container)]
         M[(MinIO container<br/>or BYO S3 endpoint)]
     end
