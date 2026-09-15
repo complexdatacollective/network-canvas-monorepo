@@ -5,6 +5,7 @@ import type pg from 'pg';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
+  CLAIMED_SUFFIX,
   DENIAL_KEY_PREFIX,
   type DeniedAuditSummary,
   parseDenialWindowKey,
@@ -59,18 +60,60 @@ const CLOSE_MARGIN_MS = 1_000;
 const SCAN_COUNT = 500;
 
 /**
- * Reads a suppression hash and removes it in one execution, so that the worker
- * which got the contents is the only one that can write its summary. pg-boss's
- * `singleton` policy already keeps two runs from overlapping; this makes the
- * guarantee the key's rather than the queue's, which is what holds when a
- * schedule is fired twice or a run is retried by hand.
+ * Takes a closed window by renaming it, so the run that got the contents is
+ * the only one that can write its summary, and so the record survives a run
+ * that dies before it writes. pg-boss's `singleton` policy already keeps two
+ * runs from overlapping; the rename makes the guarantee the key's rather than
+ * the queue's, which is what holds when a schedule fires twice or a run is
+ * retried by hand.
+ *
+ * Deleting instead — which is what this did first — loses the summary
+ * outright if the audit write then fails, with nothing left to retry from. A
+ * claimed key is picked up by a later run instead, and the write is made
+ * idempotent (`summaryAlreadyWritten`) so the retry cannot produce a second
+ * event.
+ *
+ * `RENAME` over an existing claim is harmless: the only way one exists is a
+ * previous run of this same window, whose contents are identical.
  */
 const CLAIM_SCRIPT = `
+local key = KEYS[1]
+local claim = KEYS[2]
+local ttlMs = tonumber(ARGV[1])
+local now = tonumber(ARGV[2])
+local staleMs = tonumber(ARGV[3])
+if redis.call('EXISTS', key) == 1 then
+  redis.call('RENAME', key, claim)
+  redis.call('HSET', claim, 'claimedAt', now)
+  redis.call('PEXPIRE', claim, ttlMs)
+  return redis.call('HGETALL', claim)
+end
+if redis.call('EXISTS', claim) == 0 then return {} end
+if now - tonumber(redis.call('HGET', claim, 'claimedAt') or '0') < staleMs then
+  return {}
+end
+redis.call('HSET', claim, 'claimedAt', now)
+redis.call('PEXPIRE', claim, ttlMs)
+return redis.call('HGETALL', claim)
+`;
+
+/** Reads the per-scope denial counts and clears them in one execution. */
+const DRAIN_SCRIPT = `
 local reply = redis.call('HGETALL', KEYS[1])
-if #reply == 0 then return {} end
-redis.call('DEL', KEYS[1])
+if #reply > 0 then redis.call('DEL', KEYS[1]) end
 return reply
 `;
+
+/** Long enough that a worker outage cannot drop a claim between runs. */
+const CLAIM_TTL_MS = 3_600_000;
+
+/**
+ * How long a claim is another run's before this one may take it back. The job
+ * runs every minute and a run takes far less than that, so five minutes is
+ * well past "the run that claimed this is still going" and well inside the
+ * claim's own expiry.
+ */
+const CLAIM_STALE_MS = 300_000;
 
 export type DeniedAttemptsSummaryHandlerDeps = {
   /**
@@ -83,6 +126,14 @@ export type DeniedAttemptsSummaryHandlerDeps = {
   /** The suites give each file its own prefix and a shorter window. */
   keyPrefix?: string;
   windowMs?: number;
+  /**
+   * This run's clock. The suites advance it past the claim's visibility
+   * timeout to make the recovery path — a claim whose write failed — reachable
+   * without waiting five real minutes, and leave it alone everywhere else so
+   * that two concurrent runs still race the rename rather than sharing a
+   * claim.
+   */
+  now?: () => number;
 };
 
 /** `HGETALL`'s flat reply, as Lua returns it. */
@@ -158,6 +209,7 @@ export function createDeniedAttemptsSummaryHandler(
 ): (jobs: HandledJob[]) => Promise<void> {
   const prefix = deps.keyPrefix ?? DENIAL_KEY_PREFIX;
   const windowMs = deps.windowMs ?? DEFAULT_WINDOW_MS;
+  const now = deps.now ?? Date.now;
 
   /** Every suppression key there is, read a page at a time. */
   const scanWindowKeys = async (store: RateLimitStore): Promise<string[]> => {
@@ -178,6 +230,37 @@ export function createDeniedAttemptsSummaryHandler(
     return found;
   };
 
+  /**
+   * Whether this window's event is already in the log. The claim survives a
+   * failed write, so a later run re-reads the same record — and an audit event
+   * is immutable, which makes a second copy permanent. There is no unique
+   * index to lean on, so the window is identified the way it identifies
+   * itself: its team, its actor, its operation, and the instant of its first
+   * suppressed attempt, which is fixed once the window has closed.
+   */
+  const summaryAlreadyWritten = async (
+    teamId: string,
+    actorId: string,
+    operation: DeniedAuditOperation,
+    firstSuppressedAt: number,
+  ): Promise<boolean> => {
+    // Through a TenantDb, not the bare pool: `audit_events` carries a stricter
+    // policy than the other tenant tables (src/audit/schema.ts) with no
+    // maintenance escape at all, so a read without the team stamped on the
+    // transaction sees nothing and would report every summary as missing.
+    const rows = await createTenantDb(deps.maintenancePool, teamId).query(
+      `SELECT true AS present FROM audit_events
+        WHERE team_id = $1
+          AND actor_id = $2
+          AND event_type = 'security.denied_attempts.rate_limited'
+          AND details->>'operation' = $3
+          AND details->>'firstSuppressedAt' = $4
+        LIMIT 1`,
+      [teamId, actorId, operation, new Date(firstSuppressedAt).toISOString()],
+    );
+    return rows.rowCount === 1;
+  };
+
   const writeSummary = async (
     teamId: string,
     operation: DeniedAuditOperation,
@@ -195,15 +278,31 @@ export function createDeniedAttemptsSummaryHandler(
   };
 
   const summariseWindows = async (store: RateLimitStore): Promise<number> => {
-    const closedBefore = Date.now() - CLOSE_MARGIN_MS;
+    const closedBefore = now() - CLOSE_MARGIN_MS;
     let written = 0;
     for (const key of await scanWindowKeys(store)) {
       const window = parseDenialWindowKey(key, prefix);
       if (!window) continue;
       if (window.windowStart + windowMs > closedBefore) continue;
 
+      // The scan returns live windows and windows a previous run claimed and
+      // could not write. Both name the same window; only the live one has to
+      // be renamed, and appending the suffix twice would make a key nothing
+      // ever reads again.
+      const baseKey = key.endsWith(CLAIMED_SUFFIX)
+        ? key.slice(0, -CLAIMED_SUFFIX.length)
+        : key;
+      const claimKey = `${baseKey}${CLAIMED_SUFFIX}`;
       const claimed = await store.run((redis) =>
-        redis.eval(CLAIM_SCRIPT, 1, key),
+        redis.eval(
+          CLAIM_SCRIPT,
+          2,
+          baseKey,
+          claimKey,
+          String(CLAIM_TTL_MS),
+          String(now()),
+          String(CLAIM_STALE_MS),
+        ),
       );
       const fields = readHash(claimed);
       if (!fields || fields.size === 0) continue;
@@ -220,28 +319,42 @@ export function createDeniedAttemptsSummaryHandler(
         console.error(
           `Discarding a denied-attempts summary for unknown operation ${JSON.stringify(window.operation)}.`,
         );
+        await store.run((redis) => redis.del(claimKey));
         continue;
       }
-      const actor = await loadActor(deps.maintenancePool, window.actorId);
-      if (!actor) {
-        // The account was deleted between the attempts and this run. The event
-        // requires the actor's label and there is nowhere left to read it.
-        // oxlint-disable-next-line no-console -- background worker diagnostics
-        console.error(
-          `Discarding a denied-attempts summary for a user that no longer exists (team ${window.teamId}).`,
-        );
-        continue;
-      }
-
       try {
-        await writeSummary(window.teamId, window.operation, actor, summary);
-        written += 1;
+        const actor = await loadActor(deps.maintenancePool, window.actorId);
+        if (!actor) {
+          // The account was deleted between the attempts and this run. The
+          // event requires the actor's label and there is nowhere left to read
+          // it, so this one is dropped rather than retried forever.
+          // oxlint-disable-next-line no-console -- background worker diagnostics
+          console.error(
+            `Discarding a denied-attempts summary for a user that no longer exists (team ${window.teamId}).`,
+          );
+          await store.run((redis) => redis.del(claimKey));
+          continue;
+        }
+        // At-least-once delivery of the claim, exactly-once in the log.
+        if (
+          !(await summaryAlreadyWritten(
+            window.teamId,
+            window.actorId,
+            window.operation,
+            summary.firstSuppressedAt,
+          ))
+        ) {
+          await writeSummary(window.teamId, window.operation, actor, summary);
+          written += 1;
+        }
+        // Only now: until the event is in the log, the claim is the only copy
+        // of what was suppressed.
+        await store.run((redis) => redis.del(claimKey));
       } catch (error) {
-        // The key is already gone, so this summary is lost rather than
-        // retried — the same posture the shutdown flush it replaces took, and
-        // the signal is the one that path emitted.
+        // The claim is still there, so a later run takes this window again.
+        // The signal is the one the shutdown flush this replaces emitted.
         process.emitWarning(
-          'A denied-attempts summary could not be appended to the audit log.',
+          'A denied-attempts summary could not be appended to the audit log; it stays claimed for a later run.',
           {
             type: 'StudioAuditWarning',
             code: 'STUDIO_DENIED_AUDIT_SUMMARY_FAILED',
@@ -260,7 +373,7 @@ export function createDeniedAttemptsSummaryHandler(
 
   const summariseScopes = async (store: RateLimitStore): Promise<number> => {
     const claimed = await store.run((redis) =>
-      redis.eval(CLAIM_SCRIPT, 1, DENIED_SCOPE_COUNTS_KEY),
+      redis.eval(DRAIN_SCRIPT, 1, DENIED_SCOPE_COUNTS_KEY),
     );
     const fields = readHash(claimed);
     if (!fields) return 0;

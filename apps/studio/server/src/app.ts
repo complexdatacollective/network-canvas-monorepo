@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
@@ -74,9 +74,6 @@ const SIGN_IN_EMAIL_PATHS = new Set([
   '/api/auth/sign-in/magic-link',
 ]);
 
-/** Accepting an invitation names the token that is being guessed. */
-const ACCEPT_INVITATION_PATH = '/api/auth/organization/accept-invitation';
-
 /** What every refused request answers, in the shape the rest of the API uses. */
 function tooManyRequests(c: Context, retryAfterSeconds: number) {
   return c.json({ title: 'Too Many Requests', status: 429 }, 429, {
@@ -106,30 +103,26 @@ async function readBodyField(
   }
 }
 
-/** The (scope, subject) an auth POST is limited under, or none. */
-async function authRateLimitSubject(
+/**
+ * The email a sign-in POST is limited under, or none.
+ *
+ * Invitation acceptance is not here. better-auth's
+ * `/organization/accept-invitation` is blocked outright
+ * (audit/better-auth-policy.ts) so that acceptance and its audit event share
+ * one transaction, which means a limit on that path would guard a route that
+ * only ever answers 404. It lives on `team.acceptInvitation` instead, which is
+ * the path the client takes (src/rpc.ts).
+ */
+async function signInEmailSubject(
   c: Context,
   path: string,
-): Promise<{
-  scope: 'sign_in_email' | 'invitation_accept';
-  value: string;
-} | null> {
-  if (SIGN_IN_EMAIL_PATHS.has(path)) {
-    const email = await readBodyField(c, 'email');
-    // Lower-cased so one account is one bucket: the local part is formally
-    // case-sensitive, but no identity provider Studio speaks to treats it that
-    // way, and two buckets would double the limit.
-    return email
-      ? { scope: 'sign_in_email', value: email.toLowerCase() }
-      : null;
-  }
-  if (path === ACCEPT_INVITATION_PATH) {
-    const invitationId = await readBodyField(c, 'invitationId');
-    return invitationId
-      ? { scope: 'invitation_accept', value: invitationId }
-      : null;
-  }
-  return null;
+): Promise<string | null> {
+  if (!SIGN_IN_EMAIL_PATHS.has(path)) return null;
+  const email = await readBodyField(c, 'email');
+  // Lower-cased so one account is one bucket: the local part is formally
+  // case-sensitive, but no identity provider Studio speaks to treats it that
+  // way, and two buckets would double the limit.
+  return email ? email.toLowerCase() : null;
 }
 
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
@@ -251,16 +244,13 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     }),
   );
 
-  // Per-email sign-in and per-token invitation acceptance (#1909). better-auth
-  // keys its own limiter by address and path and never looks inside the body,
-  // so the subject these two scopes need has to be read here.
+  // Per-email sign-in (#1909). better-auth keys its own limiter by address and
+  // path and never looks inside the body, so the account this attempt names
+  // has to be read here.
   app.on('POST', '/api/auth/*', async (c, next) => {
-    const subject = await authRateLimitSubject(
-      c,
-      c.req.path.replace(/\/+$/, ''),
-    );
-    if (subject) {
-      const decision = await limiter.check(subject.scope, subject.value);
+    const email = await signInEmailSubject(c, c.req.path.replace(/\/+$/, ''));
+    if (email) {
+      const decision = await limiter.check('sign_in_email', email);
       // The response says nothing the limiter's own log does not: the scope
       // and how long to wait. Never the address being refused.
       if (!decision.allowed) {
@@ -308,16 +298,18 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
   //
-  // Limited per token where the request carries one and per client address
-  // otherwise: the token is the account, and an anonymous caller has nothing
-  // else to be. The header is hashed here as well as inside the limiter, so a
-  // credential is never key material even for one call frame.
+  // Limited per client address, and deliberately not per `Authorization`
+  // header (#1909). There is no token plane yet — `createPrincipalMiddleware`
+  // resolves any Authorization header to no principal until #1899 builds one —
+  // so a header is an unvalidated string, and keying on it would let an
+  // anonymous caller mint a fresh bucket per request by rotating the value,
+  // which is the address limit doing nothing at all. When a token is validated
+  // the key becomes its resolved id, which cannot be minted.
   app.on(['GET', ...UNSAFE_METHODS], API_V1_PATHS, async (c, next) => {
-    const authorization = c.req.header('Authorization');
-    const subject = authorization
-      ? `token:${createHash('sha256').update(authorization).digest('hex')}`
-      : `address:${clientAddress(c, trustedProxies)}`;
-    const decision = await limiter.check('public_api', subject);
+    const decision = await limiter.check(
+      'public_api',
+      clientAddress(c, trustedProxies),
+    );
     if (!decision.allowed) {
       return tooManyRequests(c, decision.retryAfterSeconds);
     }

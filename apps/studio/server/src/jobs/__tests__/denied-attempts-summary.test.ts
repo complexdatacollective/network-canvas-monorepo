@@ -130,12 +130,19 @@ describe.skipIf(!db || !redis)('the denied-attempts summary job', () => {
     return { teamId, actorId, keyPrefix, key: limiter.keyFor(input) };
   }
 
-  const handlerFor = (keyPrefix: string) =>
+  /** A later run, far enough past the claim's visibility timeout to retake one. */
+  const LATER = 600_000;
+
+  const handlerFor = (
+    keyPrefix: string,
+    options: { now?: () => number } = {},
+  ) =>
     createDeniedAttemptsSummaryHandler({
       maintenancePool: maintenance,
       store,
       keyPrefix,
       windowMs: WINDOW_MS,
+      ...options,
     });
 
   const summariesFor = (teamId: string) =>
@@ -185,6 +192,69 @@ describe.skipIf(!db || !redis)('the denied-attempts summary job', () => {
     const rows = await summariesFor(teamId);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.details).toMatchObject({ suppressedCount: 4 });
+  });
+
+  it('keeps the record when the audit write fails, and writes it once on the retry', async () => {
+    // Deleting the window before the row is written — which is what this did
+    // first — loses the summary outright if the write then fails, with
+    // nothing left to retry from.
+    const { teamId, keyPrefix, key } = await suppressedWindow(6);
+
+    // A pool whose every query fails: the claim is taken, the write is not.
+    const broken = {
+      query: () => Promise.reject(new Error('database is gone')),
+    } as unknown as pg.Pool;
+    await createDeniedAttemptsSummaryHandler({
+      maintenancePool: broken,
+      store,
+      keyPrefix,
+      windowMs: WINDOW_MS,
+    })([job()]);
+
+    expect(await summariesFor(teamId)).toEqual([]);
+    // The window is gone, but its record is not: it is claimed, waiting.
+    expect(await store.run((client) => client.exists(key))).toBe(0);
+    expect(await store.run((client) => client.exists(`${key}:claimed`))).toBe(
+      1,
+    );
+
+    await handlerFor(keyPrefix, { now: () => Date.now() + LATER })([job()]);
+    const rows = await summariesFor(teamId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.details).toMatchObject({ suppressedCount: 6 });
+    expect(await store.run((client) => client.exists(`${key}:claimed`))).toBe(
+      0,
+    );
+
+    // And a third run, with the claim already gone, writes nothing more.
+    await handlerFor(keyPrefix, { now: () => Date.now() + LATER })([job()]);
+    expect(await summariesFor(teamId)).toHaveLength(1);
+  });
+
+  it('writes one row when a claim is replayed after the row already exists', async () => {
+    // The delete can fail after the write succeeds. The next run then re-reads
+    // the same claim, and an audit event is immutable — a second copy would be
+    // permanent.
+    const { teamId, keyPrefix, key } = await suppressedWindow(3);
+    await handlerFor(keyPrefix)([job()]);
+    expect(await summariesFor(teamId)).toHaveLength(1);
+
+    // Put the claim back, exactly as a failed delete would have left it.
+    const fields = await store.run((client) =>
+      client.hset(`${key}:claimed`, {
+        spent: '1',
+        suppressed: '3',
+        first: String(CLOSED_WINDOW_AT + 1_000),
+        last: String(CLOSED_WINDOW_AT + 3_000),
+      }),
+    );
+    expect(fields).not.toBe('unavailable');
+
+    await handlerFor(keyPrefix, { now: () => Date.now() + LATER })([job()]);
+    expect(await summariesFor(teamId)).toHaveLength(1);
+    expect(await store.run((client) => client.exists(`${key}:claimed`))).toBe(
+      0,
+    );
   });
 
   it('leaves a window whose minute has not ended alone', async () => {

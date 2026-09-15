@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { isLocalDatabase, readEnv } from '../../env.ts';
-import { KeyringError } from '../../secrets/keyring.ts';
 import { parseRateLimitSpec } from '../../rate-limit/scopes.ts';
+import { KeyringError } from '../../secrets/keyring.ts';
 import {
   DEV,
   DEV_DATABASE_URL,

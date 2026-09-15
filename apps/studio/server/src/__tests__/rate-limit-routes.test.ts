@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createORPCClient, isDefinedError, safe } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { RouterContractClient } from '@orpc/contract';
+import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
@@ -38,16 +39,31 @@ function peer(address: string) {
   };
 }
 
-function appWith(overrides: RawEnv, principalUserId?: string) {
+function appWith(
+  overrides: RawEnv,
+  principalUserId?: string,
+  memberOfTeamId?: string,
+) {
   const env = resolve({
     NODE_ENV: 'test',
     ...(url ? { REDIS_URL: url } : {}),
     ...overrides,
   });
   return createApp(env, {
+    // A pool that is never connected to. `openTeam` needs one to exist before
+    // it will look a membership up at all, and every procedure behind it fails
+    // when it tries to use it — which is what tells an admitted call from a
+    // refused one here.
+    pool: {} as unknown as pg.Pool,
     auth: stubAuthService(
       principalUserId
         ? {
+            getMembership: (_userId, teamId) =>
+              Promise.resolve(
+                memberOfTeamId && teamId === memberOfTeamId
+                  ? { role: 'owner' }
+                  : null,
+              ),
             getSession: () =>
               Promise.resolve({
                 kind: 'user',
@@ -131,23 +147,60 @@ describe.skipIf(!url)('the limited request paths', () => {
     expect(other.status).not.toBe(429);
   });
 
-  it('refuses a third acceptance of one invitation token', async () => {
-    const app = appWith({ RATE_LIMIT_INVITATION_ACCEPT: '2/1m' });
+  it('refuses a third acceptance of one invitation token, on the path the client takes', async () => {
+    // Not better-auth's `/organization/accept-invitation`: Studio blocks that
+    // route outright (audit/better-auth-policy.ts), so a limit there would
+    // guard a 404 and the live path would have none. The client accepts over
+    // RPC (client/src/routes/AcceptInvitation.tsx).
+    const userId = `user-${randomUUID()}`;
+    const app = appWith({ RATE_LIMIT_INVITATION_ACCEPT: '2/1m' }, userId);
+    const { client, lastResponse } = rpcClientFor(app);
     const invitationId = randomUUID();
-    const accept = () =>
-      app.request(
-        '/api/auth/organization/accept-invitation',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invitationId }),
-        },
-        peer('203.0.113.5'),
-      );
 
-    expect((await accept()).status).not.toBe(429);
-    expect((await accept()).status).not.toBe(429);
-    await expectProblemJson429(await accept());
+    // Admitted calls fail inside the procedure — there is no database behind
+    // this app — which is what proves they got past the limiter.
+    const admitted = async () => {
+      const { error } = await safe(
+        client.team.acceptInvitation({ invitationId }),
+      );
+      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+    };
+    await admitted();
+    await admitted();
+
+    const { error } = await safe(
+      client.team.acceptInvitation({ invitationId }),
+    );
+    expect(error).toMatchObject({
+      code: 'TOO_MANY_REQUESTS',
+      data: { retryAfter: expect.any(Number) },
+    });
+    expect(lastResponse()?.status).toBe(429);
+    expect(Number(lastResponse()?.headers.get('Retry-After'))).toBeGreaterThan(
+      0,
+    );
+
+    // Another token is another bucket.
+    const other = await safe(
+      client.team.acceptInvitation({ invitationId: randomUUID() }),
+    );
+    expect(other.error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  });
+
+  it('refuses the blocked better-auth invitation route outright', async () => {
+    // The reason the limit moved: this path answers 404 whatever is sent to
+    // it, so nothing guessing a token ever reaches it.
+    const app = appWith({});
+    const response = await app.request(
+      '/api/auth/organization/accept-invitation',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitationId: randomUUID() }),
+      },
+      peer('203.0.113.5'),
+    );
+    expect(response.status).toBe(404);
   });
 
   it('refuses a third storage read from one client address', async () => {
@@ -167,22 +220,22 @@ describe.skipIf(!url)('the limited request paths', () => {
     ).not.toBe(429);
   });
 
-  it('refuses a third public API call for one token', async () => {
+  it('does not let a rotating Authorization header escape the public API limit', async () => {
+    // There is no token plane until #1899, so an Authorization header is an
+    // unvalidated string. Keying on it would let an anonymous caller mint a
+    // fresh allowance per request by changing the value — the address limit
+    // doing nothing at all.
     const app = appWith({ RATE_LIMIT_PUBLIC_API: '2/1m' });
-    const token = `Bearer ${randomUUID()}`;
-    const call = (authorization: string) =>
+    const call = () =>
       app.request(
         '/api/v1/status',
-        { headers: { Authorization: authorization } },
-        // One address for both tokens, so what separates them can only be the
-        // token.
+        { headers: { Authorization: `Bearer ${randomUUID()}` } },
         peer('203.0.113.21'),
       );
 
-    expect((await call(token)).status).toBe(200);
-    expect((await call(token)).status).toBe(200);
-    await expectProblemJson429(await call(token));
-    expect((await call(`Bearer ${randomUUID()}`)).status).toBe(200);
+    expect((await call()).status).toBe(200);
+    expect((await call()).status).toBe(200);
+    await expectProblemJson429(await call());
   });
 
   it('refuses a third public API call from one address when there is no token', async () => {
@@ -237,6 +290,56 @@ describe.skipIf(!url)('the limited request paths', () => {
     expect(Number(response?.headers.get('Retry-After'))).toBeGreaterThan(0);
   });
 
+  it('charges the team nothing for a caller who is not in it', async () => {
+    // Charging the team bucket before the membership lookup would let any
+    // signed-in stranger who can guess a team id exhaust that team's quota
+    // with calls that are all refused.
+    const teamId = `team-${randomUUID()}`;
+    const stranger = appWith(
+      { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
+      `stranger-${randomUUID()}`,
+    );
+    const outsider = rpcClientFor(stranger).client;
+    for (let call = 0; call < 6; call += 1) {
+      const { error } = await safe(outsider.studies.list({ teamId }));
+      expect(error).toMatchObject({ code: 'FORBIDDEN' });
+    }
+
+    // A member of that team still has the whole allowance.
+    const member = appWith(
+      { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
+      `member-${randomUUID()}`,
+      teamId,
+    );
+    const insider = rpcClientFor(member).client;
+    for (let call = 0; call < 2; call += 1) {
+      const { error } = await safe(insider.studies.list({ teamId }));
+      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+    }
+    const { error } = await safe(insider.studies.list({ teamId }));
+    expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
+  });
+
+  it('refuses a third protocol-builder call for one user', async () => {
+    // Every procedure on that router authenticates through `openSession`
+    // rather than `requireUser`, so without the limiter passed in it was the
+    // one part of the RPC plane with no per-user limit — including edits over
+    // an open WebSocket.
+    const userId = `user-${randomUUID()}`;
+    const app = appWith({ RATE_LIMIT_RPC_USER: '2/1m' }, userId);
+    const { client, lastResponse } = rpcClientFor(app);
+    const call = () =>
+      safe(client.protocolBuilder.listSections({ protocolId: randomUUID() }));
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { error } = await call();
+      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+    }
+    const { error } = await call();
+    expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
+    expect(lastResponse()?.status).toBe(429);
+  });
+
   it('refuses a third RPC call for one team, whoever makes it', async () => {
     const teamId = `team-${randomUUID()}`;
     const app = appWith(
@@ -244,6 +347,7 @@ describe.skipIf(!url)('the limited request paths', () => {
       // call can only be the team's.
       { RATE_LIMIT_RPC_TEAM: '2/1m', RATE_LIMIT_RPC_USER: '100/1m' },
       `user-${randomUUID()}`,
+      teamId,
     );
     const { client, lastResponse } = rpcClientFor(app);
 

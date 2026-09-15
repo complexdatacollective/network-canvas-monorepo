@@ -45,6 +45,7 @@ import {
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import type { RateLimiter } from './rate-limit.ts';
+import { enforceRateLimit } from './rate-limit/enforce.ts';
 import type { SecretsCipher } from './secrets/cipher.ts';
 import { completeSetup, SetupCommandError } from './setup/commands.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
@@ -103,20 +104,6 @@ const os = implement(contract).$context<RpcContext>();
  * WebSocket has, because a frame carries no headers. The client reads one or
  * the other without having to know which transport it is on.
  */
-async function enforceRpcLimit(
-  context: RpcContext,
-  limiter: RateLimiter | undefined,
-  scope: 'rpc_user' | 'rpc_team',
-  subject: string,
-): Promise<void> {
-  if (!limiter) return;
-  const decision = await limiter.check(scope, subject);
-  if (decision.allowed) return;
-  context.resHeaders?.set('Retry-After', String(decision.retryAfterSeconds));
-  throw new ORPCError('TOO_MANY_REQUESTS', {
-    data: { retryAfter: decision.retryAfterSeconds },
-  });
-}
 
 const auditStore = new AuditStore();
 
@@ -319,7 +306,12 @@ function createRequireUser(limiter: RateLimiter | undefined) {
   return os.middleware(async ({ context, next }) => {
     const { principal, requestId } = context;
     if (!principal) throw new ORPCError('UNAUTHORIZED');
-    await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
+    await enforceRateLimit(
+      limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
     return next({ context: { principal, requestId } });
   });
 }
@@ -438,15 +430,23 @@ export function createRpcRouter(
   ): Promise<TeamRpcContext> => {
     const { principal } = context;
     if (!principal) throw new ORPCError('UNAUTHORIZED');
-    // Both limits, before the database is touched at all — refusing after a
-    // membership lookup would have spent the work the limit exists to stop.
-    // The caller's own budget is what a runaway client spends; the team's is
-    // the ceiling everyone in it shares.
-    await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
-    await enforceRpcLimit(context, limiter, 'rpc_team', teamId);
+    // The caller's own budget first, before the database is touched at all:
+    // that is the one a runaway client spends, and refusing after a membership
+    // lookup would have spent the work the limit exists to stop.
+    await enforceRateLimit(
+      limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
     if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
     const membership = await auth.getMembership(principal.userId, teamId);
     if (!membership) throw new ORPCError('FORBIDDEN');
+    // The team's ceiling is charged only once this caller is known to be in
+    // the team. Charging it first would let any signed-in stranger who can
+    // guess a team id exhaust that team's quota with calls that are all
+    // refused — a denial of service built entirely out of forbidden requests.
+    await enforceRateLimit(limiter, 'rpc_team', teamId, context.resHeaders);
     return {
       principal,
       requestId: context.requestId,
@@ -519,7 +519,12 @@ export function createRpcRouter(
       if (!principal) throw new ORPCError('UNAUTHORIZED');
       // A study URL names no team, so the team limit cannot be taken before
       // the tenant is resolved; the caller's own is taken before any query.
-      await enforceRpcLimit(context, limiter, 'rpc_user', principal.userId);
+      await enforceRateLimit(
+        limiter,
+        'rpc_user',
+        principal.userId,
+        context.resHeaders,
+      );
       if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
       const resolved = await resolveStudy(pool, {
         studyId: input.studyId,
@@ -527,7 +532,12 @@ export function createRpcRouter(
         memberships: await auth.listMemberships(principal.userId),
       });
       if (!resolved) throw new ORPCError('FORBIDDEN');
-      await enforceRpcLimit(context, limiter, 'rpc_team', resolved.teamId);
+      await enforceRateLimit(
+        limiter,
+        'rpc_team',
+        resolved.teamId,
+        context.resHeaders,
+      );
       return next({
         context: {
           principal,
@@ -601,7 +611,20 @@ export function createRpcRouter(
     team: {
       acceptInvitation: os.team.acceptInvitation
         .use(requireUser)
-        .handler(({ context, input }) => {
+        .handler(async ({ context, input }) => {
+          // Per invitation token, and here rather than on better-auth's
+          // `/organization/accept-invitation` (#1909): Studio blocks that
+          // route outright (audit/better-auth-policy.ts) so that acceptance
+          // and its audit event share one transaction, which makes this
+          // procedure the only path a token is ever guessed through.
+          //
+          // Before the lookup, so a guessed token costs nothing to refuse.
+          await enforceRateLimit(
+            limiter,
+            'invitation_accept',
+            input.invitationId,
+            context.resHeaders,
+          );
           if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
           return handleTeamCommand(() =>
             acceptTeamInvitation(
@@ -713,6 +736,7 @@ export function createRpcRouter(
     // is reachable only by an Admin or Owner, so only they may make one.
     protocolBuilder: createProtocolBuilderRouter({
       auth,
+      limiter,
       runtime: deps.protocolBuilder,
       ...(pool === undefined ? {} : { pool }),
       ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),

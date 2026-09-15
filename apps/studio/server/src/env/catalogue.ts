@@ -380,10 +380,9 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
   },
   RATE_LIMIT_PUBLIC_API: {
     group: 'Rate limiting',
-    summary:
-      'Calls to `/api/v1`, per API token where the request carries one and otherwise per client address.',
+    summary: 'Calls to `/api/v1`, per client address.',
     deployment:
-      'Unset ⇒ `300/1m`. Five calls a second suits an analysis script paging through results and leaves the instance responsive to everyone else.',
+      'Unset ⇒ `300/1m`. Five calls a second suits an analysis script paging through results and leaves the instance responsive to everyone else. Per address rather than per `Authorization` header: there is no token plane until #1899, so a header is an unvalidated string and keying on it would let a caller mint a fresh allowance per request by changing it. It becomes the resolved token id when tokens exist.',
     devDefault: DEV.rateLimit,
     example: '300/1m',
   },

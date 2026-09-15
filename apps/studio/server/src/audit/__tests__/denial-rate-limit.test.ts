@@ -124,7 +124,8 @@ describe.skipIf(!url)('the denied-attempt window', () => {
     expect((await limiter.reserve(input)).admitted).toBe(false);
 
     expect(await fieldsAt(key)).toEqual({
-      denied: '1',
+      inflight: '0',
+      spent: '1',
       suppressed: '2',
       first: String(START + 10_000),
       last: String(START + 40_000),
@@ -137,6 +138,64 @@ describe.skipIf(!url)('the denied-attempt window', () => {
     });
     // And a key written under some other prefix is not this build's to read.
     expect(parseDenialWindowKey(key, 'studio:audit-denial')).toBeNull();
+  });
+
+  it('bounds a burst that arrives all at once', async () => {
+    // Without the in-flight count every member of a simultaneous burst reads
+    // `spent` as zero — nobody has finished yet — and every one of them goes
+    // on to write a denial row. The window cap alone bounds a sequence and
+    // nothing at all in parallel.
+    clock = START;
+    const limiter = new DeniedAuditRateLimiter({
+      store,
+      limit: 3,
+      maxInFlight: 5,
+      windowMs: WINDOW_MS,
+      keyPrefix: `test-denial-${randomUUID()}`,
+      now: () => clock,
+    });
+    const input = target();
+
+    const reservations = await Promise.all(
+      Array.from({ length: 40 }, () => limiter.reserve(input)),
+    );
+    expect(reservations.filter(({ admitted }) => admitted)).toHaveLength(5);
+    expect(reservations.filter(({ admitted }) => !admitted)).toHaveLength(35);
+
+    // And once those five finish as denials, the window's own cap closes it:
+    // five is past a limit of three, so nothing more is admitted this minute.
+    for (const reservation of reservations) {
+      if (reservation.admitted) await reservation.complete('denied');
+    }
+    expect((await limiter.reserve(input)).admitted).toBe(false);
+  });
+
+  it('never refuses an authorized burst for being concurrent', async () => {
+    // The bound is a safety valve, not a concurrency limit on ordinary use: a
+    // researcher sending six invitations at once is six reservations that all
+    // complete without a denial, and refusing one of them would surface as a
+    // FORBIDDEN on work the caller was entitled to do.
+    clock = START;
+    const limiter = limiterOn(2);
+    const input = target();
+
+    const reservations = await Promise.all(
+      Array.from({ length: 6 }, () => limiter.reserve(input)),
+    );
+    expect(reservations.every(({ admitted }) => admitted)).toBe(true);
+    await Promise.all(
+      reservations.map((reservation) =>
+        reservation.admitted ? reservation.complete('other') : undefined,
+      ),
+    );
+
+    // None of that spent the window: two denials are still available.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const reservation = await limiter.reserve(input);
+      if (!reservation.admitted) throw new Error('expected an admission');
+      await reservation.complete('denied');
+    }
+    expect((await limiter.reserve(input)).admitted).toBe(false);
   });
 
   it('starts a fresh allowance in the next window', async () => {
