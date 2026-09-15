@@ -801,10 +801,16 @@ the global, so a file that imported `process` could read the environment with
 the rule none the wiser. This used to say the boundary was enforced by a
 repo-wide `no-process-env`, which was never true: that rule belongs to
 oxlint's `node` plugin, the plugin is not in the repo-wide `plugins` list, and
-the entry under `rules` therefore did nothing anywhere. Two escapes carry a
-comment saying why: `src/env.ts`,
-and `src/__tests__/support/env.ts`, where the test harness reads the one flag
-the server has no business knowing about (whether this run is CI).
+the entry under `rules` therefore did nothing anywhere. Three escapes remain,
+each carrying a comment saying why:
+
+- `src/env.ts`, the boundary itself.
+- `src/__tests__/support/env.ts`, where the test harness reads the one flag
+  the server has no business knowing about (whether this run is CI).
+- `src/__tests__/support/entrypoint.ts`, which forwards this process's whole
+  environment to a child process, because that is what makes the child a
+  deployment-shaped run of an entrypoint rather than an in-process test.
+
 `apps/studio/server/scripts/**` is outside the rule: a script that hands its
 whole environment to a child process has nothing to validate, and every script
 that reads Studio's own configuration calls `readEnv()` like everything else.
@@ -862,14 +868,29 @@ editing the committed file: `STUDIO_DEV_DEFAULTS= pnpm ...`.
 Because the schema carries no defaults, no development credential is compiled
 into the server bundle.
 
-The table below, `.env.development`, and `.env.example` are all generated from
-`src/env/schema.ts` by `pnpm --filter @codaco/studio-server generate:env-docs`,
-which reads each variable's group, summary, deployment behaviour, development
-default and example back out of its schema annotations — so what a deployer
-reads and what their value is validated against are one declaration. A vitest
-guard fails if any of the three drifts from the schema, and a variable added
-without those annotations fails that guard rather than generating a
-half-documented entry.
+The table below, `.env.development`, and `.env.example` are all written by
+`pnpm --filter @codaco/studio-server generate:env-docs` from two inputs:
+
+- `src/env/schema.ts` — which variables exist, and, out of each field's
+  annotations, its group, summary, deployment behaviour and example. So what a
+  deployer reads and what their value is validated against are one
+  declaration.
+- `src/env/development.ts` — `DEV_ENVIRONMENT`, the value the development lane
+  sets for each variable that has one, built from the same `DEV` constants the
+  dev script hands to Compose. This is the whole of `.env.development`'s
+  right-hand side and the README table's "Development default" column.
+
+They are apart because `src/env.ts` imports the schema, so anything the schema
+holds is compiled into the production server bundle — which is how the
+publicly-known development auth secret once shipped inside a built deployable.
+Keeping the values in a module the runtime never imports is what makes that
+impossible, and two vitest guards hold the line: one fails if a
+`DEV_ENVIRONMENT` value appears anywhere in the source of `src/env/schema.ts`
+or `src/env.ts`, the other decodes the committed `.env.development` under the
+schema, so a development value the schema would refuse fails here rather than
+at the next `pnpm dev`. A third fails if any of the three generated files
+drifts, and a variable added without its annotations fails rather than
+generating a half-documented entry.
 
 <!-- generated:env start -->
 

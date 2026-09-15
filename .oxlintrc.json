@@ -201,12 +201,16 @@
       // inert everywhere, and turning the plugin on repo-wide would light up
       // every other package at once. Here it is scoped to the one tree that
       // has a validated environment to use instead: `src/env.ts` decodes
-      // `process.env` through an Effect Schema, everything else takes the
-      // resolved `StudioEnv`, and the two escapes that remain
-      // (`src/env.ts` and the test harness's `src/__tests__/support/env.ts`)
-      // say so on the line. `apps/studio/server/scripts/**` is deliberately
-      // outside this: a script that hands its environment to a child process
-      // has nothing to validate.
+      // `process.env` through an Effect Schema, and everything else takes the
+      // resolved `StudioEnv`. Three escapes remain, each saying so on the
+      // line: `src/env.ts`, the boundary itself; the test harness's
+      // `src/__tests__/support/env.ts`, which reads the one flag the server
+      // has no business knowing about (whether this run is CI); and
+      // `src/__tests__/support/entrypoint.ts`, which forwards this process's
+      // whole environment to a child so the child is a deployment-shaped run
+      // of an entrypoint. `apps/studio/server/scripts/**` is deliberately
+      // outside the rule: a script that hands its environment to a child
+      // process has nothing to validate.
       //
       // The import ban is what makes the rule total rather than decorative:
       // oxlint only sees `process.env` reached through the global, so a file

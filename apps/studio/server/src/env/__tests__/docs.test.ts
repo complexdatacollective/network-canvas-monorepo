@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -14,6 +15,10 @@ import {
 } from '../../../scripts/env-docs.ts';
 import { DEV_ENVIRONMENT } from '../development.ts';
 import { describeEnvironment, EnvironmentSchema, GROUPS } from '../schema.ts';
+
+/** The two modules the production bundle imports for the environment boundary. */
+const SCHEMA_MODULE = fileURLToPath(new URL('../schema.ts', import.meta.url));
+const BOUNDARY_MODULE = fileURLToPath(new URL('../../env.ts', import.meta.url));
 
 // A failure here means the schema moved without the artifacts being
 // regenerated: `pnpm --filter @codaco/studio-server generate:env-docs`.
@@ -124,17 +129,40 @@ describe('the schema’s own documentation', () => {
     ).not.toThrow();
   });
 
-  it('keeps every development value out of the schema itself', () => {
-    // `src/env.ts` imports the schema, so anything the schema holds is
-    // compiled into the production server bundle — which is how the
+  it('keeps every development value out of the boundary’s source', () => {
+    // `src/env.ts` imports `src/env/schema.ts`, so anything either module
+    // holds is compiled into the production server bundle — which is how the
     // publicly-known development auth secret once shipped inside a built
     // deployable. The development lane's values live in `DEV_ENVIRONMENT`,
-    // which only the generator and these suites import; this fails if one is
-    // written back into an annotation.
-    const declared = JSON.stringify(describeEnvironment());
+    // which only the generator and these suites import.
+    //
+    // Read as text rather than through the schema, because the reachable
+    // declaration is not the only way in: a value pasted as a literal, a
+    // `Schema.filter` comparing against one, or a default would never appear
+    // in `describeEnvironment()` and would ship all the same. What the
+    // bundler inlines is the source of these two files, so that is what is
+    // searched.
+    const source = [SCHEMA_MODULE, BOUNDARY_MODULE]
+      .map((path) => readFileSync(path, 'utf8'))
+      .join('\n');
+
     for (const [name, value] of Object.entries(DEV_ENVIRONMENT)) {
       // `development`, `managed`, `1` and `false` are also legitimate
       // `example` placeholders, and a short value would match by accident.
+      if (value.length < 12) continue;
+      expect({ name, inTheSource: source.includes(value) }).toEqual({
+        name,
+        inTheSource: false,
+      });
+    }
+  });
+
+  it('keeps every development value out of what the schema declares', () => {
+    // The same rule at the other end: a value that reached an annotation
+    // through an import the source search cannot see (a constant re-exported
+    // from somewhere else) shows up here, in what the schema actually holds.
+    const declared = JSON.stringify(describeEnvironment());
+    for (const [name, value] of Object.entries(DEV_ENVIRONMENT)) {
       if (value.length < 12) continue;
       expect({ name, inTheSchema: declared.includes(value) }).toEqual({
         name,
