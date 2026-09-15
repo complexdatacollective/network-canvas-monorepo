@@ -231,11 +231,60 @@ every variable is catalogued under [Environment](#environment) below.
 
 ### Running the whole stack locally
 
-`dev:stack` builds both images from this checkout and runs the complete compose
-file — Traefik, the maintenance page, the `migrate` one-shot — on a local
-hostname, so an upgrade can be exercised before it reaches anyone. It arrives
-with the self-host guide; until then the compose file can be driven by hand,
-and its header says how.
+```bash
+pnpm --filter @codaco/studio-server dev:stack
+```
+
+The other lane. Where `dev` runs the backing services in containers and the
+Studio processes from source, `dev:stack` runs **what a self-hoster runs**: it
+builds `studio-api:local` and `studio-web:local` from this checkout, brings up
+the complete `docker-compose.yml` — Traefik terminating TLS, nginx serving the
+built client, the API and the worker from the image — and then runs the
+`migrate` one-shot and forwards its output, including the first-run setup
+token. It ends by printing the URL.
+
+Open **<https://localhost>**. Traefik serves its own self-signed certificate, so
+a browser warns once and `curl` needs `-k`:
+
+```bash
+curl -k https://localhost/readyz
+```
+
+Paste the printed token into `https://localhost/setup` to create the first owner
+account, exactly as a self-hoster does.
+
+Use it to exercise what the development lane cannot: the routing table, the
+maintenance page while `api` is stopped, the `migrate` one-shot against a
+deployed schema, the first-run screen, and an upgrade — before any of them
+reach someone else's host.
+
+```bash
+pnpm --filter @codaco/studio-server dev:stack:down              # stop it
+pnpm --filter @codaco/studio-server dev:stack:down -- --volumes # and wipe its data
+```
+
+Wiping the volumes is how you get a fresh first-run setup: the next `dev:stack`
+starts from an empty database and prints a new token.
+
+Three things worth knowing:
+
+- **It runs beside `pnpm dev`.** Different Compose project (`studio-stack`),
+  different subnet, and no shared ports: the stack publishes 80 and 443, which
+  the development lane does not use, and its Mailpit asks for an ephemeral
+  loopback port rather than taking the development lane's fixed 1025 and 8025.
+  Ask Docker where its inbox landed —
+  `docker compose -p studio-stack port mailpit 8025` — which `dev:stack` also
+  prints.
+- **It writes a gitignored `apps/studio/.env.local`** with the development
+  credentials from the `DEV` constants, and rewrites it on every run. The one
+  value it reads back rather than regenerating is `BETTER_AUTH_SECRET`, so
+  restarting does not sign the owner account out.
+- **The differences from a deployment are three lines in
+  `docker-compose.local.yml`**, and the production file is not modified: a
+  certificate authority that does not answer (so Traefik falls back to its
+  self-signed certificate instead of asking Let's Encrypt for `localhost`), a
+  Mailpit sink, and `build:` sections so both images can come from this
+  checkout.
 
 ### Changing the schema
 
@@ -798,7 +847,9 @@ fails `pnpm typecheck`.
 Nothing below is run by hand in a deployment: `apps/studio/docker-compose.yml`
 is the reference stack both topologies run, and it is what names these
 commands, wires the health checks and mounts the secrets. See
-[Self-host](#self-host). This section is the contract that file depends on.
+[Deployment topologies](#deployment-topologies) and
+[the self-host guide](./docs/self-host/README.md). This section is the contract
+that file depends on.
 
 Two images, built from one Dockerfile at the monorepo root (#1909):
 
@@ -1020,8 +1071,18 @@ with the token it prints.
 ## Deployment topologies
 
 Decided 2026-08-11 on #1245, and reshaped by the 2026-09-15 ruling on #1909
-into one compose stack. Both topologies run the same two images and present a
-single origin; what differs is which paths exist.
+into one compose stack. **`apps/studio/docker-compose.yml` is the whole
+deployment, and it is the same file in both topologies** — Traefik as the only
+ingress, `web`, `api`, `worker`, Valkey, Postgres, Garage, and `migrate` and
+`garage-init` as profile-gated one-shots. What differs between the topologies
+is which paths exist, not which file is run.
+
+The stack and its routing table are drawn in
+[`docs/topology.md`](./docs/topology.md); standing one up is
+[the self-host guide](./docs/self-host/README.md), which takes an institution
+from two downloaded files to a signed-in owner and covers the swaps, the
+upgrade sequence, backups and the Postgres major upgrade. `dev:stack` runs the
+same thing locally (see [Development](#running-the-whole-stack-locally)).
 
 `STUDIO_DEPLOYMENT_MODE` picks the topology at runtime, so one pair of images
 serves both. The managed-only surfaces — marketing, pricing, legal, the sign-up
@@ -1043,55 +1104,22 @@ Since #1909 the refusal is the client's alone: nginx serves every page path, so
 the server sees none to refuse and the HTTP-layer gate that used to sit beside
 its static mount is gone.
 
-### Managed service
-
-One origin, behind the same ingress a self-hoster runs: the client from the
-`studio-web` container, the API's paths to a `studio-api` container, Postgres,
-and S3-compatible object storage (#1246). There is no CDN in front of the
-client — nginx behind the ingress is enough at the expected scale — and edge
-compute is a non-goal; replicas serve only the reads the query layer marks
-replica-tolerant.
-
-Background jobs run in a second `studio-api` container, colocated with the web
-process (see [Background work](#background-work)). The web process stays a
-single replica, as it already did: the sync leases it holds and the audit
-denial-rate window it counts are per-process state (#1247). Workers have no
+What the managed service adds is configuration rather than architecture: the
+same compose file with its own `.env`, pointing the five `S3_*` variables at an
+R2 bucket instead of the stack's Garage. There is no CDN in front of the client
+— nginx behind the ingress is enough at the expected scale — and no second
+topology to maintain. The web process stays a single replica, as it already
+did: the sync leases it holds are per-process state (#1247). Workers have no
 such state and may be scaled — pg-boss hands each job, and each firing of a
-cron schedule, to exactly one of them.
+cron schedule, to exactly one of them (see
+[Background work](#background-work)).
 
-The platform that runs this — the host, image publishing, the deploy workflows
-and staging — is #1910.
+The platform that runs it — the host, image publishing, the deploy workflows
+and staging — is
+[#1910](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1910).
 
-### Self-host
-
-The reference stack is `apps/studio/docker-compose.yml`: Traefik as the only
-ingress, `studio-web`, `studio-api` as both the API and the worker, Valkey,
-Postgres, Garage as the S3-compatible object store, and `migrate` and
-`garage-init` as profile-gated one-shots. The ingress, the database, the
-object store and the rate-limit store are each one service block and one set
-of variables, so each is swappable for an institution's own; the file's header
-says which block is which and where the two file secrets live. The compose
-file a self-hoster runs is the compose file the platform runs.
-
-A self-hoster downloads that file and the `.env.example` beside it, writes the
-two secrets, and runs `docker compose up -d` then
-`docker compose run --rm migrate`, whose output carries the setup token that
-opens [First-run setup](#first-run-setup). The guide that walks through it — including
-the swaps, the upgrade sequence and the backup requirements — is the remaining
-part of
-[#1909](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1909).
-
-The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
-`S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
-none (partial configuration fails fast). Unset means asset routes refuse
-with 503. See [Environment](#environment).
-
-The Postgres login in `DATABASE_URL` owns the schema and needs `CREATEROLE`
-the first time it is applied (see
-[Database schema and seeding](#database-schema-and-seeding)); the server
-itself runs as `studio_app` (see [Tenancy](#tenancy)). A self-host is one
-team, or a few, under exactly the enforcement the managed service runs — there
-is no single-tenant code path.
+A self-host is one team, or a few, under exactly the enforcement the managed
+service runs: there is no single-tenant code path.
 
 ### What deploys when
 

@@ -13,6 +13,8 @@
   "scripts": {
     "dev": "node scripts/dev.ts --prepare && concurrently -k -n stack,server,worker,client \"node scripts/dev.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/worker.ts\" \"pnpm --filter @codaco/studio-client dev\"",
     "dev:down": "node scripts/dev.ts --down",
+    "dev:stack": "node scripts/dev-stack.ts",
+    "dev:stack:down": "node scripts/dev-stack.ts --down",
     "build": "vite build && node scripts/render-schema-ddl.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
     "rotate-secrets": "node --env-file-if-exists=.env src/rotate-secrets.ts",
