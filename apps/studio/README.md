@@ -980,7 +980,8 @@ file a self-hoster runs is the compose file the platform runs.
 
 A self-hoster downloads that file and the `.env.example` beside it, writes the
 two secrets, and runs `docker compose up -d` then
-`docker compose run --rm migrate`. The guide that walks through it — including
+`docker compose run --rm migrate`, whose output carries the setup token that
+opens [First-run setup](#first-run-setup). The guide that walks through it — including
 the swaps, the upgrade sequence and the backup requirements — is the remaining
 part of
 [#1909](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1909).

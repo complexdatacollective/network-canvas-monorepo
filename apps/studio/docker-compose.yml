@@ -11,6 +11,12 @@
 # schema for them to verify yet, and `docker compose ps` says `Restarting (1)`
 # — which is expected and stops the moment `migrate` has run.
 #
+# Read `migrate`'s output: besides creating the schema it prints the first-run
+# setup token, which is what `/setup` takes to create the first owner account.
+# It is printed once and only stored hashed, but it is never lost for good —
+# re-running `migrate` while the instance still has no owner issues a fresh one
+# (and an instance that has an owner issues none).
+#
 # The managed service runs this same file, with its own `.env` pointing the
 # object-store variables at a managed bucket. There is no second topology and
 # no orchestrator: splitting a service onto another host means changing one
@@ -281,7 +287,9 @@ services:
 
   # `docker compose run --rm migrate`. Creates this build's schema in an empty
   # database, is a no-op against a current one, and refuses one another build
-  # created. It bootstraps Garage first, through the dependency below, so a
+  # created. On an instance that still has no owner it also prints the
+  # first-run setup token, so its output is worth reading rather than only its
+  # exit code. It bootstraps Garage first, through the dependency below, so a
   # first run is one command.
   migrate:
     image: ${STUDIO_API_IMAGE}
