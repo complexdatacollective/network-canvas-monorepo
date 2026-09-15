@@ -213,7 +213,7 @@ seconds, minutes or hours:
 
 <!-- rate-limits end -->
 
-The four participant scopes are declared now and take effect when the
+The three participant scopes are declared now and take effect when the
 participant routes land
 ([#1899](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1899)).
 If one of these costs you something real — a teaching lab behind a single
