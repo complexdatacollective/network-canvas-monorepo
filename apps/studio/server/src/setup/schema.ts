@@ -84,7 +84,9 @@ const installation = pgTable(
 
 export const SETUP_TABLES = { installation };
 
-// Hashed into the schema fingerprint — whitespace counts.
+// Hashed into the schema fingerprint — whitespace counts. CREATE OR REPLACE
+// because DROP TABLE CASCADE leaves functions behind, and an `already exists`
+// error reads as transient to the boot retry loop.
 //
 // The row is created and re-armed by the schema step, which runs as the
 // connecting login, so neither application role may INSERT or DELETE it: an
@@ -96,4 +98,36 @@ export const SETUP_SIDECAR_SQL = `
 REVOKE INSERT, DELETE, TRUNCATE ON installation
   FROM ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
 REVOKE UPDATE ON installation FROM ${TENANT_ROLES.maintenance};
+
+-- The application's UPDATE is for claiming an instance, and for nothing else.
+-- Table-level UPDATE is column-blind, so without this the web process could
+-- write a token hash of its own and set \`owner_user_id\` back to NULL —
+-- reopening first-run setup on a live instance, and then completing it. The
+-- check is on the effective role rather than on a column grant because
+-- claiming ownership writes the same three columns that reopening would.
+--
+-- \`current_user\` is what the pools pin with the \`role=\` startup parameter
+-- (db/pool.ts), and it survives RESET ROLE, so the connecting login — which is
+-- what runs the schema step, and the only thing that may arm an instance — is
+-- unaffected. A legitimate claim leaves both token columns NULL, which is why
+-- the condition can be "NEW is not null" rather than "NEW differs from OLD":
+-- an application update must end with no token outstanding, whatever it found.
+CREATE OR REPLACE FUNCTION installation_setup_stays_closed() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'first-run setup cannot be reopened by the application';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER installation_setup_stays_closed
+  BEFORE UPDATE ON installation
+  FOR EACH ROW
+  WHEN (
+    current_user IN ('${TENANT_ROLES.app}', '${TENANT_ROLES.maintenance}')
+    AND (
+      (OLD.owner_user_id IS NOT NULL AND NEW.owner_user_id IS NULL)
+      OR NEW.bootstrap_token_hash IS NOT NULL
+      OR NEW.bootstrap_token_issued_at IS NOT NULL
+    )
+  )
+  EXECUTE FUNCTION installation_setup_stays_closed();
 `;

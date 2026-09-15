@@ -175,6 +175,59 @@ describe.skipIf(!db)('the bootstrap token', () => {
     // Maintenance reads it: readiness and garbage collection run as that role.
     expect(await readInstallation(scratch.maintenance)).not.toBeNull();
   });
+
+  it('refuses to let the application reopen a closed instance', async () => {
+    await issueBootstrapToken(scratch.pool);
+    const ownerId = await seedUser('owner-3');
+    // Claiming the instance is the application's own legitimate write, so it
+    // has to go through the application role for this case to mean anything.
+    const claimed = await scratch.app.query(
+      `update installation
+          set owner_user_id = $1,
+              name = 'Owned',
+              bootstrap_token_hash = null,
+              bootstrap_token_issued_at = null
+        where id = 1 and owner_user_id is null`,
+      [ownerId],
+    );
+    expect(claimed.rowCount).toBe(1);
+
+    // Table-level UPDATE is column-blind, so the grant alone would let the web
+    // process return the instance to first-run state and then set itself up
+    // again. Both halves of that are refused in the database.
+    await expect(
+      scratch.app.query('update installation set owner_user_id = null'),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      scratch.app.query(
+        `update installation
+            set bootstrap_token_hash = repeat('a', 64),
+                bootstrap_token_issued_at = now()`,
+      ),
+    ).rejects.toMatchObject({ code: 'P0001' });
+
+    // Nothing moved, and the instance is still owned by the same account.
+    expect(await readInstallation(scratch.pool)).toEqual({
+      name: 'Owned',
+      ownerUserId: ownerId,
+      bootstrapTokenHash: null,
+    });
+    // The login is unaffected — but an owned instance still issues nothing, so
+    // the two refusals together are what close the loop.
+    expect(await issueBootstrapToken(scratch.pool)).toEqual({ kind: 'owned' });
+  });
+
+  it('lets the login re-arm an instance nobody has claimed', async () => {
+    // The other side of the trigger: the schema step connects as the login,
+    // whose writes are exactly what first-run bootstrap depends on.
+    const first = await issueBootstrapToken(scratch.pool);
+    if (first.kind !== 'issued') throw new Error('expected a token');
+    const again = await issueBootstrapToken(scratch.pool);
+    expect(again.kind).toBe('issued');
+    expect(
+      (await readInstallation(scratch.pool))?.bootstrapTokenHash,
+    ).not.toBeNull();
+  });
 });
 
 describe('the printed block', () => {

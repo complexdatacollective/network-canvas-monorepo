@@ -53,9 +53,9 @@ export async function fetchSetupRequirement(
 /**
  * Re-asks status after first-run setup has changed it. `staleTime: Infinity`
  * is right for an answer fixed for the life of the process serving the bundle,
- * and completing setup is the one moment in that life when it moves: the
- * instance gains a name and an owner, so `/setup` becomes a not-found and
- * every screen that names the instance names the new one.
+ * and completing setup is the one moment in that life when it moves:
+ * `setup.required` goes false, so `/setup` becomes a not-found rather than a
+ * second way in.
  */
 export async function invalidateInstanceStatus(
   queryClient: QueryClient,

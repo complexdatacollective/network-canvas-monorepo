@@ -137,6 +137,12 @@ const messages = defineMessages({
   },
 });
 
+// Every bound below mirrors `CompleteSetupInputSchema` in `@codaco/studio-rpc`
+// exactly — 256, 120, 320, 320, and 8 to 128, better-auth's own password
+// window. The contract refuses anything outside them, so a field that did not
+// would send a submission the server was always going to reject and report it
+// as the generic failure rather than on the field that is wrong.
+
 /** The value of a field the form hands back, which is typed as unknown. */
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -208,6 +214,7 @@ export default function Setup() {
             hint={intl.formatMessage(messages.tokenHint)}
             component={InputField}
             required
+            maxLength={256}
             autoComplete="off"
           />
           <Field
@@ -232,6 +239,7 @@ export default function Setup() {
             component={InputField}
             type="email"
             required
+            maxLength={320}
             pattern={studioEmailPattern(
               intl,
               intl.formatMessage(messages.emailHint),
@@ -244,6 +252,7 @@ export default function Setup() {
             component={PasswordField}
             required
             minLength={8}
+            maxLength={128}
             autoComplete="new-password"
           />
           <SubmitButton>{intl.formatMessage(messages.submit)}</SubmitButton>

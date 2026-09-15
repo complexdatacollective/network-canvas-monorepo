@@ -330,6 +330,7 @@
 <!-- installation -->
 <g id="installation" class="node">
 <title>installation</title>
+<g id="a_installation"><a xlink:title="installation&#10;sidecar trigger installation_setup_stays_closed: BEFORE UPDATE calls installation_setup_stays_closed()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-15733.24" rx="418.71" ry="342.48"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1699.98,-15913.24 1699.98,-15973.24 2287.98,-15973.24 2287.98,-15913.24 1699.98,-15913.24"/>
 <polygon fill="none" stroke="#29235c" points="1699.98,-15913.24 1699.98,-15973.24 2287.98,-15973.24 2287.98,-15913.24 1699.98,-15913.24"/>
@@ -368,6 +369,8 @@
 <text text-anchor="start" x="2237.89" y="-15514.44" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
 <text text-anchor="start" x="2246.78" y="-15514.44" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
 <polygon fill="none" stroke="#29235c" stroke-width="2" points="1698.98,-15492.24 1698.98,-15974.24 2288.98,-15974.24 2288.98,-15492.24 1698.98,-15492.24"/>
+</a>
+</g>
 </g>
 <!-- user&#45;&gt;installation -->
 <!-- user&#45;&gt;installation -->

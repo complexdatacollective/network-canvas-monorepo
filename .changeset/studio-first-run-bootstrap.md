@@ -21,9 +21,10 @@ owner, `/setup` is gone — it answers as a page that is not there, on every
 later deploy — so a repeated deploy command can never reopen the door to a live
 instance.
 
-The instance's name is what the interface now calls this deployment, in place
-of the product name it used to show everywhere. `status` reports it, along with
-whether first-run setup is still outstanding.
+The name given at setup is stored with the instance, and both status
+surfaces — the app's `status` procedure and `/api/v1/status` — report it in
+place of the product name. Whether first-run setup is still outstanding is
+reported beside it.
 
 In development nothing changes: the seed makes `admin@studio.test` the owner
 and names the instance `Studio (development)`, so every boot comes up already
