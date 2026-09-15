@@ -33,15 +33,9 @@ const TOKEN_COLUMNS: readonly OAuthTokenColumn[] = [
   'idToken',
 ];
 
-const GOOGLE = {
-  providerId: 'google',
-  issuer: 'https://accounts.google.com',
-};
+const GOOGLE = { providerId: 'google' };
 
-const MICROSOFT = {
-  providerId: 'microsoft',
-  issuer: 'https://login.microsoftonline.com/a-tenant/v2.0',
-};
+const MICROSOFT = { providerId: 'microsoft' };
 
 /** Distinctive enough that a substring check for them means something. */
 const TOKENS = {
@@ -49,9 +43,6 @@ const TOKENS = {
   refreshToken: '1//04-studio-refresh-token',
   idToken: 'eyJhbGciOiJSUzI1NiJ9.studio-id-token.signature',
 };
-
-/** `createLocalAccountIssuer('credential')`, the password account's issuer. */
-const CREDENTIAL_ISSUER = 'local:credential';
 
 type StoredTokens = Record<OAuthTokenColumn, string | null>;
 
@@ -180,7 +171,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
     // failure, not a working token.
     await expect(
       ctx.internalAdapter.findAccountByKey({
-        issuer: MICROSOFT.issuer,
+        providerId: MICROSOFT.providerId,
         accountId: otherAccountId,
       }),
     ).rejects.toThrow(SecretUnreadableError);
@@ -278,7 +269,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
     const after = await storedTokens(movedTo);
     expect(after.refreshToken).not.toBe(before.refreshToken);
     const moved = await ctx.internalAdapter.findAccountByKey({
-      issuer: GOOGLE.issuer,
+      providerId: GOOGLE.providerId,
       accountId: movedTo,
     });
     expect(moved).toMatchObject(TOKENS);
@@ -293,7 +284,6 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
     );
     await ctx.internalAdapter.linkAccount({
       providerId: 'credential',
-      issuer: CREDENTIAL_ISSUER,
       accountId: user.id,
       userId: user.id,
       password: 'the-first-scrypt-hash',

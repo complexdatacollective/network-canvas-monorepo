@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POSTHOG_API_KEY, POSTHOG_HOST } from '@codaco/shared-consts';
 
@@ -22,7 +22,11 @@ vi.mock('../isProductionHost', () => ({
 // this site — and so tested here — is that it reports under its own identity,
 // to the shared project, through the shared relay.
 describe('Documentation analytics wiring', () => {
-  beforeAll(async () => {
+  // Vitest clears mock call history before each test, and importing an
+  // already-evaluated module records nothing, so the module under test is
+  // re-evaluated per test rather than once for the file.
+  beforeEach(async () => {
+    vi.resetModules();
     await import('../../../instrumentation-client');
   });
 

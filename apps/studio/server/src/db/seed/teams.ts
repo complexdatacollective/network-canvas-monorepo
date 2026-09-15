@@ -32,13 +32,6 @@ const MAX_MEMBERS_PER_TEAM = 6;
 // the remaining roles.
 const NON_OWNER_ROLES = TEAM_ROLES.filter((role) => role !== 'owner');
 
-// better-auth's own `createLocalAccountIssuer('credential')`
-// (@better-auth/core/db, not a direct dependency here) — the synthetic
-// `issuer` key its adapter matches a credential account by, alongside
-// providerId and accountId. See the comment on auth-schema.ts's `issuer`
-// column.
-const CREDENTIAL_ISSUER = 'local:credential';
-
 export type SeedTeamMember = {
   memberId: string;
   userId: string;
@@ -120,14 +113,13 @@ async function insertCredentialAccount(
 ): Promise<void> {
   const password = await hashPassword(input.password);
   await client.query(
-    `insert into account (id, "accountId", "providerId", issuer, "userId", password, "createdAt", "updatedAt")
-     values ($1, $2, 'credential', $3, $2, $4, $5, $5)`,
-    [seedUuid(), input.userId, CREDENTIAL_ISSUER, password, input.createdAt],
+    `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     values ($1, $2, 'credential', $2, $3, $4, $4)`,
+    [seedUuid(), input.userId, password, input.createdAt],
   );
 }
 
 /** Google's `iss`, the value better-auth stores for a Google account. */
-const GOOGLE_ISSUER = 'https://accounts.google.com';
 
 /**
  * A linked Google account for the seeded admin, with its three tokens sealed
@@ -140,7 +132,7 @@ const GOOGLE_ISSUER = 'https://accounts.google.com';
  * run over a seeded database rotates this row like any other.
  *
  * The admin can still sign in with the password: better-auth matches a
- * credential account by (issuer, accountId), and this row's are different.
+ * credential account by (providerId, accountId), and this row's are different.
  */
 export async function seedAdminOAuthAccount(
   client: pg.ClientBase,
@@ -164,13 +156,12 @@ export async function seedAdminOAuthAccount(
 
   await client.query(
     `insert into account
-       (id, "accountId", "providerId", issuer, "userId",
+       (id, "accountId", "providerId", "userId",
         "accessToken", "refreshToken", "idToken", scope, "createdAt", "updatedAt")
-     values ($1, $2, 'google', $3, $4, $5, $6, $7, 'openid email profile', $8, $8)`,
+     values ($1, $2, 'google', $3, $4, $5, $6, 'openid email profile', $7, $7)`,
     [
       seedUuid(),
       accountId,
-      GOOGLE_ISSUER,
       input.userId,
       sealed('accessToken'),
       sealed('refreshToken'),

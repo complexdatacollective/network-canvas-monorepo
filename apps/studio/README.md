@@ -368,7 +368,7 @@ logs how many that was before it does it.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `72797e09529c684783b24f8b3d0f13361ecae61133effca8cba3a8b5b180dcf4`.
+Schema fingerprint: `27af5dd22c9dbb048d4c32aa04d125dfee654bfbe1907421b2ca7023b30b897f`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 

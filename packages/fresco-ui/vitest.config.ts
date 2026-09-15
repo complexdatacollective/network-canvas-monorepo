@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +65,7 @@ export default defineConfig({
             enabled: true,
             instances: [{ browser: 'chromium' }, { browser: 'firefox' }],
             headless: true,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: [
             '**/node_modules/**',

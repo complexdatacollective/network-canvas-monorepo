@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 const dirname =
@@ -118,26 +119,27 @@ export default defineConfig({
         test: {
           name: 'storybook',
           testTimeout: 60_000,
+          // These stories mount full interview shells (Redux store + search
+          // web workers); running files in parallel iframes starves the
+          // worker round-trips past any timeout (Navigation / roster filter
+          // stories fail on every loaded run) and is slower overall than
+          // sequential execution. Keep files sequential.
+          fileParallelism: false,
+          // Reuse one iframe for every file instead of building a fresh one
+          // per file. These 60 files each mount a full interview shell —
+          // WebGL canvases, mapbox maps, search workers — and the detached
+          // iframes hold their native resources long enough that the
+          // renderer dies partway through the run, taking the whole suite
+          // with it ("Browser connection was closed while running tests",
+          // on a different file each time). Reusing the iframe recycles
+          // those resources instead of accumulating 60 sets of them.
+          isolate: false,
           browser: {
             provider: playwright(),
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
-            // These stories mount full interview shells (Redux store + search
-            // web workers); running files in parallel iframes starves the
-            // worker round-trips past any timeout (Navigation / roster filter
-            // stories fail on every loaded run) and is slower overall than
-            // sequential execution. Keep files sequential.
-            fileParallelism: false,
-            // Reuse one iframe for every file instead of building a fresh one
-            // per file. These 60 files each mount a full interview shell —
-            // WebGL canvases, mapbox maps, search workers — and the detached
-            // iframes hold their native resources long enough that the
-            // renderer dies partway through the run, taking the whole suite
-            // with it ("Browser connection was closed while running tests",
-            // on a different file each time). Reusing the iframe recycles
-            // those resources instead of accumulating 60 sets of them.
-            isolate: false,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

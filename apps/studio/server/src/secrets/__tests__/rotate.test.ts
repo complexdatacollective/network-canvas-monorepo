@@ -133,10 +133,9 @@ describe.skipIf(!db)('rotating stored secrets', () => {
           );
     await pool.query(
       `INSERT INTO account
-         (id, "accountId", "providerId", issuer, "userId",
+         (id, "accountId", "providerId", "userId",
           "accessToken", "refreshToken", "idToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'https://accounts.google.com', 'user-rotation',
-               $3, $4, $5, now())`,
+       VALUES ($1, $2, 'google', 'user-rotation', $3, $4, $5, now())`,
       [
         id,
         accountId,
@@ -454,9 +453,8 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     await newAssetKey(before, 'not a key id either');
     await pool.query(
       `INSERT INTO account
-         (id, "accountId", "providerId", issuer, "userId", "accessToken", "updatedAt")
-       VALUES ($1, $1, 'google', 'https://accounts.google.com', 'user-rotation',
-               'studio-secret::whatever', now())`,
+         (id, "accountId", "providerId", "userId", "accessToken", "updatedAt")
+       VALUES ($1, $1, 'google', 'user-rotation', 'studio-secret::whatever', now())`,
       [randomUUID()],
     );
 
@@ -506,9 +504,8 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     const id = randomUUID();
     await pool.query(
       `INSERT INTO account
-         (id, "accountId", "providerId", issuer, "userId", "refreshToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'https://accounts.google.com', 'user-rotation',
-               '1//written-around-the-adapter', now())`,
+         (id, "accountId", "providerId", "userId", "refreshToken", "updatedAt")
+       VALUES ($1, $2, 'google', 'user-rotation', '1//written-around-the-adapter', now())`,
       [id, `sub-${id}`],
     );
 
@@ -539,9 +536,9 @@ describe.skipIf(!db)('rotating stored secrets', () => {
     const id = randomUUID();
     await pool.query(
       `INSERT INTO account
-         (id, "accountId", "providerId", issuer, "userId",
+         (id, "accountId", "providerId", "userId",
           "accessToken", "refreshToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'https://accounts.google.com', 'user-rotation',
+       VALUES ($1, $2, 'google', 'user-rotation',
                $3, 'ya29.written-around-the-adapter', now())`,
       [
         id,
