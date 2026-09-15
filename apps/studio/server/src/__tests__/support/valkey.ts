@@ -20,9 +20,9 @@ import {
 /* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
 const CI = process.env.CI === 'true';
 
-function unavailable(reason: string): null {
+function unavailable<T>(reason: string, fallback: T): T {
   if (CI) throw new Error(`the Studio limiter suites cannot run: ${reason}`);
-  return null;
+  return fallback;
 }
 
 /** Database indices, one per suite, so no two files share a key space. */
@@ -53,11 +53,11 @@ function scratchRedisUrl(database: number): string | null {
  */
 export async function reachableRedis(database: number): Promise<string | null> {
   const url = scratchRedisUrl(database);
-  if (!url) return unavailable('REDIS_URL is not set');
+  if (!url) return unavailable('REDIS_URL is not set', null);
   const store = createRateLimitStore(url);
   try {
     if ((await store.ping()) !== 'ok') {
-      return unavailable(`${url} is unreachable`);
+      return unavailable(`${url} is unreachable`, null);
     }
     await store.run((redis) => redis.flushdb());
     return url;
@@ -74,6 +74,34 @@ export async function withStore<T>(
   const store = createRateLimitStore(url);
   try {
     return await work(store);
+  } finally {
+    await store.close();
+  }
+}
+
+/**
+ * Whether the process-wide store answers: `REDIS_URL` itself, which is what
+ * `reserveDeniedAuditAttempt` reaches through, rather than one of the scratch
+ * databases above.
+ *
+ * It exists because the audit denial window fails open (#1909). A case that
+ * counts how many denial events one actor may write is asserting about a
+ * limit that is not being applied when the store is missing, so it gets six
+ * events instead of five and fails — where before the window was in memory
+ * and always there. Such a case skips instead, the same way a database-backed
+ * one does, and on CI this throws rather than skipping.
+ *
+ * It deliberately does NOT empty the database. Every file that counts a
+ * denial counts in that one database, and they run in parallel, so a flush
+ * here would spend another file's window.
+ */
+export async function reachableDeniedAuditStore(): Promise<boolean> {
+  const { redis } = readEnv();
+  if (!redis) return unavailable('REDIS_URL is not set', false);
+  const store = createRateLimitStore(redis);
+  try {
+    if ((await store.ping()) === 'ok') return true;
+    return unavailable(`${redis} is unreachable`, false);
   } finally {
     await store.close();
   }

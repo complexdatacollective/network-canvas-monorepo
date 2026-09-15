@@ -15,6 +15,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { reachableDeniedAuditStore } from '../../__tests__/support/valkey.ts';
 import {
   auditEventContext,
   type AuditedMutationResult,
@@ -46,6 +47,15 @@ const compileTimeEmptyEventProof: AuditedMutationResult<void> = {
 void compileTimeEmptyEventProof;
 
 const db = await reachableDb();
+
+/**
+ * The three cases below assert where the audit denial window's cap falls, and
+ * that window counts in Valkey since #1909. It fails open, so without a store
+ * they would not fail to be limited — they would simply not be limited, write
+ * a sixth denial event and fail. They skip instead, like the database-backed
+ * cases; on CI the probe throws, because there the store is part of the job.
+ */
+const deniedAuditWindow = await reachableDeniedAuditStore();
 
 type Identity = {
   userId: string;
@@ -425,47 +435,50 @@ describe.skipIf(!db)('audited team commands', () => {
     ]);
   });
 
-  it('rate-limits immutable wrong-account denial events before the team lock', async () => {
-    const teamId = `command-accept-denial-limit-${randomUUID().slice(0, 8)}`;
-    const invitationId = randomUUID();
-    await seedTeam(pool, teamId);
-    const owner = identity(teamId, 'owner', 'owner');
-    const invitee = identity(teamId, 'invitee', 'member');
-    const wrongUser = identity(teamId, 'wrong-user', 'member');
-    await seedIdentity(pool, teamId, owner);
-    await seedUser(pool, invitee);
-    await seedUser(pool, wrongUser);
-    await seedInvitation(pool, {
-      id: invitationId,
-      teamId,
-      inviterId: owner.userId,
-      email: invitee.email,
-      role: invitee.role,
-    });
+  it.skipIf(!deniedAuditWindow)(
+    'rate-limits immutable wrong-account denial events before the team lock',
+    async () => {
+      const teamId = `command-accept-denial-limit-${randomUUID().slice(0, 8)}`;
+      const invitationId = randomUUID();
+      await seedTeam(pool, teamId);
+      const owner = identity(teamId, 'owner', 'owner');
+      const invitee = identity(teamId, 'invitee', 'member');
+      const wrongUser = identity(teamId, 'wrong-user', 'member');
+      await seedIdentity(pool, teamId, owner);
+      await seedUser(pool, invitee);
+      await seedUser(pool, wrongUser);
+      await seedInvitation(pool, {
+        id: invitationId,
+        teamId,
+        inviterId: owner.userId,
+        email: invitee.email,
+        role: invitee.role,
+      });
 
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      await expect(
-        acceptTeamInvitation(
-          {
-            pool: app,
-            principal: principal(wrongUser),
-            requestId: randomUUID(),
-          },
-          { invitationId },
-        ),
-      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    }
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await expect(
+          acceptTeamInvitation(
+            {
+              pool: app,
+              principal: principal(wrongUser),
+              requestId: randomUUID(),
+            },
+            { invitationId },
+          ),
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      }
 
-    expect(
-      await pool.query(
-        `SELECT id FROM audit_events
+      expect(
+        await pool.query(
+          `SELECT id FROM audit_events
          WHERE team_id = $1
            AND actor_id = $2
            AND event_type = 'team.invitation.acceptance_denied'`,
-        [teamId, wrongUser.userId],
-      ),
-    ).toHaveProperty('rowCount', 5);
-  });
+          [teamId, wrongUser.userId],
+        ),
+      ).toHaveProperty('rowCount', 5);
+    },
+  );
 
   it.each([
     {
@@ -1118,53 +1131,59 @@ describe.skipIf(!db)('audited team commands', () => {
     ).rejects.toThrow('audit events are immutable');
   });
 
-  it('bounds repeated denied owner invitations before starting another team transaction', async () => {
-    const teamId = `command-owner-invitation-denial-limit-${randomUUID().slice(0, 8)}`;
-    await seedTeam(pool, teamId);
-    const admin = identity(teamId, 'admin', 'admin');
-    await seedIdentity(pool, teamId, admin);
-    let transactionCount = 0;
-    const tenantDb = signalTenantTransaction(
-      createTenantDb(app, teamId),
-      () => transactionCount++,
-    );
+  it.skipIf(!deniedAuditWindow)(
+    'bounds repeated denied owner invitations before starting another team transaction',
+    async () => {
+      const teamId = `command-owner-invitation-denial-limit-${randomUUID().slice(0, 8)}`;
+      await seedTeam(pool, teamId);
+      const admin = identity(teamId, 'admin', 'admin');
+      await seedIdentity(pool, teamId, admin);
+      let transactionCount = 0;
+      const tenantDb = signalTenantTransaction(
+        createTenantDb(app, teamId),
+        () => transactionCount++,
+      );
 
-    for (let attempt = 0; attempt < 6; attempt++) {
-      await expect(
-        createTeamInvitation(
-          {
-            jobs,
-            tenantDb,
-            principal: principal(admin),
-            requestId: randomUUID(),
-          },
-          { email: `prospective-owner-${attempt}@example.com`, role: 'owner' },
-        ),
-      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    }
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await expect(
+          createTeamInvitation(
+            {
+              jobs,
+              tenantDb,
+              principal: principal(admin),
+              requestId: randomUUID(),
+            },
+            {
+              email: `prospective-owner-${attempt}@example.com`,
+              role: 'owner',
+            },
+          ),
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      }
 
-    expect(transactionCount).toBe(5);
-    expect(
-      await pool.query(
-        `SELECT id FROM audit_events
+      expect(transactionCount).toBe(5);
+      expect(
+        await pool.query(
+          `SELECT id FROM audit_events
          WHERE team_id = $1
            AND event_type = 'team.invitation.creation_denied'`,
-        [teamId],
-      ),
-    ).toHaveProperty('rowCount', 5);
-    expect(
-      await pool.query(`SELECT id FROM team_invitations WHERE team_id = $1`, [
-        teamId,
-      ]),
-    ).toHaveProperty('rowCount', 0);
-    expect(
-      await pool.query(
-        `SELECT invitation_id FROM team_invitation_deliveries
+          [teamId],
+        ),
+      ).toHaveProperty('rowCount', 5);
+      expect(
+        await pool.query(`SELECT id FROM team_invitations WHERE team_id = $1`, [
+          teamId,
+        ]),
+      ).toHaveProperty('rowCount', 0);
+      expect(
+        await pool.query(
+          `SELECT invitation_id FROM team_invitation_deliveries
          WHERE team_id = $1`,
-        [teamId],
-      ),
-    ).toHaveProperty('rowCount', 0);
-  });
+          [teamId],
+        ),
+      ).toHaveProperty('rowCount', 0);
+    },
+  );
 
   it('does not reject or misclassify a concurrent authorized invitation burst', async () => {
     const teamId = 'command-authorized-invitation-burst';
@@ -1260,42 +1279,45 @@ describe.skipIf(!db)('audited team commands', () => {
     ]);
   });
 
-  it('bounds repeated denied role-change events before starting another team transaction', async () => {
-    const teamId = `command-role-denied-rate-limit-${randomUUID().slice(0, 8)}`;
-    await seedTeam(pool, teamId);
-    const owner = identity(teamId, 'owner', 'owner');
-    const member = identity(teamId, 'member', 'member');
-    await seedIdentity(pool, teamId, owner);
-    await seedIdentity(pool, teamId, member);
-    let transactionCount = 0;
-    const tenantDb = signalTenantTransaction(
-      createTenantDb(app, teamId),
-      () => transactionCount++,
-    );
+  it.skipIf(!deniedAuditWindow)(
+    'bounds repeated denied role-change events before starting another team transaction',
+    async () => {
+      const teamId = `command-role-denied-rate-limit-${randomUUID().slice(0, 8)}`;
+      await seedTeam(pool, teamId);
+      const owner = identity(teamId, 'owner', 'owner');
+      const member = identity(teamId, 'member', 'member');
+      await seedIdentity(pool, teamId, owner);
+      await seedIdentity(pool, teamId, member);
+      let transactionCount = 0;
+      const tenantDb = signalTenantTransaction(
+        createTenantDb(app, teamId),
+        () => transactionCount++,
+      );
 
-    for (let attempt = 0; attempt < 6; attempt++) {
-      await expect(
-        updateTeamMemberRole(
-          {
-            tenantDb,
-            principal: principal(member),
-            requestId: randomUUID(),
-          },
-          { memberId: owner.memberId, role: 'member' },
-        ),
-      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    }
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await expect(
+          updateTeamMemberRole(
+            {
+              tenantDb,
+              principal: principal(member),
+              requestId: randomUUID(),
+            },
+            { memberId: owner.memberId, role: 'member' },
+          ),
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      }
 
-    expect(transactionCount).toBe(5);
-    expect(
-      await pool.query(
-        `SELECT id FROM audit_events
+      expect(transactionCount).toBe(5);
+      expect(
+        await pool.query(
+          `SELECT id FROM audit_events
          WHERE team_id = $1
            AND event_type = 'team.member.role_change_denied'`,
-        [teamId],
-      ),
-    ).toHaveProperty('rowCount', 5);
-  });
+          [teamId],
+        ),
+      ).toHaveProperty('rowCount', 5);
+    },
+  );
 
   it('records a bounded failure for last-owner rejection without a false success event', async () => {
     const teamId = 'command-last-owner';

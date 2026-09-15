@@ -107,6 +107,13 @@ which stays 200. A rate limit protects against abuse and is not a correctness
 guarantee; refusing traffic because the defence is broken would turn an abuse
 control into an outage.
 
+The suites that exercise any of this — the limiter's own, and the three cases
+in `server/src/team/__tests__/commands.test.ts` that assert where the audit
+denial window's cap falls — need the development lane's Valkey running and
+skip without it, because a limiter that fails open cannot be observed
+enforcing anything; on CI they throw instead, where the store is part of the
+job.
+
 What was refused is reported once a minute by the `denied-attempts-summary`
 job on the worker (see [Background work](#background-work)). Suppressed
 authorization denials become one
