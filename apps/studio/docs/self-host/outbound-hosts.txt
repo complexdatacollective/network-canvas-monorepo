@@ -1,0 +1,23 @@
+# Every host a Network Canvas Studio instance contacts outbound (#1909).
+#
+# This is the list, and `requirements.md` beside it explains each entry; a
+# vitest asserts the two agree, so neither can be changed alone. #1897's
+# no-outbound CI job reads this file as its allowlist: with telemetry off, a
+# running stack that contacts anything not named here fails that job.
+#
+# One host per line. `#` starts a comment; blank lines are ignored.
+#
+# The SMTP host is deliberately absent: it is whatever `SMTP_URL` names, so
+# there is no fixed value to allow. #1897's job points it at a local sink.
+
+# Container images.
+ghcr.io
+
+# TLS certificates, over ACME HTTP-01.
+acme-v02.api.letsencrypt.org
+
+# The daily update check (#1901). Not configurable.
+releases.networkcanvas.com
+
+# Analytics and error reporting, only while STUDIO_TELEMETRY is on (#1897).
+ph-relay.networkcanvas.com
