@@ -28,6 +28,10 @@ import { createAppRouter } from '../../router.tsx';
 const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   deployment: { mode: 'managed', billing: false },
+  // First-run setup (#1909), read at call time like `deployment`: `/setup` is
+  // a real screen while an instance has no owner and a not-found once it has.
+  setup: { required: true },
+  complete: vi.fn(),
   getSession: vi.fn(),
   // Read at call time, so a test can put the researcher in no team, or in
   // several, before it renders.
@@ -129,6 +133,7 @@ vi.mock('../../lib/api.ts', () => ({
           // Read at call time, so a test can put the client on a self-hosted
           // instance before it renders.
           deployment: fixtures.deployment,
+          setup: fixtures.setup,
         }),
       }),
     },
@@ -214,7 +219,11 @@ vi.mock('../../lib/api.ts', () => ({
       },
     },
   },
-  rpcClient: { protocols: {}, team: {} },
+  rpcClient: {
+    protocols: {},
+    team: {},
+    setup: { complete: fixtures.complete },
+  },
 }));
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
@@ -531,6 +540,7 @@ const HEADER = ['/team/$teamId', '/gallery', '/templates'];
 
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
+  fixtures.setup = { required: true };
   fixtures.teams = [fixtures.TEAM];
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
@@ -543,6 +553,51 @@ beforeEach(() => {
  * resolution is the half of it that decides where a session goes. Both are
  * asserted here rather than at the screens, because both are guards.
  */
+/**
+ * `/setup` is the one route whose existence turns over while the process runs:
+ * it is a screen on an instance nobody owns and gone the moment somebody does
+ * (#1909). Both halves are the guard's, so both are asserted here.
+ */
+describe('first-run setup', () => {
+  it('offers the form while the instance has no owner', async () => {
+    const router = renderAt('/setup');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'First-run setup' }),
+    ).toBeInTheDocument();
+    // The five things setting an instance up takes. Their labels are what a
+    // person reads, so they are what this looks the fields up by.
+    expect(screen.getByLabelText(/Setup token/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Name of this instance/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Your name/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Your email address/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Choose a password/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Set up this instance' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/setup');
+  });
+
+  it('is a not-found screen once somebody owns the instance', async () => {
+    fixtures.setup = { required: false };
+
+    renderAt('/setup');
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Setup is complete',
+      }),
+    ).toBeInTheDocument();
+    // No way back in: the form is gone, and what is left points at sign-in.
+    expect(screen.queryByLabelText(/Setup token/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
+  });
+});
+
 describe('the root, by topology', () => {
   it('renders marketing on the managed service, signed in', async () => {
     const router = renderAt('/');

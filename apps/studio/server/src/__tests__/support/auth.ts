@@ -17,6 +17,8 @@ export function stubAuthService(overrides?: Partial<AuthService>): AuthService {
     getSession: () => Promise.resolve(null),
     getMembership: () => Promise.resolve(null),
     listMemberships: () => Promise.resolve([]),
+    signUpEmail: () => Promise.resolve({ kind: 'unavailable' }),
+    signInEmail: () => Promise.resolve({ kind: 'refused' }),
     ...overrides,
   };
 }

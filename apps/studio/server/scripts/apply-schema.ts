@@ -1,5 +1,9 @@
 import { createOwnerPool } from '../src/db/pool.ts';
 import { readEnv } from '../src/env.ts';
+import {
+  issueBootstrapToken,
+  printBootstrapToken,
+} from '../src/setup/bootstrap.ts';
 import { applySchema } from './apply.ts';
 
 // The server only verifies; this is the application step for every lane, run
@@ -27,6 +31,11 @@ try {
     }
     console.log(`Schema applied (${outcome.statements.length} statements).`);
   }
+  // First-run bootstrap (#1909). After the schema, because the row it writes
+  // is part of it, and on every run, because an ownerless instance whose token
+  // was lost is recovered by running this again. An owned instance issues
+  // nothing and prints nothing.
+  printBootstrapToken(await issueBootstrapToken(pool), env.auth?.baseUrl);
 } finally {
   await pool.end();
 }

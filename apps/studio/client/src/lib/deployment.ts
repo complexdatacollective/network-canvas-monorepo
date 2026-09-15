@@ -36,6 +36,35 @@ export async function fetchDeploymentMode(
   return status.deployment.mode;
 }
 
+/**
+ * Whether this instance still has nobody in it (#1909), for `/setup`'s guard —
+ * which, like `/`'s, has to have the answer before it can decide what the
+ * route is: a real screen while the answer is yes, and a not-found the moment
+ * it is no. The same query as the mode above, because it is the same question
+ * asked of the same immutable-per-process answer.
+ */
+export async function fetchSetupRequirement(
+  queryClient: QueryClient,
+): Promise<boolean> {
+  const status = await queryClient.fetchQuery(statusQueryOptions);
+  return status.setup.required;
+}
+
+/**
+ * Re-asks status after first-run setup has changed it. `staleTime: Infinity`
+ * is right for an answer fixed for the life of the process serving the bundle,
+ * and completing setup is the one moment in that life when it moves: the
+ * instance gains a name and an owner, so `/setup` becomes a not-found and
+ * every screen that names the instance names the new one.
+ */
+export async function invalidateInstanceStatus(
+  queryClient: QueryClient,
+): Promise<void> {
+  await queryClient.invalidateQueries({
+    queryKey: statusQueryOptions.queryKey,
+  });
+}
+
 const BILLING_PATH = '/team/$teamId/billing';
 
 const billingUnavailableMessages = defineMessages({

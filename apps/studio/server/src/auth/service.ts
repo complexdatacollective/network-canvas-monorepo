@@ -37,6 +37,31 @@ export type IdentifiedTeamMembership = TeamMembership & {
   teamId: string;
 };
 
+/**
+ * A session the auth provider has just established for a caller who had none.
+ *
+ * `headers` are the provider's own response headers, `set-cookie` included:
+ * the browser is signed in by carrying them out through the surface that asked
+ * (oRPC's ResponseHeadersPlugin, wired in src/app.ts), rather than by any
+ * cookie this application knows how to spell.
+ */
+export type EstablishedSession = {
+  userId: string;
+  headers: Headers;
+};
+
+export type SignUpOutcome =
+  | { kind: 'created'; session: EstablishedSession }
+  /** The address already has an account; nothing was created. */
+  | { kind: 'emailTaken' }
+  /** Auth is not configured, so no account can exist. */
+  | { kind: 'unavailable' };
+
+export type SignInOutcome =
+  | { kind: 'signedIn'; session: EstablishedSession }
+  /** Wrong credentials, no such account, or auth is not configured. */
+  | { kind: 'refused' };
+
 export type AuthService = {
   handler(request: Request): Promise<Response>;
   /** Cookie-session lookup; null when absent, expired, or auth is disabled. */
@@ -50,6 +75,29 @@ export type AuthService = {
    * Empty when the user belongs to nothing, or auth is disabled.
    */
   listMemberships(userId: string): Promise<IdentifiedTeamMembership[]>;
+  /**
+   * Creates an email/password account and signs it in, returning the headers
+   * that carry the session.
+   *
+   * Here for first-run bootstrap alone (#1909): every other account arrives
+   * through the provider's own endpoints under `/api/auth/*`, which the
+   * browser talks to directly. `/setup` cannot, because the account it creates
+   * and the ownership mark it writes have to be one procedure.
+   */
+  signUpEmail(input: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<SignUpOutcome>;
+  /**
+   * Signs an existing account in, for the one case `/setup` has to recover
+   * from: an account created by an interrupted setup, whose ownership mark
+   * never landed. Proving the password is what makes adopting it safe.
+   */
+  signInEmail(input: {
+    email: string;
+    password: string;
+  }): Promise<SignInOutcome>;
 };
 
 export function createDisabledAuthService(): AuthService {
@@ -67,5 +115,7 @@ export function createDisabledAuthService(): AuthService {
     getSession: () => Promise.resolve(null),
     getMembership: () => Promise.resolve(null),
     listMemberships: () => Promise.resolve([]),
+    signUpEmail: () => Promise.resolve({ kind: 'unavailable' }),
+    signInEmail: () => Promise.resolve({ kind: 'refused' }),
   };
 }

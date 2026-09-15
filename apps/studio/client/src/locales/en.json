@@ -791,14 +791,6 @@
     "defaultMessage": "Pricing",
     "description": "Name of the Pricing screen at /pricing, used as its heading."
   },
-  "studio.screens.setupDescription": {
-    "defaultMessage": "Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.",
-    "description": "What the First-run setup screen at /setup will do, shown on it while it is not yet built."
-  },
-  "studio.screens.setupTitle": {
-    "defaultMessage": "First-run setup",
-    "description": "Name of the First-run setup screen at /setup, used as its heading."
-  },
   "studio.screens.signUpCheckoutDescription": {
     "defaultMessage": "Hands off to the payment provider's own checkout, so card details never reach Studio.",
     "description": "What the Checkout screen at /sign-up/checkout will do, shown on it while it is not yet built."
@@ -974,6 +966,78 @@
   "studio.screens.templatesTitle": {
     "defaultMessage": "Templates",
     "description": "Name of the Templates screen at /templates, used as its heading."
+  },
+  "studio.setup.alreadySetUp": {
+    "defaultMessage": "This instance has already been set up. Sign in with the owner’s account.",
+    "description": "Form error when setup was completed by somebody else while this screen was open."
+  },
+  "studio.setup.closedBody": {
+    "defaultMessage": "This instance has already been set up, so there is nothing to do here.",
+    "description": "Explanation shown at /setup on an instance that already has an owner."
+  },
+  "studio.setup.closedHeading": {
+    "defaultMessage": "Setup is complete",
+    "description": "Heading shown at /setup on an instance that already has an owner."
+  },
+  "studio.setup.closedSignIn": {
+    "defaultMessage": "Go to sign in",
+    "description": "Link from the closed first-run setup screen to the sign-in screen."
+  },
+  "studio.setup.emailHint": {
+    "defaultMessage": "The address you will sign in with.",
+    "description": "Hint under the owner's email field when the value is not a valid address."
+  },
+  "studio.setup.emailLabel": {
+    "defaultMessage": "Your email address",
+    "description": "Label of the owner's email field."
+  },
+  "studio.setup.emailTaken": {
+    "defaultMessage": "That email address already has an account here. Enter its password, or use a different address.",
+    "description": "Form error when the chosen email address already belongs to an account."
+  },
+  "studio.setup.failed": {
+    "defaultMessage": "Setup did not complete. Wait a moment and try again.",
+    "description": "Form error when first-run setup failed for another reason."
+  },
+  "studio.setup.heading": {
+    "defaultMessage": "First-run setup",
+    "description": "Heading of the first-run setup screen at /setup."
+  },
+  "studio.setup.instanceNameHint": {
+    "defaultMessage": "What everyone who uses this instance will see it called, such as your department or project.",
+    "description": "Hint under the instance name field."
+  },
+  "studio.setup.instanceNameLabel": {
+    "defaultMessage": "Name of this instance",
+    "description": "Label of the instance name field."
+  },
+  "studio.setup.intro": {
+    "defaultMessage": "Nobody owns this instance yet. Enter the setup token printed when its database was created, then create the account that will own it.",
+    "description": "Introduction on the first-run setup screen."
+  },
+  "studio.setup.ownerNameLabel": {
+    "defaultMessage": "Your name",
+    "description": "Label of the owner's name field."
+  },
+  "studio.setup.passwordLabel": {
+    "defaultMessage": "Choose a password",
+    "description": "Label of the owner's password field."
+  },
+  "studio.setup.submit": {
+    "defaultMessage": "Set up this instance",
+    "description": "Submit button of the first-run setup form."
+  },
+  "studio.setup.tokenHint": {
+    "defaultMessage": "Printed once, by the command that created this instance’s database.",
+    "description": "Hint under the setup token field."
+  },
+  "studio.setup.tokenLabel": {
+    "defaultMessage": "Setup token",
+    "description": "Label of the setup token field."
+  },
+  "studio.setup.wrongToken": {
+    "defaultMessage": "That setup token is not valid. Run the database command again to print a new one.",
+    "description": "Form error when the setup token was refused."
   },
   "studio.shell.accountMenuTrigger": {
     "defaultMessage": "Account",
