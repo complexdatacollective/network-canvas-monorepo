@@ -122,11 +122,13 @@ export default function IconPicker({
   required = false,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
+  'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: IconPickerProps) {
   const intl = useAppIntl();
   const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const portalContainer = usePortalContainer();
 
   const selectedName = isIconName(value) ? value : undefined;
@@ -157,6 +159,15 @@ export default function IconPicker({
     return { visibleIcons: matches, totalMatches: matchCount };
   }, [query, selectedName]);
 
+  /** What is being shown of what, while the list is holding fewer than match. */
+  const capped =
+    totalMatches > visibleIcons.length
+      ? intl.formatMessage(messages.showingSome, {
+          count: visibleIcons.length,
+          total: totalMatches,
+        })
+      : undefined;
+
   return (
     <Combobox.Root<InterviewerIconName>
       value={selectedName}
@@ -169,6 +180,7 @@ export default function IconPicker({
       }}
       onInputValueChange={setQuery}
       onOpenChange={(open) => {
+        setIsOpen(open);
         if (!open) setQuery('');
       }}
       disabled={disabled || readOnly}
@@ -178,7 +190,18 @@ export default function IconPicker({
         id={id}
         onBlur={onBlur}
         onFocus={onFocus}
-        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+        // `Field` names the control through `aria-labelledby`; a caller using
+        // it standalone names it with `aria-label` instead. Both are
+        // forwarded, and the `${id}-label` guess applies only when neither
+        // was given — a labelledby pointing at nothing would otherwise beat a
+        // perfectly good `aria-label`.
+        aria-label={ariaLabel}
+        aria-labelledby={
+          ariaLabelledBy ??
+          (ariaLabel === undefined && id !== undefined
+            ? `${id}-label`
+            : undefined)
+        }
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid || undefined}
         aria-required={ariaRequired || required || undefined}
@@ -209,6 +232,16 @@ export default function IconPicker({
         )}
         <ChevronsUpDown className="h-[1.2em] w-[1.2em] shrink-0" />
       </Combobox.Trigger>
+
+      {/* Mounted from the first render, and outside the popup, which exists
+          only while the picker is open. A live region that arrives already
+          holding its text is not reliably announced, so this one waits here
+          empty for the text rather than appearing with it — and it stays
+          empty until the list is actually open, so nothing is announced about
+          a list nobody has asked for yet. */}
+      <span aria-live="polite" className="sr-only">
+        {isOpen ? capped : undefined}
+      </span>
 
       <Combobox.Portal container={portalContainer ?? undefined}>
         <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
@@ -270,15 +303,11 @@ export default function IconPicker({
             {/* The cap is a fact about the list a sighted reader cannot see
                 either: the list simply stops. Said in a live region so that
                 it arrives as the search narrows, rather than only on open. */}
-            {totalMatches > visibleIcons.length && (
-              <p
-                aria-live="polite"
-                className="px-2 text-center text-sm text-current/50 italic"
-              >
-                {intl.formatMessage(messages.showingSome, {
-                  count: visibleIcons.length,
-                  total: totalMatches,
-                })}
+            {/* Said in the popup, but not the thing that announces it: see
+                the live region beside the trigger. */}
+            {capped !== undefined && (
+              <p className="px-2 text-center text-sm text-current/50 italic">
+                {capped}
               </p>
             )}
           </Combobox.Popup>

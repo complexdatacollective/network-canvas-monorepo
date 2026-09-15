@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../Field/Field';
 import Form from '../Form';
@@ -100,7 +100,9 @@ describe('IconPicker', () => {
     fireEvent.click(screen.getByRole('combobox', { name: 'Node icon' }));
 
     search('a');
-    expect(screen.getByText(/Showing 200 of [\d,]+ icons/)).toBeInTheDocument();
+    // Twice over: the visible note in the popup, and the live region beside
+    // the trigger that actually announces it.
+    expect(screen.getAllByText(/Showing 200 of [\d,]+ icons/)).toHaveLength(2);
 
     search('menu-sociogram');
     expect(screen.queryByText(/Showing [\d,]+ of/)).not.toBeInTheDocument();
@@ -114,5 +116,56 @@ describe('IconPicker', () => {
 
     expect(screen.getByText('No icons found')).toBeInTheDocument();
     expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+});
+
+describe('IconPicker standalone', () => {
+  /** Accepted in the props and previously dropped, so the control had no name. */
+  it('names the control from aria-label when no field labels it', () => {
+    render(<IconPicker aria-label="Node icon" value="Circle" />);
+
+    expect(
+      screen.getByRole('combobox', { name: 'Node icon' }),
+    ).toHaveTextContent('Circle');
+  });
+
+  /**
+   * The count is announced from a region that was already on screen before it
+   * had anything to say: one created together with its text is not reliably
+   * read out.
+   */
+  it('keeps the live region mounted before it has anything to announce', () => {
+    const { container } = render(
+      <IconPicker aria-label="Node icon" value="add-a-person" />,
+    );
+
+    const live = container.querySelector('[aria-live="polite"]');
+    expect(live).toBeInTheDocument();
+    // Empty until the list is open: a count announced about a list nobody has
+    // opened is noise, and one that arrives with its region is not announced.
+    expect(live).toBeEmptyDOMElement();
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Node icon' }));
+
+    expect(live).toHaveTextContent(/Showing 200 of [\d,]+ icons/);
+  });
+
+  it('refuses a choice while disabled', () => {
+    const onChange = vi.fn();
+    render(
+      <IconPicker
+        aria-label="Node icon"
+        value="Circle"
+        disabled
+        onChange={onChange}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', { name: 'Node icon' });
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+
+    expect(screen.queryByPlaceholderText('Search icons…')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

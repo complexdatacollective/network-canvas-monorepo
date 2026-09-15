@@ -3,8 +3,6 @@ import { type ComponentProps, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
-import Field from '../Field/Field';
-import Form from '../Form';
 import IconPicker from './IconPicker';
 
 /**
@@ -72,18 +70,10 @@ import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
     'aria-label': 'Icon',
     'value': 'add-a-person',
   },
-  render: (args) => (
-    <Form onSubmit={() => ({ success: true })}>
-      <Field
-        name="icon"
-        label="Icon"
-        hint="Shown by the interfaces that create this type."
-        component={ExampleIconPicker}
-        initialValue={args.value ?? ''}
-        required
-      />
-    </Form>
-  ),
+  // Rendered bare and handed every arg, so the Controls panel drives the real
+  // public surface — `disabled`, `readOnly` and `aria-invalid` included, which
+  // a wrapper that only read `value` left unexercised.
+  render: (args) => <ExampleIconPicker key={args.value} {...args} />,
 } satisfies Meta<typeof IconPicker>;
 
 export default meta;
