@@ -41,6 +41,9 @@ catalog:
   '@capacitor/share': ^8.0.1
   '@capawesome/capacitor-file-picker': ^8.0.2
   '@chromatic-com/storybook': ^5.2.1
+  # Every `@effect/*` entry must be the exact version `effect` is pinned to
+  # below; the ecosystem ships one version number for all of them.
+  '@effect/vitest': 4.0.0-rc.115
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
@@ -124,7 +127,8 @@ catalog:
   # range once 1.0.0 stable ships.
   drizzle-kit: 1.0.0-rc.4
   drizzle-orm: 1.0.0-rc.4
-  effect: ^3.22.1
+  # Pinned exactly: the `rc` dist-tag moves. Bumping is a chore PR of its own.
+  effect: 4.0.0-rc.115
   electron: ^43.0.0
   electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
@@ -207,7 +211,9 @@ overrides:
   # recursive-graph stack exhaustion (GHSA-ggr8-5vv4-36mx) and keeps the
   # variadic deepmerge() API Prisma's config loader calls.
   deepmerge-ts: '^8.0.2'
-  'effect@3.17.7': 'catalog:'
+  # @uploadthing/shared is written against the Effect 3 API. A literal, not
+  # `catalog:`, because the catalog is on Effect 4.
+  'effect@3.17.7': '^3.22.1'
   # ajv (build and dev tooling only) resolves fast-uri; 3.1.6 closes the
   # URI-normalisation host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
   # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
