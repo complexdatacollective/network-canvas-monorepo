@@ -11,6 +11,16 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'A personal presentation preference has no tenant and no research-data significance; the audit log is study/team-scoped by design (2026-09-04 localization design §5.2, decision 7).',
   },
+  // First-run bootstrap (#1909). The audit log is team-scoped by design and
+  // this procedure runs before any team — or any account — exists, so there is
+  // no tenant to write the event under and no actor to attribute it to. What
+  // it does is legible from the instance itself: an installation row with an
+  // owner, which can only have been written here.
+  'setup.complete': {
+    kind: 'none',
+    reason:
+      'First-run setup precedes every team and every account, so it has no tenant to be audited under; the owned installation row is its own record.',
+  },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },

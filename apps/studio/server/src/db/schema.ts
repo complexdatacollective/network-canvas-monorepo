@@ -23,6 +23,7 @@ import {
 } from '../protocol-builder/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { SCHEDULE_SIDECAR_SQL, SCHEDULE_TABLES } from '../schedule/schema.ts';
+import { SETUP_SIDECAR_SQL, SETUP_TABLES } from '../setup/schema.ts';
 import {
   STUDY_ROLE_SIDECAR_SQL,
   STUDY_ROLE_TABLES,
@@ -72,6 +73,7 @@ export const SCHEMA = {
   ...MONITORING_TABLES,
   ...AUDIT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
+  ...SETUP_TABLES,
   schemaFingerprint,
 };
 
@@ -101,6 +103,7 @@ export const SIDECARS = [
   FEEDBACK_SIDECAR_SQL,
   MONITORING_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
+  SETUP_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 

@@ -45,6 +45,9 @@ const STATUS: Status = {
     socialProviders: [],
   },
   deployment: { mode: 'managed', billing: false },
+  // This instance has an owner: first-run setup (#1909) is closed everywhere
+  // except the screen that is for it.
+  setup: { required: false },
 };
 let currentStatus: Status = STATUS;
 

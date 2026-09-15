@@ -289,6 +289,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         {
           auth: stubAuthService({ listMemberships: memberships }),
           deployment: { mode: 'self-hosted', billing: false },
+          // Nothing here reads `status`; the installation row is the
+          // first-run bootstrap's (#1909), and an unset one is "no
+          // installation to report".
+          readInstallation: () => Promise.resolve(null),
           pool: scratch.app,
           protocolBuilder: createProtocolBuilderRuntime(() => now),
           assetStore,
@@ -304,6 +308,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       {
         auth: stubAuthService({ listMemberships: memberships }),
         deployment: { mode: 'self-hosted', billing: false },
+        readInstallation: () => Promise.resolve(null),
         pool: scratch.app,
         protocolBuilder: runtime,
         assetStore,
