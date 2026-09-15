@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -16,6 +16,7 @@ import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import { ProtocolStore } from '../src/protocol/store.ts';
 import { createSecretsCipher } from '../src/secrets/cipher.ts';
 import { applySchema } from './apply.ts';
+import { loadEnvFiles } from './load-env-files.ts';
 
 // Shows what a protocol looks like inside the store, because no RPC procedure
 // or screen reaches it yet. Verification belongs to src/protocol's suites, not
@@ -28,19 +29,6 @@ const { values } = parseArgs({
     force: { type: 'boolean', default: false },
   },
 });
-
-function loadEnvFiles(): void {
-  const file = (name: string) =>
-    fileURLToPath(new URL(`../${name}`, import.meta.url));
-  if (existsSync(file('.env'))) process.loadEnvFile(file('.env'));
-  const target = process.env.DATABASE_URL;
-  if (
-    (!target || isLocalDatabase(target)) &&
-    existsSync(file('.env.development'))
-  ) {
-    process.loadEnvFile(file('.env.development'));
-  }
-}
 
 const DEFAULT_PROTOCOL = '@codaco/protocols/sample';
 

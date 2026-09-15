@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
 
+import { CI } from '../../__tests__/support/env.ts';
 import {
   createScratchSchema,
   dumpSchemaRows,
@@ -96,12 +97,9 @@ describe.skipIf(!db)('the seeded dataset', () => {
     await scratch?.dispose();
   }, 60_000);
 
-  it.skipIf(process.env.CI)(
-    'finishes inside the dev-boot budget at demo scale',
-    () => {
-      expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
-    },
-  );
+  it.skipIf(CI)('finishes inside the dev-boot budget at demo scale', () => {
+    expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
+  });
 
   it('stays the size that seeds in seconds', async () => {
     const tables = await pool.query<{ name: string }>(

@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { DEV } from '../src/env/catalogue.ts';
+import { DEV } from '../src/env/development.ts';
 
 export const studioRoot = new URL('../../', import.meta.url);
 /** The Docker build context both images are built from. */

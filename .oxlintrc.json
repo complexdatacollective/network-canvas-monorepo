@@ -193,6 +193,41 @@
       "rules": {
         "formatjs/no-literal-string-in-jsx": "off"
       }
+    },
+    {
+      // The Studio server's environment boundary, made enforceable.
+      // `no-process-env` belongs to oxlint's `node` plugin, which is not in
+      // the repo-wide `plugins` list — so the entry under `rules` above is
+      // inert everywhere, and turning the plugin on repo-wide would light up
+      // every other package at once. Here it is scoped to the one tree that
+      // has a validated environment to use instead: `src/env.ts` decodes
+      // `process.env` through an Effect Schema, everything else takes the
+      // resolved `StudioEnv`, and the two escapes that remain
+      // (`src/env.ts` and the test harness's `src/__tests__/support/env.ts`)
+      // say so on the line. `apps/studio/server/scripts/**` is deliberately
+      // outside this: a script that hands its environment to a child process
+      // has nothing to validate.
+      //
+      // The import ban is what makes the rule total rather than decorative:
+      // oxlint only sees `process.env` reached through the global, so a file
+      // that did `import process from 'node:process'` would read the
+      // environment with the rule none the wiser.
+      "files": ["apps/studio/server/src/**"],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "node:process",
+                "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "ignorePatterns": [

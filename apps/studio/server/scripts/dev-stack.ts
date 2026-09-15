@@ -30,7 +30,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { DEV } from '../src/env/catalogue.ts';
+import { DEV } from '../src/env/development.ts';
 import {
   composeFile,
   createCompose,

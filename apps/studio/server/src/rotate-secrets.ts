@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import { createMaintenancePool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 import { rotateSecrets as rotate } from './secrets/rotate.ts';

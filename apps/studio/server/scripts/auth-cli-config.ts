@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';
-import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
+import { DEV, DEV_DATABASE_URL } from '../src/env/development.ts';
 import { createSecretsCipher } from '../src/secrets/cipher.ts';
 import { parseKeyring } from '../src/secrets/keyring.ts';
 
