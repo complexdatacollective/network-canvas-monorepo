@@ -15,7 +15,7 @@
  */
 
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -123,7 +123,13 @@ export function createCompose(options: {
  * fails the whole command rather than only the services that mount it.
  */
 export function writeSecretsIfAbsent(): void {
-  mkdirSync(secretsDirectory, { recursive: true });
+  // The directory is private and the files inside are readable, because the
+  // containers run as an unprivileged user and Compose bind-mounts each file
+  // as it is on the host: 600 on a file is EACCES inside `migrate`, `api` and
+  // `worker` on any Linux host whose operator is not uid 1000. macOS maps
+  // ownership and hides that; the self-host guide states the same rule.
+  mkdirSync(secretsDirectory, { recursive: true, mode: 0o700 });
+  chmodSync(secretsDirectory, 0o700);
   const files: [name: string, contents: string, what: string][] = [
     ['postgres-password', DEV.pgPassword, 'the development database password'],
     // The same fixture `.env.development` carries as STUDIO_SECRETS_KEY; the
@@ -135,7 +141,7 @@ export function writeSecretsIfAbsent(): void {
   for (const [name, contents, what] of files) {
     const path = `${secretsDirectory}${name}`;
     if (existsSync(path)) continue;
-    writeFileSync(path, `${contents}\n`, { mode: 0o600 });
+    writeFileSync(path, `${contents}\n`, { mode: 0o644 });
     console.log(`Wrote secrets/${name} — ${what}`);
   }
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -1517,5 +1517,178 @@ test('the Version Packages merge check refuses a publish npm cannot make', () =>
     freshnessJob,
     /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/release\/check-first-publications\.mjs\n/,
     'the merge check runs check-first-publications.mjs on the tree that merges the release PR',
+  );
+});
+
+// ── The Studio deployment stack (#1909) ───────────────────────────────────
+//
+// `apps/studio/stack-test` is four bash scripts and a directory of Compose
+// overrides, run by the `studio-stack` job. Nothing in that job names them
+// generically — every script and every variant is spelled out — so these tests
+// read the directory and the workflow together. A script renamed on disk, or a
+// variant added and not run, is then a red test in seconds rather than
+// coverage that quietly narrowed.
+
+const stackTestDirectory = new URL(
+  '../../apps/studio/stack-test/',
+  import.meta.url,
+);
+
+function stackTestVariants() {
+  return readdirSync(new URL('variants/', stackTestDirectory))
+    .filter((entry) => entry.endsWith('.yml'))
+    .map((entry) => entry.replace(/\.yml$/, ''))
+    .sort();
+}
+
+test('the studio-stack job runs every stack-test script that exists', () => {
+  const studioStack = job('studio-stack');
+  assert.ok(studioStack, 'studio-stack job exists');
+
+  for (const script of ['build.sh', 'up.sh', 'assert.sh', 'down.sh']) {
+    assert.ok(
+      existsSync(new URL(script, stackTestDirectory)),
+      `apps/studio/stack-test/${script} exists on disk`,
+    );
+    assert.match(
+      studioStack,
+      new RegExp(escapeRegExp(`apps/studio/stack-test/${script}`)),
+      `the studio-stack job runs ${script}`,
+    );
+  }
+});
+
+test('the studio-stack job runs every variant through up, assert and down', () => {
+  const studioStack = job('studio-stack');
+  assert.ok(studioStack, 'studio-stack job exists');
+
+  const variants = stackTestVariants();
+  // The reference stack and every swap docs/self-host/swap.md documents.
+  assert.deepEqual(variants, [
+    'external-bucket',
+    'external-postgres',
+    'external-redis',
+    'own-proxy',
+    'reference',
+  ]);
+
+  for (const variant of variants) {
+    for (const script of ['up.sh', 'assert.sh', 'down.sh']) {
+      assert.match(
+        studioStack,
+        new RegExp(escapeRegExp(`stack-test/${script} --variant ${variant}`)),
+        `the studio-stack job runs ${script} for the ${variant} variant`,
+      );
+    }
+  }
+
+  // Every teardown runs whatever the assertions did. A variant that failed
+  // half way through otherwise leaves containers holding the fixed subnets and
+  // ports the next one needs, and every later variant then fails for a reason
+  // that is not its own.
+  const teardowns = studioStack.match(/down\.sh --variant \S+/g) ?? [];
+  assert.equal(teardowns.length, variants.length);
+  assert.equal(
+    (studioStack.match(/if: always\(\)/g) ?? []).length,
+    variants.length,
+    'each down.sh step is if: always()',
+  );
+});
+
+test('the stack-test scripts and the workflow agree on the variant list', () => {
+  const lib = readFileSync(new URL('lib.sh', stackTestDirectory), 'utf8');
+  const declared = /^VARIANTS=\((?<names>[^)]*)\)$/m.exec(lib)?.groups?.names;
+  assert.ok(declared, 'lib.sh declares VARIANTS');
+  assert.deepEqual(
+    declared.trim().split(/\s+/).sort(),
+    stackTestVariants(),
+    'lib.sh accepts exactly the variants that have an override file',
+  );
+});
+
+test('own-proxy has a guide block to extract its configuration from', () => {
+  // That variant reads its nginx configuration out of the guide at run time,
+  // so that what an institution pastes is what was tested. `up.sh` fails
+  // loudly when the block stops parsing; this fails in seconds rather than
+  // twenty minutes into a CI job.
+  const swap = readFileSync(
+    new URL('../../apps/studio/docs/self-host/swap.md', import.meta.url),
+    'utf8',
+  );
+  const block = /^```nginx$\n(?<config>[\s\S]*?)^```$/m.exec(swap)?.groups
+    ?.config;
+  assert.ok(block, 'swap.md carries a fenced nginx block');
+  for (const required of [
+    'upstream studio_api { server api:3000; }',
+    'upstream studio_web { server web:80; }',
+    'location = /readyz',
+    'location = /ws',
+    'location @maintenance',
+    'server_name studio.example.org;',
+  ]) {
+    assert.ok(
+      block.includes(required),
+      `the nginx block still has: ${required}`,
+    );
+  }
+});
+
+test('studio-stack is selected by detect and required by the quality gate', () => {
+  const detectJob = job('detect');
+  assert.ok(detectJob, 'detect job exists');
+  assert.match(
+    detectJob,
+    /studio: \$\{\{ steps\.flags\.outputs\.studio \}\}/,
+    'detect publishes the studio flag',
+  );
+  // The package flag alone cannot see these: none of them is inside a package
+  // `turbo ls` walks, so a change confined to one would leave the job unrun on
+  // exactly the commit that needed it.
+  for (const path of [
+    'apps/studio/Dockerfile',
+    "'apps/studio/docker-compose*.yml'",
+    'apps/studio/.env.example',
+    'apps/studio/stack-test',
+    'apps/studio/docs/self-host',
+  ]) {
+    assert.match(
+      detectJob,
+      new RegExp(escapeRegExp(path)),
+      `detect watches ${path} for the studio flag`,
+    );
+  }
+
+  const studioStack = job('studio-stack');
+  assert.match(
+    studioStack,
+    /needs\.detect\.outputs\.studio == 'true'/,
+    'the job is gated on the flag',
+  );
+  for (const excluded of ['merge_group', 'push']) {
+    assert.match(
+      studioStack,
+      new RegExp(`github\\.event_name != '${excluded}'`),
+      `the job never runs on ${excluded}`,
+    );
+  }
+
+  const qualityJob = job('quality');
+  assert.match(qualityJob, /^ {6}- studio-stack$/m, 'quality needs the job');
+  assert.match(
+    qualityJob,
+    /STUDIO_STACK_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio \}\}/,
+    'quality receives the flag that selected the job',
+  );
+  assert.match(
+    qualityJob,
+    /STUDIO_STACK_RESULT: \$\{\{ needs\.studio-stack\.result \}\}/,
+    'quality receives the job result',
+  );
+  // Keyed on the flag, never on the result alone: a job that never ran must
+  // not read as a pass on a change that needed it.
+  assert.match(
+    qualityJob,
+    /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    'quality fails when a required studio-stack did not succeed',
   );
 });

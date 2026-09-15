@@ -4,6 +4,13 @@ Two files, read by `docker-compose.yml` as Compose file secrets and mounted
 read-only under `/run/secrets` in the containers that need them. Nothing here
 is committed — everything but this file and `.gitignore` is ignored.
 
+The directory is mode `700` and the files inside it are `644`. The Studio
+containers run as an unprivileged user and Compose bind-mounts each file into
+them as it is on the host, so a file only its owner can read (`600`) fails
+every process that needs it with `EACCES`; the private directory is what keeps
+other host users out. Docker Desktop on macOS maps file ownership and hides
+the mistake — a Linux host does not.
+
 They are files rather than variables in `.env` so they stay out of
 `docker inspect`, out of every process environment, and out of any log line
 that prints one.

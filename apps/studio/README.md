@@ -343,6 +343,28 @@ Three things worth knowing:
   Mailpit sink, and `build:` sections so both images can come from this
   checkout.
 
+### The stack test, which is what CI runs
+
+```bash
+apps/studio/stack-test/build.sh
+apps/studio/stack-test/up.sh     --variant reference
+apps/studio/stack-test/assert.sh --variant reference
+apps/studio/stack-test/down.sh   --variant reference
+```
+
+Where `dev:stack` is for looking at the stack, `stack-test` is for asserting on
+it, and it is the same stack either way. It runs the reference deployment and
+then each documented swap — a managed database, a managed bucket, an external
+Redis, an institution's own reverse proxy — with the swapped element replaced by a stub
+on a network of its own, and holds every variant to the same contract: the
+routing table, `/readyz`, the WebSocket upgrade, first-run setup, an asset
+written and read back, the sign-in limit refusing the attempt after its last,
+and the maintenance page while `api` is stopped.
+
+CI runs exactly these scripts as the `studio-stack` job, so a variant that
+passes here passes there. [`stack-test/README.md`](./stack-test/README.md) has
+the variants, what each stub stands in for, and how to add one.
+
 ### Changing the schema
 
 There is deliberately no migration system yet. Pre-release, a schema change

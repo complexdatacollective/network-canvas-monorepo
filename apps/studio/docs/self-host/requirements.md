@@ -184,14 +184,42 @@ makes the answer the same whether one API container is running or two. Each
 script addresses two keys at once, so a cluster would need both in one hash
 slot — a single logical database is what this expects.
 
-`REDIS_URL` names it, and eleven `RATE_LIMIT_*` variables carry the limit for
-each scope: `RATE_LIMIT_SIGN_IN_ADDRESS`, `RATE_LIMIT_SIGN_IN_EMAIL`,
-`RATE_LIMIT_INVITATION_ACCEPT`, `RATE_LIMIT_PARTICIPANT_REDEEM_ADDRESS`,
-`RATE_LIMIT_PARTICIPANT_REDEEM_LINK`, `RATE_LIMIT_PARTICIPANT_SYNC`,
-`RATE_LIMIT_RPC_USER`, `RATE_LIMIT_RPC_TEAM`, `RATE_LIMIT_STORAGE_READ`,
-`RATE_LIMIT_PUBLIC_API` and `RATE_LIMIT_WS_UPGRADE`. Each has a default and its
-own catalogue entry; see
-[`server/.env.example`](../../server/.env.example).
+`REDIS_URL` names the store, and is the only part of this you configure. **The
+limits themselves are constants of the build**, in
+[`server/src/rate-limit/scopes.ts`](../../server/src/rate-limit/scopes.ts):
+they are not settings, there is nothing to put in `.env`, and there is no
+supported way to change them on a self-hosted instance. A wrong number here is
+a security decision rather than a preference, and each is a ceiling a
+legitimate burst does not reach rather than a budget anyone should feel.
+
+Every scope, as `count/window` — a count of calls over a whole number of
+seconds, minutes or hours:
+
+<!-- rate-limits start -->
+
+| Scope                        | Limit     | What it protects                                                          |
+| ---------------------------- | --------- | ------------------------------------------------------------------------- |
+| `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address   |
+| `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                |
+| `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link      |
+| `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host |
+| `participant_redeem_link`    | `5/10m`   | One participation link, against its identifier being guessed              |
+| `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
+| `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
+| `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
+| `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
+| `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
+| `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
+
+<!-- rate-limits end -->
+
+The three participant scopes are declared now and take effect when the
+participant routes land
+([#1899](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1899)).
+If one of these costs you something real — a teaching lab behind a single
+address, a cohort redeeming links together — that is worth telling us about,
+because the number is then probably wrong for everyone in your position and not
+only for you.
 
 ### An ingress
 

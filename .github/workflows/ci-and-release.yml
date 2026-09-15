@@ -83,6 +83,7 @@ jobs:
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
+      studio: ${{ steps.flags.outputs.studio }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -173,6 +174,27 @@ jobs:
           docs=$(flag @codaco/documentation)
           website=$(flag networkcanvas.com)
 
+          # The Studio deployment stack, for the `studio-stack` job. The
+          # package flag is not enough on its own: the compose files, the
+          # Dockerfile, the environment template, the stack-test scripts and
+          # the self-host guide are all inputs to that job and none of them
+          # lives inside a package the `flag` function's `turbo ls` walks, so
+          # a change confined to any of them would leave the flag false and
+          # the job unrun. The guide is in the list because own-proxy extracts
+          # its nginx configuration from it at run time: editing that block
+          # changes what the job runs.
+          studio=$(flag @codaco/studio-server)
+          if [[ "$studio" != "true" && -n "$PREV" ]] \
+            && ! git diff --quiet "$PREV" "$CURR" -- \
+              apps/studio/Dockerfile \
+              'apps/studio/docker-compose*.yml' \
+              apps/studio/.env.example \
+              apps/studio/stack-test \
+              apps/studio/docs/self-host; then
+            studio=true
+            echo "Studio stack inputs changed outside the package graph."
+          fi
+
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -183,6 +205,7 @@ jobs:
 
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
+          echo "studio=$studio" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -950,6 +973,146 @@ jobs:
         # result.
         run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
 
+  # The Studio deployment stack, run the way a self-hoster runs it and once for
+  # each documented swap with the swapped element replaced by a stub (#1909).
+  #
+  # Not a unit suite and not an E2E suite: what it covers is the compose file,
+  # the two images, the routing table and the self-host guide — none of which
+  # any workspace test can reach, because all four are only true once
+  # containers are running. The scripts are `apps/studio/stack-test`, and CI
+  # runs exactly what a developer runs; see that directory's README.
+  #
+  # Conditional on the same `detect` flag machinery the site previews use, with
+  # `test-studio-server`'s exclusions: never on `merge_group` (PR verdicts are
+  # authoritative there) and never on `push`.
+  studio-stack:
+    needs: detect
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+      && needs.detect.outputs.studio == 'true'
+    runs-on: ubuntu-latest
+    # The build is most of this. Four variant cycles cost about a minute each
+    # once the images exist; a cold build of studio-api is the rest, and the
+    # GitHub Actions cache below is what keeps it off the critical path on
+    # every run after the first.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      # `--cache-to type=gha` needs a builder that can export a cache, and the
+      # runner's default one is the `docker` driver, which cannot — it fails
+      # the build rather than ignoring the flag. One `buildx create` rather
+      # than a third-party action: this is the whole of what that action would
+      # do here; `build.sh` calls `docker buildx build`, which follows the
+      # selected builder (`docker build` on this runner does not, and fails).
+      # `docker buildx use` alone was not enough: the first run built on the
+      # default driver and could not export the cache.
+      - name: Select a cache-capable builder
+        run: docker buildx create --name studio-stack --driver docker-container --use
+      # The `gha` cache backend authenticates with the job's runtime token, and
+      # GitHub exposes that (and the cache service address) to ACTIONS, not to
+      # `run:` steps — which is why `docker/build-push-action` can use the
+      # backend and a shell script cannot. Re-exporting the three variables
+      # from inside an action is what makes `build.sh` usable here unchanged,
+      # rather than CI building the images some other way than a developer
+      # does. They are job-scoped and go no further than this job.
+      - name: Expose the Actions cache service to the build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Build the stack images
+        env:
+          # Belt and braces with the `buildx create --use` above: buildx reads
+          # this before its saved selection, so the build cannot fall back to
+          # the default driver, whose cache export the first run failed on.
+          BUILDX_BUILDER: studio-stack
+          # Scoped per target by the `{target}` placeholder, so the two images
+          # do not overwrite each other's cache manifest.
+          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
+          # `ignore-error`: a cache export that the service refuses is a slower
+          # next run, not a broken build, and this job's verdict is about the
+          # stack rather than about the cache.
+          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+        run: apps/studio/stack-test/build.sh
+
+      # Serial, and each variant torn down before the next: they share a
+      # Compose project name, the host's ports 80 and 443, and two fixed
+      # subnets. `down.sh` runs whatever the assertions did, so a failed
+      # variant cannot leave containers holding the network the next one needs.
+      - name: The reference stack
+        run: |
+          apps/studio/stack-test/up.sh --variant reference
+          apps/studio/stack-test/assert.sh --variant reference
+      - name: Tear down the reference stack
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant reference
+
+      - name: A swapped database
+        run: |
+          apps/studio/stack-test/up.sh --variant external-postgres
+          apps/studio/stack-test/assert.sh --variant external-postgres
+      - name: Tear down the swapped database
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-postgres
+
+      - name: A swapped object store
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket
+          apps/studio/stack-test/assert.sh --variant external-bucket
+      - name: Tear down the swapped object store
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-bucket
+
+      - name: A swapped rate-limit store
+        run: |
+          apps/studio/stack-test/up.sh --variant external-redis
+          apps/studio/stack-test/assert.sh --variant external-redis
+      - name: Tear down the swapped rate-limit store
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-redis
+
+      - name: A swapped ingress
+        run: |
+          apps/studio/stack-test/up.sh --variant own-proxy
+          apps/studio/stack-test/assert.sh --variant own-proxy
+      - name: Tear down the swapped ingress
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant own-proxy
+
+      # The assertions print `docker compose ps` and the last 200 log lines
+      # inline, which is where a reader looks first; `down.sh` writes the same
+      # `ps` and the WHOLE log to files before it tears anything down, which is
+      # what a 200-line tail is not enough for. Those, `migrate`'s output and
+      # the nginx configuration own-proxy extracted from the guide are listed
+      # by name rather than uploading the directory: the generated environment
+      # file and the setup token also live there, and an artifact is a worse
+      # place for either than the machine they were made on.
+      - name: Keep the failing run's diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-stack-diagnostics
+          include-hidden-files: true
+          path: |
+            apps/studio/stack-test/.work/*-ps.txt
+            apps/studio/stack-test/.work/*-logs.txt
+            apps/studio/stack-test/.work/migrate.log
+            apps/studio/stack-test/.work/nginx.conf
+          if-no-files-found: warn
+          retention-days: 7
+
   test:
     # The workspace unit suites, one bucket of packages per parallel runner.
     #
@@ -1385,6 +1548,7 @@ jobs:
       - quality-support
       - test
       - test-studio-server
+      - studio-stack
       - test-storybook
       - detect
       - e2e-policy
@@ -1406,6 +1570,8 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           DETECT_RESULT: ${{ needs.detect.result }}
+          STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
+          STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -1458,6 +1624,21 @@ jobs:
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
             echo "::error::quality gate failed — detect concluded '$DETECT_RESULT'"
             exit 1
+          fi
+
+          # The Studio deployment stack (#1909), evaluated the way the E2E
+          # suites below are: on the flag that selected it rather than on the
+          # job's own result, so a job that never ran cannot read as a pass on
+          # a change that needed it. `skipped` is the correct outcome for a
+          # pull request that does not touch the stack.
+          if [[ "$STUDIO_STACK_REQUIRED" == "true" ]]; then
+            if [[ "$STUDIO_STACK_RESULT" != "success" ]]; then
+              echo "::error::quality gate failed — studio-stack concluded '$STUDIO_STACK_RESULT'"
+              exit 1
+            fi
+            echo "studio-stack passed"
+          else
+            echo "studio-stack is not required for this event (result: $STUDIO_STACK_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then

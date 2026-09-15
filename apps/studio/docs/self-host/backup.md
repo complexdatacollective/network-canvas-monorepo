@@ -128,7 +128,7 @@ docker compose start garage
 
 # 3. The keyring.
 cp backup/studio-secrets-key secrets/studio-secrets-key
-chmod 600 secrets/studio-secrets-key
+chmod 644 secrets/studio-secrets-key   # readable by the container; secrets/ itself is 700
 
 docker compose up -d api worker
 curl https://studio.example.org/readyz

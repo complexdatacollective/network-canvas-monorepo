@@ -71,11 +71,22 @@ of every process environment, and out of any log line that prints one. Compose
 mounts them read-only under `/run/secrets`.
 
 ```bash
-mkdir -p secrets
+mkdir -p secrets && chmod 700 secrets
 openssl rand -hex 32 > secrets/postgres-password
 echo "k1:$(openssl rand -base64 32)" > secrets/studio-secrets-key
-chmod 600 secrets/postgres-password secrets/studio-secrets-key
+chmod 644 secrets/postgres-password secrets/studio-secrets-key
 ```
+
+**The directory is private and the files are readable — not the other way
+round.** The Studio containers run as an unprivileged user, and Compose
+bind-mounts each file into them exactly as it is on the host: a file only its
+owner can read is a file the container cannot read either, and `migrate`,
+`api` and `worker` refuse to start with `EACCES` on `/run/secrets/…`. Mode
+`700` on `secrets/` is what keeps other users on the host out — nobody can
+reach a file through a directory they cannot enter, and the bind mount does
+not go through the directory — while `644` on the files is what lets the
+container read them. `chmod 600` on the files is the mistake that breaks the
+stack on every Linux host whose operator is not the container's user id.
 
 `postgres-password` is the password for the `POSTGRES_USER` login. Postgres
 takes it through `POSTGRES_PASSWORD_FILE` and the server through

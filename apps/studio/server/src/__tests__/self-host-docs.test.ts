@@ -3,6 +3,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  RATE_LIMIT_SCOPES,
+  RATE_LIMITS,
+  type RateLimitRule,
+  type RateLimitScope,
+} from '../rate-limit/scopes.ts';
+
 // The drift guard between the self-host guide's outbound-host table and the
 // checked-in list beside it (#1909). The list is what #1897's no-outbound CI
 // job allows, and the table is what an institution's firewall team reads: a
@@ -68,5 +75,72 @@ describe('the self-host guide’s outbound hosts', () => {
 
   it('documents exactly the hosts the allowlist carries', () => {
     expect([...documented].sort()).toEqual([...listed].sort());
+  });
+});
+
+// The same guard, for the rate limits: the constants in
+// `src/rate-limit/scopes.ts` are what every deployment enforces, and the table
+// in `requirements.md` is where a self-hoster reads them. Nothing generates one
+// from the other, so a limit changed in code and not on the page is a guide
+// that quietly describes a different instance from the one somebody is running
+// — and unlike a variable they could check, a constant gives them no way to
+// find out they were misled.
+
+const RATE_LIMITS_START = '<!-- rate-limits start -->';
+const RATE_LIMITS_END = '<!-- rate-limits end -->';
+
+/**
+ * `count/window` for one rule, in the largest unit that divides the window
+ * whole — which is how the table is written, and how a person says it.
+ */
+function renderRule({ max, windowMs }: RateLimitRule): string {
+  const units = [
+    ['h', 3_600_000],
+    ['m', 60_000],
+    ['s', 1_000],
+  ] as const;
+  const unit = units.find(([, size]) => windowMs % size === 0);
+  if (!unit)
+    throw new Error(`window of ${windowMs}ms is not a whole number of seconds`);
+  return `${max}/${windowMs / unit[1]}${unit[0]}`;
+}
+
+/** The scope and limit cells of every row inside the marked block. */
+function documentedLimits(source: string): [scope: string, limit: string][] {
+  const start = source.indexOf(RATE_LIMITS_START);
+  const end = source.indexOf(RATE_LIMITS_END);
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(
+      `requirements.md must delimit its rate-limit table with ${RATE_LIMITS_START} and ${RATE_LIMITS_END}`,
+    );
+  }
+  const section = source.slice(start + RATE_LIMITS_START.length, end);
+  return [...section.matchAll(/^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/gm)].map(
+    (match) => [match[1]!, match[2]!],
+  );
+}
+
+describe('the self-host guide’s rate limits', () => {
+  const documented = documentedLimits(read('requirements.md'));
+
+  it('has a table with rows in it', () => {
+    // A reader that returns nothing — a renamed marker, a reshaped table —
+    // would make both comparisons below compare two empty things and pass.
+    expect(documented.length).toBeGreaterThan(0);
+  });
+
+  it('documents exactly the scopes the limiter has', () => {
+    expect(documented.map(([scope]) => scope).sort()).toEqual(
+      [...RATE_LIMIT_SCOPES].sort(),
+    );
+  });
+
+  it('states the limit each scope is actually enforced at', () => {
+    const wrong = documented.filter(
+      ([scope, limit]) =>
+        scope in RATE_LIMITS &&
+        renderRule(RATE_LIMITS[scope as RateLimitScope]) !== limit,
+    );
+    expect(wrong).toEqual([]);
   });
 });
