@@ -67,13 +67,6 @@ export type RpcContext = {
   principal: Principal | null;
   requestId: string;
   /**
-   * Response headers for this call, where the transport has any: oRPC's
-   * ResponseHeadersPlugin injects them on the fetch handler. `setup.complete`
-   * is the one procedure that writes to them, because signing the new owner in
-   * means carrying better-auth's `set-cookie` out.
-   */
-  resHeaders?: Headers;
-  /**
    * The WebSocket this call arrived on, when it arrived on one. This is the
    * protocol-builder host's presence identity: a colleague's cursor belongs to
    * a connection and goes when the connection does.
@@ -87,11 +80,15 @@ export type RpcContext = {
    */
   clientSessionId?: string;
   /**
-   * Headers to put on this call's response, injected by oRPC's
-   * `ResponseHeadersPlugin` (registered on the fetch handler in src/app.ts).
+   * Response headers for this call, where the transport has any: oRPC's
+   * `ResponseHeadersPlugin` injects them on the fetch handler (src/app.ts).
+   * Two things write to them — `setup.complete`, because signing the new owner
+   * in means carrying better-auth's `set-cookie` out of a procedure, and a
+   * call the rate limiter refuses, which sets `Retry-After` (#1909).
+   *
    * Absent for a call that arrived over the WebSocket, which has no response
-   * headers to set — a refusal there carries its retry-after in the error data
-   * alone (#1909).
+   * headers at all; a refusal there carries its retry-after in the error data
+   * alone.
    */
   resHeaders?: Headers;
 };
