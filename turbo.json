@@ -408,7 +408,9 @@
       // covers it. The agent-skills test walks .claude/skills and
       // .agents/skills; the release-test suites read .claude/workflows; the
       // changeset guards read .changeset; the release guards read the fresco
-      // and studio deployment trees.
+      // and studio deployment trees; the CI workflow guard reads
+      // apps/studio/stack-test and the self-host guide the `studio-stack` job
+      // runs.
       "inputs": [
         "scripts/**",
         ".github/**",
@@ -420,6 +422,8 @@
         "pnpm-workspace.yaml",
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
+        "apps/studio/stack-test/**",
+        "apps/studio/docs/self-host/**",
         "tooling/vitest/**",
         "!**/node_modules/**"
       ],

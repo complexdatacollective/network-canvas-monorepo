@@ -50,6 +50,11 @@ Then delete the `postgres` service block and the `postgres-data` volume, and
 remove the `depends_on` entries naming `postgres` from `api`, `worker` and
 `migrate`.
 
+This swap is exercised in CI by `apps/studio/stack-test`, variant
+`external-postgres`: the stack runs against a database on another network with
+the `postgres` service gone, and has to pass the same assertions the reference
+stack passes.
+
 ## A managed bucket
 
 All five or none: a partial configuration fails fast rather than half-working.
@@ -76,6 +81,12 @@ Then delete the `garage` and `garage-init` services, the `garage-config` and
 containers. Your provider's own mirroring or versioning replaces the volume
 copy in [Back up and restore](./backup.md).
 
+This swap is exercised in CI by `apps/studio/stack-test`, variant
+`external-bucket`: the stack runs against an S3-compatible store on another
+network, signing for a different region, with `garage` and `garage-init` gone —
+and an asset is written through `/storage` and read back, not only probed by
+`/readyz`.
+
 ## An external Redis
 
 ```
@@ -87,6 +98,14 @@ it is deliberately ephemeral, needs no persistence and is never backed up, and
 the limiter fails open — with readiness reporting `degraded` rather than
 failing — when it cannot be reached. Then delete the `valkey` service and the
 `depends_on` entries naming it in `api` and `worker`.
+
+This swap has no CI variant yet, because there is nothing to assert against it:
+no Studio process reads `REDIS_URL` on this build. The limiter that will read
+it arrives with
+[#1916](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1916),
+and an `apps/studio/stack-test` variant belongs with it — one written now could
+only check that the stack still starts with the variable set, which is not the
+contract this swap has to meet.
 
 ## The ingress
 
@@ -101,7 +120,7 @@ reach them, and reproduce this table exactly.
 | -------------------------------- | ---------- | --------------------------------------------------------------------- |
 | `/healthz`, `/readyz`            | `api:3000` | **Never** behind the maintenance page. Highest precedence             |
 | `/ws`                            | `api:3000` | Exactly this path. Must proxy the WebSocket upgrade                   |
-| `/rpc/…`, `/api/…`, `/storage/…` | `api:3000` | Maintenance page on 502 and 503, both answered as 503                 |
+| `/rpc/…`, `/api/…`, `/storage/…` | `api:3000` | Maintenance page on 502, 503 and 504, all answered as 503             |
 | everything else, including `/`   | `web:80`   | Single-page app: `web` serves its shell for routes that are not files |
 
 Four rules that are not negotiable:
@@ -110,18 +129,26 @@ Four rules that are not negotiable:
    container runtime must read the real status and the named failing check. Put
    the page in front of these and an upgrade reports a healthy API that is not
    there.
-2. **502 and 503 both answer 503.** A stopped API container is a connection
+2. **502, 503 and 504 all answer 503.** A stopped API container is a connection
    error, which a proxy reports as 502; "bad gateway" is not what is happening,
    and 503 is what the API itself answers once maintenance mode exists, so a
    client and a monitor see one status for the whole window however it started.
+   504 is the same window seen differently: an address that has stopped being
+   routable — which is what a container that is gone rather than merely closed
+   looks like — makes the proxy's connection attempt time out instead of being
+   refused. Bound that attempt, or the page arrives later than any client will
+   wait for it.
 3. **One hostname for everything.** The app, the API, the WebSocket and asset
    storage share an origin, which is what lets cookies and WebSockets work with
    no cross-origin configuration. Do not split the API onto a second name.
 4. **Set `X-Forwarded-For` and `X-Forwarded-Proto`, and set `TRUSTED_PROXIES`
    to your proxy's address.** Unset, forwarded headers are not read at all —
    safe, but every client then shares one rate-limit bucket and the audit log
-   records the proxy. List only proxies that **overwrite** the header rather
-   than appending to whatever a client sent.
+   records the proxy. List **every** proxy a request really passes through and
+   nothing else: Studio reads the forwarded chain from the right and takes the
+   first address that is not on the list, so an address listed that is not a
+   proxy of yours is an address a caller can hide behind, and a proxy of yours
+   left off it is the address every client gets recorded as.
 
    ```
    TRUSTED_PROXIES=10.0.0.0/24
@@ -132,6 +159,15 @@ Four rules that are not negotiable:
 Everything above, and nothing else. `api` and `web` are the compose service
 names, resolvable from a container on the stack's network; use host addresses
 instead if your proxy runs outside it.
+
+**Reload this proxy whenever a container is replaced.** nginx resolves the
+names in an `upstream` block once, when it loads its configuration, and an
+upgrade replaces `api` and `web` with containers at new addresses — after
+which every request goes to an address that is nobody's and answers 502, for
+as long as the proxy is left alone. It is a step of
+[Upgrade](./upgrade.md#the-sequence), and it is the price of holding the
+routing table yourself: Traefik resolves per request and needs none of this.
+A proxy outside the network, reaching published host ports, is unaffected.
 
 ```nginx
 upstream studio_api { server api:3000; }
@@ -151,8 +187,22 @@ server {
     proxy_http_version 1.1;
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;
+    # Appends this hop to whatever arrived, which is the right form even though
+    # a client can write the first entry itself: Studio reads the chain from
+    # the right and takes the first address that is not in TRUSTED_PROXIES, so
+    # a client's own entry is never reached — and a proxy behind a CDN or load
+    # balancer keeps the real address instead of replacing it with the hop in
+    # front. See rule 4.
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+
+    # A container that has been stopped takes its address with it, so the
+    # connection attempt is not refused — it goes unanswered until the network
+    # gives up, which took anything from 3 to 30 seconds when this was
+    # measured. nginx's default here is 60s, longer than any client waits for a
+    # maintenance page. Inherited by every location below; it bounds connecting
+    # only, not a slow response.
+    proxy_connect_timeout 5s;
 
     # Exact matches, so these two can never fall into the block below. No
     # interception: the real status, always.
@@ -177,9 +227,11 @@ server {
     location ~ ^/(rpc|api|storage)(/|$) {
         proxy_pass http://studio_api;
         # `=503` rather than a bare `=`: a stopped container is a 502 here and
-        # the instance is unavailable rather than misrouted.
+        # the instance is unavailable rather than misrouted. 504 is in the list
+        # because the same stopped container surfaces as a connect timeout
+        # rather than a refusal once its address has gone.
         proxy_intercept_errors on;
-        error_page 502 503 =503 @maintenance;
+        error_page 502 503 504 =503 @maintenance;
     }
 
     # The shell, the hashed assets, and every client-side route.
@@ -207,4 +259,14 @@ server {
 
 Check it the way the stack is checked: `/readyz` answers 200 with JSON, `/` is
 the client shell, `/rpc` is a JSON 404 from the API, and with `api` stopped
-`/rpc/status` is the maintenance page with 503 while `/readyz` is a plain 502.
+`/rpc/status` is the maintenance page with 503 while `/readyz` is the proxy's
+own gateway error — 502, or 504 where the address stopped answering — and never
+the page.
+
+That check is the one CI runs. This swap is exercised by
+`apps/studio/stack-test`, variant `own-proxy`: it stands the block above up in
+front of the reference stack with `traefik` gone, extracting the configuration
+from this page at run time rather than from a copy, so what an institution
+pastes is what was tested. It also drives a client from outside
+`TRUSTED_PROXIES` and checks the address the API ends up recording, which is
+rule 4.

@@ -42,6 +42,17 @@ Step by step:
    serves the static maintenance page from `web` — which depends on nothing
    that is being upgraded — so the page is visible for the whole window however
    it started.
+
+   **If you replaced Traefik with a proxy of your own, reload it here.** A
+   replacement is a new container with a new address, and a proxy that reaches
+   `api` and `web` by their Compose service names looked those names up once,
+   when it loaded its configuration — nginx does, and so do most others. It
+   goes on sending every request to an address that is nobody's, answering 502
+   for as long as it is left alone, and no later step of this sequence
+   disturbs it. `docker compose exec <your proxy> nginx -s reload`, or the
+   equivalent for whatever you run, and it picks the new addresses up. Traefik
+   needs nothing here: it resolves per request.
+
 5. **`migrate`** applies the schema this build expects, once. It is a no-op on
    a current database and exits 0.
 6. **`maintenance off`** reopens the instance. Readiness passes again.

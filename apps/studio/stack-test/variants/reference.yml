@@ -1,0 +1,11 @@
+# The reference stack, with nothing replaced (#1909).
+#
+# Deliberately empty. Every other variant in this directory is this stack with
+# one element swapped, so the baseline has to be the file a self-hoster
+# downloads and the `dev:stack` override over it — not a third file that could
+# quietly make the swaps pass against a stack no deployment runs.
+#
+# It exists as a file rather than as a special case in `up.sh` so that every
+# variant is applied the same way: three `-f` arguments, one of them named by
+# `--variant`.
+services: {}
