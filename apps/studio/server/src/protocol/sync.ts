@@ -14,7 +14,10 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { NoAuditTransactionOperation } from '../audit/transaction-policy.ts';
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
-import { assetsSectionHoldsNoKeys } from './asset-keys.ts';
+import {
+  assetsSectionHoldsNoKeys,
+  withPlaceholderAssetKeyEntries,
+} from './asset-keys.ts';
 
 export const SYNC_TRANSACTION_POLICIES = {
   createDraft: 'sync.createDraft',
@@ -59,8 +62,19 @@ const assertProtocolSectionValid: SectionValidator = (
   doc: SectionDoc,
   sectionIds?: string[],
 ): void => {
-  assertSectionValid(id, doc, sectionIds);
-  if (parseSectionId(id).kind !== 'assets') return;
+  const isAssets = parseSectionId(id).kind === 'assets';
+  // A stored `apikey` entry carries no `value`, which the shared schema
+  // requires, so the merged document is checked with placeholders filled in
+  // (#1900). Only the shape is being checked here; the copy is thrown away.
+  assertSectionValid(
+    id,
+    isAssets ? withPlaceholderAssetKeyEntries(doc) : doc,
+    sectionIds,
+  );
+  if (!isAssets) return;
+  // Against the document as it arrived, not the filled copy: the placeholder
+  // is what a redacted entry is filled WITH, so asking the copy would refuse
+  // every commit.
   if (assetsSectionHoldsNoKeys(doc)) return;
   throw new SectionValidationFailedError([
     {

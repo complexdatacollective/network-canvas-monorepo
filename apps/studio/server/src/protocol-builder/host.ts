@@ -45,7 +45,11 @@ import {
 import type { AuditEventInput } from '../audit/events.ts';
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import type { Principal } from '../auth/service.ts';
-import { sealAssetKeys, stripAssetKeyValues } from '../protocol/asset-keys.ts';
+import {
+  sealAssetKeys,
+  stripAssetKeyValues,
+  withPlaceholderAssetKeyEntries,
+} from '../protocol/asset-keys.ts';
 import {
   lockProtocolActorMembership,
   lockProtocolDraft,
@@ -189,6 +193,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const ASSETS = makeSectionId({ kind: 'assets' });
 const STAGE_ORDER = makeSectionId({ kind: 'stageOrder' });
+
+/**
+ * The shape check every write this host admits goes through. The `assets`
+ * section is checked against a copy with each redacted API key's value filled
+ * in (#1900): the shared schema requires an `apikey` entry to carry one, and
+ * what is stored never does — so without the fill the host refused every edit
+ * of a manifest that had ever had a key promoted into it. The filled copy is
+ * used for the check alone; `writeSections` writes what the caller submitted,
+ * minus any key value it strips and seals.
+ */
+function shapeIssues(
+  id: ProtocolSectionId,
+  document: SectionDoc,
+): SectionIssue[] {
+  return sectionShapeIssues(
+    id,
+    id === ASSETS ? withPlaceholderAssetKeyEntries(document) : document,
+  );
+}
 
 function createdSectionId(
   kind: CreatableSectionKind,
@@ -749,7 +772,7 @@ export async function submit(
           },
         };
       }
-      const issues = sectionShapeIssues(sectionId, document);
+      const issues = shapeIssues(sectionId, document);
       if (issues.length > 0) {
         return {
           status: 'unchanged',
@@ -901,7 +924,7 @@ export async function create(
         input.kind === 'stage' && id !== undefined
           ? { ...input.document, id }
           : input.document;
-      const issues = sectionShapeIssues(target, created);
+      const issues = shapeIssues(target, created);
       if (issues.length > 0) {
         return {
           status: 'unchanged',

@@ -88,23 +88,43 @@ export function assetsSectionHoldsNoKeys(doc: SectionDoc): boolean {
 }
 
 /**
- * An assembled protocol document with every API key's value filled in with the
- * placeholder, for validation. Shallow copies only what it rewrites, and
- * returns the document unchanged when it has no key assets.
+ * A bare `assets` section document with every redacted API key's value filled
+ * in with the placeholder, for validation. Shallow copies only what it
+ * rewrites, and returns the document unchanged when it has no redacted key
+ * assets — so a document that never held one still hashes to what it did.
+ *
+ * Every Studio path that validates a STORED assets section goes through here,
+ * because the shared `AssetsSectionSchema` is Architect's too and cannot be
+ * relaxed: it requires an `apikey` entry's `value`, and a stored entry has
+ * none. Without the fill, a researcher adding a geojson beside a promoted key
+ * was refused at [<assetId>, value] with an issue no client could satisfy.
+ * The filled copy is never written anywhere.
+ */
+export function withPlaceholderAssetKeyEntries(
+  assetsDoc: SectionDoc,
+): SectionDoc {
+  let filled: SectionDoc | undefined;
+  for (const [assetId, entry] of Object.entries(assetsDoc)) {
+    if (!isRecord(entry) || entry.type !== 'apikey') continue;
+    if (typeof entry.value === 'string' && entry.value.length > 0) continue;
+    filled ??= { ...assetsDoc };
+    filled[assetId] = { ...entry, value: ASSET_KEY_PLACEHOLDER };
+  }
+  return filled ?? assetsDoc;
+}
+
+/**
+ * The same fill against an assembled protocol document, whose manifest is the
+ * `assets` section under another name. Returns the document unchanged when it
+ * has no key assets.
  */
 export function withPlaceholderAssetKeys(
   document: Record<string, unknown>,
 ): Record<string, unknown> {
   const manifest = document.assetManifest;
   if (!isRecord(manifest)) return document;
-  let filled: Record<string, unknown> | undefined;
-  for (const [assetId, entry] of Object.entries(manifest)) {
-    if (!isRecord(entry) || entry.type !== 'apikey') continue;
-    if (typeof entry.value === 'string' && entry.value.length > 0) continue;
-    filled ??= { ...manifest };
-    filled[assetId] = { ...entry, value: ASSET_KEY_PLACEHOLDER };
-  }
-  if (filled === undefined) return document;
+  const filled = withPlaceholderAssetKeyEntries(manifest as SectionDoc);
+  if (filled === manifest) return document;
   return { ...document, assetManifest: filled };
 }
 

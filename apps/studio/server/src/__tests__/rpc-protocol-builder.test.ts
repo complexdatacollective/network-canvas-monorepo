@@ -28,7 +28,7 @@ import {
   RECONNECT_GRACE_MS,
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
-import { openAssetKey } from '../protocol/asset-keys.ts';
+import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { ProtocolStore } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -755,7 +755,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   });
 
   it('seals a promoted API key instead of writing it into the protocol', async () => {
-    const SECRET = 'pk.eyJ1IjoiYWRhIn0.never-at-rest';
+    // Deliberately not Mapbox-token shaped: `pnpm check:mapbox-tokens` scans
+    // every tracked file for `<pk|sk|tk>.eyJ….…`, and a fixture wearing that
+    // shape fails the repository-wide guard whether or not it is a real token.
+    const SECRET = 'map-key-never-at-rest';
     const stage = await createStage(ADA, 'Seals its key');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
@@ -831,6 +834,86 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       draftId,
     });
     expect(JSON.stringify(draft)).not.toContain(SECRET);
+  });
+
+  it('admits a submit of the assets section carrying a redacted API key', async () => {
+    // A stored `apikey` entry has no `value`, which the shared assets schema
+    // requires, so the host's shape check refused every later edit of the
+    // manifest once a key had been promoted into it (#1900) — adding a file
+    // asset beside one, or renaming anything in it.
+    const SECRET = 'map-key-submitted-beside';
+    const stage = await createStage(ADA, 'Keeps its key');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'redacted-beside',
+      request: { kind: 'secret', name: 'Beside token', value: SECRET },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Keeps its key' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    // The manifest as the editor now reads it: the key entry, redacted.
+    const manifest = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect((manifest.document as Record<string, unknown>)[resourceId]).toEqual({
+      name: 'Beside token',
+      type: 'apikey',
+    });
+
+    const submitted = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: 'assets',
+      document: {
+        ...manifest.document,
+        districts: {
+          name: 'Districts',
+          type: 'geojson',
+          source: 'districts.geojson',
+        },
+      },
+      revision: manifest.revision,
+    });
+    expect(submitted.revision).toBeDefined();
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+
+    // The placeholder the shape check was given is never written.
+    const sections = await tenantDb.query(
+      `SELECT doc::text AS doc FROM sections`,
+    );
+    for (const row of sections.rows as { doc: string }[]) {
+      expect(row.doc).not.toContain(SECRET);
+      expect(row.doc).not.toContain(ASSET_KEY_PLACEHOLDER);
+    }
+    // And the key is still sealed and still opens under the same asset id.
+    await expect(
+      openAssetKey(tenantDb, testCipher(), {
+        teamId: TEAM_ID,
+        protocolId,
+        assetId: resourceId,
+      }),
+    ).resolves.toBe(SECRET);
   });
 
   it('answers a discard with the status alone', async () => {

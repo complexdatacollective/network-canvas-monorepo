@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
+import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
 import {
@@ -116,6 +118,55 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(canonicalize(frozenAfter.rows[0])).toBe(
       canonicalize(frozenBefore.rows[0]),
     );
+  });
+
+  it('migrates a version whose API key is sealed, and leaves it sealed', async () => {
+    // What is stored is redacted: an `apikey` entry with no `value`, which the
+    // schema requires. `migrateProtocol` pre-validates its input and validates
+    // its output, so a migration of such a version was refused outright
+    // (#1900) — and a migration that put the placeholder back would write a
+    // fake key into the new draft's sections.
+    const KEY = 'map-key-migrated-sealed';
+    const { protocolId, draftId } = await store.createProtocol({
+      protocol: {
+        ...baseProtocol(),
+        assetManifest: {
+          mapKey: { name: 'Mapbox token', type: 'apikey', value: KEY },
+        },
+      } as unknown as CurrentProtocol,
+    });
+    const published = await store.publishDraft({ draftId });
+    if (published.status !== 'published') throw new Error(published.status);
+
+    const migration = await migrateStoredVersionToDraft(tenantDb, {
+      versionId: published.versionId,
+    });
+    expect(migration.protocolId).toBe(protocolId);
+
+    // Still redacted, under the same asset id — which is what keeps the sealed
+    // row (keyed by team, protocol and asset) reachable from the new draft.
+    const document = (await store.getDraftDocument(migration.draftId)) as {
+      assetManifest: Record<string, Record<string, unknown>>;
+    };
+    expect(document.assetManifest.mapKey).toEqual({
+      name: 'Mapbox token',
+      type: 'apikey',
+    });
+
+    const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
+    const all = (docs.rows as { doc: string }[])
+      .map((row) => row.doc)
+      .join('\n');
+    expect(all).not.toContain(KEY);
+    expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
+
+    await expect(
+      openAssetKey(tenantDb, testCipher(), {
+        teamId: TEST_TEAM_ID,
+        protocolId,
+        assetId: 'mapKey',
+      }),
+    ).resolves.toBe(KEY);
   });
 
   it('migrating a current-schema version republishes as unchanged', async () => {

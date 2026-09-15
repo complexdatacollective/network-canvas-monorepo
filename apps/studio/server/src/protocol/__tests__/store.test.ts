@@ -13,7 +13,7 @@ import {
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
-import { openAssetKey } from '../asset-keys.ts';
+import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import {
   DraftStructureError,
   addCodebookEntity,
@@ -686,7 +686,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   });
 
   describe('API-key assets (#1900)', () => {
-    const KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciJ9.not-a-real-key';
+    // Not Mapbox-token shaped, so `pnpm check:mapbox-tokens` does not read it
+    // as a committed access token; see the guard's own comment.
+    const KEY = 'map-key-not-a-real-key';
 
     function protocolWithKey(): CurrentProtocol {
       return {
@@ -827,6 +829,50 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           ],
         }),
       ).resolves.toBeDefined();
+    });
+
+    it('admits a sync commit on the assets section of a protocol with a sealed key', async () => {
+      // The stored manifest carries the key entry WITHOUT its value, and
+      // schema 8 requires an `apikey` asset to have one. Validating the merged
+      // section as it is stored therefore refused every later edit of the
+      // assets section — adding a geojson beside a promoted key — with an
+      // issue at [mapKey, value] that no client could ever satisfy.
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-3');
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-3',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'map',
+              value: {
+                name: 'Districts',
+                type: 'geojson',
+                source: 'districts.geojson',
+              },
+            },
+          ],
+        }),
+      ).resolves.toBeDefined();
+
+      // And the commit did not put the key back: the merged document the
+      // validator saw carried a placeholder, which is never written. The whole
+      // table, because the commit wrote a new revision of the section.
+      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
+      const all = (docs.rows as { doc: string }[])
+        .map((row) => row.doc)
+        .join('\n');
+      expect(all).not.toContain(KEY);
+      expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
     });
 
     it('returns the redacted manifest from a published version too', async () => {
