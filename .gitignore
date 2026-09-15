@@ -85,3 +85,7 @@ storybook-static/
 
 # Journey-agent scratch scripts must never enter version control
 .scratch/
+
+# Shallow reference clones the effect-v3-to-v4 skill makes (.repos/effect,
+# .repos/effect-v3): read-only upstream checkouts, never part of the revision.
+.repos/

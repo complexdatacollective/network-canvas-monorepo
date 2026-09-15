@@ -19,6 +19,7 @@ import { onTestFinished, test } from 'vitest';
 import {
   assertCommitPinnedActionUses,
   assertFrescoPublisherContract,
+  frescoWorkspaceYaml,
   mirrorCatalogEntries,
   seedMirror,
   withCatalogOverrides,
@@ -481,10 +482,12 @@ test('seeding brings catalog-backed overrides to the current catalog and adds no
     '',
   ].join('\n');
   const current = withCatalogOverrides(released);
-  assert.ok(current.includes(`  'effect@3.17.7': '${catalog.effect}'\n`));
   assert.ok(current.includes(`  postcss: '${catalog.postcss}'\n`));
   assert.ok(current.includes("  fast-uri: '^3.1.4'\n"));
   assert.ok(current.includes("  sharp: '^0.35.3'\n"));
+  // `effect@3.17.7` is not catalog-backed: it stays exactly as the release
+  // left it rather than following the catalog onto Effect 4.
+  assert.ok(current.includes("  'effect@3.17.7': '^0.0.1'\n"));
 
   const older = "overrides:\n  sharp: '^0.35.3'\n";
   assert.equal(withCatalogOverrides(older), older);
@@ -497,7 +500,6 @@ test('seeding brings catalog-backed overrides to the current catalog and adds no
 test('the mirror’s own catalog entries include the vendored Vitest config’s', () => {
   const entries = mirrorCatalogEntries();
   for (const expected of [
-    'effect',
     'postcss',
     '@total-typescript/ts-reset',
     '@testing-library/dom',
@@ -509,4 +511,43 @@ test('the mirror’s own catalog entries include the vendored Vitest config’s'
       `${expected} missing from ${entries.join(', ')}`,
     );
   }
+  // `effect` is deliberately not one of them — see the next test.
+  assert.ok(!entries.includes('effect'), 'effect is not catalog-backed');
+});
+
+// `@uploadthing/shared@7.1.10` pins `effect: 3.17.7` exactly and is written
+// against the Effect 3 API. The root catalog's `effect` entry is on Effect 4,
+// so neither generator may resolve that override from it: the workspace's
+// generated policy would hand UploadThing a major it cannot run, and the
+// hotfix seeding path would rewrite a correct released override back to it.
+test('the UploadThing Effect 3 override never takes the catalog’s Effect version', () => {
+  const catalog = parseCatalog(
+    readFileSync(join(REPO_ROOT, 'pnpm-workspace.yaml'), 'utf8'),
+  );
+  assert.ok(
+    catalog.effect.startsWith('4.'),
+    `this test is only meaningful while the catalog is on Effect 4, not ${catalog.effect}`,
+  );
+
+  const overrideLine = (yaml) =>
+    yaml.match(/^\s+'effect@3\.17\.7':\s*'([^']*)'\s*$/m)?.[1];
+
+  const generated = overrideLine(frescoWorkspaceYaml());
+  assert.ok(generated, 'the generated Fresco policy carries the override');
+  assert.notEqual(generated, catalog.effect);
+  assert.ok(
+    generated.startsWith('^3.'),
+    `the generated override must stay on Effect 3, got ${generated}`,
+  );
+  // The two literals are independent of the catalog and so of each other;
+  // this is what stops the mirrored tree drifting off the monorepo's value.
+  assert.equal(
+    generated,
+    overrideLine(readFileSync(join(REPO_ROOT, 'pnpm-workspace.yaml'), 'utf8')),
+  );
+
+  const seeded = withCatalogOverrides(
+    `overrides:\n  'effect@3.17.7': '^3.22.1'\n`,
+  );
+  assert.equal(overrideLine(seeded), '^3.22.1');
 });

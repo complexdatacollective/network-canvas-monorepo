@@ -192,6 +192,22 @@ export function unreleasedReleases(cs, unreleased = UNRELEASED_PACKAGES) {
   return cs.releases.filter((release) => names.has(release.name));
 }
 
+// Names `changeset version` can resolve at all. It looks every release name up
+// in the workspace before it reads the config `ignore` list — the lookup that
+// throws `Found changeset <id> for package <name> which is not in the
+// workspace` is the argument to the `ignore` check — so `ignore` cannot rescue
+// a name the workspace does not carry. Unguarded, a changeset naming a renamed
+// or deleted package passes every review and hard-errors in the Version
+// Packages PR, at release time.
+const WORKSPACE_PACKAGE_NAMES = workspaceManifests()
+  .map(({ manifest }) => manifest.name)
+  .filter((name) => typeof name === 'string');
+
+export function unknownReleases(cs, known = WORKSPACE_PACKAGE_NAMES) {
+  const names = new Set(known);
+  return cs.releases.filter((release) => !names.has(release.name));
+}
+
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { releases: [], summary: contents.trim() };

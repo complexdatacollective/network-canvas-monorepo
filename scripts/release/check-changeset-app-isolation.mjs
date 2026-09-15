@@ -8,7 +8,8 @@
 // `@codaco/interview` must release every app that bundles it, because a
 // runtime release no app release carries never reaches participants — and
 // refuses a changeset naming a workspace with no release path at all, which
-// `changeset version` would happily bump and write a CHANGELOG for.
+// `changeset version` would happily bump and write a CHANGELOG for, or a name
+// that is no workspace at all, which it hard-errors on at release time.
 import { join } from 'node:path';
 
 import {
@@ -17,6 +18,7 @@ import {
   isMultiProductLaneChangeset,
   missingBundlingApps,
   readChangesets,
+  unknownReleases,
   unreleasedReleases,
 } from './changeset-app-utils.mjs';
 
@@ -31,12 +33,16 @@ const bundlingOffenders = changesets
 const unreleasedOffenders = changesets
   .map((cs) => ({ cs, named: unreleasedReleases(cs) }))
   .filter(({ named }) => named.length > 0);
+const unknownOffenders = changesets
+  .map((cs) => ({ cs, named: unknownReleases(cs) }))
+  .filter(({ named }) => named.length > 0);
 
 if (
   mixedOffenders.length === 0 &&
   multiLaneOffenders.length === 0 &&
   bundlingOffenders.length === 0 &&
-  unreleasedOffenders.length === 0
+  unreleasedOffenders.length === 0 &&
+  unknownOffenders.length === 0
 ) {
   process.exit(0);
 }
@@ -112,6 +118,24 @@ if (unreleasedOffenders.length > 0) {
   console.error(
     '\nRemove those entries. A change to one of these packages reaches users through the app or\n' +
       'package that consumes it, so name that instead when the change is user-visible.',
+  );
+}
+
+if (unknownOffenders.length > 0) {
+  console.error(
+    'Changesets naming a package that is not in the workspace — `changeset version` resolves every name\n' +
+      'against the workspace before it reads the `ignore` list, so `ignore` cannot cover one of these:\n' +
+      'it hard-errors, at release time, in the Version Packages PR:\n',
+  );
+  for (const { cs, named } of unknownOffenders) {
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(
+      `    not in the workspace: ${named.map((r) => r.name).join(', ')}`,
+    );
+  }
+  console.error(
+    '\nFix the spelling or remove the entry. Renaming a package leaves every changeset still naming\n' +
+      'the old name behind, and this is where they surface.',
   );
 }
 
