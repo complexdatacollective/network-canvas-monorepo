@@ -197,14 +197,25 @@ const itemVariants = cva({
 });
 
 /**
- * Returns animation props for array field items.
- * When hasMounted is false, initial is set to false to prevent mount animations.
- * This avoids flickering when ArrayField is rendered inside animated containers like dialogs.
+ * Enter and exit animations for the list's rows and its empty state.
+ *
+ * `initial` is resolved from `hasOpened` — the list's own answer to "is this
+ * row simply here, or did the researcher make it appear?" (see
+ * `hasOpenedRef`). While the list has not opened it resolves to the resting
+ * state, so rows that arrive with the field's value are just there; afterwards
+ * it is the real enter animation, and a row the researcher adds scales up.
+ *
+ * `exit` is NOT gated the same way, deliberately. Suppressing it for the empty
+ * state that a freshly arrived value displaces sounds right and measurably is
+ * not: an exit that finishes in the frame it starts leaves the surviving rows
+ * projected against the box the list had while the empty state still occupied
+ * it, and they keep a residual vertical stretch (~1.12) for as long as they are
+ * on screen. An exit always animates.
  */
 const getItemAnimationProps = {
-  initial: (hasMounted: boolean) => ({
-    opacity: hasMounted ? 0 : 1,
-    scale: hasMounted ? 0.6 : 1,
+  initial: (hasOpened: boolean) => ({
+    opacity: hasOpened ? 0 : 1,
+    scale: hasOpened ? 0.6 : 1,
   }),
   animate: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.6 },
@@ -572,7 +583,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   isSortable: boolean;
   isBeingEdited: boolean;
   isNewItem: boolean;
-  hasMounted: boolean;
+  hasOpened: boolean;
   onCancel: () => void;
   onChange?: (value: T) => void;
   // Answers the same way `onMoveItem` below does, and for the same reason: a
@@ -615,7 +626,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     isSortable,
     isBeingEdited,
     isNewItem,
-    hasMounted,
+    hasOpened,
     onDeleteItem,
     onEditItem,
     onMoveItem,
@@ -691,7 +702,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       className={cx(itemVariants(), resolvedItemClasses)}
       aria-hidden={isPresent ? undefined : true}
       inert={!isPresent}
-      custom={hasMounted}
+      custom={hasOpened}
       layout
       layoutId={item._internalId}
       variants={getItemAnimationProps}
@@ -767,12 +778,29 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // renders, which `useArrayFieldItems`' external-value sync depends on.
   const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
-  // Track mount state to prevent initial animations when rendered inside
-  // animated containers (e.g., dialogs with layoutId animations).
-  // Using a ref instead of state to avoid triggering an extra render.
-  const hasMountedRef = useRef(false);
-  useEffect(() => {
-    hasMountedRef.current = true;
+  // Has this list opened yet — that is, is there anything on screen that the
+  // researcher should see change?
+  //
+  // Rows that are simply THERE when a stage editor or a dialog opens must not
+  // animate: the only motion this list may show is a row morphing into its
+  // editor, a drag reordering it, and a row the researcher adds or deletes.
+  //
+  // Mount is the wrong moment to answer this. A host form hands the field `[]`
+  // on its first render and the stage's real rows a render later (measured on
+  // Architect's Information editor: `array(0)` at one frame, `array(3)` at the
+  // next), so a flag flipped by a mount effect is already `true` when those
+  // rows arrive — and every one of them animated in from scale 0.6, which is
+  // the defect this replaces. The list has opened once it has actually
+  // rendered rows, or once the researcher has asked it for a new one (so that
+  // the first row added to a genuinely empty list still animates in). A list
+  // that is still waiting for its value has done neither.
+  //
+  // A ref rather than state, and read during render: the value it carries only
+  // ever selects between two variants of an animation that has not started
+  // yet, so there is nothing for an extra render to correct.
+  const hasOpenedRef = useRef(false);
+  const openList = useCallback(() => {
+    hasOpenedRef.current = true;
   }, []);
 
   const { confirm } = useDialog();
@@ -1166,6 +1194,15 @@ export default function ArrayField<T extends Record<string, unknown>>({
     [EditorComponent, items],
   );
 
+  // Runs after every render, not just the first: the render that brings the
+  // list its rows is the one that must still see `hasOpenedRef` as `false`, so
+  // the flip has to happen behind it rather than on mount. Assigning an
+  // already-`true` ref on later renders costs nothing.
+  const hasRenderableItems = renderableItems.length > 0;
+  useEffect(() => {
+    if (hasRenderableItems) openList();
+  }, [hasRenderableItems, openList]);
+
   const id = useId();
   const isAtCapacity =
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
@@ -1230,7 +1267,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 layout
                 key="no-items"
                 className="m-10 text-sm text-current/70"
-                custom={hasMountedRef.current}
+                custom={hasOpenedRef.current}
                 variants={getItemAnimationProps}
                 initial="initial"
                 animate="animate"
@@ -1253,7 +1290,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
-                  hasMounted={hasMountedRef.current}
+                  hasOpened={hasOpenedRef.current}
                   onDeleteItem={
                     isInteractionDisabled ? undefined : requestDelete
                   }
@@ -1286,6 +1323,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
             key="add-button"
             color="primary"
             onClick={() => {
+              // The one route by which a row reaches an EMPTY list — which has
+              // therefore never rendered a row, and would otherwise still count
+              // as unopened when that first row arrives. Set before the add so
+              // the render it schedules already sees an opened list.
+              openList();
               if (immediateAdd) {
                 addItem(itemTemplate() as T);
                 announce(
