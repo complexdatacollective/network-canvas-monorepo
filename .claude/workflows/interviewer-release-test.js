@@ -810,13 +810,11 @@ check's detail:
    "manual-and-idle-lock".
 4. Step-up gates (a rejected credential creates no session) and encryption
    at rest across sessions, protocols, AND assets — including rows seeded
-   in plaintext BEFORE enrolment, proving the re-encryption sweep: steps
-   "seed-before-enrolment", "stepup-interview-entry",
-   "phantom-after-entry-gated-exit", "stepup-export", and
-   "ciphertext-at-rest".
-4d. The re-encryption sweep is proven END TO END: the session recorded
-   before any vault existed remounts through the app and the encrypted
-   export carries the response seeded before enrolment: steps
+   in plaintext BEFORE enrolment, with the re-encryption sweep proven END
+   TO END (the session recorded before any vault existed remounts through
+   the app and the encrypted export carries the response seeded before
+   enrolment): steps "seed-before-enrolment", "stepup-interview-entry",
+   "phantom-after-entry-gated-exit", "stepup-export", "ciphertext-at-rest",
    "encrypted-export-decrypts", "sweep-decrypt-proof", and
    "phantom-after-sweep-probe-exit".
 5. Lock-screen guard on interview routes (recovery suppressed) and
