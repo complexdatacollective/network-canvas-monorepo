@@ -4,7 +4,7 @@
 # out of the browser, and the host can curl them back. The in-app browser
 # aborts real file downloads, so this is the only reliable capture path.
 #
-# Usage: enable-captures.sh --lane upgrade|fresh
+# Usage: enable-captures.sh --lane upgrade|fresh|analytics|twofactor
 # Prints the capture base URL.
 set -euo pipefail
 
@@ -18,7 +18,9 @@ done
 case "$LANE" in
   upgrade) MINIO_PORT=9310 ;;
   fresh) MINIO_PORT=9311 ;;
-  *) echo "Usage: enable-captures.sh --lane upgrade|fresh" >&2; exit 1 ;;
+  analytics) MINIO_PORT=9312 ;;
+  twofactor) MINIO_PORT=9313 ;;
+  *) echo "Usage: enable-captures.sh --lane upgrade|fresh|analytics|twofactor" >&2; exit 1 ;;
 esac
 
 docker exec "fresco-release-test-$LANE-minio-1" sh -c "

@@ -17,7 +17,17 @@ export const meta = {
     },
     {
       title: 'Fresh lane',
-      detail: 'setup wizard end-to-end on the pending image',
+      detail:
+        'setup wizard end-to-end on the pending image, then the scripted interview, health and localization checks',
+    },
+    {
+      title: 'Analytics lane',
+      detail:
+        'a deployment with analytics ENABLED, against a payload-recording sink: what is actually sent, and how damaged protocol files are reported',
+    },
+    {
+      title: 'Two-factor lane',
+      detail: 'a deployment that requires two-factor authentication',
     },
     {
       title: 'Audit',
@@ -64,6 +74,12 @@ const SYNTHETIC_COUNT = 5;
 const REQUIRED_API_PATHS = ['/api/v1/protocols-meta', '/api/v1/interview'];
 const UPGRADE_URL = 'http://localhost:3210';
 const FRESH_URL = 'http://localhost:3211';
+// The script-driven lanes. Each is a deterministic driver under
+// release-test/scripts that prints one JSON line of checks; the agent that
+// runs one is told to return its fields verbatim and to interpret nothing.
+// Their check ids are listed below and enforced in code, so a driver that
+// stops performing a check fails the run rather than reporting a shorter list.
+const SCRIPTS = `${HARNESS}/scripts`;
 const DEFAULT_RELEASED_IMAGE = 'ghcr.io/complexdatacollective/fresco:latest';
 const PENDING_IMAGE = 'fresco-release-test:pending';
 
@@ -334,6 +350,33 @@ const RELAY_SINK_SCHEMA = {
   required: ['ok'],
 };
 
+// What every script-driven lane returns. `ok` says the driver completed, not
+// that its checks passed — a driver that reported ok:false because a check
+// failed would hide a candidate failure behind a harness one, and the
+// workflow reads the checks itself.
+const SCRIPT_LANE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    checks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          status: { type: 'string', enum: ['pass', 'fail'] },
+          detail: { type: 'string' },
+        },
+        required: ['id', 'status'],
+      },
+    },
+    error: { type: 'string' },
+  },
+  required: ['ok', 'checks'],
+};
+
 const STACK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -343,6 +386,16 @@ const STACK_SCHEMA = {
     imageId: {
       type: 'string',
       description: "The .Image id up.sh read from the lane's Fresco container",
+    },
+    analytics: {
+      type: 'boolean',
+      description:
+        'Whether up.sh started this lane with analytics ENABLED (its "analytics" field, verbatim)',
+    },
+    requireTwoFactor: {
+      type: 'boolean',
+      description:
+        'Whether up.sh started this lane with REQUIRE_TWO_FACTOR set (its "requireTwoFactor" field, verbatim)',
     },
     error: {
       type: 'string',
@@ -546,6 +599,20 @@ const AUDIT_SCHEMA = {
       items: { type: 'string' },
       description: 'Base names of .changeset/*.md, without the extension',
     },
+    changesetPackages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          changeset: { type: 'string' },
+          packages: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['changeset', 'packages'],
+      },
+      description:
+        'For every changeset, the package names in its front matter, verbatim',
+    },
     error: { type: 'string' },
   },
   required: [
@@ -581,12 +648,12 @@ const REPORT_SCHEMA = {
           },
           status: {
             type: 'string',
-            enum: ['covered', 'untested', 'unrelated'],
+            enum: ['covered', 'untested', 'unrelated', 'presentation-only'],
           },
           note: {
             type: 'string',
             description:
-              'covered: which check exercised it. untested: what nothing exercised. unrelated: why it cannot reach Fresco',
+              'covered: which check exercised it. untested: what nothing exercised. unrelated: why it cannot reach Fresco. presentation-only: which components it changes',
           },
         },
         required: ['changeset', 'status', 'note'],
@@ -603,6 +670,72 @@ const REPORT_SCHEMA = {
 // maps bind the returned report to that numbering, so a truncated, reordered
 // or quietly skipped report cannot read as coverage.
 // ---------------------------------------------------------------------------
+
+// Every check each script-driven lane must report, by id. Listed here rather
+// than counted, because these lanes are not agents reading a numbered prompt:
+// the driver names its own checks, so what binds the report to this workflow
+// is the set of names. A missing id is a check that silently stopped running;
+// an unknown one is a report this workflow cannot account for. Both fail.
+const expectedScriptChecks = {
+  interview: [
+    'interview-protocol-imported',
+    'interview-opens',
+    'interview-information-selectable',
+    'interview-video-descriptions',
+    'interview-ego-form-answered',
+    'interview-nodes-created',
+    'interview-sociogram-placed-and-connected',
+    'interview-ordinal-bin-labels',
+    'interview-ordinal-bin-placement',
+    'interview-categorical-bin-labels',
+    'interview-categorical-bin-placement',
+    'interview-finished',
+    'interview-export-carries-the-answers',
+  ],
+  health: [
+    'health-answers-anonymously',
+    'health-hides-deployment-details',
+    'health-version-still-shown-to-researchers',
+  ],
+  localization: [
+    'localization-preference-applies',
+    'localization-reaches-validation-and-dialogs',
+    'localization-reaches-activity-details',
+    'localization-follows-the-account',
+    'localization-seeds-interview-controls',
+  ],
+  analytics: [
+    'analytics-interview-conducted',
+    'analytics-damaged-missing-resource-named',
+    'analytics-damaged-archive-described',
+    'analytics-inflation-limit-enforced',
+    'analytics-fractional-count-refused',
+    'analytics-fractional-value-accepted',
+    'analytics-sink-listening',
+    'analytics-payloads-readable',
+    'analytics-initialised',
+    'analytics-events-captured',
+    'analytics-both-surfaces-captured',
+    'analytics-server-events-captured',
+    'analytics-entity-ids-reported',
+    'analytics-no-session-replay',
+    'analytics-no-heatmaps',
+    'analytics-no-autocapture',
+    'analytics-no-element-data',
+    'analytics-no-deployment-identifiers',
+    'analytics-pseudonymous-distinct-id',
+    'analytics-damaged-file-not-an-error',
+  ],
+  twoFactor: [
+    'two-factor-forced-after-setup',
+    'two-factor-blocks-signed-in-requests',
+    'two-factor-forced-after-sign-in',
+    'two-factor-enrolment-admits-the-account',
+    'two-factor-admits-requests-once-enrolled',
+    'two-factor-requirement-reported-and-read-only',
+    'two-factor-cannot-be-turned-off',
+  ],
+};
 
 const expectedChecks = {
   seed: 9,
@@ -722,6 +855,22 @@ const [build, released] = await parallel(
   skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks,
 );
 
+// The protocol fixtures every script-driven lane imports: the one an interview
+// is conducted with, and the damaged ones. Built rather than committed — a
+// repository is the wrong place for a deliberately corrupt archive and an
+// entry that inflates to more than a gigabyte — and built here so a failure to
+// produce them is reported before any lane depends on them.
+const fixtures = await agent(
+  `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Run exactly this, once: node ${SCRIPTS}/make-fixtures.mjs
+It prints ONE line of JSON naming the files it wrote. Return ok:true if it exited 0, or ok:false with the decisive error lines in "error". Change nothing else.`,
+  {
+    label: 'make-fixtures',
+    phase: 'Build',
+    schema: BUILD_SCHEMA,
+    ...MECHANICAL,
+  },
+);
+
 if (!build?.ok || !released?.ok) {
   // Same result shape as every other exit, in the same vocabulary: a consumer
   // that renders the documented contract must not need a second code path for
@@ -765,12 +914,15 @@ if (!build?.ok || !released?.ok) {
     ].filter(Boolean),
     warnings: [],
     untestedShippedChanges: [],
+    presentationOnlyChanges: [],
     expectedVersion,
     testedVersion: null,
     pendingImage: build ? { ...build } : null,
     releasedImage: released?.image ?? releasedImage,
     upgradeLane: null,
     freshLane: null,
+    analyticsLane: null,
+    twoFactorLane: null,
     audit: null,
     artifacts: ARTIFACTS,
     teardown: 'no stack was started',
@@ -802,6 +954,18 @@ const relaySinkPrompt = (lane) =>
   `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once:
 node ${HARNESS}/scripts/relay-sink-check.mjs --lane ${lane}
 It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, sinkRunning, sinkPorts, probeSent, probeConnections, analyticsConnections. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error and OMIT the counts rather than supplying numbers of your own. Do not interpret what the numbers mean, do not investigate anything they suggest, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
+
+// Every script-driven lane is run the same way, and the agent is given nothing
+// to decide: the driver prints one line of JSON and the workflow reads it. An
+// agent asked to interpret a lane's checks could report a pass it did not
+// witness, and could not be held to the check ids this workflow expects.
+const scriptPrompt = (
+  script,
+  args,
+  what,
+) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once (Bash timeout 1800000 — it drives a browser through ${what}):
+node ${SCRIPTS}/${script} ${args}
+It prints ONE line of JSON on stdout and nothing else. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
 
 // ---------------------------------------------------------------------------
 
@@ -1044,6 +1208,50 @@ Set area="freshSetup".`,
       ...UI,
     },
   );
+  // The scripted checks run on this lane's instance, after the agent has
+  // finished with it: it is a configured deployment of the pending image, and
+  // standing up another stack to conduct one interview would cost a container
+  // for nothing. They are strictly serialized for the same reason the upgrade
+  // lane's agents are — one browser at a time.
+  lane.interview = await agent(
+    scriptPrompt(
+      'interview-lane.mjs',
+      '--lane fresh --signed-in',
+      'a whole interview, from the first stage to the finish screen, and out through an export',
+    ),
+    {
+      label: 'interview-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.health = await agent(
+    scriptPrompt(
+      'health-lane.mjs',
+      `--lane fresh${expectedVersion ? ` --expect-version ${expectedVersion}` : ''}`,
+      'the health endpoint and the dashboard',
+    ),
+    {
+      label: 'health-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.localization = await agent(
+    scriptPrompt(
+      'localization-lane.mjs',
+      '--lane fresh',
+      'the researcher interface in English and then in Spanish',
+    ),
+    {
+      label: 'localization-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
   lane.relaySink = await agent(relaySinkPrompt('fresh'), {
     label: 'relay-sink-fresh',
     phase: 'Fresh lane',
@@ -1053,8 +1261,60 @@ Set area="freshSetup".`,
   return lane;
 };
 
+// ---------------------------------------------------------------------------
+// The two deployments the run configures differently. Each is its own compose
+// project on its own ports, started and torn down around its own checks, so a
+// run holds four stacks only as long as it has to.
+// ---------------------------------------------------------------------------
+
+const runConfiguredLane = async ({
+  name,
+  phase: phaseName,
+  script,
+  args,
+  what,
+  label,
+}) => {
+  const lane = { name };
+  lane.up = await agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/up.sh --lane ${name} --image ${pendingImage}
+(Bash timeout 480000.) The last stdout line is JSON. Return ok:true with its "baseUrl", "imageId", "analytics" and "requireTwoFactor" fields VERBATIM — the last two are booleans describing the deployment this lane was started as, and the workflow refuses the lane without them — or ok:false with the decisive error lines in "error".`,
+    {
+      label: `up-${name}`,
+      phase: phaseName,
+      schema: STACK_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.imageId = bareDigest(lane.up?.imageId);
+  if (lane.up?.ok !== true) return lane;
+
+  lane.report = await agent(scriptPrompt(script, args, what), {
+    label,
+    phase: phaseName,
+    schema: SCRIPT_LANE_SCHEMA,
+    ...MECHANICAL,
+  });
+
+  // Down as soon as its checks are in: nothing later reads this stack, and a
+  // machine running four Fresco deployments at once is a slower machine.
+  lane.down = await agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Run: bash ${HARNESS}/down.sh --lane ${name}
+Return ok:true, or ok:false with what remained in "error". Change nothing else.`,
+    {
+      label: `down-${name}`,
+      phase: phaseName,
+      schema: STACK_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  return lane;
+};
+
 let upgradeLane;
 let freshLane;
+let analyticsLane;
+let twoFactorLane;
 let auditResult;
 let report;
 let teardown;
@@ -1064,6 +1324,26 @@ try {
   // lanes trade reliability (and token-burning tab recovery) for wall-clock.
   upgradeLane = await runUpgradeLane();
   freshLane = await runFreshLane();
+
+  phase('Analytics lane');
+  analyticsLane = await runConfiguredLane({
+    name: 'analytics',
+    phase: 'Analytics lane',
+    script: 'analytics-lane.mjs',
+    args: '--lane analytics',
+    what: 'a deployment with analytics enabled, and the damaged protocol fixtures',
+    label: 'analytics-lane',
+  });
+
+  phase('Two-factor lane');
+  twoFactorLane = await runConfiguredLane({
+    name: 'twofactor',
+    phase: 'Two-factor lane',
+    script: 'two-factor-lane.mjs',
+    args: '--lane twofactor',
+    what: 'a deployment that requires two-factor authentication',
+    label: 'two-factor-lane',
+  });
 
   phase('Audit');
 
@@ -1127,6 +1407,7 @@ Report, exactly:
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
 - diffSummaryExists: whether ${DIFF_SUMMARY} exists (you are not reading its contents, only noting that the capture produced it).
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
+- changesetPackages: for each of those files, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
       label: 'audit-artifacts',
@@ -1145,6 +1426,7 @@ Also read EVERY pending changeset (.changeset/*.md in your working directory, ex
 - "covered": EVERY Fresco-facing behaviour the changeset describes was exercised by a check above. Say which check covered which behaviour. A changeset often describes several changes in several bullets; if any one of them went unexercised the entry is "untested", not "covered" — partial coverage is not coverage.
 - "untested": it ships behaviour that reaches Fresco and some or all of that behaviour went unexercised. Say what went unexercised.
 - "unrelated": it cannot reach Fresco at all — another app, or a package this image does not contain.
+- "presentation-only": everything it ships that could reach Fresco is @codaco/fresco-ui component behaviour — how a field, a dialog, a picker or a piece of typography looks and behaves in isolation. That is verified by the component's own Storybook interaction tests, which run on every change to it; a release test that drives whole deployments is the wrong instrument for it and would only ever reach a handful of those components by accident. Use it ONLY when the changeset bumps no package whose behaviour this test exercises — the workflow checks that against the packages the changeset actually names and fails the run if you use it for anything else. A changeset that also bumps "fresco", "@codaco/interview", "@codaco/protocol-validation", "@codaco/network-exporters", "@codaco/shared-consts" or "@codaco/app-i18n" is "covered" or "untested", never this.
 Judge "reaches Fresco" by what the image contains, NOT by whether the package is a library. This release test packs the pending @codaco/* packages that are in Fresco's own dependency closure into the image as tarballs (bundle-pending-packages.mjs vendors exactly those; anything outside that closure is not in the image at all). So a library changeset for a package Fresco depends on — @codaco/interview above all, the interview runtime Fresco hosts — ships inside the build under test and is Fresco-facing, and treating library changesets as out of scope wholesale would exclude most of what this test exists to cover. A library Fresco does not depend on is "unrelated"; say that it is outside the closure.
 Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, the export diff has unanticipated differences, or the pending image was built from a dirty tree (build.dirty) without allowDirty=${allowDirty} — a dirty build is not reproducible from any commit; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them. Your verdict is advisory: the workflow computes the release verdict itself from these same results and your judgment can only make it stricter, so err towards reporting what you see.`,
     {
@@ -1283,6 +1565,111 @@ for (const [area, result] of Object.entries(areaResults)) {
     );
 }
 
+// --- the script-driven lanes ------------------------------------------------
+//
+// Same accounting as the checklists above, in the vocabulary these lanes use:
+// a driver names its own checks, so the binding is the SET of ids rather than
+// a count and an ordering. Every id this workflow expects has to be there,
+// nothing else may be, and every one has to have passed. A lane that did not
+// run at all is unaccounted — it proves nothing either way — while a check
+// that ran and failed is the candidate's failure.
+const scriptLanes = {
+  interview: {
+    result: freshLane?.interview,
+    what: 'the interview conducted end to end',
+  },
+  health: {
+    result: freshLane?.health,
+    what: 'what /api/health tells an anonymous caller',
+  },
+  localization: {
+    result: freshLane?.localization,
+    what: 'the researcher interface in another language',
+  },
+  analytics: {
+    result: analyticsLane?.report,
+    what: 'what a deployment with analytics ENABLED sends',
+  },
+  twoFactor: {
+    result: twoFactorLane?.report,
+    what: 'a deployment that requires two-factor authentication',
+  },
+};
+
+for (const [area, { result, what }] of Object.entries(scriptLanes)) {
+  const expected = expectedScriptChecks[area];
+  if (!result) {
+    unaccounted.push(
+      `${area}: the lane returned no result, so ${what} was never checked`,
+    );
+    continue;
+  }
+  if (result.ok !== true)
+    unaccounted.push(
+      `${area}: the driver did not complete (${result.error ?? 'no error reported'}), so its checks describe a partial run`,
+    );
+
+  const reported = Array.isArray(result.checks) ? result.checks : [];
+  const ids = reported.map((entry) =>
+    typeof entry?.id === 'string' ? entry.id.trim() : '',
+  );
+  const seen = new Set(ids.filter(Boolean));
+  const missing = expected.filter((id) => !seen.has(id));
+  const unknown = [...seen].filter((id) => !expected.includes(id));
+  if (missing.length)
+    unaccounted.push(
+      `${area}: the lane did not report ${missing.join(', ')} — a check that stops running is not a check that passed`,
+    );
+  if (unknown.length)
+    unaccounted.push(
+      `${area}: the lane reported check(s) this workflow does not expect (${unknown.join(', ')}), so its report cannot be bound to what was asked of it`,
+    );
+  if (seen.size !== ids.filter(Boolean).length)
+    unaccounted.push(
+      `${area}: the lane reported the same check more than once`,
+    );
+
+  for (const entry of reported) {
+    const id = typeof entry?.id === 'string' ? entry.id.trim() : '(unnamed)';
+    if (entry?.status === 'pass') continue;
+    if (entry?.status === 'fail') {
+      failures.push(`${area} ${id}: ${entry.detail ?? 'failed'}`);
+      continue;
+    }
+    unaccounted.push(
+      `${area}: check ${id} reported status "${entry?.status}", which is neither pass nor fail`,
+    );
+  }
+}
+
+// A lane is only evidence about the deployment it claims to be. up.sh reports
+// the configuration it started each one in, and these two lanes exist
+// precisely because of theirs: an analytics lane that came up with analytics
+// DISABLED would send nothing, and every payload assertion in it would pass
+// over an empty file.
+for (const [lane, up, field, wanted, why] of [
+  [
+    'analytics lane',
+    analyticsLane?.up,
+    'analytics',
+    true,
+    'its checks are about what an ENABLED deployment sends, and a disabled one sends nothing at all',
+  ],
+  [
+    'two-factor lane',
+    twoFactorLane?.up,
+    'requireTwoFactor',
+    true,
+    'its checks are about a deployment that requires two-factor authentication',
+  ],
+]) {
+  if (up?.ok !== true) continue;
+  if (up[field] !== wanted)
+    unaccounted.push(
+      `${lane}: up.sh reported ${field}=${JSON.stringify(up[field])}, but ${why}`,
+    );
+}
+
 for (const { left, right, why } of skipPairs) {
   const leftRan = Boolean(areaResults[left.area]);
   const rightRan = Boolean(areaResults[right.area]);
@@ -1377,6 +1764,10 @@ for (const [lane, ran, cameUpAs, field] of [
     freshLane?.imageId,
     'freshContainerImage',
   ],
+  // Torn down before the audit reads the containers, so there is no field for
+  // it to corroborate; the id up.sh read as the lane came up is what binds it.
+  ['analytics', analyticsLane?.up?.ok === true, analyticsLane?.imageId, null],
+  ['twofactor', twoFactorLane?.up?.ok === true, twoFactorLane?.imageId, null],
 ]) {
   if (!ran) continue;
   if (!cameUpAs)
@@ -1387,7 +1778,7 @@ for (const [lane, ran, cameUpAs, field] of [
     failures.push(
       `${lane} lane: its Fresco container came up running image ${cameUpAs}, but the pending build is ${audit.stampImageId} — the lane did not run the image under test`,
     );
-  if (!audit) continue;
+  if (!audit || !field) continue;
   const running = bareDigest(audit[field]);
   if (!running)
     unaccounted.push(
@@ -1396,6 +1787,39 @@ for (const [lane, ran, cameUpAs, field] of [
   else if (stampedImageId && running !== stampedImageId)
     unaccounted.push(
       `${lane} lane: its Fresco container is running image ${audit[field]}, but the pending build is ${audit.stampImageId} — that lane exercised a different image`,
+    );
+}
+
+// The fixtures every script-driven lane imports. Without them those lanes
+// could not have exercised anything they claim to.
+if (fixtures?.ok !== true)
+  unaccounted.push(
+    `the protocol fixtures could not be built (${fixtures?.error ?? 'the fixture agent returned no result'}), so the lanes that import them exercised nothing`,
+  );
+
+// A lane that never came up is not evidence about the build — the same reading
+// the upgrade lane's baseline gets — but the pending image failing to start is.
+for (const [name, lane] of [
+  ['analytics lane', analyticsLane],
+  ['two-factor lane', twoFactorLane],
+]) {
+  if (!lane) {
+    unaccounted.push(`${name}: it never ran`);
+    continue;
+  }
+  if (lane.up?.ok === false)
+    failures.push(
+      `${name}: the pending image would not start in this configuration (${lane.up.error ?? 'no error reported'})`,
+    );
+  else if (!lane.up)
+    unaccounted.push(`${name}: the stack agent returned no result`);
+  if (lane.up?.ok === true && !lane.imageId)
+    unaccounted.push(
+      `${name}: up.sh reported no image id for its Fresco container, so nothing proves it ran the pending build`,
+    );
+  if (!keepStack && lane.up?.ok === true && lane.down?.ok !== true)
+    warnings.push(
+      `${name}: its stack did not tear down cleanly (${lane.down?.error ?? 'no teardown result'}) — run bash ${HARNESS}/down.sh`,
     );
 }
 
@@ -2008,7 +2432,44 @@ if (
 // chose to mention. The release bundles the pending @codaco/* packages into
 // the image, so a library changeset ships inside the build under test — an
 // unclassified one is behaviour nobody said was exercised.
+// Packages whose behaviour a deployment-level test cannot meaningfully reach:
+// component libraries and design tokens, verified by the component's own
+// Storybook interaction tests, plus the other applications, which this image
+// does not contain. A changeset may be classified "presentation-only" only if
+// every package it bumps is one of these AND at least one is a component
+// library — so a changeset that also ships app or runtime behaviour cannot be
+// set aside, and a package nobody has listed here fails closed rather than
+// being assumed harmless.
+const COMPONENT_PACKAGES = [
+  '@codaco/fresco-ui',
+  '@codaco/tailwind-config',
+  '@codaco/art',
+];
+const OTHER_APPLICATIONS = [
+  '@codaco/architect',
+  '@codaco/interviewer',
+  '@codaco/studio-client',
+  '@codaco/studio-server',
+  '@codaco/studio-rpc',
+  '@codaco/studio-sync',
+  'posthog-proxy-worker',
+];
+const packagesOf = new Map(
+  (audit?.changesetPackages ?? [])
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.changeset === 'string' &&
+        Array.isArray(entry.packages),
+    )
+    .map((entry) => [
+      entry.changeset,
+      entry.packages.filter((name) => typeof name === 'string'),
+    ]),
+);
+
 const untestedShippedChanges = [];
+const presentationOnlyChanges = [];
 const classified = new Map();
 for (const entry of report?.changesetCoverage ?? []) {
   const name = shaped(entry?.changeset, CHANGESET_NAME, 200);
@@ -2045,6 +2506,32 @@ for (const entry of report?.changesetCoverage ?? []) {
     );
     continue;
   }
+  // A claim that a changeset is beyond this test's reach is the one
+  // classification that removes something from the coverage tally without a
+  // check having run, so it is the one the workflow checks for itself.
+  if (entry.status === 'presentation-only') {
+    const packages = packagesOf.get(name);
+    if (!packages)
+      unaccounted.push(
+        `the release critic set changeset "${name}" aside as presentation-only, but the artifact audit did not report which packages it bumps, so the claim cannot be checked`,
+      );
+    else {
+      const beyond = packages.filter(
+        (pkg) =>
+          !COMPONENT_PACKAGES.includes(pkg) &&
+          !OTHER_APPLICATIONS.includes(pkg),
+      );
+      const components = packages.filter((pkg) =>
+        COMPONENT_PACKAGES.includes(pkg),
+      );
+      if (beyond.length || !components.length)
+        unaccounted.push(
+          `the release critic set changeset "${name}" aside as presentation-only, but it bumps ${beyond.length ? beyond.join(', ') : 'no component library at all'} — that is behaviour this run either exercised or did not`,
+        );
+      else presentationOnlyChanges.push(`${name}: ${note}`);
+    }
+  }
+
   classified.set(name, entry.status);
   if (entry.status === 'untested')
     untestedShippedChanges.push(`${name}: ${note || 'no reason given'}`);
@@ -2128,12 +2615,15 @@ return {
   unaccounted,
   warnings,
   untestedShippedChanges,
+  presentationOnlyChanges,
   expectedVersion,
   testedVersion: buildVersion,
   pendingImage: { ...build },
   releasedImage: pulledDigest ?? releasedImage,
   upgradeLane,
   freshLane,
+  analyticsLane,
+  twoFactorLane,
   audit: auditResult,
   artifacts: ARTIFACTS,
   teardown: keepStack ? 'stacks deliberately kept' : teardown,

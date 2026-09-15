@@ -15,6 +15,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -46,6 +47,30 @@ const workflow = new AsyncFunction(
 );
 
 const clone = (value) => structuredClone(value);
+
+// The script-driven lanes report checks by id, and the workflow requires
+// exactly the set it expects — so the fixture builds each lane's report FROM
+// that expectation rather than restating it. A list restated here would drift
+// from the workflow's and every test in this family would then be asserting
+// against a set nothing else uses.
+const expectedScriptChecks = (() => {
+  const start = source.indexOf('const expectedScriptChecks = {');
+  const end = source.indexOf('\n};', start);
+  const literal = source.slice(start, end + 3);
+  // eslint-disable-next-line no-new-func -- evaluating the workflow's own
+  // literal is the point: a list restated here would drift from the one the
+  // workflow enforces, and every test in this family would then assert against
+  // a set nothing else uses.
+  return new Function(
+    literal.replace('const expectedScriptChecks =', 'return'),
+  )();
+})();
+
+const passingScript = (area, overrides = {}) => ({
+  ok: true,
+  checks: expectedScriptChecks[area].map((id) => ({ id, status: 'pass' })),
+  ...overrides,
+});
 
 // A run in which everything the release gate cares about actually happened.
 // Tests deep-copy this and perturb exactly one thing.
@@ -129,11 +154,33 @@ const happyPath = () => ({
     ],
   },
   'diff-judge': { pass: true, unanticipated: [], anticipated: [] },
+  'make-fixtures': { ok: true },
   'up-fresh': {
     ok: true,
     baseUrl: 'http://localhost:3211',
     imageId: `sha256:${'b'.repeat(64)}`,
   },
+  'interview-lane': passingScript('interview'),
+  'health-lane': passingScript('health'),
+  'localization-lane': passingScript('localization'),
+  'up-analytics': {
+    ok: true,
+    baseUrl: 'http://localhost:3212',
+    imageId: `sha256:${'b'.repeat(64)}`,
+    analytics: true,
+    requireTwoFactor: false,
+  },
+  'analytics-lane': passingScript('analytics'),
+  'down-analytics': { ok: true },
+  'up-twofactor': {
+    ok: true,
+    baseUrl: 'http://localhost:3213',
+    imageId: `sha256:${'b'.repeat(64)}`,
+    analytics: false,
+    requireTwoFactor: true,
+  },
+  'two-factor-lane': passingScript('twoFactor'),
+  'down-twofactor': { ok: true },
   'verify-fresh-setup': {
     area: 'freshSetup',
     pass: true,
@@ -170,6 +217,13 @@ const happyPath = () => ({
     releasedImageDigest: `ghcr.io/complexdatacollective/fresco@sha256:${'a'.repeat(64)}`,
     releasedImageId: `sha256:${'f'.repeat(64)}`,
     changesets: ['fresco-release-blocker-fixes', 'interview-node-labels'],
+    changesetPackages: [
+      { changeset: 'fresco-release-blocker-fixes', packages: ['fresco'] },
+      {
+        changeset: 'interview-node-labels',
+        packages: ['@codaco/interview', 'fresco'],
+      },
+    ],
   },
   'release-critic': {
     verdict: 'go',
@@ -3078,4 +3132,547 @@ test('keepStack leaves the stacks up and runs no teardown agent', async () => {
   assert.ok(!prompts.some((p) => p.label === 'teardown'));
   assert.equal(result.stacksKept, true);
   assert.equal(result.verdict, 'go');
+});
+
+// ---------------------------------------------------------------------------
+// Family 7 — the script-driven lanes
+//
+// These lanes answer questions no agent checklist could: what an interview
+// does when it is actually conducted, what an ENABLED deployment puts on the
+// wire, what a deployment that requires two-factor authentication refuses.
+// Each driver names its own checks, so the binding between a lane and this
+// workflow is the SET of ids — and every test below breaks one of the ways
+// that binding could be got round.
+// ---------------------------------------------------------------------------
+
+const scriptLaneCases = [
+  ['interview-lane', 'interview'],
+  ['health-lane', 'health'],
+  ['localization-lane', 'localization'],
+  ['analytics-lane', 'analytics'],
+  ['two-factor-lane', 'twoFactor'],
+];
+
+for (const [label, area] of scriptLaneCases) {
+  test(`a failed ${area} check blocks the release`, async () => {
+    const r = happyPath();
+    r[label].checks[0] = {
+      id: expectedScriptChecks[area][0],
+      status: 'fail',
+      detail: 'the behaviour this guards is broken',
+    };
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    assert.equal(result.releasable, false);
+    assert.ok(
+      result.failures.some((f) =>
+        f.includes('the behaviour this guards is broken'),
+      ),
+      JSON.stringify(result.failures),
+    );
+  });
+
+  test(`a ${area} check that stops running is not a check that passed`, async () => {
+    const r = happyPath();
+    const dropped = expectedScriptChecks[area][1];
+    r[label].checks = r[label].checks.filter((c) => c.id !== dropped);
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes(dropped)),
+      JSON.stringify(result.unaccounted),
+    );
+  });
+}
+
+test('a lane reporting checks nobody asked for cannot be bound to what was asked', async () => {
+  const r = happyPath();
+  r['analytics-lane'].checks.push({
+    id: 'analytics-everything-is-fine',
+    status: 'pass',
+  });
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('analytics-everything-is-fine')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a check reported twice is not a check reported once', async () => {
+  const r = happyPath();
+  r['interview-lane'].checks.push({ ...r['interview-lane'].checks[0] });
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('more than once')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a check with an unrecognised status counts as nothing', async () => {
+  const r = happyPath();
+  r['two-factor-lane'].checks[2].status = 'skipped';
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('neither pass nor fail')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a driver that did not complete describes a partial run', async () => {
+  const r = happyPath();
+  r['localization-lane'].ok = false;
+  r['localization-lane'].error = 'the browser died half way through';
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('the browser died half way through'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a lane that never reported leaves its question unanswered', async () => {
+  const r = happyPath();
+  r['analytics-lane'] = undefined;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('what a deployment with analytics ENABLED sends'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+// The lane has to have been the deployment it claims to be. This is the one
+// that matters most: an analytics lane started with analytics DISABLED sends
+// nothing, so every "nothing sensitive was sent" check in it would pass over
+// an empty capture file.
+test('an analytics lane that came up with analytics disabled proves nothing', async () => {
+  const r = happyPath();
+  r['up-analytics'].analytics = false;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('a disabled one sends nothing at all'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a two-factor lane that came up without the requirement proves nothing', async () => {
+  const r = happyPath();
+  r['up-twofactor'].requireTwoFactor = false;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('requireTwoFactor=false')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a lane that omits its configuration is not taken on trust', async () => {
+  const r = happyPath();
+  delete r['up-analytics'].analytics;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('up.sh reported analytics=undefined'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the pending image failing to start in a configured lane is a failure', async () => {
+  const r = happyPath();
+  r['up-twofactor'] = {
+    ok: false,
+    error: 'REQUIRE_TWO_FACTOR=true refused at boot',
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'no-go');
+  assert.ok(
+    result.failures.some((f) => f.includes('refused at boot')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a configured lane must run the image that was stamped', async () => {
+  const r = happyPath();
+  r['up-analytics'].imageId = `sha256:${'9'.repeat(64)}`;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'no-go');
+  assert.ok(
+    result.failures.some((f) => f.includes('did not run the image under test')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('fixtures that could not be built leave the lanes that import them empty', async () => {
+  const r = happyPath();
+  r['make-fixtures'] = { ok: false, error: 'no space left on device' };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('no space left on device')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test("a configured lane's leftover stack warns without blocking", async () => {
+  const r = happyPath();
+  r['down-analytics'] = { ok: false, error: 'the volume would not go' };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.ok(
+    result.warnings.some((w) => w.includes('the volume would not go')),
+    JSON.stringify(result.warnings),
+  );
+});
+
+// The lanes run after the agent has finished with the fresh instance, and the
+// two configured lanes are torn down as they go rather than held to the end.
+test('the scripted checks run after the lane agent has finished with the instance', async () => {
+  const { prompts } = await run(happyPath());
+  const order = prompts.map((p) => p.label);
+  for (const label of ['interview-lane', 'health-lane', 'localization-lane'])
+    assert.ok(
+      order.indexOf(label) > order.indexOf('verify-fresh-setup'),
+      `${label} ran before the fresh lane's own checks`,
+    );
+  for (const lane of ['analytics', 'twofactor'])
+    assert.ok(
+      order.indexOf(`down-${lane}`) > order.indexOf(`up-${lane}`),
+      `the ${lane} lane was not torn down after it ran`,
+    );
+});
+
+// Every id this workflow expects has to be one its driver actually emits, and
+// every id a driver emits has to be one this workflow expects. Without this
+// the two drift silently: a renamed check would read as "the lane did not
+// report it" on every future run, and a new check would never be required.
+test('the expected check ids are exactly the ids the drivers emit', () => {
+  const drivers = {
+    interview: 'interview-lane.mjs',
+    health: 'health-lane.mjs',
+    localization: 'localization-lane.mjs',
+    twoFactor: 'two-factor-lane.mjs',
+  };
+  for (const [area, file] of Object.entries(drivers)) {
+    const driver = readFileSync(
+      join(repoRoot, 'apps/fresco/release-test/scripts', file),
+      'utf8',
+    );
+    for (const id of expectedScriptChecks[area])
+      assert.ok(
+        driver.includes(`'${id}'`),
+        `${file} does not emit "${id}", which the workflow requires`,
+      );
+    const emitted = [
+      ...driver.matchAll(/(?:attempt|check)\(\s*'([a-z0-9-]+)'/g),
+    ].map((m) => m[1]);
+    for (const id of new Set(emitted))
+      assert.ok(
+        expectedScriptChecks[area].includes(id) || id.endsWith('-completed'),
+        `${file} emits "${id}", which the workflow does not expect`,
+      );
+  }
+});
+
+// The analytics lane's ids come from two places — its own driver and the
+// payload contract it evaluates — so both are covered.
+test('the analytics lane expects every check its contract produces', async () => {
+  const driver = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/scripts/analytics-lane.mjs'),
+    'utf8',
+  );
+  const contract = readFileSync(
+    join(
+      repoRoot,
+      'apps/fresco/release-test/scripts/relay-payload-protocol.mjs',
+    ),
+    'utf8',
+  );
+  const emitted = new Set([
+    ...[...driver.matchAll(/(?:attempt|check)\(\s*'([a-z0-9-]+)'/g)].map(
+      (m) => m[1],
+    ),
+    // The damaged-file checks are declared as a table rather than written out
+    // one by one, so their ids are properties rather than call arguments.
+    ...[...driver.matchAll(/\bid: '([a-z0-9-]+)'/g)].map((m) => m[1]),
+    ...[...contract.matchAll(/check\(\s*\n?\s*'([a-z0-9-]+)'/g)].map(
+      (m) => m[1],
+    ),
+  ]);
+  for (const id of emitted)
+    assert.ok(
+      expectedScriptChecks.analytics.includes(id) || id.endsWith('-completed'),
+      `the analytics lane emits "${id}", which the workflow does not expect`,
+    );
+  for (const id of expectedScriptChecks.analytics)
+    assert.ok(
+      emitted.has(id),
+      `the workflow expects "${id}", which the analytics lane does not emit`,
+    );
+});
+
+// The agents that run these drivers are couriers. One that was invited to
+// interpret could report a lane's verdict rather than its output.
+test('the script agents are told to report the driver, not to interpret it', async () => {
+  const { prompts } = await run(happyPath());
+  for (const label of [
+    'interview-lane',
+    'health-lane',
+    'localization-lane',
+    'analytics-lane',
+    'two-factor-lane',
+  ]) {
+    const prompt = promptFor(prompts, label);
+    assert.match(prompt, /VERBATIM/);
+    assert.match(prompt, /Do not interpret/);
+    assert.match(prompt, /The workflow decides what they mean\./);
+  }
+});
+
+// The lane table the drivers read and the one up.sh starts stacks from are the
+// same table in two languages. A driver pointed at the wrong port would test
+// whatever is listening there, or nothing.
+test('the drivers and up.sh agree about every lane', async () => {
+  const { LANES } =
+    await import('../../apps/fresco/release-test/scripts/lanes.mjs');
+  const up = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/up.sh'),
+    'utf8',
+  );
+  for (const [name, config] of Object.entries(LANES)) {
+    const block = new RegExp(String.raw`\n  ${name}\)([\s\S]*?)\n    ;;`).exec(
+      up,
+    )?.[1];
+    assert.ok(block, `up.sh does not know the lane "${name}"`);
+    for (const [variable, value] of [
+      ['FRESCO_PORT', config.frescoPort],
+      ['POSTGRES_PORT', config.postgresPort],
+      ['MINIO_PORT', config.minioPort],
+      ['SINK_HTTPS_PORT', config.sinkHttpsPort],
+      ['SINK_HTTP_PORT', config.sinkHttpPort],
+    ])
+      assert.match(
+        block,
+        new RegExp(`${variable}=${value}\\b`),
+        `up.sh starts lane "${name}" with a different ${variable} than the drivers use`,
+      );
+    assert.match(block, new RegExp(`PROJECT="${config.project}"`));
+  }
+  // And down.sh has to remove every one of them, or a lane survives a teardown
+  // that claimed to have removed everything and its ports break the next run.
+  const down = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/down.sh'),
+    'utf8',
+  );
+  // The DEFAULT list, not the argument parser's own assignment.
+  const defaultLanes = /\|\| LANES="([^"]+)"/.exec(down)?.[1]?.split(' ') ?? [];
+  assert.deepEqual(
+    defaultLanes.toSorted((a, b) => a.localeCompare(b)),
+    Object.keys(LANES).toSorted((a, b) => a.localeCompare(b)),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Family 8 — setting a changeset aside
+//
+// "presentation-only" is the one classification that removes a changeset from
+// the coverage tally without any check having exercised it, so it is the one
+// the workflow checks for itself rather than accepting from the critic.
+// ---------------------------------------------------------------------------
+
+const withCoverage = (coverage) => {
+  const r = happyPath();
+  r['audit-artifacts'].changesets = coverage.map((c) => c.changeset);
+  r['audit-artifacts'].changesetPackages = coverage.map((c) => ({
+    changeset: c.changeset,
+    packages: c.packages,
+  }));
+  r['release-critic'].changesetCoverage = coverage.map((c) => ({
+    changeset: c.changeset,
+    status: c.status,
+    note: c.note ?? 'because',
+  }));
+  return r;
+};
+
+test('a component-library changeset can be set aside, and is reported', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'fresco-ui-date-picker-month-options',
+        packages: ['@codaco/fresco-ui'],
+        status: 'presentation-only',
+        note: 'the date picker’s month list, covered by its own stories',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.deepEqual(result.untestedShippedChanges, []);
+  assert.ok(
+    result.presentationOnlyChanges.some((entry) =>
+      entry.includes('fresco-ui-date-picker-month-options'),
+    ),
+    JSON.stringify(result.presentationOnlyChanges),
+  );
+});
+
+test('a changeset that also ships app behaviour cannot be set aside', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'tidy-moons-shake',
+        packages: ['@codaco/fresco-ui', 'fresco'],
+        status: 'presentation-only',
+        note: 'mostly components',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('it bumps fresco')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a changeset that ships runtime behaviour cannot be set aside', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'bin-labels-fit-the-bin',
+        packages: ['@codaco/interview', '@codaco/fresco-ui', 'fresco'],
+        status: 'presentation-only',
+        note: 'bins are components',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('@codaco/interview')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a changeset bumping no component library at all cannot be set aside', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'architect-icon-picker',
+        packages: ['@codaco/architect'],
+        status: 'presentation-only',
+        note: 'another app',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('no component library at all')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a package nobody has classified fails closed', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'brand-new-package',
+        packages: ['@codaco/fresco-ui', '@codaco/something-new'],
+        status: 'presentation-only',
+        note: 'looks like components to me',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('@codaco/something-new')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('setting a changeset aside without its packages cannot be checked', async () => {
+  const r = withCoverage([
+    {
+      changeset: 'fresco-ui-alert-default-text-color',
+      packages: ['@codaco/fresco-ui'],
+      status: 'presentation-only',
+      note: 'alert colours',
+    },
+  ]);
+  r['audit-artifacts'].changesetPackages = [];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('did not report which packages')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('an untested changeset still caps certification', async () => {
+  const { result } = await run(
+    withCoverage([
+      {
+        changeset: 'fresco-something-new',
+        packages: ['fresco'],
+        status: 'untested',
+        note: 'nothing drove it',
+      },
+    ]),
+  );
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, false);
+  assert.equal(result.coverage, 'partial');
+});
+
+// A prompt that names a script nobody has written, or names it at the wrong
+// path, fails at the end of a run that has already spent an hour standing up
+// stacks. The names are checked here instead.
+test('every script a prompt tells an agent to run exists', async () => {
+  const { prompts } = await run(happyPath());
+  const invocations = prompts.flatMap((p) => [
+    ...String(p.prompt).matchAll(
+      /node (apps\/fresco\/release-test\/[\w/-]+\.mjs)/g,
+    ),
+  ]);
+  assert.ok(invocations.length >= 6, 'no scripted lane was invoked at all');
+  for (const [, script] of invocations)
+    assert.ok(
+      existsSync(join(repoRoot, script)),
+      `a prompt runs ${script}, which does not exist`,
+    );
+});
+
+// And the lanes it starts have to be lanes up.sh knows, for the same reason.
+test('every lane a prompt starts is a lane up.sh defines', async () => {
+  const { prompts } = await run(happyPath());
+  const up = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/up.sh'),
+    'utf8',
+  );
+  const lanes = new Set(
+    prompts
+      .flatMap((p) => [...String(p.prompt).matchAll(/--lane ([a-z]+)/g)])
+      .map((match) => match[1]),
+  );
+  assert.ok(lanes.size >= 4, `only ${lanes.size} lane(s) were driven`);
+  for (const lane of lanes)
+    assert.match(
+      up,
+      new RegExp(`\\n  ${lane}\\)`),
+      `a prompt drives lane "${lane}", which up.sh does not define`,
+    );
 });
