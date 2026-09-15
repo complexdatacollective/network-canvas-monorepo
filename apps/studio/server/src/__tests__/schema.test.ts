@@ -445,6 +445,7 @@ describe.skipIf(!db)('schema verification', () => {
         'experiment_exposures',
         'experiments',
         'feedback_reports',
+        'installation',
         'interview_links',
         'interview_sessions',
         'leases',

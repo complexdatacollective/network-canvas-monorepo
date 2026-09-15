@@ -16,6 +16,14 @@ const SEED_ADMIN_NAME = 'Studio Admin';
 export const SEED_ADMIN_EMAIL = 'admin@studio.test';
 export const SEED_ADMIN_PASSWORD = 'studio-admin-not-for-production';
 
+/**
+ * What a seeded instance calls itself. The seed also makes the admin its
+ * owner, which closes first-run setup (#1909): every `pnpm dev` boot comes up
+ * as an instance somebody already set up, so `/setup` is a not-found there
+ * rather than an open door onto a database full of synthetic studies.
+ */
+const SEED_INSTANCE_NAME = 'Studio (development)';
+
 const TEAM_COUNT = 5;
 const MIN_MEMBERS_PER_TEAM = 2;
 const MAX_MEMBERS_PER_TEAM = 6;
@@ -78,6 +86,22 @@ function uniqueEmail(
   }
   taken.add(email);
   return email;
+}
+
+/**
+ * The installation row, owned. Written here because the owner is the seeded
+ * admin and this is the phase that creates them; the wipe truncates this table
+ * like any other, so it is reinstated on every seed rather than surviving one.
+ */
+async function insertOwnedInstallation(
+  client: pg.ClientBase,
+  input: { ownerUserId: string; createdAt: Date },
+): Promise<void> {
+  await client.query(
+    `insert into installation (id, name, owner_user_id, created_at, updated_at)
+     values (1, $1, $2, $3, $3)`,
+    [SEED_INSTANCE_NAME, input.ownerUserId, input.createdAt],
+  );
 }
 
 /**
@@ -241,6 +265,10 @@ export async function seedTeams(
   await insertCredentialAccount(client, {
     userId: adminId,
     password: adminPassword,
+    createdAt,
+  });
+  await insertOwnedInstallation(client, {
+    ownerUserId: adminId,
     createdAt,
   });
   await insertRows(

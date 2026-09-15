@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
+import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
@@ -25,12 +26,17 @@ import {
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
-import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
+import {
+  type AuthCapabilities,
+  getDeploymentStatus,
+  type InstallationReader,
+} from './domain.ts';
 import { readEnv } from './env.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
+import { readInstallation } from './setup/bootstrap.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
 // path (with `ws: true`) alongside /api and /rpc, so the browser sees one
@@ -95,6 +101,23 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // src/client-assets.ts enforces the same classification at the HTTP layer.
   const deployment = getDeploymentStatus(env.deploymentMode);
 
+  // The instance's name and whether anybody owns it (#1909), for both status
+  // surfaces. `status` is what a browser asks before it can render anything at
+  // all, including the screen that explains an outage — so a database that
+  // cannot be read answers `null` (the product name, and setup closed) rather
+  // than failing the whole procedure. Nothing is cached: the answer changes
+  // exactly once, when `/setup` completes, and the client asks once per load.
+  const readInstallationRow: InstallationReader = async () => {
+    if (!pool) return null;
+    try {
+      return await readInstallation(pool);
+    } catch (error) {
+      // oxlint-disable-next-line no-console -- server-side failure diagnostics
+      console.error('Could not read the installation row for status:', error);
+      return null;
+    }
+  };
+
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
   // Registered before the problem-JSON catch-alls below, which would
@@ -121,7 +144,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
-  app.route('/api/v1', createApiV1(authCaps, deployment));
+  app.route('/api/v1', createApiV1(authCaps, deployment, readInstallationRow));
 
   // /storage, not /assets, which the client build claims for its hashed
   // chunks. Reading stays open: a session lookup per byte range would put the
@@ -154,13 +177,20 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const rpcRouter = createRpcRouter(authCaps, {
     auth,
     deployment,
+    readInstallation: readInstallationRow,
     jobs: deps.jobs,
     pool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
     cipher,
   });
-  const rpcHandler = new RPCHandler(rpcRouter);
+  // The plugin puts a `resHeaders` Headers on every call's context and folds
+  // whatever a procedure writes into the response. `setup.complete` is its one
+  // writer: signing the first owner in means carrying better-auth's own
+  // `set-cookie` out of a procedure rather than out of `/api/auth/*`.
+  const rpcHandler = new RPCHandler(rpcRouter, {
+    plugins: [new ResponseHeadersPlugin()],
+  });
   // The same router over the socket: unary calls keep working on /rpc, and
   // the streaming procedure the fetch transport cannot serve — the protocol
   // builder's `watchProtocol` — is served here.

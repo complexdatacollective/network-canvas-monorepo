@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -11,7 +12,7 @@ import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { SecretsCipher } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
-import type { AuthService } from './service.ts';
+import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Two siblings
 // take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
@@ -166,6 +167,26 @@ export function createBetterAuthInstance(
   });
 }
 
+/**
+ * better-auth's answer to "that address already has an account", as this
+ * configuration produces it. The generic duplicate response — a fake success
+ * carrying a synthetic user — is reached only with `requireEmailVerification`
+ * or `autoSignIn: false`, and this instance sets neither, so the real refusal
+ * arrives as this code. Anything else is a failure and is rethrown.
+ */
+const EMAIL_TAKEN_CODE = 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
+
+function isEmailTaken(error: unknown): boolean {
+  if (!isAPIError(error)) return false;
+  const body: unknown = error.body;
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'code' in body &&
+    body.code === EMAIL_TAKEN_CODE
+  );
+}
+
 export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
@@ -214,6 +235,43 @@ export function createBetterAuthService(
         .from(members)
         .where(eq(members.user_id, userId))
         .orderBy(members.team_id);
+    },
+    signUpEmail: async ({ name, email, password }): Promise<SignUpOutcome> => {
+      // `returnHeaders` is what makes this usable from a procedure: the
+      // session cookie better-auth would have set on its own response comes
+      // back as headers for the calling surface to carry out.
+      try {
+        const { headers, response } = await auth.api.signUpEmail({
+          body: { name, email, password },
+          returnHeaders: true,
+        });
+        return {
+          kind: 'created',
+          session: { userId: response.user.id, headers },
+        };
+      } catch (error) {
+        if (isEmailTaken(error)) return { kind: 'emailTaken' };
+        throw error;
+      }
+    },
+    signInEmail: async ({ email, password }): Promise<SignInOutcome> => {
+      try {
+        const { headers, response } = await auth.api.signInEmail({
+          body: { email, password },
+          returnHeaders: true,
+        });
+        return {
+          kind: 'signedIn',
+          session: { userId: response.user.id, headers },
+        };
+      } catch (error) {
+        // Every refusal reads the same — wrong password, no such account, a
+        // provider-side policy — because the caller has nothing different to
+        // do about any of them, and `/setup` must not become an oracle for
+        // which addresses have accounts.
+        if (isAPIError(error)) return { kind: 'refused' };
+        throw error;
+      }
     },
   };
 }

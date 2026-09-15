@@ -116,6 +116,25 @@ describe.skipIf(!db)('the seeded dataset', () => {
     expect(total).toBeLessThan(MAX_DEMO_ROWS);
   });
 
+  it('leaves the instance owned, so first-run setup is closed', async () => {
+    // A dev boot reseeds on every `pnpm dev`, and a seeded instance is one
+    // somebody already set up (#1909): `/setup` must not be standing open in
+    // front of a database full of synthetic studies.
+    const installation = await pool.query<{
+      name: string | null;
+      owner_user_id: string | null;
+      bootstrap_token_hash: string | null;
+    }>('select name, owner_user_id, bootstrap_token_hash from installation');
+
+    expect(installation.rows).toEqual([
+      {
+        name: 'Studio (development)',
+        owner_user_id: adminId,
+        bootstrap_token_hash: null,
+      },
+    ]);
+  });
+
   it('covers every study state and both participation modes', async () => {
     const states = await pool.query<{ state: string }>(
       `select distinct state from studies order by state`,

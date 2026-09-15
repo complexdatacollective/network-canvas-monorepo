@@ -160,8 +160,12 @@ describe.skipIf(!db)('row-level security', () => {
       })),
     );
     const others = rows.rows.filter((row) => !expected.includes(row.table));
+    // The platform-level tables, which belong to the instance rather than to
+    // any team: the schema stamp, and the installation row first-run setup
+    // writes (#1909). Neither carries a policy, and both are held by grants —
+    // the list is spelled out so a new tenant table cannot join it silently.
     expect(others.map((row) => row.table).toSorted()).toEqual(
-      [...authTables, 'schemaFingerprint'].toSorted(),
+      [...authTables, 'schemaFingerprint', 'installation'].toSorted(),
     );
     for (const row of others) {
       expect(row).toMatchObject({

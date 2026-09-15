@@ -13,6 +13,8 @@ import {
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
+  CompleteSetupInputSchema,
+  CompleteSetupResultSchema,
   CreateTeamInvitationInputSchema,
   CreateTeamInvitationResultSchema,
   CreateProtocolInputSchema,
@@ -92,6 +94,21 @@ export const contract = {
   status: oc.output(StatusSchema),
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
+  /**
+   * First-run bootstrap (#1909). Public and session-free by necessity: it runs
+   * on an instance where no account exists yet, and the bootstrap token the
+   * schema step printed is the whole of its authorization.
+   *
+   * A wrong token and a missing one are the same UNAUTHORIZED; an instance
+   * that already has an owner is NOT_FOUND, which is what `/setup` renders as
+   * a not-found screen. On success the response carries the new owner's
+   * session cookie.
+   */
+  setup: {
+    complete: oc
+      .input(CompleteSetupInputSchema)
+      .output(CompleteSetupResultSchema),
+  },
   /**
    * The caller's own account: personal, not team-scoped, so these take no
    * teamId and need only a signed-in user. Deliberately unaudited (2026-09-04

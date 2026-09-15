@@ -33,6 +33,7 @@ import {
   type AuthCapabilities,
   type DeploymentStatus,
   getInstanceStatus,
+  type InstallationReader,
 } from './domain.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
@@ -45,6 +46,7 @@ import {
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import type { SecretsCipher } from './secrets/cipher.ts';
+import { completeSetup, SetupCommandError } from './setup/commands.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -64,6 +66,13 @@ import { roleGrantsTeamAdministration } from './team/roles.ts';
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * Response headers for this call, where the transport has any: oRPC's
+   * ResponseHeadersPlugin injects them on the fetch handler. `setup.complete`
+   * is the one procedure that writes to them, because signing the new owner in
+   * means carrying better-auth's `set-cookie` out.
+   */
+  resHeaders?: Headers;
   /**
    * The WebSocket this call arrived on, when it arrived on one. This is the
    * protocol-builder host's presence identity: a colleague's cursor belongs to
@@ -334,11 +343,31 @@ async function handleAuditedStudyCommand<T>(
   }
 }
 
+/**
+ * What a refused first-run setup leaves as. A wrong token and no token are
+ * both UNAUTHORIZED and say nothing more: the only caller who can tell them
+ * apart is one who already holds the right one. An owned instance is
+ * NOT_FOUND, which is the same answer the route itself gives once setup is
+ * closed. Anything else is a fault and leaves untouched.
+ */
+async function handleSetupCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof SetupCommandError)) throw error;
+    if (error.reason === 'unauthorized') throw new ORPCError('UNAUTHORIZED');
+    if (error.reason === 'emailTaken') throw new ORPCError('CONFLICT');
+    throw new ORPCError('NOT_FOUND');
+  }
+}
+
 export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
     auth: AuthService;
     deployment: DeploymentStatus;
+    /** The installation row behind `status.setup` and the instance's name. */
+    readInstallation: InstallationReader;
     /** How a command queues the work it causes (#1895); see CreateAppDeps. */
     jobs?: JobClient;
     pool?: pg.Pool;
@@ -353,7 +382,7 @@ export function createRpcRouter(
     cipher?: SecretsCipher;
   },
 ) {
-  const { auth, deployment, jobs, pool } = deps;
+  const { auth, deployment, jobs, pool, readInstallation } = deps;
 
   // A protocol store can seal, so it always takes the cipher. A router wired
   // without one is a deployment bug rather than an authorization refusal —
@@ -469,7 +498,30 @@ export function createRpcRouter(
   );
 
   return {
-    status: os.status.handler(() => getInstanceStatus(caps, deployment)),
+    status: os.status.handler(async () =>
+      getInstanceStatus(caps, deployment, await readInstallation()),
+    ),
+    setup: {
+      /**
+       * First-run bootstrap (#1909). No session and no middleware: this runs
+       * on an instance where no account exists, and the bootstrap token is the
+       * authorization. The new owner's session leaves through `resHeaders`,
+       * which oRPC's ResponseHeadersPlugin puts on the context (src/app.ts) —
+       * absent over the WebSocket transport, which no signed-out caller can
+       * open, and absent in a direct `call`, where there is no response to
+       * carry a cookie.
+       */
+      complete: os.setup.complete.handler(async ({ context, input }) => {
+        if (!pool) throw new ORPCError('NOT_FOUND');
+        const session = await handleSetupCommand(() =>
+          completeSetup({ auth, pool }, input),
+        );
+        for (const cookie of session.headers.getSetCookie()) {
+          context.resHeaders?.append('set-cookie', cookie);
+        }
+        return { instanceName: input.instanceName };
+      }),
+    },
     me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,

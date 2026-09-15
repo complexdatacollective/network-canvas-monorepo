@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  notFound,
   Outlet,
   redirect,
   useRouterState,
@@ -18,7 +19,10 @@ import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 import LanguageChoice from './i18n/LanguageChoice.tsx';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
-import { fetchDeploymentMode } from './lib/deployment.ts';
+import {
+  fetchDeploymentMode,
+  fetchSetupRequirement,
+} from './lib/deployment.ts';
 import {
   landingRedirect,
   resolveLandingDestination,
@@ -38,6 +42,7 @@ import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
+import Setup, { SetupClosed } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
@@ -260,19 +265,6 @@ const screens = defineMessages({
       'Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.',
     description:
       'What the Account ready screen at /sign-up/complete will do, shown on it while it is not yet built.',
-  },
-  setupTitle: {
-    id: 'studio.screens.setupTitle',
-    defaultMessage: 'First-run setup',
-    description:
-      'Name of the First-run setup screen at /setup, used as its heading.',
-  },
-  setupDescription: {
-    id: 'studio.screens.setupDescription',
-    defaultMessage:
-      'Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.',
-    description:
-      'What the First-run setup screen at /setup will do, shown on it while it is not yet built.',
   },
   noTeamTitle: {
     id: 'studio.screens.noTeamTitle',
@@ -865,14 +857,26 @@ const invitationRoute = createRoute({
   },
 });
 
+/**
+ * First-run setup (#1909), which exists only while nobody owns this instance.
+ *
+ * `/setup` is classified self-host-only (§10.4), so the HTTP gate already
+ * 404s it on the managed service; this guard is the other half, and the half
+ * that can change while the process runs: the moment an owner exists the
+ * screen must stop being a way in, on the instance where it was legitimately
+ * reachable a moment ago. `notFound()` rather than a redirect, because the
+ * address is genuinely not there — and with a component of its own, since the
+ * client has no global not-found screen and the person most likely to open a
+ * stale `/setup` is the operator who just completed it.
+ */
 const setupRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/setup',
-  component: screenPlaceholder({
-    title: screens.setupTitle,
-    description: screens.setupDescription,
-    issue: '#1250',
-  }),
+  beforeLoad: async ({ context }) => {
+    if (!(await fetchSetupRequirement(context.queryClient))) throw notFound();
+  },
+  component: Setup,
+  notFoundComponent: SetupClosed,
 });
 
 const noTeamRoute = createRoute({
