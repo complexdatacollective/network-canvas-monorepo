@@ -1069,6 +1069,14 @@ jobs:
         if: always()
         run: apps/studio/stack-test/down.sh --variant external-bucket
 
+      - name: A swapped rate-limit store
+        run: |
+          apps/studio/stack-test/up.sh --variant external-redis
+          apps/studio/stack-test/assert.sh --variant external-redis
+      - name: Tear down the swapped rate-limit store
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-redis
+
       - name: A swapped ingress
         run: |
           apps/studio/stack-test/up.sh --variant own-proxy

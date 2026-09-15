@@ -29,6 +29,7 @@ by hand needs neither.
 | `reference`         | nothing                                 | —                                                                    |
 | `external-postgres` | the `postgres` service                  | a Postgres on a separate Docker network, named by `DATABASE_URL`     |
 | `external-bucket`   | the `garage` and `garage-init` services | a second Garage on that network, named by the five `S3_*`            |
+| `external-redis`    | the `valkey` service                    | a second Valkey on that network, named by `REDIS_URL`                |
 | `own-proxy`         | the `traefik` service and its ports     | nginx carrying the configuration block from `docs/self-host/swap.md` |
 
 ## What the scripts do
@@ -69,10 +70,13 @@ explainable after it has been cleaned up.
 ## Notes on the variants
 
 **The stubs are on their own Docker network** (`studio-ci-external`,
-172.31.244.0/24), and `api`, `worker` and `migrate` are attached to both. That
-is what makes a swap a real one: the stack reaches the institution's service
-across a boundary rather than over the bridge its own services share, and
-nothing on that boundary is in `TRUSTED_PROXIES`.
+172.31.244.0/24), and each variant attaches to it only the Studio processes
+that have to reach the service it replaced — `api`, `worker` and `migrate` for
+the database and the bucket; `api` and `worker` alone for the rate-limit store,
+which `migrate` never opens a connection to. That is what makes a swap a real
+one: the stack reaches the institution's service across a boundary rather than
+over the bridge its own services share, and nothing on that boundary is in
+`TRUSTED_PROXIES`.
 
 **`external-bucket` bootstraps its stub with the stack's own `garage-init`
 script**, referenced as a Compose config rather than copied, so there is one
@@ -107,15 +111,17 @@ and Studio then correctly records no client address at all. A container out
 there has an address the ingress can forward and Studio will believe, which is
 the shape every real request has.
 
-**There is no `external-redis` variant.** `REDIS_URL` is in the compose file
-and in `.env.example`, but no Studio process on this build reads it: it is not
-in the server's environment catalogue, and `valkey` runs without a consumer. A
-variant now could only assert that the stack still starts with the variable
-set, which is not the contract that swap has to meet. It belongs with the rate
-limiter, in
-[#1916](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1916),
-along with the `limiter` readiness check and the `degraded` verdict this suite
-therefore does not assert on.
+**`external-redis` proves the store by being refused by it.** `/readyz`
+reporting `limiter: ok` is a PING and nothing more, and the limiter fails open
+— so a store that answered PING and dropped every script would leave every
+other assertion in this suite green. Every variant therefore signs in until the
+sign-in limit refuses it, and asserts that the refusal lands on the eleventh
+attempt, which is where the shipped `RATE_LIMIT_SIGN_IN_ADDRESS` of `10/10m`
+puts it; then that the limiter's `studio:rl:*` keys are in the store
+`REDIS_URL` names, which for this variant is the stub and for the others is the
+stack's own Valkey. The attempts use a different address each time, because the
+per-email scope is `5/10m` and would otherwise refuse the sixth and prove a
+different limit.
 
 ## Adding a variant
 

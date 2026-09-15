@@ -6,9 +6,10 @@ The self-host stack is tested. `apps/studio/stack-test` stands the reference
 deployment up from the compose file a self-hoster downloads, drives the whole
 of it — the routing table, the WebSocket upgrade, first-run setup with the
 token `migrate` prints, an asset written and read back, the maintenance page
-while the API is stopped — and then does the same for each documented swap with
-the swapped element replaced by a stub on a network of its own: a managed
-database, a managed bucket, and an institution's own reverse proxy. Every
+while the API is stopped, and being refused by its own sign-in limit — and then
+does the same for each documented swap with the swapped element replaced by a
+stub on a network of its own: a managed database, a managed bucket, an external
+Redis, and an institution's own reverse proxy. Every
 variant is held to the same contract, so a swap is proved by the same
 assertions passing rather than by a shorter list. CI runs it as the
 `studio-stack` job whenever the images, the compose files, the environment

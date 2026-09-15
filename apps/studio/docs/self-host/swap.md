@@ -99,13 +99,12 @@ the limiter fails open — with readiness reporting `degraded` rather than
 failing — when it cannot be reached. Then delete the `valkey` service and the
 `depends_on` entries naming it in `api` and `worker`.
 
-This swap has no CI variant yet, because there is nothing to assert against it:
-no Studio process reads `REDIS_URL` on this build. The limiter that will read
-it arrives with
-[#1916](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1916),
-and an `apps/studio/stack-test` variant belongs with it — one written now could
-only check that the stack still starts with the variable set, which is not the
-contract this swap has to meet.
+This swap is exercised in CI by `apps/studio/stack-test`, variant
+`external-redis`: the stack runs against a Redis-compatible store on another
+network with the `valkey` service gone, and is held to the same assertions the
+reference stack passes — including being refused by its own sign-in limit,
+which is the only way to see from outside that the limiter's scripts really run
+on the store you gave it.
 
 ## The ingress
 

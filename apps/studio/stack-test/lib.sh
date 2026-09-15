@@ -23,7 +23,7 @@ PROJECT="studio-ci"
 
 # `reference` first: it is the stack a self-hoster runs, and each of the others
 # is that stack with one element replaced.
-VARIANTS=(reference external-postgres external-bucket own-proxy)
+VARIANTS=(reference external-postgres external-bucket external-redis own-proxy)
 
 # The stack's own network. Also TRUSTED_PROXIES, so it must name the network
 # the ingress is on and nothing else. .243 rather than .240 (`.env.example`),
@@ -112,3 +112,16 @@ ingress_url() {
 # whichever ingress is in front. own-proxy is reached on 8443 and still presents
 # this Origin, exactly as a deployment on 443 would.
 origin_url() { echo "https://$HOSTNAME_"; }
+
+# Which Compose service holds the rate limiter's counters for this variant.
+# The stack's own Valkey everywhere except the swap that replaces it, where
+# the stub is the whole point: `assert.sh` reads the limiter's keys out of
+# whichever this names, so the swap is proved by the counters being in the
+# store `REDIS_URL` points at rather than by the stack merely still working.
+limiter_store_service() {
+  if [ "$VARIANT" = "external-redis" ]; then
+    echo 'external-valkey'
+  else
+    echo 'valkey'
+  fi
+}

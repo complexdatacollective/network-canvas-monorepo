@@ -70,6 +70,7 @@ fi
 # and empty for the variants that do not use them: each is read as
 # `${VAR:-<the stack's own service>}`, so empty is the reference value.
 DATABASE_URL=""
+REDIS_URL=""
 S3_ENDPOINT=""
 S3_REGION="garage"
 S3_BUCKET="studio"
@@ -93,6 +94,11 @@ case "$VARIANT" in
     # A different store, so different credentials. The stub imports these.
     S3_ACCESS_KEY_ID="GK$(hex 12)"
     S3_SECRET_ACCESS_KEY="$(hex 32)"
+    ;;
+  external-redis)
+    # The whole swap. No credentials: the guide's line is a bare
+    # `redis://host:port`, and any Redis 7-compatible server is the contract.
+    REDIS_URL="redis://external-valkey:6379"
     ;;
 esac
 
@@ -120,7 +126,7 @@ GARAGE_RPC_SECRET=$(hex 32)
 GARAGE_ADMIN_TOKEN=$(hex 32)
 DATABASE_URL=$DATABASE_URL
 S3_ENDPOINT=$S3_ENDPOINT
-REDIS_URL=
+REDIS_URL=$REDIS_URL
 SMTP_URL=
 EMAIL_FROM=
 # Read only by variants/external-bucket.yml, whose stub is a second Garage

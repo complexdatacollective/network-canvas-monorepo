@@ -1563,12 +1563,11 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   assert.ok(studioStack, 'studio-stack job exists');
 
   const variants = stackTestVariants();
-  // The reference stack and the three swaps docs/self-host/swap.md documents
-  // as testable today. The rate-limit store has no consumer to assert against
-  // and belongs to #1916; see that directory's README.
+  // The reference stack and every swap docs/self-host/swap.md documents.
   assert.deepEqual(variants, [
     'external-bucket',
     'external-postgres',
+    'external-redis',
     'own-proxy',
     'reference',
   ]);

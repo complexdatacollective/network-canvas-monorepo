@@ -354,11 +354,12 @@ apps/studio/stack-test/down.sh   --variant reference
 
 Where `dev:stack` is for looking at the stack, `stack-test` is for asserting on
 it, and it is the same stack either way. It runs the reference deployment and
-then each documented swap — a managed database, a managed bucket, an
-institution's own reverse proxy — with the swapped element replaced by a stub
+then each documented swap — a managed database, a managed bucket, an external
+Redis, an institution's own reverse proxy — with the swapped element replaced by a stub
 on a network of its own, and holds every variant to the same contract: the
 routing table, `/readyz`, the WebSocket upgrade, first-run setup, an asset
-written and read back, and the maintenance page while `api` is stopped.
+written and read back, the sign-in limit refusing the attempt after its last,
+and the maintenance page while `api` is stopped.
 
 CI runs exactly these scripts as the `studio-stack` job, so a variant that
 passes here passes there. [`stack-test/README.md`](./stack-test/README.md) has

@@ -123,6 +123,14 @@ case "$VARIANT" in
     equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
     differs 'the stub object store is running' '' "$(container_id external-garage)"
     ;;
+  external-redis)
+    equals "the stack's valkey container is gone" '' "$(container_id valkey)"
+    # Exists, not runs: `container_id` reads Docker's labels, which is what can
+    # answer "is the service this variant disabled really gone?" and therefore
+    # counts a stopped container too. That the stub is actually SERVING is the
+    # limiter section's to prove, and it does.
+    differs 'the stub rate-limit store exists' '' "$(container_id external-valkey)"
+    ;;
   own-proxy)
     equals "the stack's traefik container is gone" '' "$(container_id traefik)"
     differs 'the nginx ingress is running' '' "$(container_id own-proxy)"
@@ -146,6 +154,11 @@ equals '/readyz is served' 200 "$STATUS"
 contains '/readyz reports the database' '"db":"ok"' "$BODY"
 contains '/readyz reports the schema' '"schema":"ok"' "$BODY"
 contains '/readyz reports the object store' '"objectStore":"ok"' "$BODY"
+# `ok`, not merely present: the limiter fails OPEN and reports `degraded` when
+# it cannot reach its store, and a stack whose Redis was unreachable would
+# still serve every assertion below. `degraded` here is the swap silently not
+# having worked.
+contains '/readyz reports the limiter' '"limiter":"ok"' "$BODY"
 contains '/readyz is ok overall' '"status":"ok"' "$BODY"
 
 # `--http1.1` because a WebSocket handshake is an HTTP/1.1 upgrade and both
@@ -217,6 +230,64 @@ differs 'the stored asset has a content hash' '' "$hash"
 request "$URL/storage/$hash"
 equals 'the stored asset is readable again' 200 "$STATUS"
 equals 'the bytes came back unchanged' "$probe" "$BODY"
+
+# ── The rate limiter, end to end ──────────────────────────────────────────
+#
+# What the rate-limit store has to do is run the limiter's scripts, and the
+# only way to see that from outside is to be refused by it. `/readyz` reporting
+# `limiter: ok` is a PING and nothing more — the limiter fails open, so a store
+# that answered PING and dropped every script would leave every other assertion
+# in this file green.
+#
+# Against the shipped default rather than a limit this harness turned down:
+# RATE_LIMIT_SIGN_IN_ADDRESS is 10/10m (server/src/env/resolve.ts), so the
+# eleventh attempt from one address is the first that is refused, and asserting
+# WHICH attempt is refused is what makes this more than "a 429 happened".
+#
+# A different email every time, deliberately: the per-email scope is 5/10m and
+# would otherwise refuse the sixth, proving a different limit from the one this
+# is about. Each address is nonsense, so none of these can succeed and none
+# touches the owner account created above.
+section 'the rate limiter'
+SIGN_IN_ADDRESS_LIMIT=10
+attempts=0
+signin_status=''
+while [ "$attempts" -lt $((SIGN_IN_ADDRESS_LIMIT + 1)) ]; do
+  attempts=$((attempts + 1))
+  request -X POST "$URL/api/auth/sign-in/email" \
+    -H 'Content-Type: application/json' \
+    -H "Origin: $ORIGIN" \
+    --data-binary "{\"email\":\"rate-limit-$attempts@stack-test.invalid\",\"password\":\"$OWNER_PASSWORD\"}"
+  signin_status="$STATUS"
+  [ "$signin_status" = '429' ] && break
+done
+equals 'the sign-in limit refuses an eleventh attempt' 429 "$signin_status"
+equals 'it refuses exactly where the shipped default says' \
+  $((SIGN_IN_ADDRESS_LIMIT + 1)) "$attempts"
+retry_after="$(tr -d '\r' < "$WORK_DIR/.response-headers" \
+  | awk 'tolower($1) == "retry-after:" { print $2; exit }')"
+differs 'the refusal carries Retry-After' '' "$retry_after"
+contains 'the refusal is problem JSON' 'application/problem+json' "$CONTENT_TYPE"
+
+# And the counters are in the store `REDIS_URL` names, which for the swap is
+# the stub and for every other variant is the stack's own Valkey. `KEYS` rather
+# than `SCAN` because this keyspace holds a handful of entries and the store
+# exists only for the length of this run.
+limiter_store="$(limiter_store_service)"
+limiter_keys="$(compose exec -T "$limiter_store" \
+  valkey-cli --raw KEYS 'studio:rl:*' 2>/dev/null \
+  | grep -c '^studio:rl:' || true)"
+if [ "${limiter_keys:-0}" -gt 0 ]; then
+  pass "the limiter's counters are in $limiter_store" "$limiter_keys keys"
+else
+  fail "the limiter's counters are in $limiter_store" \
+    'no studio:rl:* key — the refusal above came from somewhere else'
+fi
+if [ "$VARIANT" = 'external-redis' ]; then
+  # There is no second store to have written them to: the service that held
+  # them before the swap is gone, which the swapped-element section asserted.
+  equals 'and the stack has no Valkey of its own left' '' "$(container_id valkey)"
+fi
 
 # ── The maintenance window ────────────────────────────────────────────────
 #
