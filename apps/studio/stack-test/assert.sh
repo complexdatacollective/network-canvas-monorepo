@@ -239,10 +239,13 @@ equals 'the bytes came back unchanged' "$probe" "$BODY"
 # that answered PING and dropped every script would leave every other assertion
 # in this file green.
 #
-# Against the shipped default rather than a limit this harness turned down:
-# RATE_LIMIT_SIGN_IN_ADDRESS is 10/10m (server/src/env/resolve.ts), so the
-# eleventh attempt from one address is the first that is refused, and asserting
-# WHICH attempt is refused is what makes this more than "a 429 happened".
+# Against the limit the build ships, because that is the only limit there is:
+# the rate limits are constants rather than settings, so there is nothing for
+# this suite to turn down and nothing it would prove by doing so. Sign-in is
+# 10/10m per client address, making the eleventh attempt the first refused —
+# and asserting WHICH attempt is refused is what makes this more than "a 429
+# happened". Every scope and its constant are tabulated in the self-host
+# guide's rate-limit section.
 #
 # A different email every time, deliberately: the per-email scope is 5/10m and
 # would otherwise refuse the sixth, proving a different limit from the one this
@@ -262,7 +265,7 @@ while [ "$attempts" -lt $((SIGN_IN_ADDRESS_LIMIT + 1)) ]; do
   [ "$signin_status" = '429' ] && break
 done
 equals 'the sign-in limit refuses an eleventh attempt' 429 "$signin_status"
-equals 'it refuses exactly where the shipped default says' \
+equals 'it refuses exactly where the shipped constant says' \
   $((SIGN_IN_ADDRESS_LIMIT + 1)) "$attempts"
 retry_after="$(tr -d '\r' < "$WORK_DIR/.response-headers" \
   | awk 'tolower($1) == "retry-after:" { print $2; exit }')"

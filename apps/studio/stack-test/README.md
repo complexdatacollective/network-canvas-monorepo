@@ -116,11 +116,16 @@ reporting `limiter: ok` is a PING and nothing more, and the limiter fails open
 — so a store that answered PING and dropped every script would leave every
 other assertion in this suite green. Every variant therefore signs in until the
 sign-in limit refuses it, and asserts that the refusal lands on the eleventh
-attempt, which is where the shipped `RATE_LIMIT_SIGN_IN_ADDRESS` of `10/10m`
-puts it; then that the limiter's `studio:rl:*` keys are in the store
+attempt; then that the limiter's `studio:rl:*` keys are in the store
 `REDIS_URL` names, which for this variant is the stub and for the others is the
-stack's own Valkey. The attempts use a different address each time, because the
-per-email scope is `5/10m` and would otherwise refuse the sixth and prove a
+stack's own Valkey.
+
+The eleventh because the limits are **constants of the build** — `sign_in_address`
+is `10/10m` — and not a knob the stack offers, so there is no value for this
+suite to turn down and none it needs to. Asserting which attempt is refused
+rather than that some attempt was is what makes it an assertion about the
+limiter at all. The attempts use a different address each time, because
+`sign_in_email` is `5/10m` and would otherwise refuse the sixth and prove a
 different limit.
 
 ## Adding a variant
