@@ -102,23 +102,18 @@ const result = { ok: false, checks };
 let browser;
 
 try {
-  ({ browser } = await (async () => {
-    const launched = await launch({
-      lane: laneName,
-      // On a lane that runs with analytics ENABLED, this browser's events have
-      // to reach that lane's sink like every other event in the run — and
-      // `launch` refuses the lane without it rather than letting them go to
-      // the real relay.
-      relayTo: config.analytics
-        ? { host: RELAY_HOST, port: config.sinkHttpsPort }
-        : null,
-    });
-    const page = await newPage(launched.context);
-    result.page = page;
-    return { ...launched, page };
-  })());
-  const page = result.page;
-  delete result.page;
+  const launched = await launch({
+    lane: laneName,
+    // On a lane that runs with analytics ENABLED, this browser's events have
+    // to reach that lane's sink like every other event in the run — and
+    // `launch` refuses the lane without it rather than letting them go to the
+    // real relay.
+    relayTo: config.analytics
+      ? { host: RELAY_HOST, port: config.sinkHttpsPort }
+      : null,
+  });
+  browser = launched.browser;
+  const page = await newPage(launched.context);
   recordDiagnosticsTo(page, outDir);
 
   if (alreadySetUp) {
