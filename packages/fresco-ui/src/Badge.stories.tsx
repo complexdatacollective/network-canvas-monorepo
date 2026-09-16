@@ -4,12 +4,7 @@ import { expect, within } from 'storybook/test';
 import { Badge, BADGE_COLORS } from './Badge';
 import Surface from './layout/Surface';
 
-/**
- * Every colour a badge can be, read from the palette itself rather than
- * relisted here: the stories below say something about each one — that its
- * label clears WCAG AA, among other things — and a hand-kept copy would let a
- * newly added colour go unchecked.
- */
+/** Read from the palette, so a colour added to it cannot go unchecked here. */
 const themeColors = BADGE_COLORS;
 
 const meta = {
@@ -55,16 +50,9 @@ export const Variants: Story = {
 };
 
 /**
- * Every colour as a filled badge, which is how a coloured badge is drawn
- * unless it is asked for an outline.
- *
- * The play function is what keeps the palette honest. `Badge` asks the browser
- * for the label colour — `contrast-color()` returns whichever of black or
- * white contrasts with the fill further — rather than carrying a written-down
- * ink per colour. Winning that comparison is not the same as clearing WCAG AA,
- * though: a fill neither candidate suits still gets the better of the two. So
- * the ratio is measured here, colour by colour, and a palette entry whose
- * lightness moves into that territory fails this story rather than shipping.
+ * Every colour as a filled badge. `contrast-color()` gives the label whichever
+ * of black or white contrasts with the fill further, which is not the same as
+ * clearing WCAG AA — so the play function measures the ratio colour by colour.
  */
 export const ThemeColors: Story = {
   render: () => (
@@ -94,11 +82,9 @@ export const ThemeColors: Story = {
         fill,
       );
 
-      // Black or white and nothing else. Were the browser to drop the
-      // `contrast-color()` declaration it would inherit the page's ink
-      // instead, which on a light page is dark enough to pass the ratio check
-      // below on most of the palette while the mechanism under test did
-      // nothing.
+      // Black or white and nothing else: a dropped `contrast-color()`
+      // declaration inherits the page's ink, which on a light page passes the
+      // ratio check below while the mechanism under test does nothing.
       await expect({
         color,
         ink: ink.join(),
@@ -139,13 +125,11 @@ const AA_NORMAL_TEXT = 4.5;
 
 /**
  * Paints `layers` bottom-first onto a 1×1 canvas over opaque white and reads
- * the sRGB pixel back. Computed colours in these themes are `oklch()` and
- * `oklab()`, so a channel cannot be parsed out of the string; and because the
- * stack ends opaque, `getImageData` returns it without un-premultiply error.
+ * the sRGB pixel back: computed colours in these themes are `oklch()`, so a
+ * channel cannot be parsed out of the string.
  *
  * Canvas ignores an unparseable `fillStyle` and silently keeps the previous
- * one, which would turn a broken reading into a comparable number, so every
- * layer is checked before it is painted.
+ * one, so every layer is checked before it is painted.
  */
 function flatten(layers: readonly string[]): readonly [number, number, number] {
   const context = document.createElement('canvas').getContext('2d');
@@ -189,17 +173,10 @@ const contrastRatio = (
 };
 
 /**
- * Every outline badge on a surface that publishes a contrast colour of its
- * own, which is where the variant is actually used: an `ArrayField` row is a
- * `Surface`, and a `Surface` paints a background and publishes the ink that
- * goes with it together.
- *
- * The story exists for its play function rather than its looks. `bg-primary`
- * is a surface whose ink is emphatically not the page's: `--primary-contrast`
- * is white in every theme, while `--text` is near-black on light. A badge that
- * read the page token would be dark-on-dark here — which is what Architect's
- * form-field rows looked like, at 2.69:1, until the variant started following
- * the surface.
+ * Every outline badge on a surface that publishes a contrast colour of its own,
+ * which is where the variant is actually used. `bg-primary` is a surface whose
+ * ink is not the page's, so a badge reading the page token is dark-on-dark
+ * here, at 2.69:1.
  */
 export const ThemeColorOutlinesOnAPublishedSurface: Story = {
   parameters: {
@@ -244,9 +221,8 @@ export const ThemeColorOutlinesOnAPublishedSurface: Story = {
     for (const color of themeColors) {
       const badge = await canvas.findByText(color);
 
-      // The badge's wash is translucent, so the colour behind the label is the
-      // wash over the surface — and only over the surface while nothing in
-      // between paints. Checked rather than assumed.
+      // The wash is translucent, so the colour behind the label is the wash
+      // over the surface — and only while nothing in between paints.
       for (
         let between = badge.parentElement;
         between && between !== surface;
