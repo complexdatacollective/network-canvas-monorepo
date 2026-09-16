@@ -42,6 +42,7 @@
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
     "@effect/platform-node": "catalog:",
+    "@effect/sql-pg": "catalog:",
     "@faker-js/faker": "catalog:",
     "@noble/hashes": "^2.3.0",
     "@orpc/contract": "catalog:",
@@ -55,11 +56,11 @@
     "ioredis": "6.0.0",
     "nodemailer": "10.0.9",
     "pg": "^8.23.0",
-    "pg-boss": "12.31.1",
     "pg-connection-string": "^2.14.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/studio-contract": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@dbml/core": "10.1.1",
     "@effect/vitest": "catalog:",

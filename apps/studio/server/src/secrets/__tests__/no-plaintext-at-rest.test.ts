@@ -13,8 +13,8 @@ import { seed } from '../../db/seed.ts';
 // code that writes it: a dump of a seeded Studio contains no webhook signing
 // secret, no protocol API key and no OAuth token.
 //
-// Written as a search over every row of every table — including the pg-boss
-// job schema beside it — rather than over the columns the design named,
+// Written as a search over every row of every table — including the job
+// queue's schema beside it — rather than over the columns the design named,
 // because the failure worth catching is a secret somewhere nobody thought to
 // look: copied into an audit event's payload, a queued job, a section
 // document, a webhook delivery's body.
@@ -125,7 +125,7 @@ describe.skipIf(!db)('a seeded database at rest', () => {
     }));
 
     const studio = await dumpSchemaRows(scratch.pool);
-    // pg-boss installs into a schema of its own, so a secret that reached a
+    // The queue installs into a schema of its own, so a secret that reached a
     // job payload would not be in the first dump at all.
     const jobs = await dumpSchemaRows(scratch.pool, {
       schema: scratch.jobSchema,

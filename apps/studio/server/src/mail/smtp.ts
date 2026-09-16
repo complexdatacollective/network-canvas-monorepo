@@ -24,9 +24,8 @@ export function MailerSmtp(transport: {
       // greeting, 10 minutes of socket inactivity — are longer than anything
       // that waits on a send: the invitation queue expires an attempt after 60
       // seconds, and the worker gives an in-flight handler 25 seconds when a
-      // container stops it, after which pg-boss fails the job as 'shut down
-      // while active' rather than letting it retry. These bounds fit inside
-      // both.
+      // container stops it, after which the scope interrupts it and the row
+      // stays `active` until its lease expires. These bounds fit inside both.
       //
       // Before nodemailer 10, `createTransport` discarded every other key of a
       // configuration object that carried a `url`, so these timeouts had to be

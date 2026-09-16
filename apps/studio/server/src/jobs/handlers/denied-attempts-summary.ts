@@ -1,27 +1,41 @@
-import { randomUUID } from 'node:crypto';
-
-import type pg from 'pg';
-
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import { Cause, DateTime, Effect, Ref } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import {
   CLAIMED_SUFFIX,
   DENIAL_KEY_PREFIX,
   type DeniedAuditSummary,
+  type DeniedAuditWindow,
   parseDenialWindowKey,
 } from '../../audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from '../../audit/denial-summary.ts';
 import {
   DENIED_AUDIT_OPERATIONS,
   type DeniedAuditOperation,
 } from '../../audit/events.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
-import { DENIED_SCOPE_COUNTS_KEY } from '../../rate-limit.ts';
-import type { RateLimitStore } from '../../rate-limit/store.ts';
-import { logJobOutcome } from '../log.ts';
-import type { HandledJob } from './job.ts';
+import {
+  type Database,
+  Transaction,
+  withTenantTransaction,
+  withTransaction,
+} from '../database.ts';
+import { causeError, deepestMessage } from '../errors.ts';
+import type { HandledJob, JobOutcome } from '../worker.ts';
+import {
+  DeniedAuditSummaryWriter,
+  type DeniedAuditSummaryWriteFailed,
+} from './denied-attempts/audit-writer.ts';
+import {
+  DeniedAttemptsStore,
+  type DeniedAttemptsStoreFailed,
+  type WindowFields,
+} from './denied-attempts/store.ts';
 
-// Turning suppressed denied attempts into the record of them (#1909).
+// Turning suppressed denied attempts into the record of them (#1909), as an
+// Effect: the same job src/jobs/handlers/denied-attempts-summary.ts runs
+// today, with pg-boss's job metadata replaced by `HandledJob`, its two
+// non-Effect dependencies behind the tags in `denied-attempts/`, and its
+// node-postgres reads replaced by the queue's own `Database`.
 //
 // Two things accumulate in Valkey between runs and this is what drains both.
 //
@@ -41,6 +55,20 @@ import type { HandledJob } from './job.ts';
 // refused sign-in is refused before anyone knows who it was. So they are
 // summarised as one log line per scope per run, which says how many were
 // refused and nothing about whom.
+//
+// What the port changed, and why:
+//
+//  - The clock is `Clock`, through `DateTime.now`, rather than an injected
+//    `now()`. The suites drove that injection to reach the recovery path — a
+//    claim whose write failed, retaken once it is stale — and `TestClock`
+//    reaches it without a seam in production code.
+//  - A window whose audit write fails is logged with `Effect.logWarning`
+//    rather than `process.emitWarning`. Nothing consumed the warning's type or
+//    code, and the worker's log is where the rest of the job's story is.
+//  - The outcome is a value, not the absence of a throw: `completed` with the
+//    counts in the line, as #1927 §11 has it. The `singleton` policy that
+//    keeps two runs from overlapping is the queue's, as before; the claim
+//    inside is what makes a double write impossible either way.
 
 const QUEUE = 'denied-attempts-summary';
 
@@ -56,54 +84,6 @@ const DEFAULT_WINDOW_MS = 60_000;
  */
 const CLOSE_MARGIN_MS = 1_000;
 
-/** `SCAN` is cursor-based; this is how much of the keyspace one call covers. */
-const SCAN_COUNT = 500;
-
-/**
- * Takes a closed window by renaming it, so the run that got the contents is
- * the only one that can write its summary, and so the record survives a run
- * that dies before it writes. pg-boss's `singleton` policy already keeps two
- * runs from overlapping; the rename makes the guarantee the key's rather than
- * the queue's, which is what holds when a schedule fires twice or a run is
- * retried by hand.
- *
- * Deleting instead — which is what this did first — loses the summary
- * outright if the audit write then fails, with nothing left to retry from. A
- * claimed key is picked up by a later run instead, and the write is made
- * idempotent (`summaryAlreadyWritten`) so the retry cannot produce a second
- * event.
- *
- * `RENAME` over an existing claim is harmless: the only way one exists is a
- * previous run of this same window, whose contents are identical.
- */
-const CLAIM_SCRIPT = `
-local key = KEYS[1]
-local claim = KEYS[2]
-local ttlMs = tonumber(ARGV[1])
-local now = tonumber(ARGV[2])
-local staleMs = tonumber(ARGV[3])
-if redis.call('EXISTS', key) == 1 then
-  redis.call('RENAME', key, claim)
-  redis.call('HSET', claim, 'claimedAt', now)
-  redis.call('PEXPIRE', claim, ttlMs)
-  return redis.call('HGETALL', claim)
-end
-if redis.call('EXISTS', claim) == 0 then return {} end
-if now - tonumber(redis.call('HGET', claim, 'claimedAt') or '0') < staleMs then
-  return {}
-end
-redis.call('HSET', claim, 'claimedAt', now)
-redis.call('PEXPIRE', claim, ttlMs)
-return redis.call('HGETALL', claim)
-`;
-
-/** Reads the per-scope denial counts and clears them in one execution. */
-const DRAIN_SCRIPT = `
-local reply = redis.call('HGETALL', KEYS[1])
-if #reply > 0 then redis.call('DEL', KEYS[1]) end
-return reply
-`;
-
 /** Long enough that a worker outage cannot drop a claim between runs. */
 const CLAIM_TTL_MS = 3_600_000;
 
@@ -115,41 +95,19 @@ const CLAIM_TTL_MS = 3_600_000;
  */
 const CLAIM_STALE_MS = 300_000;
 
-export type DeniedAttemptsSummaryHandlerDeps = {
-  /**
-   * Cross-team writes are the maintenance role's alone, and a summary is by
-   * construction a write into a team no request pinned.
-   */
-  maintenancePool: pg.Pool;
-  /** Absent means no store is configured; there is then nothing to summarise. */
-  store?: RateLimitStore | undefined;
+export type DeniedAttemptsSummaryOptions = {
   /** The suites give each file its own prefix and a shorter window. */
-  keyPrefix?: string;
-  windowMs?: number;
-  /**
-   * This run's clock. The suites advance it past the claim's visibility
-   * timeout to make the recovery path — a claim whose write failed — reachable
-   * without waiting five real minutes, and leave it alone everywhere else so
-   * that two concurrent runs still race the rename rather than sharing a
-   * claim.
-   */
-  now?: () => number;
+  readonly keyPrefix?: string | undefined;
+  readonly windowMs?: number | undefined;
 };
 
-/** `HGETALL`'s flat reply, as Lua returns it. */
-function readHash(reply: unknown): Map<string, string> | null {
-  if (!Array.isArray(reply)) return null;
-  const fields = new Map<string, string>();
-  for (let index = 0; index + 1 < reply.length; index += 2) {
-    const field = reply[index];
-    const value = reply[index + 1];
-    if (typeof field !== 'string' || typeof value !== 'string') return null;
-    fields.set(field, value);
-  }
-  return fields;
-}
+type ActorRow = {
+  readonly name: string;
+  readonly email: string;
+  readonly emailVerified: boolean;
+};
 
-function readSummary(fields: Map<string, string>): DeniedAuditSummary | null {
+function readSummary(fields: WindowFields): DeniedAuditSummary | null {
   const suppressedCount = Number(fields.get('suppressed') ?? '0');
   const firstSuppressedAt = Number(fields.get('first'));
   const lastSuppressedAt = Number(fields.get('last'));
@@ -177,20 +135,17 @@ function isDeniedAuditOperation(
  * in Valkey: a name and an email address are exactly what the limiter's own
  * keys are hashed to keep out of that store, and the same rule holds here.
  */
-async function loadActor(
-  pool: pg.Pool,
-  actorId: string,
-): Promise<SessionPrincipal | null> {
-  const rows = await pool.query<{
-    name: string;
-    email: string;
-    emailVerified: boolean;
-  }>(`SELECT name, email, "emailVerified" FROM "user" WHERE id = $1`, [
-    actorId,
-  ]);
-  const row = rows.rows[0];
+const loadActor = Effect.fnUntraced(function* (actorId: string) {
+  const rows = yield* withTransaction(
+    Effect.flatMap(
+      Transaction,
+      ({ sql }) => sql<ActorRow>`
+        SELECT name, email, "emailVerified" FROM "user" WHERE id = ${actorId}`,
+    ),
+  );
+  const row = rows[0];
   if (!row) return null;
-  return {
+  const principal: SessionPrincipal = {
     kind: 'user',
     userId: actorId,
     email: row.email,
@@ -202,85 +157,121 @@ async function loadActor(
     // the window did.
     sessionId: '',
   };
-}
+  return principal;
+});
 
-export function createDeniedAttemptsSummaryHandler(
-  deps: DeniedAttemptsSummaryHandlerDeps,
-): (jobs: HandledJob[]) => Promise<void> {
-  const prefix = deps.keyPrefix ?? DENIAL_KEY_PREFIX;
-  const windowMs = deps.windowMs ?? DEFAULT_WINDOW_MS;
-  const now = deps.now ?? Date.now;
+/**
+ * Whether this window's event is already in the log. The claim survives a
+ * failed write, so a later run re-reads the same record — and an audit event
+ * is immutable, which makes a second copy permanent. There is no unique
+ * index to lean on, so the window is identified the way it identifies
+ * itself: its team, its actor, its operation, and the instant of its first
+ * suppressed attempt, which is fixed once the window has closed.
+ */
+const summaryAlreadyWritten = Effect.fnUntraced(function* (
+  window: DeniedAuditWindow,
+  operation: DeniedAuditOperation,
+  firstSuppressedAt: number,
+) {
+  // Inside a tenant transaction, not on a bare connection: `audit_events`
+  // carries a stricter policy than the other tenant tables (src/audit/schema.ts)
+  // with no maintenance escape at all, so a read without the team stamped on
+  // the transaction sees nothing and would report every summary as missing.
+  const rows = yield* withTenantTransaction(
+    window.teamId,
+    Effect.flatMap(
+      Transaction,
+      ({ sql }) => sql<{ present: boolean }>`
+        SELECT true AS present FROM audit_events
+         WHERE team_id = ${window.teamId}
+           AND actor_id = ${window.actorId}
+           AND event_type = 'security.denied_attempts.rate_limited'
+           AND details->>'operation' = ${operation}
+           AND details->>'firstSuppressedAt' = ${new Date(firstSuppressedAt).toISOString()}
+         LIMIT 1`,
+    ),
+  );
+  return rows.length === 1;
+});
 
-  /** Every suppression key there is, read a page at a time. */
-  const scanWindowKeys = async (store: RateLimitStore): Promise<string[]> => {
-    const found: string[] = [];
-    let cursor = '0';
-    do {
-      const page = await store.run((redis) =>
-        redis.scan(cursor, 'MATCH', `${prefix}:*`, 'COUNT', SCAN_COUNT),
-      );
-      // An unreachable store mid-scan ends the pass; the keys outlive their
-      // window by minutes, so the next run takes what this one did not.
-      if (!Array.isArray(page) || page.length !== 2) break;
-      const [next, keys] = page;
-      if (typeof next !== 'string' || !Array.isArray(keys)) break;
-      for (const key of keys) if (typeof key === 'string') found.push(key);
-      cursor = next;
-    } while (cursor !== '0');
-    return found;
-  };
+/**
+ * The denied-attempts summary handler. Takes the decoded payload the worker
+ * handed it — this queue's is empty — and answers `completed` with what it
+ * drained.
+ */
+export const deniedAttemptsSummary = (
+  options: DeniedAttemptsSummaryOptions = {},
+) => {
+  const prefix = options.keyPrefix ?? DENIAL_KEY_PREFIX;
+  const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
 
   /**
-   * Whether this window's event is already in the log. The claim survives a
-   * failed write, so a later run re-reads the same record — and an audit event
-   * is immutable, which makes a second copy permanent. There is no unique
-   * index to lean on, so the window is identified the way it identifies
-   * itself: its team, its actor, its operation, and the instant of its first
-   * suppressed attempt, which is fixed once the window has closed.
+   * One claimed window: its actor, its idempotency check, its event, and then
+   * — only then — the claim given up. Until the event is in the log, the claim
+   * is the only copy of what was suppressed.
+   *
+   * The count is a `Ref` the caller owns rather than this function's answer,
+   * because the increment has to survive a failure of the discard that follows
+   * it: the event is in the log by then, and a run that reported zero for a
+   * summary it wrote would say the opposite of what happened. This is the
+   * order the original had, where `written += 1` sat above the `del` inside
+   * one `try`.
    */
-  const summaryAlreadyWritten = async (
-    teamId: string,
-    actorId: string,
+  const writeWindow = Effect.fnUntraced(function* (
+    window: DeniedAuditWindow,
     operation: DeniedAuditOperation,
-    firstSuppressedAt: number,
-  ): Promise<boolean> => {
-    // Through a TenantDb, not the bare pool: `audit_events` carries a stricter
-    // policy than the other tenant tables (src/audit/schema.ts) with no
-    // maintenance escape at all, so a read without the team stamped on the
-    // transaction sees nothing and would report every summary as missing.
-    const rows = await createTenantDb(deps.maintenancePool, teamId).query(
-      `SELECT true AS present FROM audit_events
-        WHERE team_id = $1
-          AND actor_id = $2
-          AND event_type = 'security.denied_attempts.rate_limited'
-          AND details->>'operation' = $3
-          AND details->>'firstSuppressedAt' = $4
-        LIMIT 1`,
-      [teamId, actorId, operation, new Date(firstSuppressedAt).toISOString()],
-    );
-    return rows.rowCount === 1;
-  };
-
-  const writeSummary = async (
-    teamId: string,
-    operation: DeniedAuditOperation,
-    actor: SessionPrincipal,
+    claimKey: string,
     summary: DeniedAuditSummary,
-  ): Promise<void> => {
-    await createDeniedAuditSummaryWriter(
-      {
-        tenantDb: createTenantDb(deps.maintenancePool, teamId),
-        principal: actor,
-        requestId: randomUUID(),
-      },
-      operation,
-    )(summary);
-  };
+    written: Ref.Ref<number>,
+  ): Effect.fn.Return<
+    void,
+    | SqlError.SqlError
+    | DeniedAttemptsStoreFailed
+    | DeniedAuditSummaryWriteFailed,
+    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+  > {
+    const store = yield* DeniedAttemptsStore;
+    const writer = yield* DeniedAuditSummaryWriter;
+    const actor = yield* loadActor(window.actorId);
+    if (!actor) {
+      // The account was deleted between the attempts and this run. The event
+      // requires the actor's label and there is nowhere left to read it, so
+      // this one is dropped rather than retried forever.
+      yield* Effect.logError(
+        `${QUEUE}: discarding a summary for a user that no longer exists (team ${window.teamId}).`,
+      );
+      yield* store.discardClaim(claimKey);
+      return;
+    }
 
-  const summariseWindows = async (store: RateLimitStore): Promise<number> => {
-    const closedBefore = now() - CLOSE_MARGIN_MS;
-    let written = 0;
-    for (const key of await scanWindowKeys(store)) {
+    // At-least-once delivery of the claim, exactly-once in the log.
+    const already = yield* summaryAlreadyWritten(
+      window,
+      operation,
+      summary.firstSuppressedAt,
+    );
+    if (!already) {
+      yield* writer.write({
+        teamId: window.teamId,
+        operation,
+        actor,
+        summary,
+      });
+      yield* Ref.update(written, (count) => count + 1);
+    }
+    yield* store.discardClaim(claimKey);
+  });
+
+  const summariseWindows = Effect.fnUntraced(function* (): Effect.fn.Return<
+    number,
+    DeniedAttemptsStoreFailed,
+    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+  > {
+    const store = yield* DeniedAttemptsStore;
+    const closedBefore =
+      DateTime.toEpochMillis(yield* DateTime.now) - CLOSE_MARGIN_MS;
+    const written = yield* Ref.make(0);
+    for (const key of yield* store.scanWindowKeys(prefix)) {
       const window = parseDenialWindowKey(key, prefix);
       if (!window) continue;
       if (window.windowStart + windowMs > closedBefore) continue;
@@ -293,19 +284,14 @@ export function createDeniedAttemptsSummaryHandler(
         ? key.slice(0, -CLAIMED_SUFFIX.length)
         : key;
       const claimKey = `${baseKey}${CLAIMED_SUFFIX}`;
-      const claimed = await store.run((redis) =>
-        redis.eval(
-          CLAIM_SCRIPT,
-          2,
-          baseKey,
-          claimKey,
-          String(CLAIM_TTL_MS),
-          String(now()),
-          String(CLAIM_STALE_MS),
-        ),
-      );
-      const fields = readHash(claimed);
-      if (!fields || fields.size === 0) continue;
+      const fields = yield* store.claimWindow({
+        key: baseKey,
+        claimKey,
+        nowMs: DateTime.toEpochMillis(yield* DateTime.now),
+        ttlMs: CLAIM_TTL_MS,
+        staleMs: CLAIM_STALE_MS,
+      });
+      if (fields.size === 0) continue;
       const summary = readSummary(fields);
       // A window that reached its cap but suppressed nothing is a window whose
       // denials were all recorded as events already; there is nothing to say.
@@ -315,111 +301,90 @@ export function createDeniedAttemptsSummaryHandler(
         // A key this build does not know the operation of — an older release's
         // name, or a hand-written key. Dropped rather than written, because the
         // event schema enumerates the operation.
-        // oxlint-disable-next-line no-console -- background worker diagnostics
-        console.error(
-          `Discarding a denied-attempts summary for unknown operation ${JSON.stringify(window.operation)}.`,
+        yield* Effect.logError(
+          `${QUEUE}: discarding a summary for unknown operation ${JSON.stringify(window.operation)}.`,
         );
-        await store.run((redis) => redis.del(claimKey));
+        yield* store.discardClaim(claimKey);
         continue;
       }
-      try {
-        const actor = await loadActor(deps.maintenancePool, window.actorId);
-        if (!actor) {
-          // The account was deleted between the attempts and this run. The
-          // event requires the actor's label and there is nowhere left to read
-          // it, so this one is dropped rather than retried forever.
-          // oxlint-disable-next-line no-console -- background worker diagnostics
-          console.error(
-            `Discarding a denied-attempts summary for a user that no longer exists (team ${window.teamId}).`,
-          );
-          await store.run((redis) => redis.del(claimKey));
-          continue;
-        }
-        // At-least-once delivery of the claim, exactly-once in the log.
-        if (
-          !(await summaryAlreadyWritten(
-            window.teamId,
-            window.actorId,
-            window.operation,
-            summary.firstSuppressedAt,
-          ))
-        ) {
-          await writeSummary(window.teamId, window.operation, actor, summary);
-          written += 1;
-        }
-        // Only now: until the event is in the log, the claim is the only copy
-        // of what was suppressed.
-        await store.run((redis) => redis.del(claimKey));
-      } catch (error) {
+
+      yield* writeWindow(
+        window,
+        window.operation,
+        claimKey,
+        summary,
+        written,
+      ).pipe(
+        // The whole cause, not the typed failure alone: the original's
+        // `try`/`catch` skipped one window whatever went wrong inside it, and
+        // a `catch` over the error channel would let a defect — an invalid
+        // search path, a bug in the writer — abandon every window still to
+        // come. An interruption is not a window's problem and is re-raised:
+        // the worker interrupts a handler that outstays the stop window, and
+        // swallowing that would turn a stopped run into a completed one.
+        //
         // The claim is still there, so a later run takes this window again.
         // The signal is the one the shutdown flush this replaces emitted.
-        process.emitWarning(
-          'A denied-attempts summary could not be appended to the audit log; it stays claimed for a later run.',
-          {
-            type: 'StudioAuditWarning',
-            code: 'STUDIO_DENIED_AUDIT_SUMMARY_FAILED',
-            detail: JSON.stringify({
-              teamId: window.teamId,
-              operation: window.operation,
-              suppressedCount: summary.suppressedCount,
-              cause: error instanceof Error ? error.message : String(error),
-            }),
-          },
-        );
-      }
+        Effect.catchCause((cause) =>
+          Cause.hasInterrupts(cause)
+            ? Effect.interrupt
+            : Effect.logWarning(
+                `${QUEUE}: a summary could not be appended to the audit log; it stays claimed for a later run.`,
+              ).pipe(
+                Effect.annotateLogs({
+                  teamId: window.teamId,
+                  operation: window.operation,
+                  suppressedCount: summary.suppressedCount,
+                  cause:
+                    deepestMessage(causeError(cause)) ?? Cause.pretty(cause),
+                  // A defect is a bug in this process rather than the audit
+                  // log being briefly unavailable, and the two want different
+                  // attention from whoever reads the line.
+                  defect: Cause.hasDies(cause),
+                }),
+              ),
+        ),
+      );
     }
-    return written;
-  };
+    return yield* Ref.get(written);
+  });
 
-  const summariseScopes = async (store: RateLimitStore): Promise<number> => {
-    const claimed = await store.run((redis) =>
-      redis.eval(DRAIN_SCRIPT, 1, DENIED_SCOPE_COUNTS_KEY),
-    );
-    const fields = readHash(claimed);
-    if (!fields) return 0;
+  const summariseScopes = Effect.fnUntraced(function* () {
+    const store = yield* DeniedAttemptsStore;
+    const fields = yield* store.drainScopeCounts;
     for (const [scope, count] of fields) {
-      // oxlint-disable-next-line no-console -- abuse diagnostics
-      console.warn(`Rate limit refused ${count} call(s) in scope ${scope}.`);
+      yield* Effect.logWarning(
+        `Rate limit refused ${count} call(s) in scope ${scope}.`,
+      );
     }
     return fields.size;
-  };
+  });
 
-  return async (jobs) => {
-    for (const job of jobs) {
-      const attempt = job.retryCount + 1;
-      const store = deps.store;
-      if (!store) {
-        logJobOutcome({
-          queue: QUEUE,
-          jobId: job.id,
-          outcome: 'completed',
-          attempt,
-          detail: 'no rate limit store is configured',
-        });
-        continue;
-      }
-      try {
-        const events = await summariseWindows(store);
-        const scopes = await summariseScopes(store);
-        logJobOutcome({
-          queue: QUEUE,
-          jobId: job.id,
-          outcome: 'completed',
-          attempt,
-          detail: `summary events ${events}, limiter scopes ${scopes}`,
-        });
-      } catch (error) {
-        // Nothing retries: the keys outlive their window by minutes and the
-        // next minute's run takes whatever this one left.
-        logJobOutcome({
-          queue: QUEUE,
-          jobId: job.id,
-          outcome: 'failed',
-          attempt,
-          error,
-        });
-        throw error;
-      }
+  return Effect.fn('job.denied-attempts-summary')(function* (
+    job: HandledJob<'denied-attempts-summary'>,
+  ): Effect.fn.Return<
+    JobOutcome,
+    DeniedAttemptsStoreFailed,
+    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+  > {
+    const store = yield* DeniedAttemptsStore;
+    // The attempt rides on both lines the way the original's `logJobOutcome`
+    // carried it. The worker names it too, but only on its `logDebug` success
+    // line, so at an ordinary log level this is the only place a completed run
+    // says which attempt it was.
+    const label = `${QUEUE} ${job.id} attempt ${job.attempt}`;
+    if (!store.configured) {
+      yield* Effect.logInfo(`${label}: no rate limit store is configured`);
+      return 'completed';
     }
-  };
-}
+    // Nothing retries a failure here: the queue declares no retries at all,
+    // and it does not need them — the keys outlive their window by minutes
+    // and the next minute's run takes whatever this one left.
+    const events = yield* summariseWindows();
+    const scopes = yield* summariseScopes();
+    yield* Effect.logInfo(
+      `${label}: summary events ${events}, limiter scopes ${scopes}`,
+    );
+    return 'completed';
+  });
+};

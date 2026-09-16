@@ -193,8 +193,8 @@ function assertPinnedRoleSurvives(url: string): void {
  *
  * The compose stack (#1909) delivers the database password as a Compose file
  * secret rather than a variable, so it appears in neither `docker inspect` nor
- * any process environment — but `pg.Pool` and pg-boss both take one connection
- * string, and pg-boss takes nothing else. Producing the URL here is what lets
+ * any process environment — but `pg.Pool` and `@effect/sql-pg` both take one
+ * connection string. Producing the URL here is what lets
  * `DbEnv` stay `{ url }`, so every consumer is unchanged and none of them has
  * to know where the password came from.
  *

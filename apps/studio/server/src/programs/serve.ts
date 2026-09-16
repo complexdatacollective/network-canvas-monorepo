@@ -31,10 +31,10 @@ import { STUDIO_VERSION } from '../version.ts';
 // The whole process is one Layer. Acquisition order is the boot order and
 // finalizers run in reverse, so the shutdown a container stop asks for is a
 // property of the graph rather than of a hand-written handler: websocket
-// sessions drain, then the listener closes, then the job client stops, then
-// the rate-limit stores and the pool release, then the tracer flushes. Exit
-// codes come from `NodeRuntime.runMain`'s teardown — 0 after a clean stop,
-// 130 on a signal, 1 for a layer that would not build.
+// sessions drain, then the listener closes, then the rate-limit stores and the
+// pool release, then the tracer flushes. Exit codes come from
+// `NodeRuntime.runMain`'s teardown — 0 after a clean stop, 130 on a signal, 1
+// for a layer that would not build.
 
 /**
  * The listener and everything registered on it. `WebSocketDrain.layerShutdown`
@@ -79,41 +79,24 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
 
-      // The enqueue-only pg-boss, on a small pool of its own pinned to the
-      // application role: every job is created by the role that may create one
-      // and can do nothing else with it. It exists from the moment there is a
-      // database to reach, and connects when the schema is current — pg-boss
-      // verifies its own installed version at start and never migrates (#1895).
-      //
-      // The development lane is why the two are separate. There the wait can
-      // outlast this boot, and a client that was only built once the schema
-      // arrived would leave every surface that enqueues without a queue for the
-      // life of the process. This one starts from `current` instead, and a
-      // start that failed is retried by the next enqueue rather than needing a
-      // restart. Nothing of ours is ever in flight on it, so stopping it on
-      // release only ends the pool it owns.
-      const jobs = yield* Effect.acquireRelease(
-        Effect.sync(() => createJobClient(db)),
-        (client) => Effect.promise(() => client.stop()),
-      );
+      // The enqueue-only job client. It holds no pool and opens no connection:
+      // every job is inserted on the connection the caller is already holding
+      // inside its own transaction, as the application role — the role that may
+      // create a job and can do nothing else with it. So there is nothing to
+      // start and nothing to stop, and nothing here cares when the schema
+      // becomes current: an enqueue against a database that has not been
+      // migrated yet fails the one request that made it, and the next one tries
+      // again. That matters on the development lane, where `pnpm dev` can finish
+      // applying the schema well after this process booted.
+      const jobs = createJobClient();
 
       // What runs once the schema is current. Beside the fingerprint check and
       // for the same reason (#1900): a keyring that cannot produce a key id
       // already in the database would serve every surface that touches no
-      // secret and fail the rest one request at a time. It runs before the job
-      // client starts, because a queue is the first thing that would act on
-      // one. A queue that cannot be reached is not fatal: the requests that need
-      // it fail with the reason and the next one tries again, and refusing the
-      // boot would take down every surface that has nothing to do with
-      // background work.
+      // secret and fail the rest one request at a time.
       const bootChecks = Effect.gen(function* () {
         yield* status.current;
         yield* Effect.promise(() => verifySecretKeysOrExit(env));
-        yield* Effect.promise(() => jobs.start()).pipe(
-          Effect.catchCause((cause) =>
-            Effect.logError('Could not start the job client:', cause),
-          ),
-        );
       });
       // In a deployment the schema is current at boot — the gate would have
       // refused the build otherwise — so the checks settle before the listener

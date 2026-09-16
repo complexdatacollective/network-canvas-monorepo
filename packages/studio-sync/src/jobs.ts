@@ -1,45 +1,37 @@
 // Studio's background-job declarations (#1895): which queues exist, how each
-// retries and expires, what a job on it may carry, and what the two database
-// roles may do with the job tables.
+// retries and expires, when the recurring ones run, and what a job on each may
+// carry.
 //
-// It lives beside rls.ts for the same reason the roles do — a queue is part of
-// the schema, installed once by apply-schema and verified by every process at
-// boot through the fingerprint — and it imports no pg-boss. pg-boss is a server
-// dependency; this package is also compiled into contexts that never run a job,
-// and the declarations are plain data either way. The server checks them
-// against pg-boss's own `Queue` type at compile time (src/jobs/queues.ts), so
-// the absence of the import costs no safety.
+// Declarations only, as plain data. The queue that reads them is the server's
+// own (`apps/studio/server/src/jobs/queues.ts`), which resolves each one
+// against its defaults and freezes the result onto a job row at enqueue, so a
+// job already in flight keeps the retry and expiry it was created under. They
+// live here rather than in the server because this package is compiled into
+// contexts that never run a job and still need the payload shapes and the
+// policy table below.
 import { z } from 'zod';
 
-import { TENANT_ROLES } from './rls.ts';
-
-/** pg-boss owns this schema outright; nothing of Studio's lives in it. */
-export const JOB_SCHEMA = 'pgboss';
-
 /**
- * pg-boss's per-queue options, mirrored rather than imported. Every field is
- * the same name and meaning pg-boss gives it; `src/jobs/queues.ts` in the
- * server fails to compile if that stops being true.
+ * What a queue may declare. Anything left out takes the default the server's
+ * `resolvedQueue` applies, and every field here is one that resolution reads —
+ * an option nothing reads would be a setting a deployment could believe in.
  */
 export type JobQueueOptions = {
-  policy?:
-    | 'standard'
-    | 'short'
-    | 'singleton'
-    | 'stately'
-    | 'exclusive'
-    | 'key_strict_fifo';
+  /**
+   * `singleton` means at most one *active* job on the queue at a time; further
+   * jobs wait as `created`. The two are the whole set the queue implements.
+   */
+  policy?: 'standard' | 'singleton';
   retryLimit?: number;
   retryDelay?: number;
   retryBackoff?: boolean;
-  /** Only meaningful with `retryBackoff`; pg-boss rejects it otherwise. */
+  /** Only meaningful with `retryBackoff`: the cap on the backoff ladder. */
   retryDelayMax?: number;
   expireInSeconds?: number;
   retentionSeconds?: number;
   /** `0` keeps completed jobs forever. */
   deleteAfterSeconds?: number;
   deadLetter?: string;
-  notify?: boolean;
   warningQueueSize?: number;
 };
 
@@ -49,15 +41,15 @@ export type JobQueueDeclaration = {
 };
 
 /**
- * Every queue Studio declares, in the order they must be created: a queue's
- * `deadLetter` is a foreign key to another queue's name, so a target has to
- * exist before the queue that names it. Consumers that land later (#1521,
- * #1291, #1305, #1520, #1268) add theirs here rather than creating queues of
- * their own at run time.
+ * Every queue Studio declares. A `deadLetter` must name another queue in this
+ * list — the server refuses the whole list at module load otherwise, so a typo
+ * stops a process at start rather than at the first dead-lettered job.
+ * Consumers that land later (#1521, #1291, #1305, #1520, #1268) add theirs
+ * here rather than naming a queue of their own at run time.
  *
- * `partition` is deliberately absent everywhere: a dedicated table per queue
- * only pays for itself at a volume none of these reach, and it would make a
- * queue's shape a migration rather than a row.
+ * A queue is not a row or a table anywhere: it exists because it is declared
+ * here, and every job carries its queue's name and its resolved retry and
+ * expiry on the job row itself.
  */
 export const JOB_QUEUES = [
   {
@@ -85,17 +77,15 @@ export const JOB_QUEUES = [
       retryDelayMax: 1800,
       expireInSeconds: 60,
       deadLetter: 'invitation-delivery-dead-letter',
-      notify: true,
     },
   },
   {
     // A sign-in link is useless once it expires, so a failed send is worth two
     // quick retries and nothing more: no dead letter, and both the job and its
     // record are gone within minutes — which holds only because the worker
-    // runs pg-boss's maintenance pass every minute (src/jobs/worker.ts in the
-    // server). Deletion happens on that pass alone, so at pg-boss's own
-    // 24-hour default this row, whose payload is the magic link itself, would
-    // outlive the link by most of a day.
+    // sweeps retention every minute. Deletion happens on that sweep alone, so
+    // at a day-scale retention this row, whose payload is the magic link
+    // itself, would outlive the link by most of a day.
     name: 'sign-in-email',
     options: {
       policy: 'standard',
@@ -106,7 +96,6 @@ export const JOB_QUEUES = [
       expireInSeconds: 30,
       retentionSeconds: 600,
       deleteAfterSeconds: 60,
-      notify: true,
     },
   },
   {
@@ -146,9 +135,9 @@ export type JobSchedule = {
 };
 
 /**
- * Recurring work, registered by the worker through pg-boss's own cron, which
- * coordinates across worker replicas. Hourly is well inside every retention
- * bound the sweep enforces.
+ * Recurring work, upserted into the queue's own `job_schedules` table by every
+ * worker at boot; one replica ticks per pass, so a firing reaches exactly one
+ * of them. Hourly is well inside every retention bound the sweep enforces.
  */
 export const JOB_SCHEDULES = [
   { queue: 'protocol-store-gc', cron: '0 * * * *', tz: 'UTC' },
@@ -220,39 +209,3 @@ export const JOB_PAYLOAD_POLICY = {
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;
-
-// Interpolated into DDL, so it is checked rather than trusted: the scratch
-// schemas the suites provision compose this name themselves.
-const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
-
-/**
- * What the two roles may do inside pg-boss's schema.
- *
- * The application may create a job and learn its id, and nothing more — it
- * cannot read a payload, retry, cancel or delete one, which keeps every team's
- * queued work invisible to the role that serves requests. The worker runs as
- * maintenance, which owns the schema's use outright because pg-boss's fetch,
- * completion and supervision paths write to every table in it.
- *
- * The column list on `job_common` is the two columns the insert reads back
- * rather than writes: `id` for its RETURNING, and `start_after` for the notify
- * clause a notify-enabled queue appends. Nothing else needs a SELECT — a
- * column a statement only writes is covered by the INSERT above, and ON
- * CONFLICT arbitration reads the index rather than the column. Hashed into the
- * schema fingerprint, so widening this is a schema change.
- */
-export function jobGrantsSql(schema: string): string {
-  if (!SCHEMA_NAME.test(schema)) {
-    throw new Error(`invalid job schema name: ${JSON.stringify(schema)}`);
-  }
-  const { app, maintenance } = TENANT_ROLES;
-  return [
-    `GRANT USAGE ON SCHEMA ${schema} TO ${app}, ${maintenance};`,
-    `GRANT SELECT ON ${schema}.queue, ${schema}.version TO ${app};`,
-    `GRANT INSERT ON ${schema}.job, ${schema}.job_common TO ${app};`,
-    `GRANT SELECT (id, start_after) ON ${schema}.job_common TO ${app};`,
-    `GRANT ALL ON ALL TABLES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT ALL ON ALL SEQUENCES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA ${schema} TO ${maintenance};`,
-  ].join('\n');
-}

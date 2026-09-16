@@ -5,9 +5,8 @@
 // the moment it booted.
 import { describe, expect, it } from 'vitest';
 
-import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
-
 import { applySchema } from '../../scripts/apply.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { freePort, startEntrypoint } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
@@ -67,10 +66,10 @@ describe.skipIf(!db)('the web entrypoint', () => {
         // with a sign-in link.
         expect(response.status, await response.clone().text()).toBe(200);
 
-        const queued = await scratch.pool.query<{ name: string }>(
-          `select name from ${JOB_SCHEMA}.job_common`,
+        const queued = await scratch.pool.query<{ queue: string }>(
+          `select queue from ${JOB_SCHEMA}.jobs`,
         );
-        expect(queued.rows).toEqual([{ name: 'sign-in-email' }]);
+        expect(queued.rows).toEqual([{ queue: 'sign-in-email' }]);
       } finally {
         web.child.kill('SIGKILL');
         await scratch.dispose();

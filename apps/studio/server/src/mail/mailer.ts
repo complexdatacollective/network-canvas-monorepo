@@ -19,16 +19,14 @@ export class MailNotConfigured extends Schema.TaggedError<MailNotConfigured>()(
   override get message(): string {
     return `No SMTP transport is configured; cannot send ${this.what}`;
   }
-
-  override toJSON(): MailOutcome {
-    return mailOutcome(this);
-  }
 }
 
 /**
  * The transport refused the send. The message is the transport's own, because
- * that is what lands on the job row and what an operator reads — nodemailer's
- * `Greeting never received` among them.
+ * that is what lands in the job row's `last_error` and what an operator reads —
+ * nodemailer's `Greeting never received` among them. The queue reads it through
+ * `deepestMessage` (src/jobs/errors.ts), which walks the cause chain for
+ * exactly this getter.
  */
 export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
   cause: Schema.Defect(),
@@ -38,27 +36,6 @@ export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
       ? this.cause.message
       : String(this.cause);
   }
-
-  override toJSON(): MailOutcome {
-    return mailOutcome(this);
-  }
-}
-
-/** What pg-boss stores in a failed job's `output` column. */
-type MailOutcome = { readonly _tag: string; readonly message: string };
-
-/**
- * Why a send failed, in the one place an operator can read it: the job row.
- *
- * pg-boss serialises a thrown error with `serialize-error`, which takes an
- * object's own `toJSON` in preference to walking it — and the schema's `toJSON`
- * renders the declared fields, where the message is a getter rather than a
- * field and a `Defect` cause encodes to `{}`. Left at that, every failed mail
- * job would record `{"_tag":"MailFailed","cause":{}}` and the transport's own
- * reason would be gone.
- */
-function mailOutcome(error: MailFailed | MailNotConfigured): MailOutcome {
-  return { _tag: error._tag, message: error.message };
 }
 
 export type MagicLinkInput = { email: string; url: string };
@@ -105,31 +82,4 @@ export class Mailer extends Context.Service<
         Effect.fail(new MailNotConfigured({ what: 'invitation' })),
     }),
   );
-}
-
-export type MagicLinkMailer = {
-  sendMagicLink(input: MagicLinkInput): Promise<void>;
-};
-
-export type InvitationMailer = {
-  sendTeamInvitation(input: TeamInvitationInput): Promise<void>;
-};
-
-export type StudioMailer = MagicLinkMailer & InvitationMailer;
-
-/**
- * The Promise-shaped view the job handlers still take. Stage 5 rewrites them
- * onto the service itself; until then this is the one adapter, and it carries
- * the program's own services — its loggers and its tracer — into a send that a
- * pg-boss callback started, rather than letting it run on a bare runtime.
- */
-export function promiseMailer(
-  mailer: Mailer['Service'],
-  services: Context.Context<never>,
-): StudioMailer {
-  const run = Effect.runPromiseWith(services);
-  return {
-    sendMagicLink: (input) => run(mailer.sendMagicLink(input)),
-    sendTeamInvitation: (input) => run(mailer.sendTeamInvitation(input)),
-  };
 }

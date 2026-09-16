@@ -7,10 +7,9 @@ import { networkInterfaces } from 'node:os';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
-
 import { applySchema } from '../../scripts/apply.ts';
 import { createJobClient } from '../jobs/client.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import {
   connectionRefused,
   type Entrypoint,
@@ -45,6 +44,26 @@ async function readReadiness(
   };
 }
 
+/**
+ * `HTTP <status>` while the listener answers at all, and otherwise why it did
+ * not. Used where the question is whether the listener is still there rather
+ * than what it says: during a drain, a check reporting `failing` is an answer
+ * and a refused connection is not.
+ */
+async function readinessAnswer(port: number): Promise<string> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
+      signal: AbortSignal.timeout(READINESS_ANSWER_TIMEOUT_MS),
+    });
+    // Read the body so the connection is not left open against a process the
+    // case is about to wait for the exit of.
+    await response.text();
+    return `HTTP ${response.status}`;
+  } catch (error) {
+    return `unreachable: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 const db = await reachableDb();
 const redis = await reachableRedis(REDIS_DATABASES.workerEntrypoint);
 
@@ -55,19 +74,42 @@ const STOP_TIMEOUT_MS = 10_000;
 /**
  * The in-flight case waits out nodemailer's greeting timeout (10 s, set in
  * src/mail/smtp.ts) on top of a boot, which is more than the file's default
- * budget and still well inside the 25-second graceful window the process asks
- * pg-boss for.
+ * budget and still well inside the worker's 25-second graceful window.
  */
 const IN_FLIGHT_CASE_TIMEOUT_MS = 45_000;
 
 /** Longer than the send this case is waiting out, shorter than the case. */
 const IN_FLIGHT_STOP_TIMEOUT_MS = 30_000;
 
+/**
+ * How far into the drain `/readyz` is read. Well past a finalizer that ran at
+ * the signal — a listener closed first is still open for a few milliseconds
+ * after it, so a read taken at the signal would pass either way — and well
+ * short of the 10-second greeting timeout that ends the drain.
+ */
+const DRAIN_SAMPLE_MS = 2500;
+
+/** A loopback request to a listener that is either there or is not. */
+const READINESS_ANSWER_TIMEOUT_MS = 2000;
+
+/** A boot, an enqueue, and one poll pass claiming and running the job. */
+const CROSS_PROCESS_CASE_TIMEOUT_MS = 60_000;
+
+/** The child claims on its first poll pass; this is a bound, not a cadence. */
+const SETTLE_WAIT_MS = 20_000;
+
 /** A boot, a drizzle-kit push against a fresh database, and the retry after it. */
 const READINESS_CASE_TIMEOUT_MS = 240_000;
 
 /** The boot retry re-reads the fingerprint every three seconds. */
 const SCHEMA_WAIT_MS = 60_000;
+
+/**
+ * How long readiness may take to turn `ok` after the boot line. The worker's
+ * `jobs` check reports ready on its first answered claim, which its poll
+ * fibers issue at once — this is a bound on a slow machine, not a cadence.
+ */
+const READINESS_WAIT_MS = 15_000;
 
 /** A boot, plus one connection attempt per external address that may be dropped. */
 const LOOPBACK_CASE_TIMEOUT_MS = 60_000;
@@ -97,7 +139,9 @@ function startWorker(overrides: Record<string, string>): Entrypoint {
 /**
  * The development lane, which waits for a schema rather than exiting on one it
  * does not have. It is the only way to hold a real worker process in the state
- * the readiness case is about: up and answering, with pg-boss not connected.
+ * the readiness case is about: up and answering, with no queue behind it —
+ * the queue's layers are built after the schema gate and the secrets check,
+ * because nothing may claim a job against a schema this build did not make.
  */
 function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
@@ -147,13 +191,20 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       expect(live.status).toBe(200);
       expect(await live.json()).toEqual({ status: 'ok' });
 
-      // Ready, with the job connection among the checks: a worker whose
-      // pg-boss had gone is exactly what the compose healthcheck is for, and
-      // `db` alone would report that worker healthy.
-      expect(await readReadiness(healthPort)).toEqual({
-        status: 200,
-        body: { status: 'ok', checks: { db: 'ok', schema: 'ok', jobs: 'ok' } },
-      });
+      // Ready, with the queue among the checks: a worker that can reach
+      // Postgres but not claim a job is exactly what the compose healthcheck is
+      // for, and `db` alone would report that worker healthy.
+      await vi.waitFor(
+        async () =>
+          expect(await readReadiness(healthPort)).toEqual({
+            status: 200,
+            body: {
+              status: 'ok',
+              checks: { db: 'ok', schema: 'ok', jobs: 'ok' },
+            },
+          }),
+        { timeout: READINESS_WAIT_MS, interval: 100 },
+      );
 
       // No Studio surface behind it: the RPC path the web process serves is
       // not mounted here.
@@ -186,7 +237,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
   });
 
   it(
-    'reports jobs failing until pg-boss is connected, and ready once it is',
+    'reports jobs failing until the queue is running, and ready once it is',
     async () => {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
       // The state the compose healthcheck exists to catch: a container that is
@@ -253,11 +304,20 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       await worker.waitForOutput(
         /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
       );
-      const degraded = await readReadiness(healthPort);
-      expect(degraded.status).toBe(200);
-      expect(degraded.body.status).toBe('degraded');
-      expect(degraded.body.checks.limiter).toBe('degraded');
-      expect(degraded.body.checks.jobs).toBe('ok');
+      // The boot line means wired, not yet working: `jobs` turns `ok` on the
+      // worker's own first answered claim, which its poll fibers make a moment
+      // later. The container healthcheck's 20-second start period is what
+      // covers that gap in a deployment.
+      await vi.waitFor(
+        async () => {
+          const degraded = await readReadiness(healthPort);
+          expect(degraded.status).toBe(200);
+          expect(degraded.body.status).toBe('degraded');
+          expect(degraded.body.checks.limiter).toBe('degraded');
+          expect(degraded.body.checks.jobs).toBe('ok');
+        },
+        { timeout: READINESS_WAIT_MS, interval: 100 },
+      );
     } finally {
       worker.child.kill('SIGKILL');
     }
@@ -276,13 +336,17 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         await worker.waitForOutput(
           /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
         );
-        expect(await readReadiness(healthPort)).toEqual({
-          status: 200,
-          body: {
-            status: 'ok',
-            checks: { db: 'ok', schema: 'ok', jobs: 'ok', limiter: 'ok' },
-          },
-        });
+        await vi.waitFor(
+          async () =>
+            expect(await readReadiness(healthPort)).toEqual({
+              status: 200,
+              body: {
+                status: 'ok',
+                checks: { db: 'ok', schema: 'ok', jobs: 'ok', limiter: 'ok' },
+              },
+            }),
+          { timeout: READINESS_WAIT_MS, interval: 100 },
+        );
       } finally {
         worker.child.kill('SIGKILL');
       }
@@ -328,16 +392,19 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     'finishes a job it is running before it exits on SIGTERM',
     async () => {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
-      // The graceful stop is proved in-process in src/jobs/__tests__/worker.test.ts;
-      // what only the real process can show is that its signal handler waits for
-      // the same thing — a container stop arriving mid-send must not abandon the
-      // handler and leave the job dead as 'pg-boss shut down while active'.
+      // The graceful stop is proved in-process by the queue's own suites
+      // (src/jobs/__tests__); what only the real process can show is that
+      // its signal handler waits for the same thing — a container stop arriving
+      // mid-send must not abandon the handler and leave the row `active` until
+      // its lease expires.
       const smtp = await startSilentSmtp();
-      // Enqueued the way the web process does: the application role, inside its
-      // own transaction, on the database the child is working.
-      const jobs = createJobClient(applied.db);
+      // Enqueued the way the web process does: one statement inside a
+      // transaction of the caller's, on the database the child is working.
+      const jobs = createJobClient();
+      const healthPort = await freePort();
       const worker = startWorker({
         DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
         // A transport the child will really connect to, because a console
         // mailer resolves instantly and there would be nothing in flight.
         SMTP_URL: `smtp://127.0.0.1:${smtp.port}`,
@@ -345,13 +412,19 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       });
       const jobRow = async (
         jobId: string,
-      ): Promise<{ state: string; output: { message?: string } | null }> => {
+      ): Promise<{
+        state: string;
+        attempts: number;
+        last_error: string | null;
+      }> => {
         const rows = await applied.pool.query<{
           state: string;
-          output: { message?: string } | null;
-        }>(`select state, output from ${JOB_SCHEMA}.job_common where id = $1`, [
-          jobId,
-        ]);
+          attempts: number;
+          last_error: string | null;
+        }>(
+          `select state, attempts, last_error from ${JOB_SCHEMA}.jobs where id = $1`,
+          [jobId],
+        );
         const row = rows.rows[0];
         if (!row) throw new Error(`no job row for ${jobId}`);
         return row;
@@ -388,6 +461,34 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           () => worker.child.kill('SIGKILL'),
           IN_FLIGHT_STOP_TIMEOUT_MS,
         );
+
+        // The shutdown half of the finalizer order (src/programs/worker.ts's
+        // header): the health listener is acquired before the queue, so it is
+        // finalized after the drain and `/readyz` is still answerable while
+        // the job finishes. Without it, a container runtime polling through a
+        // stop reads a refused connection for as long as the drain takes and
+        // cannot tell a worker finishing its work from one that has fallen
+        // over.
+        //
+        // What it says is not the point — a check may report `failing` mid-
+        // teardown — only that it says anything.
+        //
+        // Mutation: move `Layer.provide(Health)` to the front of the pipe in
+        // src/programs/worker.ts (built last, therefore finalized first) and
+        // this reads `unreachable` while the handler is still in its send.
+        await new Promise((settled) => setTimeout(settled, DRAIN_SAMPLE_MS));
+        const draining = {
+          // Asserted beside the answer, so a child that had already exited
+          // would fail as "the drain was over" rather than as a listener
+          // closed too early.
+          running: worker.child.exitCode === null,
+          readyz: await readinessAnswer(healthPort),
+        };
+        expect(draining).toEqual({
+          running: true,
+          readyz: expect.stringMatching(/^HTTP \d{3}$/),
+        });
+
         const { code, signal } = await worker.exited;
         clearTimeout(backstop);
         const waited = Date.now() - signalled;
@@ -397,24 +498,105 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         // this far after the signal is the process having waited for it. A
         // handler that was dropped would have let the process exit at once.
         expect(waited).toBeGreaterThan(2000);
-        // And it is the graceful window rather than the hard backstop: the
-        // process asks pg-boss for 25 seconds and backs that with 30.
+        // And it is inside the graceful window rather than being cut off by it:
+        // the worker gives an in-flight handler 25 seconds before the scope
+        // interrupts it.
         expect(waited).toBeLessThan(25_000);
 
         const finished = await jobRow(jobId);
-        // pg-boss's ordinary failure path rather than its shutdown one: the
-        // attempt ended on the transport and the job is waiting for its next
-        // one, where a handler abandoned at the stop would have been failed
-        // outright with 'pg-boss shut down while active'.
-        expect(finished.state).toBe('retry');
-        expect(finished.output?.message).toMatch(/Greeting never received/);
+        // The ordinary failure path rather than an abandoned attempt: the send
+        // ended on the transport, the attempt it spent is on the row, and the
+        // job is `created` again waiting for its next one. A handler dropped at
+        // the stop would have left the row `active` with its lease still
+        // running, and nothing would touch it until the reaper expired it.
+        expect({
+          state: finished.state,
+          attempts: finished.attempts,
+        }).toEqual({ state: 'created', attempts: 1 });
+        expect(finished.last_error).toMatch(/Greeting never received/);
       } finally {
         worker.child.kill('SIGKILL');
-        await jobs.stop();
         await smtp.close();
       }
     },
     IN_FLIGHT_CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'finishes a job the web process created, in the process that claimed it',
+    async () => {
+      // The whole point of the split, end to end and across the boundary: one
+      // process creates a job inside a transaction of its own, another
+      // process claims it, runs it and settles it. Every other cross-process
+      // case here stops short of that — the in-flight one above proves the
+      // interrupted path, and the happy path is otherwise proved only
+      // in-process (src/jobs/__tests__/registrations.test.ts), where "the
+      // worker" is a value in the same heap as the enqueue.
+      //
+      // `denied-attempts-summary` is the queue that needs nothing configured:
+      // with no REDIS_URL the store is absent, so the handler has nothing to
+      // summarise, says so and answers `completed`
+      // (src/jobs/handlers/denied-attempts-summary.ts).
+      const healthPort = await freePort();
+      const worker = startWorker({
+        DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
+      });
+      const jobs = createJobClient();
+      const settledRow = async (
+        jobId: string,
+      ): Promise<{ state: string; outcome: string | null } | undefined> => {
+        const rows = await applied.pool.query<{
+          state: string;
+          outcome: string | null;
+        }>(`select state, outcome from ${JOB_SCHEMA}.jobs where id = $1`, [
+          jobId,
+        ]);
+        return rows.rows[0];
+      };
+
+      try {
+        await worker.waitForOutput(
+          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        );
+
+        const client = await applied.pool.connect();
+        let jobId: string;
+        try {
+          await client.query('BEGIN');
+          jobId = await jobs.enqueue(client, 'denied-attempts-summary', {});
+          await client.query('COMMIT');
+        } finally {
+          client.release();
+        }
+
+        // The child's own outcome line, naming this job's id: the schedule
+        // creates a job on this queue every minute, so the id is what says
+        // the run being read below is the one this case enqueued and not a
+        // tick's.
+        await worker.waitForOutput(
+          new RegExp(
+            `denied-attempts-summary ${jobId} attempt 1: no rate limit store is configured`,
+          ),
+          SETTLE_WAIT_MS,
+        );
+
+        // And the settle reached the row. `outcome` is what the handler
+        // answered rather than merely the absence of a throw, which is the
+        // distinction the column exists for.
+        await vi.waitFor(
+          async () =>
+            expect(await settledRow(jobId)).toEqual({
+              state: 'completed',
+              outcome: 'completed',
+            }),
+          { timeout: SETTLE_WAIT_MS, interval: 50 },
+        );
+      } finally {
+        worker.child.kill('SIGKILL');
+      }
+    },
+    CROSS_PROCESS_CASE_TIMEOUT_MS,
   );
 
   it('refuses to run with no database at all', async () => {

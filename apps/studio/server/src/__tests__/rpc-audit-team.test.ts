@@ -108,18 +108,18 @@ describe.skipIf(!db)('audited team RPC', () => {
       status: 'canceled',
     });
 
-    const queued = await pool.query<{ name: string; data: unknown }>(
-      `select job.name, job.data
-       from ${jobSchema}.job_common job
+    const queued = await pool.query<{ queue: string; payload: unknown }>(
+      `select job.queue, job.payload
+       from ${jobSchema}.jobs job
        join team_invitation_deliveries delivery
-         on delivery.id = (job.data->>'deliveryId')::uuid
+         on delivery.id = (job.payload->>'deliveryId')::uuid
        where delivery.invitation_id = $1`,
       [invitation.invitationId],
     );
     // Exactly one, carrying the delivery id alone: the command's transaction
     // creates the invitation, its delivery row and its job together.
     expect(queued.rows).toHaveLength(1);
-    expect(queued.rows[0]?.name).toBe('invitation-delivery');
+    expect(queued.rows[0]?.queue).toBe('invitation-delivery');
 
     const events = await pool.query<{
       event_type: string;

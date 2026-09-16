@@ -64,22 +64,6 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     kind: 'none',
     reason: 'Protocol migration producer coverage is delivered by #1521.',
   },
-  'protocol.gcDraftHistory': {
-    kind: 'none',
-    reason: 'Protocol maintenance producer coverage is delivered by #1521.',
-  },
-  'protocol.gcReconcileReferencedSections': {
-    kind: 'none',
-    reason: 'Protocol maintenance producer coverage is delivered by #1521.',
-  },
-  'protocol.gcMarkUnreferencedSections': {
-    kind: 'none',
-    reason: 'Protocol maintenance producer coverage is delivered by #1521.',
-  },
-  'protocol.gcDeleteUnreferencedSections': {
-    kind: 'none',
-    reason: 'Protocol maintenance producer coverage is delivered by #1521.',
-  },
   'protocolBuilder.acquireLock': {
     kind: 'none',
     reason:

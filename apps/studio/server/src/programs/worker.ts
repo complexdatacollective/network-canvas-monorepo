@@ -4,12 +4,21 @@ import { HttpRouter } from 'effect/unstable/http';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import {
-  type CheckVerdict,
   databaseCheck,
+  type HealthCheck,
   type HealthChecks,
   HealthRoutes,
   schemaCheckOnPool,
 } from '../http/health.ts';
+import { JobClock } from '../jobs/clock.ts';
+import { Database } from '../jobs/database.ts';
+import { DeniedAuditSummaryWriter } from '../jobs/handlers/denied-attempts/audit-writer.ts';
+import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
+import { Jobs } from '../jobs/jobs.ts';
+import { JobMaintenanceGate, MaintenanceState } from '../jobs/maintenance.ts';
+import { JobQueueMetrics } from '../jobs/metrics.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { jobsCheck } from '../jobs/readiness.ts';
 import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
@@ -18,7 +27,7 @@ import { LoggerLive } from '../platform/logger.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { createRateLimiter } from '../rate-limit.ts';
-import { RateLimitStoresLive } from '../rate-limit/store.ts';
+import { getRateLimitStore, RateLimitStoresLive } from '../rate-limit/store.ts';
 import { verifySecretKeysOrExit } from '../secrets/boot.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
@@ -38,12 +47,13 @@ import { STUDIO_VERSION } from '../version.ts';
 // Acquisition order is the boot order and finalizers run in reverse. The
 // health listener binds before the schema gate, so a `docker compose up` can
 // read an honest `failing` — naming the schema — rather than a refused
-// connection; and because it is acquired before the job worker it closes
-// after the job drain, so `/readyz` stays answerable while jobs finish. The
-// drain itself is the job worker's finalizer: 25 seconds of grace under a
-// 30-second bound, inside the compose file's 40-second `stop_grace_period`.
-// Exit codes come from `NodeRuntime.runMain`: 0 after a clean stop, 130 on a
-// signal, 1 for a layer that would not build.
+// connection; and because it is acquired before the queue it closes after the
+// job drain, so `/readyz` stays answerable while jobs finish. The drain itself
+// is `JobWorker.layer`'s own scope finalizer: it stops claiming, waits 25
+// seconds for in-flight handlers, then lets the scope interrupt whatever is
+// left — inside the compose file's 40-second `stop_grace_period`. Exit codes
+// come from `NodeRuntime.runMain`: 0 after a clean stop, 130 on a signal, 1 for
+// a layer that would not build.
 
 /** A refusal that stands in for the process: a message for the operator, exit code 1. */
 class WorkerRefused extends Schema.TaggedError<WorkerRefused>()(
@@ -56,8 +66,11 @@ class WorkerRefused extends Schema.TaggedError<WorkerRefused>()(
 }
 
 /**
- * The `jobs` readiness check before pg-boss is connected. Stage 5 moves this
- * onto `JobWorker.ready`; until then the check reads the handle below.
+ * The `jobs` readiness check before the queue's own layers are built. They are
+ * built after the schema gate and the secrets check, on purpose — nothing may
+ * claim a job against a schema this build did not make, or with a keyring that
+ * cannot produce the key ids already in the database — while the listener binds
+ * before both, so it can say which of the two it is still waiting on.
  */
 class JobsNotStarted extends Schema.TaggedError<JobsNotStarted>()(
   'JobsNotStarted',
@@ -68,29 +81,29 @@ class JobsNotStarted extends Schema.TaggedError<JobsNotStarted>()(
   }
 }
 
+/** What the `jobs` check reads once the queue's layers have been built. */
+type StartedQueue = {
+  readonly worker: JobWorker['Service'];
+  readonly database: Database['Service'];
+};
+
 /**
- * Readiness (#1897) for a process whose pg-boss connects after the listener
- * binds: the `jobs` check reads a handle the graph fills in once the worker
- * is started, so the listener can answer `failed: not started` in the meantime
- * — an instance that exists but has not started answers nothing, and the
- * maintenance pool would still reach Postgres.
+ * Readiness (#1897). `jobs` is `jobsCheck` — the worker's own `ready` flag,
+ * which its first answered claim sets, plus a read issued now — reached through
+ * a handle the graph fills in, because the listener binds first. Until then the
+ * answer is `failed: not started`: an instance that does not exist answers
+ * nothing, and the maintenance pool would still reach Postgres.
  */
 function workerChecks(
   env: StudioEnv,
   pool: DatabasePool['Service']['pool'],
-  started: Ref.Ref<Option.Option<JobWorker['Service']>>,
+  started: Ref.Ref<Option.Option<StartedQueue>>,
 ): HealthChecks {
   const limiter = createRateLimiter(env);
-  const jobs = Effect.gen(function* () {
-    const worker = yield* Ref.get(started);
-    if (Option.isNone(worker)) return yield* new JobsNotStarted();
-    // pg-boss's own connection rather than the maintenance pool: the point of
-    // this check is that the queue is reachable, and the two use different
-    // pools.
-    yield* Effect.promise(() =>
-      worker.value.boss.getDb().executeSql('select 1'),
-    );
-    return 'ok' as const satisfies CheckVerdict;
+  const jobs: HealthCheck = Effect.gen(function* () {
+    const queue = yield* Ref.get(started);
+    if (Option.isNone(queue)) return yield* new JobsNotStarted();
+    return yield* jobsCheck(queue.value.worker, queue.value.database);
   });
   return {
     db: databaseCheck(pool),
@@ -112,7 +125,7 @@ function workerWith(env: StudioEnv, db: DbEnv) {
   return Layer.unwrap(
     Effect.gen(function* () {
       const { pool } = yield* DatabasePool;
-      const started = yield* Ref.make(Option.none<JobWorker['Service']>());
+      const started = yield* Ref.make(Option.none<StartedQueue>());
 
       // 127.0.0.1 by construction, not by configuration
       // (`WorkerHealthServerLive`): this listener answers the container runtime
@@ -138,12 +151,24 @@ function workerWith(env: StudioEnv, db: DbEnv) {
         }),
       );
 
-      // Started means connected with every handler registered, which is what
-      // readiness reports from here on.
+      // The maintenance client the queue runs on. Same database, same role and
+      // the same (absent) search path as the `DatabasePool` the summary
+      // writer's own pool is built from, which those two have to agree on: the
+      // handler's idempotency read goes through this client while the audit
+      // row is written through that pool, and two schemas apart the read would
+      // report every written summary as missing.
+      const QueueDatabase = Database.layer('maintenance', {
+        url: db.url,
+        applicationName: 'studio-worker',
+      });
+
+      // Started means every handler registered and the first job claimable,
+      // which is what readiness reports from here on.
       const Started = Layer.effectDiscard(
         Effect.gen(function* () {
           const worker = yield* JobWorker;
-          yield* Ref.set(started, Option.some(worker));
+          const database = yield* Database;
+          yield* Ref.set(started, Option.some({ worker, database }));
           yield* Effect.log(
             `Network Canvas Studio worker ${STUDIO_VERSION} started`,
           );
@@ -151,8 +176,28 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       );
 
       return Started.pipe(
-        Layer.provide(JobHandlersLive()),
-        Layer.provideMerge(JobWorker.layerPgBoss()),
+        // One flag over the whole worker (#1927 §20 Q9). Studio has no
+        // maintenance mode yet, so the state is constantly off; the gate is
+        // wired now so the stage that adds one only replaces the state.
+        Layer.provide(JobMaintenanceGate.layer()),
+        Layer.provide(MaintenanceState.layerOff),
+        // For `studio_jobs_queue_depth` and the backlog warning. Readiness does
+        // not depend on it: the worker's own poll fibers set `ready` from their
+        // first answered claim.
+        Layer.provide(JobQueueMetrics.layer()),
+        Layer.provide(JobHandlersLive),
+        Layer.provide(
+          env.redis
+            ? DeniedAttemptsStore.layer(getRateLimitStore(env.redis))
+            : DeniedAttemptsStore.layerAbsent,
+        ),
+        Layer.provide(DeniedAuditSummaryWriter.layer(pool)),
+        Layer.provideMerge(JobWorker.layer({ schema: JOB_SCHEMA })),
+        Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
+        // The production skew correction, measured against this client's own
+        // `now()`; the uncorrected clock is the suites'.
+        Layer.provide(JobClock.layer()),
+        Layer.provideMerge(QueueDatabase),
         Layer.provide(MailerLive),
         Layer.provide(SecretsVerified),
         Layer.provideMerge(SchemaStatus.layer),

@@ -91,7 +91,7 @@ const assets = pgTable(
 
 // The pin set. One row per (asset, referrer). A referenced asset cannot be
 // deleted, because the FK points at `assets`; garbage collection sweeps assets
-// with no surviving pin, exactly as protocol/gc.ts sweeps sections.
+// with no surviving pin, exactly as src/jobs/handlers/protocol-store-gc.ts sweeps sections.
 //
 // There is deliberately no FK to the referrer: referrers are heterogeneous (a
 // section hash, a version uuid, a document uuid) and a conditional FK is not

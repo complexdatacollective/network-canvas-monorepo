@@ -227,7 +227,7 @@ describe('database and auth', () => {
 
 // The compose stack (#1909) delivers the database password as a file secret,
 // so it is in neither `docker inspect` nor any process environment. What
-// reaches the pools and pg-boss is still one connection string: the password
+// reaches the pools is still one connection string: the password
 // is folded into DATABASE_URL here, once, at boot.
 describe('the database password file', () => {
   const passwordFile = (contents: string): string => {

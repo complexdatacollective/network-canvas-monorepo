@@ -196,8 +196,9 @@ services:
     stop_grace_period: 40s
     environment: *studio-env
     secrets: *studio-secrets
-    # Readiness, not liveness: the pg-boss connection is the one thing a
-    # process that answers no request cannot otherwise be asked about.
+    # Readiness, not liveness: whether the worker is actually claiming jobs is
+    # the one thing a process that answers no request cannot otherwise be asked
+    # about.
     healthcheck:
       test:
         - CMD

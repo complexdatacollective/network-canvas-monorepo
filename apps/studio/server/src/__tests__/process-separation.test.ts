@@ -4,8 +4,8 @@
 // checked against each other here rather than against a habit.
 //
 // The runtime half of the same rule is proved elsewhere: the grants suite
-// (src/jobs/__tests__/grants.test.ts) shows the application role's `fetch()`
-// refused with 42501, so even a web process that did load the worker could not
+// (src/jobs/__tests__/grants.test.ts) shows the application role refused
+// a claim with 42501, so even a web process that did load the worker could not
 // execute a job.
 //
 // Since stage 1 of the Effect 4 migration (#1927) each entry is a one-line
@@ -109,6 +109,20 @@ function reached(
 ): string[] {
   return names.filter((name) => modules.has(name) || packages.has(name));
 }
+
+/**
+ * Everything that runs a job rather than creating one: the worker itself, the
+ * list of what this deployment works, and the handlers that do the work. Only
+ * the worker process may reach any of it.
+ */
+const JOB_EXECUTION = [
+  'src/jobs/worker.ts',
+  'src/jobs/registrations.ts',
+  'src/jobs/handlers/invitation-delivery.ts',
+  'src/jobs/handlers/sign-in-email.ts',
+  'src/jobs/handlers/protocol-store-gc.ts',
+  'src/jobs/handlers/denied-attempts-summary.ts',
+];
 
 /** The four bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
 const ENTRIES = {
@@ -229,11 +243,10 @@ describe('the worker process', () => {
   });
 
   it('is the process that executes jobs', () => {
-    // pg-boss's worker instance supervises, schedules and fetches; the
-    // registrations are the list of what this deployment runs.
-    expect(
-      reached(graph, ['src/jobs/worker.ts', 'src/jobs/registrations.ts']),
-    ).toEqual(['src/jobs/worker.ts', 'src/jobs/registrations.ts']);
+    // The worker claims, settles, reaps, sweeps retention and ticks the cron;
+    // the registrations are the list of what this deployment runs, and the
+    // handlers are the work itself.
+    expect(reached(graph, JOB_EXECUTION)).toEqual(JOB_EXECUTION);
   });
 });
 
@@ -317,13 +330,12 @@ describe('the web process', () => {
   });
 
   it('loads nothing that executes a job', () => {
-    // pg-boss's worker instance supervises, schedules and fetches; the web
-    // process's instance may only create a job. Reaching either the worker or
-    // its registrations would put the fetch loop one call away in a process
-    // whose role cannot execute one anyway.
-    expect(
-      reached(graph, ['src/jobs/worker.ts', 'src/jobs/registrations.ts']),
-    ).toEqual([]);
+    // The web process may create a job and nothing else. Reaching the worker,
+    // its registrations or any handler would put the claim loop one call away
+    // in a process whose role cannot execute one anyway — and would carry the
+    // handlers' own dependencies (the mail transport, the rate-limit store)
+    // with them.
+    expect(reached(graph, JOB_EXECUTION)).toEqual([]);
   });
 
   it('holds no mail transport', () => {
@@ -349,10 +361,38 @@ describe('the web process', () => {
 
   it('creates jobs through the enqueue-only client', () => {
     // The positive half, so that "no worker" cannot be satisfied by having no
-    // queue at all.
+    // queue at all. One module now: the node-postgres enqueue, which renders
+    // its statement through `src/jobs/insert.ts` and sends it on the
+    // command's own transaction client.
+    expect(reached(graph, ['src/jobs/client.ts'])).toEqual([
+      'src/jobs/client.ts',
+    ]);
+  });
+
+  it('carries no Effect SQL driver for that enqueue', () => {
+    // The invariant `src/jobs/insert.ts`'s own header exists for, and which
+    // `src/jobs/queues.ts` repeats over `JOB_SCHEMA`: the statement lives
+    // apart from `src/jobs/jobs.ts` so that this graph reaches no
+    // `@effect/sql-pg`. The web process runs its commands on node-postgres,
+    // and a second Postgres driver pulled in behind the enqueue would be paid
+    // for by every web container while nothing here could use it.
+    //
+    // The modules are named beside the package because the package is only
+    // absent as long as they are: each of them imports it (directly, or
+    // through `database.ts`), so naming them says which import would be the
+    // one that did it.
+    //
+    // Mutation: `import { Transaction } from './database.ts';` in
+    // src/jobs/client.ts — the module and the package both appear.
     expect(
-      reached(graph, ['src/jobs/client.ts', 'src/jobs/enqueue.ts']),
-    ).toEqual(['src/jobs/client.ts', 'src/jobs/enqueue.ts']);
+      reached(graph, [
+        '@effect/sql-pg',
+        'src/jobs/database.ts',
+        'src/jobs/jobs.ts',
+        'src/jobs/clock.ts',
+        'src/jobs/install.ts',
+      ]),
+    ).toEqual([]);
   });
 });
 
@@ -384,8 +424,7 @@ describe('the rotation process', () => {
         'hono',
         '@effect/platform-node/NodeHttpServer',
         'ws',
-        'src/jobs/worker.ts',
-        'src/jobs/registrations.ts',
+        ...JOB_EXECUTION,
       ]),
     ).toEqual([]);
   });

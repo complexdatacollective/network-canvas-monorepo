@@ -39,10 +39,9 @@ function recordingPool() {
   return { pool, statements, released: () => released };
 }
 
+/** `enqueue` is the whole of the client, so a double needs nothing else. */
 function jobClient(enqueue: JobClient['enqueue']): JobClient {
-  // Only `enqueue` is reachable from here; `boss` and `stop` belong to the
-  // entrypoint that owns the client.
-  return { enqueue } as unknown as JobClient;
+  return { enqueue };
 }
 
 describe('queueing a sign-in email', () => {
@@ -50,11 +49,7 @@ describe('queueing a sign-in email', () => {
     const { pool, statements, released } = recordingPool();
     const enqueue = vi.fn(() => Promise.resolve('job-1'));
 
-    await enqueueSignInEmail(
-      jobClient(enqueue as unknown as JobClient['enqueue']),
-      pool,
-      MAGIC_LINK,
-    );
+    await enqueueSignInEmail(jobClient(enqueue), pool, MAGIC_LINK);
 
     expect(statements).toEqual(['BEGIN', 'COMMIT']);
     // The enqueue runs on the transaction's own client — passing the pool

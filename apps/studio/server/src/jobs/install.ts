@@ -1,169 +1,77 @@
+import { Effect } from 'effect';
 import type pg from 'pg';
-import { PgBoss } from 'pg-boss';
 
-import { jobGrantsSql } from '@codaco/studio-sync/jobs';
+import { splitStatements } from '../db/statements.ts';
+import { Transaction } from './database.ts';
+import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 
-import { jobDatabaseFor } from './database.ts';
-import {
-  JOB_SCHEMA_VERSION,
-  jobQueueDefinitions,
-  QUEUE_OPTION_DEFAULTS,
-  renderJobStatements,
-} from './queues.ts';
-
-// Installing pg-boss's half of the schema, and reconciling the declared
-// queues. Two callers apply the schema and both have to do this identically:
-// `scripts/apply-schema` from a repository checkout (through scripts/apply.ts,
-// which pushes the public schema with drizzle-kit) and `studio-api migrate`
-// inside the image (through src/db/migrate.ts, which executes the DDL the
-// build rendered). It lives in src/ because migrate is bundled and drizzle-kit
-// must never reach the bundle — nothing here imports it.
+// Installing the queue's schema, in both shapes a caller can need it.
+//
+// A dedicated schema (`studio_jobs`) rather than `public` because
+// `scripts/apply.ts` pushes `public` with drizzle-kit, which reconciles what it
+// introspects against what Drizzle declares — a jobs table in `public` would
+// be dropped as unmanaged on the next push.
+//
+// Two functions because two drivers do the same work for two lifetimes. The
+// node-postgres one is what `applySchema` and `studio-api migrate` call: both
+// already hold one client inside one transaction and apply everything through
+// it. The Effect one is for a program that owns its own `Database` and creates
+// the schema through `withTransaction` (the suites' harness does). They share
+// the statements, so the bytes cannot drift between the path that installs a
+// deployment and the path that installs a suite's scratch schema.
 
 /**
- * pg-boss's construction plan, with its own transaction control removed.
+ * The queue's DDL and grants as single commands.
  *
- * `getConstructionPlans` returns a SELF-CONTAINED script: `BEGIN`, its lock
- * and statement timeouts, the schema, then `COMMIT`. Run as-is on a client
- * that already has a transaction open, the `BEGIN` is a no-op with a warning
- * and the `COMMIT` commits the CALLER's transaction — silently. Everything the
- * caller applied before this point becomes durable and nothing after it can be
- * rolled back, which is precisely the guarantee `migrate` is built on
- * (src/db/migrate.ts).
- *
- * Both callers of `installJobSchema` hold a transaction open, so the wrapper
- * is always removed and nothing else is: `SET LOCAL` and the advisory lock are
- * exactly what one would write inside a transaction anyway, and both end with
- * it. One path rather than a flag a caller could forget to set.
- *
- * The shape is asserted rather than assumed, so a pg-boss release that changes
- * it fails here — loudly, once — instead of committing half an application
- * every time this runs.
+ * Split with the dollar-quote-aware splitter rather than on `;`: the schema
+ * carries a plpgsql trigger function whose body is dollar-quoted and full of
+ * statement terminators, and `@effect/sql-pg` refuses a multi-command string
+ * outright (src/db/statements.ts). node-postgres would accept the whole script
+ * in one `query`, but sending the same list from both paths is what makes them
+ * comparable.
  */
-function nestedConstructionPlan(): string {
-  const plan = renderJobStatements()[0]!.trim();
-  if (!plan.startsWith('BEGIN;') || !plan.endsWith('COMMIT;')) {
-    throw new Error(
-      "pg-boss's construction plan is no longer a BEGIN…COMMIT script, so the transaction control this strips cannot be found. Check what it wraps now: run inside a caller's transaction, a COMMIT in it commits that transaction.",
-    );
-  }
-  return plan.slice('BEGIN;'.length, -'COMMIT;'.length);
+function jobSchemaStatements(schema: string): readonly string[] {
+  return [
+    ...splitStatements(jobSchemaSql(schema)),
+    ...splitStatements(jobSchemaGrantsSql(schema)),
+  ];
 }
 
 /**
- * Installs pg-boss's own schema, or replaces it when the installed version is
- * not the one this build ships.
+ * Installs the queue's schema through node-postgres.
  *
- * **Call inside a transaction.** The plan's own is removed (above), so a
- * caller that is not in one applies it statement by statement and a failure
- * part-way leaves half a schema.
+ * **Call inside a transaction**: the
+ * statements are applied one at a time, so a failure part-way would otherwise
+ * leave a schema with some of its tables.
  *
- * Replacement rather than migration is the pre-release posture the schema
- * takes everywhere: drizzle-kit push reconciles the public schema in place and
- * Studio has no migration system yet, so pg-boss's migrations are not run
- * either. Dropping the schema discards whatever was queued, which is why the
- * count is logged — after release this becomes pg-boss's own migration call.
+ * Idempotent, because the DDL is (`CREATE SCHEMA IF NOT EXISTS`,
+ * `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`,
+ * `CREATE OR REPLACE FUNCTION`/`TRIGGER`) — so a schema application that finds
+ * the schema already present reapplies it rather than refusing or dropping it.
+ * There is no version stamp of its own to compare: the DDL is inside
+ * `SCHEMA_FINGERPRINT`, so a change to it is a stale database like any other.
  */
 export async function installJobSchema(
   db: pg.PoolClient,
   schema: string,
 ): Promise<void> {
-  // Two statements rather than one guarded by `to_regclass`: a query naming a
-  // relation that does not exist is refused when it is parsed, long before the
-  // guard could decide not to read it.
-  const installed = await db.query<{ present: boolean }>(
-    `select to_regclass('${schema}.version') is not null as present`,
-  );
-  const present = installed.rows[0]?.present === true;
-  // `null` where the schema is there but says nothing about its version: an
-  // interrupted install, or a migration that emptied the table. It is not the
-  // absent case — the tables and the enum are there, and re-running the
-  // construction plan over them fails on `CREATE TYPE` (42710) — so it is
-  // treated as the mismatch it is and the schema is replaced.
-  const version = present
-    ? ((
-        await db.query<{ version: number }>(
-          `select version from ${schema}.version`,
-        )
-      ).rows[0]?.version ?? null)
-    : null;
-
-  if (!present || version !== JOB_SCHEMA_VERSION) {
-    if (present) {
-      const queued = await db
-        .query<{ count: string }>(`select count(*)::text from ${schema}.job`)
-        .then((result) => result.rows[0]?.count ?? 'an unknown number of')
-        // A shape this build cannot read is exactly the case the drop exists
-        // for; not being able to count it is not a reason to refuse.
-        .catch(() => 'an unknown number of');
-      console.warn(
-        `Replacing pg-boss schema ${schema} (version ${version ?? 'unknown'}) with version ${JOB_SCHEMA_VERSION}; ${queued} job(s) are discarded.`,
-      );
-      await db.query(`drop schema ${schema} cascade`);
-    }
-    await db.query(nestedConstructionPlan());
+  for (const statement of jobSchemaStatements(schema)) {
+    await db.query(statement);
   }
-
-  // Re-run on every apply, not only on install: a grant change moves the
-  // fingerprint, and reaching here means the fingerprint matched this build.
-  await db.query(jobGrantsSql(schema));
 }
 
 /**
- * Brings every declared queue into being, or up to date. A queue's options are
- * data in its row, so this is the queue equivalent of drizzle-kit's push: the
- * installed row is made to equal the declaration rather than to contain it.
- *
- * That equality is what `QUEUE_OPTION_DEFAULTS` is for. pg-boss's update
- * leaves an option it was not given alone, so an option dropped from a
- * declaration would otherwise keep the value the deployment before this one
- * applied — a queue quietly retrying seven times because it used to.
- *
- * A `PoolClient` and not a `Pool`, so every statement pg-boss runs here lands
- * on the caller's session — and inside its transaction where it has one.
- * `migrate` wraps the whole application in one (src/db/migrate.ts), and a
- * reconciliation that had taken a connection of its own would commit queue
- * rows that a later failure could not take back, leaving a database with
- * queues and no tables that the next run would refuse as stale.
+ * The same install over an open `Transaction` — stage 3's path, and the one
+ * the queue's own suites can use once they build a `Database` rather than a
+ * `pg.Pool`. `Transaction` and not `Database` for the reason `Jobs.enqueue`
+ * takes it: the requirement is what says this runs inside a transaction
+ * somebody else opened.
  */
-export async function syncJobQueues(
-  client: pg.PoolClient,
+export const installJobSchemaEffect = Effect.fn('installJobSchema')(function* (
   schema: string,
-): Promise<void> {
-  const boss = new PgBoss({
-    db: jobDatabaseFor(client),
-    schema,
-    migrate: false,
-    supervise: false,
-    schedule: false,
-  });
-  boss.on('error', (error) => {
-    console.error('pg-boss error while reconciling queues:', error);
-  });
-  await boss.start();
-  try {
-    for (const { name, options } of jobQueueDefinitions()) {
-      const existing = await boss.getQueue(name);
-      if (!existing) {
-        await boss.createQueue(name, options);
-        continue;
-      }
-      // pg-boss refuses a policy change outright: the policy decides which
-      // unique indexes the queue's jobs are held under, so an existing job
-      // could not satisfy the new one. `partition` is refused for the same
-      // reason and is declared nowhere, so it is dropped rather than checked.
-      const {
-        policy = 'standard',
-        partition: _partition,
-        ...declared
-      } = options;
-      if (existing.policy !== policy) {
-        throw new Error(
-          `queue ${name} is installed with policy ${existing.policy} and is now declared ${policy}; a policy cannot be changed after creation. Recreate the database: pnpm --filter @codaco/studio-server db:reset`,
-        );
-      }
-      await boss.updateQueue(name, { ...QUEUE_OPTION_DEFAULTS, ...declared });
-    }
-  } finally {
-    await boss.stop({ graceful: false });
+) {
+  const { sql } = yield* Transaction;
+  for (const statement of jobSchemaStatements(schema)) {
+    yield* sql.unsafe(statement);
   }
-}
+});
