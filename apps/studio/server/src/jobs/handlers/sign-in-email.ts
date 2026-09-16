@@ -1,6 +1,6 @@
 import { SignInEmailJobSchema } from '@codaco/studio-sync/jobs';
 
-import type { MagicLinkMailer } from '../../auth/email.ts';
+import type { MagicLinkMailer } from '../../mail/mailer.ts';
 import { logJobOutcome } from '../log.ts';
 import type { HandledJob } from './job.ts';
 

@@ -13,7 +13,7 @@ import {
   reachableDb,
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
-import type { StudioMailer } from '../../auth/email.ts';
+import type { StudioMailer } from '../../mail/mailer.ts';
 import type { JobClient } from '../client.ts';
 import type { HandledJob } from '../handlers/job.ts';
 import { createSignInEmailHandler } from '../handlers/sign-in-email.ts';

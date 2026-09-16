@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { createApp, createStudio } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { composeStudio, startStudioServer } from './support/serve.ts';
 
 function appWithFakeAuth() {
   return createApp(readEnv(), { auth: stubAuthService() });
+}
+
+/**
+ * The whole stack on a real port. The upgrade guards answer through the
+ * Effect shell's bridge now, so the two `/ws` cases below need the composed
+ * server rather than an in-process Hono request.
+ */
+function serverWithFakeAuth() {
+  const env = readEnv();
+  return startStudioServer(env, createStudio(env, { auth: stubAuthService() }));
 }
 
 describe('cookie-plane CSRF', () => {
@@ -60,24 +71,41 @@ describe('cookie-plane CSRF', () => {
   });
 
   it('leaves safe methods alone', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/healthz');
-    expect(res.status).toBe(200);
+    // Through the composed stack, because liveness is an Effect route now.
+    const env = readEnv();
+    const stack = composeStudio(
+      env,
+      createStudio(env, { auth: stubAuthService() }),
+    );
+    try {
+      const res = await stack.request('/healthz');
+      expect(res.status).toBe(200);
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('refuses a WebSocket upgrade without our Origin', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/ws', {
-      headers: { origin: 'https://evil.example' },
-    });
-    expect(res.status).toBe(403);
+    const { origin, dispose } = await serverWithFakeAuth();
+    try {
+      const res = await fetch(`${origin}/ws`, {
+        headers: { origin: 'https://evil.example' },
+      });
+      expect(res.status).toBe(403);
+    } finally {
+      await dispose();
+    }
   });
 
   it('refuses an unauthenticated WebSocket upgrade from our Origin', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/ws', {
-      headers: { origin: 'http://localhost:5173' },
-    });
-    expect(res.status).toBe(401);
+    const { origin, dispose } = await serverWithFakeAuth();
+    try {
+      const res = await fetch(`${origin}/ws`, {
+        headers: { origin: 'http://localhost:5173' },
+      });
+      expect(res.status).toBe(401);
+    } finally {
+      await dispose();
+    }
   });
 });

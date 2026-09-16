@@ -1,22 +1,29 @@
 import { randomUUID } from 'node:crypto';
 
+import { Context, Effect, Exit, Layer, Logger, Scope } from 'effect';
 import pg from 'pg';
-import { getConstructionPlans } from 'pg-boss';
+import { getConstructionPlans, type PgBoss } from 'pg-boss';
 
 import { jobGrantsSql } from '@codaco/studio-sync/jobs';
 import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
 
+import { DatabasePool } from '../../db/database-pool.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { createOwnerPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
-import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
+import {
+  type DbEnv,
+  Environment,
+  isLocalDatabase,
+  readEnv,
+  type StudioEnv,
+} from '../../env.ts';
 import { createJobClient, type JobClient } from '../../jobs/client.ts';
 import { jobQueueDefinitions } from '../../jobs/queues.ts';
-import {
-  createJobWorker,
-  type JobWorker,
-  type JobWorkerDeps,
-} from '../../jobs/worker.ts';
+import { JobHandlersLive } from '../../jobs/registrations.ts';
+import { JobWorker, type JobWorkerConfig } from '../../jobs/worker.ts';
+import { MailFailed, Mailer, type StudioMailer } from '../../mail/mailer.ts';
+import { SchemaStatus } from '../../platform/schema-gate.ts';
 import { CI } from './env.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
 
@@ -99,8 +106,44 @@ export type ScratchSchema = {
    * waiting one out. Started and stopped by the caller; `dispose` stops
    * whatever a failing case left running.
    */
-  createJobWorker: (overrides?: Partial<JobWorkerDeps>) => JobWorker;
+  createJobWorker: (overrides?: ScratchJobWorkerOverrides) => ScratchJobWorker;
   dispose: () => Promise<void>;
+};
+
+/**
+ * What a suite varies about a scratch worker. The rest of the environment the
+ * worker layers read is fixed below, because a test that changed it would be
+ * testing a deployment this build cannot have.
+ */
+export type ScratchJobWorkerOverrides = {
+  /**
+   * Absent means no transport is configured, which is the `refuse` environment
+   * a worker reads when SMTP_URL is unset: the mail queues go unworked.
+   */
+  mailer?: StudioMailer;
+  /** The browser-facing origin the invitation handler mints links against. */
+  publicBaseUrl?: string;
+  /**
+   * What the registered handlers poll at. A suite that has to prove delivery
+   * came from LISTEN/NOTIFY rather than from a poll turns it up so that polling
+   * could not have been what delivered the job.
+   */
+  workPollingIntervalSeconds?: number;
+};
+
+/**
+ * The Promise-shaped handle the job suites drive. The worker is a layer now
+ * (src/jobs/worker.ts, src/jobs/registrations.ts); `start` builds it into a
+ * scope of this handle's own and `stop` closes that scope, which is what runs
+ * pg-boss's graceful shutdown.
+ */
+export type ScratchJobWorker = {
+  /** The instance, for cases that observe pg-boss rather than drive it. */
+  readonly boss: PgBoss;
+  /** What pg-boss was constructed with; pg-boss keeps its own copy private. */
+  readonly config: JobWorkerConfig;
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
 };
 
 /**
@@ -123,6 +166,77 @@ const SCRATCH_WORKER_INTERVALS = {
   cronWorkerIntervalSeconds: 1,
   clockMonitorIntervalSeconds: 1,
 };
+
+/**
+ * The suites read what a worker says through `console.log`/`console.error`
+ * spies, because that is where the lines the handlers themselves write land. A
+ * deployment renders one JSON object per line instead (src/platform/logger.ts),
+ * which would put the message in a field rather than in the first argument, so
+ * the scratch stack logs the message alone and leaves the level to the console
+ * method — `Effect.logError` to `console.error`, everything else to its own.
+ */
+const scratchLogger = Logger.withLeveledConsole(
+  Logger.make(({ message }: Logger.Options<unknown>) =>
+    (Array.isArray(message) ? message : [message]).map(String).join(' '),
+  ),
+);
+
+/**
+ * The environment a scratch worker's layers read. Fixed apart from the three
+ * things a suite varies, and deliberately without a rate-limit store: the
+ * committed `.env.development` this suite runs under has one, and a worker that
+ * picked it up would open a Valkey connection per case.
+ */
+function scratchWorkerEnv(
+  db: DbEnv,
+  overrides: ScratchJobWorkerOverrides,
+): StudioEnv {
+  return {
+    port: 3000,
+    host: '127.0.0.1',
+    workerHealthPort: 3001,
+    s3: undefined,
+    db,
+    auth: {
+      secret: 'scratch-worker-signing-secret',
+      baseUrl: overrides.publicBaseUrl ?? 'http://localhost:3000',
+      trustedProxies: undefined,
+      socialProviders: {},
+    },
+    // What `resolve` produces for a worker with and without SMTP_URL set: the
+    // transport itself is provided as the Mailer layer below, and this is what
+    // the registrations read to decide whether to work the mail queues.
+    mail: overrides.mailer ? { kind: 'console' } : { kind: 'refuse' },
+    secrets: undefined,
+    redis: undefined,
+    trustedProxies: undefined,
+    devDefaults: true,
+    telemetry: false,
+    telemetryEndpoint: undefined,
+    deploymentMode: 'self-hosted',
+    seedAdminPassword: undefined,
+  };
+}
+
+/** A suite's Promise-shaped transport, seen as the service the layers take. */
+function mailerLayer(mailer: StudioMailer | undefined): Layer.Layer<Mailer> {
+  if (!mailer) return Mailer.layerRefuse;
+  return Layer.succeed(
+    Mailer,
+    Mailer.of({
+      sendMagicLink: (input) =>
+        Effect.tryPromise({
+          try: () => mailer.sendMagicLink(input),
+          catch: (cause) => new MailFailed({ cause }),
+        }),
+      sendTeamInvitation: (input) =>
+        Effect.tryPromise({
+          try: () => mailer.sendTeamInvitation(input),
+          catch: (cause) => new MailFailed({ cause }),
+        }),
+    }),
+  );
+}
 
 /**
  * An isolated Postgres schema with its own pools. Suites that write a
@@ -176,15 +290,85 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
       return client;
     },
     createJobWorker: (overrides = {}) => {
-      const worker = createJobWorker({
-        db,
-        maintenancePool: maintenance,
-        publicBaseUrl: 'http://localhost:3000',
-        schema: jobSchema,
-        intervals: SCRATCH_WORKER_INTERVALS,
-        stopTimeoutMs: SCRATCH_STOP_TIMEOUT_MS,
-        ...overrides,
-      });
+      // The deployment's composition with only the schema, the cadences and the
+      // stop window changed: the registrations over the worker, both provided
+      // the environment, the schema verdict, the maintenance pool and the
+      // transport a suite handed in.
+      const layer = JobHandlersLive({
+        workPollingIntervalSeconds: overrides.workPollingIntervalSeconds,
+      }).pipe(
+        Layer.provideMerge(
+          JobWorker.layerPgBoss({
+            schema: jobSchema,
+            intervals: SCRATCH_WORKER_INTERVALS,
+            stopTimeoutMs: SCRATCH_STOP_TIMEOUT_MS,
+          }),
+        ),
+        Layer.provide([
+          Layer.succeed(Environment, scratchWorkerEnv(db, overrides)),
+          // The suites provision the schema themselves, so there is nothing to
+          // wait for; what the gate does with a stale one is its own suite's.
+          SchemaStatus.layerCurrent,
+          Layer.succeed(DatabasePool, {
+            identity: 'maintenance',
+            pool: maintenance,
+          }),
+          mailerLayer(overrides.mailer),
+          Logger.layer([scratchLogger]),
+        ]),
+      );
+
+      let scope: Scope.Closeable | undefined;
+      let built: Context.Context<JobWorker> | undefined;
+      let starting: Promise<void> | undefined;
+      let stopping: Promise<void> | undefined;
+
+      const service = (): JobWorker['Service'] => {
+        if (!built) {
+          throw new Error(
+            'this scratch worker has not been started: call start() before reading boss or config',
+          );
+        }
+        return Context.get(built, JobWorker);
+      };
+
+      const worker: ScratchJobWorker = {
+        get boss() {
+          return service().boss;
+        },
+        get config() {
+          return service().config;
+        },
+        start: () => {
+          starting ??= (async () => {
+            const opened = Effect.runSync(Scope.make());
+            scope = opened;
+            try {
+              built = await Effect.runPromise(
+                Layer.buildWithScope(layer, opened),
+              );
+            } catch (error) {
+              // A build that failed part-way still acquired whatever came
+              // before it — pg-boss's own pool among them.
+              await Effect.runPromise(Scope.close(opened, Exit.void));
+              scope = undefined;
+              throw error;
+            }
+          })();
+          return starting;
+        },
+        // Closing the scope is what runs pg-boss's graceful stop. Memoised
+        // because a scope closes once, and `dispose()` stops whatever a failing
+        // case left running — possibly after the case stopped it itself.
+        stop: () => {
+          stopping ??= (async () => {
+            const opened = scope;
+            if (!opened) return;
+            await Effect.runPromise(Scope.close(opened, Exit.void));
+          })();
+          return stopping;
+        },
+      };
       running.push(worker);
       return worker;
     },

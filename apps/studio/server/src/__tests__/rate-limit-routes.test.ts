@@ -8,10 +8,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
 
-import { createApp } from '../app.ts';
+import { createApp, createStudio } from '../app.ts';
 import { resolve } from '../env/resolve.ts';
 import type { RateLimitSettings } from '../rate-limit/scopes.ts';
 import { stubAuthService } from './support/auth.ts';
+import { startStudioServer } from './support/serve.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
 // Every limited surface, through the request path a caller actually takes
@@ -26,17 +27,16 @@ import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
 const url = await reachableRedis(REDIS_DATABASES.routes);
 
-/** A peer address of its own per case, so no two cases share a bucket. */
+/**
+ * A peer address of its own per case, so no two cases share a bucket.
+ *
+ * The app reads the address the Effect shell resolved off the adapter
+ * bindings now (src/http/middleware/client-address.ts does the resolving), so
+ * this is that binding rather than the node adapter's connection info. What
+ * the resolution itself decides is in src/__tests__/client-address.test.ts.
+ */
 function peer(address: string) {
-  return {
-    incoming: {
-      socket: {
-        remoteAddress: address,
-        remotePort: 51_234,
-        remoteFamily: 'IPv4',
-      },
-    },
-  };
+  return { clientAddress: address };
 }
 
 /** A limit small enough to count to, for the one scope a case is about. */
@@ -47,7 +47,7 @@ const perMinute = (max: number) => ({ max, windowMs: 60_000 });
  * (#1909). There is no environment variable behind any of them any more, and
  * counting to the real `storage_read` limit would be two thousand requests.
  */
-function appWith(
+function appOptions(
   limits: Partial<RateLimitSettings>,
   principalUserId?: string,
   memberOfTeamId?: string,
@@ -56,7 +56,7 @@ function appWith(
     NODE_ENV: 'test',
     ...(url ? { REDIS_URL: url } : {}),
   });
-  return createApp(env, {
+  const deps = {
     limits,
     // A pool that is never connected to. `openTeam` needs one to exist before
     // it will look a membership up at all, and every procedure behind it fails
@@ -85,7 +85,17 @@ function appWith(
           }
         : undefined,
     ),
-  });
+  };
+  return { env, deps };
+}
+
+function appWith(
+  limits: Partial<RateLimitSettings>,
+  principalUserId?: string,
+  memberOfTeamId?: string,
+) {
+  const { env, deps } = appOptions(limits, principalUserId, memberOfTeamId);
+  return createApp(env, deps);
 }
 
 /** An RPC client that keeps the response so a header can be read off it. */
@@ -258,21 +268,29 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third WebSocket upgrade for one user', async () => {
+    // Through the composed server, because the upgrade guards answer through
+    // the Effect shell's bridge now (src/http/ws-bridge.ts).
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ ws_upgrade: perMinute(2) }, userId);
-    const upgrade = () =>
-      app.request(
-        '/ws',
-        { headers: { Upgrade: 'websocket', Connection: 'Upgrade' } },
-        peer('203.0.113.41'),
-      );
+    const { env, deps } = appOptions({ ws_upgrade: perMinute(2) }, userId);
+    const { origin, dispose } = await startStudioServer(
+      env,
+      createStudio(env, deps),
+    );
+    try {
+      const upgrade = () =>
+        fetch(`${origin}/ws`, {
+          headers: { origin: new URL(env.auth?.baseUrl ?? origin).origin },
+        });
 
-    // The handler behind this needs a real upgrade, which an in-process
-    // request is not; what matters is that the first two reached it and the
-    // third did not.
-    expect((await upgrade()).status).not.toBe(429);
-    expect((await upgrade()).status).not.toBe(429);
-    await expectProblemJson429(await upgrade());
+      // The route behind the guards needs a real upgrade, which a plain GET
+      // is not; what matters is that the first two reached it and the third
+      // did not.
+      expect((await upgrade()).status).not.toBe(429);
+      expect((await upgrade()).status).not.toBe(429);
+      await expectProblemJson429(await upgrade());
+    } finally {
+      await dispose();
+    }
   });
 
   it('refuses a third RPC call for one user, with Retry-After on the response', async () => {

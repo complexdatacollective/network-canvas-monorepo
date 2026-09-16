@@ -4,8 +4,8 @@ import type { PgBoss } from 'pg-boss';
 import type { TeamRole } from '@codaco/studio-rpc';
 import { InvitationDeliveryJobSchema } from '@codaco/studio-sync/jobs';
 
-import type { InvitationMailer } from '../../auth/email.ts';
 import { isLockUnavailableError } from '../../db/lock.ts';
+import type { InvitationMailer } from '../../mail/mailer.ts';
 import { logJobOutcome } from '../log.ts';
 import type { HandledJob } from './job.ts';
 
