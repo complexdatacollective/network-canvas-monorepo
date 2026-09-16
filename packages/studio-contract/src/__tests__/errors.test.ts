@@ -155,7 +155,12 @@ describe('the error union', () => {
     ],
     ['Maintenance', () => encodeMaintenance(new Maintenance({}))],
   ])('round-trips a %s back to its own tag', (tag, encode) => {
-    expect(decodeUnion(encode())._tag).toBe(tag);
+    const document = encode();
+    // The wire document itself carries the tag: one member encoded without
+    // it is the first step towards the ambiguity described above, and it is
+    // caught here before a second member makes the union misdecode.
+    expect(document).toMatchObject({ _tag: tag });
+    expect(decodeUnion(document)._tag).toBe(tag);
   });
 });
 
@@ -340,12 +345,14 @@ const errorCases: ReadonlyArray<ErrorCase> = [
   })),
 );
 
-const roundTrip = (errorSchema: ServicelessSchema, error: unknown): unknown => {
+const roundTrip = (
+  errorSchema: ServicelessSchema,
+  error: unknown,
+): { readonly encoded: unknown; readonly decoded: unknown } => {
   const codec = Schema.toCodecJson(errorSchema);
+  const encoded = Schema.encodeUnknownSync(codec)(error);
 
-  return Schema.decodeUnknownSync(codec)(
-    Schema.encodeUnknownSync(codec)(error),
-  );
+  return { encoded, decoded: Schema.decodeUnknownSync(codec)(encoded) };
 };
 
 describe('every error a procedure declares', () => {
@@ -365,8 +372,11 @@ describe('every error a procedure declares', () => {
         );
       }
 
-      const decoded = roundTrip(errorSchema, sample.make());
+      const { encoded, decoded } = roundTrip(errorSchema, sample.make());
 
+      // On the wire and back: a member whose encoding drops `_tag` would be
+      // indistinguishable from any other problem document in the union.
+      expect(encoded).toMatchObject({ _tag: memberTag });
       expect(decoded).toMatchObject({ _tag: memberTag });
       expect(sample.isInstance(decoded)).toBe(true);
     },
