@@ -1,7 +1,6 @@
 import { contentBlocks } from '../../sections/content-blocks/contentBlocks.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 
 /**
@@ -17,7 +16,6 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * shown to only some participants needs a way to say so.
  */
 export const informationStageEditor = defineStageEditor('Information', [
-  stageHeading({ documentation: 'information' }),
   contentBlocks(),
   skipLogic(),
   interviewerGuidance(),

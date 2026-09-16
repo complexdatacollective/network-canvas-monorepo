@@ -38,6 +38,7 @@ import {
   useStageDraft,
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
+import StageTitle from './StageTitle';
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -126,6 +127,8 @@ type StageEditorChromeProps = StageEditorActionsProps &
     sections: StageSectionsStore;
     /** The route's left column, which the section list is portalled into. */
     outlineHost: HTMLElement | null;
+    /** The band above both columns, which the stage's title is portalled into. */
+    titleHost: HTMLElement | null;
   }>;
 
 /**
@@ -134,16 +137,19 @@ type StageEditorChromeProps = StageEditorActionsProps &
  * The slot is called inside the stage form's provider, which is what lets this
  * read the document as the researcher is typing it: the toolbar's save control
  * belongs to that form, the preview launches what is on screen rather than what
- * was last saved, and the beacon publishes the same reading to the guards
- * outside. Everything it renders is displayed elsewhere — the toolbar into the
- * app's own toolbar host, the section list into the route's left column — so
- * nothing here occupies the place in the page where the slot happens to sit.
+ * was last saved, the stage's name is a field of it, and the beacon publishes
+ * the same reading to the guards outside. Everything it renders is displayed
+ * elsewhere — the toolbar into the app's own toolbar host, the title into the
+ * band above the route's two columns, the section list into its left column —
+ * so nothing here occupies the place in the page where the slot happens to
+ * sit.
  */
 export default function StageEditorChrome({
   formId,
   readOnly,
   sections,
   outlineHost,
+  titleHost,
   stageId,
   insertAtIndex,
   onCancel,
@@ -151,15 +157,10 @@ export default function StageEditorChrome({
   return (
     <>
       <StageDraftPublisher />
+      {titleHost !== null &&
+        createPortal(<StageTitle stageId={stageId} />, titleHost)}
       {outlineHost !== null &&
-        createPortal(
-          // The column is handed to the list as well as portalled into: where
-          // the list starts is a distance measured from the top of this
-          // column, and a portal's target is not something its content can ask
-          // for after the fact without reaching up through the page.
-          <StageSectionOutline sections={sections} host={outlineHost} />,
-          outlineHost,
-        )}
+        createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}

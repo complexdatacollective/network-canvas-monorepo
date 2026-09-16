@@ -1,6 +1,5 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { oneToManyDyadCensusPrompts } from './sections/oneToManyDyadCensusPrompts.tsx';
@@ -21,7 +20,6 @@ import { removeAfterConsideration } from './sections/removeAfterConsideration.ts
 export const oneToManyDyadCensusStageEditor = defineStageEditor(
   'OneToManyDyadCensus',
   [
-    stageHeading({ documentation: 'one-to-many-dyad-census' }),
     subjectPicker({ entity: 'node', filter: true }),
     oneToManyDyadCensusPrompts(),
     removeAfterConsideration(),

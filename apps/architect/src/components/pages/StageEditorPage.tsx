@@ -12,6 +12,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
@@ -99,6 +100,7 @@ const StageEditorPage = () => {
   // has to re-render when the element arrives: a ref's mutation tells React
   // nothing, and the list would wait for some other reason to render.
   const [outlineHost, setOutlineHost] = useState<HTMLElement | null>(null);
+  const [titleHost, setTitleHost] = useState<HTMLElement | null>(null);
 
   // The create flow carries its interface and its place in the interview on the
   // URL, so a new stage can be linked to the way an existing one is.
@@ -259,12 +261,13 @@ const StageEditorPage = () => {
         readOnly={readOnly}
         sections={sections}
         outlineHost={outlineHost}
+        titleHost={titleHost}
         stageId={stageId}
         {...(insertAtIndex === undefined ? {} : { insertAtIndex })}
         onCancel={() => void handleCancel()}
       />
     ),
-    [handleCancel, insertAtIndex, outlineHost, stageId],
+    [handleCancel, insertAtIndex, outlineHost, stageId, titleHost],
   );
 
   const handleSaved = useCallback(() => {
@@ -327,6 +330,14 @@ const StageEditorPage = () => {
           instead — which is nothing, and the two columns would never arrive.
         */}
         <div className="@container mx-auto w-full max-w-6xl">
+          {/*
+            Where the stage's title goes: a picture of the interface, the name
+            at hero size, and what kind of stage this is. The editor publishes
+            the name's bindings rather than a title, so the chrome rendered in
+            its action slot portals a title of Architect's own up here — above
+            the two columns, so it spans both and both begin under it.
+          */}
+          <div ref={setTitleHost} />
           <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
             {/*
               Where the section list goes. The editor publishes its sections on
@@ -345,19 +356,23 @@ const StageEditorPage = () => {
               to leave off. Applying both indents the form twice: 32px at
               phone width, 48px above it.
 
-              No `EnclosingHeadingLevel` around the editor: the heading above
-              it is this page's `h1`, which is the top of the ladder and what
-              the editor already assumes when nothing states otherwise — its
-              own stage title lands on `h2` and every section one below that.
+              The ladder is stated here because it is this route's, not the
+              editor's: the page's `h1` is the stage's name, the title above
+              writes the `h2` the name field is labelled by, and every section
+              the editor draws is a subsection of that. The package states
+              nothing of its own — where its sections sit in a document is a
+              fact about the page it was dropped on.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
               <ProtocolBuilder client={client} protocolId={activeProtocolId}>
-                <StageEditor
-                  target={target}
-                  formId={STAGE_FORM_ID}
-                  actions={renderChrome}
-                  onSaved={handleSaved}
-                />
+                <EnclosingHeadingLevel level="h2">
+                  <StageEditor
+                    target={target}
+                    formId={STAGE_FORM_ID}
+                    actions={renderChrome}
+                    onSaved={handleSaved}
+                  />
+                </EnclosingHeadingLevel>
               </ProtocolBuilder>
             </div>
           </div>

@@ -9,12 +9,10 @@ import {
   TestMediaItemEditor,
   TestMediaItemPreview,
 } from '../../__tests__/rowFixtures.tsx';
-import StageNameSection from '../../stage-heading/StageNameSection.tsx';
 import PageContentSection from '../PageContentSection.tsx';
 
 const pageContent = (
   <>
-    <StageNameSection />
     <PageContentSection
       ItemEditor={TestItemEditor}
       ItemPreview={TestItemPreview}
@@ -32,8 +30,8 @@ describe('a page of content rather than a task', () => {
       'Welcome',
     );
     expect(screen.getByText('Welcome to this interview.')).toBeInTheDocument();
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
-    expect(harness.outline()[1]).toEqual({
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
       title: 'Page content',
       state: 'Finished',
     });

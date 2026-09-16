@@ -232,9 +232,19 @@ const earliestInDocument = (
  * `root` scopes the search to one form's own markup. Two forms mounted at once
  * (a dialog over a page, two slides mid-transition) render the same field
  * paths, and without a scope the document-order rule would hand the earlier
- * form's control to the later form's failed submit. It falls back to the whole
- * document when the root contains none of the errored fields, so a form that
- * renders a field outside its own element still reaches it.
+ * form's control to the later form's failed submit.
+ *
+ * Each errored field is looked for in the root FIRST, and only the ones the
+ * root does not contain are then looked for in the whole document. A form may
+ * legitimately render a field outside its own `<form>` element — the form
+ * store is React state, so a control anywhere under the provider participates
+ * in the submit — and a stage editor's title, drawn by its host above the page
+ * it sits on, is one. Resolving per field rather than all-or-nothing is what
+ * reaches it: the previous rule consulted the document only when the root held
+ * NONE of the errored fields, so an outside control was skipped the moment
+ * anything inside the form was wrong as well. The dialog guarantee is
+ * untouched, because a field the root does contain is never looked up
+ * elsewhere.
  */
 export const focusFirstError = (
   errors: FlattenedErrors | null,
@@ -245,17 +255,27 @@ export const focusFirstError = (
   const fieldNames = Object.keys(errors.fieldErrors);
   if (fieldNames.length === 0) return;
 
-  const resolveWithin = (scope: ParentNode): HTMLElement[] => {
+  const resolveEach = (
+    scope: ParentNode,
+    names: readonly string[],
+  ): Map<string, HTMLElement> => {
     const candidates = Array.from(
       scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
     );
-    return fieldNames
-      .map((fieldName) => findFieldContainer(candidates, fieldName))
-      .filter((candidate): candidate is HTMLElement => candidate !== undefined);
+    const found = new Map<string, HTMLElement>();
+    for (const fieldName of names) {
+      const container = findFieldContainer(candidates, fieldName);
+      if (container) found.set(fieldName, container);
+    }
+    return found;
   };
 
-  const scoped = root ? resolveWithin(root) : [];
-  const containers = scoped.length > 0 ? scoped : resolveWithin(document);
+  const scoped = root ? resolveEach(root, fieldNames) : new Map();
+  const elsewhere = resolveEach(
+    document,
+    fieldNames.filter((fieldName) => !scoped.has(fieldName)),
+  );
+  const containers = [...scoped.values(), ...elsewhere.values()];
 
   // If no errored field is in the DOM, prevent crash.
   const scrollTarget = earliestInDocument(containers);

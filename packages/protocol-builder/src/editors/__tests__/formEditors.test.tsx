@@ -57,12 +57,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     interfaceName: 'Information',
     stageId: 'information-1',
     editor: informationStageEditor,
-    sections: [
-      'Stage name',
-      'Page content',
-      'Skip logic',
-      'Interviewer guidance',
-    ],
+    sections: ['Page content', 'Skip logic', 'Interviewer guidance'],
     ownedKeys: ['items', 'label', 'title'],
   },
   {
@@ -70,7 +65,6 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'ego-form-1',
     editor: egoFormStageEditor,
     sections: [
-      'Stage name',
       'Task introduction',
       'Form configuration',
       'Skip logic',
@@ -83,7 +77,6 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'alter-form-1',
     editor: alterFormStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Task introduction',
@@ -98,7 +91,6 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'alter-edge-form-1',
     editor: alterEdgeFormStageEditor,
     sections: [
-      'Stage name',
       'Edge setup',
       'Stage filter',
       'Task introduction',

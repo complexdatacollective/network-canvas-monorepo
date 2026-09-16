@@ -21,9 +21,9 @@ import {
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession, type StageEditTarget } from '../../stageEdit.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import HostStageTitle from '../../testing/HostStageTitle.tsx';
 import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
@@ -117,11 +117,7 @@ function Editor({
         <ResourceClientProvider>
           <StageEditSession target={target} formId="stage-form">
             <StageEditorShell>
-              {headless ? (
-                <HeadlessName onName={onName} />
-              ) : (
-                <StageNameSection position={{ index: 1, total: 2 }} />
-              )}
+              {headless ? <HeadlessName onName={onName} /> : <HostStageTitle />}
               <Probe onStore={onStore} onLiveDraft={onLiveDraft} />
             </StageEditorShell>
           </StageEditSession>
@@ -158,9 +154,10 @@ function HeadlessName({ onName }: { onName: (name: StageName) => void }) {
 
 /**
  * A stage editor driven the way a host drives one: the package's own host
- * contract served from memory, the real shell, and the real name section.
- * Nothing about the codebook, the asset manifest or the stage order is mocked —
- * every one of them is read from the protocol the host serves.
+ * contract served from memory, the real shell, and the title a host draws from
+ * the hook's own bindings. Nothing about the codebook, the asset manifest or
+ * the stage order is mocked — every one of them is read from the protocol the
+ * host serves.
  */
 function renderEditor(options: EditorOptions = {}) {
   const headless = options.headless === true;

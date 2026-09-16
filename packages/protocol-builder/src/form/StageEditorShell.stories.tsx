@@ -10,14 +10,13 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import BuilderSection from '../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
-import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { createInMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import HostStageTitle from '../testing/HostStageTitle.tsx';
 import { SeedProtocolCache } from '../testing/seedProtocolCache.tsx';
 import { REQUIRED } from './requiredField.ts';
 import StageEditorShell from './StageEditorShell.tsx';
@@ -76,17 +75,23 @@ function StageEditorHost({
               <main className="mx-auto max-w-6xl p-6">
                 <StageEditorShell
                   actions={({ formId, readOnly: locked }) => (
-                    <div className="flex justify-end">
-                      <SubmitButton form={formId} disabled={locked}>
-                        Finished editing
-                      </SubmitButton>
-                    </div>
+                    <>
+                      {/*
+                        The stage's title is the host's, drawn from the
+                        bindings the package publishes — see
+                        `testing/HostStageTitle`. It is in the slot because the
+                        slot is where a host's chrome is inside the stage
+                        form's own provider.
+                      */}
+                      <HostStageTitle />
+                      <div className="flex justify-end">
+                        <SubmitButton form={formId} disabled={locked}>
+                          Finished editing
+                        </SubmitButton>
+                      </div>
+                    </>
                   )}
                 >
-                  <StageNameSection
-                    position={{ index: 1, total: 4 }}
-                    documentationUrl={interfaceDocumentationUrl('information')}
-                  />
                   <BuilderSection
                     title="Page content"
                     description="What this screen shows the participant."
@@ -146,143 +151,31 @@ export const Editing: Story = {
     await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
 
     /*
-      The rhythm Architect has always had, measured rather than asserted about
-      classes — a class list is the source written out twice, and jsdom
-      resolves no Tailwind at all, so this only means anything in the browser
-      the `storybook` project runs.
+      The rhythm between SECTIONS, measured rather than asserted about classes
+      — a class list is the source written out twice, and jsdom resolves no
+      Tailwind at all, so this only means anything in the browser the
+      `storybook` project runs.
 
-      Architect draws the heading unwrapped and then `<div className="pt-14">`
-      around the sections (`StageEditor.tsx:753-758`): 3.5rem below the stage
-      title, and `Section`'s own `mb-10` — 2.5rem — between sections. The
-      package put every section, heading included, flat inside one `<form>`
-      with no gap, so the title sat hard against the first card.
+      `Section`'s own `mb-10` — 2.5rem — and nothing else: the sections are
+      flat children of one `<form>`, so a `gap-*` on the form would push them
+      apart as well and this is what refuses it. What sits ABOVE the first
+      section is the host's stage title, which this shell does not draw and
+      does not space; Architect's own `StageTitle` story measures that.
     */
-    const heading = canvas.getByRole('region', { name: 'Stage name' });
     const first = canvas.getByRole('region', { name: 'Page content' });
     const second = canvas.getByRole('region', { name: 'Interviewer guidance' });
-
-    const titleToFirstSection =
-      first.getBoundingClientRect().top -
-      heading.getBoundingClientRect().bottom;
-    await expect(titleToFirstSection).toBeCloseTo(56, 0);
-
-    // Measured between sections as well, so spacing the title with a `gap-*`
-    // on the form — which would push these apart too — fails here.
     const betweenSections =
       second.getBoundingClientRect().top - first.getBoundingClientRect().bottom;
     await expect(betweenSections).toBeCloseTo(40, 0);
 
-    /*
-      And the title is deliberately not in a card: it identifies the stage
-      rather than configuring part of it. Nothing stands between it and the
-      form, and it carries none of the surface a section does — asserted both
-      ways round so the marker being renamed shows up as a failure rather than
-      as a pass.
-    */
-    await expect(heading.parentElement).toBe(
-      canvasElement.querySelector('form'),
-    );
-    await expect(heading.classList.contains('publish-colors')).toBe(false);
-    await expect(first.classList.contains('publish-colors')).toBe(true);
-
-    /*
-      And where the picture rail is allowed beside the name, which is a fact
-      about the ROOM the heading has rather than about the window: this editor
-      is drawn in whatever column a host gives it.
-
-      The rail arrives at 56rem of container, which is a floor under the NAME:
-      the gutters sit outside the column's `max-w-4xl` cap (as Architect's
-      did), so 896px of container is 848px of column and 848 − 320 of rail −
-      32 of gap leaves the name block 496px. Narrower than that and the rail
-      would be taking room the name has not got, so the heading stacks and the
-      name field keeps the whole column.
-
-      Above the cap the column stops growing at 896px and the name block
-      settles at 544px — the width Architect's own heading drew it at, which
-      it could hold because nothing sat beside its column.
-
-      Measured by driving the room the editor is given, which is what the
-      `@container` on the shell's own root is answered about.
-    */
+    // And the name the host drew is a field of THIS form, though it is not
+    // inside the `<form>` element: the store is React state, so a control
+    // rendered anywhere under the provider participates in the draft.
     const nameField = canvas.getByRole('textbox', { name: 'Stage name' });
-    const column = heading.parentElement?.parentElement ?? null;
-    const gutterWrapper = column?.parentElement ?? null;
-    const container = gutterWrapper?.parentElement ?? null;
-    const host = canvasElement.querySelector('main');
-    await expect(container?.parentElement).toBe(host);
-
-    // The gutters belong to the wrapper OUTSIDE the capped column, which is
-    // what lets the column reach its whole 896px. Read rather than assumed:
-    // the arithmetic below is only Architect's while this is 48, and the
-    // column's own padding is what must stay zero.
-    const paddingOf = (element: HTMLElement | null) =>
-      element === null
-        ? 0
-        : Number.parseFloat(getComputedStyle(element).paddingLeft) +
-          Number.parseFloat(getComputedStyle(element).paddingRight);
-    await expect(paddingOf(gutterWrapper)).toBe(48);
-    await expect(paddingOf(column)).toBe(0);
-
-    const hostStyle = host === null ? null : getComputedStyle(host);
-    const hostInset =
-      hostStyle === null
-        ? 0
-        : Number.parseFloat(hostStyle.paddingLeft) +
-          Number.parseFloat(hostStyle.paddingRight);
-    const initialWidth = host?.style.width ?? '';
-    const initialMaxWidth = host?.style.maxWidth ?? '';
-
-    const atContainerWidth = async (width: number) => {
-      if (host === null) throw new Error('the story host is not on the page');
-      host.style.maxWidth = 'none';
-      host.style.width = `${width + hostInset}px`;
-      // A container query is resolved in layout, so the frame after the write
-      // is the first one that can have answered it.
-      await new Promise(requestAnimationFrame);
-      await new Promise(requestAnimationFrame);
-      await expect(container?.getBoundingClientRect().width).toBeCloseTo(
-        width,
-        0,
-      );
-      return {
-        heading: getComputedStyle(heading).display,
-        name: nameField.getBoundingClientRect().width,
-        column: column?.getBoundingClientRect().width ?? 0,
-      };
-    };
-
-    // Narrower than the cap: one column, and the name field has all of it.
-    const narrow = await atContainerWidth(800);
-    await expect(narrow.heading).toBe('flex');
-    await expect(narrow.name).toBeCloseTo(752, 0);
-    // Never narrower beside a picture than Architect's own heading drew it.
-    await expect(narrow.name).toBeGreaterThanOrEqual(544);
-
-    // One pixel below the threshold is still one column.
-    await expect((await atContainerWidth(895)).heading).toBe('flex');
-
-    // At the threshold the picture rail arrives and the name block is at its
-    // floor, the column being 848px of the 896px container.
-    const atThreshold = await atContainerWidth(896);
-    await expect(atThreshold.heading).toBe('grid');
-    await expect(atThreshold.name).toBeCloseTo(496, 0);
-    await expect(atThreshold.column).toBeCloseTo(848, 0);
-
-    // Above its cap the column stops at the whole `max-w-4xl`, gutters and
-    // all — which is the width every section beneath it is drawn at, and the
-    // width Architect drew its own. With the gutters spent inside the cap it
-    // was 848 here, and the name block 496.
-    const wide = await atContainerWidth(1400);
-    await expect(wide.heading).toBe('grid');
-    await expect(wide.name).toBeCloseTo(544, 0);
-    await expect(wide.column).toBeCloseTo(896, 0);
-
-    // Left as the story draws itself, so what Chromatic photographs is the
-    // editor rather than the last width this measured.
-    if (host !== null) {
-      host.style.width = initialWidth;
-      host.style.maxWidth = initialMaxWidth;
-    }
+    await expect(canvasElement.querySelector('form')?.contains(nameField)).toBe(
+      false,
+    );
+    await expect(nameField).toHaveValue('Welcome');
   },
 };
 

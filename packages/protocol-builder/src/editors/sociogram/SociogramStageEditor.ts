@@ -2,7 +2,6 @@ import { background } from '../../sections/background/background.tsx';
 import { nodeLayout } from '../../sections/canvas-behaviours/nodeLayout.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { sociogramPrompts } from './sections/prompts/sociogramPrompts.tsx';
@@ -27,7 +26,6 @@ import { sociogramPrompts } from './sections/prompts/sociogramPrompts.tsx';
  * keeps it: an unrendered key is not a key this editor may throw away.
  */
 export const sociogramStageEditor = defineStageEditor('Sociogram', [
-  stageHeading({ documentation: 'sociogram' }),
   subjectPicker({ entity: 'node', filter: true }),
   sociogramPrompts(),
   background(),

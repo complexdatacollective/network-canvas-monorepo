@@ -57,6 +57,7 @@ import {
   type InMemoryHost,
 } from './host/createInMemoryHost.ts';
 import type { HostPrincipal } from './host/protocolStore.ts';
+import HostStageTitle from './HostStageTitle.tsx';
 import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
@@ -238,9 +239,14 @@ export type StageEditorHarness = RenderResult &
      * The top-level stage keys the mounted sections have a field for.
      *
      * Read from the fields themselves — `data-field-path` is the canonical key
-     * the form store files a field under — and scoped to the stage form, so a
-     * row dialog's own fields (which belong to a form of their own, in a
-     * portal) are not mistaken for the stage's.
+     * the form store files a field under — and scoped to this harness's own
+     * markup, so a second harness in the same test is not mistaken for it and
+     * neither is a row dialog's own form, which is rendered in a portal.
+     *
+     * The harness rather than the `<form>` element, because a stage editor's
+     * fields are not all inside one: the stage's name is drawn by the HOST,
+     * which puts it wherever its page has room, and it is still a field of the
+     * form — the store is React state, not native form submission.
      */
     ownedKeys(): string[];
     /**
@@ -833,11 +839,11 @@ export function renderStageEditor<T extends StageType = StageType>(
           store.sectionIds().map((id) => [id, store.read(id).document]),
         ),
       ).codebook,
-    ownedKeys: () => readOwnedKeys(stageForm()),
+    ownedKeys: () => readOwnedKeys(view.container),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
       // the save's own failure would otherwise hide it.
-      const owned = new Set(readOwnedKeys(stageForm()));
+      const owned = new Set(readOwnedKeys(view.container));
       const orphaned = Object.keys(seeded.fields).filter(
         (key) => !owned.has(key) && !unowned.includes(key),
       );
@@ -1017,6 +1023,16 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
   };
 }
 
+/** The host's own chrome, with the stage's title above it. */
+const withStageTitle =
+  (inner: StageEditorActions): StageEditorActions =>
+  (context) => (
+    <>
+      <HostStageTitle />
+      {inner(context)}
+    </>
+  );
+
 function HarnessEditor<T extends StageType>({
   target,
   formId,
@@ -1049,10 +1065,17 @@ function HarnessEditor<T extends StageType>({
   // sections through it: what a test asked for if it asked for anything,
   // otherwise the same fallback save control the editor would have chosen for
   // itself — and nothing at all for the one call that is about an empty slot.
+  //
+  // The stage's title goes in with it, whichever chrome a test asked for,
+  // because drawing one is now the host's job and not the editor's: a harness
+  // that left it out would be an editor with no way to name the stage, and
+  // every test that types a name would have to mount a title of its own. A
+  // call that asked for NO chrome gets no title either — that one is about an
+  // empty slot.
   const chrome =
     withoutActionChrome === true
       ? undefined
-      : captureSections(actions ?? saveStageAction);
+      : captureSections(withStageTitle(actions ?? saveStageAction));
 
   if (sections === undefined && Editor === undefined) {
     return (
@@ -1080,11 +1103,13 @@ function HarnessEditor<T extends StageType>({
                     // slot anyway: read from the prop rather than out of the
                     // context so the name means one thing in this component.
                     actions === undefined
-                      ? captureSections(() => (
-                          <SubmitButton form={formId}>
-                            {submitLabel}
-                          </SubmitButton>
-                        ))
+                      ? captureSections(
+                          withStageTitle(() => (
+                            <SubmitButton form={formId}>
+                              {submitLabel}
+                            </SubmitButton>
+                          )),
+                        )
                       : chrome,
                 })}
           >
@@ -1295,10 +1320,10 @@ function collectDifferences(
  * own in a portal outside it, and its fields are named after the row's
  * properties — `text`, `content` — which are not stage keys at all.
  */
-function readOwnedKeys(form: HTMLFormElement | null): string[] {
-  if (form === null) return [];
+function readOwnedKeys(harness: HTMLElement | null): string[] {
+  if (harness === null) return [];
   const keys = new Set<string>();
-  for (const field of form.querySelectorAll('[data-field-path]')) {
+  for (const field of harness.querySelectorAll('[data-field-path]')) {
     const registeredName = field.getAttribute('data-field-path');
     if (registeredName === null || registeredName === '') continue;
     // Parsed rather than split on a dot: a protocol-authored key may contain

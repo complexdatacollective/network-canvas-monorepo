@@ -3,7 +3,6 @@ import { interviewerGuidance } from '../../sections/interviewer-guidance/intervi
 import { nameGeneratorPrompts } from '../../sections/name-generator-prompts/nameGeneratorPrompts.tsx';
 import { nodePanels } from '../../sections/panels/nodePanels.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { nameGeneratorFormFields } from './sections/form-fields/nameGeneratorFormFields.tsx';
@@ -23,7 +22,6 @@ import { nameGeneratorFormFields } from './sections/form-fields/nameGeneratorFor
  * and the name proposed to a new stage says so.
  */
 export const nameGeneratorStageEditor = defineStageEditor('NameGenerator', [
-  stageHeading({ documentation: 'name-generator-using-forms' }),
   subjectPicker({ entity: 'node' }),
   nameGeneratorFormFields(),
   nameGeneratorPrompts(),

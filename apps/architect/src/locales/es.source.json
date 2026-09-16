@@ -640,6 +640,8 @@
   "architect.stageEditor.stageEditor.yourBrowserBlockedThePreviewPopup": "Your browser blocked the preview popup. Allow popups for this site, then click Preview again.",
   "architect.stageEditor.stageEditorChrome.oK": "OK",
   "architect.stageEditor.stageEditorPage.otherTab": "Another tab",
+  "architect.stageEditor.stageTitle.documentation": "Documentation",
+  "architect.stageEditor.stageTitle.position": "Stage {index, number} of {total, number}",
   "architect.storageUnavailableBanner.downloadFailed": "Download failed",
   "architect.storageUnavailableBanner.downloadNetcanvas": "Download .netcanvas",
   "architect.storageUnavailableBanner.oK": "OK",

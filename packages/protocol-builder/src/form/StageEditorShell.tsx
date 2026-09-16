@@ -28,11 +28,6 @@ import type {
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
-import {
-  EnclosingHeadingLevel,
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { stageSchema } from '@codaco/protocol-validation';
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
@@ -462,21 +457,6 @@ function StageEditorFormBody({
     return () => observer.disconnect();
   }, [outline]);
 
-  /**
-   * The level of the stage's own name, which every editor wears as the page's
-   * heading and which everything else in the form is a subsection of.
-   *
-   * Stated rather than left to Surface depth, which is a fact about how deep
-   * the card sits rather than about the outline. A host that says what it
-   * encloses pushes the whole ladder down: the title one below the host's
-   * heading, each section one below the title.
-   */
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const stageTitleLevel =
-    enclosingHeadingLevel === null
-      ? 'h2'
-      : headingTagBelow(enclosingHeadingLevel);
-
   const layoutGroupId = useId();
   const context = useMemo(
     () =>
@@ -541,29 +521,35 @@ function StageEditorFormBody({
               onSubmit={formProps.onSubmit}
               className="flex min-w-0 flex-col"
             >
+              {/*
+                No heading level is stated here, and that is the whole of this
+                editor's part in the document outline: the stage's own title is
+                the HOST's — it draws one from `useStageName` wherever its page
+                has room — so the host is also the only thing that knows what
+                heading these sections sit under. It says so with
+                `EnclosingHeadingLevel`, and each section counts one below it.
+                A host that states nothing gets fresco's own page convention,
+                where a top-level `Section` is an `h3`.
+              */}
               <LayoutGroup id={layoutGroupId}>
-                <EnclosingHeadingLevel level={stageTitleLevel}>
-                  {access === 'readOnly' && (
-                    <Alert variant="info" density="compact">
-                      {holder === undefined
-                        ? intl.formatMessage(messages.heldByNobodyNamed)
-                        : intl.formatMessage(messages.heldBy, {
-                            holder: holder.displayName,
-                          })}
-                    </Alert>
-                  )}
-                  {reportedErrors && (
-                    <FormErrorsList key="form-errors" errors={reportedErrors} />
-                  )}
-                  {/*
+                {access === 'readOnly' && (
+                  <Alert variant="info" density="compact">
+                    {holder === undefined
+                      ? intl.formatMessage(messages.heldByNobodyNamed)
+                      : intl.formatMessage(messages.heldBy, {
+                          holder: holder.displayName,
+                        })}
+                  </Alert>
+                )}
+                {reportedErrors && (
+                  <FormErrorsList key="form-errors" errors={reportedErrors} />
+                )}
+                {/*
                   Said once by the form rather than by every control: being
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                  <FieldsDisabled disabled={readOnly}>
-                    {children}
-                  </FieldsDisabled>
-                </EnclosingHeadingLevel>
+                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
             {actions?.({ formId, readOnly, sections })}

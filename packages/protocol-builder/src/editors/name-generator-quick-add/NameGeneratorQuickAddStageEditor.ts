@@ -3,7 +3,6 @@ import { interviewerGuidance } from '../../sections/interviewer-guidance/intervi
 import { nameGeneratorPrompts } from '../../sections/name-generator-prompts/nameGeneratorPrompts.tsx';
 import { nodePanels } from '../../sections/panels/nodePanels.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { quickAddAttribute } from './sections/quickAddAttribute.tsx';
@@ -25,7 +24,6 @@ import { quickAddAttribute } from './sections/quickAddAttribute.tsx';
 export const nameGeneratorQuickAddStageEditor = defineStageEditor(
   'NameGeneratorQuickAdd',
   [
-    stageHeading({ documentation: 'name-generator-using-quick-add' }),
     subjectPicker({ entity: 'node' }),
     quickAddAttribute(),
     nameGeneratorPrompts(),

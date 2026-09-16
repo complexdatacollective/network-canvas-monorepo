@@ -4,10 +4,7 @@ import type { FieldState } from '@codaco/fresco-ui/form/store/types';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
-import type {
-  StageSectionChrome,
-  StageSectionStatus,
-} from '../stage-editor-contract.ts';
+import type { StageSectionStatus } from '../stage-editor-contract.ts';
 import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
 
 /**
@@ -78,12 +75,6 @@ export type OutlineSectionIssue = Readonly<{
 export type OutlineSection = Readonly<{
   id: string;
   title: string;
-  /**
-   * Whether the section is drawn as a card or as the stage's own heading, as
-   * it registered itself. Carried through to the host, which has no other way
-   * to tell the two apart — see `StageSectionChrome`.
-   */
-  chrome: StageSectionChrome;
   availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];
   /** Session validation problems this section's fields answer for. */
@@ -93,7 +84,6 @@ export type OutlineSection = Readonly<{
 type SectionRecord = {
   id: string;
   title: string;
-  chrome: StageSectionChrome;
   availability: SectionAvailability;
   element: HTMLElement | null;
 };
@@ -254,7 +244,6 @@ export class SectionOutlineStore {
         Object.freeze({
           id: record.id,
           title: record.title,
-          chrome: record.chrome,
           availability: record.availability,
           fields: Object.freeze(fields[index] ?? []),
           issues: Object.freeze(issuesBySection.get(record.id) ?? []),
@@ -268,12 +257,7 @@ export class SectionOutlineStore {
   getServerSnapshot = (): readonly OutlineSection[] => EMPTY_SECTIONS;
 
   registerSection(
-    section: Readonly<{
-      id: string;
-      title: string;
-      /** A card unless the section says otherwise; almost every one is. */
-      chrome?: StageSectionChrome;
-    }>,
+    section: Readonly<{ id: string; title: string }>,
   ): () => void {
     const existing = this.sections.get(section.id);
     if (existing) {
@@ -281,12 +265,10 @@ export class SectionOutlineStore {
       // StrictMode the effect runs twice around one mount, and the fields
       // beneath it do not remount in between.
       existing.title = section.title;
-      existing.chrome = section.chrome ?? 'card';
     } else {
       this.sections.set(section.id, {
         id: section.id,
         title: section.title,
-        chrome: section.chrome ?? 'card',
         availability: 'available',
         element: null,
       });

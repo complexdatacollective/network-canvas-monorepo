@@ -15,7 +15,6 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 import BuilderSection from '../../BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGuidanceSection.tsx';
-import StageNameSection from '../../stage-heading/StageNameSection.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
 
 /**
@@ -58,7 +57,6 @@ const lateStageHolding = (fields: SectionDoc) => ({
  */
 const editorSections = (
   <>
-    <StageNameSection position={{ index: 3, total: 19 }} />
     <BuilderSection title="Page content">
       <Field name="title" label="Page heading" component={InputField} />
     </BuilderSection>
@@ -163,9 +161,8 @@ describe('a stage editor composing the skip-logic section', () => {
       sections: editorSections,
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline()).toEqual([
-      { title: 'Stage name', state: 'Finished' },
       { title: 'Page content', state: 'Finished' },
       { title: 'Skip logic', state: 'Switched off' },
       { title: 'Interviewer guidance', state: 'Switched off' },
@@ -180,7 +177,7 @@ describe('a stage editor composing the skip-logic section', () => {
       sections: editorSections,
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(skipLogicOutline(harness)?.state).toBe('Finished');
     expect(
       screen.getByRole('radio', { name: 'Skip this stage' }),
@@ -192,7 +189,7 @@ describe('a stage editor composing the skip-logic section', () => {
       stageId: STAGE.id,
       sections: editorSections,
     });
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
 
     await switchOn(harness);
 
@@ -410,7 +407,7 @@ describe('a rule set the researcher cannot save', () => {
       ),
       sections: editorSections,
     });
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
 
     await harness.user.click(
       screen.getByRole('button', { name: /^Delete rule:/ }),
@@ -1129,7 +1126,7 @@ describe('switching skip logic off', () => {
       ),
       sections: editorSections,
     });
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
 
     await switchOff(harness);
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));

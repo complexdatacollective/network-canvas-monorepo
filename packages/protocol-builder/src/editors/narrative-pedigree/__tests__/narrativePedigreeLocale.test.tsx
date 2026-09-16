@@ -53,7 +53,6 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       ),
     );
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Nombre de la etapa',
       'Origen de la genealogía',
       'Asignaciones de enfermedades',
       'Estados de riesgo',

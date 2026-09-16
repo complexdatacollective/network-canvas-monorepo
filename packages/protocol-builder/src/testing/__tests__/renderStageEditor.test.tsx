@@ -13,7 +13,6 @@ import type { ResourceDescriptor } from '../../resources/types.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
 import type {
   StageEditorComponent,
@@ -29,7 +28,6 @@ import {
 
 const commonSections = (
   <>
-    <StageNameSection />
     <SkipLogicSection />
     <InterviewerGuidanceSection />
   </>
@@ -178,9 +176,8 @@ describe('the stage-editor test harness', () => {
 
     await expect
       .poll(() => harness.outline().map((section) => section.title))
-      .toEqual(['Stage name', 'Skip logic', 'Interviewer guidance']);
+      .toEqual(['Skip logic', 'Interviewer guidance']);
     expect(harness.outline().map((section) => section.state)).toEqual([
-      'Finished',
       'Switched off',
       'Switched off',
     ]);
@@ -228,14 +225,15 @@ describe('the stage-editor test harness', () => {
       sections: <SubjectSection entity="node" />,
     });
 
-    expect(harness.ownedKeys()).toEqual(['subject']);
-    await expect(harness.roundTrip()).rejects.toThrow(
-      /keys: label, form, prompts/,
-    );
+    // `label` is owned without a section owning it: the stage's name is drawn
+    // by the harness's own host chrome, as a host draws it, so it is a field of
+    // the form wherever it sits on the page.
+    expect(harness.ownedKeys()).toEqual(['label', 'subject']);
+    await expect(harness.roundTrip()).rejects.toThrow(/keys: form, prompts/);
 
     // Declared, the same mount round-trips: the list is a statement an editor
     // makes about itself, not an escape from the check.
-    await harness.roundTrip({ unowned: ['label', 'form', 'prompts'] });
+    await harness.roundTrip({ unowned: ['form', 'prompts'] });
   });
 
   /**
@@ -500,7 +498,6 @@ describe('what a round trip refuses', () => {
       stageId: 'information-1',
       sections: (
         <>
-          <StageNameSection />
           <WritesToTheDraft
             stageKey="interviewScript"
             value="Read this aloud."
@@ -520,7 +517,6 @@ describe('what a round trip refuses', () => {
       stage: seeded,
       sections: (
         <>
-          <StageNameSection />
           <WritesToTheDraft stageKey="mapOptions" value={withoutTransit} />
         </>
       ),
@@ -542,7 +538,7 @@ describe('what a round trip refuses', () => {
     const { seeded } = geospatialShowingTransit();
     const harness = renderStageEditor({
       stage: seeded,
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     const request = await harness.roundTrip({
@@ -668,7 +664,7 @@ describe('a stage being created', () => {
   it('proposes a name, and stops as soon as the researcher types one', async () => {
     const harness = renderStageEditor({
       create: { type: 'Information', position: INFORMATION_INDEX },
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
@@ -764,7 +760,7 @@ describe('a stage the interview already contains', () => {
         type: 'Information',
         fields: { label: '', title: 'A page', items: [] },
       },
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     await settle();

@@ -9,6 +9,7 @@ import { INTERFACE_NAMES } from '../interfaces/interfaceNames.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import StageEditor from '../StageEditor.tsx';
 import { createInMemoryHost } from './host/createInMemoryHost.ts';
+import HostStageTitle from './HostStageTitle.tsx';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
@@ -107,6 +108,12 @@ export function AllInterfacesStoryHost() {
                 sectionId: sectionId({ kind: 'stage', stageId: open.stageId }),
               }}
               formId={`stage-form-${open.stageId}`}
+              // Drawing the stage's name is a HOST's job — the package
+              // publishes its bindings and no title of its own — and the
+              // action slot is the one place a host's chrome is inside the
+              // stage form's provider. Nothing else here: this host is about
+              // opening one interface after another.
+              actions={() => <HostStageTitle />}
             />
           </section>
         </main>

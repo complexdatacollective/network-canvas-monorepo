@@ -44,7 +44,6 @@ export function createStageSectionsStore(
       return Object.freeze({
         id: section.id,
         title: section.title,
-        chrome: section.chrome,
         status,
         problems:
           status === 'error' ? unexplained(section, reader) : NO_PROBLEMS,
@@ -127,7 +126,6 @@ function same(a: readonly StageSection[], b: readonly StageSection[]): boolean {
         other !== undefined &&
         section.id === other.id &&
         section.title === other.title &&
-        section.chrome === other.chrome &&
         section.status === other.status &&
         section.problems.length === other.problems.length &&
         section.problems.every(

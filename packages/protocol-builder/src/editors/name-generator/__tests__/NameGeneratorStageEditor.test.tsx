@@ -183,9 +183,8 @@ describe('the name generator editor', () => {
   it('asks its questions in the order a researcher answers them', async () => {
     const harness = mountFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
       'Node setup',
       'Form configuration',
       'Prompt collection',

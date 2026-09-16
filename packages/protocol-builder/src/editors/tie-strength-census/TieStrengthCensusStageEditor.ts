@@ -1,7 +1,6 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { introduction } from '../../sections/introduction/introduction.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { tieStrengthCensusPrompts } from './sections/tieStrengthCensusPrompts.tsx';
@@ -17,7 +16,6 @@ import { tieStrengthCensusPrompts } from './sections/tieStrengthCensusPrompts.ts
 export const tieStrengthCensusStageEditor = defineStageEditor(
   'TieStrengthCensus',
   [
-    stageHeading({ documentation: 'tie-strength-census' }),
     subjectPicker({ entity: 'node', filter: true }),
     introduction(),
     tieStrengthCensusPrompts(),
