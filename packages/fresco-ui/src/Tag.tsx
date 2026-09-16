@@ -3,13 +3,21 @@
 import { Toggle } from '@base-ui/react/toggle';
 import * as React from 'react';
 
-import { Badge, type BadgeSize } from './Badge';
+import { Badge } from './Badge';
 import { type PaletteColor, paletteColorStyles } from './styles/palette';
-import { cva } from './utils/cva';
+import { cva, type VariantProps } from './utils/cva';
 
 const tagVariants = cva({
-  base: 'justify-center',
+  base: 'justify-center border-2 leading-tight font-medium whitespace-nowrap',
   variants: {
+    size: {
+      sm: 'gap-2 px-2.5 py-0.5',
+      md: 'gap-2 px-3 py-1',
+    },
+    uppercase: {
+      true: '',
+      false: '',
+    },
     tone: {
       default:
         '[--badge-color:color-mix(in_oklab,var(--text)_15%,transparent)] [--badge-contrast:var(--text)]',
@@ -27,7 +35,12 @@ const tagVariants = cva({
       false: '',
     },
   },
+  compoundVariants: [
+    { uppercase: true, size: 'sm', className: 'tracking-wide' },
+  ],
   defaultVariants: {
+    size: 'md',
+    uppercase: true,
     tone: 'default',
     interactive: false,
     disabled: false,
@@ -38,16 +51,15 @@ const dotVariants = cva({
   base: 'aspect-square h-auto shrink-0 rounded-full bg-(--tag-dot)',
   variants: {
     size: {
-      sm: 'w-2',
-      md: 'w-2.5',
-      lg: 'w-3',
+      sm: 'w-2.5',
+      md: 'w-3',
     },
   },
   defaultVariants: { size: 'md' },
 });
 
 export type TagColor = PaletteColor;
-export type TagSize = BadgeSize;
+export type TagSize = NonNullable<VariantProps<typeof tagVariants>['size']>;
 
 export type TagProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
   /** Palette colour of the leading dot. Omit for a plain tag. */
@@ -89,7 +101,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
   return (
     <Badge
       ref={ref}
-      size={size}
+      size="md"
       uppercase={uppercase}
       appearance="filled"
       icon={
@@ -102,6 +114,8 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
         ) : undefined
       }
       className={tagVariants({
+        size,
+        uppercase,
         tone: pressed ? 'pressed' : light ? 'light' : 'default',
         interactive: interactive && !disabled,
         disabled,

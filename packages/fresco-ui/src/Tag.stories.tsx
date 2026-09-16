@@ -28,15 +28,15 @@ import Tag from '@codaco/fresco-ui/Tag';
 
 Props: \`color\` (palette name for the dot), \`pressed\` + \`onPressedChange\`
 (interactive toggle), \`light\` (muted display tone), \`uppercase\` (set false
-for labels whose own casing carries meaning), \`disabled\`, \`size\` (Badge's
-\`sm\`/\`md\`/\`lg\`, \`md\` default), plus any button attributes.
+for labels whose own casing carries meaning), \`disabled\`, \`size\` (\`md\`
+default, \`sm\` for dense filter rows), plus any button attributes.
 `,
       },
     },
   },
   tags: ['autodocs'],
   argTypes: {
-    size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] },
+    size: { control: 'inline-radio', options: ['sm', 'md'] },
     color: {
       control: 'select',
       options: Object.keys(paletteColorStyles) as TagColor[],
@@ -81,9 +81,6 @@ export const Sizes: Story = {
       </Tag>
       <Tag size="md" color="sea-green">
         Medium
-      </Tag>
-      <Tag size="lg" color="sea-green">
-        Large
       </Tag>
     </div>
   ),

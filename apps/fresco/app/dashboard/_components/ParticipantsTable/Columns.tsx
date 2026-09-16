@@ -100,7 +100,7 @@ export function getParticipantColumns(
               width={24}
               height={24}
             />
-            <Badge tone="neutral" appearance="soft">
+            <Badge appearance="outline">
               <span className="max-w-56 truncate">
                 {row.original.identifier}
               </span>

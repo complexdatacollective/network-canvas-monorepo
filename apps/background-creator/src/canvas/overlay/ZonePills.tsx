@@ -59,8 +59,8 @@ export function ZonePills(): ReactElement | null {
             className={cx(
               'elevation-low absolute max-w-[40%] min-w-0',
               selected
-                ? '[--badge-color:var(--selected)] [--badge-contrast:var(--selected-contrast)]'
-                : 'border-outline [--badge-color:var(--surface)] [--badge-contrast:var(--surface-contrast)]',
+                ? '[--badge-color:var(--selected)]'
+                : 'border-outline [--badge-color:var(--surface)]',
             )}
           >
             <span className="truncate">{label}</span>

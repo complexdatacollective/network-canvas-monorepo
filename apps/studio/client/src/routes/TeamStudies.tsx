@@ -168,7 +168,7 @@ function stateBadge(
 ): Pick<BadgeProps, 'tone' | 'appearance'> {
   if (state === 'live') return { tone: 'primary' };
   if (state === 'closed') return { tone: 'secondary' };
-  return { tone: 'neutral', appearance: 'soft' };
+  return { appearance: 'outline' };
 }
 
 export default function TeamStudies({ teamId }: { teamId: string }) {

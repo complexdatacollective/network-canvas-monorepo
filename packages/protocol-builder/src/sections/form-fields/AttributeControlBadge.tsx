@@ -67,9 +67,11 @@ export default function AttributeControlBadge({
 
   return (
     <Badge color={variableTypeBadgeColor(attribute?.type)}>
-      {attribute === undefined
-        ? intl.formatMessage(messages.previewMissing)
-        : intl.formatMessage(messages.attributeControlBadge, {
+      {attribute === undefined ? (
+        intl.formatMessage(messages.previewMissing)
+      ) : (
+        <span>
+          {intl.formatMessage(messages.attributeControlBadge, {
             // The schema's own token where this package has no name for it,
             // which is what a protocol authored against a later schema arrives
             // holding: an empty badge would say less than the identifier does.
@@ -82,6 +84,8 @@ export default function AttributeControlBadge({
             type: renderStrong,
             control: renderStrong,
           })}
+        </span>
+      )}
     </Badge>
   );
 }

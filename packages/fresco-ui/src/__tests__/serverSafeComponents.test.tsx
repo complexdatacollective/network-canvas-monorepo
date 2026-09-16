@@ -184,18 +184,22 @@ describe('server-safe components', () => {
     expect(term).toMatch(/^<dt[^>]*>Field<\/dt>$/);
   });
 
-  it('renders Badge as a static <span> with an element render override', () => {
+  it('renders Badge as a static <div> with an element render override', () => {
     const label = renderToStaticMarkup(<Badge tone="success">Live</Badge>);
     const cell = renderToStaticMarkup(
-      <Badge render={<div data-cell="override" />} appearance="soft">
+      <Badge
+        render={<span data-cell="override" />}
+        tone="info"
+        appearance="outline"
+      >
         Draft
       </Badge>,
     );
 
-    expect(label).toMatch(/^<span[^>]*>Live<\/span>$/);
+    expect(label).toMatch(/^<div[^>]*>Live<\/div>$/);
     expect(label).toContain('rounded-full');
     expect(label).toContain('[--badge-color:var(--success)]');
-    expect(cell).toMatch(/^<div[^>]*data-cell="override"[^>]*>Draft<\/div>$/);
+    expect(cell).toMatch(/^<span[^>]*data-cell="override"[^>]*>Draft<\/span>$/);
     expect(cell).toContain('border-(--badge-color)');
   });
 

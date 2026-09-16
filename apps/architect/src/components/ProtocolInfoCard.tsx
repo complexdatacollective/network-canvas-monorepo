@@ -401,11 +401,9 @@ const ProtocolInfoCard = () => {
           {requiresInternet && (
             <Badge
               tone="warning"
-              appearance="soft"
-              mono
               uppercase
               icon={<Globe className="size-4" />}
-              className="backdrop-blur-sm"
+              className="whitespace-nowrap"
             >
               {intl.formatMessage(messages.requiresInternet)}
             </Badge>

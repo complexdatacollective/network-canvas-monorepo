@@ -60,7 +60,7 @@ describe('AppChoiceCard', () => {
     expect(description).not.toBeNull();
     expect(description).toHaveClass('font-body');
     expect(description).not.toHaveClass('not-last:mb-[1em]');
-    expect(status.tagName).toBe('SPAN');
+    expect(status.tagName).toBe('DIV');
     expect(status).toHaveClass('inline-flex', 'border-transparent');
     expect(status.style.getPropertyValue('--badge-color')).toBe(
       'var(--color-white)',

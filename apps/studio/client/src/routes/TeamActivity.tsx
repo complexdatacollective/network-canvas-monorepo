@@ -128,7 +128,7 @@ const OUTCOME_BADGE_PROPS: Record<
   Pick<BadgeProps, 'tone' | 'appearance'>
 > = {
   succeeded: { tone: 'success' },
-  denied: { tone: 'neutral', appearance: 'soft' },
+  denied: { appearance: 'outline' },
   failed: { tone: 'destructive' },
 };
 
@@ -933,7 +933,7 @@ export default function TeamActivity() {
                         <Badge
                           className="ms-2"
                           tone="neutral"
-                          appearance="soft"
+                          appearance="outline"
                         >
                           {intl.formatMessage(messages.unrecognizedEvent)}
                         </Badge>

@@ -24,6 +24,7 @@ import {
 } from '../Tooltip';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
+import { cx } from '../utils/cva';
 import type {
   InstallAppUpdate,
   ReleaseNotes,
@@ -175,8 +176,10 @@ export default function AppUpdateIndicator({
       <Badge
         size={size}
         mono
-        appearance="soft"
-        className={className}
+        className={cx(
+          'whitespace-nowrap [--badge-color:transparent] [--badge-contrast:currentColor]',
+          className,
+        )}
         icon={idleIcon}
       >
         {label}
@@ -200,12 +203,15 @@ export default function AppUpdateIndicator({
       }
       size={size}
       mono
-      appearance="soft"
-      tone={isAvailable ? 'info' : 'success'}
       icon={
         <Icon name={isAvailable ? 'RefreshCw' : 'Check'} className="size-3.5" />
       }
-      className="focusable cursor-pointer transition-colors hover:bg-[color-mix(in_oklab,var(--badge-color)_25%,transparent)]"
+      className={cx(
+        'focusable cursor-pointer whitespace-nowrap transition-colors',
+        isAvailable
+          ? 'bg-sea-serpent/20 text-sea-serpent hover:bg-sea-serpent/30'
+          : 'bg-sea-green/20 text-sea-green hover:bg-sea-green/30',
+      )}
     >
       {label}
     </Badge>

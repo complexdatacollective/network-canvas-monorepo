@@ -439,7 +439,7 @@ const AssetCard = ({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
-          <Badge appearance="soft" color={typeColor} className="shrink-0">
+          <Badge appearance="outline" color={typeColor} className="shrink-0">
             {typeLabel}
           </Badge>
 

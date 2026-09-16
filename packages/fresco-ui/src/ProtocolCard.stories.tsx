@@ -15,7 +15,7 @@ const meta = {
     ),
     children: (
       <div className="relative z-10 flex size-full flex-col gap-5 p-[6cqi]">
-        <Badge appearance="soft" className="self-start">
+        <Badge appearance="outline" className="self-start">
           Sociograms
         </Badge>
         <Heading

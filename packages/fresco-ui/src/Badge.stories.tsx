@@ -18,7 +18,8 @@ const meta = {
       description: {
         component: `
 The one label chip. \`tone\` picks a semantic colour pair from the theme and
-\`appearance\` paints it as a solid fill or a soft wash with a border; \`color\`
+\`appearance\` paints it as a solid fill or an outline, which becomes a wash of
+the colour when one is given; \`color\`
 paints a named palette colour instead, for taxonomies rather than status.
 \`mono\` sets the label in the monospace face for versions, identifiers and
 codes; \`uppercase\` adds the caps tracking; \`icon\` is a leading slot; and
@@ -28,7 +29,7 @@ codes; \`uppercase\` adds the caps tracking; \`icon\` is a leading slot; and
 import { Badge } from '@codaco/fresco-ui/Badge';
 
 <Badge tone="success">Live</Badge>
-<Badge appearance="soft" color="cerulean-blue">Image</Badge>
+<Badge appearance="outline" color="cerulean-blue">Image</Badge>
 <Badge mono icon={<Icon name="RefreshCw" />}>v8.0.0</Badge>
 \`\`\`
 `,
@@ -49,7 +50,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
         'destructive',
       ],
     },
-    appearance: { control: 'inline-radio', options: ['filled', 'soft'] },
+    appearance: { control: 'inline-radio', options: ['filled', 'outline'] },
     size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] },
     mono: { control: 'boolean' },
     uppercase: { control: 'boolean' },
@@ -84,7 +85,7 @@ export const Tones: Story = {
       {tones.map((tone) => (
         <React.Fragment key={tone}>
           <Badge tone={tone}>{tone}</Badge>
-          <Badge tone={tone} appearance="soft">
+          <Badge tone={tone} appearance="outline">
             {tone}
           </Badge>
         </React.Fragment>
@@ -124,7 +125,7 @@ export const Uppercase: Story = {
         News
       </Badge>
       <Badge uppercase>News</Badge>
-      <Badge uppercase mono appearance="soft" tone="warning">
+      <Badge uppercase mono appearance="outline" tone="warning">
         Requires internet
       </Badge>
     </div>
@@ -135,7 +136,7 @@ export const WithIcon: Story = {
   args: {
     children: 'v8.0.0-beta.3',
     mono: true,
-    appearance: 'soft',
+    appearance: 'outline',
     tone: 'info',
     icon: <Icon name="RefreshCw" className="size-3.5" />,
   },
@@ -144,7 +145,7 @@ export const WithIcon: Story = {
 export const SpacingStable: Story = {
   render: () => (
     <div className="flex flex-col items-start gap-2">
-      <Badge mono appearance="soft" data-spacing="soft">
+      <Badge mono appearance="outline" data-spacing="outline">
         v8.0.0-beta.3
       </Badge>
       <Badge mono tone="info" data-spacing="filled">
@@ -232,7 +233,7 @@ export const ThemeColorOutlines: Story = {
   render: () => (
     <div className="flex flex-wrap gap-3">
       {themeColors.map((color) => (
-        <Badge key={color} color={color} appearance="soft">
+        <Badge key={color} color={color} appearance="outline">
           {color}
         </Badge>
       ))}
@@ -313,7 +314,7 @@ export const ThemeColorOutlinesOnAPublishedSurface: Story = {
       className="bg-primary text-primary-contrast flex flex-wrap gap-3"
     >
       {themeColors.map((color) => (
-        <Badge key={color} color={color} appearance="soft">
+        <Badge key={color} color={color} appearance="outline">
           {color}
         </Badge>
       ))}
@@ -385,7 +386,7 @@ export const TonesOnAPublishedSurface: Story = {
       className="bg-primary text-primary-contrast flex flex-wrap gap-3"
     >
       {tones.map((tone) => (
-        <Badge key={tone} tone={tone} appearance="soft">
+        <Badge key={tone} tone={tone} appearance="outline">
           {tone}
         </Badge>
       ))}

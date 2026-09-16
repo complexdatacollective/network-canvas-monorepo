@@ -472,7 +472,7 @@ function Segment({
                           size="sm"
                           mono
                           uppercase
-                          className="shrink-0 [--badge-color:color-mix(in_oklab,currentColor_10%,transparent)] [--badge-contrast:currentColor] group-data-selected:[--badge-color:transparent]"
+                          className="shrink-0 bg-current/10 whitespace-nowrap group-data-selected:bg-transparent"
                         >
                           {item.badge}
                         </Badge>

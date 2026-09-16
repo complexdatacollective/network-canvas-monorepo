@@ -835,7 +835,7 @@ function TeamManagement(props: {
                           />
                         </>
                       ) : (
-                        <Badge tone="neutral" appearance="soft">
+                        <Badge appearance="outline">
                           {teamRolesLabel(intl, member.role)}
                         </Badge>
                       )}

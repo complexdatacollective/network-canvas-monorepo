@@ -122,7 +122,7 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
           {app.name}
         </Heading>
         <Badge
-          appearance="soft"
+          appearance="outline"
           color={featured ? 'white' : 'cyber-grape'}
           className="border-transparent font-bold tracking-wide"
         >

@@ -19,7 +19,12 @@ export function StatusChip({ status }: { status: CompatibilityStatus }) {
   } as const;
 
   return (
-    <Badge mono appearance="soft" tone={STATUS_TONES[status]}>
+    <Badge
+      mono
+      appearance="outline"
+      tone={STATUS_TONES[status]}
+      className="whitespace-nowrap"
+    >
       {labels[status]}
     </Badge>
   );

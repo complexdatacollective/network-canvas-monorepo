@@ -59,7 +59,7 @@ describe('Tag', () => {
 
     expect(screen.queryByRole('button')).toBeNull();
     const tag = screen.getByTestId('tag');
-    expect(tag.tagName).toBe('SPAN');
+    expect(tag.tagName).toBe('DIV');
     expect(tag).toHaveAttribute('title', 'Capability');
   });
 

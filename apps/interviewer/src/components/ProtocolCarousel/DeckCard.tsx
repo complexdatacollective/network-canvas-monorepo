@@ -520,13 +520,11 @@ export function DeckCard(props: DeckCardProps) {
                         />
                       }
                       tone="warning"
-                      appearance="soft"
-                      mono
                       uppercase
                       icon={<Globe />}
                       className={cx(
                         proportionalLucideIconVariants(),
-                        'px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] backdrop-blur-xs',
+                        'px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)]',
                       )}
                     >
                       {intl.formatMessage(messages.requiresInternet)}

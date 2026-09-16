@@ -230,7 +230,8 @@ const EntityType = ({
       return (
         <Badge
           key={`validation-${index}-${label}`}
-          className="wrap-break-word whitespace-normal"
+          tone="neutral"
+          className="wrap-break-word"
         >
           {label}
         </Badge>
@@ -238,7 +239,9 @@ const EntityType = ({
     }
     return (
       <Link key={id} href={`/protocol/stage/${id}`}>
-        <Badge className="wrap-break-word whitespace-normal">{label}</Badge>
+        <Badge tone="neutral" className="wrap-break-word">
+          {label}
+        </Badge>
       </Link>
     );
   });
@@ -257,7 +260,7 @@ const EntityType = ({
         </div>
         <div className="flex-1">
           {!inUse && (
-            <Badge tone="warning" className="wrap-break-word whitespace-normal">
+            <Badge tone="warning" className="wrap-break-word">
               {intl.formatMessage(messages.notInUse)}
             </Badge>
           )}

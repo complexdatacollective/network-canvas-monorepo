@@ -5,33 +5,31 @@ import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import { cva, type VariantProps } from './utils/cva';
 
 const badgeVariants = cva({
-  base: 'inline-flex shrink-0 items-center rounded-full border font-semibold whitespace-nowrap',
+  base: 'inline-flex shrink items-center rounded-full border font-semibold',
   variants: {
     size: {
-      sm: 'text-2xs gap-1 px-2 py-0.5 leading-tight',
-      md: 'gap-1.5 px-2.5 py-0.5 text-xs leading-tight',
-      lg: 'gap-2 px-3 py-1 text-sm leading-tight',
+      sm: 'text-2xs gap-1 px-2 py-0.5',
+      md: 'gap-1.5 px-2.5 py-0.5 text-xs',
+      lg: 'gap-2 px-3 py-1.5 text-sm',
     },
     tone: {
-      neutral:
-        '[--badge-color:var(--neutral)] [--badge-contrast:var(--neutral-contrast)]',
-      primary:
-        '[--badge-color:var(--primary)] [--badge-contrast:var(--primary-contrast)]',
-      secondary:
-        '[--badge-color:var(--secondary)] [--badge-contrast:var(--secondary-contrast)]',
-      accent:
-        '[--badge-color:var(--accent)] [--badge-contrast:var(--accent-contrast)]',
-      info: '[--badge-color:var(--info)] [--badge-contrast:var(--info-contrast)]',
-      success:
-        '[--badge-color:var(--success)] [--badge-contrast:var(--success-contrast)]',
-      warning:
-        '[--badge-color:var(--warning)] [--badge-contrast:var(--warning-contrast)]',
-      destructive:
-        '[--badge-color:var(--destructive)] [--badge-contrast:var(--destructive-contrast)]',
+      neutral: '[--badge-color:var(--neutral)]',
+      primary: '[--badge-color:var(--primary)]',
+      secondary: '[--badge-color:var(--secondary)]',
+      accent: '[--badge-color:var(--accent)]',
+      info: '[--badge-color:var(--info)]',
+      success: '[--badge-color:var(--success)]',
+      warning: '[--badge-color:var(--warning)]',
+      destructive: '[--badge-color:var(--destructive)]',
     },
     appearance: {
-      filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
-      soft: 'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
+      filled:
+        'border-transparent bg-(--badge-color) text-(--badge-contrast,contrast-color(var(--badge-color)))',
+      outline: '',
+    },
+    colored: {
+      true: '',
+      false: '',
     },
     mono: {
       true: 'font-monospace',
@@ -43,13 +41,21 @@ const badgeVariants = cva({
     },
   },
   compoundVariants: [
+    { appearance: 'outline', colored: false, className: 'text-current' },
+    {
+      appearance: 'outline',
+      colored: true,
+      className:
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
+    },
     { uppercase: true, size: 'sm', className: 'tracking-wide' },
     { uppercase: true, size: ['md', 'lg'], className: 'tracking-widest' },
   ],
   defaultVariants: {
     size: 'md',
-    tone: 'neutral',
+    tone: 'primary',
     appearance: 'filled',
+    colored: false,
     mono: false,
     uppercase: false,
   },
@@ -66,7 +72,6 @@ const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
-  '--badge-contrast'?: string;
 };
 
 type BadgeProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
@@ -98,11 +103,7 @@ const Badge = React.forwardRef<HTMLElement, BadgeProps>(function Badge(
   ref,
 ) {
   const badgeStyle: BadgeStyle | undefined = color
-    ? {
-        ...style,
-        '--badge-color': paletteColorStyles[color].color,
-        '--badge-contrast': 'contrast-color(var(--badge-color))',
-      }
+    ? { ...style, '--badge-color': paletteColorStyles[color].color }
     : style;
 
   return useRender({
@@ -112,6 +113,7 @@ const Badge = React.forwardRef<HTMLElement, BadgeProps>(function Badge(
       className: badgeVariants({
         tone,
         appearance,
+        colored: color !== undefined || tone !== undefined,
         size,
         mono,
         uppercase,
@@ -126,7 +128,7 @@ const Badge = React.forwardRef<HTMLElement, BadgeProps>(function Badge(
       ),
       ...props,
     },
-    defaultTagName: 'span',
+    defaultTagName: 'div',
   });
 });
 

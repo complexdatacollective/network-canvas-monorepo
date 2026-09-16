@@ -955,7 +955,7 @@ export function SummerUpdatePage() {
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
               <Reveal {...summerUpdateRevealMotion}>
                 <Surface as="article" noContainer className="h-full">
-                  <Badge mono uppercase appearance="soft" color="sea-green">
+                  <Badge mono uppercase appearance="outline" color="sea-green">
                     {t('compatibility.upgrade.newStudy.label')}
                   </Badge>
                   <Heading level="h3" variant="subheading">
@@ -970,7 +970,12 @@ export function SummerUpdatePage() {
               </Reveal>
               <Reveal {...summerUpdateRevealMotion} delay={0.11}>
                 <Surface as="article" noContainer className="h-full">
-                  <Badge mono uppercase appearance="soft" color="sea-serpent">
+                  <Badge
+                    mono
+                    uppercase
+                    appearance="outline"
+                    color="sea-serpent"
+                  >
                     {t('compatibility.upgrade.ongoing.label')}
                   </Badge>
                   <Heading level="h3" variant="subheading">

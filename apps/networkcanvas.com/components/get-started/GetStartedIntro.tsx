@@ -132,7 +132,7 @@ export function GetStartedIntro() {
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
                 className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative min-h-64 rounded p-8 pb-24 backdrop-blur-md"
               >
-                <Badge mono uppercase appearance="soft" color={stage.accent}>
+                <Badge mono uppercase appearance="outline" color={stage.accent}>
                   {t(`intro.stages.${stage.id}.label`)}
                 </Badge>
                 <span className="font-heading text-text tablet-portrait:text-2xl mt-8 block max-w-lg text-xl font-black tracking-tight text-balance">

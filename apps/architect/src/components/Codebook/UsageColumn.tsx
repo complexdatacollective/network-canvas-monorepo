@@ -26,11 +26,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
   const intl = useAppIntl();
   if (!inUse) {
     return (
-      <Badge
-        key="unused"
-        tone="warning"
-        className="wrap-break-word whitespace-normal"
-      >
+      <Badge key="unused" tone="warning" className="whitespace-nowrap">
         {intl.formatMessage(messages.notInUse)}
       </Badge>
     );
@@ -44,7 +40,8 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
       return (
         <Badge
           key={`validation-option-${index}`}
-          className="wrap-break-word whitespace-normal"
+          tone="accent"
+          className="whitespace-nowrap"
         >
           {label}
         </Badge>
@@ -55,7 +52,9 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 
     return (
       <Link key={id} href={href}>
-        <Badge className="wrap-break-word whitespace-normal">{label}</Badge>
+        <Badge tone="accent" className="whitespace-nowrap">
+          {label}
+        </Badge>
       </Link>
     );
   });

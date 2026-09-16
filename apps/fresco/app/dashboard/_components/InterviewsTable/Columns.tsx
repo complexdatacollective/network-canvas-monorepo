@@ -180,7 +180,7 @@ export const InterviewColumns = (
           >
             <Badge
               tone="neutral"
-              appearance="soft"
+              appearance="outline"
               className="max-w-80 truncate"
             >
               {row.original.participant.identifier}
