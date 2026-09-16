@@ -45,70 +45,74 @@ type BooleanOption = {
   negative?: boolean;
 };
 
+const optionCardOwnVariants = cva({
+  base: cx(
+    'grid cursor-pointer grid-cols-[auto_1fr] content-start items-start gap-x-4! gap-y-2!',
+    'overflow-hidden rounded border-2 border-current/20',
+    'bg-input text-input-contrast text-start text-wrap',
+    'transition-colors duration-200',
+    'focusable',
+  ),
+  variants: {
+    selected: {
+      true: 'border-primary',
+      false: 'hover:border-current/40',
+    },
+    state: {
+      normal: '',
+      disabled: 'pointer-events-none cursor-not-allowed opacity-50',
+      readOnly: 'pointer-events-none cursor-default',
+      invalid: 'border-destructive',
+    },
+    negative: {
+      true: '',
+      false: '',
+    },
+  },
+  compoundVariants: [
+    {
+      selected: true,
+      negative: true,
+      className: 'border-destructive',
+    },
+    {
+      selected: true,
+      state: 'invalid',
+      className: 'border-destructive',
+    },
+    {
+      selected: false,
+      state: 'readOnly',
+      className: 'opacity-40',
+    },
+  ],
+  defaultVariants: {
+    selected: false,
+    state: 'normal',
+    negative: false,
+  },
+});
+
 const optionCardVariants = compose(
   groupSpacingVariants,
   textSizeVariants,
-  cva({
-    base: cx(
-      'grid cursor-pointer grid-cols-[auto_1fr] content-start items-start gap-x-4! gap-y-2!',
-      'overflow-hidden rounded border-2 border-current/20',
-      'bg-input text-input-contrast text-start text-wrap',
-      'transition-colors duration-200',
-      'focusable',
-    ),
-    variants: {
-      selected: {
-        true: 'border-primary',
-        false: 'hover:border-current/40',
-      },
-      state: {
-        normal: '',
-        disabled: 'pointer-events-none cursor-not-allowed opacity-50',
-        readOnly: 'pointer-events-none cursor-default',
-        invalid: 'border-destructive',
-      },
-      negative: {
-        true: '',
-        false: '',
-      },
-    },
-    compoundVariants: [
-      {
-        selected: true,
-        negative: true,
-        className: 'border-destructive',
-      },
-      {
-        selected: true,
-        state: 'invalid',
-        className: 'border-destructive',
-      },
-      {
-        selected: false,
-        state: 'readOnly',
-        className: 'opacity-40',
-      },
-    ],
-    defaultVariants: {
-      selected: false,
-      state: 'normal',
-      negative: false,
-    },
-  }),
+  optionCardOwnVariants,
 );
+
+const booleanIndicatorOwnVariants = cva({
+  base: cx(
+    'flex aspect-square shrink-0! items-center justify-center',
+    'rounded-full',
+    'focusable',
+  ),
+});
 
 const booleanIndicatorVariants = compose(
   smallSizeVariants,
   controlVariants,
   inputControlVariants,
   stateVariants,
-  cva({
-    base: cx(
-      'flex aspect-square shrink-0! items-center justify-center',
-      'rounded-full',
-      'focusable',
-    ),
-  }),
+  booleanIndicatorOwnVariants,
 );
 
 const selectionSpring = {

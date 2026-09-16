@@ -8,75 +8,77 @@ import { getInputState } from './form/utils/getInputState';
 import { controlVariants, smallSizeVariants } from './styles/controlVariants';
 import { compose, cva, cx, type VariantProps } from './utils/cva';
 
+const toggleOwnVariants = cva({
+  base: cx(
+    'border-0',
+    'relative inline-flex aspect-2/1 items-center rounded-full p-[0.2em]',
+    'focusable outline-(--input-border)',
+    'transition-all duration-200',
+  ),
+  variants: {
+    checked: {
+      true: '',
+      false: '',
+    },
+    state: {
+      normal: 'cursor-pointer',
+      disabled: 'cursor-not-allowed opacity-50',
+      readOnly: 'cursor-default',
+      invalid: '',
+    },
+  },
+  compoundVariants: [
+    {
+      checked: false,
+      state: 'normal',
+      class: 'bg-input-contrast/30',
+    },
+    {
+      checked: true,
+      state: 'normal',
+      class: 'bg-success',
+    },
+    {
+      checked: false,
+      state: 'disabled',
+      class: 'bg-input-contrast/10',
+    },
+    {
+      checked: true,
+      state: 'disabled',
+      class: 'bg-input-contrast/30',
+    },
+    {
+      checked: false,
+      state: 'readOnly',
+      class: 'bg-input-contrast/20',
+    },
+    {
+      checked: true,
+      state: 'readOnly',
+      class: 'bg-input-contrast/50',
+    },
+    {
+      checked: false,
+      state: 'invalid',
+      class: 'bg-input-contrast/30 outline-destructive outline-2',
+    },
+    {
+      checked: true,
+      state: 'invalid',
+      class: 'outline-destructive bg-current outline-2',
+    },
+  ],
+  defaultVariants: {
+    checked: false,
+    state: 'normal',
+  },
+});
+
 const toggleContainerVariants = compose(
   controlVariants,
   smallSizeVariants,
-  cva({
-    base: cx(
-      'border-0',
-      'relative inline-flex aspect-2/1 items-center rounded-full p-[0.2em]',
-      'focusable outline-(--input-border)',
-      'transition-all duration-200',
-    ),
-    variants: {
-      checked: {
-        true: '',
-        false: '',
-      },
-      state: {
-        normal: 'cursor-pointer',
-        disabled: 'cursor-not-allowed opacity-50',
-        readOnly: 'cursor-default',
-        invalid: '',
-      },
-    },
-    compoundVariants: [
-      {
-        checked: false,
-        state: 'normal',
-        class: 'bg-input-contrast/30',
-      },
-      {
-        checked: true,
-        state: 'normal',
-        class: 'bg-success',
-      },
-      {
-        checked: false,
-        state: 'disabled',
-        class: 'bg-input-contrast/10',
-      },
-      {
-        checked: true,
-        state: 'disabled',
-        class: 'bg-input-contrast/30',
-      },
-      {
-        checked: false,
-        state: 'readOnly',
-        class: 'bg-input-contrast/20',
-      },
-      {
-        checked: true,
-        state: 'readOnly',
-        class: 'bg-input-contrast/50',
-      },
-      {
-        checked: false,
-        state: 'invalid',
-        class: 'bg-input-contrast/30 outline-destructive outline-2',
-      },
-      {
-        checked: true,
-        state: 'invalid',
-        class: 'outline-destructive bg-current outline-2',
-      },
-    ],
-    defaultVariants: {
-      checked: false,
-      state: 'normal',
-    },
-  }),
+  toggleOwnVariants,
 );
 
 const toggleThumbVariants = cva({

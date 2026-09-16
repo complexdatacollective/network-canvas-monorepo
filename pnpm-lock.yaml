@@ -476,8 +476,8 @@ importers:
         specifier: 'catalog:'
         version: 2.0.14
       cva:
-        specifier: 1.0.0-beta.4
-        version: 1.0.0-beta.4(typescript@7.0.2)
+        specifier: 1.0.0-beta.10
+        version: 1.0.0-beta.10(typescript@7.0.2)
       dexie:
         specifier: ^4.4.4
         version: 4.4.4
@@ -2307,8 +2307,8 @@ importers:
         specifier: ^4.4.2
         version: 4.4.2
       cva:
-        specifier: 1.0.0-beta.4
-        version: 1.0.0-beta.4(typescript@7.0.2)
+        specifier: 1.0.0-beta.10
+        version: 1.0.0-beta.10(typescript@7.0.2)
       es-toolkit:
         specifier: 'catalog:'
         version: 1.50.0
@@ -10786,10 +10786,10 @@ packages:
     resolution: {integrity: sha512-/fITjgjGU50vjQ4FH6eUoYu+iUoUKIXws2hL15JJpIR+BbTxaXQsMuuyjtNh2WqsSBS5nsaZHFsFecyw5CCAng==}
     engines: {node: '>=0.10.0'}
 
-  cva@1.0.0-beta.4:
-    resolution: {integrity: sha512-F/JS9hScapq4DBVQXcK85l9U91M6ePeXoBMSp7vypzShoefUBxjQTo3g3935PUHgQd+IW77DjbPRIxugy4/GCQ==}
+  cva@1.0.0-beta.10:
+    resolution: {integrity: sha512-A2kkl9zsfu1NRhHYOM2SwDhC89ZO97wb7qO2/+Amj/rbRbZDj+bM0yi1CV+YN2fAP/oPi4oip7jcIdb+cZtv0A==}
     peerDependencies:
-      typescript: '>= 4.5.5'
+      typescript: '>= 6.0.0'
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -25073,7 +25073,7 @@ snapshots:
     dependencies:
       array-find-index: 1.0.2
 
-  cva@1.0.0-beta.4(typescript@7.0.2):
+  cva@1.0.0-beta.10(typescript@7.0.2):
     dependencies:
       clsx: 2.1.1
     optionalDependencies:

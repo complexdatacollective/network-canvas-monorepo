@@ -1,10 +1,8 @@
-import { defineConfig } from 'cva';
+import { defineConfig } from 'cva/config';
 import { twMerge } from 'tailwind-merge';
 
 const config = defineConfig({
-  hooks: {
-    onComplete: (className) => twMerge(className),
-  },
+  cx: (...inputs) => twMerge(inputs),
 });
 
 export const { cva, cx } = config;
