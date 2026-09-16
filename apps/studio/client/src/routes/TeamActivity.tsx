@@ -1,4 +1,3 @@
-import { ORPCError } from '@orpc/client';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -32,9 +31,12 @@ import {
   type AuditCategory,
   type AuditEventSummary,
   type AuditOutcome,
-} from '@codaco/studio-rpc';
+} from '@codaco/studio-contract/schema/audit';
+import type { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 
-import { orpc } from '../lib/api.ts';
+import { toTeamId } from '../lib/ids.ts';
+import { isForbidden } from '../runtime/errors.ts';
+import { rpcInfiniteQuery, rpcQuery } from '../runtime/rpc.ts';
 
 // The route id carries the area layout it sits under (§5.3).
 const route = getRouteApi('/app/team/$teamId/activity');
@@ -486,7 +488,7 @@ function nextLocalMidnight(day: string): Date {
 // day boundaries to match the local times shown in the feed. Both are sent as
 // absolute instants, so the viewer's day is the one filtered on whatever
 // timezone the server keeps.
-function listInput(teamId: string, filters: ActivityFilters) {
+function listInput(teamId: TeamId, filters: ActivityFilters) {
   return {
     teamId,
     ...(filters.category === '' ? {} : { categories: [filters.category] }),
@@ -505,13 +507,12 @@ function listInput(teamId: string, filters: ActivityFilters) {
 // nothing and saves a second read on every remount.
 const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 
-function isForbidden(error: unknown): boolean {
-  return error instanceof ORPCError && error.code === 'FORBIDDEN';
-}
-
 // A permission refusal never resolves by retrying, and every denied attempt is
 // audited server-side, so a retried read writes further audit.read_denied
 // events. Shared by both audit reads.
+//
+// The predicate reads a typed error now: `isForbidden` narrows the contract's
+// own `Forbidden` instance rather than matching a transport code.
 function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
   return !isForbidden(error) && failureCount < 3;
 }
@@ -555,23 +556,19 @@ function detailValueText(value: unknown): string {
 
 export default function TeamActivity() {
   const intl = useAppIntl();
-  const { teamId } = route.useParams();
+  const { teamId: teamParam } = route.useParams();
+  const teamId = toTeamId(teamParam);
   const [staged, setStaged] = useState<ActivityFilters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<ActivityFilters>(EMPTY_FILTERS);
   const dialog = useDialog();
 
   const input = useMemo(() => listInput(teamId, applied), [teamId, applied]);
-  const activity = useInfiniteQuery(
-    orpc.audit.list.infiniteOptions({
-      input: (cursor: string | undefined) => ({
-        ...input,
-        ...(cursor === undefined ? {} : { cursor }),
-      }),
-      initialPageParam: undefined,
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      retry: retryUnlessForbidden,
+  const activity = useInfiniteQuery({
+    ...rpcInfiniteQuery('audit.list', input, {
+      getNextCursor: (page) => page.nextCursor ?? undefined,
     }),
-  );
+    retry: retryUnlessForbidden,
+  });
 
   const items = useMemo(
     () => activity.data?.pages.flatMap((page) => page.items) ?? [],
@@ -584,17 +581,20 @@ export default function TeamActivity() {
   // the single applied value once a filter narrowed the feed. They are also
   // invariant across pages and across filter changes, so this query is keyed
   // on the team alone and neither refetches on Load more nor on Apply.
-  const filterOptions = useQuery(
-    orpc.audit.filterOptions.queryOptions({
-      input: { teamId },
-      staleTime: FILTER_OPTIONS_STALE_MS,
-      // A second audit read only after the first has succeeded: each denied
-      // attempt commits a rate-limited audit.read_denied event, and a member
-      // who cannot read the log must not spend two of that budget per visit.
-      enabled: activity.isSuccess,
-      retry: retryUnlessForbidden,
-    }),
-  );
+  const filterOptions = useQuery({
+    ...rpcQuery(
+      'audit.filterOptions',
+      { teamId },
+      {
+        staleTime: FILTER_OPTIONS_STALE_MS,
+        // A second audit read only after the first has succeeded: each denied
+        // attempt commits a rate-limited audit.read_denied event, and a member
+        // who cannot read the log must not spend two of that budget per visit.
+        enabled: activity.isSuccess,
+      },
+    ),
+    retry: retryUnlessForbidden,
+  });
 
   const actionOptions = useMemo(() => {
     const byType = new Map<string, string>(
@@ -973,14 +973,15 @@ export default function TeamActivity() {
   );
 }
 
-function ActivityEventDetail(props: { teamId: string; eventId: string }) {
+function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
   const intl = useAppIntl();
-  const detail = useQuery(
-    orpc.audit.get.queryOptions({
-      input: { teamId: props.teamId, eventId: props.eventId },
-      retry: retryUnlessForbidden,
+  const detail = useQuery({
+    ...rpcQuery('audit.get', {
+      teamId: props.teamId,
+      eventId: props.eventId,
     }),
-  );
+    retry: retryUnlessForbidden,
+  });
 
   if (detail.isPending) {
     return (
