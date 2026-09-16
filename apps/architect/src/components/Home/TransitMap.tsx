@@ -46,15 +46,22 @@ const VISIBLE_WINDOW = 7;
 // then progressively older above).
 const INITIAL_BLOOM_STAGGER_S = 0.12;
 
+const ICON_STROKE = 2.75;
+
 // Information's platinum-dark is illegible against Architect's platinum page bg
-// Override it with charcoal throughout the timeline. Every
-// other stage color is dark enough to draw as authored
+// Override it with charcoal throughout the timeline.
 const INFORMATION_TIMELINE_COLOR = 'var(--color-charcoal)';
 
 function timelineColor(type: StageType) {
   return type === 'Information'
     ? INFORMATION_TIMELINE_COLOR
     : stageTypeColorStyle(type).color;
+}
+
+// Most stage colours fall below AA as caption text on the page, so the caption
+// keeps the hue but caps its lightness.
+function captionColor(color: string) {
+  return `oklch(from ${color} min(l, 0.45) c h)`;
 }
 
 type TransitMapProps = {
@@ -290,7 +297,10 @@ function Station({
           y={y - ICON_SIZE / 2}
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ stroke: 'var(--color-white)' }}
+          style={{
+            stroke: `contrast-color(${color})`,
+            strokeWidth: ICON_STROKE,
+          }}
         />
       </motion.g>
 
@@ -337,7 +347,7 @@ function Station({
                   className:
                     'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
                 })}
-                style={{ color }}
+                style={{ color: captionColor(color) }}
               >
                 {sub}
               </div>
