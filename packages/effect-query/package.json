@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
-    "@effect/vitest": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",

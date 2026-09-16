@@ -2273,9 +2273,6 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
-      '@effect/vitest':
-        specifier: 'catalog:'
-        version: 4.0.0-rc.115(effect@4.0.0-rc.115)(vitest@5.0.0)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.102.8(react@19.2.8)
