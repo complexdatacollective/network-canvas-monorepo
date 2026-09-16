@@ -62,6 +62,31 @@ export type StageSectionsStore = Readonly<{
 }>;
 
 /**
+ * What the protocol refuses about the open stage that NO section on screen
+ * answers for, as encoded descriptors a host decodes with
+ * `formatMessageError`.
+ *
+ * The rest of the stage's refusals are anchored at a value some section edits,
+ * and reach a reader through that section. These are the ones that are not: a
+ * key the editor mounts no field for, a rule about a value this interface's
+ * sections do not cover. The save is refused for them exactly as for the
+ * others, so an editor that published only the sections left a researcher
+ * pressing Save and being told nothing.
+ *
+ * Published rather than drawn, for the same reason the sections are: where a
+ * stage's problems are shown belongs to the host, which owns the page. A host
+ * that renders these has said everything a refused save can be about; one that
+ * ignores them is choosing to.
+ *
+ * A store rather than a value, for the reason `StageSectionsStore` is one.
+ */
+export type StageProblemsStore = Readonly<{
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => readonly string[];
+  getServerSnapshot: () => readonly string[];
+}>;
+
+/**
  * What a host needs to render its own action chrome for the editor.
  *
  * The package owns the form and knows whether it can be submitted; the host
@@ -83,6 +108,14 @@ export type StageEditorActionContext = Readonly<{
    * for it — the package draws no list of its own.
    */
   sections: StageSectionsStore;
+  /**
+   * The refusals no section on screen answers for.
+   *
+   * Beside `sections` because it is the other half of one question — what is
+   * wrong with this stage — and a host's issue surfacing needs both to account
+   * for a refused save.
+   */
+  problems: StageProblemsStore;
 }>;
 
 export type StageEditorActions = (
@@ -105,6 +138,11 @@ export type StageEditorProps<T extends StageType = StageType> = {
    * with whatever a host gave it, which may be nothing.
    */
   actions?: StageEditorActions;
+  /**
+   * The host's chrome ABOVE the form — a stage title, typically — passed
+   * straight through to the shell for the same reason `actions` is.
+   */
+  header?: StageEditorActions;
 };
 
 export type StageEditorComponent<T extends StageType = StageType> =

@@ -1,4 +1,5 @@
 import type {
+  StageProblemsStore,
   StageSection,
   StageSectionsStore,
 } from '../stage-editor-contract.ts';
@@ -76,6 +77,26 @@ export function createStageSectionsStore(
     },
     /** Server rendering has no DOM to read sections off, so there are none. */
     getServerSnapshot: () => NO_SECTIONS,
+  };
+}
+
+/**
+ * The stage's own refusals — the ones no section on screen answers for — as an
+ * external store beside the sections.
+ *
+ * The outline alone, with no reader of the form: a problem nothing on the page
+ * edits cannot be one a control is already stating beside itself, so there is
+ * nothing for the form to say about it. Subscribed to the outline directly for
+ * the same reason.
+ */
+export function createStageProblemsStore(
+  outline: SectionOutlineStore,
+): StageProblemsStore {
+  return {
+    subscribe: outline.subscribe,
+    getSnapshot: outline.getUnattributedSnapshot,
+    /** Server rendering has no DOM to attribute against, so nothing is unowned. */
+    getServerSnapshot: () => NO_PROBLEMS,
   };
 }
 

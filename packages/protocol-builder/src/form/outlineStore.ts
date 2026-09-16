@@ -5,7 +5,11 @@ import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
 import type { StageSectionStatus } from '../stage-editor-contract.ts';
-import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
+import {
+  type SchemaProblem,
+  schemaProblemSentence,
+  unattributedProblemSentence,
+} from './schemaProblems.ts';
 
 /**
  * Why a section is not asking for input.
@@ -89,6 +93,7 @@ type SectionRecord = {
 };
 
 const EMPTY_SECTIONS: readonly OutlineSection[] = Object.freeze([]);
+const NO_SENTENCES: readonly string[] = Object.freeze([]);
 const NO_ISSUES: readonly SectionValidationIssue[] = Object.freeze([]);
 const NO_FIELDS: readonly OutlineFieldRegistration[] = Object.freeze([]);
 
@@ -211,6 +216,15 @@ export class SectionOutlineStore {
    */
   private validationIssues: readonly SectionValidationIssue[] = NO_ISSUES;
   private cachedSnapshot: readonly OutlineSection[] = EMPTY_SECTIONS;
+  /**
+   * The refusals the last snapshot could pin on no section, as sentences.
+   *
+   * Kept beside the sections rather than inside one: a problem nothing on
+   * screen edits belongs to the stage, and dropping it was the same as
+   * accepting it — the save is still refused and a host that renders only the
+   * sections had nothing to show for it.
+   */
+  private cachedUnattributed: readonly string[] = NO_SENTENCES;
   private cachedVersion = -1;
   private version = 0;
 
@@ -238,7 +252,18 @@ export class SectionOutlineStore {
     }
     this.cachedVersion = this.version;
     this.cachedFields = fields;
-    const issuesBySection = this.attributeIssues(ordered, fields);
+    const { bySection: issuesBySection, unattributed } = this.attributeIssues(
+      ordered,
+      fields,
+    );
+    // Identity kept when the sentences have not moved: a host reads this with
+    // `useSyncExternalStore`, which re-renders on every change of reference.
+    this.cachedUnattributed = sameSentences(
+      this.cachedUnattributed,
+      unattributed,
+    )
+      ? this.cachedUnattributed
+      : Object.freeze(unattributed);
     this.cachedSnapshot = Object.freeze(
       ordered.map((record, index) =>
         Object.freeze({
@@ -255,6 +280,26 @@ export class SectionOutlineStore {
 
   /** Server rendering has no DOM to order by, so the outline starts empty. */
   getServerSnapshot = (): readonly OutlineSection[] => EMPTY_SECTIONS;
+
+  /**
+   * What the protocol refused about this stage that no section on screen
+   * answers for, as sentences a host can read out.
+   *
+   * Derived by the same pass that files the rest under their sections, so the
+   * two cannot come apart: a refusal is in exactly one of the two lists, and
+   * the question "is this one anybody's?" is asked once.
+   *
+   * Published rather than rendered. Where a stage's problems are SHOWN is the
+   * host's — it already owns the list of sections and the panel of issues —
+   * and a shell that printed these itself would be the editor drawing chrome
+   * beside a host that has its own.
+   */
+  getUnattributedSnapshot = (): readonly string[] => {
+    // Through the snapshot, because that is what derives it: asking for the
+    // sections is what re-reads the page and re-attributes the issues.
+    this.getSnapshot();
+    return this.cachedUnattributed;
+  };
 
   registerSection(
     section: Readonly<{ id: string; title: string }>,
@@ -340,9 +385,12 @@ export class SectionOutlineStore {
    * edits the exact value is preferred over one that merely encloses it, and
    * ties go to whichever section comes first on the page.
    *
-   * An issue no mounted field reaches is left unattributed rather than pinned
-   * somewhere arbitrary: nothing on this page can be pointed at for it, and it
-   * is still reported above the form when the save is refused.
+   * An issue no mounted field reaches is not pinned somewhere arbitrary, and
+   * not dropped either: nothing on this page can be pointed at for it, so it
+   * goes to the stage-level list `getUnattributedSnapshot` publishes, where a
+   * host reads it beside the sections. Dropping it was the same as accepting
+   * it — the save is still refused, and the researcher met a Save button that
+   * did nothing with no message anywhere on screen.
    *
    * The field that claims an issue also decides whether it is a problem at all.
    * A schema that refuses a stage because a value is MISSING is saying what a
@@ -375,9 +423,13 @@ export class SectionOutlineStore {
   private attributeIssues(
     ordered: readonly SectionRecord[],
     fieldsBySection: readonly (readonly OutlineFieldRegistration[])[],
-  ): Map<string, OutlineSectionIssue[]> {
+  ): Readonly<{
+    bySection: Map<string, OutlineSectionIssue[]>;
+    unattributed: string[];
+  }> {
     const bySection = new Map<string, OutlineSectionIssue[]>();
-    if (this.validationIssues.length === 0) return bySection;
+    const unattributed: string[] = [];
+    if (this.validationIssues.length === 0) return { bySection, unattributed };
 
     const registered = ordered.flatMap((record, index) =>
       (fieldsBySection[index] ?? []).flatMap((field) => {
@@ -401,7 +453,13 @@ export class SectionOutlineStore {
         depth = shared;
         owner = field;
       }
-      if (owner === undefined) continue;
+      if (owner === undefined) {
+        // Nothing on this page edits the value, so no section can be pointed
+        // at for it — but the save is refused all the same, and a refusal
+        // nobody is told about is a Save button that does nothing.
+        unattributed.push(unattributedProblemSentence(issue));
+        continue;
+      }
       if (
         issue.absent &&
         owner.field.required &&
@@ -427,7 +485,7 @@ export class SectionOutlineStore {
       if (claimed === undefined) bySection.set(owner.sectionId, [problem]);
       else claimed.push(problem);
     }
-    return bySection;
+    return { bySection, unattributed };
   }
 
   private sameFields(
@@ -517,4 +575,8 @@ export function sectionOutlineStatus(
   }
 
   return incomplete ? 'incomplete' : 'complete';
+}
+
+function sameSentences(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
 }

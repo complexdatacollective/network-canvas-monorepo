@@ -61,6 +61,12 @@ export type StageEditorProps = Readonly<{
    * editor's slot.
    */
   actions?: StageEditorActions;
+  /**
+   * The host's chrome ABOVE the form, handed to whichever editor this
+   * dispatches to — the other slot, and the only route a host's stage title
+   * has into the editor when it reaches one through the dispatcher.
+   */
+  header?: StageEditorActions;
   /** The DOM id of the stage form, when the host wants to name it. */
   formId?: string;
   /**
@@ -84,6 +90,7 @@ export default function StageEditor({
   target,
   registry,
   actions,
+  header,
   formId,
   editId,
   onSaved,
@@ -110,6 +117,7 @@ export default function StageEditor({
         <OpenStageEditor
           {...(registry === undefined ? {} : { registry })}
           {...(actions === undefined ? {} : { actions })}
+          {...(header === undefined ? {} : { header })}
         />
       </StageEditSession>
     </ResourceClientProvider>
@@ -132,9 +140,11 @@ function editKey(target: StageEditTarget): string {
 function OpenStageEditor({
   registry,
   actions,
+  header,
 }: Readonly<{
   registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
   actions?: StageEditorActions;
+  header?: StageEditorActions;
 }>) {
   const { identity } = useStageEdit();
   const editors = useMemo(
@@ -150,6 +160,7 @@ function OpenStageEditor({
       registry={editors}
       stageType={identity.type}
       {...(actions === undefined ? {} : { actions })}
+      {...(header === undefined ? {} : { header })}
     />
   );
 }
@@ -167,10 +178,12 @@ function NamedStageEditor<T extends StageType>({
   registry,
   stageType,
   actions,
+  header,
 }: Readonly<{
   registry: Partial<StageEditorRegistry>;
   stageType: T;
   actions?: StageEditorActions;
+  header?: StageEditorActions;
 }>) {
   const Editor: StageEditorComponent<T> | undefined = registry[stageType];
   if (Editor === undefined) throw new UnregisteredStageTypeError(stageType);
@@ -184,5 +197,6 @@ function NamedStageEditor<T extends StageType>({
     // `undefined` into the shell says the same thing in a way the prop's type
     // does not admit.
     ...(actions === undefined ? {} : { actions }),
+    ...(header === undefined ? {} : { header }),
   });
 }

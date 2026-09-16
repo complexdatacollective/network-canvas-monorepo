@@ -74,22 +74,20 @@ function StageEditorHost({
             <StageEditSession target={{ sectionId: STAGE_SECTION }}>
               <main className="mx-auto max-w-6xl p-6">
                 <StageEditorShell
+                  /*
+                    The stage's title is the host's, drawn from the field the
+                    package publishes — see `testing/HostStageTitle`. It goes
+                    in the header slot, which is above the form element and
+                    inside the form's own provider: the two things a title
+                    needs.
+                  */
+                  header={() => <HostStageTitle />}
                   actions={({ formId, readOnly: locked }) => (
-                    <>
-                      {/*
-                        The stage's title is the host's, drawn from the
-                        bindings the package publishes — see
-                        `testing/HostStageTitle`. It is in the slot because the
-                        slot is where a host's chrome is inside the stage
-                        form's own provider.
-                      */}
-                      <HostStageTitle />
-                      <div className="flex justify-end">
-                        <SubmitButton form={formId} disabled={locked}>
-                          Finished editing
-                        </SubmitButton>
-                      </div>
-                    </>
+                    <div className="flex justify-end">
+                      <SubmitButton form={formId} disabled={locked}>
+                        Finished editing
+                      </SubmitButton>
+                    </div>
                   )}
                 >
                   <BuilderSection
