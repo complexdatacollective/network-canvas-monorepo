@@ -21,9 +21,9 @@ import {
   getHasVariableRoleConflicts,
 } from '~/selectors/issues';
 import { getProtocolName } from '~/selectors/protocol';
-import { cx } from '~/utils/cva';
 
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
+import NavLink from './NavLink';
 import NavShell from './NavShell';
 const chromeMessages = defineMessages({
   untitledProtocol: {
@@ -144,14 +144,11 @@ const ProjectNav = () => {
     const isActive = location === href;
     const warning = tabWarnings[href];
     return (
-      <Link
+      <NavLink
         key={href}
         href={href}
-        aria-current={isActive ? 'page' : undefined}
-        className={cx(
-          'relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors',
-          !isActive && 'hover:text-action',
-        )}
+        active={isActive}
+        render={<Link href={href} />}
       >
         {isActive && (
           <motion.span
@@ -178,7 +175,7 @@ const ProjectNav = () => {
             </span>
           )}
         </span>
-      </Link>
+      </NavLink>
     );
   });
 
@@ -186,21 +183,21 @@ const ProjectNav = () => {
   // it is on, so these tabs would push history entries and change nothing. A
   // control that is visibly live and does nothing is the defect this guard was
   // written to remove, so they are replaced by a statement of the state.
-  const trailing =
-    accessMode === 'read-only' ? (
-      <span className="inline-flex items-center gap-2 text-base leading-none font-semibold">
-        <Eye className="size-4 shrink-0" aria-hidden />
-        {intl.formatMessage(messages.readOnly)}
-      </span>
-    ) : (
-      tabs
-    );
+  const items =
+    accessMode === 'read-only'
+      ? [
+          <span
+            key="read-only"
+            className="inline-flex items-center gap-2 text-base leading-none font-semibold"
+          >
+            <Eye className="size-4 shrink-0" aria-hidden />
+            {intl.formatMessage(messages.readOnly)}
+          </span>,
+        ]
+      : tabs;
 
   return (
-    <NavShell
-      leading={<Breadcrumb items={breadcrumbItems} />}
-      trailing={trailing}
-    />
+    <NavShell leading={<Breadcrumb items={breadcrumbItems} />} items={items} />
   );
 };
 

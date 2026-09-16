@@ -11,8 +11,14 @@ import {
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
+import {
+  getLocaleDirection,
+  siteAppCatalogs,
+  siteAppLocales,
+} from '~/lib/i18n/appLocales';
 import { getStaticLocaleParams } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
@@ -78,7 +84,12 @@ export default async function LocaleLayout({
   const messages = await getMessages({ locale });
 
   return (
-    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={getLocaleDirection(locale)}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script id="entrance-motion">{entranceMotionScript}</script>
       </head>
@@ -91,7 +102,15 @@ export default async function LocaleLayout({
             storageKey="networkcanvas-site"
           >
             <NextIntlClientProvider messages={messages}>
-              {children}
+              <AppI18nProvider
+                locale={locale}
+                locales={siteAppLocales}
+                messages={siteAppCatalogs[locale]}
+                manageDocument={false}
+                timeZone="UTC"
+              >
+                {children}
+              </AppI18nProvider>
             </NextIntlClientProvider>
           </ThemeProvider>
         </PostHogClientProvider>

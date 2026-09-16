@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
+import InterviewerLocaleSwitcher from '~/i18n/InterviewerLocaleSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 const messages = defineMessages({
@@ -30,8 +31,10 @@ const variants = {
   exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
 };
 
-// Pure presentation: the view switcher plus the lock (when a security mode
-// is enrolled) and settings glass-pill buttons.
+// Pure presentation: the view switcher plus the language, lock (when a
+// security mode is enrolled) and settings glass-pill buttons. The language
+// control lives here rather than in the status row so it stays reachable from
+// the data view, which has no status row.
 export function TopActionBarView({
   showLock,
   onLock,
@@ -45,6 +48,14 @@ export function TopActionBarView({
   return (
     <div className="flex items-center gap-3">
       <ViewSwitcher />
+      <motion.span
+        variants={variants}
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.94 }}
+        className="inline-flex"
+      >
+        <InterviewerLocaleSwitcher />
+      </motion.span>
       {showLock && (
         <motion.span
           variants={variants}

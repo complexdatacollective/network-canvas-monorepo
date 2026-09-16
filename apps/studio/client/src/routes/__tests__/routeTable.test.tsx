@@ -294,7 +294,6 @@ const DESTINATIONS: Destination[] = [
 
   // App, platform level
   { path: '/account', url: '/account', heading: 'Profile' },
-  { path: '/account/language', url: '/account/language', heading: 'Language' },
   {
     path: '/account/sign-in-methods',
     url: '/account/sign-in-methods',
@@ -797,7 +796,6 @@ describe('navigation', () => {
     expect(chromeDestinations(router)).toEqual([
       ...HEADER,
       '/account',
-      '/account/language',
       '/account/sign-in-methods',
       '/account/tokens',
     ]);
@@ -819,7 +817,7 @@ describe('navigation', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Account' }));
     await screen.findByRole('menuitem', { name: 'Profile' });
 
-    expect(menuDestinations(router)).toEqual(['/account', '/account/language']);
+    expect(menuDestinations(router)).toEqual(['/account']);
   });
 
   it('reaches only registered routes from the team switcher', async () => {

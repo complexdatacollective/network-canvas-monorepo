@@ -7,7 +7,7 @@ import {
   OnboardingScreen,
   OnboardingScreenView,
 } from '~/components/OnboardingScreen';
-import { StatusRowView } from '~/components/StatusRow';
+import { TopActionBarView } from '~/components/TopActionBar';
 
 import { InterviewerI18nProvider } from '../InterviewerI18nProvider';
 import { LOCALE_PREFERENCE_KEY } from '../preference';
@@ -79,33 +79,45 @@ it('offers the device language before starting setup and retains the choice on r
   ).toBeVisible();
 });
 
-it('exposes a keyboard-operated language picker from the home footer', async () => {
+it('exposes a keyboard-operated language picker from the home header', async () => {
   const user = userEvent.setup();
   render(
     <InterviewerI18nProvider>
-      <StatusRowView
-        protocolCount={1}
-        interviewCount={0}
-        mode="none"
-        durability={null}
-        installed={false}
+      <TopActionBarView
+        showLock={false}
+        onLock={() => {}}
+        onOpenSettings={() => {}}
       />
     </InterviewerI18nProvider>,
   );
-  const opener = screen.getByRole('button', { name: 'App language' });
+  // An icon button: the globe alone, named for the current language.
+  const opener = screen.getByRole('combobox', {
+    name: 'Interface language: Automatic (English)',
+  });
+  expect(opener).not.toHaveTextContent(/English/);
   opener.focus();
   await user.keyboard('{Enter}');
-  const picker = await screen.findByRole('combobox', { name: 'App language' });
-  await user.selectOptions(picker, 'es');
+  const popover = await screen.findByRole('dialog', {
+    name: 'Interface language',
+  });
+  await user.click(within(popover).getByRole('option', { name: /^Español/ }));
   expect(document.documentElement).toHaveAttribute('lang', 'es');
-  expect(picker).toHaveFocus();
-  await user.keyboard('{Escape}');
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Idioma de la aplicación' }),
-    ).toHaveFocus(),
-  );
+  await waitFor(() => expect(popover).not.toBeInTheDocument());
+  const renamed = screen.getByRole('combobox', {
+    name: 'Idioma de la interfaz: Español',
+  });
+  await waitFor(() => expect(renamed).toHaveFocus());
   expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
+  await user.keyboard('{Enter}');
+  const reopened = await screen.findByRole('dialog', {
+    name: 'Idioma de la interfaz',
+  });
+  expect(within(reopened).getAllByRole('status').at(-1)).toHaveTextContent(
+    'Guardado en este dispositivo.',
+  );
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(reopened).not.toBeInTheDocument());
+  expect(renamed).toHaveFocus();
 });
 
 it('changes language inside an open setup step without losing PIN values, refusal, or retry', async () => {

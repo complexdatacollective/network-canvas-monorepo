@@ -18,15 +18,6 @@ export const localeCookie = {
   sameSite: 'lax',
 } as const;
 
-export function getLocaleDefinition(locale: Locale) {
-  const definition = supportedLocales.find(
-    (supportedLocale) => supportedLocale.locale === locale,
-  );
-
-  if (!definition) throw new Error(`Unsupported locale: ${locale}`);
-  return definition;
-}
-
 export function getStaticLocaleParams(): Array<{ locale: Locale }> {
   return locales.map((locale) => ({ locale }));
 }

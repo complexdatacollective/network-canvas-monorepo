@@ -16,9 +16,9 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
-import LanguageChoice from './i18n/LanguageChoice.tsx';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
+import StudioLocaleSwitcher from './i18n/StudioLocaleSwitcher.tsx';
 import {
   fetchDeploymentMode,
   fetchSetupRequirement,
@@ -38,7 +38,6 @@ import {
   setUnauthorizedResponseHandler,
 } from './lib/session.ts';
 import AcceptInvitation from './routes/AcceptInvitation.tsx';
-import AccountLanguage from './routes/AccountLanguage.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
@@ -944,9 +943,9 @@ const noTeamRoute = createRoute({
   //
   // So the sign-out, without which signing in as somebody else means clearing
   // the cookie by hand. And so the language, which is a per-account preference
-  // with nothing to do with teams: `/account/language` is behind the same
-  // redirect, and a researcher waiting on an invitation would otherwise read
-  // this screen in a language they cannot change.
+  // with nothing to do with teams: the header that carries the switcher is
+  // behind the same redirect, and a researcher waiting on an invitation would
+  // otherwise read this screen in a language they cannot change.
   component: screenPlaceholder({
     title: screens.noTeamTitle,
     description: screens.noTeamDescription,
@@ -954,7 +953,7 @@ const noTeamRoute = createRoute({
     action: (
       <>
         <NoTeamSignOut />
-        <LanguageChoice />
+        <StudioLocaleSwitcher />
       </>
     ),
   }),
@@ -1092,18 +1091,6 @@ const accountIndexRoute = createRoute({
     description: screens.accountIndexDescription,
     issue: '#1255',
   }),
-});
-
-/**
- * Built (#1310, 2026-09-04 localization design §5.3): the researcher chooses
- * the language Studio speaks to them here. The destination was already in the
- * account sidebar, the account menu and the everything bar — only the fill
- * changed.
- */
-const accountLanguageRoute = createRoute({
-  getParentRoute: () => accountLayoutRoute,
-  path: '/language',
-  component: AccountLanguage,
 });
 
 const accountSignInMethodsRoute = createRoute({
@@ -1484,7 +1471,6 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     accountLayoutRoute.addChildren([
       accountIndexRoute,
-      accountLanguageRoute,
       accountSignInMethodsRoute,
       accountTokensRoute,
     ]),

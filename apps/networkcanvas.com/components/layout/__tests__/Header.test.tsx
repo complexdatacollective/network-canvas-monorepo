@@ -63,9 +63,7 @@ describe('localized layout navigation', () => {
       expect(link).toHaveAttribute('href', '/get-started');
       expect(link).toHaveAttribute('aria-current', 'page');
     }
-    expect(
-      screen.queryByRole('combobox', { name: 'Idioma' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Abrir navegación del sitio' }),
@@ -126,7 +124,7 @@ describe('localized layout navigation', () => {
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: 'Idioma' }),
+      screen.getByRole('combobox', { name: /^Idioma de la interfaz: .+/ }),
     ).toBeInTheDocument();
   });
 });
