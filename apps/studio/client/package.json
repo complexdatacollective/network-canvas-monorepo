@@ -36,7 +36,6 @@
     "@codaco/vitest-config": "workspace:^",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
-    "@orpc/tanstack-query": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "^1.170.0",
