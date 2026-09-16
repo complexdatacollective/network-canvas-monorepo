@@ -11,7 +11,10 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
-import type { StageSectionsStore } from '@codaco/protocol-builder/stage-editor-contract';
+import type {
+  StageProblemsStore,
+  StageSectionsStore,
+} from '@codaco/protocol-builder/stage-editor-contract';
 import { stageDocument } from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
@@ -25,9 +28,10 @@ import {
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
+import type { RootState } from '~/ducks/store';
 import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { toSubmissionError } from '~/i18n/submissionErrors';
-import { getProtocol } from '~/selectors/protocol';
+import { getProtocol, getStageIndex } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
@@ -38,6 +42,7 @@ import {
   useStageDraft,
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
+import StageTitle from './StageTitle';
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -113,6 +118,8 @@ type StageEditorActionsProps = Readonly<{
   formId: string;
   /** Whether the package opened this stage read-only. */
   readOnly: boolean;
+  /** The refusals no section of the editor answers for. */
+  problems: StageProblemsStore;
   /** The stage being edited, or `null` while one is being created. */
   stageId: string | null;
   /** Where a stage being created will land in the stage order. */
@@ -129,20 +136,17 @@ type StageEditorChromeProps = StageEditorActionsProps &
   }>;
 
 /**
- * Architect's own chrome, rendered in the editor's action slot.
- *
- * The slot is called inside the stage form's provider, which is what lets this
- * read the document as the researcher is typing it: the toolbar's save control
- * belongs to that form, the preview launches what is on screen rather than what
- * was last saved, and the beacon publishes the same reading to the guards
- * outside. Everything it renders is displayed elsewhere — the toolbar into the
- * app's own toolbar host, the section list into the route's left column — so
- * nothing here occupies the place in the page where the slot happens to sit.
+ * Architect's own chrome, rendered in the editor's action slot — which is
+ * inside the stage form's provider, so the toolbar's save belongs to that form
+ * and the preview launches what is on screen. Everything it renders is
+ * displayed elsewhere: the toolbar in the app's toolbar host, the section list
+ * in the route's left column. The stage's TITLE is `StageEditorHeader`.
  */
 export default function StageEditorChrome({
   formId,
   readOnly,
   sections,
+  problems,
   outlineHost,
   stageId,
   insertAtIndex,
@@ -152,19 +156,41 @@ export default function StageEditorChrome({
     <>
       <StageDraftPublisher />
       {outlineHost !== null &&
-        createPortal(
-          <StageSectionOutline sections={sections} host={outlineHost} />,
-          outlineHost,
-        )}
+        createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
+        problems={problems}
         stageId={stageId}
         {...(insertAtIndex === undefined ? {} : { insertAtIndex })}
         onCancel={onCancel}
       />
     </>
   );
+}
+
+/**
+ * Architect's chrome ABOVE the form: the stage's title, told where the stage
+ * sits in the interview.
+ *
+ * The position is read from the protocol this tab holds rather than passed
+ * down from the route: the stage order is protocol content, and a title told
+ * something the protocol disagrees with orients the researcher wrongly. A
+ * stage the order does not contain yet has no position to state.
+ */
+export function StageEditorHeader({
+  stageId,
+}: Readonly<{ stageId: string | null }>) {
+  const protocol = useSelector(getProtocol);
+  const index = useSelector((state: RootState) =>
+    getStageIndex(state, stageId ?? ''),
+  );
+  const position =
+    stageId === null || index === -1 || protocol === null
+      ? undefined
+      : { index: index + 1, total: protocol.stages.length };
+
+  return <StageTitle {...(position === undefined ? {} : { position })} />;
 }
 
 /**
@@ -203,6 +229,7 @@ function StageDraftPublisher() {
 function StageEditorActions({
   formId,
   readOnly,
+  problems,
   stageId,
   insertAtIndex,
   onCancel,
@@ -350,6 +377,7 @@ function StageEditorActions({
       <StageEditorToolbar
         formId={formId}
         readOnly={readOnly}
+        problems={problems}
         onCancel={onCancel}
         onPreview={handlePreview}
         previewLabel={

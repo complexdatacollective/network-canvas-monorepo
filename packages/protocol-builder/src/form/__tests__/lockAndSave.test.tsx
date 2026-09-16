@@ -1,8 +1,13 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
@@ -45,12 +50,13 @@ function DirtyFlag() {
   return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
 }
 
-/** One section owning one value, so a save can be compared key by key. */
-const nameSection = (
-  <BuilderSection title="Stage name">
-    <Field name="label" label="Stage name" component={InputField} />
-  </BuilderSection>
-);
+/**
+ * No sections at all: the one control these tests type into is the stage's
+ * NAME, and the harness's own host chrome draws that from `useStageName` — as
+ * a host does. A section of its own here would register a second field under
+ * the same `label` key.
+ */
+const nameSection = <></>;
 
 describe('a stage somebody else is editing', () => {
   it('opens read-only, and says who has it', async () => {
@@ -432,14 +438,18 @@ describe('a save the protocol did not take', () => {
     await harness.user.clear(field);
     expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
 
-    // The schema will not take a stage with no name, so the save never leaves
-    // the editor — the commonest refusal there is, and the one a researcher
-    // meets while still typing.
+    // A stage has to be called something, so the save never leaves the editor
+    // — the commonest refusal there is, and the one a researcher meets while
+    // still typing. It is stated beside the control that holds the name,
+    // wherever the host has drawn that: the name is no longer a section of the
+    // editor, so nothing else on the page answers for it.
     expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(
-        'Stage name: Stage name has no value, and this stage needs one.',
-      ),
+      within(
+        screen
+          .getByRole('textbox', { name: 'Stage name' })
+          .closest('[data-field-path]') as HTMLElement,
+      ).getByText('This field is required.'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
   });
@@ -519,9 +529,11 @@ describe('a stage the protocol does not hold yet', () => {
       sections: nameSection,
     });
 
+    // One change, the way selecting all and typing arrives: a stage being
+    // CREATED is named for the researcher, so clearing the field first would
+    // be answered with the proposal and typed over the top of it.
     const field = screen.getByRole('textbox', { name: 'Stage name' });
-    await harness.user.clear(field);
-    await harness.user.type(field, 'A new page');
+    fireEvent.change(field, { target: { value: 'A new page' } });
     const written = await harness.submit();
 
     expect(written).not.toBeNull();
@@ -775,9 +787,10 @@ describe('a file imported while a stage is being added', () => {
     );
     expect(await screen.findByText('A roster')).toBeInTheDocument();
 
+    // One change, for the reason above: this stage is being created, so the
+    // name is proposed and a cleared field is answered with that proposal.
     const field = screen.getByRole('textbox', { name: 'Stage name' });
-    await harness.user.clear(field);
-    await harness.user.type(field, 'Never added');
+    fireEvent.change(field, { target: { value: 'Never added' } });
 
     // The staged file leaves the host behind this editor's back, and nothing
     // tells the edit: it creates the stage still naming it.

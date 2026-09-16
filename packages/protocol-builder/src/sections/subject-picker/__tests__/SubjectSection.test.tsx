@@ -186,7 +186,7 @@ describe('the section that says what a stage is about', () => {
 
     // The stage's name and its edge form belong to sections this mount does
     // not include.
-    await harness.roundTrip({ unowned: ['label', 'form'] });
+    await harness.roundTrip({ unowned: ['form'] });
   });
 });
 
@@ -863,7 +863,7 @@ describe('changing a subject the stage is configured for', () => {
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
     // And the stage still saves as the stage it opened as.
-    await harness.roundTrip({ unowned: ['label', 'form'] });
+    await harness.roundTrip({ unowned: ['form'] });
   });
 
   it('throws it away once the researcher has said so', async () => {

@@ -14,6 +14,7 @@ import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
 import { createInMemoryHost } from './host/createInMemoryHost.ts';
+import HostStageTitle from './HostStageTitle.tsx';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
@@ -197,18 +198,25 @@ export function StageEditorStoryHost({
 }
 
 /**
- * The host's own action chrome.
+ * The host's own chrome: the stage's title, and the control that saves it.
  *
- * Disabled for a spectator rather than hidden: a control that disappears
- * cannot show that editing is held elsewhere, and the researcher is left
- * wondering where the save button went.
+ * The title is here because drawing one is the host's job — the package
+ * publishes the name's bindings and no title of its own — and because the slot
+ * is the one place a host's chrome is inside the stage form's provider.
+ *
+ * The save is disabled for a spectator rather than hidden: a control that
+ * disappears cannot show that editing is held elsewhere, and the researcher is
+ * left wondering where the save button went.
  */
 const hostChrome: StageEditorActions = ({ formId, readOnly }) => (
-  <div className="flex justify-end">
-    <SubmitButton form={formId} disabled={readOnly}>
-      Save stage
-    </SubmitButton>
-  </div>
+  <>
+    <HostStageTitle />
+    <div className="flex justify-end">
+      <SubmitButton form={formId} disabled={readOnly}>
+        Save stage
+      </SubmitButton>
+    </div>
+  </>
 );
 
 const stageLabel = (document: SectionDoc): string => {

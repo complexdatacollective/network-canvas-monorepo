@@ -57,9 +57,8 @@ describe('the sections of an anonymisation stage', () => {
   it('reports each decision the stage holds separately', async () => {
     const harness = openEditor();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(6));
-    expect(harness.outline().slice(0, 4)).toEqual([
-      { title: 'Stage name', state: 'Finished' },
+    await waitFor(() => expect(harness.outline()).toHaveLength(5));
+    expect(harness.outline().slice(0, 3)).toEqual([
       { title: 'Task explanation', state: 'Finished' },
       { title: 'Passphrase validation', state: 'Finished' },
       { title: 'Encrypted attributes', state: 'Finished' },

@@ -10,7 +10,6 @@ import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
-  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import {
@@ -46,17 +45,6 @@ describe('the network composer stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Network Composer');
-  });
-
-  /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here because this editor composes the shared
-   * heading itself, so dropping it would leave every other case passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('network-composer-1');
   });
 
   /**
@@ -286,7 +274,7 @@ describe('the network composer stage editor', () => {
     // not finished registering. The connection forms add a ninth; automatic
     // layout is a group inside the node configuration rather than a section of
     // its own, as released Architect had it, so it adds none.
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
 
     const saved = await harness.roundTrip({ unowned: [] });
     // Read back as well as compared, so a round trip that agreed about an

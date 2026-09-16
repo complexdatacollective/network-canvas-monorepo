@@ -77,7 +77,7 @@ describe('the tasks a sociogram sets', () => {
 
     // The stage's name and the type it arranges belong to sections this mount
     // does not include.
-    await harness.roundTrip({ unowned: ['label', 'subject'] });
+    await harness.roundTrip({ unowned: ['subject'] });
   });
 
   it('lists what the stage already holds', async () => {

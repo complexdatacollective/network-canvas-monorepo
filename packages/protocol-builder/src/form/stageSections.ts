@@ -1,4 +1,5 @@
 import type {
+  StageProblemsStore,
   StageSection,
   StageSectionsStore,
 } from '../stage-editor-contract.ts';
@@ -44,7 +45,6 @@ export function createStageSectionsStore(
       return Object.freeze({
         id: section.id,
         title: section.title,
-        chrome: section.chrome,
         status,
         problems:
           status === 'error' ? unexplained(section, reader) : NO_PROBLEMS,
@@ -77,6 +77,22 @@ export function createStageSectionsStore(
     },
     /** Server rendering has no DOM to read sections off, so there are none. */
     getServerSnapshot: () => NO_SECTIONS,
+  };
+}
+
+/**
+ * The stage's own refusals — the ones no section answers for — beside the
+ * sections. The outline alone, with no reader of the form: a problem nothing
+ * on the page edits cannot be one a control is already stating.
+ */
+export function createStageProblemsStore(
+  outline: SectionOutlineStore,
+): StageProblemsStore {
+  return {
+    subscribe: outline.subscribe,
+    getSnapshot: outline.getUnattributedSnapshot,
+    /** Server rendering has no DOM to attribute against, so nothing is unowned. */
+    getServerSnapshot: () => NO_PROBLEMS,
   };
 }
 
@@ -127,7 +143,6 @@ function same(a: readonly StageSection[], b: readonly StageSection[]): boolean {
         other !== undefined &&
         section.id === other.id &&
         section.title === other.title &&
-        section.chrome === other.chrome &&
         section.status === other.status &&
         section.problems.length === other.problems.length &&
         section.problems.every(

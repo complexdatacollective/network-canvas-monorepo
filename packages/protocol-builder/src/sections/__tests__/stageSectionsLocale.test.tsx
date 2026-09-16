@@ -19,7 +19,6 @@ import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import StageNameSection from '../stage-heading/StageNameSection.tsx';
 import SubjectSection from '../subject-picker/SubjectSection.tsx';
 import {
   TestItemEditor,
@@ -69,7 +68,6 @@ describe('the shared stage sections, read in Spanish', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <PageContentSection
             ItemEditor={TestItemEditor}
             ItemPreview={TestItemPreview}
@@ -89,8 +87,8 @@ describe('the shared stage sections, read in Spanish', () => {
     // English would fail here rather than pass halfway. Its state is the
     // harness's own English reading of the store — the words belong to
     // whichever host draws the list, not to this package.
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
-    expect(harness.outline()[1]).toEqual({
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
       title: 'Contenido de la página',
       state: 'Finished',
     });

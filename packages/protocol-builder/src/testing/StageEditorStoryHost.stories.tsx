@@ -5,16 +5,13 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
-import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
-import StageHeadingSection from '../sections/stage-heading/StageHeadingSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
-import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
 import { exactlyText } from './text.ts';
 
@@ -27,9 +24,6 @@ const meta = {
       <ResourceClientProvider>
         <StageEditSession target={target} formId={formId} onSaved={onSaved}>
           <StageEditorShell actions={actions}>
-            <StageHeadingSection
-              documentationUrl={interfaceDocumentationUrl('information')}
-            />
             <PageContentSection
               ItemEditor={ContentBlockEditor}
               ItemPreview={ContentBlockPreview}
@@ -61,26 +55,18 @@ type Story = StoryObj<typeof meta>;
  * the whole reason this host exists rather than a bare session.
  */
 export const Editing: Story = {
-  play: async ({ args, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    // The heading states where the stage sits in the interview, read from the
-    // protocol the host opened — so the line is derived from that same stage
-    // order, and from the stage this story actually opened, rather than
-    // written out here.
+    // The stage's name, drawn by this host's own chrome from the bindings the
+    // package publishes — where the stage sits in the interview, the picture
+    // of the interface and the badge naming it are a HOST's to draw, and this
+    // one draws none of them.
     //
-    // Awaited: the stage order is another section, and the host answers for it
-    // over a promise like any other. The editor draws itself from the stage it
-    // holds and fills the position in when that answer lands.
-    const order = fixtureStageIds();
-    await expect(
-      await canvas.findByText(
-        `Stage ${order.indexOf(args.stageId) + 1} of ${order.length}`,
-      ),
-    ).toBeInTheDocument();
-
-    const name = canvas.getByRole('textbox', { name: 'Stage name' });
+    // Awaited: the host answers the acquire over a promise, so the editor is
+    // drawn a turn after the story mounts.
+    const name = await canvas.findByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);
     await userEvent.type(name, 'Welcome screen');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));

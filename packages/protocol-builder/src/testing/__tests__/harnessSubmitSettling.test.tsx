@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import type { StageEditorActionContext } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 
@@ -36,7 +35,7 @@ describe('a submit through a host’s own save control', () => {
   it('answers with the refusal when the stage cannot be saved', async () => {
     const harness = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <></>,
       submitLabel: SAVE,
       actions: nativeSaveButton,
     });
@@ -56,7 +55,7 @@ describe('a submit through a host’s own save control', () => {
   it('answers with the request when the stage saves', async () => {
     const harness = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <></>,
       submitLabel: SAVE,
       actions: nativeSaveButton,
     });
@@ -74,7 +73,7 @@ describe('a submit through a host’s own save control', () => {
   it('answers the same way through the harness’s own control', async () => {
     const harness = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     const name = await harness.findByRole('textbox', { name: 'Stage name' });

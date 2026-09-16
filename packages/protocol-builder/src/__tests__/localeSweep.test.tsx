@@ -20,7 +20,6 @@ import NetworkFilterSection from '../sections/network-filter/NetworkFilterSectio
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
-import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
 import { attributeField } from '../testing/attributePicker.ts';
 import {
@@ -101,7 +100,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <IntroductionSection />
           <SubjectSection entity="node" />
           <PromptsSection
@@ -126,7 +124,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <FormFieldsSection subject="node" hasTitle />
         </>
       ),
@@ -142,7 +139,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <PageContentSection
             ItemEditor={TestItemEditor}
             ItemPreview={TestItemPreview}

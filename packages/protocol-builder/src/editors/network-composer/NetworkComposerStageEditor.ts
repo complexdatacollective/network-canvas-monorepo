@@ -1,7 +1,6 @@
 import { background } from '../../sections/background/background.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { composerConnections } from './sections/composerConnections.tsx';
@@ -26,7 +25,6 @@ import { composerNodes } from './sections/composerNodes.tsx';
  * the attributes those nodes carry, which is where Architect put it.
  */
 export const networkComposerStageEditor = defineStageEditor('NetworkComposer', [
-  stageHeading({ documentation: 'network-composer' }),
   subjectPicker({ entity: 'node' }),
   composerNodes(),
   composerConnections(),

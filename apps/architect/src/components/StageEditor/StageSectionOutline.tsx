@@ -1,6 +1,5 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
-import type { RefObject } from 'react';
-import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -13,8 +12,6 @@ import type {
   StageSectionsStore,
   StageSectionStatus,
 } from '@codaco/protocol-builder/stage-editor-contract';
-
-import { STAGE_FORM_ID } from './stageFormId';
 
 /**
  * What each state of a section is CALLED, keyed by the state itself so the
@@ -122,12 +119,7 @@ const STATUS_PRESENTATION: Record<
  */
 export default function StageSectionOutline({
   sections,
-  host,
-}: Readonly<{
-  sections: StageSectionsStore;
-  /** The column this list is drawn in, and measures its offset against. */
-  host: HTMLElement | null;
-}>) {
+}: Readonly<{ sections: StageSectionsStore }>) {
   const intl = useAppIntl();
   const entries = useSyncExternalStore(
     sections.subscribe,
@@ -135,16 +127,10 @@ export default function StageSectionOutline({
     sections.getServerSnapshot,
   );
 
-  // The first section the researcher configures: the stage's name and
-  // interface are a section too, and are the heading this list starts below.
-  const firstCard = entries.find((entry) => entry.chrome === 'card');
-  const outline = usePublishedOutlineOffset(host, firstCard?.id);
-
   if (entries.length === 0) return null;
 
   return (
     <nav
-      ref={outline}
       aria-label={intl.formatMessage(messages.landmark)}
       // `min-w-0`: a grid item's own minimum is its content, so without it the
       // strip of sections below the two-column breakpoint makes this column as
@@ -156,9 +142,14 @@ export default function StageSectionOutline({
       // so a list stuck at `top-0` loses its first rows behind it. `NavShell`
       // measures the bar and publishes the height.
       //
-      // Before it is stuck it starts level with the first card of the form
-      // rather than with the top of the column, by the offset measured below.
-      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:mt-(--architect-stage-outline-offset)"
+      // The list starts at the top of ITS column — level with the editor's
+      // column, not with the editor's first section card. The editor draws its
+      // own title above those cards, and a read-only alert and a refused
+      // save's errors in the states that have them, so the first card sits
+      // lower than the first row here. Deliberate: aligning them means
+      // measuring a block whose height moves with a name that wraps, a badge
+      // row that wraps and an error list that appears on a failed save.
+      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height)"
     >
       {/*
         `contents` below the two-column breakpoint, so the row of chips above
@@ -184,65 +175,6 @@ export default function StageSectionOutline({
       </Surface>
     </nav>
   );
-}
-
-/**
- * How far below the top of its column the section list starts. Measured rather
- * than declared: the heading it clears wraps with the window and the type
- * scale, and alerts appear above it.
- */
-export const OUTLINE_OFFSET_VARIABLE = '--architect-stage-outline-offset';
-
-/**
- * Publishes that offset: the distance between the top of this column and the
- * top of the first card in the editor beside it, so whatever the editor draws
- * above that card is counted without being added up.
- *
- * Published only when it differs from the reading already there, so the layout
- * it triggers cannot feed back into another write. A reading of zero or less
- * is never published: a column measured before it is laid out would otherwise
- * put the list back level with the stage's heading.
- */
-function usePublishedOutlineOffset(
-  host: HTMLElement | null,
-  firstCardId: string | undefined,
-): RefObject<HTMLElement | null> {
-  const outline = useRef<HTMLElement>(null);
-
-  useLayoutEffect(() => {
-    const list = outline.current;
-    if (list === null || host === null || firstCardId === undefined) return;
-
-    const publish = () => {
-      // Looked up on every reading: a card the editor has re-rendered is a
-      // stale element measured where it no longer is.
-      const card = document.getElementById(firstCardId);
-      if (card === null) return;
-      const offset =
-        card.getBoundingClientRect().top - host.getBoundingClientRect().top;
-      if (offset <= 0) return;
-      // Kept to the hundredth of a pixel: the heading above the first card is
-      // as tall as its text, and rounding leaves a hairline where the two tops
-      // meet.
-      const next = `${Math.round(offset * 100) / 100}px`;
-      if (list.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE) === next) return;
-      list.style.setProperty(OUTLINE_OFFSET_VARIABLE, next);
-    };
-
-    publish();
-
-    const observer = new ResizeObserver(publish);
-    observer.observe(host);
-    const form = document.getElementById(STAGE_FORM_ID);
-    if (form !== null) observer.observe(form);
-
-    return () => {
-      observer.disconnect();
-      list.style.removeProperty(OUTLINE_OFFSET_VARIABLE);
-    };
-  }, [firstCardId, host]);
-
-  return outline;
 }
 
 function StageSectionOutlineItem({

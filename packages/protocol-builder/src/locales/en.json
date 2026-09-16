@@ -5499,6 +5499,10 @@
     "defaultMessage": "{fieldLabel} holds less than this stage needs.",
     "description": "Shown beside one section of a stage editor when a control holds too few items, too little text, or a number below the limit. fieldLabel is the control’s own name and starts the sentence."
   },
+  "protocolBuilder.schemaProblem.unnamedSetting": {
+    "defaultMessage": "A setting this editor does not show",
+    "description": "Stands in for the name of a control in the sentences above, when the thing the protocol refused about the stage is not on screen at all — no part of the editor edits it. Reads as, for example, “A setting this editor does not show has no value, and this stage needs one.” A stage is one step of an interview."
+  },
   "protocolBuilder.schemaProblem.unrecognised": {
     "defaultMessage": "{fieldLabel} holds something this stage cannot use.",
     "description": "Last resort, shown beside one section of a stage editor when a refusal arrives from a validator this editor has no words for. fieldLabel is the control’s own name and starts the sentence."
@@ -5867,21 +5871,13 @@
     "defaultMessage": "The files you imported could not be saved with this stage, so nothing was saved and your changes are still here. Try saving again.",
     "description": "Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
-  "protocolBuilder.stageName.documentation": {
-    "defaultMessage": "Documentation",
-    "description": "Link to the documentation for this type of interview interface."
-  },
   "protocolBuilder.stageName.name": {
     "defaultMessage": "Stage name",
-    "description": "Section heading and accessible field label for the researcher-authored stage name."
+    "description": "Accessible name of the field holding the researcher-authored name of the stage being edited. A stage is one step of an interview."
   },
   "protocolBuilder.stageName.placeholder": {
     "defaultMessage": "Enter stage name...",
     "description": "Placeholder for the researcher-authored stage name field."
-  },
-  "protocolBuilder.stageName.position": {
-    "defaultMessage": "Stage {index, number} of {total, number}",
-    "description": "The current stage position in the interview. index is one-based."
   },
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",

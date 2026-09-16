@@ -578,7 +578,7 @@ describe('the pedigree’s own configuration', () => {
     const harness = renderStageEditor(openFixture());
 
     // The stage's name belongs to a section this mount does not include.
-    await harness.roundTrip({ unowned: ['label'] });
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('saves an edit to every key it owns', async () => {
@@ -642,7 +642,7 @@ describe('the pedigree’s own configuration', () => {
     });
 
     const request = await harness.roundTrip({
-      unowned: ['label', 'introScreen'],
+      unowned: ['introScreen'],
     });
     expect(request.stageDocument.introScreen).toEqual({
       items: [
@@ -1163,7 +1163,7 @@ describe('the pedigree’s nomination prompts', () => {
     const harness = renderStageEditor(openWithNominationPrompts());
 
     // The stage's name belongs to a section this mount does not include.
-    await harness.roundTrip({ unowned: ['label'] });
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('edits a prompt through its own dialog', async () => {

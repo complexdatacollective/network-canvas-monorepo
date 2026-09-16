@@ -21,22 +21,19 @@ import {
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession, type StageEditTarget } from '../../stageEdit.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import HostStageTitle from '../../testing/HostStageTitle.tsx';
 import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
-import type { AutoStageNamePanel } from '../useAutoStageName.ts';
+import type { StageLabelPanel } from '../proposeStageLabel.ts';
+import { type StageName, useStageName } from '../useStageName.ts';
+import { useStageNameField } from '../useStageNameField.ts';
 
 const EDITED_STAGE_ID = 'stage-edited';
 const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
-
-type AutoNameProps = Readonly<{
-  propose?: boolean;
-  panels?: readonly AutoStageNamePanel[];
-}>;
 
 const personNode = (name: string): SectionDoc => ({
   name,
@@ -79,29 +76,32 @@ type EditorOptions = Readonly<{
   /**
    * Opens the stage as one the interview already contains, rather than one
    * being created. Only a stage being created is named automatically, and that
-   * is what the open edit says — nothing is passed to the section.
+   * is the open edit's own answer — the hook is told nothing.
    */
   existing?: boolean;
   /**
-   * The material only the editor can supply, and the override for whether to
-   * propose at all. Whether to propose is otherwise read from the open edit, so
-   * this stays out unless the stage has panels.
+   * Draws no name control at all, and hands the hook's own answer back
+   * instead. What a host with a rename dialog and no stage title does.
    */
-  autoName?: AutoNameProps;
+  headless?: boolean;
 }>;
 
 function Editor({
   sections,
   target,
-  autoName,
+  headless,
   onStore,
+  onLiveDraft,
   onHost,
+  onName,
 }: {
   sections: SectionMap;
   target: StageEditTarget;
-  autoName: AutoNameProps | undefined;
+  headless: boolean;
   onStore: (storeApi: StageFormStoreApi) => void;
+  onLiveDraft: (read: () => SectionDoc) => void;
   onHost: (host: ReturnType<typeof createInMemoryHost>) => void;
+  onName: (name: StageName) => void;
 }) {
   const [host] = useState(() => {
     const built = createInMemoryHost({
@@ -118,11 +118,8 @@ function Editor({
         <ResourceClientProvider>
           <StageEditSession target={target} formId="stage-form">
             <StageEditorShell>
-              <StageNameSection
-                position={{ index: 1, total: 2 }}
-                {...(autoName === undefined ? {} : { autoName })}
-              />
-              <Probe onStore={onStore} />
+              {headless ? <HeadlessName onName={onName} /> : <HostStageTitle />}
+              <Probe onStore={onStore} onLiveDraft={onLiveDraft} />
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -131,18 +128,45 @@ function Editor({
   );
 }
 
-function Probe({ onStore }: { onStore: (api: StageFormStoreApi) => void }) {
-  onStore(useStageEditorForm().storeApi);
+function Probe({
+  onStore,
+  onLiveDraft,
+}: {
+  onStore: (api: StageFormStoreApi) => void;
+  onLiveDraft: (read: () => SectionDoc) => void;
+}) {
+  const { storeApi, liveDraft } = useStageEditorForm();
+  onStore(storeApi);
+  onLiveDraft(liveDraft);
+  return null;
+}
+
+/**
+ * The name with nothing DRAWN from it: no control, no label, no refusal.
+ *
+ * Two hooks, because they answer two different questions. `useStageName` is
+ * the value and the writes, and may be called anywhere and as often as a host
+ * likes. `useStageNameField` is the registration — the one thing that puts the
+ * name among the paths a submit is entitled to write — and has exactly one
+ * caller. A host with a rename dialog and no title needs both: without the
+ * second, the rename is written into a form the save then ignores, and the
+ * researcher watches it disappear on save.
+ */
+function HeadlessName({ onName }: { onName: (name: StageName) => void }) {
+  onName(useStageName());
+  useStageNameField();
   return null;
 }
 
 /**
  * A stage editor driven the way a host drives one: the package's own host
- * contract served from memory, the real shell, and the real name section.
- * Nothing about the codebook, the asset manifest or the stage order is mocked —
- * every one of them is read from the protocol the host serves.
+ * contract served from memory, the real shell, and the title a host draws from
+ * the hook's own bindings. Nothing about the codebook, the asset manifest or
+ * the stage order is mocked — every one of them is read from the protocol the
+ * host serves.
  */
 function renderEditor(options: EditorOptions = {}) {
+  const headless = options.headless === true;
   const type = options.type ?? 'NameGenerator';
   const fields = options.fields ?? { label: '' };
   const existing = options.existing === true;
@@ -158,27 +182,47 @@ function renderEditor(options: EditorOptions = {}) {
 
   let storeApi: StageFormStoreApi | null = null;
   let host: ReturnType<typeof createInMemoryHost> | null = null;
+  let stageName: StageName | null = null;
+  let readLiveDraft: (() => SectionDoc) | null = null;
 
   render(
     <DialogProvider>
       <Editor
         sections={sections}
         target={target}
-        autoName={options.autoName}
+        headless={headless}
         onStore={(api) => {
           storeApi = api;
         }}
+        onLiveDraft={(read) => {
+          readLiveDraft = read;
+        }}
         onHost={(built) => {
           host = built;
+        }}
+        onName={(name) => {
+          stageName = name;
         }}
       />
     </DialogProvider>,
   );
 
-  const input = screen.getByRole('textbox', { name: 'Stage name' });
+  const input = headless
+    ? undefined
+    : screen.getByRole('textbox', { name: 'Stage name' });
 
   return {
-    input,
+    /** The name control. Absent — and asked for by mistake — when headless. */
+    get input(): HTMLElement {
+      if (input === undefined) {
+        throw new Error('This editor draws no name control.');
+      }
+      return input;
+    },
+    /** What the hook last answered. Read fresh, never held across an act. */
+    name: () => stageName as StageName | null,
+    /** The document a submit would write, as the form holds it right now. */
+    liveDraft: () => (readLiveDraft as (() => SectionDoc) | null)?.(),
     setValue: (name: string, value: FieldValue) =>
       act(() => {
         storeApi?.getState().setFieldValue(name, value);
@@ -203,7 +247,7 @@ const settle = () =>
       }),
   );
 
-describe('useAutoStageName', () => {
+describe('useStageName', () => {
   it('proposes a name from the stage type and refines it from the subject', async () => {
     const { input, setValue } = renderEditor();
 
@@ -295,9 +339,9 @@ describe('useAutoStageName', () => {
     );
   });
 
-  it('qualifies a name generator from the panels its editor supplies', async () => {
+  it('qualifies a name generator from the panels beside its question', async () => {
     const { input } = renderEditor({
-      autoName: { panels: [{ dataSource: 'roster-asset' }] },
+      fields: { label: '', panels: [{ dataSource: 'roster-asset' }] },
     });
 
     await waitFor(() =>
@@ -317,32 +361,6 @@ describe('useAutoStageName', () => {
     await waitFor(() =>
       expect(input).toHaveValue('Participant Form Name Generator'),
     );
-  });
-
-  it('de-duplicates against the other stages, but not against itself', async () => {
-    const { input } = renderEditor({
-      type: 'Information',
-      existing: true,
-      // The stage being edited is in the protocol, holding the very name it is
-      // about to be proposed again. Counting it would suffix the proposal
-      // against the stage's own last accepted name.
-      fields: { label: 'Information #2', title: 'Information #2', items: [] },
-      autoName: { propose: true },
-      sections: protocolSections({
-        [sectionId({ kind: 'stageOrder' })]: {
-          stages: ['stage-other', EDITED_STAGE_ID],
-        },
-        [sectionId({ kind: 'stage', stageId: 'stage-other' })]:
-          informationStage('stage-other', 'Information'),
-      }),
-    });
-
-    // The researcher clears the name and tabs away, which is what asks for the
-    // proposal again.
-    fireEvent.change(input, { target: { value: '' } });
-    fireEvent.blur(input);
-
-    await waitFor(() => expect(input).toHaveValue('Information #2'));
   });
 
   it('never overwrites a name the researcher typed', async () => {
@@ -389,30 +407,31 @@ describe('useAutoStageName', () => {
   });
 
   /**
-   * The open edit's answer is a default, not a rule. An editor with a reason to
-   * disagree says so, and is obeyed in both directions.
+   * A proposal is offered for every stage, named or not — only WRITING it
+   * unasked is reserved for a stage being created. A host with a "suggest a
+   * name" control takes the same proposal by hand, on a stage that already
+   * exists.
    */
-  it('proposes nothing for a stage being created when the editor says not to', async () => {
-    const { input, setValue } = renderEditor({
+  it('names an existing stage when a host accepts the proposal', async () => {
+    const { name, liveDraft } = renderEditor({
       type: 'Sociogram',
-      fields: { label: '' },
-      autoName: { propose: false },
-    });
-
-    setValue('subject', { entity: 'node', type: 'person' });
-    await settle();
-    expect(input).toHaveValue('');
-  });
-
-  it('proposes for an existing stage when the editor asks it to', async () => {
-    const { input } = renderEditor({
-      type: 'Sociogram',
-      fields: { label: '' },
+      fields: { label: '', subject: { entity: 'node', type: 'person' } },
       existing: true,
-      autoName: { propose: true },
+      headless: true,
     });
 
-    await waitFor(() => expect(input).toHaveValue('Sociogram'));
+    await settle();
+    expect(name()?.value).toBe('');
+    // Offered even though nothing will write it unasked, which is the whole
+    // of what a "suggest a name" control needs.
+    expect(name()?.proposal).toBe('Person Sociogram');
+
+    act(() => {
+      name()?.acceptProposal();
+    });
+
+    await waitFor(() => expect(name()?.value).toBe('Person Sociogram'));
+    expect(liveDraft()?.label).toBe('Person Sociogram');
   });
 
   it('leaves an existing stage with an empty name empty', async () => {
@@ -431,6 +450,39 @@ describe('useAutoStageName', () => {
     await settle();
     expect(input).toHaveValue('');
   });
+
+  /**
+   * A host that DRAWS no name control still renames the stage, as long as it
+   * has bound the field.
+   *
+   * `useStageNameField` is what registers it, and registration is what makes
+   * the name one of the paths a submit is entitled to write — a rename written
+   * at an unregistered path round-trips untouched, like every other key the
+   * editor never rendered.
+   */
+  it('renames a stage from a host that draws no control', async () => {
+    const { name, liveDraft } = renderEditor({
+      type: 'Sociogram',
+      fields: { label: 'Hand named' },
+      existing: true,
+      headless: true,
+    });
+
+    // Settled rather than merely rendered: until the host has answered the
+    // acquire the editor may not write at all, and a rename made in that
+    // window is refused like any other — which is the same answer a
+    // structural write gets, and the reason it is worth trying again in a
+    // moment.
+    await settle();
+    expect(name()?.value).toBe('Hand named');
+
+    act(() => {
+      name()?.setValue('Renamed from a menu');
+    });
+
+    expect(liveDraft()?.label).toBe('Renamed from a menu');
+    expect(name()?.value).toBe('Renamed from a menu');
+  });
 });
 
 /**
@@ -439,12 +491,12 @@ describe('useAutoStageName', () => {
  * fails if the move changed what any of the parts contribute to a name — not
  * only if one part in isolation changed.
  */
-describe('useAutoStageName parity with Architect', () => {
+describe('useStageName parity with Architect', () => {
   const cases: readonly Readonly<{
     name: string;
     type: StageType;
     fields: SectionDoc;
-    panels?: readonly AutoStageNamePanel[];
+    panels?: readonly StageLabelPanel[];
     expected: string;
   }>[] = [
     {
@@ -490,10 +542,10 @@ describe('useAutoStageName parity with Architect', () => {
   it.each(cases)('derives the same name for $name', async (testCase) => {
     const { input } = renderEditor({
       type: testCase.type,
-      fields: testCase.fields,
-      ...(testCase.panels === undefined
-        ? {}
-        : { autoName: { panels: testCase.panels } }),
+      fields: {
+        ...testCase.fields,
+        ...(testCase.panels === undefined ? {} : { panels: testCase.panels }),
+      },
     });
 
     await waitFor(() => expect(input).toHaveValue(testCase.expected));

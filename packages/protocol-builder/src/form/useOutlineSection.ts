@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
 
-import type { StageSectionChrome } from '../stage-editor-contract.ts';
 import type { SectionAvailability } from './outlineStore.ts';
 import { useStageEditorForm } from './stageEditorContext.ts';
 
@@ -8,17 +7,13 @@ import { useStageEditorForm } from './stageEditorContext.ts';
  * Registers one section with the editor's outline and hands back the id the
  * section must put on its own element.
  *
- * Separate from the section component because not every section looks like
- * one: the stage's name is rendered as the page's own heading rather than as
- * a card, and it still belongs in the outline. What makes something a section
- * is that it is a named part of the stage a researcher can navigate to, not
- * the chrome it happens to wear.
+ * Separate from the section component because what makes something a section
+ * is that it is a named part of the stage a researcher can navigate to, rather
+ * than the markup it happens to be drawn in.
  */
 export function useOutlineSection(
   title: string,
   availability: SectionAvailability = 'available',
-  /** What this section wears on the page; read once, at registration. */
-  chrome: StageSectionChrome = 'card',
 ): Readonly<{ sectionId: string }> {
   const { outline } = useStageEditorForm();
   const sectionId = useId();
@@ -29,12 +24,10 @@ export function useOutlineSection(
   // unregistering here would empty the section's field list and leave the
   // renamed section reporting itself as finished.
   const initialTitle = useRef(title);
-  const initialChrome = useRef(chrome);
   useEffect(() => {
     const unregister = outline.registerSection({
       id: sectionId,
       title: initialTitle.current,
-      chrome: initialChrome.current,
     });
     // Looked up rather than held by a ref: the element belongs to whichever
     // component renders the section's chrome. The outline needs it only to

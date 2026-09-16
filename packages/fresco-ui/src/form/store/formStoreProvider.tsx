@@ -1,6 +1,13 @@
 'use client';
 
-import { type Context, createContext, type ReactNode, useRef } from 'react';
+import {
+  type Context,
+  createContext,
+  type ReactNode,
+  useContext,
+  useId,
+  useRef,
+} from 'react';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -13,6 +20,20 @@ export { selectIsFormDirty } from './formStore';
 
 export const FormStoreContext: Context<FormStoreApi | undefined> =
   createContext<FormStoreApi | undefined>(undefined);
+
+/**
+ * Which form a field belongs to. A form is React state, not a `<form>`
+ * element, so containment cannot answer it: a host may draw a field outside
+ * the element, and a dialog's form nests inside the page's. Every field stamps
+ * this on its container as `data-field-form`.
+ */
+const FormFieldScopeContext: Context<string | undefined> = createContext<
+  string | undefined
+>(undefined);
+
+export function useFormFieldScope(): string | undefined {
+  return useContext(FormFieldScopeContext);
+}
 
 type FormStoreProviderProps = {
   /**
@@ -51,9 +72,13 @@ const FormStoreProvider = ({
     getInitialValues: () => initialValuesRef.current,
   });
 
+  const fieldScope = useId();
+
   return (
     <FormStoreContext.Provider value={storeRef.current}>
-      {children}
+      <FormFieldScopeContext.Provider value={fieldScope}>
+        {children}
+      </FormFieldScopeContext.Provider>
     </FormStoreContext.Provider>
   );
 };

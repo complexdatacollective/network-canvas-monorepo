@@ -19,13 +19,6 @@ export type StageSectionStatus =
   | 'unavailable';
 
 /**
- * What a section wears on the page: a titled block of the form, or the page's
- * own heading, which is what the stage's name and interface are drawn as. A
- * host laying the editor out has no other way to tell the two apart.
- */
-export type StageSectionChrome = 'heading' | 'card';
-
-/**
  * What one section of the stage being edited is, as a host reads it.
  *
  * The package owns the form, so it is the only thing that can say which
@@ -38,8 +31,6 @@ export type StageSection = Readonly<{
   /** The DOM id of the section's own element, for `focusStageSection`. */
   id: string;
   title: string;
-  /** Whether the section is drawn as a card or as the stage's own heading. */
-  chrome: StageSectionChrome;
   status: StageSectionStatus;
   /**
    * What the protocol refused about this section that no field of it is
@@ -71,6 +62,20 @@ export type StageSectionsStore = Readonly<{
 }>;
 
 /**
+ * What the protocol refuses about the open stage that NO section on screen
+ * answers for, as encoded descriptors a host decodes with
+ * `formatMessageError`: a key the editor mounts no field for, a rule about a
+ * value its sections do not cover. The save is refused for these exactly as
+ * for the rest, so a host that renders only the sections leaves a researcher
+ * pressing Save and being told nothing.
+ */
+export type StageProblemsStore = Readonly<{
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => readonly string[];
+  getServerSnapshot: () => readonly string[];
+}>;
+
+/**
  * What a host needs to render its own action chrome for the editor.
  *
  * The package owns the form and knows whether it can be submitted; the host
@@ -92,6 +97,8 @@ export type StageEditorActionContext = Readonly<{
    * for it — the package draws no list of its own.
    */
   sections: StageSectionsStore;
+  /** The refusals no section answers for: the other half of `sections`. */
+  problems: StageProblemsStore;
 }>;
 
 export type StageEditorActions = (
@@ -114,6 +121,8 @@ export type StageEditorProps<T extends StageType = StageType> = {
    * with whatever a host gave it, which may be nothing.
    */
   actions?: StageEditorActions;
+  /** The host's chrome ABOVE the form — a stage title, typically. */
+  header?: StageEditorActions;
 };
 
 export type StageEditorComponent<T extends StageType = StageType> =
