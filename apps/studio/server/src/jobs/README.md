@@ -303,7 +303,7 @@ the one request that made it, which is what the development lane needs, where
 `pnpm dev` can finish applying the schema long after the process booted.
 
 The two paths cannot drift, because there are not two statements: both render
-the row through `insertJobStatement` (`jobs.ts`), which resolves the queue's
+the row through `insertJobStatement` (`insert.ts`), which resolves the queue's
 declaration itself and freezes the policy, the retry ladder and the lease onto
 the row. They differ in one thing only — where "now" comes from. The Effect
 path reads `JobClock`, because every instant the worker compares against
