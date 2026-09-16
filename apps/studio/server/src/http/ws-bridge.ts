@@ -1,19 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Layer } from 'effect';
 import {
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
 } from 'effect/unstable/http';
 
-import {
-  CLIENT_SESSION_PARAM,
-  readClientSessionId,
-} from '@codaco/studio-contract/client-session';
+import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
 import type { WsBridgeDeps } from '../app.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
+import { ClientSessionQuery } from './middleware/client-session-query.ts';
 import { RequestId } from './middleware/request-id.ts';
 
 /**
@@ -65,7 +63,6 @@ export const WsBridge = (deps: WsBridgeDeps) =>
         Effect.gen(function* () {
           const request = yield* HttpServerRequest.HttpServerRequest;
           const requestId = yield* RequestId;
-          const searchParams = yield* HttpServerRequest.ParsedSearchParams;
 
           // The guards are still the Hono middlewares they have always been, so
           // they are run over the handshake as a web request and their refusal is
@@ -86,15 +83,17 @@ export const WsBridge = (deps: WsBridgeDeps) =>
 
           // The socket is the presence identity, so it needs an id of its own.
           const connectionId = randomUUID();
-          // The lock owner is the tab, which outlives its sockets. A browser
-          // cannot put a header on a WebSocket handshake, so the tab names itself
-          // on the upgrade URL; a client that names nothing falls back to the
-          // connection and is its own owner for as long as it is connected. A
-          // parameter given twice arrives as an array, which names no tab.
-          const named = searchParams[CLIENT_SESSION_PARAM];
-          const clientSessionId = readClientSessionId(
-            typeof named === 'string' ? named : undefined,
-          );
+          // The lock owner is the tab, which outlives its sockets: a client
+          // that names nothing falls back to the connection and is its own
+          // owner for as long as it is connected.
+          //
+          // Read from the header, not from the query string. A browser cannot
+          // put a header on a WebSocket handshake, so the tab names itself on
+          // the upgrade URL — and the route middleware below rewrites it into
+          // the header before this runs, so both transports carry the id the
+          // same way by the time anything reads it. The rewrite is also what
+          // keeps "a parameter given twice names no tab" true here.
+          const clientSessionId = request.headers[CLIENT_SESSION_HEADER];
           const context = {
             principal,
             requestId,
@@ -164,4 +163,9 @@ export const WsBridge = (deps: WsBridgeDeps) =>
         }),
       );
     }),
+  ).pipe(
+    // Provided rather than registered globally: moving the tab's id off the
+    // query string is the `/ws` upgrade's own problem — `/rpc` is a fetch
+    // request and carries the header itself.
+    Layer.provide(ClientSessionQuery.layer),
   );
