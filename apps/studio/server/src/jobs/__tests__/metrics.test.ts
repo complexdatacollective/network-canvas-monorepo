@@ -1,15 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Duration, Effect, Layer, Metric } from 'effect';
+import { Duration, Effect, Metric } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
-import { Database, withTransaction } from '../database.ts';
-import { Jobs } from '../jobs.ts';
 import {
   jobQueueDepth,
   JobQueueMetrics,
@@ -18,13 +16,14 @@ import {
 } from '../metrics.ts';
 import { resolvedQueues } from '../queues.ts';
 import { JOB_STATES } from '../schema.ts';
-import { JobWorker, type JobOutcome } from '../worker.ts';
+import type { JobOutcome } from '../worker.ts';
 import {
-  asApp,
-  asOwner,
+  clearQueue,
+  drainWith,
+  enqueueDelivery,
+  layerJobs,
   layerQueueHarness,
   layerWorker,
-  QueueHarness,
 } from './support.ts';
 
 // What an operator sees of the queue: a gauge per queue and state that
@@ -35,28 +34,11 @@ const db = await reachableDb();
 
 describe.skipIf(!db)('the queue’s metrics', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
-    const clear = Effect.gen(function* () {
-      const { schema } = yield* QueueHarness;
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.jobs`),
-        ),
-      );
-    });
+    const clear = clearQueue;
+    const jobsLayer = layerJobs;
 
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
-
-    const enqueueDelivery = Effect.flatMap(Jobs, (jobs) =>
-      asApp(
-        withTransaction(
-          jobs.enqueue('invitation-delivery', { deliveryId: randomUUID() }),
-        ),
-      ),
-    );
+    /** A delivery of its own each time, so no two rows carry one id. */
+    const enqueueOne = Effect.suspend(() => enqueueDelivery(randomUUID()));
 
     /** The gauge series for one queue and state, as a plain number. */
     const depthOf = (queue: string, state: string) =>
@@ -79,20 +61,16 @@ describe.skipIf(!db)('the queue’s metrics', () => {
       withRegistry(
         Effect.gen(function* () {
           yield* clear;
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
+          yield* enqueueOne;
+          yield* enqueueOne;
+          yield* enqueueOne;
 
           // One of the three run to completion, so the pass has two states of
           // one queue to report rather than one.
-          yield* Effect.gen(function* () {
-            const worker = yield* JobWorker;
-            yield* worker.work('invitation-delivery', () =>
-              Effect.succeed<JobOutcome>('completed'),
-            );
-            const step = yield* worker.drainOnce('invitation-delivery');
-            assert.strictEqual(step._tag, 'settled');
-          }).pipe(Effect.provide(layerWorker()));
+          const step = yield* drainWith('invitation-delivery', () =>
+            Effect.succeed<JobOutcome>('completed'),
+          );
+          assert.strictEqual(step._tag, 'settled');
 
           yield* pass({
             warned: new Set<JobQueueName>(),
@@ -142,8 +120,8 @@ describe.skipIf(!db)('the queue’s metrics', () => {
       withRegistry(
         Effect.gen(function* () {
           yield* clear;
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
+          yield* enqueueOne;
+          yield* enqueueOne;
           yield* pass({
             warned: new Set<JobQueueName>(),
             warningQueueSize: 10,
@@ -174,12 +152,12 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           const warned: BacklogWarnings = new Set();
 
           // At the threshold: pg-boss compares strictly, and so does this.
-          yield* enqueueDelivery;
+          yield* enqueueOne;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.deepStrictEqual(logs.messages, []);
 
           // Over it: one line.
-          yield* enqueueDelivery;
+          yield* enqueueOne;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
           assert.include(logs.messages[0]!, 'large queue backlog');
@@ -195,8 +173,8 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* clear;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
+          yield* enqueueOne;
+          yield* enqueueOne;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 2);
         }),
@@ -208,19 +186,15 @@ describe.skipIf(!db)('the queue’s metrics', () => {
       return withRegistry(
         Effect.gen(function* () {
           yield* clear;
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
+          yield* enqueueOne;
+          yield* enqueueOne;
 
           // Two jobs, one of them finished: pg-boss's `queuedCount` is the
           // rows below `active`, so a completed row must not count towards a
           // backlog warning.
-          yield* Effect.gen(function* () {
-            const worker = yield* JobWorker;
-            yield* worker.work('invitation-delivery', () =>
-              Effect.succeed<JobOutcome>('completed'),
-            );
-            yield* worker.drainOnce('invitation-delivery');
-          }).pipe(Effect.provide(layerWorker()));
+          yield* drainWith('invitation-delivery', () =>
+            Effect.succeed<JobOutcome>('completed'),
+          );
 
           yield* pass({ warned: new Set<JobQueueName>(), warningQueueSize: 1 });
           assert.deepStrictEqual(logs.messages, []);
@@ -236,8 +210,8 @@ describe.skipIf(!db)('the queue’s metrics', () => {
       withRegistry(
         Effect.gen(function* () {
           yield* clear;
-          yield* enqueueDelivery;
-          yield* enqueueDelivery;
+          yield* enqueueOne;
+          yield* enqueueOne;
 
           yield* Effect.gen(function* () {
             // The layer's first pass is immediate and runs against a real

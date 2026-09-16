@@ -8,14 +8,13 @@ import {
   Exit,
   Fiber,
   Layer,
-  type LogLevel,
-  Logger,
   Option,
   Random,
 } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
 import { JobClock } from '../clock.ts';
 import { Database, Transaction, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
@@ -31,82 +30,44 @@ import {
   asApp,
   asMaintenance,
   asOwner,
+  claimAndHold,
+  clearQueue,
+  DELIVERY,
+  DELIVERY_ID,
+  drainWith,
+  enqueue,
+  enqueueDelivery,
+  layerJobs,
   layerQueueHarness,
   layerWorker,
+  onWorker,
   QueueHarness,
   readJobs,
+  SEED,
+  updateJob,
 } from './support.ts';
 
 // Everything the queue does on its own: the retry ladder, dead-lettering,
-// singletons, the expiry reaper, retention, depths, fetching, and the
-// graceful stop. Every one of them runs in virtual time against a real
-// Postgres, which is possible only because the queue asks `Clock` for the
-// time and passes it to the database as a parameter (see worker.ts).
+// singletons, the expiry reaper, retention, depths, and the graceful stop.
+// Every one of them runs in virtual time against a real Postgres, which is
+// possible only because the queue asks `Clock` for the time and passes it to
+// the database as a parameter (see worker.ts).
+//
+// What a *settle* has to be true of — the fence around a late attempt, the
+// ladder the reaper writes, and a claim during a stop — is `settle.test.ts`.
 
 const db = await reachableDb();
 
-/** The delivery queue's declaration, which the cases assert against. */
-const DELIVERY = resolvedQueue('invitation-delivery');
-
-const DELIVERY_ID = '55555555-5555-4555-8555-555555555555';
-
-/** A pinned seed, so the jittered backoff below has one answer. */
-const SEED = 'studio-jobs';
-
 describe.skipIf(!db)('the native queue', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
-    const clear = Effect.gen(function* () {
-      const { schema } = yield* QueueHarness;
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.jobs`),
-        ),
-      );
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
-        ),
-      );
-    });
+    const clear = clearQueue;
 
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
+    const jobsLayer = layerJobs;
 
-    const enqueueDelivery = (deliveryId = DELIVERY_ID) =>
-      Effect.flatMap(Jobs, (jobs) =>
-        asApp(
-          withTransaction(jobs.enqueue('invitation-delivery', { deliveryId })),
-        ),
-      );
-
-    /** Registers a handler and hands back the worker, under one layer. */
-    const withWorker = <A, E, R>(
+    /** One step of the delivery queue, with `handler` behind it. */
+    const drainDelivery = (
       handler: (attempt: number) => Effect.Effect<JobOutcome, unknown>,
-      body: (worker: JobWorker['Service']) => Effect.Effect<A, E, R>,
-    ) =>
-      Effect.gen(function* () {
-        const worker = yield* JobWorker;
-        yield* worker.work('invitation-delivery', (job) =>
-          handler(job.attempt),
-        );
-        return yield* body(worker);
-      }).pipe(Effect.provide(layerWorker()));
-
-    /** An owner-side edit of a job row; the suites' stand-in for a redeploy. */
-    const updateJob = (jobId: string, assignment: string) =>
-      Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
-            sql.unsafe(
-              `UPDATE ${schema}.jobs SET ${assignment} WHERE id = '${jobId}'`,
-            ),
-          ),
-        );
-      });
+    ) => drainWith('invitation-delivery', (job) => handler(job.attempt));
 
     /** A replica whose clock runs five minutes fast. */
     const SKEW = Duration.minutes(5);
@@ -141,9 +102,8 @@ describe.skipIf(!db)('the native queue', () => {
             skewedJobs,
           );
 
-          const unskewed = yield* withWorker(
-            () => Effect.succeed<JobOutcome>('completed'),
-            (worker) => worker.drainOnce('invitation-delivery'),
+          const unskewed = yield* drainDelivery(() =>
+            Effect.succeed<JobOutcome>('completed'),
           );
           assert.strictEqual(unskewed._tag, 'idle');
 
@@ -220,9 +180,8 @@ describe.skipIf(!db)('the native queue', () => {
         yield* updateJob(jobId, 'retry_limit = 0');
         assert.strictEqual(DELIVERY.retryLimit, 7);
 
-        const step = yield* withWorker(
-          () => Effect.fail(new Error('SMTP temporarily unavailable')),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const step = yield* drainDelivery(() =>
+          Effect.fail(new Error('SMTP temporarily unavailable')),
         );
 
         // A queue that read its declaration here would have retried.
@@ -255,19 +214,12 @@ describe.skipIf(!db)('the native queue', () => {
 
         yield* Effect.gen(function* () {
           const worker = yield* JobWorker;
-          yield* worker.work('invitation-delivery', () =>
-            Effect.gen(function* () {
-              yield* Deferred.succeed(started, undefined);
-              yield* Deferred.await(held);
-              return 'completed' as const;
-            }),
-          );
-          // Forked and held open, because the settle nulls `locked_until`:
-          // the lease only exists while the attempt is running.
-          const running = yield* Effect.forkChild(
-            worker.drainOnce('invitation-delivery'),
-          );
-          yield* Deferred.await(started);
+          // Held open, because the settle nulls `locked_until`: the lease only
+          // exists while the attempt is running.
+          const running = yield* claimAndHold(worker, 'invitation-delivery', {
+            started,
+            held,
+          });
 
           const now = yield* DateTime.now;
           const [row] = yield* readJobs('invitation-delivery');
@@ -288,9 +240,8 @@ describe.skipIf(!db)('the native queue', () => {
         yield* clear;
         yield* enqueueDelivery();
 
-        const step = yield* withWorker(
-          () => Effect.fail(new Error('SMTP temporarily unavailable')),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const step = yield* drainDelivery(() =>
+          Effect.fail(new Error('SMTP temporarily unavailable')),
         ).pipe(Random.withSeed(SEED));
 
         assert.strictEqual(step._tag, 'retrying');
@@ -320,16 +271,14 @@ describe.skipIf(!db)('the native queue', () => {
         assert.strictEqual(row?.locked_until, null);
 
         // And the job is not claimable until virtual time reaches it.
-        const tooEarly = yield* withWorker(
-          () => Effect.succeed<JobOutcome>('completed'),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const tooEarly = yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('completed'),
         );
         assert.strictEqual(tooEarly._tag, 'idle');
 
         yield* TestClock.adjust(Duration.seconds(Math.ceil(delay)));
-        const claimed = yield* withWorker(
-          () => Effect.succeed<JobOutcome>('completed'),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const claimed = yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('completed'),
         );
         assert.strictEqual(claimed._tag, 'settled');
       }).pipe(Effect.provide(jobsLayer)),
@@ -343,9 +292,8 @@ describe.skipIf(!db)('the native queue', () => {
         // Walk the whole ladder: eight attempts for a limit of seven.
         let last: JobStep = { _tag: 'idle' };
         for (let attempt = 1; attempt <= DELIVERY.retryLimit + 1; attempt++) {
-          last = yield* withWorker(
-            () => Effect.fail(new Error('permanent SMTP failure')),
-            (worker) => worker.drainOnce('invitation-delivery'),
+          last = yield* drainDelivery(() =>
+            Effect.fail(new Error('permanent SMTP failure')),
           ).pipe(Random.withSeed(SEED));
           if (last._tag === 'retrying') {
             // The ladder's own delay, taken from the row rather than guessed.
@@ -402,18 +350,11 @@ describe.skipIf(!db)('the native queue', () => {
 
         yield* Effect.gen(function* () {
           const worker = yield* JobWorker;
-          yield* worker.work('denied-attempts-summary', () =>
-            Effect.gen(function* () {
-              yield* Deferred.succeed(started, undefined);
-              yield* Deferred.await(held);
-              return 'completed' as const;
-            }),
+          const running = yield* claimAndHold(
+            worker,
+            'denied-attempts-summary',
+            { started, held },
           );
-
-          const running = yield* Effect.forkChild(
-            worker.drainOnce('denied-attempts-summary'),
-          );
-          yield* Deferred.await(started);
 
           const live = yield* readJobs('denied-attempts-summary');
           assert.deepStrictEqual(live.map((row) => row.state).sort(), [
@@ -425,13 +366,9 @@ describe.skipIf(!db)('the native queue', () => {
           // asked of a second worker with an instant handler, as a second
           // replica is, so a guard that failed to hold would answer `settled`
           // rather than hanging on this suite's held one.
-          const blocked = yield* Effect.gen(function* () {
-            const other = yield* JobWorker;
-            yield* other.work('denied-attempts-summary', () =>
-              Effect.succeed<JobOutcome>('completed'),
-            );
-            return yield* other.drainOnce('denied-attempts-summary');
-          }).pipe(Effect.provide(layerWorker()));
+          const blocked = yield* drainWith('denied-attempts-summary', () =>
+            Effect.succeed<JobOutcome>('completed'),
+          );
           assert.strictEqual(blocked._tag, 'idle');
 
           yield* Deferred.succeed(held, undefined);
@@ -522,61 +459,6 @@ describe.skipIf(!db)('the native queue', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect('returns a job whose lease expired, with its attempt spent', () =>
-      Effect.gen(function* () {
-        yield* clear;
-        yield* enqueueDelivery();
-
-        const held = yield* Deferred.make<void>();
-        const started = yield* Deferred.make<void>();
-
-        const outcome = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          yield* worker.work('invitation-delivery', () =>
-            Effect.gen(function* () {
-              yield* Deferred.succeed(started, undefined);
-              yield* Deferred.await(held);
-              return 'completed' as const;
-            }),
-          );
-          // A handler that outlives its lease: forked, so the case can move
-          // virtual time past the expiry while the attempt is still running.
-          const running = yield* Effect.forkChild(
-            worker.drainOnce('invitation-delivery'),
-          );
-          yield* Deferred.await(started);
-
-          const [claimed] = yield* readJobs('invitation-delivery');
-          assert.strictEqual(claimed?.state, 'active');
-          assert.strictEqual(claimed?.attempts, 1);
-
-          // Not yet: the lease has not run out.
-          yield* TestClock.adjust(
-            Duration.seconds(DELIVERY.expireInSeconds - 1),
-          );
-          assert.strictEqual(yield* worker.reapExpired, 0);
-
-          yield* TestClock.adjust(Duration.seconds(2));
-          const reaped = yield* worker.reapExpired;
-
-          yield* Fiber.interrupt(running);
-          return reaped;
-        }).pipe(Effect.provide(layerWorker()));
-
-        assert.strictEqual(outcome, 1);
-        const [row] = yield* readJobs('invitation-delivery');
-        assert.strictEqual(row?.state, 'created');
-        // Counted at claim time, so a handler that hangs every time still
-        // walks the ladder rather than looping forever.
-        assert.strictEqual(row?.attempts, 1);
-        assert.strictEqual(row?.locked_until, null);
-        assert.strictEqual(
-          row?.last_error,
-          'the attempt did not finish before its lease expired',
-        );
-      }).pipe(Effect.provide(jobsLayer)),
-    );
-
     it.effect('settles a backlog of expired leases in bounded pieces', () =>
       Effect.gen(function* () {
         yield* clear;
@@ -607,10 +489,7 @@ describe.skipIf(!db)('the native queue', () => {
           ),
         );
 
-        const reaped = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          return yield* worker.reapExpired;
-        }).pipe(Effect.provide(layerWorker()));
+        const reaped = yield* onWorker((worker) => worker.reapExpired);
         assert.strictEqual(reaped, rows);
 
         const settled = yield* readJobs('invitation-delivery');
@@ -654,52 +533,42 @@ describe.skipIf(!db)('the native queue', () => {
         // sign-in-email: retention 600 s, deletion 60 s — the queue whose
         // whole point is that its payload does not outlive the link.
         const signIn = resolvedQueue('sign-in-email');
-        const jobs = yield* Jobs;
-        const completed = yield* asApp(
-          withTransaction(
-            jobs.enqueue('sign-in-email', {
-              email: 'someone@example.test',
-              url: 'https://studio.example.test/magic',
-            }),
-          ),
+        yield* enqueue('sign-in-email', {
+          email: 'someone@example.test',
+          url: 'https://studio.example.test/magic',
+        });
+        const abandoned = yield* enqueue('sign-in-email', {
+          email: 'other@example.test',
+          url: 'https://studio.example.test/other',
+        });
+
+        yield* onWorker((worker) =>
+          Effect.gen(function* () {
+            yield* worker.work('sign-in-email', () =>
+              Effect.succeed<JobOutcome>('completed'),
+            );
+            const step = yield* worker.drainOnce('sign-in-email');
+            assert.strictEqual(step._tag, 'settled');
+
+            // Nothing is due yet.
+            assert.strictEqual(yield* worker.deleteExpired, 0);
+
+            yield* TestClock.adjust(
+              Duration.seconds(signIn.deleteAfterSeconds + 1),
+            );
+            assert.strictEqual(yield* worker.deleteExpired, 1);
+            const left = yield* readJobs('sign-in-email');
+            assert.deepStrictEqual(
+              left.map((row) => row.id),
+              [abandoned],
+            );
+
+            // And the one nothing ever claimed, once its keep_until passes.
+            yield* TestClock.adjust(Duration.seconds(signIn.retentionSeconds));
+            assert.strictEqual(yield* worker.deleteExpired, 1);
+            assert.deepStrictEqual(yield* readJobs('sign-in-email'), []);
+          }),
         );
-        const abandoned = yield* asApp(
-          withTransaction(
-            jobs.enqueue('sign-in-email', {
-              email: 'other@example.test',
-              url: 'https://studio.example.test/other',
-            }),
-          ),
-        );
-
-        yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          yield* worker.work('sign-in-email', () =>
-            Effect.succeed<JobOutcome>('completed'),
-          );
-          const step = yield* worker.drainOnce('sign-in-email');
-          assert.strictEqual(step._tag, 'settled');
-
-          // Nothing is due yet.
-          assert.strictEqual(yield* worker.deleteExpired, 0);
-
-          yield* TestClock.adjust(
-            Duration.seconds(signIn.deleteAfterSeconds + 1),
-          );
-          assert.strictEqual(yield* worker.deleteExpired, 1);
-          const left = yield* readJobs('sign-in-email');
-          assert.deepStrictEqual(
-            left.map((row) => row.id),
-            [abandoned],
-          );
-
-          // And the one nothing ever claimed, once its keep_until passes.
-          yield* TestClock.adjust(Duration.seconds(signIn.retentionSeconds));
-          assert.strictEqual(yield* worker.deleteExpired, 1);
-          assert.deepStrictEqual(yield* readJobs('sign-in-email'), []);
-        }).pipe(Effect.provide(layerWorker()));
-
-        void completed;
       }).pipe(Effect.provide(jobsLayer)),
     );
 
@@ -709,14 +578,15 @@ describe.skipIf(!db)('the native queue', () => {
         yield* enqueueDelivery('88888888-8888-4888-8888-888888888888');
         yield* enqueueDelivery('99999999-9999-4999-8999-999999999999');
 
-        const depths = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          yield* worker.work('invitation-delivery', () =>
-            Effect.succeed<JobOutcome>('suppressed'),
-          );
-          yield* worker.drainOnce('invitation-delivery');
-          return yield* worker.queueDepths;
-        }).pipe(Effect.provide(layerWorker()));
+        const depths = yield* onWorker((worker) =>
+          Effect.gen(function* () {
+            yield* worker.work('invitation-delivery', () =>
+              Effect.succeed<JobOutcome>('suppressed'),
+            );
+            yield* worker.drainOnce('invitation-delivery');
+            return yield* worker.queueDepths;
+          }),
+        );
 
         assert.deepStrictEqual(
           depths.map(({ queue, state, count }) => ({ queue, state, count })),
@@ -732,9 +602,8 @@ describe.skipIf(!db)('the native queue', () => {
       Effect.gen(function* () {
         yield* clear;
         yield* enqueueDelivery();
-        const step = yield* withWorker(
-          () => Effect.succeed<JobOutcome>('uncertain'),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const step = yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('uncertain'),
         );
         assert.deepStrictEqual(
           step._tag === 'settled' ? step.outcome : undefined,
@@ -746,20 +615,9 @@ describe.skipIf(!db)('the native queue', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect('says out loud that an outcome was uncertain', () =>
-      Effect.gen(function* () {
-        const recorded: { level: LogLevel.LogLevel; message: string }[] = [];
-        const recordingLogger = Logger.layer([
-          Logger.make<unknown, void>(({ logLevel, message }) => {
-            recorded.push({
-              level: logLevel,
-              message: Array.isArray(message)
-                ? message.map(String).join(' ')
-                : String(message),
-            });
-          }),
-        ]);
-
+    it.effect('says out loud that an outcome was uncertain', () => {
+      const logs = collectLeveledLogs();
+      return Effect.gen(function* () {
         // Nothing sets a minimum log level, so Effect's own default of `Info`
         // decides what a deployment sees: a line written at debug is not
         // written at all. That is the whole of this case — an `uncertain`
@@ -767,12 +625,11 @@ describe.skipIf(!db)('the native queue', () => {
         // beside the two that are the queue working.
         yield* clear;
         yield* enqueueDelivery('cccccccc-3333-4333-8333-cccccccccccc');
-        yield* withWorker(
-          () => Effect.succeed<JobOutcome>('completed'),
-          (worker) => worker.drainOnce('invitation-delivery'),
-        ).pipe(Effect.provide(recordingLogger));
+        yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('completed'),
+        ).pipe(Effect.provide(logs.layer));
         assert.deepStrictEqual(
-          recorded,
+          logs.lines,
           [],
           'an ordinary success reached the log a deployment reads',
         );
@@ -781,42 +638,31 @@ describe.skipIf(!db)('the native queue', () => {
         const abandoned = yield* enqueueDelivery(
           'dddddddd-4444-4444-8444-dddddddddddd',
         );
-        yield* withWorker(
-          () => Effect.succeed<JobOutcome>('uncertain'),
-          (worker) => worker.drainOnce('invitation-delivery'),
-        ).pipe(Effect.provide(recordingLogger));
-        assert.deepStrictEqual(recorded, [
+        yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('uncertain'),
+        ).pipe(Effect.provide(logs.layer));
+        assert.deepStrictEqual(logs.lines, [
           {
             level: 'Warn',
             message: `job invitation-delivery ${abandoned} ended uncertain on attempt 1: a side effect left the process and its record could not be written`,
           },
         ]);
-      }).pipe(Effect.provide(jobsLayer)),
-    );
+      }).pipe(Effect.provide(jobsLayer));
+    });
 
-    it.effect('says which attempts an operator has to act on', () =>
-      Effect.gen(function* () {
+    it.effect('says which attempts an operator has to act on', () => {
+      const logs = collectLeveledLogs();
+      return Effect.gen(function* () {
         yield* clear;
-        const recorded: { level: LogLevel.LogLevel; message: string }[] = [];
-        const recordingLogger = Logger.layer([
-          Logger.make<unknown, void>(({ logLevel, message }) => {
-            recorded.push({
-              level: logLevel,
-              message: Array.isArray(message)
-                ? message.map(String).join(' ')
-                : String(message),
-            });
-          }),
-        ]);
         const refused = () =>
           Effect.fail(new Error('SMTP refused the recipient'));
 
         const retried = yield* enqueueDelivery(
           'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
         );
-        const retrying = yield* withWorker(refused, (worker) =>
-          worker.drainOnce('invitation-delivery'),
-        ).pipe(Effect.provide(recordingLogger));
+        const retrying = yield* drainDelivery(refused).pipe(
+          Effect.provide(logs.layer),
+        );
         assert.strictEqual(retrying._tag, 'retrying');
 
         // The same failure on a job with no retries left. One line per job,
@@ -826,16 +672,16 @@ describe.skipIf(!db)('the native queue', () => {
           'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
         );
         yield* updateJob(lost, 'retry_limit = 0');
-        const failed = yield* withWorker(refused, (worker) =>
-          worker.drainOnce('invitation-delivery'),
-        ).pipe(Effect.provide(recordingLogger));
+        const failed = yield* drainDelivery(refused).pipe(
+          Effect.provide(logs.layer),
+        );
         assert.strictEqual(failed._tag, 'failed');
 
         // Which level the line is written at is the difference between an
         // operator noticing mail that will never be sent and not noticing it:
         // an attempt that will run again is the queue working, and one that
         // will not is a delivery someone has to re-send by hand (#1307).
-        assert.deepStrictEqual(recorded, [
+        assert.deepStrictEqual(logs.lines, [
           {
             level: 'Warn',
             message: `job invitation-delivery ${retried} retrying after attempt 1: SMTP refused the recipient`,
@@ -845,8 +691,8 @@ describe.skipIf(!db)('the native queue', () => {
             message: `job invitation-delivery ${lost} failed on attempt 1: SMTP refused the recipient`,
           },
         ]);
-      }).pipe(Effect.provide(jobsLayer)),
-    );
+      }).pipe(Effect.provide(jobsLayer));
+    });
 
     it.effect('kills a job whose payload the queue does not declare', () =>
       Effect.gen(function* () {
@@ -869,9 +715,8 @@ describe.skipIf(!db)('the native queue', () => {
           ),
         );
 
-        const step = yield* withWorker(
-          () => Effect.succeed<JobOutcome>('completed'),
-          (worker) => worker.drainOnce('invitation-delivery'),
+        const step = yield* drainDelivery(() =>
+          Effect.succeed<JobOutcome>('completed'),
         );
         assert.strictEqual(step._tag, 'dead');
         const [row] = yield* readJobs('invitation-delivery');
@@ -884,83 +729,14 @@ describe.skipIf(!db)('the native queue', () => {
   });
 });
 
+// The graceful stop, which only a forked worker has: the two cases below let
+// a real scope close while a handler is still running. What a *stopping*
+// worker may claim is settle.test.ts's; that fetching is what stops it is
+// there too.
 describe.skipIf(!db)('the worker’s background fibers', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
-
-    const clear = Effect.gen(function* () {
-      const { schema } = yield* QueueHarness;
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.jobs`),
-        ),
-      );
-    });
-
-    it.effect('stops claiming when fetching is turned off', () =>
-      Effect.gen(function* () {
-        yield* clear;
-        yield* Effect.flatMap(Jobs, (jobs) =>
-          asApp(
-            withTransaction(
-              jobs.enqueue('invitation-delivery', { deliveryId: DELIVERY_ID }),
-            ),
-          ),
-        );
-
-        const handled = yield* Deferred.make<number>();
-
-        yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          const ran: number[] = [];
-          yield* worker.work('invitation-delivery', (job) =>
-            Effect.gen(function* () {
-              ran.push(job.attempt);
-              yield* Deferred.succeed(handled, job.attempt);
-              return 'completed' as const;
-            }),
-          );
-
-          yield* worker.setFetching(false);
-          // The poll fiber is what consults `fetching`, so the assertion is on
-          // what the fiber does over many of its intervals. Each `readJobs` is
-          // a real round trip, so the fiber has had chances to run in between
-          // rather than merely having had virtual time moved past it.
-          for (let tick = 0; tick < 5; tick++) {
-            yield* TestClock.adjust(Duration.seconds(10));
-            const [waiting] = yield* readJobs('invitation-delivery');
-            assert.strictEqual(waiting?.state, 'created');
-          }
-          assert.deepStrictEqual(ran, []);
-
-          // The positive half, so the negative one above cannot be vacuous:
-          // the same fiber, the same interval, fetching back on.
-          yield* worker.setFetching(true);
-          yield* TestClock.adjust(Duration.seconds(10));
-          assert.strictEqual(yield* Deferred.await(handled), 1);
-          yield* Effect.retry(
-            Effect.flatMap(readJobs('invitation-delivery'), (rows) =>
-              rows[0]?.state === 'completed'
-                ? Effect.void
-                : Effect.fail('not settled yet' as const),
-            ),
-            { times: 50 },
-          );
-          assert.deepStrictEqual(ran, [1]);
-        }).pipe(
-          Effect.provide(
-            layerWorker({
-              background: true,
-              pollInterval: Duration.seconds(1),
-            }),
-          ),
-        );
-      }).pipe(Effect.provide(jobsLayer)),
-    );
+    const jobsLayer = layerJobs;
+    const clear = clearQueue;
 
     /**
      * A worker whose layer scope closes the moment `startClosing` is
@@ -991,13 +767,7 @@ describe.skipIf(!db)('the worker’s background fibers', () => {
     it.effect('waits for an in-flight handler before it stops', () =>
       Effect.gen(function* () {
         yield* clear;
-        yield* Effect.flatMap(Jobs, (jobs) =>
-          asApp(
-            withTransaction(
-              jobs.enqueue('invitation-delivery', { deliveryId: DELIVERY_ID }),
-            ),
-          ),
-        );
+        yield* enqueueDelivery();
 
         const started = yield* Deferred.make<void>();
         const release = yield* Deferred.make<void>();
@@ -1036,13 +806,7 @@ describe.skipIf(!db)('the worker’s background fibers', () => {
     it.effect('interrupts a handler that outstays the stop window', () =>
       Effect.gen(function* () {
         yield* clear;
-        yield* Effect.flatMap(Jobs, (jobs) =>
-          asApp(
-            withTransaction(
-              jobs.enqueue('invitation-delivery', { deliveryId: DELIVERY_ID }),
-            ),
-          ),
-        );
+        yield* enqueueDelivery();
 
         const started = yield* Deferred.make<void>();
         const never = yield* Deferred.make<void>();

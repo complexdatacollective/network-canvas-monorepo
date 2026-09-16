@@ -1,25 +1,26 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Cron, DateTime, Duration, Effect, Layer } from 'effect';
+import { Cron, DateTime, Duration, Effect } from 'effect';
 import { TestClock } from 'effect/testing';
-import pg from 'pg';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database } from '../database.ts';
-import { Jobs } from '../jobs.ts';
 import { JobWorker } from '../worker.ts';
 import {
-  asOwner,
+  clearQueue,
+  holding,
+  layerJobs,
   layerQueueHarness,
   layerWorker,
   QueueHarness,
   readJobs,
+  readSchedules,
 } from './support.ts';
 
 // Recurring work: the declarations become rows, the rows come due on the
-// cron's own boundary, one replica ticks, and a row this build did not declare
-// is removed rather than left creating jobs on a queue nothing works.
+// cron's own boundary, one replica ticks, a boot leaves a due occurrence where
+// it is, and a row this build did not declare is removed rather than left
+// creating jobs on a queue nothing works.
 
 const db = await reachableDb();
 
@@ -27,6 +28,8 @@ const db = await reachableDb();
 const EVERY_MINUTE = '* * * * *';
 /** `protocol-store-gc`, hourly. */
 const HOURLY = '0 * * * *';
+/** What a deployment that moved the sweep would declare instead. */
+const CHANGED = '30 4 * * *';
 
 /**
  * The cron lock's class constant, pinned to `worker.ts`'s: the second half of
@@ -37,70 +40,27 @@ const CRON_LOCK_CLASS = 402177;
 /**
  * Holds the cron lock for `schemaName` on a connection of its own for the
  * duration of `body` — a second replica's tick, or another schema's, frozen
- * mid-tick. A raw client rather than an Effect transaction, because an open
- * Effect transaction on this fiber would route the worker's own statements
- * onto the holder's connection and the lock would be its own.
+ * mid-tick.
  */
 const holdingCronLock = <A, E, R>(
   schemaName: string,
   body: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> =>
-  Effect.acquireUseRelease(
-    Effect.promise(async () => {
-      const client = new pg.Client({ connectionString: db!.url });
-      await client.connect();
-      await client.query('begin');
-      await client.query(
+  holding(db!.url, (holder) =>
+    Effect.flatMap(
+      holder.query(
         'select pg_advisory_xact_lock($1::int, hashtext($2::text))',
-        [CRON_LOCK_CLASS, schemaName],
-      );
-      return client;
-    }),
-    () => body,
-    (client) =>
-      Effect.promise(async () => {
-        await client.query('rollback').catch(() => undefined);
-        await client.end();
-      }),
+        [String(CRON_LOCK_CLASS), schemaName],
+      ),
+      () => body,
+    ),
   );
 
 describe.skipIf(!db)('recurring work', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
-    const clear = Effect.gen(function* () {
-      const { schema } = yield* QueueHarness;
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.jobs`),
-        ),
-      );
-      yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
-          sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
-        ),
-      );
-    });
-
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
-
-    const schedules = Effect.fnUntraced(function* () {
-      const { schema } = yield* QueueHarness;
-      return yield* asOwner(
-        Effect.flatMap(
-          Database,
-          ({ sql }) =>
-            sql<{
-              name: string;
-              cron: string;
-              queue: string;
-              next_run_at: number;
-            }>`SELECT name, cron, queue, next_run_at FROM ${sql(schema)}.job_schedules ORDER BY name`,
-        ),
-      );
-    });
+    const clear = clearQueue;
+    const jobsLayer = layerJobs;
+    const schedules = readSchedules;
 
     it.effect('creates a job on the cron’s boundary and not before', () =>
       Effect.gen(function* () {
@@ -275,48 +235,70 @@ describe.skipIf(!db)('recurring work', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect('registers the sweep once however many replicas boot', () =>
-      Effect.gen(function* () {
-        yield* clear;
+    it.effect(
+      'registers the sweep once however many replicas boot, leaving a due one where it is',
+      () =>
+        Effect.gen(function* () {
+          yield* clear;
 
-        yield* Effect.gen(function* () {
-          const first = yield* JobWorker;
-          yield* first.schedule(
-            'protocol-store-gc',
-            HOURLY,
-            'protocol-store-gc',
-            {},
-          );
-          const [registered] = yield* schedules();
-          assert.strictEqual(registered?.cron, HOURLY);
-
-          // The occurrence has come due and nothing has ticked it yet, which
-          // is the window a rolling restart lands in.
-          yield* TestClock.setTime(registered!.next_run_at);
-
-          // A second replica registers the same declaration. Both write the
-          // same row — `ON CONFLICT (name)` — so a deployment of any size
-          // still fires one sweep an hour rather than one per replica.
           yield* Effect.gen(function* () {
-            const second = yield* JobWorker;
-            yield* second.schedule(
+            const first = yield* JobWorker;
+            yield* first.schedule(
               'protocol-store-gc',
               HOURLY,
               'protocol-store-gc',
               {},
             );
-          }).pipe(Effect.provide(layerWorker()));
+            const [registered] = yield* schedules();
+            assert.strictEqual(registered?.cron, HOURLY);
 
-          const rows = yield* schedules();
-          assert.strictEqual(rows.length, 1);
-          // And it left the due time where it was: recomputing it on every
-          // boot would push this occurrence a whole hour forward, so a replica
-          // restarting in this window would skip the sweep entirely. That a
-          // due time fires is the first case above; this is that it survives.
-          assert.strictEqual(rows[0]?.next_run_at, registered!.next_run_at);
-          assert.deepStrictEqual(yield* readJobs('protocol-store-gc'), []);
-        }).pipe(Effect.provide(layerWorker()));
-      }).pipe(Effect.provide(jobsLayer)),
+            // The occurrence has come due and nothing has ticked it yet, which
+            // is the window a rolling restart lands in.
+            yield* TestClock.setTime(registered!.next_run_at);
+
+            // A second replica registers the same declaration. Both write the
+            // same row — `ON CONFLICT (name)` — so a deployment of any size
+            // still fires one sweep an hour rather than one per replica.
+            yield* Effect.gen(function* () {
+              const second = yield* JobWorker;
+              yield* second.schedule(
+                'protocol-store-gc',
+                HOURLY,
+                'protocol-store-gc',
+                {},
+              );
+            }).pipe(Effect.provide(layerWorker()));
+
+            const rows = yield* schedules();
+            assert.strictEqual(rows.length, 1);
+            // And it left the due time where it was: recomputing it on every
+            // boot would push this occurrence a whole hour forward, so a replica
+            // restarting in this window would skip the sweep entirely. That a
+            // due time fires is the first case above; this is that it survives.
+            assert.strictEqual(rows[0]?.next_run_at, registered!.next_run_at);
+            assert.deepStrictEqual(yield* readJobs('protocol-store-gc'), []);
+
+            // A changed expression is the one case where the stored time means
+            // something the deployment no longer asked for, so that boot — and
+            // only that one — recomputes it.
+            const now = yield* DateTime.now;
+            yield* first.schedule(
+              'protocol-store-gc',
+              CHANGED,
+              'protocol-store-gc',
+              {},
+            );
+            const [changed] = yield* schedules();
+            assert.strictEqual(changed?.cron, CHANGED);
+            assert.strictEqual(
+              changed?.next_run_at,
+              Cron.next(
+                Cron.parseUnsafe(CHANGED, 'UTC'),
+                DateTime.toDate(now),
+              ).getTime(),
+            );
+          }).pipe(Effect.provide(layerWorker()));
+        }).pipe(Effect.provide(jobsLayer)),
     );
   });
 });

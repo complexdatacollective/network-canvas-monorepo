@@ -1,22 +1,28 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Duration, Effect, Option } from 'effect';
+import { Effect, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database, withTransaction } from '../database.ts';
-import { Jobs } from '../jobs.ts';
+import { Database } from '../database.ts';
 import { JobWorker } from '../worker.ts';
 import {
-  asApp,
+  asOwner,
+  awaitJobState,
+  clearQueue,
+  DELIVERY_ID,
+  enqueueDelivery,
+  layerNotifiedWorker,
   layerQueueHarness,
-  layerWorker,
+  NOTIFY_BUDGET,
+  NOTIFY_SETTLE,
   QueueHarness,
   readJobs,
 } from './support.ts';
 
-// The one case in this directory that runs in *real* time: what the schema's
-// `NOTIFY` trigger buys is measured in milliseconds, and virtual time would
-// make any latency claim vacuous — a `TestClock.adjust` past the poll interval
-// proves only that polling works.
+// What the schema's `NOTIFY` trigger buys, measured in *real* time: it is
+// measured in milliseconds, and virtual time would make any latency claim
+// vacuous — a `TestClock.adjust` past the poll interval proves only that
+// polling works. `listener.test.ts` proves the same listener survives its
+// connection dying, against the same budget.
 //
 // `excludeTestServices` is what takes the test clock away: the layer helper
 // merges `TestEnv` into every suite unless it is told not to, and this suite
@@ -30,48 +36,18 @@ import {
 
 const db = await reachableDb();
 
-const DELIVERY_ID = '55555555-5555-4555-8555-555555555555';
-
-/** An hour, so nothing but a notification can explain a prompt drain. */
-const POLL_INTERVAL = Duration.hours(1);
-
-/** What the notified worker must beat, and the unnotified one must not. */
-const BUDGET = Duration.millis(500);
-
-/**
- * Long enough for the worker's first poll pass — the wake latch starts open, so
- * a worker drains once at boot — to have happened and left the queue idle
- * before anything is enqueued. Without it the positive half could be a boot
- * drain rather than a notification, and the negative half could lose a race.
- */
-const SETTLE = Duration.millis(150);
-
 describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
   layer(layerQueueHarness(db!), { excludeTestServices: true })(
     'with the queue installed',
     (it) => {
-      const clear = Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        yield* Effect.flatMap(QueueHarness, (harness) =>
-          Effect.provideService(
-            Effect.flatMap(Database, ({ sql }) =>
-              sql.unsafe(`DELETE FROM ${schema}.jobs`),
-            ),
-            Database,
-            harness.owner,
-          ),
-        );
-      });
+      const clear = clearQueue;
 
       /** Polls the row rather than the handler: the case is about the state. */
-      const awaitCompleted = Effect.gen(function* () {
-        let settled = false;
-        while (!settled) {
-          const rows = yield* readJobs('invitation-delivery');
-          settled = rows[0]?.state === 'completed';
-          if (!settled) yield* Effect.sleep(Duration.millis(10));
-        }
-      }).pipe(Effect.timeoutOption(BUDGET));
+      const awaitCompleted = awaitJobState(
+        'invitation-delivery',
+        'completed',
+        NOTIFY_BUDGET,
+      );
 
       /**
        * Boots a background worker with an hour-long poll interval, lets it
@@ -84,28 +60,12 @@ describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
           yield* worker.work('invitation-delivery', () =>
             Effect.succeed('completed' as const),
           );
-          yield* Effect.sleep(SETTLE);
+          yield* Effect.sleep(NOTIFY_SETTLE);
 
-          yield* Effect.flatMap(Jobs, (jobs) =>
-            asApp(
-              withTransaction(
-                jobs.enqueue('invitation-delivery', {
-                  deliveryId: DELIVERY_ID,
-                }),
-              ),
-            ),
-          );
+          yield* enqueueDelivery();
 
           return yield* awaitCompleted;
-        }).pipe(
-          Effect.provide(
-            layerWorker({
-              background: true,
-              pollInterval: POLL_INTERVAL,
-              listen,
-            }),
-          ),
-        );
+        }).pipe(Effect.provide(layerNotifiedWorker(listen)));
 
       it.effect('drains a job the moment its transaction commits', () =>
         Effect.gen(function* () {
@@ -143,12 +103,9 @@ describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
             // UPDATE by hand, as here — announces the job exactly as an enqueue
             // does. Nothing in application code has to remember to.
             const { schema } = yield* QueueHarness;
-            const harness = yield* QueueHarness;
             const asOwnerSql = (statement: string) =>
-              Effect.provideService(
+              asOwner(
                 Effect.flatMap(Database, ({ sql }) => sql.unsafe(statement)),
-                Database,
-                harness.owner,
               );
 
             yield* Effect.gen(function* () {
@@ -168,7 +125,7 @@ describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
                        'failed', 'standard', 0, 0, 60,
                        now(), now() + interval '1 day', now())`,
               );
-              yield* Effect.sleep(SETTLE);
+              yield* Effect.sleep(NOTIFY_SETTLE);
 
               yield* asOwnerSql(
                 `UPDATE ${schema}.jobs SET state = 'created', attempts = 0`,
@@ -178,15 +135,7 @@ describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
                 Option.isSome(settled),
                 'an UPDATE to created did not wake the worker',
               );
-            }).pipe(
-              Effect.provide(
-                layerWorker({
-                  background: true,
-                  pollInterval: POLL_INTERVAL,
-                  listen: true,
-                }),
-              ),
-            );
+            }).pipe(Effect.provide(layerNotifiedWorker(true)));
           }),
       );
     },

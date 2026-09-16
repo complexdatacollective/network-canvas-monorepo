@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { assert, describe, it, layer } from '@effect/vitest';
 import { Cause, Effect, Exit, Layer } from 'effect';
 
@@ -16,15 +14,16 @@ import {
 import { DeniedAttemptsStore } from '../handlers/denied-attempts/store.ts';
 import { layerRecordingWriter } from '../handlers/denied-attempts/testing.ts';
 import { Jobs } from '../jobs.ts';
-import type { JobPayload } from '../queues.ts';
 import { JobHandlersLive, QueueUnavailable } from '../registrations.ts';
 import { JobWorker } from '../worker.ts';
 import {
   asOwner,
   layerDeliveryHarness,
   layerWorker,
+  payloadFor,
   QueueHarness,
   readJobs,
+  readSchedules,
 } from './support.ts';
 
 // What a deployment's worker actually works, which is the whole of what
@@ -74,20 +73,6 @@ describe('the queues this deployment declares', () => {
     );
   });
 });
-
-function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
-  if (queue === 'sign-in-email') {
-    return {
-      email: 'researcher@example.org',
-      url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
-    };
-  }
-  if (queue.startsWith('invitation-delivery')) {
-    return { deliveryId: randomUUID() };
-  }
-  // The two scheduled sweeps visit everything there is; nothing addresses them.
-  return {};
-}
 
 /**
  * The worker's environment, fixed apart from the two things registration
@@ -157,17 +142,9 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
       return yield* withTransaction(jobs.enqueue(queue, payloadFor(queue)));
     });
 
-    const scheduleNames = Effect.fnUntraced(function* () {
-      const { schema } = yield* QueueHarness;
-      const rows = yield* asOwner(
-        Effect.flatMap(
-          Database,
-          ({ sql }) => sql<{ name: string }>`
-            SELECT name FROM ${sql(schema)}.job_schedules ORDER BY name`,
-        ),
-      );
-      return rows.map((row) => row.name);
-    });
+    const scheduleNames = Effect.map(readSchedules(), (rows) =>
+      rows.map((row) => row.name),
+    );
 
     suite.effect(
       'settles a job on every queue a transport is configured for',
@@ -262,7 +239,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
             local: true,
           });
 
-          assert.deepStrictEqual(yield* scheduleNames(), [
+          assert.deepStrictEqual(yield* scheduleNames, [
             'denied-attempts-summary',
             'protocol-store-gc',
           ]);

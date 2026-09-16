@@ -1,26 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import {
-  Cause,
-  DateTime,
-  Duration,
-  Effect,
-  Exit,
-  Fiber,
-  Layer,
-  Option,
-} from 'effect';
-import pg from 'pg';
+import { Cause, DateTime, Duration, Effect, Exit, Fiber, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database, withTransaction } from '../database.ts';
+import { Database } from '../database.ts';
 import { exitSqlState, isUniqueViolationCause } from '../errors.ts';
-import { Jobs } from '../jobs.ts';
 import { JobWorker, type JobOutcome } from '../worker.ts';
 import {
-  asApp,
   asOwner,
+  awaitTrue,
+  holding,
+  clearQueue,
+  enqueueDelivery,
+  enqueueSweep,
+  layerJobs,
   layerQueueHarness,
   layerWorker,
   QueueHarness,
@@ -61,8 +55,6 @@ const HOLDER_WATCHDOG = Duration.seconds(5);
 /** How long two real workers get to finish a backlog between them. */
 const DRAIN_BUDGET = Duration.seconds(20);
 
-const CONDITION_POLL = Duration.millis(20);
-
 /**
  * `listen: false` and a short poll rather than the schema's `NOTIFY`: a
  * listening worker reserves a pooled connection for its whole life
@@ -78,94 +70,11 @@ const BACKGROUND = {
   maxInFlight: 4,
 } as const;
 
-type Holder = {
-  /** One statement on the held transaction. */
-  readonly query: (
-    statement: string,
-    parameters?: readonly string[],
-  ) => Effect.Effect<void>;
-  /** How many backends are waiting on a lock this transaction holds. */
-  readonly blockedByMe: Effect.Effect<number>;
-  readonly finish: (how: 'COMMIT' | 'ROLLBACK') => Effect.Effect<void>;
-};
-
-/**
- * An open transaction on a connection of its own, for the length of `use`.
- * Always ended: a case that left a row locked would take every later case in
- * the file down with it, so the release rolls back whatever the case did not
- * finish itself.
- */
-const holding = <A, E, R>(
-  url: string,
-  use: (holder: Holder) => Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> =>
-  Effect.acquireUseRelease(
-    Effect.promise(async () => {
-      const pool = new pg.Pool({ connectionString: url, max: 1 });
-      // node-postgres turns an unhandled pool `error` into an uncaught
-      // exception, which would take the whole run down rather than this case.
-      pool.on('error', () => undefined);
-      const client = await pool.connect();
-      await client.query('BEGIN');
-      return { pool, client };
-    }),
-    ({ client }) =>
-      use({
-        query: (statement, parameters) =>
-          Effect.promise(async () => {
-            await client.query(statement, parameters ? [...parameters] : []);
-          }),
-        blockedByMe: Effect.promise(async () => {
-          // `pg_backend_pid()` runs on this connection, so this counts the
-          // backends blocked by *this* transaction and nothing else.
-          const { rows } = await client.query<{ blocked: number }>(
-            `SELECT count(*)::int AS blocked
-               FROM pg_stat_activity
-              WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
-          );
-          return rows[0]?.blocked ?? 0;
-        }),
-        finish: (how) =>
-          Effect.promise(async () => {
-            await client.query(how);
-          }),
-      }),
-    ({ pool, client }) =>
-      Effect.promise(async () => {
-        try {
-          await client.query('ROLLBACK');
-        } catch {
-          // The case ended the transaction itself, or the connection is gone.
-          // Either way the lock is released, which is all this is for.
-        } finally {
-          client.release();
-          await pool.end();
-        }
-      }),
-  );
-
-/** Polls a condition until it holds, or answers `None` when the budget runs out. */
-const awaitTrue = <E, R>(
-  condition: Effect.Effect<boolean, E, R>,
-  budget: Duration.Duration,
-): Effect.Effect<Option.Option<void>, E, R> =>
-  Effect.gen(function* () {
-    let met = yield* condition;
-    while (!met) {
-      yield* Effect.sleep(CONDITION_POLL);
-      met = yield* condition;
-    }
-  }).pipe(Effect.timeoutOption(budget));
-
 describe.skipIf(!db)('the queue under real contention', () => {
   layer(layerQueueHarness(db!), { excludeTestServices: true })(
     'with the queue installed',
     (it) => {
-      const jobsLayer = Layer.unwrap(
-        Effect.map(QueueHarness, (harness) =>
-          Jobs.layer({ schema: harness.schema }),
-        ),
-      );
+      const jobsLayer = layerJobs;
 
       /**
        * Two of these, nested, are the two replicas the last two cases run.
@@ -177,39 +86,17 @@ describe.skipIf(!db)('the queue under real contention', () => {
        */
       const backgroundWorker = () => layerWorker(BACKGROUND);
 
-      const clear = Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
-            sql.unsafe(`DELETE FROM ${schema}.jobs`),
-          ),
-        );
-        yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
-            sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
-          ),
-        );
-      });
+      const clear = clearQueue;
 
       const ownerSql = (statement: string) =>
         asOwner(Effect.flatMap(Database, ({ sql }) => sql.unsafe(statement)));
 
-      const enqueueDelivery = (startAfter?: DateTime.Utc) =>
-        Effect.flatMap(Jobs, (jobs) =>
-          asApp(
-            withTransaction(
-              jobs.enqueue(
-                'invitation-delivery',
-                { deliveryId: randomUUID() },
-                startAfter === undefined ? undefined : { startAfter },
-              ),
-            ),
-          ),
+      /** A delivery of its own, optionally deferred so its order is pinned. */
+      const enqueueAt = (startAfter?: DateTime.Utc) =>
+        enqueueDelivery(
+          randomUUID(),
+          startAfter === undefined ? undefined : { startAfter },
         );
-
-      const enqueueSweep = Effect.flatMap(Jobs, (jobs) =>
-        asApp(withTransaction(jobs.enqueue('denied-attempts-summary', {}))),
-      );
 
       /** Every row of a queue is terminal, and there are as many as expected. */
       const allCompleted = (queue: string, count: number) =>
@@ -231,10 +118,10 @@ describe.skipIf(!db)('the queue under real contention', () => {
             // (`ORDER BY run_at, created_at`), so the two are pinned twenty
             // seconds apart: without that the case would depend on two
             // enqueues landing in different milliseconds.
-            const first = yield* enqueueDelivery(
+            const first = yield* enqueueAt(
               DateTime.subtractDuration(now, Duration.seconds(30)),
             );
-            const second = yield* enqueueDelivery(
+            const second = yield* enqueueAt(
               DateTime.subtractDuration(now, Duration.seconds(10)),
             );
 
@@ -451,7 +338,7 @@ describe.skipIf(!db)('the queue under real contention', () => {
               yield* second.work('invitation-delivery', record('second'));
 
               for (let index = 0; index < count; index += 1) {
-                yield* enqueueDelivery();
+                yield* enqueueAt();
               }
 
               const done = yield* awaitTrue(

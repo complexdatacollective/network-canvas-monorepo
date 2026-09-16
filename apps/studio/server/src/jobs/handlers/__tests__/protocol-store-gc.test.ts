@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
 import { Context, Effect, Layer } from 'effect';
+import type pg from 'pg';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
@@ -9,13 +10,14 @@ import {
   asApp,
   asMaintenance,
   DeliveryHarness,
+  drainWith,
   layerDeliveryHarness,
-  layerWorker,
+  layerJobs,
+  onWorker,
   readJobs,
 } from '../../__tests__/support.ts';
 import { Database, withTransaction } from '../../database.ts';
 import { Jobs } from '../../jobs.ts';
-import { JobWorker } from '../../worker.ts';
 import {
   type GcOptions,
   gcProtocolStore,
@@ -51,11 +53,9 @@ const db = await reachableDb();
  * by side" harness rather than anything about deliveries: the sweep needs
  * Studio's tables and the job needs the queue's.
  */
-const suiteLayer = Layer.unwrap(
-  Effect.map(DeliveryHarness, (harness) =>
-    Jobs.layer({ schema: harness.schema }),
-  ),
-).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
+const suiteLayer = layerJobs.pipe(
+  Layer.provideMerge(layerDeliveryHarness(db!)),
+);
 
 /** The one team whose section a published version pins; see `clearStore`. */
 const PINNED_TEAM = 'gc-team-pinned';
@@ -64,6 +64,32 @@ const PINNED_TEAM = 'gc-team-pinned';
 const TEMPLATE_PINNED_TEAM = 'gc-team-template-pinned';
 
 const A_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * One transaction on a pool connection, for the two fixtures that need one: a
+ * version and the sections it pins have to be written together, because
+ * `version_sections_pins_are_frozen` (and its template twin) refuses a pin the
+ * version's own transaction did not write — a pin added after publication
+ * would change what the version assembles to while its frozen manifest stayed
+ * unchanged.
+ */
+const inOneTransaction = (
+  pool: pg.Pool,
+  body: (client: pg.PoolClient) => Promise<void>,
+): Effect.Effect<void> =>
+  Effect.promise(async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await body(client);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
 
 describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
   layer(suiteLayer)('with Studio and the queue installed', (it) => {
@@ -175,33 +201,32 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
       );
 
     // ------------------------------------------------------------ bounds ---
-    it.effect('sweeps to bounds no deployment can vary', () =>
-      Effect.sync(() => {
-        // The two windows are exercised below by rows that straddle them. The
-        // manifest depth and the retry horizon are not — a thousand manifests
-        // is too many to seed for what it would prove — so this is where they
-        // are pinned, and the bounds are one object because the cron addresses
-        // the sweep at nothing: there is no caller to pass a different set.
-        assert.deepStrictEqual(PROTOCOL_STORE_GC_BOUNDS, {
-          retainManifestsPerDraft: 1000,
-          sectionGraceMs: 259_200_000,
-          commandRetryHorizonMs: 86_400_000,
-        });
-      }),
-    );
+    it.effect(
+      'sweeps to bounds no deployment can vary, one of them longer than a backup interval',
+      () =>
+        Effect.sync(() => {
+          // The two windows are exercised below by rows that straddle them.
+          // The manifest depth and the retry horizon are not — a thousand
+          // manifests is too many to seed for what it would prove — so this is
+          // where they are pinned, and the bounds are one object because the
+          // cron addresses the sweep at nothing: there is no caller to pass a
+          // different set.
+          assert.deepStrictEqual(PROTOCOL_STORE_GC_BOUNDS, {
+            retainManifestsPerDraft: 1000,
+            sectionGraceMs: 259_200_000,
+            commandRetryHorizonMs: 86_400_000,
+          });
 
-    it.effect('keeps a section for longer than a backup interval', () =>
-      Effect.sync(() => {
-        // Written as the arithmetic rather than as the constant: the number
-        // above is three days because backups are daily (#1901), so a change
-        // that shortened it would have to disagree with this sentence to pass
-        // (#1909).
-        assert.strictEqual(
-          PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs,
-          72 * 60 * 60 * 1000,
-        );
-        assert.isAbove(PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs, A_DAY_MS);
-      }),
+          // And the grace window said again as the arithmetic rather than as
+          // the constant: it is three days because backups are daily (#1901),
+          // so a change that shortened it would have to disagree with this
+          // sentence as well as with the number above (#1909).
+          assert.strictEqual(
+            PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs,
+            72 * 60 * 60 * 1000,
+          );
+          assert.isAbove(PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs, A_DAY_MS);
+        }),
     );
 
     it.effect('refuses a bound that would widen deletion', () =>
@@ -326,11 +351,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           withTransaction(jobs.enqueue('protocol-store-gc', {})),
         );
 
-        const step = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          yield* worker.work('protocol-store-gc', protocolStoreGc);
-          return yield* worker.drainOnce('protocol-store-gc');
-        }).pipe(Effect.provide(layerWorker()));
+        const step = yield* drainWith('protocol-store-gc', protocolStoreGc);
 
         assert.strictEqual(step._tag, 'settled');
         assert.strictEqual(
@@ -366,20 +387,21 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         const jobs = yield* Jobs;
         yield* asApp(withTransaction(jobs.enqueue('protocol-store-gc', {})));
 
-        const step = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          // The handler registered against the application identity — the
-          // worker still claims and settles as maintenance — so what this
-          // measures is the sweep's own refusal reaching the row.
-          yield* Effect.flatMap(DeliveryHarness, (harness) =>
-            Effect.provideService(
-              worker.work('protocol-store-gc', protocolStoreGc),
-              Database,
-              harness.app,
-            ),
-          );
-          return yield* worker.drainOnce('protocol-store-gc');
-        }).pipe(Effect.provide(layerWorker()));
+        const step = yield* onWorker((worker) =>
+          Effect.gen(function* () {
+            // The handler registered against the application identity — the
+            // worker still claims and settles as maintenance — so what this
+            // measures is the sweep's own refusal reaching the row.
+            yield* Effect.flatMap(DeliveryHarness, (harness) =>
+              Effect.provideService(
+                worker.work('protocol-store-gc', protocolStoreGc),
+                Database,
+                harness.app,
+              ),
+            );
+            return yield* worker.drainOnce('protocol-store-gc');
+          }),
+        );
 
         // The queue retries nothing, so the first attempt is the last one and
         // this line is the only notice a deployment gets that an hour was lost.
@@ -459,41 +481,28 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
             [PINNED_TEAM],
           ),
         );
-        // The pin has to be inserted in the same transaction as the version it
-        // belongs to: `version_sections_pins_are_frozen` refuses a later one,
-        // because a pin added after publication would change what the version
-        // assembles to while its frozen manifest stayed unchanged.
-        yield* Effect.promise(async () => {
-          const client = await scratch.maintenance.connect();
-          try {
-            const protocolId = randomUUID();
-            const versionId = randomUUID();
-            await client.query('BEGIN');
-            await client.query(
-              `INSERT INTO protocols (id, team_id, name)
-               VALUES ($1, $2, 'Pinned')`,
-              [protocolId, PINNED_TEAM],
-            );
-            await client.query(
-              `INSERT INTO protocol_versions
-                 (id, protocol_id, team_id, version_number, version_hash,
-                  manifest, schema_version, source_manifest_hash)
-               VALUES ($1, $2, $3, 1, 'v1', '{}'::jsonb, 8, 'src')`,
-              [versionId, protocolId, PINNED_TEAM],
-            );
-            await client.query(
-              `INSERT INTO version_sections
-                 (version_id, team_id, section_id, section_hash)
-               VALUES ($1, $2, 'settings', $3)`,
-              [versionId, PINNED_TEAM, hash],
-            );
-            await client.query('COMMIT');
-          } catch (error) {
-            await client.query('ROLLBACK').catch(() => undefined);
-            throw error;
-          } finally {
-            client.release();
-          }
+        // One transaction, for the reason `inOneTransaction` records.
+        yield* inOneTransaction(scratch.maintenance, async (client) => {
+          const protocolId = randomUUID();
+          const versionId = randomUUID();
+          await client.query(
+            `INSERT INTO protocols (id, team_id, name)
+             VALUES ($1, $2, 'Pinned')`,
+            [protocolId, PINNED_TEAM],
+          );
+          await client.query(
+            `INSERT INTO protocol_versions
+               (id, protocol_id, team_id, version_number, version_hash,
+                manifest, schema_version, source_manifest_hash)
+             VALUES ($1, $2, $3, 1, 'v1', '{}'::jsonb, 8, 'src')`,
+            [versionId, protocolId, PINNED_TEAM],
+          );
+          await client.query(
+            `INSERT INTO version_sections
+               (version_id, team_id, section_id, section_hash)
+             VALUES ($1, $2, 'settings', $3)`,
+            [versionId, PINNED_TEAM, hash],
+          );
         });
 
         // Marked unreferenced before the pin existed, and old enough to
@@ -524,46 +533,34 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           teamId: TEMPLATE_PINNED_TEAM,
           unreferencedInterval: '96 hours',
         });
-        // One transaction, for the same reason the protocol version's pin is:
-        // `template_version_sections_pins_are_frozen` refuses a pin the
-        // version's own transaction did not write.
-        yield* Effect.promise(async () => {
-          const client = await scratch.maintenance.connect();
-          try {
-            const templateId = randomUUID();
-            const versionId = randomUUID();
-            await client.query('BEGIN');
-            await client.query(
-              `INSERT INTO templates (id, team_id, kind, name)
-               VALUES ($1, $2, 'protocol', 'Holds one section')`,
-              [templateId, TEMPLATE_PINNED_TEAM],
-            );
-            await client.query(
-              `INSERT INTO template_versions
-                 (id, team_id, template_id, version_number, manifest,
-                  manifest_hash, schema_version)
-               VALUES ($1, $2, $3, 1, $4, $5, 8)`,
-              [
-                versionId,
-                TEMPLATE_PINNED_TEAM,
-                templateId,
-                JSON.stringify({ settings: hash }),
-                createHash('sha256').update(hash).digest('hex'),
-              ],
-            );
-            await client.query(
-              `INSERT INTO template_version_sections
-                 (version_id, team_id, section_id, section_hash)
-               VALUES ($1, $2, 'settings', $3)`,
-              [versionId, TEMPLATE_PINNED_TEAM, hash],
-            );
-            await client.query('COMMIT');
-          } catch (error) {
-            await client.query('ROLLBACK').catch(() => undefined);
-            throw error;
-          } finally {
-            client.release();
-          }
+        // One transaction, for the same reason the protocol version's pin is.
+        yield* inOneTransaction(scratch.maintenance, async (client) => {
+          const templateId = randomUUID();
+          const versionId = randomUUID();
+          await client.query(
+            `INSERT INTO templates (id, team_id, kind, name)
+             VALUES ($1, $2, 'protocol', 'Holds one section')`,
+            [templateId, TEMPLATE_PINNED_TEAM],
+          );
+          await client.query(
+            `INSERT INTO template_versions
+               (id, team_id, template_id, version_number, manifest,
+                manifest_hash, schema_version)
+             VALUES ($1, $2, $3, 1, $4, $5, 8)`,
+            [
+              versionId,
+              TEMPLATE_PINNED_TEAM,
+              templateId,
+              JSON.stringify({ settings: hash }),
+              createHash('sha256').update(hash).digest('hex'),
+            ],
+          );
+          await client.query(
+            `INSERT INTO template_version_sections
+               (version_id, team_id, section_id, section_hash)
+             VALUES ($1, $2, 'settings', $3)`,
+            [versionId, TEMPLATE_PINNED_TEAM, hash],
+          );
         });
 
         // Marked unreferenced before the template existed and older than the
