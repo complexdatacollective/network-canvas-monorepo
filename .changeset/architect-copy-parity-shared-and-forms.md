@@ -39,3 +39,7 @@ A `Badge` given both a `color` and `variant="outline"` now reads in the surface'
 own text colour instead of the theme colour, which most of the palette does not
 reach 4.5:1 against a wash of itself; the colour is still the badge's border
 and background.
+A filled `Badge` now reads in whichever of black or white contrasts better with
+the colour it is filled with, worked out from that colour rather than assigned
+by hand, so every colour in the palette carries a readable label. The palette
+itself is exported as `BADGE_COLORS`.
