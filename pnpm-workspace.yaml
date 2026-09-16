@@ -60,8 +60,8 @@ catalog:
   # protocol-validation's locale helpers land.
   '@formatjs/intl-localematcher': ^0.8.13
   '@microsoft/api-extractor': ^7.58.12
-  '@next/bundle-analyzer': ^16.3.4
-  '@next/third-parties': ^16.3.4
+  '@next/bundle-analyzer': ^16.3.5
+  '@next/third-parties': ^16.3.5
   # oRPC is pre-1.0 and its packages only interoperate at the same beta: the
   # contract, the server's `implement`, the client's links, and the TanStack
   # utils share internal symbols. Pin every one to the same exact release.
@@ -141,7 +141,7 @@ catalog:
   jszip: ^3.10.1
   lucide-react: ^1.27.0
   motion: ^13.1.0
-  next: ^16.3.4
+  next: ^16.3.5
   # Catalogued so the root's formatter and Architect's cannot drift apart.
   # Architect's E2E helper formats stage snapshots in-process (see
   # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
