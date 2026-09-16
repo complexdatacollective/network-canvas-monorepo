@@ -1,0 +1,58 @@
+{
+  "name": "@codaco/studio-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Effect contract between the two Studio deployables: branded ids, domain schemas, problem-shaped errors, the RpcGroups served at /rpc, the middleware tags they declare, and the /api/v1 HttpApi definition.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/studio-contract"
+  },
+  "type": "module",
+  "exports": {
+    "./schema/ids": "./src/schema/ids.ts",
+    "./schema/primitives": "./src/schema/primitives.ts",
+    "./schema/problem": "./src/schema/problem.ts",
+    "./schema/errors": "./src/schema/errors.ts",
+    "./schema/status": "./src/schema/status.ts",
+    "./schema/setup": "./src/schema/setup.ts",
+    "./schema/account": "./src/schema/account.ts",
+    "./schema/team": "./src/schema/team.ts",
+    "./schema/study": "./src/schema/study.ts",
+    "./schema/protocol": "./src/schema/protocol.ts",
+    "./schema/audit": "./src/schema/audit.ts",
+    "./schema/participant": "./src/schema/participant.ts",
+    "./middleware/authenticated": "./src/middleware/authenticated.ts",
+    "./middleware/session": "./src/middleware/session.ts",
+    "./middleware/client-session": "./src/middleware/clientSession.ts",
+    "./rpc/status": "./src/rpc/status.ts",
+    "./rpc/setup": "./src/rpc/setup.ts",
+    "./rpc/account": "./src/rpc/account.ts",
+    "./rpc/team": "./src/rpc/team.ts",
+    "./rpc/studies": "./src/rpc/studies.ts",
+    "./rpc/protocols": "./src/rpc/protocols.ts",
+    "./rpc/audit": "./src/rpc/audit.ts",
+    "./rpc/participant": "./src/rpc/participant.ts",
+    "./rpc/studio": "./src/rpc/studio.ts",
+    "./sync/protocol-builder": "./src/sync/protocolBuilder.ts",
+    "./api/v1": "./src/api/v1.ts",
+    "./api/groups/status": "./src/api/groups/status.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codaco/protocol-builder-core": "workspace:^",
+    "@codaco/studio-rpc": "workspace:^",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@effect/vitest": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

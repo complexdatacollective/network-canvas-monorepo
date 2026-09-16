@@ -7,6 +7,7 @@ import pg from 'pg';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
+import { StudioRpcs, StudioStreams } from '@codaco/studio-contract/rpc/studio';
 import { contract } from '@codaco/studio-rpc';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -247,6 +248,23 @@ describe('audit mutation policy', () => {
     expect(mutations.toSorted()).toEqual(
       Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(),
     );
+
+    // The Effect rpc plane must classify the same mutations as the oRPC
+    // contract above: tags are dotted the same way and `me` stays bare, so
+    // `reads` and `RPC_MUTATION_AUDIT_POLICIES` serve both walks unchanged.
+    // Keep the two walks agreeing until stage 2b deletes the oRPC one.
+    const effectProcedures = [
+      ...StudioRpcs.requests.keys(),
+      // The protocol-builder surface is still oRPC until stage 8, so its
+      // leaves are walked the oRPC way — but through the contract's own
+      // `StudioStreams` re-export, which is the one name that surface keeps.
+      ...contractLeaves(StudioStreams, 'protocolBuilder'),
+    ];
+    const effectMutations = effectProcedures.filter((p) => !reads.has(p));
+    expect(effectMutations.toSorted()).toEqual(
+      Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(),
+    );
+
     expect(RPC_MUTATION_AUDIT_POLICIES['team.updateMemberRole']).toEqual({
       kind: 'required',
     });

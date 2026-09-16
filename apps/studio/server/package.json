@@ -61,6 +61,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/studio-contract": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@dbml/core": "10.1.1",
     "@effect/vitest": "catalog:",
