@@ -86,6 +86,48 @@ request() {
     | awk 'tolower($1) == "content-type:" { print $2; exit }')"
 }
 
+# One rpc call through the ingress, and the verdict that came back.
+#
+# Every procedure the client calls is on one route — `POST /rpc`, served by
+# Effect's rpc server over ndjson — so a call names its tag in the envelope
+# rather than in a path of its own. Sets everything `request` sets, and:
+#
+#   RPC_EXIT     the `exit` object of the response's one `Exit` frame
+#   RPC_VERDICT  its `_tag`: `Success`, or `Failure` for a refusal or a defect
+#   RPC_ERROR    the `_tag` of the declared error a `Fail` cause carries, and
+#                empty for a success or for a defect
+#
+# The verdict is what an assertion has to read, because the transport answers
+# 200 whatever the call did: a refusal is a 200 carrying a failing frame, and a
+# payload the contract rejects is a 200 carrying a dying one. Delete the verdict
+# assertions below and leave the status ones and this suite goes green against a
+# server that refuses every call it is given.
+#
+# The frame goes through a file because its trailing newline is what ndjson
+# framing means and command substitution strips one: a body without it leaves
+# the frame sitting in the decoder's buffer, and the request is never answered.
+rpc() { # tag payload-json [extra curl args...]
+  local tag="$1" payload="$2" frame_file="$WORK_DIR/.rpc-request" exit_frame
+  shift 2
+  printf '{"_tag":"Request","id":1,"tag":"%s","payload":%s,"headers":[]}\n' \
+    "$tag" "$payload" > "$frame_file"
+  request -X POST "$URL/rpc" \
+    -H 'Content-Type: application/ndjson' \
+    -H "Origin: $ORIGIN" \
+    "$@" \
+    --data-binary "@$frame_file"
+  exit_frame="$(printf '%s\n' "$BODY" | grep -m1 '"_tag":"Exit"' || true)"
+  if [ -n "$exit_frame" ]; then
+    RPC_EXIT="${exit_frame#*\"exit\":}"
+  else
+    RPC_EXIT=''
+  fi
+  RPC_VERDICT="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/^{"_tag":"\([A-Za-z]*\)".*/\1/p')"
+  RPC_ERROR="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/.*"error":{"_tag":"\([A-Za-z]*\)".*/\1/p')"
+}
+
 # The container id of one service in this project, empty when it does not
 # exist. Read from Docker's labels rather than from `compose ps`, which is
 # scoped to the services the enabled profiles select and so cannot answer
@@ -144,10 +186,27 @@ request "$URL/"
 equals '/ is served' 200 "$STATUS"
 contains '/ is the client shell' 'text/html' "$CONTENT_TYPE"
 
+# Two assertions about one path, because `/rpc` is one route now: the rpc
+# plane's twenty procedures on POST, and nothing at all on GET.
+#
+# The GET is the assertion that was here before the plane collapsed onto this
+# path, and it still says what it always said — that this path reaches the API
+# and not the SPA shell. No GET route exists, so what answers is the shell's
+# machine-surface 404 in problem JSON; nginx serving the client's HTML here
+# instead would be a 200 and `text/html`, for every caller to cache.
 request "$URL/rpc"
-equals '/rpc is the API' 404 "$STATUS"
+equals 'GET /rpc is not a route' 404 "$STATUS"
 contains '/rpc answers problem JSON' 'application/problem+json' "$CONTENT_TYPE"
 contains '/rpc says Not Found' '"title":"Not Found"' "$BODY"
+
+# And the POST, which is the plane. `status` is the one procedure an instance
+# answers before anybody has signed in — no payload, no session, no error
+# channel — so it can be asked here, before setup has run, and asking it is
+# what proves the route serves procedures rather than merely accepting a POST.
+rpc status null
+equals 'POST /rpc is served' 200 "$STATUS"
+contains 'POST /rpc answers ndjson' 'application/ndjson' "$CONTENT_TYPE"
+equals 'the rpc plane serves a public procedure' Success "$RPC_VERDICT"
 
 request "$URL/readyz"
 equals '/readyz is served' 200 "$STATUS"
@@ -183,33 +242,40 @@ section 'first-run setup'
 TOKEN="$(cat "$TOKEN_FILE")"
 pass 'the setup token was captured' "${#TOKEN} characters"
 
+# The procedure's payload, unwrapped: an rpc envelope carries the input as the
+# handler's schema declares it.
 setup_body() {
   cat <<JSON
-{"json":{"token":"$1","instanceName":"$INSTANCE_NAME","owner":{"name":"Stack Test Owner","email":"$OWNER_EMAIL","password":"$OWNER_PASSWORD"}}}
+{"token":"$1","instanceName":"$INSTANCE_NAME","owner":{"name":"Stack Test Owner","email":"$OWNER_EMAIL","password":"$OWNER_PASSWORD"}}
 JSON
 }
 
-request -X POST "$URL/rpc/setup/complete" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  -c "$COOKIE_JAR" \
-  --data-binary "$(setup_body "$TOKEN")"
-equals 'setup completes with the printed token' 200 "$STATUS"
-contains 'setup names the instance' "$INSTANCE_NAME" "$BODY"
+# `-c`, because the new owner's session leaves on this response: the procedure
+# appends it through the `/rpc` route's `SetCookies` handler, and the jar is
+# what carries it into `me` and `/storage` below.
+rpc 'setup.complete' "$(setup_body "$TOKEN")" -c "$COOKIE_JAR"
+equals 'setup completes with the printed token' Success "$RPC_VERDICT"
+contains 'setup names the instance' "$INSTANCE_NAME" "$RPC_EXIT"
+# The flag and the header have to agree: a response that set no cookie must not
+# claim it signed anybody in, and the `me` call below is what settles which of
+# the two was telling the truth.
+contains 'setup signed the browser in' '"signedIn":true' "$RPC_EXIT"
 
-request -X POST "$URL/rpc/me" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  -b "$COOKIE_JAR" \
-  --data-binary '{"json":{}}'
-equals "the owner's session is accepted by /rpc/me" 200 "$STATUS"
-contains '/rpc/me is the owner' "$OWNER_EMAIL" "$BODY"
+# `null`, not `{}`: `me` declares no payload, whose wire form is `null`, and a
+# value the schema refuses dies in the decode before the handler — inside a 200,
+# like every other verdict here.
+rpc me null -b "$COOKIE_JAR"
+equals "the owner's session is accepted by \`me\`" Success "$RPC_VERDICT"
+contains '`me` is the owner' "$OWNER_EMAIL" "$RPC_EXIT"
 
-request -X POST "$URL/rpc/setup/complete" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  --data-binary "$(setup_body "$TOKEN")"
-equals 'a replayed token is refused as not found' 404 "$STATUS"
+# Setup is closed once the instance has an owner, and the procedure says so as
+# a typed refusal rather than as a status — `NotFound`, which is what `/setup`
+# renders as its not-found screen. Both halves are asserted: `Failure` alone
+# would also be the answer to a wrong token, and a suite that read only the
+# status would see the same 200 it saw for the call that succeeded.
+rpc 'setup.complete' "$(setup_body "$TOKEN")"
+equals 'a replayed token is refused' Failure "$RPC_VERDICT"
+equals 'and refused as not found' NotFound "$RPC_ERROR"
 
 # ── The object store, end to end ──────────────────────────────────────────
 #
@@ -303,9 +369,20 @@ fi
 section 'the maintenance window'
 compose stop api >/dev/null 2>&1
 
-request "$URL/rpc/status"
-equals '/rpc/status is 503 while the API is stopped' 503 "$STATUS"
-contains '/rpc/status is the maintenance page' 'temporarily unavailable' "$BODY"
+# `/rpc`, which is the whole of the rpc plane's surface now. What this asked
+# for before, `/rpc/status`, was a procedure's own route and is not a path any
+# more — and both ingresses match `/rpc` as a prefix, so the retired path would
+# still answer the page. That is exactly why it changes: an assertion that goes
+# on passing against a path nothing serves has stopped describing the
+# deployment, and the next reader has no way to tell which of the two it was
+# ever about.
+#
+# The contract is the ingress's rather than the API's, so any path routed to
+# the API would do: while the API is down every one of them gets the page, and
+# `/readyz` below gets it from neither ingress ever.
+request "$URL/rpc"
+equals '/rpc is 503 while the API is stopped' 503 "$STATUS"
+contains '/rpc is the maintenance page' 'temporarily unavailable' "$BODY"
 
 # 502 or 504, not one or the other: a container that is gone takes its address
 # with it, so the ingress's connection attempt is refused on some runs and

@@ -257,8 +257,8 @@ server {
 ```
 
 Check it the way the stack is checked: `/readyz` answers 200 with JSON, `/` is
-the client shell, `/rpc` is a JSON 404 from the API, and with `api` stopped
-`/rpc/status` is the maintenance page with 503 while `/readyz` is the proxy's
+the client shell, `GET /rpc` is a JSON 404 from the API, and with `api` stopped
+`/rpc` is the maintenance page with 503 while `/readyz` is the proxy's
 own gateway error — 502, or 504 where the address stopped answering — and never
 the page.
 
