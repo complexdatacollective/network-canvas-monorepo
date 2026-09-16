@@ -3,6 +3,7 @@ import { DateTime, Deferred, Duration, Effect, Fiber, Random } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
 import { withTransaction } from '../database.ts';
 import {
   backoffSeconds,
@@ -105,6 +106,92 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           // And the first attempt's step says it wrote nothing.
           assert.strictEqual(stale._tag, 'idle');
         }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect(
+      'settles nothing onto a row a later attempt is still running',
+      () => {
+        const logs = collectLeveledLogs();
+        return Effect.gen(function* () {
+          yield* clear;
+          const jobId = yield* enqueueDelivery();
+
+          const firstHeld = yield* Deferred.make<void>();
+          const firstStarted = yield* Deferred.make<void>();
+          const secondHeld = yield* Deferred.make<void>();
+          const secondStarted = yield* Deferred.make<void>();
+
+          const stale = yield* Effect.gen(function* () {
+            const first = yield* JobWorker;
+            const running = yield* holdDelivery(first, firstStarted, firstHeld);
+
+            // The reap-then-reclaim the cases above build, stopped one step
+            // earlier: the second attempt is *still running* when the first
+            // settles, so the row is `active` under a later attempt rather
+            // than terminal under it. That is the only state in which the
+            // `attempts` half of the fence is what turns the stale write away
+            // — everywhere else `state` has already moved past `active` and
+            // would refuse it on its own.
+            yield* TestClock.adjust(
+              Duration.seconds(DELIVERY.expireInSeconds + 1),
+            );
+            assert.strictEqual(yield* first.reapExpired, 1);
+            const [returned] = yield* readJobs('invitation-delivery');
+            assert.strictEqual(returned?.state, 'created');
+            yield* TestClock.setTime(returned!.run_at);
+
+            const secondRunning = yield* Effect.gen(function* () {
+              const other = yield* JobWorker;
+              return yield* claimAndHold(
+                other,
+                'invitation-delivery',
+                { started: secondStarted, held: secondHeld },
+                Effect.succeed<JobOutcome>('suppressed'),
+              );
+            }).pipe(Effect.provide(layerWorker()));
+
+            const [claimed] = yield* readJobs('invitation-delivery');
+            assert.strictEqual(claimed?.state, 'active');
+            assert.strictEqual(claimed?.attempts, 2);
+
+            // The first attempt finishes and settles. Its handler answered
+            // `completed`, so an unfenced success would mark a job another
+            // worker is still sending as done — and the second attempt's own
+            // settle would then find nothing left to write.
+            yield* Deferred.succeed(firstHeld, undefined);
+            const answered = yield* Fiber.join(running);
+
+            const [untouched] = yield* readJobs('invitation-delivery');
+            assert.strictEqual(untouched?.state, 'active');
+            assert.strictEqual(untouched?.attempts, 2);
+            assert.strictEqual(untouched?.outcome, null);
+            assert.strictEqual(untouched?.completed_at, null);
+
+            // And the running attempt still lands, on the row that is its own.
+            yield* Deferred.succeed(secondHeld, undefined);
+            const settled = yield* Fiber.join(secondRunning);
+            assert.strictEqual(settled._tag, 'settled');
+            return answered;
+          }).pipe(Effect.provide(layerWorker()));
+
+          assert.strictEqual(stale._tag, 'idle');
+          const [row] = yield* readJobs('invitation-delivery');
+          assert.strictEqual(row?.state, 'completed');
+          assert.strictEqual(row?.attempts, 2);
+          assert.strictEqual(row?.outcome, 'suppressed');
+
+          // A settle that wrote nothing is the one thing in this window an
+          // operator can see: the row says nothing about it, and without the
+          // line a worker that had silently stopped settling anything would
+          // look exactly like one with nothing to do.
+          assert.deepStrictEqual(logs.lines, [
+            {
+              level: 'Warn',
+              message: `job invitation-delivery ${jobId} lost its lease before attempt 1 could settle; the row belongs to a later attempt`,
+            },
+          ]);
+        }).pipe(Effect.provide(jobsLayer), Effect.provide(logs.layer));
+      },
     );
 
     it.effect(
