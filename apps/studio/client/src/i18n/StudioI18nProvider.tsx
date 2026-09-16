@@ -15,10 +15,11 @@ import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
+import type { Me } from '@codaco/studio-contract/schema/account';
 
-import { orpc, rpcClient } from '../lib/api.ts';
 import { sessionQueryOptions } from '../lib/session.ts';
 import { studioCatalogs } from '../locales/catalogs.ts';
+import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 import { studioDefaultLocale, studioLocales } from './locales.ts';
 import {
   clearLocaleMirror,
@@ -216,9 +217,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // included — while identity is still in flight. Waiting for it would
       // mean discarding a choice the researcher has just made and watching the
       // payload that follows put them back on the old language.
-      const userId =
-        queryClient.getQueryData(orpc.me.queryOptions().queryKey)?.userId ??
-        null;
+      const userId = queryClient.getQueryData<Me>(rpcKey('me'))?.userId ?? null;
 
       pendingServerAck.current = { locale, userId, generation };
       setSaveState('saving');
@@ -235,12 +234,12 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
         // long as the round trip takes, a language nothing on screen claims.
         if (writeGeneration.current !== generation) return;
         try {
-          await rpcClient.account.updateLocale({ locale });
+          await rpcCall('account.updateLocale', { locale });
           if (writeGeneration.current !== generation) return;
           setSaveState('saved');
           // `me` now reports the new value; refetch so LocaleSync's
           // acknowledgment comparison sees it rather than a stale payload.
-          await queryClient.invalidateQueries({ queryKey: orpc.me.key() });
+          await queryClient.invalidateQueries({ queryKey: rpcKey('me') });
           // `LocaleSync` acknowledges the write when that refetch reports
           // something new, and it often reports nothing new: a researcher who
           // tries a language and goes back to the one they had ends on the
@@ -250,9 +249,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
           // not an observer happening to change. A marker left standing after
           // that refuses every later payload as stale — including the
           // preference this researcher sets on their other device.
-          const stored = queryClient.getQueryData(
-            orpc.me.queryOptions().queryKey,
-          )?.locale;
+          const stored = queryClient.getQueryData<Me>(rpcKey('me'))?.locale;
           if (
             stored === locale &&
             pendingServerAck.current?.generation === generation
