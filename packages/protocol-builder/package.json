@@ -34,6 +34,7 @@
     "./naming/computeAutoNameUpdate": "./src/naming/computeAutoNameUpdate.ts",
     "./naming/generateStageLabel": "./src/naming/generateStageLabel.ts",
     "./naming/resolveStageNameParts": "./src/naming/resolveStageNameParts.ts",
+    "./naming/proposeStageLabel": "./src/naming/proposeStageLabel.ts",
     "./ProtocolBuilder": "./src/ProtocolBuilder.tsx",
     "./protocol-context": "./src/protocol-context.ts",
     "./resources/components/ResourceBrowserDialog": "./src/resources/components/ResourceBrowserDialog.tsx",

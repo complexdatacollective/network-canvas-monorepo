@@ -1,24 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
-import type {
-  Codebook,
-  Item,
-  Panel,
-  StageSubject,
-  Variable,
-  Variables,
-} from '@codaco/protocol-validation';
+import type { Item, StageSubject } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
-import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
-import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
 import {
-  resolveStageQualifier,
-  resolveStageSubjectName,
-} from './resolveStageNameParts.ts';
+  proposeStageLabel,
+  type StageLabelPanel,
+} from './proposeStageLabel.ts';
 
 /**
  * The only part of a panel a proposed name reads.
@@ -28,7 +19,7 @@ import {
  * as one `panels` value, and only the section that writes them knows how to
  * assemble the list back out of its own slots.
  */
-export type AutoStageNamePanel = Pick<Panel, 'dataSource'>;
+export type AutoStageNamePanel = StageLabelPanel;
 
 export type AutoStageNameOptions = Readonly<{
   /**
@@ -71,32 +62,21 @@ export function useAutoStageName(options: AutoStageNameOptions): AutoStageName {
   const draft = useStageNameSources();
   const liveLabel = draft.label;
 
-  const generatedLabel = useMemo(() => {
-    const subjectName = resolveStageSubjectName(draft.subject, (entity, type) =>
-      entityName(protocolContext.codebook, entity, type),
-    );
-    const variablesById = allVariablesById(protocolContext.codebook);
-    const qualifier = resolveStageQualifier(
-      {
-        type: identity.type,
-        panels: panels === undefined ? undefined : [...panels],
-        items: draft.items,
-        nominationPrompts: draft.nominationPrompts,
-      },
-      {
-        resolveAssetType: (assetId) =>
-          protocolContext.assets[assetId]?.type ?? null,
-        resolveVariableName: (variableId) =>
-          variablesById[variableId]?.name ?? null,
-      },
-    );
-    return generateStageLabel({
-      typeName: STAGE_TYPE_NAMES[identity.type],
-      subjectName,
-      qualifier,
-      existingLabels: existingStageLabels(protocolContext, identity.id),
-    });
-  }, [draft, identity, panels, protocolContext]);
+  const generatedLabel = useMemo(
+    () =>
+      proposeStageLabel(
+        {
+          id: identity.id,
+          type: identity.type,
+          subject: draft.subject,
+          items: draft.items,
+          nominationPrompts: draft.nominationPrompts,
+          panels,
+        },
+        protocolContext,
+      ),
+    [draft, identity, panels, protocolContext],
+  );
 
   const isCustomRef = useRef(false);
   const lastGeneratedRef = useRef<string | undefined>(undefined);
@@ -228,54 +208,4 @@ function readNominationPrompts(
     prompts.push({ variable: entry.variable });
   }
   return prompts;
-}
-
-function entityName(
-  codebook: Readonly<Codebook>,
-  entity: 'node' | 'edge',
-  type: string,
-): string | null {
-  const types = entity === 'node' ? codebook.node : codebook.edge;
-  return types?.[type]?.name ?? null;
-}
-
-/**
- * Every attribute in the codebook by its record key, whichever entity type
- * declares it. A nomination prompt names an attribute by key alone, so the
- * lookup cannot be scoped to one entity.
- */
-function allVariablesById(
-  codebook: Readonly<Codebook>,
-): Readonly<Record<string, Variable>> {
-  const flattened: Record<string, Variable> = {};
-  const add = (variables: Readonly<Variables> | undefined) => {
-    for (const [id, variable] of Object.entries(variables ?? {})) {
-      flattened[id] = variable;
-    }
-  };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    add(definition.variables);
-  }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    add(definition.variables);
-  }
-  add(codebook.ego?.variables);
-  return flattened;
-}
-
-/**
- * The names already taken, so a proposal is unique in the interview.
- *
- * The stage being edited is excluded: a host that has already written it into
- * the protocol would otherwise have every proposal collide with the stage's
- * own last accepted name and come back suffixed ` #2`, then ` #3`.
- */
-function existingStageLabels(
-  context: ProtocolBuilderProtocolContext,
-  stageId: string,
-): string[] {
-  return context.orderedStages
-    .filter((stage) => stage.id !== stageId)
-    .map((stage) => stage.label)
-    .filter((label) => label !== '');
 }
