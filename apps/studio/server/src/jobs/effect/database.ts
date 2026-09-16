@@ -115,7 +115,9 @@ const pinSession = (
     if (service.searchPath !== null) {
       if (!IDENTIFIER.test(service.searchPath)) {
         return yield* Effect.die(
-          new Error(`invalid search path: ${JSON.stringify(service.searchPath)}`),
+          new Error(
+            `invalid search path: ${JSON.stringify(service.searchPath)}`,
+          ),
         );
       }
       yield* sql.unsafe(`set local search_path to ${service.searchPath}`);

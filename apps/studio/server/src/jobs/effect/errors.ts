@@ -17,9 +17,6 @@ const LOCK_NOT_AVAILABLE = '55P03';
 /** `insufficient_privilege`. */
 export const INSUFFICIENT_PRIVILEGE = '42501';
 
-/** `unique_violation`. */
-export const UNIQUE_VIOLATION = '23505';
-
 /** `foreign_key_violation`. */
 export const FOREIGN_KEY_VIOLATION = '23503';
 
@@ -28,7 +25,7 @@ export const FOREIGN_KEY_VIOLATION = '23503';
  * through the chain rather than off the top: a missing `code` would otherwise
  * read the same as a privilege error that never happened.
  */
-export function sqlState(error: unknown): string | undefined {
+function sqlState(error: unknown): string | undefined {
   let current: unknown = error;
   while (Predicate.isObject(current)) {
     if (
@@ -82,7 +79,7 @@ export function deepestMessage(value: unknown): string | undefined {
 }
 
 /** True when the statement asked not to wait for a lock and would have. */
-export function isLockUnavailable(error: unknown): boolean {
+function isLockUnavailable(error: unknown): boolean {
   return sqlState(error) === LOCK_NOT_AVAILABLE;
 }
 

@@ -43,7 +43,7 @@ export class QueueHarness extends Context.Service<
  * dollar-quoted body and no semicolon inside a literal, which is deliberate —
  * the spike does not want to depend on that splitter existing yet.
  */
-export function splitPlainStatements(sql: string): readonly string[] {
+function splitPlainStatements(sql: string): readonly string[] {
   return sql
     .split(';')
     .map((statement) => statement.trim())
@@ -69,9 +69,8 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
       // Built into this layer's own scope rather than `Effect.provide`d, which
       // would close each pool the moment the effect that built it finished.
       const build = (identity: 'app' | 'maintenance' | 'owner') =>
-        Effect.map(
-          Effect.orDie(Layer.build(client(identity, db))),
-          (context) => Context.get(context, Database),
+        Effect.map(Effect.orDie(Layer.build(client(identity, db))), (context) =>
+          Context.get(context, Database),
         );
       const owner = yield* build('owner');
       const app = yield* build('app');
@@ -135,7 +134,7 @@ export const asOwner = <A, E, R>(
   );
 
 /** The maintenance client under the `Database` tag, for a worker layer. */
-export const layerMaintenanceDatabase: Layer.Layer<Database, never, QueueHarness> =
+const layerMaintenanceDatabase: Layer.Layer<Database, never, QueueHarness> =
   Layer.effect(
     Database,
     Effect.map(QueueHarness, (harness) => harness.maintenance),

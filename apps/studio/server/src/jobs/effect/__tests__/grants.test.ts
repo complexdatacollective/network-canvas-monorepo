@@ -2,7 +2,7 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Cause, Effect, Exit, Layer, Option, Predicate } from 'effect';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
-import { Database, Transaction, withTransaction } from '../database.ts';
+import { Transaction, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
 import {
   asApp,
@@ -34,7 +34,10 @@ const sqlState = (exit: Exit.Exit<unknown, unknown>): string | undefined => {
     Cause.findErrorOption(exit.cause),
   );
   while (Predicate.isObject(current)) {
-    if (Predicate.hasProperty(current, 'code') && Predicate.isString(current.code)) {
+    if (
+      Predicate.hasProperty(current, 'code') &&
+      Predicate.isString(current.code)
+    ) {
       return current.code;
     }
     if (!Predicate.hasProperty(current, 'cause')) return undefined;

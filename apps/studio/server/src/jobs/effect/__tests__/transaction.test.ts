@@ -1,4 +1,4 @@
-import { assert, describe, it, layer } from '@effect/vitest';
+import { assert, describe, layer } from '@effect/vitest';
 import { Effect, Exit, Layer } from 'effect';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
@@ -32,6 +32,18 @@ import {
 // compile, which is the only reason the three above can be the whole story.
 
 const db = await reachableDb();
+
+/**
+ * A payload with a field the queue forbids, built without a cast. TypeScript's
+ * excess-property check only fires on a fresh object literal, so a value that
+ * reached the call through a variable carries the extra field happily — which
+ * is exactly the shape a row written by an older release would have, and the
+ * reason `onExcessProperty: 'error'` exists at all.
+ */
+const withExcessField = Object.assign(
+  { deliveryId: '44444444-4444-4444-8444-444444444444' },
+  { teamId: 'a-team' },
+);
 
 describe.skipIf(!db)('the transaction guarantee', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
@@ -213,21 +225,19 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       { timeout: 30_000 },
     );
 
-    it.effect(
-      'does not offer an enqueue outside a transaction',
-      () =>
-        Effect.gen(function* () {
-          const jobs = yield* Jobs;
-          // The type-level half of the guarantee. `Effect.runSync` demands
-          // `R = never`; `enqueue` leaves `Transaction` in `R`, and nothing
-          // but `withTransaction` provides it. If this ever compiles, the
-          // unused `@ts-expect-error` is itself an error, so the probe cannot
-          // rot into a comment.
-          const outsideTransaction = () =>
-            // @ts-expect-error -- Jobs.enqueue requires Transaction
-            Effect.runSync(jobs.enqueue('protocol-store-gc', {}));
-          assert.isFunction(outsideTransaction);
-        }).pipe(Effect.provide(jobsLayer)),
+    it.effect('does not offer an enqueue outside a transaction', () =>
+      Effect.gen(function* () {
+        const jobs = yield* Jobs;
+        // The type-level half of the guarantee. `Effect.runSync` demands
+        // `R = never`; `enqueue` leaves `Transaction` in `R`, and nothing
+        // but `withTransaction` provides it. If this ever compiles, the
+        // unused `@ts-expect-error` is itself an error, so the probe cannot
+        // rot into a comment.
+        const outsideTransaction = () =>
+          // @ts-expect-error -- Jobs.enqueue requires Transaction
+          Effect.runSync(jobs.enqueue('protocol-store-gc', {}));
+        assert.isFunction(outsideTransaction);
+      }).pipe(Effect.provide(jobsLayer)),
     );
 
     it.effect(
@@ -239,12 +249,10 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const refused = yield* Effect.exit(
             asApp(
               withTransaction(
-                jobs.enqueue('invitation-delivery', {
-                  deliveryId: '44444444-4444-4444-8444-444444444444',
-                  // The excess property JOB_PAYLOAD_PARSE_OPTIONS exists for;
-                  // Schema.Struct would otherwise strip it silently.
-                  ...{ teamId: 'a-team' },
-                }),
+                // `Schema.Struct` would strip `teamId` silently without
+                // `onExcessProperty: 'error'`, and the job would reach the
+                // table with a field the payload policy forbids.
+                jobs.enqueue('invitation-delivery', withExcessField),
               ),
             ),
           );

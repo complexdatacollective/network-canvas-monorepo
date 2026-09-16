@@ -137,7 +137,10 @@ describe.skipIf(!db)('recurring work', () => {
         }).pipe(Effect.provide(layerWorker()));
 
         // One ticked, one was refused the lock.
-        assert.deepStrictEqual([...outcomes].sort(), [false, true]);
+        assert.deepStrictEqual(
+          [...outcomes].sort((a, b) => Number(a) - Number(b)),
+          [false, true],
+        );
         const created = yield* readJobs('denied-attempts-summary');
         assert.strictEqual(created.length, 1);
       }).pipe(Effect.provide(jobsLayer)),
@@ -168,7 +171,7 @@ describe.skipIf(!db)('recurring work', () => {
           assert.deepStrictEqual(dropped, ['retired-sweep']);
           assert.deepStrictEqual(
             (yield* schedules()).map(({ name }) => name).sort(),
-            [...JOB_SCHEDULES.map(({ queue }) => queue)].sort(),
+            JOB_SCHEDULES.map(({ queue }) => queue).sort(),
           );
         }).pipe(Effect.provide(layerWorker()));
       }).pipe(Effect.provide(jobsLayer)),

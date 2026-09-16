@@ -5,7 +5,11 @@ import type { SqlError } from 'effect/unstable/sql';
 import type { TeamRole } from '@codaco/studio-rpc';
 
 import { Database, Transaction, withTransaction } from './database.ts';
-import { causeError, deepestMessage, isLockUnavailableCause } from './errors.ts';
+import {
+  causeError,
+  deepestMessage,
+  isLockUnavailableCause,
+} from './errors.ts';
 import type { HandledJob, JobOutcome } from './worker.ts';
 
 // `invitation-delivery` as an Effect (#1927 §11): the same state machine
@@ -49,8 +53,7 @@ export const LOCK_HELD_ON_LAST_ATTEMPT =
   'invitation row is locked by an earlier attempt or another command on the last attempt; how this delivery ended is for the holder to record';
 
 /** What a send that outlived the row it was for is recorded as. */
-export const ENDED_MID_SEND =
-  'the delivery had already ended when its send completed';
+const ENDED_MID_SEND = 'the delivery had already ended when its send completed';
 
 /**
  * A delivery that has not ended yet. Repeated in every statement that writes

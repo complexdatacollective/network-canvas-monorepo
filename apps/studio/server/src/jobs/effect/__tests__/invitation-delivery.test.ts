@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Deferred, Effect, Exit, Fiber, Layer, Option } from 'effect';
+import { Deferred, Effect, Exit, Fiber, Layer } from 'effect';
 import type pg from 'pg';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
@@ -12,7 +12,6 @@ import {
   INSUFFICIENT_PRIVILEGE,
 } from '../errors.ts';
 import {
-  ENDED_MID_SEND,
   invitationDelivery,
   LOCK_HELD_ELSEWHERE,
   LOCK_HELD_ON_LAST_ATTEMPT,
@@ -322,70 +321,74 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
     );
 
     // ---------------------------------------------------------------- 5 ----
-    it.effect('records a failed attempt and sends the snapshot on the next', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch } = yield* DeliveryHarness;
-        yield* Effect.promise(async () => {
-          await scratch.pool.query(
-            `UPDATE teams SET name = 'Renamed Team' WHERE id = $1`,
-            [TEAM_ID],
-          );
-          await scratch.pool.query(
-            `UPDATE "user" SET name = 'Renamed Inviter' WHERE id = $1`,
-            [INVITER_ID],
-          );
-        });
+    it.effect(
+      'records a failed attempt and sends the snapshot on the next',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch } = yield* DeliveryHarness;
+          yield* Effect.promise(async () => {
+            await scratch.pool.query(
+              `UPDATE teams SET name = 'Renamed Team' WHERE id = $1`,
+              [TEAM_ID],
+            );
+            await scratch.pool.query(
+              `UPDATE "user" SET name = 'Renamed Inviter' WHERE id = $1`,
+              [INVITER_ID],
+            );
+          });
 
-        const first = yield* runDelivery(
-          deliveryId,
-          failsWith('SMTP temporarily unavailable'),
-        );
-        assert.strictEqual(first._tag, 'retrying');
-        const afterFirst = yield* deliveryState(deliveryId);
-        assert.strictEqual(afterFirst.attempt_count, 1);
-        assert.strictEqual(afterFirst.failed_at, null);
-        assert.strictEqual(
-          afterFirst.last_error,
-          'SMTP temporarily unavailable',
-        );
-        assert.strictEqual(afterFirst.sent_at, null);
+          const first = yield* runDelivery(
+            deliveryId,
+            failsWith('SMTP temporarily unavailable'),
+          );
+          assert.strictEqual(first._tag, 'retrying');
+          const afterFirst = yield* deliveryState(deliveryId);
+          assert.strictEqual(afterFirst.attempt_count, 1);
+          assert.strictEqual(afterFirst.failed_at, null);
+          assert.strictEqual(
+            afterFirst.last_error,
+            'SMTP temporarily unavailable',
+          );
+          assert.strictEqual(afterFirst.sent_at, null);
 
-        yield* clearQueue();
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
-        const second = yield* runDelivery(deliveryId, succeeds);
-        assert.strictEqual(second._tag, 'settled');
-        // The labels are the ones the command snapshotted, not the renamed
-        // team and inviter: the invitation says what it said when it was sent.
-        assert.deepStrictEqual(mail.sent.at(-1), {
-          email: invitation.email,
-          expiresAt: invitation.expiresAt,
-          invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
-          inviterLabel: 'Inviting Researcher',
-          messageId: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
-          role: 'member',
-          teamLabel: 'Invitation Delivery Team',
-        });
-        const afterSecond = yield* deliveryState(deliveryId);
-        assert.strictEqual(afterSecond.attempt_count, 1);
-        assert.strictEqual(afterSecond.last_error, null);
-        assert.instanceOf(afterSecond.sent_at, Date);
-      }),
+          yield* clearQueue();
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
+          const second = yield* runDelivery(deliveryId, succeeds);
+          assert.strictEqual(second._tag, 'settled');
+          // The labels are the ones the command snapshotted, not the renamed
+          // team and inviter: the invitation says what it said when it was sent.
+          assert.deepStrictEqual(mail.sent.at(-1), {
+            email: invitation.email,
+            expiresAt: invitation.expiresAt,
+            invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
+            inviterLabel: 'Inviting Researcher',
+            messageId: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
+            role: 'member',
+            teamLabel: 'Invitation Delivery Team',
+          });
+          const afterSecond = yield* deliveryState(deliveryId);
+          assert.strictEqual(afterSecond.attempt_count, 1);
+          assert.strictEqual(afterSecond.last_error, null);
+          assert.instanceOf(afterSecond.sent_at, Date);
+        }),
     );
 
     // ---------------------------------------------------------------- 6 ----
-    it.effect('does not retry when SMTP accepted but the marker cannot commit', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch } = yield* DeliveryHarness;
+    it.effect(
+      'does not retry when SMTP accepted but the marker cannot commit',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch } = yield* DeliveryHarness;
 
-        yield* Effect.promise(async () => {
-          await scratch.pool.query(`
+          yield* Effect.promise(async () => {
+            await scratch.pool.query(`
             CREATE FUNCTION interrupt_invitation_sent_finalization() RETURNS trigger AS $$
             BEGIN
               RAISE EXCEPTION 'sent finalization interrupted';
@@ -397,65 +400,67 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
               WHEN (NEW.sent_at IS NOT NULL AND OLD.sent_at IS NULL)
               EXECUTE FUNCTION interrupt_invitation_sent_finalization();
           `);
-        });
+          });
 
-        const step = yield* Effect.ensuring(
-          runDelivery(deliveryId, succeeds),
-          Effect.promise(async () => {
-            await scratch.pool.query(`
+          const step = yield* Effect.ensuring(
+            runDelivery(deliveryId, succeeds),
+            Effect.promise(async () => {
+              await scratch.pool.query(`
               DROP TRIGGER interrupt_invitation_sent_finalization
                 ON team_invitation_deliveries;
               DROP FUNCTION interrupt_invitation_sent_finalization();
             `);
-          }),
-        );
+            }),
+          );
 
-        // Settled rather than retried: the mail has gone (#1305, #1307).
-        assert.strictEqual(step._tag, 'settled');
-        assert.strictEqual(
-          step._tag === 'settled' ? step.outcome : undefined,
-          'uncertain',
-        );
-        const row = yield* deliveryState(deliveryId);
-        assert.strictEqual(row.attempt_count, 1);
-        assert.strictEqual(row.failed_at, null);
-        assert.strictEqual(row.last_error, 'sent finalization interrupted');
-        assert.strictEqual(row.sent_at, null);
-        assert.strictEqual(row.suppressed_at, null);
-        assert.instanceOf(row.uncertain_at, Date);
+          // Settled rather than retried: the mail has gone (#1305, #1307).
+          assert.strictEqual(step._tag, 'settled');
+          assert.strictEqual(
+            step._tag === 'settled' ? step.outcome : undefined,
+            'uncertain',
+          );
+          const row = yield* deliveryState(deliveryId);
+          assert.strictEqual(row.attempt_count, 1);
+          assert.strictEqual(row.failed_at, null);
+          assert.strictEqual(row.last_error, 'sent finalization interrupted');
+          assert.strictEqual(row.sent_at, null);
+          assert.strictEqual(row.suppressed_at, null);
+          assert.instanceOf(row.uncertain_at, Date);
 
-        yield* clearQueue();
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
-        const again = yield* runDelivery(deliveryId, succeeds);
-        assert.strictEqual(again._tag, 'settled');
-        assert.strictEqual(mail.sent.length, 0);
-        // Not even the attempt counter moves: an uncertain delivery is done.
-        const unchanged = yield* deliveryState(deliveryId);
-        assert.strictEqual(unchanged.attempt_count, 1);
-        assert.instanceOf(unchanged.uncertain_at, Date);
-      }),
+          yield* clearQueue();
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
+          const again = yield* runDelivery(deliveryId, succeeds);
+          assert.strictEqual(again._tag, 'settled');
+          assert.strictEqual(mail.sent.length, 0);
+          // Not even the attempt counter moves: an uncertain delivery is done.
+          const unchanged = yield* deliveryState(deliveryId);
+          assert.strictEqual(unchanged.attempt_count, 1);
+          assert.instanceOf(unchanged.uncertain_at, Date);
+        }),
     );
 
     // ---------------------------------------------------------------- 7 ----
-    it.effect('records the delivery failed on the attempt nothing will retry', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
+    it.effect(
+      'records the delivery failed on the attempt nothing will retry',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
 
-        const step = yield* runDelivery(
-          deliveryId,
-          failsWith('permanent SMTP failure'),
-          { attemptsBefore: RETRY_LIMIT },
-        );
-        assert.strictEqual(step._tag, 'failed');
-        const row = yield* deliveryState(deliveryId);
-        assert.strictEqual(row.attempt_count, RETRY_LIMIT + 1);
-        assert.instanceOf(row.failed_at, Date);
-        assert.strictEqual(row.last_error, 'permanent SMTP failure');
-        assert.strictEqual(row.sent_at, null);
-      }),
+          const step = yield* runDelivery(
+            deliveryId,
+            failsWith('permanent SMTP failure'),
+            { attemptsBefore: RETRY_LIMIT },
+          );
+          assert.strictEqual(step._tag, 'failed');
+          const row = yield* deliveryState(deliveryId);
+          assert.strictEqual(row.attempt_count, RETRY_LIMIT + 1);
+          assert.instanceOf(row.failed_at, Date);
+          assert.strictEqual(row.last_error, 'permanent SMTP failure');
+          assert.strictEqual(row.sent_at, null);
+        }),
     );
 
     // ---------------------------------------------------------------- 8 ----
@@ -568,41 +573,43 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
     );
 
     // --------------------------------------------------------------- 10 ----
-    it.effect('suppresses deliveries whose invitations are cancelled or expired', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const cancelled = yield* seedInvitation({ status: 'canceled' });
-        const expired = yield* seedInvitation({
-          expiresAt: new Date(Date.now() - 60_000),
-        });
-        const cancelledDelivery = yield* enqueueDeliveryRow(cancelled);
-        const expiredDelivery = yield* enqueueDeliveryRow(expired);
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
+    it.effect(
+      'suppresses deliveries whose invitations are cancelled or expired',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const cancelled = yield* seedInvitation({ status: 'canceled' });
+          const expired = yield* seedInvitation({
+            expiresAt: new Date(Date.now() - 60_000),
+          });
+          const cancelledDelivery = yield* enqueueDeliveryRow(cancelled);
+          const expiredDelivery = yield* enqueueDeliveryRow(expired);
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
 
-        const first = yield* runDelivery(cancelledDelivery, succeeds);
-        yield* clearQueue();
-        const second = yield* runDelivery(expiredDelivery, succeeds);
+          const first = yield* runDelivery(cancelledDelivery, succeeds);
+          yield* clearQueue();
+          const second = yield* runDelivery(expiredDelivery, succeeds);
 
-        assert.strictEqual(
-          first._tag === 'settled' ? first.outcome : undefined,
-          'suppressed',
-        );
-        assert.strictEqual(
-          second._tag === 'settled' ? second.outcome : undefined,
-          'suppressed',
-        );
-        assert.strictEqual(mail.sent.length, 0);
-        const cancelledRow = yield* deliveryState(cancelledDelivery);
-        assert.strictEqual(
-          cancelledRow.last_error,
-          'invitation is no longer pending',
-        );
-        assert.instanceOf(cancelledRow.suppressed_at, Date);
-        const expiredRow = yield* deliveryState(expiredDelivery);
-        assert.strictEqual(expiredRow.last_error, 'invitation expired');
-        assert.instanceOf(expiredRow.suppressed_at, Date);
-      }),
+          assert.strictEqual(
+            first._tag === 'settled' ? first.outcome : undefined,
+            'suppressed',
+          );
+          assert.strictEqual(
+            second._tag === 'settled' ? second.outcome : undefined,
+            'suppressed',
+          );
+          assert.strictEqual(mail.sent.length, 0);
+          const cancelledRow = yield* deliveryState(cancelledDelivery);
+          assert.strictEqual(
+            cancelledRow.last_error,
+            'invitation is no longer pending',
+          );
+          assert.instanceOf(cancelledRow.suppressed_at, Date);
+          const expiredRow = yield* deliveryState(expiredDelivery);
+          assert.strictEqual(expiredRow.last_error, 'invitation expired');
+          assert.instanceOf(expiredRow.suppressed_at, Date);
+        }),
     );
 
     // --------------------------------------------------------------- 11 ----
@@ -652,186 +659,196 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         }).pipe(Effect.provide(layerWorker()));
 
         assert.strictEqual(mail.sent.length, 1);
-        assert.deepStrictEqual(
-          steps.map((step) => step._tag).sort(),
-          ['idle', 'settled'],
-        );
+        assert.deepStrictEqual(steps.map((step) => step._tag).sort(), [
+          'idle',
+          'settled',
+        ]);
         const row = yield* deliveryState(deliveryId);
         assert.instanceOf(row.sent_at, Date);
       }),
     );
 
     // --------------------------------------------------------------- 12 ----
-    it.effect('refuses a second attempt while the first holds the invitation', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
-        const sending = yield* Deferred.make<void, MailFailed>();
+    it.effect(
+      'refuses a second attempt while the first holds the invitation',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
+          const sending = yield* Deferred.make<void, MailFailed>();
 
-        const first = yield* Effect.forkChild(
-          runDelivery(deliveryId, (call) =>
-            call === 1 ? Deferred.await(sending) : Effect.void,
-          ),
-        );
-        yield* waitFor(() => mail.sent.length === 1);
+          const first = yield* Effect.forkChild(
+            runDelivery(deliveryId, (call) =>
+              call === 1 ? Deferred.await(sending) : Effect.void,
+            ),
+          );
+          yield* waitFor(() => mail.sent.length === 1);
 
-        // The expiry of the first attempt would make the queue hand the job to
-        // a second worker while the first is still inside its SMTP call.
-        const second = yield* runDelivery(deliveryId, succeeds, {
-          attemptsBefore: 1,
-        });
-        assert.strictEqual(second._tag, 'retrying');
-        assert.strictEqual(mail.sent.length, 1);
-        // The refusal counted nothing: an attempt that never got the lock did
-        // no work.
-        const during = yield* deliveryState(deliveryId);
-        assert.strictEqual(during.attempt_count, 1);
-        assert.strictEqual(during.last_error, null);
+          // The expiry of the first attempt would make the queue hand the job to
+          // a second worker while the first is still inside its SMTP call.
+          const second = yield* runDelivery(deliveryId, succeeds, {
+            attemptsBefore: 1,
+          });
+          assert.strictEqual(second._tag, 'retrying');
+          assert.strictEqual(mail.sent.length, 1);
+          // The refusal counted nothing: an attempt that never got the lock did
+          // no work.
+          const during = yield* deliveryState(deliveryId);
+          assert.strictEqual(during.attempt_count, 1);
+          assert.strictEqual(during.last_error, null);
 
-        const rows = yield* readJobs('invitation-delivery');
-        const refused = rows.find((row) => row.attempts === 2);
-        assert.strictEqual(refused?.last_error, LOCK_HELD_ELSEWHERE);
+          const rows = yield* readJobs('invitation-delivery');
+          const refused = rows.find((row) => row.attempts === 2);
+          assert.strictEqual(refused?.last_error, LOCK_HELD_ELSEWHERE);
 
-        yield* Deferred.succeed(sending, undefined);
-        const firstStep = yield* Fiber.join(first);
-        assert.strictEqual(firstStep._tag, 'settled');
-        const after = yield* deliveryState(deliveryId);
-        assert.strictEqual(after.attempt_count, 1);
-        assert.instanceOf(after.sent_at, Date);
-      }),
+          yield* Deferred.succeed(sending, undefined);
+          const firstStep = yield* Fiber.join(first);
+          assert.strictEqual(firstStep._tag, 'settled');
+          const after = yield* deliveryState(deliveryId);
+          assert.strictEqual(after.attempt_count, 1);
+          assert.instanceOf(after.sent_at, Date);
+        }),
     );
 
     // --------------------------------------------------------------- 13 ----
-    it.effect('leaves the row to its holder when the last attempt is refused', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch } = yield* DeliveryHarness;
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
+    it.effect(
+      'leaves the row to its holder when the last attempt is refused',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch } = yield* DeliveryHarness;
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
 
-        const holder = yield* Effect.promise(() => holdInvitation(scratch, invitation.invitationId));
-        const step = yield* Effect.ensuring(
-          runDelivery(deliveryId, succeeds, { attemptsBefore: RETRY_LIMIT }),
-          Effect.promise(() => holder.release()),
-        );
+          const holder = yield* Effect.promise(() =>
+            holdInvitation(scratch, invitation.invitationId),
+          );
+          const step = yield* Effect.ensuring(
+            runDelivery(deliveryId, succeeds, { attemptsBefore: RETRY_LIMIT }),
+            Effect.promise(() => holder.release()),
+          );
 
-        assert.strictEqual(step._tag, 'failed');
-        assert.strictEqual(mail.sent.length, 0);
-        const rows = yield* readJobs('invitation-delivery');
-        assert.strictEqual(
-          rows.find((row) => row.state === 'failed')?.last_error,
-          LOCK_HELD_ON_LAST_ATTEMPT,
-        );
-        // Every column, not a subset: the whole point is that this attempt
-        // wrote nothing at all.
-        assert.deepStrictEqual(yield* deliveryState(deliveryId), {
-          attempt_count: 0,
-          failed_at: null,
-          last_error: null,
-          sent_at: null,
-          suppressed_at: null,
-          uncertain_at: null,
-        });
-      }),
+          assert.strictEqual(step._tag, 'failed');
+          assert.strictEqual(mail.sent.length, 0);
+          const rows = yield* readJobs('invitation-delivery');
+          assert.strictEqual(
+            rows.find((row) => row.state === 'failed')?.last_error,
+            LOCK_HELD_ON_LAST_ATTEMPT,
+          );
+          // Every column, not a subset: the whole point is that this attempt
+          // wrote nothing at all.
+          assert.deepStrictEqual(yield* deliveryState(deliveryId), {
+            attempt_count: 0,
+            failed_at: null,
+            last_error: null,
+            sent_at: null,
+            suppressed_at: null,
+            uncertain_at: null,
+          });
+        }),
     );
 
     // --------------------------------------------------------------- 14 ----
-    it.effect('refuses a job whose payload is not one this queue declares', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch, schema } = yield* DeliveryHarness;
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
+    it.effect(
+      'refuses a job whose payload is not one this queue declares',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch, schema } = yield* DeliveryHarness;
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
 
-        // Nothing this server enqueues looks like either of these — the
-        // enqueue validates on the way in — so what they stand for is a row
-        // written by an older release or by hand. The second carries a real
-        // delivery id beside a field the schema does not declare.
-        for (const payload of [
-          '{}',
-          JSON.stringify({ deliveryId, teamId: TEAM_ID }),
-        ]) {
-          yield* Effect.promise(async () => {
-            await scratch.pool.query(
-              `INSERT INTO ${schema}.jobs
+          // Nothing this server enqueues looks like either of these — the
+          // enqueue validates on the way in — so what they stand for is a row
+          // written by an older release or by hand. The second carries a real
+          // delivery id beside a field the schema does not declare.
+          for (const payload of [
+            '{}',
+            JSON.stringify({ deliveryId, teamId: TEAM_ID }),
+          ]) {
+            yield* Effect.promise(async () => {
+              await scratch.pool.query(
+                `INSERT INTO ${schema}.jobs
                  (queue, payload, state, attempts, run_at, keep_until, created_at)
                VALUES ('invitation-delivery', $1::jsonb, 'created', 0,
                        to_timestamp(0), to_timestamp(0) + interval '1 day',
                        to_timestamp(0))`,
-              [payload],
-            );
-          });
-          const step = yield* Effect.gen(function* () {
-            const worker = yield* JobWorker;
-            yield* worker.work(
-              'invitation-delivery',
-              invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
-            );
-            return yield* worker.drainOnce('invitation-delivery');
-          }).pipe(Effect.provide(layerWorker()));
-          // The decode is in the worker now (#1927 §11), not the handler, so
-          // the job is killed rather than retried — and the handler never ran.
-          assert.strictEqual(step._tag, 'dead');
-          yield* clearQueue();
-        }
+                [payload],
+              );
+            });
+            const step = yield* Effect.gen(function* () {
+              const worker = yield* JobWorker;
+              yield* worker.work(
+                'invitation-delivery',
+                invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
+              );
+              return yield* worker.drainOnce('invitation-delivery');
+            }).pipe(Effect.provide(layerWorker()));
+            // The decode is in the worker now (#1927 §11), not the handler, so
+            // the job is killed rather than retried — and the handler never ran.
+            assert.strictEqual(step._tag, 'dead');
+            yield* clearQueue();
+          }
 
-        assert.strictEqual(mail.sent.length, 0);
-        assert.deepStrictEqual(yield* deliveryState(deliveryId), {
-          attempt_count: 0,
-          failed_at: null,
-          last_error: null,
-          sent_at: null,
-          suppressed_at: null,
-          uncertain_at: null,
-        });
-      }),
+          assert.strictEqual(mail.sent.length, 0);
+          assert.deepStrictEqual(yield* deliveryState(deliveryId), {
+            attempt_count: 0,
+            failed_at: null,
+            last_error: null,
+            sent_at: null,
+            suppressed_at: null,
+            uncertain_at: null,
+          });
+        }),
     );
 
     // --------------------------------------------------------------- 16 ----
-    it.effect('lets a cancellation win the lock and suppresses what follows', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch } = yield* DeliveryHarness;
-        const mail = yield* RecordedMail;
-        mail.sent.length = 0;
+    it.effect(
+      'lets a cancellation win the lock and suppresses what follows',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch } = yield* DeliveryHarness;
+          const mail = yield* RecordedMail;
+          mail.sent.length = 0;
 
-        const holder = yield* Effect.promise(() =>
-          holdInvitation(scratch, invitation.invitationId),
-        );
-        // A cancellation holding the row is indistinguishable from another
-        // attempt holding it: the handler gives up rather than sending mail for
-        // an invitation someone is in the middle of withdrawing.
-        const refused = yield* runDelivery(deliveryId, succeeds);
-        assert.strictEqual(refused._tag, 'retrying');
-        yield* Effect.promise(async () => {
-          await holder.client.query(
-            `UPDATE team_invitations SET status = 'canceled' WHERE id = $1`,
-            [invitation.invitationId],
+          const holder = yield* Effect.promise(() =>
+            holdInvitation(scratch, invitation.invitationId),
           );
-          await holder.release();
-        });
+          // A cancellation holding the row is indistinguishable from another
+          // attempt holding it: the handler gives up rather than sending mail for
+          // an invitation someone is in the middle of withdrawing.
+          const refused = yield* runDelivery(deliveryId, succeeds);
+          assert.strictEqual(refused._tag, 'retrying');
+          yield* Effect.promise(async () => {
+            await holder.client.query(
+              `UPDATE team_invitations SET status = 'canceled' WHERE id = $1`,
+              [invitation.invitationId],
+            );
+            await holder.release();
+          });
 
-        yield* clearQueue();
-        const after = yield* runDelivery(deliveryId, succeeds);
-        assert.strictEqual(
-          after._tag === 'settled' ? after.outcome : undefined,
-          'suppressed',
-        );
-        assert.strictEqual(mail.sent.length, 0);
-        assert.instanceOf(
-          (yield* deliveryState(deliveryId)).suppressed_at,
-          Date,
-        );
-      }),
+          yield* clearQueue();
+          const after = yield* runDelivery(deliveryId, succeeds);
+          assert.strictEqual(
+            after._tag === 'settled' ? after.outcome : undefined,
+            'suppressed',
+          );
+          assert.strictEqual(mail.sent.length, 0);
+          assert.instanceOf(
+            (yield* deliveryState(deliveryId)).suppressed_at,
+            Date,
+          );
+        }),
     );
 
     // --------------------------------------------------------------- 17 ----
@@ -860,71 +877,75 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
     );
 
     // --------------------------------------------------------------- 18 ----
-    it.effect('lets maintenance advance delivery state but not rewrite it', () =>
-      Effect.gen(function* () {
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
-        const { scratch } = yield* DeliveryHarness;
+    it.effect(
+      'lets maintenance advance delivery state but not rewrite it',
+      () =>
+        Effect.gen(function* () {
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const { scratch } = yield* DeliveryHarness;
 
-        const advanced = yield* Effect.promise(async () => {
-          const { rowCount } = await scratch.maintenance.query(
-            `UPDATE team_invitation_deliveries
+          const advanced = yield* Effect.promise(async () => {
+            const { rowCount } = await scratch.maintenance.query(
+              `UPDATE team_invitation_deliveries
                 SET attempt_count = attempt_count + 1
               WHERE id = $1`,
-            [deliveryId],
-          );
-          return rowCount;
-        });
-        assert.strictEqual(advanced, 1);
-
-        const rewritten = yield* Effect.promise(() =>
-          scratch.maintenance
-            .query(
-              `UPDATE team_invitation_deliveries SET email = 'rewritten@example.com' WHERE id = $1`,
               [deliveryId],
-            )
-            .then(
-              () => null,
-              (error: unknown) => error,
-            ),
-        );
-        assert.match(
-          String(rewritten),
-          /invitation delivery payload is immutable/,
-        );
-      }),
+            );
+            return rowCount;
+          });
+          assert.strictEqual(advanced, 1);
+
+          const rewritten = yield* Effect.promise(() =>
+            scratch.maintenance
+              .query(
+                `UPDATE team_invitation_deliveries SET email = 'rewritten@example.com' WHERE id = $1`,
+                [deliveryId],
+              )
+              .then(
+                () => null,
+                (error: unknown) => error,
+              ),
+          );
+          assert.match(
+            String(rewritten),
+            /invitation delivery payload is immutable/,
+          );
+        }),
     );
 
     // --------------------------------------------------------------- 19 ----
-    it.effect('structurally rejects an outbox row assigned to another team', () =>
-      Effect.gen(function* () {
-        const invitation = yield* seedInvitation();
-        const { scratch } = yield* DeliveryHarness;
-        const error = yield* Effect.promise(() =>
-          scratch.pool
-            .query(
-              `INSERT INTO team_invitation_deliveries (
+    it.effect(
+      'structurally rejects an outbox row assigned to another team',
+      () =>
+        Effect.gen(function* () {
+          const invitation = yield* seedInvitation();
+          const { scratch } = yield* DeliveryHarness;
+          const error = yield* Effect.promise(() =>
+            scratch.pool
+              .query(
+                `INSERT INTO team_invitation_deliveries (
                  id, invitation_id, team_id, email, role, team_label,
                  inviter_label, expires_at
                ) VALUES ($1, $2, 'different-team', $3, 'member', 'Other Team',
                          'Inviter', $4)`,
-              [
-                randomUUID(),
-                invitation.invitationId,
-                invitation.email,
-                invitation.expiresAt,
-              ],
-            )
-            .then(
-              () => null,
-              (rejected: unknown) => rejected,
-            ),
-        );
-        assert.strictEqual(
-          (error as { code?: string } | null)?.code,
-          FOREIGN_KEY_VIOLATION,
-        );
-      }),
+                [
+                  randomUUID(),
+                  invitation.invitationId,
+                  invitation.email,
+                  invitation.expiresAt,
+                ],
+              )
+              .then(
+                () => null,
+                (rejected: unknown) => rejected,
+              ),
+          );
+          assert.strictEqual(
+            (error as { code?: string } | null)?.code,
+            FOREIGN_KEY_VIOLATION,
+          );
+        }),
     );
 
     // --------------------------------------------------------------- 20 ----
@@ -988,9 +1009,10 @@ async function holdInvitation(
 ): Promise<{ client: pg.PoolClient; release: () => Promise<void> }> {
   const client = await scratch.maintenance.connect();
   await client.query('BEGIN');
-  await client.query(`SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`, [
-    invitationId,
-  ]);
+  await client.query(
+    `SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`,
+    [invitationId],
+  );
   return {
     client,
     release: async () => {
@@ -1007,9 +1029,7 @@ async function holdInvitation(
  * time; this file is the exception and says so.
  */
 const realSleep = (ms: number): Effect.Effect<void> =>
-  Effect.promise(
-    () => new Promise<void>((resolve) => setTimeout(resolve, ms)),
-  );
+  Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
 const waitFor = (
   predicate: () => boolean,

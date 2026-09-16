@@ -1,4 +1,4 @@
-import { assert, describe, it, layer } from '@effect/vitest';
+import { assert, describe, layer } from '@effect/vitest';
 import {
   Cause,
   DateTime,
@@ -72,7 +72,9 @@ describe.skipIf(!db)('the native queue', () => {
 
     const enqueueDelivery = (deliveryId = DELIVERY_ID) =>
       Effect.flatMap(Jobs, (jobs) =>
-        asApp(withTransaction(jobs.enqueue('invitation-delivery', { deliveryId }))),
+        asApp(
+          withTransaction(jobs.enqueue('invitation-delivery', { deliveryId })),
+        ),
       );
 
     /** Registers a handler and hands back the worker, under one layer. */

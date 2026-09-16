@@ -76,7 +76,7 @@ export type JobHandler<Queue extends JobQueueName, E, R> = (
  * `dead` and stops. A tagged failure rather than a defect, so the settling
  * code can tell it from a handler's own error without reading causes.
  */
-export class JobPayloadUndecodable extends Schema.TaggedError<JobPayloadUndecodable>()(
+class JobPayloadUndecodable extends Schema.TaggedError<JobPayloadUndecodable>()(
   'JobPayloadUndecodable',
   { queue: Schema.String, jobId: Schema.String, message: Schema.String },
 ) {}
@@ -424,82 +424,82 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
        WHERE id = ${jobId}`;
   });
 
-  const drainOnce = Effect.fn('JobWorker.drainOnce')(function* (
-    queue: JobQueueName,
-  ) {
-    const now = yield* DateTime.now;
-    const claimed = yield* withTransaction(claim(queue, now));
-    if (claimed === undefined) {
-      const idle: JobStep = { _tag: 'idle' };
-      return idle;
-    }
+  const drainOnce = Effect.fn('JobWorker.drainOnce')(
+    function* (queue: JobQueueName) {
+      const now = yield* DateTime.now;
+      const claimed = yield* withTransaction(claim(queue, now));
+      if (claimed === undefined) {
+        const idle: JobStep = { _tag: 'idle' };
+        return idle;
+      }
 
-    const jobId: JobId = claimed.id;
-    const declaration = resolvedQueue(queue);
-    const handler = registry.get(queue);
-    if (handler === undefined) {
-      // Claimed by a worker that does not work this queue. Put it back rather
-      // than fail it: another replica may have the handler.
-      yield* withTransaction(returnToQueue(jobId));
-      const idle: JobStep = { _tag: 'idle' };
-      return idle;
-    }
+      const jobId: JobId = claimed.id;
+      const declaration = resolvedQueue(queue);
+      const handler = registry.get(queue);
+      if (handler === undefined) {
+        // Claimed by a worker that does not work this queue. Put it back rather
+        // than fail it: another replica may have the handler.
+        yield* withTransaction(returnToQueue(jobId));
+        const idle: JobStep = { _tag: 'idle' };
+        return idle;
+      }
 
-    // Outside the claim's transaction on purpose: a handler makes a network
-    // call, and holding a transaction open across one is how a pool starves.
-    const exit = yield* Effect.exit(
-      handler({
-        id: jobId,
-        payload: claimed.payload,
-        attempt: claimed.attempts,
-        finalAttempt: claimed.attempts > declaration.retryLimit,
-      }),
-    );
-
-    const settledAt = yield* DateTime.now;
-    if (Exit.isSuccess(exit)) {
-      yield* withTransaction(settleSuccess(jobId, exit.value, settledAt));
-      yield* Effect.logDebug(
-        `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
+      // Outside the claim's transaction on purpose: a handler makes a network
+      // call, and holding a transaction open across one is how a pool starves.
+      const exit = yield* Effect.exit(
+        handler({
+          id: jobId,
+          payload: claimed.payload,
+          attempt: claimed.attempts,
+          finalAttempt: claimed.attempts > declaration.retryLimit,
+        }),
       );
-      const settled: JobStep = {
-        _tag: 'settled',
-        jobId,
-        outcome: exit.value,
-      };
-      return settled;
-    }
 
-    const error = causeError(exit.cause);
-    if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
-      yield* withTransaction(settleDead(jobId, describe(error), settledAt));
-      yield* Effect.logError(
-        `job ${queue} ${jobId} carries a payload this queue does not declare`,
-      );
-      const dead: JobStep = { _tag: 'dead', jobId };
-      return dead;
-    }
-
-    const message = describe(error);
-    const step = yield* withTransaction(
-      settleFailure(queue, jobId, claimed.attempts, message, settledAt),
-    );
-    // §11, feasibility F8: the handler said nothing about retrying, so the
-    // split lives here, at today's levels — an attempt that will run again is
-    // a warning, one nothing will retry is an error.
-    yield* step._tag === 'retrying'
-      ? Effect.logWarning(
-          `job ${queue} ${jobId} retrying after attempt ${claimed.attempts}: ${message}`,
-        )
-      : Effect.logError(
-          `job ${queue} ${jobId} failed on attempt ${claimed.attempts}: ${message}`,
+      const settledAt = yield* DateTime.now;
+      if (Exit.isSuccess(exit)) {
+        yield* withTransaction(settleSuccess(jobId, exit.value, settledAt));
+        yield* Effect.logDebug(
+          `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
         );
-    return step;
-  },
-  // The whole step holds a permit, not just the handler: a graceful stop that
-  // let go the moment a handler returned would interrupt the fiber before it
-  // had written the outcome, leaving a completed send recorded as `active`.
-  (effect) => inFlight.withPermit(effect));
+        const settled: JobStep = {
+          _tag: 'settled',
+          jobId,
+          outcome: exit.value,
+        };
+        return settled;
+      }
+
+      const error = causeError(exit.cause);
+      if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
+        yield* withTransaction(settleDead(jobId, describe(error), settledAt));
+        yield* Effect.logError(
+          `job ${queue} ${jobId} carries a payload this queue does not declare`,
+        );
+        const dead: JobStep = { _tag: 'dead', jobId };
+        return dead;
+      }
+
+      const message = describe(error);
+      const step = yield* withTransaction(
+        settleFailure(queue, jobId, claimed.attempts, message, settledAt),
+      );
+      // §11, feasibility F8: the handler said nothing about retrying, so the
+      // split lives here, at today's levels — an attempt that will run again is
+      // a warning, one nothing will retry is an error.
+      yield* step._tag === 'retrying'
+        ? Effect.logWarning(
+            `job ${queue} ${jobId} retrying after attempt ${claimed.attempts}: ${message}`,
+          )
+        : Effect.logError(
+            `job ${queue} ${jobId} failed on attempt ${claimed.attempts}: ${message}`,
+          );
+      return step;
+    },
+    // The whole step holds a permit, not just the handler: a graceful stop that
+    // let go the moment a handler returned would interrupt the fiber before it
+    // had written the outcome, leaving a completed send recorded as `active`.
+    (effect) => inFlight.withPermit(effect),
+  );
 
   /**
    * An attempt whose lease ran out. The row goes back to `created` with its

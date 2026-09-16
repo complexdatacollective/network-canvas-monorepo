@@ -22,7 +22,7 @@ import {
  * means there. `retryDelayMax` has no default: pg-boss treats null as "no
  * cap", and `0` as a real cap of zero.
  */
-export const QUEUE_DEFAULTS = {
+const QUEUE_DEFAULTS = {
   policy: 'standard',
   retryLimit: 2,
   retryDelay: 0,
@@ -119,7 +119,7 @@ const EmptyPayload = Schema.Struct({});
  * silently dropped rather than refused. Pinned by the payload test, as
  * `JOB_PAYLOAD_PARSE_OPTIONS` is in #1927 §11.
  */
-export const JOB_PAYLOAD_PARSE_OPTIONS = {
+const JOB_PAYLOAD_PARSE_OPTIONS = {
   onExcessProperty: 'error',
 } as const;
 
@@ -158,14 +158,15 @@ const codec = <Queue extends JobQueueName>(
   decode: Schema.decodeUnknownEffect(schema, JOB_PAYLOAD_PARSE_OPTIONS),
 });
 
-const JOB_PAYLOAD_CODECS: { [Queue in JobQueueName]: QueuePayloadCodec<Queue> } =
-  {
-    'invitation-delivery': codec(InvitationDeliveryPayload),
-    'invitation-delivery-dead-letter': codec(InvitationDeliveryPayload),
-    'sign-in-email': codec(SignInEmailPayload),
-    'protocol-store-gc': codec(EmptyPayload),
-    'denied-attempts-summary': codec(EmptyPayload),
-  };
+const JOB_PAYLOAD_CODECS: {
+  [Queue in JobQueueName]: QueuePayloadCodec<Queue>;
+} = {
+  'invitation-delivery': codec(InvitationDeliveryPayload),
+  'invitation-delivery-dead-letter': codec(InvitationDeliveryPayload),
+  'sign-in-email': codec(SignInEmailPayload),
+  'protocol-store-gc': codec(EmptyPayload),
+  'denied-attempts-summary': codec(EmptyPayload),
+};
 
 export function payloadCodec<Queue extends JobQueueName>(
   queue: Queue,
