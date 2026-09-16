@@ -1,9 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Effect, Layer } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 
 import { reachableDb } from '../../../../__tests__/support/postgres.ts';
+import { collectLogs } from '../../../../platform/__tests__/support/logs.ts';
 import {
   asApp,
   asMaintenance,
@@ -38,7 +39,12 @@ import {
 // Beyond that port, the cases below cover what the rewritten statements decide
 // — the two windows, the lease, the referenced predicate and the marking — for
 // which the Promise sweep's own suite (`src/protocol/__tests__/gc.test.ts`,
-// untouched) is no longer evidence: not one line of that SQL is shared.
+// untouched) is no longer evidence: not one line of that SQL is shared. Two of
+// that suite's cases are ported here for the same reason, because nothing else
+// held them: "keeps a section held only by a published template version", the
+// only cover the `template_version_sections` arm of the referenced predicate
+// has, and "the retained window keeps recent manifests and their sections",
+// the only case in which `retainManifestsPerDraft` retains anything.
 //
 // Every tenant table is FORCEd under row-level security, so the fixtures below
 // seed through the maintenance pool — the identity whose policy clause admits
@@ -58,8 +64,11 @@ const suiteLayer = Layer.unwrap(
   ),
 ).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
 
-/** The one team whose section stays pinned; see `clearStore`. */
+/** The one team whose section a published version pins; see `clearStore`. */
 const PINNED_TEAM = 'gc-team-pinned';
+
+/** And the one whose section a published template version pins. */
+const TEMPLATE_PINNED_TEAM = 'gc-team-template-pinned';
 
 const A_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -79,9 +88,10 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
 
     /**
      * Everything a previous case seeded, so a count here is this case's. A
-     * section a published version pins cannot be deleted — the pin's foreign
-     * key is the point of it — so those stay; they are referenced forever,
-     * which is why they are collected by nothing and counted nowhere.
+     * section a published version or a published template version pins cannot
+     * be deleted — the pin's foreign key is the point of it — so those stay;
+     * they are referenced forever, which is why they are collected by nothing
+     * and counted nowhere.
      */
     const clearStore = Effect.gen(function* () {
       const { scratch, schema } = yield* DeliveryHarness;
@@ -96,7 +106,10 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         `DELETE FROM sections s
           WHERE NOT EXISTS (
             SELECT 1 FROM version_sections vs
-             WHERE vs.team_id = s.team_id AND vs.section_hash = s.hash)`,
+             WHERE vs.team_id = s.team_id AND vs.section_hash = s.hash)
+            AND NOT EXISTS (
+            SELECT 1 FROM template_version_sections tvs
+             WHERE tvs.team_id = s.team_id AND tvs.section_hash = s.hash)`,
       );
     });
 
@@ -224,10 +237,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
       Effect.gen(function* () {
         yield* clearStore;
         const teamId = `gc-team-${randomUUID()}`;
-        const collectable = yield* seedSection({
-          teamId,
-          unreferencedInterval: '96 hours',
-        });
+        yield* seedSection({ teamId, unreferencedInterval: '96 hours' });
 
         // The application identity rather than the maintenance one, which is
         // the shape of a misconfigured worker: the sweep refuses it rather
@@ -236,15 +246,75 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           yield* refusal(PROTOCOL_STORE_GC_BOUNDS),
           /must run as studio_maintenance/,
         );
-        // And it refused before it swept: the row it could not have seen is
-        // still there.
-        assert.deepStrictEqual(yield* sectionHashes(teamId), [collectable]);
+
+        // There is no oracle here for "and it refused *before* it swept": with
+        // the check deleted the sweep would run as the application role, whose
+        // policies show it no tenant at all, so the row would survive either
+        // way. What the fixture can show is that the refusal was not a pass
+        // over an empty store — the same store, swept as maintenance, collects.
+        assert.strictEqual((yield* sweep()).sectionsDeleted, 1);
+        assert.deepStrictEqual(yield* sectionHashes(teamId), []);
+      }),
+    );
+
+    it.effect('refuses a login that may not assume that role', () =>
+      Effect.gen(function* () {
+        // The other half of the misconfiguration, and the half the identity
+        // check above cannot see: a maintenance `Database` whose login is not
+        // a member of the role. `set local role` refuses it one statement
+        // before the handler's own, and what this case pins is that the
+        // refusal still arrives as the diagnosis rather than as a bare
+        // `SqlError` about a statement no caller wrote.
+        const { scratch, studioSchema } = yield* DeliveryHarness;
+        const login = `gc_nomaint_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+        yield* Effect.promise(() =>
+          scratch.pool.query(`CREATE ROLE ${login} LOGIN PASSWORD 'gc'`),
+        );
+        const url = new URL(db!.url);
+        url.username = login;
+        url.password = 'gc';
+
+        const refused = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const context = yield* Effect.orDie(
+              Layer.build(
+                Database.layer('maintenance', {
+                  url: url.href,
+                  maxConnections: 1,
+                  searchPath: studioSchema,
+                }),
+              ),
+            );
+            return yield* gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS).pipe(
+              Effect.map(() => 'the sweep ran'),
+              Effect.catchTag('GcRoleError', (error) =>
+                Effect.succeed(error.message),
+              ),
+              Effect.catch((error) =>
+                Effect.succeed(`unexpected: ${String(error)}`),
+              ),
+              Effect.provideService(Database, Context.get(context, Database)),
+            );
+          }),
+        ).pipe(
+          Effect.ensuring(
+            Effect.promise(async () => {
+              await scratch.pool.query(`DROP ROLE IF EXISTS ${login}`);
+            }),
+          ),
+        );
+
+        assert.match(refused, /must run as studio_maintenance/);
+        // And it names the login that could not assume it, which is the whole
+        // of the diagnosis: the role the connection actually has.
+        assert.include(refused, `not ${login}`);
       }),
     );
 
     // ------------------------------------------------------------- queue ---
-    it.effect('runs one real sweep for one job on the queue', () =>
-      Effect.gen(function* () {
+    it.effect('runs one real sweep for one job on the queue', () => {
+      const logs = collectLogs();
+      return Effect.gen(function* () {
         yield* clearStore;
         const teamId = `gc-team-${randomUUID()}`;
         // Collectable by the production bounds: unreferenced for longer than
@@ -281,8 +351,21 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         // Not an empty pass: the older row is gone and the newer one is not,
         // because the sweep's three-day grace is what keeps it.
         assert.deepStrictEqual(yield* sectionHashes(teamId), [recent]);
-      }),
-    );
+
+        // And the line a deployment reads says so. The counts are the
+        // handler's only product — the sweep's own return value goes nowhere
+        // else — so a handler that logged zeros whatever it collected would
+        // look exactly like a healthy one in the only place anybody looks.
+        assert.deepStrictEqual(
+          logs.messages.filter((message) =>
+            message.startsWith(`protocol-store-gc ${jobId}:`),
+          ),
+          [
+            `protocol-store-gc ${jobId}: manifests 0, sections 1, command log 0`,
+          ],
+        );
+      }).pipe(Effect.provide(logs.layer));
+    });
 
     it.effect('fails the job when the sweep cannot run', () =>
       Effect.gen(function* () {
@@ -335,8 +418,13 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           );
         yield* holdIt(1);
 
-        // Referenced by a draft manifest, so the marking pass leaves it be.
-        assert.strictEqual((yield* sweep()).sectionsDeleted, 0);
+        // Referenced by a draft manifest, so the marking pass leaves it be —
+        // which is the arm of the referenced predicate that reads `manifests`,
+        // and this is what fails when it goes. (There is no companion
+        // `sectionsDeleted === 0` here: the section has never been marked, so
+        // the grace window's `unreferenced_at < …` is NULL and no mutation of
+        // the delete alone could collect it.)
+        yield* sweep();
         assert.strictEqual(yield* marked(held), false);
 
         // The draft moves on and nothing holds the section any more.
@@ -416,12 +504,84 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         });
 
         // Marked unreferenced before the pin existed, and old enough to
-        // collect: the reconcile pass is what clears the mark, and without it
-        // the delete would hit the pin's foreign key and abort this tenant's
-        // whole pass — on every pass thereafter.
-        assert.strictEqual((yield* sweep()).sectionsDeleted, 0);
+        // collect. Two separate things keep it: the `version_sections` arm of
+        // the referenced predicate, which excludes it from the delete — drop
+        // that arm and the delete hits the pin's foreign key and aborts this
+        // tenant's whole pass, on every pass thereafter — and the reconcile
+        // pass, which clears the mark the section is no longer owed. The mark
+        // below is the reconcile's oracle; the row below it is the predicate's.
+        yield* sweep();
         assert.deepStrictEqual(yield* sectionHashes(PINNED_TEAM), [hash]);
         assert.strictEqual(yield* marked(hash), false);
+      }),
+    );
+
+    it.effect('keeps a section held only by a published template version', () =>
+      Effect.gen(function* () {
+        // Ported from `src/protocol/__tests__/gc.test.ts`, which is the only
+        // place this arm was ever exercised. A template version pins sections
+        // exactly as a protocol version does and its pins are immutable too,
+        // so a section no protocol references but a template does still counts
+        // as referenced — and the handler's own comment says what losing that
+        // costs: the delete hits the pin's foreign key and aborts the tenant's
+        // whole pass, on every pass after, since the pin can never be retracted.
+        yield* clearStore;
+        const { scratch } = yield* DeliveryHarness;
+        const hash = yield* seedSection({
+          teamId: TEMPLATE_PINNED_TEAM,
+          unreferencedInterval: '96 hours',
+        });
+        // One transaction, for the same reason the protocol version's pin is:
+        // `template_version_sections_pins_are_frozen` refuses a pin the
+        // version's own transaction did not write.
+        yield* Effect.promise(async () => {
+          const client = await scratch.maintenance.connect();
+          try {
+            const templateId = randomUUID();
+            const versionId = randomUUID();
+            await client.query('BEGIN');
+            await client.query(
+              `INSERT INTO templates (id, team_id, kind, name)
+               VALUES ($1, $2, 'protocol', 'Holds one section')`,
+              [templateId, TEMPLATE_PINNED_TEAM],
+            );
+            await client.query(
+              `INSERT INTO template_versions
+                 (id, team_id, template_id, version_number, manifest,
+                  manifest_hash, schema_version)
+               VALUES ($1, $2, $3, 1, $4, $5, 8)`,
+              [
+                versionId,
+                TEMPLATE_PINNED_TEAM,
+                templateId,
+                JSON.stringify({ settings: hash }),
+                createHash('sha256').update(hash).digest('hex'),
+              ],
+            );
+            await client.query(
+              `INSERT INTO template_version_sections
+                 (version_id, team_id, section_id, section_hash)
+               VALUES ($1, $2, 'settings', $3)`,
+              [versionId, TEMPLATE_PINNED_TEAM, hash],
+            );
+            await client.query('COMMIT');
+          } catch (error) {
+            await client.query('ROLLBACK').catch(() => undefined);
+            throw error;
+          } finally {
+            client.release();
+          }
+        });
+
+        // Marked unreferenced before the template existed and older than the
+        // grace, so nothing but the `template_version_sections` arm stands
+        // between it and the delete: without that arm the reconcile leaves the
+        // mark standing and the delete raises on the pin's foreign key.
+        yield* sweep();
+        assert.strictEqual(yield* marked(hash), false);
+        assert.deepStrictEqual(yield* sectionHashes(TEMPLATE_PINNED_TEAM), [
+          hash,
+        ]);
       }),
     );
 
@@ -494,6 +654,71 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           [2, 3, 5],
         );
       }),
+    );
+
+    it.effect(
+      'the retained window keeps recent manifests and their sections',
+      () =>
+        Effect.gen(function* () {
+          // The other case ported from `src/protocol/__tests__/gc.test.ts`.
+          // Everywhere else the bound is either 0 — where the window is the head
+          // alone — or the production 1000 against a handful of manifests, where
+          // the cutoff is negative and nothing is eligible either way. Neither
+          // shows the bound *retaining* anything, so neither notices if the
+          // subtraction that computes the cutoff goes.
+          yield* clearStore;
+          const teamId = `gc-team-${randomUUID()}`;
+          const draftId = yield* seedDraft(teamId, 5);
+          // Held by the oldest manifest, which the window does not reach, and by
+          // the newest one it does: two sections whose fate is decided by which
+          // manifests survive.
+          const dropped = yield* seedSection({ teamId });
+          const kept = yield* seedSection({ teamId });
+          const namedBy = new Map([
+            [1, { settings: dropped }],
+            [3, { settings: kept }],
+          ]);
+          for (const seq of [1, 2, 3, 4, 5]) {
+            yield* query(
+              `INSERT INTO manifests (draft_id, team_id, seq, hash, section_hashes)
+             VALUES ($1, $2, $3, $4, $5::jsonb)`,
+              [
+                draftId,
+                teamId,
+                String(seq),
+                `m${seq}`,
+                JSON.stringify(namedBy.get(seq) ?? {}),
+              ],
+            );
+          }
+
+          // No command-log rows at all, so the only thing deciding a manifest's
+          // fate is the retained window: head 5 less two is a cutoff of 3, and
+          // `seq < 3` is manifests 1 and 2.
+          const swept = yield* sweep({
+            ...PROTOCOL_STORE_GC_BOUNDS,
+            retainManifestsPerDraft: 2,
+          });
+          assert.strictEqual(swept.manifestsDeleted, 2);
+          const seqs = yield* query<{ seq: string }>(
+            'SELECT seq::text AS seq FROM manifests WHERE draft_id = $1',
+            [draftId],
+          );
+          assert.deepStrictEqual(
+            seqs.map((row) => Number(row.seq)).toSorted((a, b) => a - b),
+            [3, 4, 5],
+          );
+
+          // And their sections with them: manifest 3 is inside the window, so
+          // the section it names is still referenced and the marking pass leaves
+          // it alone. A cutoff taken at the head instead would have deleted
+          // manifest 3 in this same pass and marked this section in the next
+          // statement.
+          assert.strictEqual(yield* marked(kept), false);
+          // The contrast, and the proof that the marking pass ran at all: the
+          // section only manifest 1 named lost its last reference.
+          assert.strictEqual(yield* marked(dropped), true);
+        }),
     );
   });
 });

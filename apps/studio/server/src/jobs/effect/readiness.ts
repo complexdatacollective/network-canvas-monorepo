@@ -34,11 +34,18 @@ class JobQueuesUnreadable extends Schema.TaggedError<JobQueuesUnreadable>()(
 
 /**
  * Ready means both halves: the worker has read the queue tables at least once
- * (`JobWorker.ready`, which the metrics pass sets — metrics.ts), and a read
- * issued *now* answers. The order matters and is the whole of the check's
- * honesty: `queueDepths` is itself what makes the worker ready, so asking it
- * first would make the probe its own evidence, and a process whose metrics
- * fiber never ran would report ready on the strength of the probe alone.
+ * (`JobWorker.ready`, set by the worker's own first answered claim query and
+ * by `queueDepths` — worker.ts), and a read issued *now* answers. The order
+ * matters and is the whole of the check's honesty: `queueDepths` is itself one
+ * of the reads that makes the worker ready, so asking it first would make the
+ * probe its own evidence.
+ *
+ * The flag comes off the worker's own polling rather than off an optional
+ * layer deliberately. A worker that mounted `jobsCheck` without
+ * `JobQueueMetrics.layer` used to report not ready for the life of the
+ * process, because nothing but the metrics pass ever set it — a wiring
+ * obligation encoded in a comment, of the kind a deployment discovers at three
+ * in the morning.
  *
  * There is no `degraded` verdict here. A degraded dependency is one whose
  * loss changes behaviour without making the process unfit to serve; a worker

@@ -16,9 +16,24 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 /** Interpolated into DDL, so it is checked rather than trusted. */
 const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
 
+/**
+ * Postgres's `NAMEDATALEN - 1`. A longer name is not a style question:
+ * `CREATE SCHEMA` truncates it silently, so the install would appear to work,
+ * while `pg_notify` on the same name (the trigger below) raises outright and
+ * `validateChannelName` in `@effect/sql-pg` refuses the matching `LISTEN` —
+ * which `worker.ts` turns into a dead layer. Refusing at the name is what
+ * makes that a start-up error instead of a runtime one.
+ */
+const MAX_IDENTIFIER_BYTES = 63;
+
 export function assertSchemaName(schema: string): string {
   if (!SCHEMA_NAME.test(schema)) {
     throw new Error(`invalid job schema name: ${JSON.stringify(schema)}`);
+  }
+  if (Buffer.byteLength(schema) > MAX_IDENTIFIER_BYTES) {
+    throw new Error(
+      `job schema name is longer than Postgres's ${MAX_IDENTIFIER_BYTES}-byte identifier limit: ${JSON.stringify(schema)}`,
+    );
   }
   return schema;
 }

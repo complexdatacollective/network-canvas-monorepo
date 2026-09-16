@@ -1,14 +1,15 @@
-import { Effect, Schema } from 'effect';
+import { Effect, Exit, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import {
-  type Database,
+  Database,
   Transaction,
   withTenantTransaction,
   withTransaction,
 } from '../database.ts';
+import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // The protocol store's hourly sweep, and the whole of the handler that runs it
@@ -34,9 +35,8 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //    for the same reason they are on the no-audit list today: a sweep is not
 //    anybody's action.
 //  - The role assertion reads `current_user` inside a transaction rather than
-//    off the pool. The identity is pinned with `set local role` (see
-//    database.ts), so a statement outside a transaction would answer with the
-//    connecting login and the assertion would be about nothing.
+//    off the pool, and is a weaker check for it. What it still catches and
+//    what it no longer catches are spelled out above the assertion itself.
 
 export type GcResult = {
   manifestsDeleted: number;
@@ -45,9 +45,10 @@ export type GcResult = {
 };
 
 /**
- * The `Database` the sweep ran on was not the maintenance identity. Under any
- * other role the tenant enumeration below sees nothing, so the run would
- * report a clean sweep without having visited anyone.
+ * The sweep is not running as the maintenance role: either the `Database` it
+ * was given carries another identity, or its login may not assume the role.
+ * Under any other role the tenant enumeration below sees nothing, so the run
+ * would report a clean sweep without having visited anyone.
  */
 export class GcRoleError extends Schema.TaggedError<GcRoleError>()(
   'GcRoleError',
@@ -180,13 +181,46 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     commandRetryHorizonMs,
   );
 
-  const who = yield* withTransaction(
-    Effect.flatMap(
-      Transaction,
-      ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
+  // What this verifies and what it cannot. `withTransaction` pins the identity
+  // with `set local role` as its first statement (database.ts), so
+  // `current_user` here reads back the label this module wrote one statement
+  // earlier. That refuses a worker built on `Database.layer('app', …)` — the
+  // misconfiguration the check exists for — but it cannot tell one maintenance
+  // `Database` from another: a maintenance identity over the wrong login still
+  // passes, because `set local role` succeeds for any login that is a member
+  // of `studio_maintenance`, which rls.ts grants to the connecting login WITH
+  // SET TRUE. The original asserted against a role a startup parameter had
+  // negotiated (src/db/pool.ts), which no calling code could set; rc.116 adds
+  // `startupParameters` to @effect/sql-pg, and when it lands this statement
+  // moves back onto a bare connection, outside a transaction, and asserts that
+  // property again.
+  //
+  // A login that may *not* assume the role fails one statement earlier, inside
+  // the pin, so that failure is caught here and given the same diagnosis
+  // rather than an opaque `SqlError`: `42501` out of this transaction can only
+  // have come from `set local role`, since nothing else it runs — BEGIN, the
+  // search-path pin, `SELECT current_user` — needs a privilege at all.
+  const identity = yield* Effect.exit(
+    withTransaction(
+      Effect.flatMap(
+        Transaction,
+        ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
+      ),
     ),
   );
-  const role = who[0]?.role ?? '';
+  if (Exit.isFailure(identity)) {
+    if (exitSqlState(identity) !== INSUFFICIENT_PRIVILEGE) {
+      return yield* Effect.failCause(identity.cause);
+    }
+    // Outside a transaction, where the absent `set local role` is the point:
+    // this answers with the connecting login, which is the identity that could
+    // not become the maintenance role and so the one to name.
+    const login = yield* Database.use(
+      ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
+    ).pipe(Effect.catch(() => Effect.succeed([])));
+    return yield* new GcRoleError({ role: login[0]?.role ?? '' });
+  }
+  const role = identity.value[0]?.role ?? '';
   if (role !== TENANT_ROLES.maintenance) {
     return yield* new GcRoleError({ role });
   }

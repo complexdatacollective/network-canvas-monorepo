@@ -43,6 +43,33 @@ describe.skipIf(!db)('the jobs readiness check', () => {
       }),
     );
 
+    it.effect('is ready on the worker’s own first answered claim', () =>
+      Effect.gen(function* () {
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          const { maintenance } = yield* QueueHarness;
+          assert.isFalse(yield* worker.ready);
+
+          // One drain of an empty queue — what a background worker's poll
+          // fiber does on its own, without any optional layer. A `ready` that
+          // only `queueDepths` could set left a worker wired without
+          // `JobQueueMetrics.layer` reporting not ready for the life of the
+          // process.
+          const step = yield* worker.drainOnce('invitation-delivery');
+          assert.strictEqual(step._tag, 'idle');
+          assert.isTrue(yield* worker.ready);
+
+          const verdict = yield* readiness({
+            jobs: jobsCheck(worker, maintenance),
+          });
+          assert.deepStrictEqual(verdict, {
+            status: 'ok',
+            checks: { jobs: 'ok' },
+          });
+        }).pipe(Effect.provide(layerWorker({ background: false })));
+      }),
+    );
+
     it.effect('is failing when the role cannot read the queue tables', () =>
       Effect.gen(function* () {
         yield* Effect.gen(function* () {

@@ -64,6 +64,45 @@ const CLOCK_MONITOR_INTERVAL = Duration.minutes(10);
 const SKEW_WARNING_THRESHOLD = Duration.seconds(60);
 
 /**
+ * The arithmetic of one measurement, on its own so both of its signs have an
+ * oracle without a database: positive when the database is ahead of this
+ * process (the local clock is *behind* and every timestamp needs adding to),
+ * negative when it is behind (the local clock is *ahead* and every timestamp
+ * needs subtracting from). Neither direction is clamped — a replica whose
+ * clock runs fast is exactly as real as one that runs slow, and clamping
+ * either would leave that replica enqueueing into the future or the past with
+ * nothing to correct it.
+ *
+ * Measured against the midpoint of the round trip rather than against either
+ * end, so a slow query reads as latency rather than as skew. pg-boss measures
+ * after the query and so folds the whole round trip into the number; Studio's
+ * own pools sit beside the database, but the midpoint costs nothing and makes
+ * a loaded database stop looking like a broken clock.
+ */
+export function skewMillis(measurement: {
+  /** The local clock immediately before the round trip. */
+  readonly before: number;
+  /** The local clock immediately after it. */
+  readonly after: number;
+  /** What the database answered `select now()` with. */
+  readonly database: number;
+}): number {
+  return measurement.database - (measurement.before + measurement.after) / 2;
+}
+
+/**
+ * What a measured skew is worth saying out loud, or `null` below pg-boss's
+ * threshold. Separate from the logging so the boundary — a minute warns, a
+ * millisecond under it does not — is a value a test can read.
+ */
+export function skewWarning(skew: number): string | null {
+  if (Math.abs(skew) < Duration.toMillis(SKEW_WARNING_THRESHOLD)) return null;
+  return `the job clock is ${(Math.abs(skew) / 1000).toFixed(1)}s ${
+    skew > 0 ? 'behind' : 'ahead of'
+  } the database; job timestamps are being corrected by that much`;
+}
+
+/**
  * One measurement of `select now()` against the local clock, in milliseconds:
  * positive when the database is ahead of this process.
  *
@@ -87,12 +126,7 @@ const measureSkew = Effect.fnUntraced(function* () {
       new Error('the database answered `select now()` with no row'),
     );
   }
-  // Against the midpoint of the round trip rather than against either end, so
-  // a slow query reads as latency rather than as skew. pg-boss measures after
-  // the query and so folds the whole round trip into the number; Studio's own
-  // pools sit beside the database, but the midpoint costs nothing and makes a
-  // loaded database stop looking like a broken clock.
-  return databaseMillis - (before + after) / 2;
+  return skewMillis({ before, after, database: databaseMillis });
 });
 
 const layer = (
@@ -106,13 +140,8 @@ const layer = (
       const remeasure = Effect.gen(function* () {
         const measured = yield* measureSkew();
         MutableRef.set(skew, measured);
-        if (Math.abs(measured) >= Duration.toMillis(SKEW_WARNING_THRESHOLD)) {
-          yield* Effect.logWarning(
-            `the job clock is ${(Math.abs(measured) / 1000).toFixed(1)}s ${
-              measured > 0 ? 'behind' : 'ahead of'
-            } the database; job timestamps are being corrected by that much`,
-          );
-        }
+        const warning = skewWarning(measured);
+        if (warning !== null) yield* Effect.logWarning(warning);
       }).pipe(
         // A failed measurement keeps the last correction rather than resetting
         // it to zero: a database that cannot be reached says nothing about what

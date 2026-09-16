@@ -33,6 +33,7 @@ import { Jobs, type JobId } from './jobs.ts';
 import {
   type JobPayload,
   payloadCodec,
+  type ResolvedQueue,
   resolvedQueue,
   resolvedQueues,
 } from './queues.ts';
@@ -169,6 +170,18 @@ const CRON_LOCK_KEY = 4021775688147131;
 /** What is written to `last_error`; a longer message is cut. */
 const MAX_ERROR_LENGTH = 1_000;
 
+/** What an expired lease writes to `last_error`, in place of a handler's. */
+const LEASE_EXPIRED = 'the attempt did not finish before its lease expired';
+
+/**
+ * The declarations by name. The reaper reads a queue name back out of a row
+ * rather than off the types, and `resolvedQueue` refuses an undeclared one, so
+ * the lookup answers rather than throws.
+ */
+const declaredQueues: ReadonlyMap<string, ResolvedQueue> = new Map(
+  resolvedQueues.map((declaration) => [declaration.name, declaration]),
+);
+
 /**
  * The row's frozen columns in the shape `backoffSeconds` reads. The formula is
  * shared with the declaration-shaped path the suites call it on directly, so
@@ -196,6 +209,13 @@ type FrozenPolicy = {
 type ClaimedRow = FrozenPolicy & {
   readonly id: string;
   readonly payload: unknown;
+  readonly attempts: number;
+};
+
+/** What the reaper needs to settle an expired lease the way a failure is. */
+type ExpiredRow = FrozenPolicy & {
+  readonly id: string;
+  readonly queue: string;
   readonly attempts: number;
 };
 
@@ -353,35 +373,59 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     return rows[0];
   });
 
+  /**
+   * The fence every settle carries, and the reason each of them answers
+   * whether it wrote anything.
+   *
+   * A settle belongs to the attempt that claimed the row, and the handler runs
+   * outside the claim's transaction — so between the claim and the settle the
+   * expiry reaper can have returned the row and another worker can have
+   * claimed it. `state = 'active' AND attempts = <the claim's own>` is what
+   * makes the stale attempt's write miss: without it a success marks a running
+   * attempt completed, and a failure resurrects a row a second worker is still
+   * running, which fans out rather than merely double-executing. pg-boss
+   * guards its own terminal writes the same way (`completeJobsWithOutputs`'s
+   * `AND j.state = 'active'`, `failJobsById`'s `state < 'completed'`).
+   */
   const settleSuccess = Effect.fnUntraced(function* (
     jobId: JobId,
+    attempts: number,
     outcome: JobOutcome,
     now: DateTime.Utc,
   ) {
     const { sql } = yield* Transaction;
-    yield* sql`
+    const settled = yield* sql<{ id: string }>`
       UPDATE ${table(sql)}.jobs
          SET state = 'completed',
              outcome = ${outcome},
              completed_at = ${DateTime.toDate(now)},
              locked_until = NULL,
              last_error = NULL
-       WHERE id = ${jobId}`;
+       WHERE id = ${jobId}
+         AND state = 'active'
+         AND attempts = ${attempts}
+      RETURNING id`;
+    return settled.length === 1;
   });
 
   const settleDead = Effect.fnUntraced(function* (
     jobId: JobId,
+    attempts: number,
     message: string,
     now: DateTime.Utc,
   ) {
     const { sql } = yield* Transaction;
-    yield* sql`
+    const settled = yield* sql<{ id: string }>`
       UPDATE ${table(sql)}.jobs
          SET state = 'dead',
              completed_at = ${DateTime.toDate(now)},
              locked_until = NULL,
              last_error = ${message}
-       WHERE id = ${jobId}`;
+       WHERE id = ${jobId}
+         AND state = 'active'
+         AND attempts = ${attempts}
+      RETURNING id`;
+    return settled.length === 1;
   });
 
   /**
@@ -389,6 +433,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
    * the attempt that just failed, so the queue tries again while
    * `attempts <= retryLimit` — eight attempts for a limit of seven, which is
    * what `invitation-delivery` declares.
+   *
+   * Fenced like the two settles above, and `null` when the fence held nothing
+   * back — the dead-letter copy is written only on the leg that actually
+   * failed the row, because the copy belongs to the attempt that owns it.
    */
   const settleFailure = Effect.fnUntraced(function* (
     queue: JobQueueName,
@@ -408,14 +456,18 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         runAt,
         Duration.seconds(declaration.retentionSeconds),
       );
-      yield* sql`
+      const retried = yield* sql<{ id: string }>`
         UPDATE ${table(sql)}.jobs
            SET state = 'created',
                run_at = ${DateTime.toDate(runAt)},
                keep_until = ${DateTime.toDate(keepUntil)},
                locked_until = NULL,
                last_error = ${message}
-         WHERE id = ${jobId}`;
+         WHERE id = ${jobId}
+           AND state = 'active'
+           AND attempts = ${attempts}
+        RETURNING id`;
+      if (retried.length !== 1) return null;
       const step: JobStep = {
         _tag: 'retrying',
         jobId,
@@ -425,13 +477,17 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       return step;
     }
 
-    yield* sql`
+    const failed = yield* sql<{ id: string }>`
       UPDATE ${table(sql)}.jobs
          SET state = 'failed',
              completed_at = ${DateTime.toDate(now)},
              locked_until = NULL,
              last_error = ${message}
-       WHERE id = ${jobId}`;
+       WHERE id = ${jobId}
+         AND state = 'active'
+         AND attempts = ${attempts}
+      RETURNING id`;
+    if (failed.length !== 1) return null;
 
     const deadLetter = declaration.deadLetter;
     if (deadLetter === null) {
@@ -489,6 +545,17 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     return step;
   });
 
+  /**
+   * A settle that wrote nothing. The row is no longer this attempt's: the
+   * reaper returned it when the lease ran out and another worker has claimed
+   * it since. There is nothing to do but say so — the attempt that owns the
+   * row will settle it.
+   */
+  const leaseLost = (queue: JobQueueName, jobId: JobId, attempt: number) =>
+    Effect.logWarning(
+      `job ${queue} ${jobId} lost its lease before attempt ${attempt} could settle; the row belongs to a later attempt`,
+    );
+
   const returnToQueue = Effect.fnUntraced(function* (jobId: JobId) {
     const { sql } = yield* Transaction;
     yield* sql`
@@ -499,20 +566,34 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
   const drainOnce = Effect.fn('JobWorker.drainOnce')(
     function* (queue: JobQueueName) {
-      const now = yield* clock.now;
       const idle: JobStep = { _tag: 'idle' };
+      // Re-read here rather than only in the poll fiber: a fiber that passed
+      // the fiber's own check and then waited for a permit would otherwise
+      // claim a row *during* the stop window, spending an attempt on a job
+      // the scope is about to interrupt. Inside the permit, so the finalizer's
+      // `fetching = false` is already visible to anything the stop is waiting
+      // behind.
+      if (!MutableRef.get(fetching)) return idle;
+      const now = yield* clock.now;
       // Two workers can pass a singleton queue's `NOT EXISTS` together; the
       // partial unique index is what stops the second, and being stopped by it
       // is "nothing to claim" rather than an error (errors.ts).
       const claimedOrRaced = yield* Effect.exit(
         withTransaction(claim(queue, now)),
       );
-      if (Exit.isFailure(claimedOrRaced)) {
-        if (!isUniqueViolationCause(claimedOrRaced.cause)) {
-          return yield* Effect.failCause(claimedOrRaced.cause);
-        }
-        return idle;
+      if (
+        Exit.isFailure(claimedOrRaced) &&
+        !isUniqueViolationCause(claimedOrRaced.cause)
+      ) {
+        return yield* Effect.failCause(claimedOrRaced.cause);
       }
+      // The claim query answered — from the row it returned or from the index
+      // that refused it — so this worker has read its own tables, which is all
+      // `ready` claims. Set here as well as in `queueDepths` so readiness does
+      // not depend on which optional layers a program happens to mount
+      // (readiness.ts).
+      MutableRef.set(started, true);
+      if (Exit.isFailure(claimedOrRaced)) return idle;
       const claimed = claimedOrRaced.value;
       if (claimed === undefined) return idle;
 
@@ -540,7 +621,13 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
       const settledAt = yield* clock.now;
       if (Exit.isSuccess(exit)) {
-        yield* withTransaction(settleSuccess(jobId, exit.value, settledAt));
+        const fenced = yield* withTransaction(
+          settleSuccess(jobId, claimed.attempts, exit.value, settledAt),
+        );
+        if (!fenced) {
+          yield* leaseLost(queue, jobId, claimed.attempts);
+          return idle;
+        }
         yield* Effect.logDebug(
           `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
         );
@@ -554,7 +641,13 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
       const error = causeError(exit.cause);
       if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
-        yield* withTransaction(settleDead(jobId, describe(error), settledAt));
+        const fenced = yield* withTransaction(
+          settleDead(jobId, claimed.attempts, describe(error), settledAt),
+        );
+        if (!fenced) {
+          yield* leaseLost(queue, jobId, claimed.attempts);
+          return idle;
+        }
         yield* Effect.logError(
           `job ${queue} ${jobId} carries a payload this queue does not declare`,
         );
@@ -573,6 +666,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           settledAt,
         ),
       );
+      if (step === null) {
+        yield* leaseLost(queue, jobId, claimed.attempts);
+        return idle;
+      }
       // §11, feasibility F8: the handler said nothing about retrying, so the
       // split lives here, at today's levels — an attempt that will run again is
       // a warning, one nothing will retry is an error.
@@ -592,10 +689,24 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   );
 
   /**
-   * An attempt whose lease ran out. The row goes back to `created` with its
-   * attempt already spent — it was counted at claim time — so a handler that
-   * hangs every time still walks the ladder rather than looping forever, and a
-   * job whose ladder is done fails here instead of returning.
+   * An attempt whose lease ran out, settled exactly as a handler failure is.
+   *
+   * It goes through `settleFailure` rather than a statement of its own, which
+   * is what buys the three things an expiry used to skip: the retry ladder's
+   * backoff (a handler that hangs every time now backs off instead of being
+   * retried at the reaper's cadence), the dead-letter copy on the attempt the
+   * queue will not retry (without it #1307's manual re-send has nothing to
+   * work from), and the same frozen policy every other settle reads. pg-boss's
+   * own expiry supervisor is not a separate path either — `failJobsByTimeout`
+   * runs the same `failJobsBody` CTE an ordinary failure does.
+   *
+   * The attempt was already counted at claim time, so a handler that hangs on
+   * every attempt still walks the ladder to its end rather than looping.
+   *
+   * One transaction per pass, not per row: the rows are taken `FOR UPDATE SKIP
+   * LOCKED` so a second reaper skips what this one holds, and that lock only
+   * exists inside the transaction that took it — settling per row would need a
+   * fresh select and a fresh lock for each.
    */
   const reapExpired = Effect.fn('JobWorker.reapExpired')(function* () {
     const now = yield* clock.now;
@@ -603,24 +714,37 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     return yield* withTransaction(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
-        // One statement across every queue, because the ladder it compares
-        // against is on the row: a per-queue loop only existed to reach the
-        // declaration's `retryLimit`, and reading that here would be exactly
-        // the redeploy hazard freezing the policy removes.
-        const rows = yield* sql<{ id: string }>`
-          UPDATE ${table(sql)}.jobs
-             SET state = CASE
-                   WHEN attempts <= retry_limit THEN 'created' ELSE 'failed' END,
-                 run_at = ${at},
-                 completed_at = CASE
-                   WHEN attempts <= retry_limit
-                   THEN NULL ELSE ${at}::timestamptz END,
-                 locked_until = NULL,
-                 last_error = 'the attempt did not finish before its lease expired'
+        const expired = yield* sql<ExpiredRow>`
+          SELECT id, queue, attempts,
+                 retry_limit, retry_delay, retry_backoff, retry_delay_max
+            FROM ${table(sql)}.jobs
            WHERE state = 'active'
              AND locked_until <= ${at}
-          RETURNING id`;
-        return rows.length;
+           ORDER BY locked_until
+             FOR UPDATE SKIP LOCKED`;
+        let reaped = 0;
+        for (const row of expired) {
+          const declaration = declaredQueues.get(row.queue);
+          if (declaration === undefined) {
+            // A row on a queue this build does not declare. Nothing here can
+            // settle it — the ladder it would walk does not exist — so it is
+            // named rather than guessed at.
+            yield* Effect.logError(
+              `job ${row.id} sits on ${row.queue}, which no queue declares; its expired lease cannot be settled`,
+            );
+            continue;
+          }
+          const step = yield* settleFailure(
+            declaration.name,
+            row.id,
+            row.attempts,
+            row,
+            LEASE_EXPIRED,
+            now,
+          );
+          if (step !== null) reaped += 1;
+        }
+        return reaped;
       }),
     );
   });
@@ -677,6 +801,14 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         // An upsert, so every replica registers the same row and the last to
         // boot wins — which is how a changed cron expression reaches a running
         // deployment without anything unscheduling the old one.
+        //
+        // `next_run_at` is the one column a boot leaves alone unless the cron
+        // expression itself changed: recomputing it unconditionally moves an
+        // occurrence that has already come due forward by up to a whole
+        // interval, so a replica restarting in the window between a schedule
+        // falling due and the cron fiber's next tick would skip it. A changed
+        // expression is the only case where the stored time means something
+        // the deployment no longer asked for.
         yield* sql`
           INSERT INTO ${table(sql)}.job_schedules
             (name, cron, queue, payload, next_run_at)
@@ -686,7 +818,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             SET cron = excluded.cron,
                 queue = excluded.queue,
                 payload = excluded.payload,
-                next_run_at = excluded.next_run_at`;
+                next_run_at = CASE
+                  WHEN job_schedules.cron IS DISTINCT FROM excluded.cron
+                  THEN excluded.next_run_at
+                  ELSE job_schedules.next_run_at END`;
       }),
     );
   });
@@ -712,7 +847,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           yield* sql`DELETE FROM ${table(sql)}.job_schedules WHERE name = ${row.name}`;
           dropped.push(row.name);
         }
-        return dropped as readonly string[];
+        const answer: readonly string[] = dropped;
+        return answer;
       }),
     );
   });
@@ -790,7 +926,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   });
 
   const queueDepths = Effect.fnUntraced(function* () {
-    const depths = yield* withTransaction(
+    const depths: readonly QueueDepth[] = yield* withTransaction(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         // `count(*)::int`: rc.115 decodes a bare `count(*)` as a `bigint`.
@@ -802,7 +938,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       }),
     );
     MutableRef.set(started, true);
-    return depths as readonly QueueDepth[];
+    return depths;
   });
 
   const service = JobWorker.of({
@@ -912,7 +1048,13 @@ const forkBackground = Effect.fnUntraced(function* (
       Effect.repeat(Schedule.spaced(interval)),
     );
 
-  if (config.listen !== false) yield* forkListener(schema, wake);
+  if (config.listen !== false) {
+    yield* forkListener(
+      schema,
+      wake,
+      config.pollInterval ?? DEFAULTS.pollInterval,
+    );
+  }
 
   // Over the map rather than the declarations, so every latch has exactly one
   // poll fiber and no lookup can miss.
@@ -957,6 +1099,9 @@ const forkBackground = Effect.fnUntraced(function* (
   );
 });
 
+/** Where the listener's reconnection backoff starts. */
+const LISTEN_RETRY_BASE = Duration.millis(200);
+
 /**
  * The one `LISTEN` the worker holds, and the fiber that turns what arrives on
  * it into a wake-up for the right queue.
@@ -967,9 +1112,21 @@ const forkBackground = Effect.fnUntraced(function* (
  * node-postgres path, an operator running an UPDATE by hand. Nothing in
  * application code has to remember to announce a job.
  *
- * `sql.listen` reserves a pooled connection for as long as the scope is open
- * (`PgClient.make` wires `listenAcquirer` to `pool.reserve`), which is why the
- * pool is sized with one connection to spare rather than exactly.
+ * `sql.listen` reserves a pooled connection for as long as *its own* scope is
+ * open (`PgClient.make` wires `listenAcquirer` to `pool.reserve`), which is why
+ * the pool is sized with one connection to spare rather than exactly.
+ *
+ * The acquire and the take loop are one unit, retried forever on a backoff
+ * capped at the poll interval, because a lost reserved connection is not an
+ * error the take loop can see coming: `PgConnection.fatal` fails every listen
+ * queue with `Cause.interrupt()`, so the take simply ends. Without the retry
+ * the worker is deaf for the rest of the process's life with no log line and
+ * no metric, and the two queues that declare `notify` — the two where a person
+ * is waiting — quietly fall back to the poll interval. The scope is per
+ * attempt rather than the layer's, so a reconnection releases the dead
+ * reservation before it takes a new one. External interruption (the layer's
+ * scope closing) skips the failure continuation entirely, so a stop ends the
+ * loop rather than reconnecting through it.
  */
 const forkListener = Effect.fnUntraced(function* (
   schema: string,
@@ -977,18 +1134,38 @@ const forkListener = Effect.fnUntraced(function* (
   // trigger put on the channel, and a name this build does not declare simply
   // finds no latch.
   wake: ReadonlyMap<string, Latch.Latch>,
+  retryCap: Duration.Input,
 ) {
   const { sql } = yield* Database;
   const channel = jobNotifyChannel(schema);
-  const notifications = yield* Effect.orDie(sql.listen(channel));
-  yield* Effect.forkScoped(
-    Effect.forever(
+
+  const session = Effect.gen(function* () {
+    const notifications = yield* sql.listen(channel);
+    yield* Effect.logInfo(`job listener acquired on ${channel}`);
+    return yield* Effect.forever(
       Effect.flatMap(Queue.take(notifications), (notification) => {
         const latch = wake.get(notification.payload);
         // A queue this worker does not poll — another replica's, or one a
         // later release added. Its own listener will have had the same message.
         return latch === undefined ? Effect.void : latch.open;
       }),
+    );
+  }).pipe(Effect.scoped);
+
+  const cap = Duration.fromInputUnsafe(retryCap);
+  const backoff = Schedule.modifyDelay(
+    Schedule.exponential(LISTEN_RETRY_BASE),
+    ({ duration }) => Effect.succeed(Duration.min(duration, cap)),
+  );
+
+  yield* Effect.forkScoped(
+    session.pipe(
+      Effect.catchCause((cause) =>
+        Effect.logWarning(
+          `job listener lost; reconnecting: ${Cause.pretty(cause)}`,
+        ),
+      ),
+      Effect.repeat(backoff),
     ),
   );
 });
