@@ -32,17 +32,18 @@ import {
 } from '@codaco/fresco-ui/Table';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
+import { TEAM_ROLES, type TeamRole } from '@codaco/studio-contract/schema/team';
 
-import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
+import { toMemberId, toTeamId, toTeamInvitationId } from '../lib/ids.ts';
 import {
   canManageTeam,
   roleLabel,
   teamRoles,
   teamRolesLabel,
 } from '../lib/teamRoles.ts';
+import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 /**
  * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
@@ -141,7 +142,7 @@ function useTeamStateRefresh(
         // without this it would go on calling them Owner until something
         // unrelated remounted it.
         Promise.resolve().then(() =>
-          queryClient.invalidateQueries({ queryKey: orpc.me.key() }),
+          queryClient.invalidateQueries({ queryKey: rpcKey('me') }),
         ),
       ]);
       if (
@@ -613,9 +614,9 @@ function TeamManagement(props: {
     try {
       const outcome = await reconcileTeamMutation(
         () =>
-          rpcClient.team.updateMemberRole({
-            teamId: team.id,
-            memberId,
+          rpcCall('team.updateMemberRole', {
+            teamId: toTeamId(team.id),
+            memberId: toMemberId(memberId),
             role,
           }),
         refreshTeamState,
@@ -668,9 +669,9 @@ function TeamManagement(props: {
     try {
       const outcome = await reconcileTeamMutation(
         () =>
-          rpcClient.team.cancelInvitation({
-            teamId: team.id,
-            invitationId,
+          rpcCall('team.cancelInvitation', {
+            teamId: toTeamId(team.id),
+            invitationId: toTeamInvitationId(invitationId),
           }),
         refreshTeamState,
       );
@@ -889,8 +890,8 @@ function TeamManagement(props: {
               try {
                 const outcome = await reconcileTeamMutation(
                   () =>
-                    rpcClient.team.createInvitation({
-                      teamId: team.id,
+                    rpcCall('team.createInvitation', {
+                      teamId: toTeamId(team.id),
                       email,
                       role,
                     }),
