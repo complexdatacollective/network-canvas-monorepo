@@ -178,6 +178,7 @@ export default function AppUpdateIndicator({
         mono
         className={cx(
           'whitespace-nowrap [--badge-color:transparent] [--badge-contrast:currentColor]',
+          size === 'md' && 'py-1',
           className,
         )}
         icon={idleIcon}
@@ -208,6 +209,7 @@ export default function AppUpdateIndicator({
       }
       className={cx(
         'focusable cursor-pointer whitespace-nowrap transition-colors',
+        size === 'md' && 'py-1',
         isAvailable
           ? 'bg-sea-serpent/20 text-sea-serpent hover:bg-sea-serpent/30'
           : 'bg-sea-green/20 text-sea-green hover:bg-sea-green/30',

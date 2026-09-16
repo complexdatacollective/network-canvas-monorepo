@@ -472,7 +472,7 @@ function Segment({
                           size="sm"
                           mono
                           uppercase
-                          className="shrink-0 bg-current/10 whitespace-nowrap group-data-selected:bg-transparent"
+                          className="shrink-0 bg-current/10 whitespace-nowrap text-current group-data-selected:bg-transparent"
                         >
                           {item.badge}
                         </Badge>
