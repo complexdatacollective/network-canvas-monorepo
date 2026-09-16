@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TeamId } from '@codaco/studio-contract/schema/ids';
 import {
   MANAGED_ONLY_PATHS,
   SELF_HOST_ONLY_PATHS,
@@ -11,6 +13,7 @@ import {
 } from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * The topology gate (§10.4), at the only layer that still has one.
@@ -69,63 +72,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          // Open, so a served `/setup` renders its form rather than its own
-          // "already set up" not-found; what these cases decide is the
-          // topology, and this keeps the second guard out of the way.
-          setup: { required: true },
-          // Read at call time, so each case picks the topology before it
-          // renders.
-          deployment: fixtures.deployment,
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      // The app shell's entity lockup reads this on every app route, and
-      // `/team/$teamId/billing` is one. No study on screen, so it answers
-      // null: the lockup renders no study segment, and this file asks only
-      // what the screen calls itself.
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
-}));
-
 /** A concrete URL for a route path: `/legal/$document` ⇒ `/legal/sample`. */
 function requestPath(routePath: string): string {
   return routePath.replaceAll(/\$[A-Za-z0-9_]+/g, 'team-a');
@@ -178,6 +124,40 @@ beforeEach(() => {
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
+  });
+  // The two procedures the shell asks for on these routes. `studies.get` and
+  // `studies.list` are deliberately absent: with no study in any of these
+  // URLs the lockup skips both queries rather than asking about a study that
+  // is not there, so a handler for either would stand for a call the shell
+  // must not make — and the harness names the tag if one ever is.
+  installRpcHarness({
+    status: () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        // Open, so a served `/setup` renders its form rather than its own
+        // "already set up" not-found; what these cases decide is the
+        // topology, and this keeps the second guard out of the way.
+        setup: { required: true },
+        // Read at call time, so each case picks the topology before it
+        // renders.
+        deployment: fixtures.deployment,
+      }),
+    me: () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        locale: null,
+        teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
+      }),
   });
 });
 

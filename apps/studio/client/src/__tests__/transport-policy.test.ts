@@ -241,18 +241,11 @@ describe('the oRPC stack', () => {
    * other file that imports `@orpc/*` today is a screen or a screen's suite
    * that task 6 rewrites onto `runtime/rpc.ts`.
    *
-   * Task 6 has moved every SOURCE file: the editor's own module is the only
-   * one left. The three suites below still stand up an oRPC client of their
-   * own in place of the screens they drive, which tasks 7 and 8 replace with
-   * the rpc harness — and their three entries come out of this list then.
+   * Task 6 has moved every SOURCE file and tasks 7 and 8 every suite that
+   * stood up an oRPC client of its own, so what is left is the editor's module
+   * and the suite that shims its host socket. Both entries come out at stage 8.
    */
-  const ALLOWED = [
-    'routes/Editor.tsx',
-    'routes/__tests__/Editor.test.tsx',
-    'routes/__tests__/TeamActivity.test.tsx',
-    'routes/__tests__/auth.test.tsx',
-    'routes/__tests__/setup.test.tsx',
-  ];
+  const ALLOWED = ['routes/Editor.tsx', 'routes/__tests__/Editor.test.tsx'];
 
   it('survives only in the editor’s host socket', () => {
     expect(

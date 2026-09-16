@@ -8,37 +8,72 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createAppRouter } from '../../router.tsx';
+import type { SuccessOf } from '@codaco/effect-query/types';
+import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
 
-const fixtures = vi.hoisted(() => ({
-  TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
-  // Shaped like `StudySummarySchema`, because the switcher reads the state and
-  // the counts to write each study's supporting line.
-  STUDY_1: {
-    id: 'study-1',
-    draftId: 'draft-1',
+import { createAppRouter } from '../../router.tsx';
+import type { StudioRpcsType } from '../../runtime/runtime.ts';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
+
+/** One study exactly as the team's list reports it. */
+type StudySummary = SuccessOf<StudioRpcsType, 'studies.list'>[number];
+
+/**
+ * A study, and the draft `studies.get` answers for it. The draft id is not a
+ * field of `StudySummary` — it belongs to the study's protocol line, and the
+ * contract carries it on `StudyDetail` — so the fixture keeps the pair beside
+ * each other rather than smuggling one into the other's shape.
+ */
+type StudyFixture = {
+  readonly summary: StudySummary;
+  readonly draftId: DraftId | null;
+};
+
+const STUDY_1_ID = '4d0f5f2e-0000-4000-8000-000000000001';
+const STUDY_2_ID = '4d0f5f2e-0000-4000-8000-000000000002';
+
+// Shaped by `StudySummary`, because the switcher reads the state and the
+// counts to write each study's supporting line.
+const STUDY_1: StudyFixture = {
+  summary: {
+    id: StudyId.make(STUDY_1_ID),
     name: 'Wave one pilot',
-    state: 'live' as const,
-    participationMode: 'managed' as const,
-    protocolId: 'protocol-1',
+    state: 'live',
+    participationMode: 'managed',
+    protocolId: ProtocolId.make('4d0f5f2e-0000-4000-8000-000000000003'),
     createdAt: new Date('2026-08-28T00:00:00Z'),
     waveCount: 2,
     participantCount: 14,
   },
-  STUDY_2: {
-    id: 'study-2',
-    draftId: null,
+  draftId: DraftId.make('4d0f5f2e-0000-4000-8000-000000000004'),
+};
+
+const STUDY_2: StudyFixture = {
+  summary: {
+    id: StudyId.make(STUDY_2_ID),
     name: 'Methods comparison',
-    state: 'draft' as const,
-    participationMode: 'anonymous' as const,
+    state: 'draft',
+    participationMode: 'anonymous',
     protocolId: null,
     createdAt: new Date('2026-08-29T00:00:00Z'),
     waveCount: 0,
     participantCount: 0,
   },
+  draftId: null,
+};
+
+const fixtures = vi.hoisted(() => ({
+  TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+  TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
   setActive: vi.fn(),
   useActiveMember: vi.fn(),
   // Hoisted rather than fixed in the mock factory, because the team list's
@@ -49,20 +84,10 @@ const fixtures = vi.hoisted(() => ({
   // list can disagree, and a test needs to say so.
   useActiveOrganization: vi.fn(),
   // Read at call time, so a test can put a study in the team's list or leave
-  // it out. `protocols.list` is team-scoped, so a study missing from it is a
+  // it out. `studies.list` is team-scoped, so a study missing from it is a
   // study this team does not own.
-  studies: [] as {
-    id: string;
-    draftId: string | null;
-    name: string;
-    state: 'draft' | 'live' | 'paused' | 'closed';
-    participationMode: 'managed' | 'anonymous';
-    protocolId: string | null;
-    createdAt: Date;
-    waveCount: number;
-    participantCount: number;
-  }[],
-  // Every `protocols.list` request the shell made, in order, by the team it
+  studies: [] as StudyFixture[],
+  // Every `studies.list` request the shell made, in order, by the team it
   // asked. The header asks for a team's studies in two places now — the study
   // segment's siblings and the owner lookup behind it — and both of them are
   // supposed to stay silent where no study is on screen, which is a claim
@@ -88,112 +113,6 @@ vi.mock('../../lib/auth.ts', () => ({
     },
     signOut: vi.fn(),
   },
-}));
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [
-            { teamId: 'team-a', role: 'owner' },
-            // Comma-separated, as Better Auth stores a legacy multi-role
-            // membership: the switcher must read it as "Owner, Admin".
-            { teamId: 'team-b', role: 'admin,member' },
-          ],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        // Keyed by the team, as the real one is.
-        queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['studies', input.teamId],
-          queryFn: () => {
-            fixtures.studyListRequests.push(input.teamId);
-            return fixtures.studies;
-          },
-        }),
-        key: () => ['studies'],
-      },
-      get: {
-        // The server resolves a study's team from the id alone. `null` for a
-        // study no team of this researcher's owns, which is what the real
-        // procedure refuses.
-        queryOptions: ({ input }: { input: { studyId: string } }) => ({
-          queryKey: ['study', input.studyId],
-          queryFn: () => {
-            fixtures.studyGetRequests.push(input.studyId);
-            const study = fixtures.studies.find((s) => s.id === input.studyId);
-            if (!study) throw new Error('FORBIDDEN');
-            return {
-              teamId: fixtures.TEAM_A.id,
-              study,
-              protocolDraftId: study.draftId,
-            };
-          },
-        }),
-        key: () => ['study'],
-      },
-      counts: {
-        queryOptions: () => ({
-          queryKey: ['study-counts'],
-          queryFn: () => ({ waves: 0, participants: 0, interviews: 0 }),
-        }),
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-    audit: {
-      list: {
-        infiniteOptions: (options: {
-          initialPageParam: string | undefined;
-          getNextPageParam: (page: {
-            nextCursor: string | null;
-          }) => string | undefined;
-        }) => ({
-          queryKey: ['audit-list'],
-          queryFn: () => ({ events: [], nextCursor: null }),
-          initialPageParam: options.initialPageParam,
-          getNextPageParam: options.getNextPageParam,
-        }),
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['audit-get'], queryFn: vi.fn() }),
-      },
-      filterOptions: {
-        queryOptions: () => ({
-          queryKey: ['audit-filter-options'],
-          queryFn: () => ({ actors: [] }),
-        }),
-      },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
 }));
 
 function renderAt(path: string) {
@@ -282,9 +201,72 @@ beforeEach(() => {
     error: null,
     refetch: vi.fn(),
   });
-  fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
+  fixtures.studies = [STUDY_1, STUDY_2];
   fixtures.studyListRequests = [];
   fixtures.studyGetRequests = [];
+  installRpcHarness({
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        setup: { required: false },
+        deployment: { mode: 'managed', billing: false },
+      }),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        // `me` carries the account's UI-language preference; null means
+        // "follow the browser" (2026-09-04 localization design §5.2).
+        locale: null,
+        teams: [
+          { teamId: TeamId.make(fixtures.TEAM_A.id), role: 'owner' },
+          // Comma-separated, as Better Auth stores a legacy multi-role
+          // membership: the switcher must read it as "Owner, Admin".
+          { teamId: TeamId.make(fixtures.TEAM_B.id), role: 'admin,member' },
+        ],
+      }),
+    // Keyed by the team, as the real one is.
+    'studies.list': ({ teamId }) =>
+      Effect.sync(() => {
+        fixtures.studyListRequests.push(teamId);
+        return fixtures.studies.map((study) => study.summary);
+      }),
+    // The server resolves a study's team from the id alone, and refuses a
+    // study no team of this researcher's owns — which is what `Forbidden` is
+    // here, rather than the `null` the old stub answered with.
+    'studies.get': ({ studyId }) =>
+      Effect.suspend(() => {
+        fixtures.studyGetRequests.push(studyId);
+        const found = fixtures.studies.find(
+          (study) => study.summary.id === studyId,
+        );
+        if (found === undefined) return Effect.fail(new Forbidden({}));
+        return Effect.succeed({
+          teamId: TeamId.make(fixtures.TEAM_A.id),
+          study: found.summary,
+          protocolDraftId: found.draftId,
+        });
+      }),
+    'studies.counts': () =>
+      Effect.succeed({
+        versions: 0,
+        participants: 0,
+        waves: 0,
+        sessions: 0,
+      }),
+    'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),
+    'audit.filterOptions': () =>
+      Effect.succeed({ actions: [], actors: [], truncated: false }),
+  });
 });
 
 describe('composed app shell', () => {
@@ -586,7 +568,7 @@ describe('header team switcher', () => {
  */
 describe('the header switcher lockup', () => {
   it('draws the study segment beside the team on a study route', async () => {
-    renderAt('/study/study-1');
+    renderAt(`/study/${STUDY_1_ID}`);
 
     expect(
       await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
@@ -602,7 +584,7 @@ describe('the header switcher lockup', () => {
   });
 
   it('offers the study its siblings, and the way back to all of them', async () => {
-    renderAt('/study/study-1');
+    renderAt(`/study/${STUDY_1_ID}`);
     fireEvent.click(
       await screen.findByRole('combobox', {
         name: 'Study Wave one pilot, Live',
@@ -668,7 +650,7 @@ describe('the header switcher lockup', () => {
   });
 
   it('gives every study its state and its size, and the active team its role', async () => {
-    renderAt('/study/study-1');
+    renderAt(`/study/${STUDY_1_ID}`);
 
     const study = await screen.findByRole('combobox', { name: /^Study/ });
     await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
@@ -739,13 +721,13 @@ describe('the header switcher lockup', () => {
     // team is asked and none has it, so nothing here can say what the study is
     // called or which team it belongs to, and the identifier is what the shell
     // honestly knows.
-    fixtures.studies = [fixtures.STUDY_2];
-    renderAt('/study/study-1');
+    fixtures.studies = [STUDY_2];
+    renderAt(`/study/${STUDY_1_ID}`);
 
     // Gate on the lookup having SETTLED rather than on the name that proves
     // the point. While it is still running the name is a skeleton, so the
     // identifier appearing at all is the settled answer.
-    expect(await screen.findByText('study-1')).toBeInTheDocument();
+    expect(await screen.findByText(STUDY_1_ID)).toBeInTheDocument();
     expectRouteComposed();
     expect(lockupSegments()).toBe(2);
 

@@ -1,4 +1,3 @@
-import type { InferContractRouterOutputs } from '@orpc/contract';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
@@ -9,9 +8,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { contract } from '@codaco/studio-rpc';
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
@@ -20,6 +21,7 @@ import {
   sessionQueryOptions,
 } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -34,8 +36,7 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-type Status = InferContractRouterOutputs<typeof contract>['status'];
-const STATUS: Status = {
+const STATUS: InstanceStatus = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
   auth: {
@@ -49,49 +50,7 @@ const STATUS: Status = {
   // except the screen that is for it.
   setup: { required: false },
 };
-let currentStatus: Status = STATUS;
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => currentStatus,
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-  },
-  rpcClient: { protocols: {} },
-}));
+let currentStatus: InstanceStatus = STATUS;
 
 const mocked = vi.mocked(authClient, true);
 
@@ -178,6 +137,23 @@ async function clickSignOut() {
 beforeEach(() => {
   vi.resetAllMocks();
   currentStatus = STATUS;
+  // The three procedures the shell and its screens ask for on these routes.
+  // `studies.get` and `studies.list` for a STUDY are absent deliberately: no
+  // URL here names one, so the lockup skips both rather than asking about a
+  // study that is not there.
+  installRpcHarness({
+    'status': () => Effect.succeed(currentStatus),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        locale: null,
+        teams: [{ teamId: TeamId.make(TEAM.id), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([]),
+  });
   mocked.getSession.mockResolvedValue(signedOut);
   mocked.organization.list.mockResolvedValue({
     data: [TEAM],
@@ -855,7 +831,7 @@ describe('password sign-in', () => {
 });
 
 describe('OAuth sign-in', () => {
-  const withProviders: Status = {
+  const withProviders: InstanceStatus = {
     ...STATUS,
     auth: { ...STATUS.auth, socialProviders: ['google', 'microsoft'] },
   };

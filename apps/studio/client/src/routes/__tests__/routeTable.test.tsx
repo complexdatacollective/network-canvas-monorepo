@@ -8,11 +8,22 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { unclassifiedSurfacePaths } from '@codaco/studio-contract/surfaces';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+import {
+  unclassifiedSurfacePaths,
+  type DeploymentMode,
+} from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * §5.2's route table, asserted by rendering it.
@@ -27,45 +38,60 @@ import { createAppRouter } from '../../router.tsx';
 
 const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  deployment: { mode: 'managed', billing: false },
+  deployment: { mode: 'managed' as DeploymentMode, billing: false },
   // First-run setup (#1909), read at call time like `deployment`: `/setup` is
   // a real screen while an instance has no owner and a not-found once it has.
   setup: { required: true },
-  complete: vi.fn(),
   getSession: vi.fn(),
   // Read at call time, so a test can put the researcher in no team, or in
   // several, before it renders.
   teams: [] as { id: string; name: string }[],
-  STUDY: {
-    id: 'study-1',
-    name: 'Shell proof',
-    state: 'draft',
-    participationMode: 'managed',
-    protocolId: 'protocol-1',
-    createdAt: new Date('2026-08-28T00:00:00Z'),
-    waveCount: 0,
-    participantCount: 0,
-  },
-  /** A second study in the same team, so the chip has a sibling to offer. */
-  SIBLING_STUDY: {
-    id: 'study-2',
-    name: 'Second study',
-    state: 'live',
-    participationMode: 'managed',
-    protocolId: 'protocol-2',
-    createdAt: new Date('2026-08-27T00:00:00Z'),
-    waveCount: 1,
-    participantCount: 3,
-  },
-  /** The protocol line the study points at, as `protocols.draft` reports it. */
-  PROTOCOL: {
-    id: 'protocol-1',
-    draftId: 'draft-1',
-    name: 'Shell proof',
-    createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
-  },
 }));
+
+/**
+ * The identifiers the study tier is addressed by. UUIDs because the contract's
+ * `StudyId`, `ProtocolId` and `DraftId` are: every one of them travels in a
+ * payload, and a `study-1` would be refused at the call rather than reaching a
+ * handler. They are out of `vi.hoisted` because branding them needs the
+ * contract's schemas, which a hoisted factory runs before.
+ */
+const STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000001';
+const SIBLING_STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000002';
+const PROTOCOL_ID = '4d0f5f2e-0000-4000-8000-000000000003';
+const SIBLING_PROTOCOL_ID = '4d0f5f2e-0000-4000-8000-000000000004';
+const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000005';
+
+const STUDY = {
+  id: StudyId.make(STUDY_ID),
+  name: 'Shell proof',
+  state: 'draft',
+  participationMode: 'managed',
+  protocolId: ProtocolId.make(PROTOCOL_ID),
+  createdAt: new Date('2026-08-28T00:00:00Z'),
+  waveCount: 0,
+  participantCount: 0,
+} as const;
+
+/** A second study in the same team, so the chip has a sibling to offer. */
+const SIBLING_STUDY = {
+  id: StudyId.make(SIBLING_STUDY_ID),
+  name: 'Second study',
+  state: 'live',
+  participationMode: 'managed',
+  protocolId: ProtocolId.make(SIBLING_PROTOCOL_ID),
+  createdAt: new Date('2026-08-27T00:00:00Z'),
+  waveCount: 1,
+  participantCount: 3,
+} as const;
+
+/** The protocol line the study points at, as `protocols.draft` reports it. */
+const PROTOCOL = {
+  id: ProtocolId.make(PROTOCOL_ID),
+  draftId: DraftId.make(DRAFT_ID),
+  name: 'Shell proof',
+  createdAt: new Date('2026-08-28T00:00:00Z'),
+  updatedAt: new Date('2026-08-28T00:00:00Z'),
+} as const;
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -97,132 +123,6 @@ vi.mock('../../lib/auth.ts', () => ({
       list: vi.fn(() => Promise.resolve({ data: fixtures.teams, error: null })),
     },
     signOut: vi.fn(),
-  },
-}));
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          // Read at call time, so a test can put the client on a self-hosted
-          // instance before it renders.
-          deployment: fixtures.deployment,
-          setup: fixtures.setup,
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({
-          queryKey: ['studies'],
-          queryFn: () => [fixtures.STUDY, fixtures.SIBLING_STUDY],
-        }),
-        key: () => ['studies'],
-      },
-      // The study chip and the editor are both addressed by the study id and
-      // resolve everything else from here (§6.3).
-      get: {
-        queryOptions: () => ({
-          queryKey: ['study'],
-          queryFn: () => ({
-            teamId: fixtures.TEAM.id,
-            study: fixtures.STUDY,
-            protocolDraftId: fixtures.PROTOCOL.draftId,
-          }),
-        }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-      counts: {
-        queryOptions: () => ({
-          queryKey: ['study-counts'],
-          queryFn: () => ({
-            versions: 0,
-            participants: 0,
-            waves: 0,
-            sessions: 0,
-          }),
-        }),
-      },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({
-          queryKey: ['draft'],
-          queryFn: () => ({
-            protocol: fixtures.PROTOCOL,
-            revision: { sequence: '1', hash: 'revision-1' },
-            // No stages, so the editor selects none and acquires no editing
-            // session: this file renders every route, and the editor's leased
-            // session belongs to `Editor.test.tsx`.
-            sections: {
-              settings: { name: fixtures.PROTOCOL.name, schemaVersion: 8 },
-              stageOrder: { stages: [] },
-            },
-          }),
-        }),
-        key: () => ['draft'],
-      },
-    },
-    // The study sidebar's counts. This file asserts where every destination
-    // goes, never how much is at one, so an empty study is the honest fixture:
-    // `NavItem` renders no count for a zero, and each row's accessible name
-    // stays the label these cases look it up by.
-    audit: {
-      list: {
-        infiniteOptions: (options: {
-          initialPageParam: string | undefined;
-          getNextPageParam: (page: {
-            nextCursor: string | null;
-          }) => string | undefined;
-        }) => ({
-          queryKey: ['audit-list'],
-          queryFn: () => ({ events: [], nextCursor: null }),
-          initialPageParam: options.initialPageParam,
-          getNextPageParam: options.getNextPageParam,
-        }),
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['audit-get'], queryFn: vi.fn() }),
-      },
-      filterOptions: {
-        queryOptions: () => ({
-          queryKey: ['audit-filter-options'],
-          queryFn: () => ({ actors: [] }),
-        }),
-      },
-    },
-  },
-  rpcClient: {
-    protocols: {},
-    team: {},
-    setup: { complete: fixtures.complete },
   },
 }));
 
@@ -349,82 +249,82 @@ const DESTINATIONS: Destination[] = [
   },
 
   // App, study level
-  { path: '/study/$studyId', url: '/study/study-1', heading: 'Overview' },
+  { path: '/study/$studyId', url: `/study/${STUDY_ID}`, heading: 'Overview' },
   {
     // The editor names itself with the protocol it has open, which is the one
     // thing on this screen a researcher needs to be sure of.
     path: '/study/$studyId/editor',
-    url: '/study/study-1/editor',
+    url: `/study/${STUDY_ID}/editor`,
     heading: 'Shell proof',
   },
   {
     path: '/study/$studyId/editor/codebook',
-    url: '/study/study-1/editor/codebook',
+    url: `/study/${STUDY_ID}/editor/codebook`,
     heading: 'Codebook',
   },
   {
     path: '/study/$studyId/editor/stages/$stageId',
-    url: '/study/study-1/editor/stages/stage-1',
+    url: `/study/${STUDY_ID}/editor/stages/stage-1`,
     heading: 'Stage',
   },
   {
     path: '/study/$studyId/editor/assets',
-    url: '/study/study-1/editor/assets',
+    url: `/study/${STUDY_ID}/editor/assets`,
     heading: 'Assets',
   },
   {
     path: '/study/$studyId/editor/translations',
-    url: '/study/study-1/editor/translations',
+    url: `/study/${STUDY_ID}/editor/translations`,
     heading: 'Translations',
   },
   {
     path: '/study/$studyId/editor/preview',
-    url: '/study/study-1/editor/preview',
+    url: `/study/${STUDY_ID}/editor/preview`,
     heading: 'Preview',
   },
   {
     path: '/study/$studyId/versions',
-    url: '/study/study-1/versions',
+    url: `/study/${STUDY_ID}/versions`,
     heading: 'Versions',
   },
   {
     path: '/study/$studyId/participants',
-    url: '/study/study-1/participants',
+    url: `/study/${STUDY_ID}/participants`,
     heading: 'Participants',
   },
   {
     path: '/study/$studyId/waves',
-    url: '/study/study-1/waves',
+    url: `/study/${STUDY_ID}/waves`,
     heading: 'Waves',
   },
   {
     path: '/study/$studyId/sessions',
-    url: '/study/study-1/sessions',
+    url: `/study/${STUDY_ID}/sessions`,
     heading: 'Sessions',
   },
   {
     path: '/study/$studyId/sessions/$sessionId',
-    url: '/study/study-1/sessions/session-1',
+    url: `/study/${STUDY_ID}/sessions/session-1`,
     heading: 'Session',
   },
   {
     path: '/study/$studyId/schedule',
-    url: '/study/study-1/schedule',
+    url: `/study/${STUDY_ID}/schedule`,
     heading: 'Schedule',
   },
   {
     path: '/study/$studyId/recruitment',
-    url: '/study/study-1/recruitment',
+    url: `/study/${STUDY_ID}/recruitment`,
     heading: 'Recruitment',
   },
   {
     path: '/study/$studyId/settings',
-    url: '/study/study-1/settings',
+    url: `/study/${STUDY_ID}/settings`,
     heading: 'Study settings',
   },
   {
     path: '/study/$studyId/export',
-    url: '/study/study-1/export',
+    url: `/study/${STUDY_ID}/export`,
     heading: 'Export',
   },
 ];
@@ -552,6 +452,69 @@ beforeEach(() => {
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
+  });
+  installRpcHarness({
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        // Both read at call time, so a test can put the client on a
+        // self-hosted instance, or close first-run setup, before it renders.
+        deployment: fixtures.deployment,
+        setup: fixtures.setup,
+      }),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        // `me` carries the account's UI-language preference; null means
+        // "follow the browser" (2026-09-04 localization design §5.2).
+        locale: null,
+        teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([STUDY, SIBLING_STUDY]),
+    // The study chip and the editor are both addressed by the study id and
+    // resolve everything else from here (§6.3).
+    'studies.get': () =>
+      Effect.succeed({
+        teamId: TeamId.make(fixtures.TEAM.id),
+        study: STUDY,
+        protocolDraftId: PROTOCOL.draftId,
+      }),
+    // The study sidebar's counts. This file asserts where every destination
+    // goes, never how much is at one, so an empty study is the honest fixture:
+    // `NavItem` renders no count for a zero, and each row's accessible name
+    // stays the label these cases look it up by.
+    'studies.counts': () =>
+      Effect.succeed({
+        versions: 0,
+        participants: 0,
+        waves: 0,
+        sessions: 0,
+      }),
+    'protocols.draft': () =>
+      Effect.succeed({
+        protocol: PROTOCOL,
+        revision: { sequence: '1', hash: 'revision-1' },
+        // No stages, so the editor selects none and acquires no editing
+        // session: this file renders every route, and the editor's leased
+        // session belongs to `Editor.test.tsx`.
+        sections: {
+          settings: { name: PROTOCOL.name, schemaVersion: 8 },
+          stageOrder: { stages: [] },
+        },
+      }),
+    'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),
+    'audit.filterOptions': () =>
+      Effect.succeed({ actions: [], actors: [], truncated: false }),
   });
 });
 
@@ -757,7 +720,7 @@ describe('navigation', () => {
   });
 
   it('reaches only registered routes from the study area', async () => {
-    const router = renderAt('/study/study-1');
+    const router = renderAt(`/study/${STUDY_ID}`);
     await screen.findByRole('link', { name: 'Overview' });
 
     expect(chromeDestinations(router)).toEqual([
@@ -776,7 +739,7 @@ describe('navigation', () => {
   });
 
   it('reaches only registered routes from the protocol outline', async () => {
-    const router = renderAt('/study/study-1/editor');
+    const router = renderAt(`/study/${STUDY_ID}/editor`);
     await screen.findByRole('link', { name: 'Codebook' });
 
     expect(chromeDestinations(router)).toEqual([
@@ -804,7 +767,7 @@ describe('navigation', () => {
   });
 
   it('replaces the study sidebar with the outline rather than adding to it', async () => {
-    renderAt('/study/study-1/editor');
+    renderAt(`/study/${STUDY_ID}/editor`);
     await screen.findByRole('link', { name: 'Codebook' });
 
     // The editor's area and the study's are siblings under a component-less
@@ -844,7 +807,7 @@ describe('navigation', () => {
   });
 
   it('names the study, offers its siblings, and reaches its team', async () => {
-    const router = renderAt('/study/study-1');
+    const router = renderAt(`/study/${STUDY_ID}`);
     // The NAME, which only `studies.get` can supply: the switcher would
     // otherwise fall back to the identifier, as the chip it replaces did.
     fireEvent.click(

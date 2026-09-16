@@ -6,10 +6,14 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { render, screen, within } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { createAppRouter } from '../../router.tsx';
 import SiteLayout from '../../shell/SiteLayout.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 import AppLayout from '../AppLayout.tsx';
 
 const mocks = vi.hoisted(() => ({
@@ -34,61 +38,6 @@ vi.mock('../../lib/auth.ts', () => ({
     organization: { setActive: mocks.setActive },
     signOut: vi.fn(),
   },
-}));
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: vi.fn().mockResolvedValue({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
 }));
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
@@ -201,6 +150,33 @@ function areaLayoutsAbove(route: AnyRoute): string[] {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSession.mockResolvedValue({ data: { user: {} }, error: null });
+  installRpcHarness({
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        setup: { required: false },
+        deployment: { mode: 'managed', billing: false },
+      }),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        // `me` carries the account's UI-language preference; null means
+        // "follow the browser" (2026-09-04 localization design §5.2).
+        locale: null,
+        teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([]),
+  });
   mocks.useListOrganizations.mockReturnValue({
     data: [],
     isPending: false,

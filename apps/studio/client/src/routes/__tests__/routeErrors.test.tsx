@@ -8,12 +8,21 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
 
 import { createAppRouter } from '../../router.tsx';
 import type { NavManifestEntry } from '../../shell/navigationManifest.ts';
 import type { PlaceholderProps } from '../../shell/Placeholder.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * What a route's error state does to the landmarks around it.
@@ -35,17 +44,27 @@ const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   /** Which of the two mocked components throws, if either. */
   failing: undefined as 'area' | 'screen' | undefined,
-  STUDY: {
-    id: 'study-1',
-    name: 'Shell proof',
-    state: 'draft',
-    participationMode: 'managed',
-    protocolId: 'protocol-1',
-    createdAt: new Date('2026-08-28T00:00:00Z'),
-    waveCount: 0,
-    participantCount: 0,
-  },
 }));
+
+/**
+ * The study these cases stand in. A UUID because the contract's `StudyId` is
+ * one: the id travels in the payload of every study-scoped procedure, and a
+ * `study-1` would be refused at the call rather than reaching a handler.
+ */
+const STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000001';
+const PROTOCOL_ID = '4d0f5f2e-0000-4000-8000-000000000002';
+const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000003';
+
+const STUDY = {
+  id: StudyId.make(STUDY_ID),
+  name: 'Shell proof',
+  state: 'draft',
+  participationMode: 'managed',
+  protocolId: ProtocolId.make(PROTOCOL_ID),
+  createdAt: new Date('2026-08-28T00:00:00Z'),
+  waveCount: 0,
+  participantCount: 0,
+} as const;
 
 vi.mock('../../shell/Placeholder.tsx', async (importOriginal) => {
   const actual = (await importOriginal()) as {
@@ -115,85 +134,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({
-          queryKey: ['studies'],
-          queryFn: () => [fixtures.STUDY],
-        }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({
-          queryKey: ['study'],
-          queryFn: () => ({
-            teamId: fixtures.TEAM.id,
-            study: fixtures.STUDY,
-            protocolDraftId: 'draft-1',
-          }),
-        }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-      counts: {
-        queryOptions: () => ({
-          queryKey: ['study-counts'],
-          queryFn: () => ({
-            versions: 0,
-            participants: 0,
-            waves: 0,
-            sessions: 0,
-          }),
-        }),
-      },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-    // The study sidebar's counts. Nothing here asserts a number, so an empty
-    // study is the honest fixture: `NavItem` renders no count for a zero, and
-    // every row's accessible name stays its label alone.
-  },
-  rpcClient: { protocols: {}, team: {} },
-}));
-
 function renderAt(path: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -219,12 +159,55 @@ function renderAt(path: string) {
 const AREA_ROUTES = [
   ['the account area', '/account/tokens'],
   ['the team area', '/team/team-a/roles'],
-  ['the study area', '/study/study-1/versions'],
-  ['the protocol outline', '/study/study-1/editor/codebook'],
+  ['the study area', `/study/${STUDY_ID}/versions`],
+  ['the protocol outline', `/study/${STUDY_ID}/editor/codebook`],
 ] as const;
 
 beforeEach(() => {
   fixtures.failing = undefined;
+  installRpcHarness({
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        setup: { required: false },
+        deployment: { mode: 'managed', billing: false },
+      }),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        // `me` carries the account's UI-language preference; null means
+        // "follow the browser" (2026-09-04 localization design §5.2).
+        locale: null,
+        teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([STUDY]),
+    'studies.get': () =>
+      Effect.succeed({
+        teamId: TeamId.make(fixtures.TEAM.id),
+        study: STUDY,
+        protocolDraftId: DraftId.make(DRAFT_ID),
+      }),
+    // The study sidebar's counts. Nothing here asserts a number, so an empty
+    // study is the honest fixture: `NavItem` renders no count for a zero, and
+    // every row's accessible name stays its label alone.
+    'studies.counts': () =>
+      Effect.succeed({
+        versions: 0,
+        participants: 0,
+        waves: 0,
+        sessions: 0,
+      }),
+  });
 });
 
 describe('a screen that throws inside an area', () => {
