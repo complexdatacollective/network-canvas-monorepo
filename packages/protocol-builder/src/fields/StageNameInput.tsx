@@ -60,7 +60,6 @@ type HeadingInputProps = {
    * instead of the input's own limit.
    */
   'characterLimit'?: number;
-  'autoFocus'?: boolean;
   'disabled'?: boolean;
   'readOnly'?: boolean;
   'aria-required'?: boolean;
@@ -89,7 +88,6 @@ const StageNameInput = ({
   onFieldBlur,
   placeholder,
   characterLimit,
-  autoFocus,
   disabled = false,
   readOnly = false,
   'aria-required': ariaRequired,
@@ -184,7 +182,6 @@ const StageNameInput = ({
         aria-multiline={false}
         placeholder={placeholder}
         maxLength={characterLimit}
-        autoFocus={autoFocus}
         disabled={disabled}
         readOnly={readOnly}
         aria-required={ariaRequired}

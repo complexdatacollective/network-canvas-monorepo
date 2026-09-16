@@ -41,7 +41,8 @@ const messages = defineMessages({
  * Architect also opts into the proposed name (`useAutoStageName`): a new stage
  * arrives already called something rather than with an empty heading to fill in
  * first. That is this app's decision about authoring, not the protocol's, which
- * is why it is a hook the host calls rather than something the field does.
+ * is why it is a hook the host calls rather than something the field does — and
+ * it is why the name claims no focus: there is nothing left to fill in.
  *
  * Rendered from the editor's HEADER slot, so it is inside the stage form's own
  * provider — the name is a field of that form — and above the form's own
@@ -64,7 +65,7 @@ export default function StageTitle({
   const intl = useAppIntl();
   const headingId = useId();
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
-  const { label, isNewStage } = useStageName();
+  const { label } = useStageName();
   const { onBlur } = useAutoStageName();
 
   return (
@@ -139,14 +140,7 @@ export default function StageTitle({
             })}
           </Paragraph>
         )}
-        {/*
-          Focus lands here only for a stage being created, where naming the
-          stage IS the next step — and the route's own focus handling leaves a
-          destination that has already claimed focus alone, so the two do not
-          fight. Opening an edit the researcher did not ask for would be worse
-          than a silent arrival on an existing stage.
-        */}
-        <StageNameField autoFocus={isNewStage} onBlur={onBlur} />
+        <StageNameField onBlur={onBlur} />
         <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{interfaceName}</Badge>
           <NativeLink

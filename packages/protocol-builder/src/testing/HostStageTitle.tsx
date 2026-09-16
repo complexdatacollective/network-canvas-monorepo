@@ -1,6 +1,5 @@
 import StageNameField from '../fields/StageNameField.tsx';
 import { useAutoStageName } from '../naming/useAutoStageName.ts';
-import { useStageName } from '../naming/useStageName.ts';
 
 /**
  * The stage's name, as the least a host can draw and still be a host.
@@ -25,8 +24,7 @@ import { useStageName } from '../naming/useStageName.ts';
  * where a host's own title goes.
  */
 export default function HostStageTitle() {
-  const { isNewStage } = useStageName();
   const { onBlur } = useAutoStageName();
 
-  return <StageNameField autoFocus={isNewStage} onBlur={onBlur} />;
+  return <StageNameField onBlur={onBlur} />;
 }

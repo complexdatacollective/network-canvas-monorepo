@@ -65,9 +65,8 @@ export const hasRouteFocusTarget = (ownerDocument: Document = document) =>
  *
  * Deliberately narrow: focus only moves when the view change LOST focus. Any
  * other owner — a dialog that navigated and then returned focus to its opener,
- * an autofocused name input in a create flow, a persistent nav control — is
- * left alone, so this cannot fight `focusFirstError`, a modal's focus trap, or
- * a `finalFocus` target.
+ * a persistent nav control — is left alone, so this cannot fight
+ * `focusFirstError`, a modal's focus trap, or a `finalFocus` target.
  *
  * Exported for the case where a route's content is replaced without the
  * location changing: Architect's `ProtocolRouteGuard` swaps the read-only view

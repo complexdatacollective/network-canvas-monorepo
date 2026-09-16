@@ -85,24 +85,18 @@ describe('the stage title', () => {
 });
 
 /**
- * Where a researcher's cursor is when a stage editor opens.
+ * The title claims focus from nobody, on any stage.
  *
- * Naming the stage is the first thing there is to do in a stage that does not
- * exist yet, and the name field is the page's own heading — so a keyboard or
- * screen-reader researcher who has just chosen an interface should already be
- * in it rather than tabbing through the shell to find it. An existing stage's
- * name is already theirs, and they opened it to look at it rather than to
- * rename it.
+ * A stage being created used to open with the cursor in its name, because
+ * naming it was the first thing there was to do. It arrives already named now,
+ * so a new stage is an ordinary route arrival: `RouteFocus` lands on the
+ * route's heading, and a control that took focus from it would move a screen
+ * reader's cursor past the one thing that says which stage was opened.
  *
- * Both are asked of a title drawn once the stage is EDITABLE, which is what
- * makes the second one answerable at all. A title mounted alongside an editor
- * still waiting on its acquire draws a disabled control, and `autoFocus` on a
- * disabled control is a no-op — so an editor that autofocused unconditionally
- * would pass a naive version of the second assertion for a reason that has
- * nothing to do with the rule, and would steal focus the moment a host
- * answered its acquire synchronously. Drawing the title when the slot says the
- * stage may be written is a thing a host may legitimately do, and it puts the
- * decision back where the test can see it.
+ * Asked of a title drawn once the stage is EDITABLE, which is what makes it
+ * answerable at all: a title mounted beside an editor still waiting on its
+ * acquire draws a DISABLED control, and a control that cannot take focus
+ * proves nothing about whether anything tried to give it.
  */
 const editableTitle = {
   sections: <></>,
@@ -111,31 +105,19 @@ const editableTitle = {
 } as const;
 
 describe('where the researcher starts', () => {
-  it('puts the cursor in the name of a stage being created', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'Information', position: 2 },
-      ...editableTitle,
-    });
-    await harness.opened();
-
-    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveFocus();
-  });
-
-  /**
-   * Stealing focus into a text field would also move a screen reader's cursor
-   * past the route's own heading, so it never says which stage was opened.
-   */
-  it('leaves focus alone for a stage the interview already holds', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      ...editableTitle,
-    });
+  it.each([
+    ['a stage being created', { create: { type: 'Information', position: 2 } }],
+    ['a stage the interview already holds', { stageId: 'information-1' }],
+  ] as const)('claims no focus on %s', async (_case, opened) => {
+    const harness = renderStageEditor({ ...opened, ...editableTitle });
     await harness.opened();
 
     const name = screen.getByRole('textbox', { name: 'Stage name' });
-    // Enabled, so the control COULD have taken focus — which is what makes the
-    // assertion below about the rule rather than about the timing.
+    // Enabled, so it COULD have taken focus.
     expect(name).toBeEnabled();
     expect(name).not.toHaveFocus();
+    // And nothing else in the title took it either, so the route's own
+    // landing point is still free to have it.
+    expect(document.body).toHaveFocus();
   });
 });

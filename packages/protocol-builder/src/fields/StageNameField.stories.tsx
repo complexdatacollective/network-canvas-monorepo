@@ -5,7 +5,6 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useAutoStageName } from '../naming/useAutoStageName.ts';
-import { useStageName } from '../naming/useStageName.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import StageNameField from './StageNameField.tsx';
@@ -38,13 +37,10 @@ const PROPOSED_NAME = 'Person Sociogram';
  * attribute, not through being inside the element.
  */
 function StageName() {
-  const { isNewStage } = useStageName();
   const { onBlur } = useAutoStageName();
 
   // `className` is the host's one say over how the field sits on its page.
-  return (
-    <StageNameField className="mb-2" autoFocus={isNewStage} onBlur={onBlur} />
-  );
+  return <StageNameField className="mb-2" onBlur={onBlur} />;
 }
 
 /** A stage nobody has named, which is where a stage being created starts. */

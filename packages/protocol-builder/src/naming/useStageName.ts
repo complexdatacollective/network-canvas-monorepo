@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
   stageNameMessages,
   useLiveStageLabel,
@@ -25,18 +24,6 @@ export type StageName = Readonly<{
   setValue: (value: string) => void;
   /** What a control naming the field calls it, in the reader's language. */
   label: string;
-  /**
-   * Whether this stage is being created rather than opened.
-   *
-   * Reported rather than acted on. Naming the stage is the first thing there
-   * is to do in a stage that does not exist yet, and an existing stage was
-   * opened to be looked at rather than renamed — but whether that means the
-   * name takes focus is a question about the whole page the editor is on, and
-   * only the host can answer it. Architect's route focus deliberately leaves a
-   * destination that has already claimed focus alone, which is the other half
-   * of that arrangement.
-   */
-  isNewStage: boolean;
   /**
    * What this stage would be called if nobody had named it, recomputed as the
    * stage is configured.
@@ -79,7 +66,6 @@ export type StageName = Readonly<{
  * then ignored — and watch the rename disappear with nothing said about it.
  */
 export function useStageName(): StageName {
-  const { creation } = useStageEditorForm();
   const intl = useAppIntl();
   useStageNameRegistration();
   const value = useLiveStageLabel();
@@ -101,7 +87,6 @@ export function useStageName(): StageName {
     value,
     setValue,
     label: intl.formatMessage(stageNameMessages.stageName),
-    isNewStage: creation !== undefined,
     proposal,
     acceptProposal,
   };

@@ -17,14 +17,6 @@ export type StageNameFieldProps = Readonly<{
    */
   className?: string;
   /**
-   * Take focus on mount.
-   *
-   * The host's decision, not the field's: whether a page opens with the cursor
-   * in the stage's name is a question about the whole page. `useStageName`
-   * reports `isNewStage`, which is the fact a host usually answers it from.
-   */
-  autoFocus?: boolean;
-  /**
    * What to do when focus leaves the control — `useAutoStageName().onBlur` for
    * a host that proposes names, and nothing for one that does not.
    *
@@ -59,7 +51,6 @@ export type StageNameFieldProps = Readonly<{
  */
 export default function StageNameField({
   className,
-  autoFocus,
   onBlur,
 }: StageNameFieldProps) {
   const { id, label, error, containerProps, fieldProps } = useStageNameField();
@@ -70,11 +61,7 @@ export default function StageNameField({
       <FieldLabel id={elementIds.label} htmlFor={id} className="sr-only">
         {label}
       </FieldLabel>
-      <StageNameInput
-        {...fieldProps}
-        autoFocus={autoFocus}
-        onFieldBlur={onBlur}
-      />
+      <StageNameInput {...fieldProps} onFieldBlur={onBlur} />
       {/*
         Mounted whether or not it holds anything, because the control already
         describes it: a refusal arrives after a submit, and a region that

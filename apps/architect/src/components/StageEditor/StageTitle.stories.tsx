@@ -228,7 +228,8 @@ export const Editing: Story = {
 /**
  * A stage being created. It has no place in the interview to report yet, and
  * the name it opens on was proposed from what the stage collects rather than
- * typed by anybody.
+ * typed by anybody — so there is nothing to be dropped into, and the title
+ * claims no focus.
  */
 export const BeingCreated: Story = {
   args: { position: undefined, creating: true },
@@ -243,8 +244,9 @@ export const BeingCreated: Story = {
     await waitFor(async () => {
       await expect(name).toHaveValue('Information');
     });
-    // And the cursor is already in it: naming the stage IS the next step.
-    await expect(name).toHaveFocus();
+    // And the cursor is NOT in it: the stage arrives named, so this is an
+    // ordinary route arrival and the route's own heading keeps the focus.
+    await expect(name).not.toHaveFocus();
     // Nothing to say about where it sits: the interview does not contain it.
     await expect(canvas.queryByText(/^Stage \d+ of \d+$/)).toBeNull();
   },

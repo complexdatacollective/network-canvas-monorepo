@@ -22,7 +22,7 @@ export type StageNameContainerProps = ReturnType<
  *
  * Shaped for `fields/StageNameInput`, which is the control this package
  * publishes for the job, and satisfied by any control that takes the same
- * props. `autoFocus` is deliberately absent — see `StageName.isNewStage`.
+ * props.
  */
 export type StageNameFieldProps = Readonly<{
   'id': string;

@@ -306,11 +306,8 @@ const StageEditorPage = () => {
        * heading and RouteFocus's landing point, and it is `sr-only`
        * because the input already shows the same text at hero size.
        *
-       * Focus lands HERE, never on the name input: opening an edit the
-       * researcher did not ask for is worse than a silent arrival. The
-       * new-stage flow is the deliberate exception — the title autofocuses
-       * the name because naming the stage IS the next step, and RouteFocus
-       * leaves any destination that has already claimed focus alone.
+       * Focus lands HERE on every arrival, a stage being created included:
+       * nothing the editor draws claims it.
        *
        * Above everything else the route draws, so the reading order starts
        * here: this heading, then the list of the stage's sections in the
