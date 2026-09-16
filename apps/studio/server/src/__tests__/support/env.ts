@@ -1,4 +1,4 @@
-import { Either, Schema } from 'effect';
+import { Result, Schema } from 'effect';
 
 // The test harness's own environment boundary, and the only place under
 // `src/` besides `src/env.ts` that reads `process.env` — the oxlint
@@ -19,7 +19,7 @@ import { Either, Schema } from 'effect';
  * is for.
  */
 const HarnessSchema = Schema.Struct({
-  CI: Schema.optionalWith(Schema.String, { exact: true }),
+  CI: Schema.optionalKey(Schema.String),
 });
 
 function readHarnessEnv(): typeof HarnessSchema.Type {
@@ -30,11 +30,11 @@ function readHarnessEnv(): typeof HarnessSchema.Type {
       ([, value]) => value !== undefined && value !== '',
     ),
   );
-  const result = Schema.decodeUnknownEither(HarnessSchema)(configured);
-  if (Either.isLeft(result)) {
+  const result = Schema.decodeUnknownResult(HarnessSchema)(configured);
+  if (Result.isFailure(result)) {
     throw new Error('the Studio test harness could not read its environment');
   }
-  return result.right;
+  return result.success;
 }
 
 const harness = readHarnessEnv();

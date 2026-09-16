@@ -63,6 +63,7 @@
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@dbml/core": "10.1.1",
+    "@effect/vitest": "catalog:",
     "@orpc/client": "catalog:",
     "@softwaretechnik/dbml-renderer": "1.0.31",
     "@types/pg": "^8.20.4",
