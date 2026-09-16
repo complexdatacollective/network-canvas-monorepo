@@ -90,11 +90,15 @@ class Client extends Context.Service<
 >()('effect-query/test/Client') {}
 
 /**
- * A countdown long enough that it cannot finish inside a `waitFor` window: the
- * finaliser can only be observed to have run because the fiber was interrupted.
+ * A countdown of 100 chunks 20 ms apart, so a stream left to run takes 2 s to
+ * reach its finaliser. The unmount test holds `released` to a window far shorter
+ * than that, and to a chunk count far below `COUNTDOWN_FROM`, so a leaked stream
+ * cannot be mistaken for an interrupted one.
  */
 const COUNTDOWN_FROM = 100;
 const COUNTDOWN_GAP = '20 millis';
+/** Well under the 2 s a leaked countdown needs, well over an interrupt. */
+const COUNTDOWN_INTERRUPT_BUDGET = 1_000;
 
 let getUserCalls = 0;
 let released = false;
@@ -274,7 +278,12 @@ describe('makeRpcAdapter', () => {
 
     unmount();
 
-    await waitFor(() => expect(released).toBe(true));
+    await waitFor(() => expect(released).toBe(true), {
+      timeout: COUNTDOWN_INTERRUPT_BUDGET,
+    });
+    // The finaliser ran while most of the countdown was still ahead of it, so the
+    // stream was cut short rather than abandoned and left to finish on its own.
+    expect(chunks.length).toBeLessThan(COUNTDOWN_FROM / 2);
   });
 
   it('reports a completed stream as done', async () => {
