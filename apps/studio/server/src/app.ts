@@ -1,16 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
+import { Effect } from 'effect';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 import {
   CLIENT_SESSION_HEADER,
-  CLIENT_SESSION_PARAM,
   readClientSessionId,
 } from '@codaco/studio-rpc/client-session';
 
@@ -24,26 +23,26 @@ import {
   type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
-import type { AuthService } from './auth/service.ts';
-import { clientAddress, createTrustedProxies } from './client-address.ts';
+import type { AuthService, SessionPrincipal } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
 import {
   type AuthCapabilities,
   getDeploymentStatus,
   type InstallationReader,
 } from './domain.ts';
-import { readEnv } from './env.ts';
+import { readEnv, type StudioEnv } from './env.ts';
 import {
   CHECK_TIMEOUT_MS,
-  createHealthRoutes,
+  type CheckVerdict,
   databaseCheck,
-  schemaCheck,
-} from './health.ts';
+  type HealthChecks,
+} from './http/health.ts';
+import { UNKNOWN_ADDRESS } from './http/middleware/client-address.ts';
 import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRateLimiter } from './rate-limit.ts';
 import type { RateLimitSettings } from './rate-limit/scopes.ts';
-import { createRpcRouter } from './rpc.ts';
+import { createRpcRouter, type RpcContext } from './rpc.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
 
@@ -154,14 +153,62 @@ type CreateAppDeps = {
   limits?: Partial<RateLimitSettings>;
 };
 
-export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
-  const app = new Hono<PrincipalVariables>();
+/**
+ * What the Effect shell resolved for this request and hands the Hono app as
+ * its adapter bindings (src/http/hono-bridge.ts). Both are optional because
+ * the suites still call `app.request(path)` with no bindings at all, and a
+ * surface that reads one has to behave then as it did when it resolved the
+ * value itself: one shared rate-limit bucket, and a request id of its own.
+ */
+export type StudioBindings = {
+  readonly requestId?: string;
+  readonly clientAddress?: string;
+};
+
+export type StudioHonoEnv = PrincipalVariables & { Bindings: StudioBindings };
+
+/** Either the upgrade is admitted, or it is refused with the guards' own response. */
+export type WsAdmission =
+  | { readonly refused: Response }
+  | { readonly principal: SessionPrincipal };
+
+export type WsBridgeDeps = {
+  /**
+   * Runs the upgrade guards — the origin check, the principal, and the
+   * per-user upgrade limit — over the handshake request, and answers either
+   * the principal they resolved or the response they refused it with.
+   */
+  readonly admit: (request: Request) => Promise<WsAdmission>;
+  /**
+   * The RPC router over a socket; the bridge feeds it frames. Named as the
+   * two methods the bridge calls rather than as the handler class, so that a
+   * test of the bridge itself can stand a stub in its place — the real
+   * `WebSocketRPCHandler` satisfies it because the type is taken from it.
+   */
+  readonly socket: Pick<WebSocketRPCHandler<RpcContext>, 'close' | 'message'>;
+};
+
+export type Studio = {
+  readonly app: Hono<StudioHonoEnv>;
+  readonly ws: WsBridgeDeps;
+  /**
+   * The readiness checks this process runs, minus `schema`: whether the
+   * database is this build's is the program's verdict (SchemaStatus), not the
+   * app's, because the program is what waited for it at boot.
+   */
+  readonly checks: HealthChecks;
+};
+
+export function createStudio(
+  env: StudioEnv = readEnv(),
+  deps: CreateAppDeps = {},
+): Studio {
+  const app = new Hono<StudioHonoEnv>();
 
   // Every limit this process enforces, counted in the shared store (#1909).
   // Built before anything is mounted because better-auth's own sign-in limiter
   // stores its counters through it too.
   const limiter = createRateLimiter(env, deps.limits);
-  const trustedProxies = createTrustedProxies(env.trustedProxies);
 
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
@@ -219,39 +266,50 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // One store for both the /storage routes below and the protocol builder's
   // content promotions — they name the same bytes — and for the readiness
-  // probe, which is why it is built before the health routes are mounted.
+  // probe, which is why it is built before the checks are assembled.
   const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 
-  // Liveness and readiness (#1897). The worker serves these same routes on a
-  // loopback listener of its own; what differs is which checks each process
-  // runs, so the checks are assembled by the caller rather than by
-  // createHealthRoutes. The object store is omitted where none is configured:
-  // that surface refuses by design, and reporting it failed would make a
-  // deployment that never wanted one permanently unready.
-  app.route(
-    '/',
-    createHealthRoutes({
-      ...(pool ? { db: databaseCheck(pool), schema: schemaCheck(pool) } : {}),
-      ...(assetStore
-        ? {
-            objectStore: async () => {
+  // Liveness and readiness are Effect routes now (src/http/health.ts): the
+  // worker serves the same two on a loopback listener of its own, and what
+  // differs is which checks each process runs — so the checks are assembled
+  // here and the routes are mounted by the program. The object store is
+  // omitted where none is configured: that surface refuses by design, and
+  // reporting it failed would make a deployment that never wanted one
+  // permanently unready.
+  //
+  // `schema` is not here. Whether the database is this build's is the
+  // program's verdict, because the program is what waited for it at boot.
+  const checks: HealthChecks = {
+    ...(pool ? { db: databaseCheck(pool) } : {}),
+    ...(assetStore
+      ? {
+          objectStore: Effect.map(
+            Effect.tryPromise({
               // The same bound the route applies, handed to the SDK as well:
               // a probe the route stopped waiting on would otherwise keep
               // retrying and holding a socket, once per check, for as long as
               // the endpoint stays unreachable.
-              await assetStore.head(AbortSignal.timeout(CHECK_TIMEOUT_MS));
-              return 'ok' as const;
-            },
-          }
-        : {}),
-      // `degraded`, never `failed`: the limiter fails open, so losing the
-      // store changes what is enforced without making this process unfit to
-      // serve — and taking the container out of rotation for it would turn a
-      // rate-limit outage into an availability one. Omitted entirely where no
-      // store is configured, like every other unconfigured surface.
-      ...(limiter.configured ? { limiter: limiter.readiness } : {}),
-    }),
-  );
+              try: () => assetStore.head(AbortSignal.timeout(CHECK_TIMEOUT_MS)),
+              catch: (cause: unknown) => cause,
+            }),
+            (): CheckVerdict => 'ok',
+          ),
+        }
+      : {}),
+    // `degraded`, never `failed`: the limiter fails open, so losing the
+    // store changes what is enforced without making this process unfit to
+    // serve — and taking the container out of rotation for it would turn a
+    // rate-limit outage into an availability one. Omitted entirely where no
+    // store is configured, like every other unconfigured surface.
+    ...(limiter.configured
+      ? {
+          limiter: Effect.tryPromise({
+            try: () => limiter.readiness(),
+            catch: (cause: unknown) => cause,
+          }),
+        }
+      : {}),
+  };
 
   // Per-email sign-in (#1909). better-auth keys its own limiter by address and
   // path and never looks inside the body, so the account this attempt names
@@ -317,7 +375,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.on(['GET', ...UNSAFE_METHODS], API_V1_PATHS, async (c, next) => {
     const decision = await limiter.check(
       'public_api',
-      clientAddress(c, trustedProxies),
+      c.env?.clientAddress ?? UNKNOWN_ADDRESS,
     );
     if (!decision.allowed) {
       return tooManyRequests(c, decision.retryAfterSeconds);
@@ -347,7 +405,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.on('GET', STORAGE_PATHS, async (c, next) => {
     const decision = await limiter.check(
       'storage_read',
-      clientAddress(c, trustedProxies),
+      c.env?.clientAddress ?? UNKNOWN_ADDRESS,
     );
     if (!decision.allowed) {
       return tooManyRequests(c, decision.retryAfterSeconds);
@@ -394,13 +452,13 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // The same router over the socket: unary calls keep working on /rpc, and
   // the streaming procedure the fetch transport cannot serve — the protocol
   // builder's `watchProtocol` — is served here.
-  const socketHandler = new WebSocketRPCHandler(rpcRouter);
+  const socketHandler = new WebSocketRPCHandler<RpcContext>(rpcRouter);
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
       context: {
         principal: c.get('principal'),
-        requestId: randomUUID(),
+        requestId: c.env?.requestId ?? randomUUID(),
         clientSessionId: readClientSessionId(
           c.req.header(CLIENT_SESSION_HEADER),
         ),
@@ -424,16 +482,28 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   }
 
   // The same RPC surface over a socket, behind the same origin check,
-  // principal, and metrics the echo placeholder proved.
+  // principal, and per-user limit the echo placeholder proved. The upgrade
+  // itself is the Effect shell's now (src/http/ws-bridge.ts) — a Hono adapter
+  // cannot hand a socket to the Effect server — so what stays here is the
+  // guard chain, run over the handshake request as the middlewares it has
+  // always been, answering either the principal they resolved or the response
+  // they refused it with.
+  //
+  // The terminal handler records the principal for this Request and answers
+  // 204: a middleware chain has no other way to hand a value back, and the
+  // WeakMap is keyed by the handshake Request, which the bridge holds for
+  // exactly as long as it is waiting for this answer.
+  const wsPrincipals = new WeakMap<Request, SessionPrincipal>();
+  const wsGuards = new Hono<StudioHonoEnv>();
   if (env.auth) {
-    app.use(WS_PATH, requireWsOrigin(env.auth.baseUrl));
+    wsGuards.use(WS_PATH, requireWsOrigin(env.auth.baseUrl));
   }
-  app.use(WS_PATH, createPrincipalMiddleware(auth));
-  app.use(WS_PATH, requirePrincipal());
+  wsGuards.use(WS_PATH, createPrincipalMiddleware(auth));
+  wsGuards.use(WS_PATH, requirePrincipal());
   // After the principal, because the subject is the user. What this stops is a
   // reconnect loop becoming a connection storm: a tab opens one socket and
   // reopens it whenever the network drops.
-  app.use(WS_PATH, async (c, next) => {
+  wsGuards.use(WS_PATH, async (c, next) => {
     const principal = c.get('principal');
     // Unreachable past requirePrincipal; narrowing rather than asserting.
     if (!principal) return next();
@@ -444,65 +514,44 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     await next();
     return undefined;
   });
-  app.get(
-    WS_PATH,
-    upgradeWebSocket(
-      (c) => {
-        const principal = c.get('principal');
-        const requestId = randomUUID();
-        // The socket is the presence identity, so it needs an id of its own.
-        const connectionId = randomUUID();
-        // The lock owner is the tab, which outlives its sockets. A browser
-        // cannot put a header on a WebSocket handshake, so the tab names
-        // itself on the upgrade URL; a client that names nothing falls back to
-        // the connection and is its own owner for as long as it is connected.
-        const clientSessionId = readClientSessionId(
-          c.req.query(CLIENT_SESSION_PARAM),
-        );
-        return {
-          onClose(_event, ws) {
-            void socketHandler.close(ws).catch((error: unknown) => {
-              // oxlint-disable-next-line no-console -- server-side failure diagnostics
-              console.error(error);
-            });
-          },
-          onError(event) {
-            // oxlint-disable-next-line no-console -- server-side failure diagnostics
-            console.error(event);
-          },
-          onMessage(event, ws) {
-            const data: unknown = event.data;
-            if (typeof data !== 'string' && !(data instanceof ArrayBuffer)) {
-              // oxlint-disable-next-line no-console -- server-side failure diagnostics
-              console.error(new Error('unreadable WebSocket frame'));
-              return;
-            }
-            // Handed over before any await: the adapter's ordering guarantee
-            // is per message, in arrival order.
-            void socketHandler
-              .message(ws, data, {
-                context: {
-                  principal,
-                  requestId,
-                  connectionId,
-                  clientSessionId,
-                },
-              })
-              .catch((error: unknown) => {
-                // oxlint-disable-next-line no-console -- server-side failure diagnostics
-                console.error(error);
-              });
-          },
-        };
-      },
-      {
-        onError: (error) => {
-          // oxlint-disable-next-line no-console -- server-side failure diagnostics
-          console.error(error);
-        },
-      },
-    ),
-  );
+  wsGuards.get(WS_PATH, (c) => {
+    const principal = c.get('principal');
+    if (principal) wsPrincipals.set(c.req.raw, principal);
+    return c.body(null, 204);
+  });
 
-  return app;
+  const admit = async (request: Request): Promise<WsAdmission> => {
+    const response = await wsGuards.fetch(request);
+    if (response.status !== 204) return { refused: response };
+    const principal = wsPrincipals.get(request);
+    wsPrincipals.delete(request);
+    if (!principal) {
+      // Unreachable past requirePrincipal; refusing rather than asserting.
+      return {
+        refused: Response.json(
+          { title: 'Unauthorized', status: 401 },
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/problem+json' },
+          },
+        ),
+      };
+    }
+    return { principal };
+  };
+
+  return { app, ws: { admit, socket: socketHandler }, checks };
+}
+
+/**
+ * The Hono half on its own, which is what every suite driving a request in
+ * process still takes. The socket and the health routes are not reachable
+ * through it — both belong to the Effect shell now — so a suite that needs
+ * either composes the whole stack instead (src/__tests__/support/serve.ts).
+ */
+export function createApp(
+  env: StudioEnv = readEnv(),
+  deps: CreateAppDeps = {},
+): Hono<StudioHonoEnv> {
+  return createStudio(env, deps).app;
 }

@@ -84,6 +84,12 @@ export type StudioEnv = {
    * and its opt-out exist before the first version that could report.
    */
   telemetry: boolean;
+  /**
+   * The OTLP/HTTP collector logs, traces and metrics are exported to (#1897).
+   * Undefined is the off switch that costs nothing: no endpoint, no exporter.
+   * `telemetry` being false turns the export off even where one is set.
+   */
+  telemetryEndpoint: string | undefined;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
@@ -496,6 +502,7 @@ export function resolve(
       : undefined,
     devDefaults,
     telemetry: raw.STUDIO_TELEMETRY ?? true,
+    telemetryEndpoint: raw.OTEL_EXPORTER_OTLP_ENDPOINT,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };

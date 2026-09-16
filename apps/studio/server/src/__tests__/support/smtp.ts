@@ -3,7 +3,7 @@ import { createServer, type Server, type Socket } from 'node:net';
 // A transport that accepts the connection and then says nothing at all, which
 // is how a send is held open on purpose: nodemailer waits for a greeting that
 // never comes and gives up on its own timeout. Two suites need that — one to
-// prove the timeout is the one src/auth/email.ts asks for, and one to have a
+// prove the timeout is the one src/mail/smtp.ts asks for, and one to have a
 // job still in flight when the worker is signalled to stop.
 //
 // Silence rather than a closed port: a refused connection fails in

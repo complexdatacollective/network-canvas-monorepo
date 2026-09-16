@@ -241,6 +241,21 @@ export const EnvironmentSchema = Schema.Struct({
   }),
 
   /**
+   * Absence is the gate: no endpoint means no exporter is built at all, so a
+   * deployment that says nothing pays nothing. `STUDIO_TELEMETRY=false` turns
+   * the export off even where an endpoint is configured, which is why the two
+   * are separate variables rather than one.
+   */
+  OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
+    group: 'Process',
+    summary:
+      'OTLP/HTTP collector that receives this instance’s logs, traces and metrics (#1897).',
+    deployment:
+      'Unset ⇒ nothing is exported; logs stay on stdout. Set to a collector’s base URL (the OTLP/HTTP paths `/v1/logs`, `/v1/traces`, `/v1/metrics` are appended). `STUDIO_TELEMETRY=false` overrides it.',
+    example: 'http://otel-collector:4318',
+  }),
+
+  /**
    * Read at run time by every entrypoint, so the managed deployment sets it in
    * the container environment rather than at build time. Unset resolves to
    * `self-hosted` in `resolve.ts` — the fail-closed direction, and the reason

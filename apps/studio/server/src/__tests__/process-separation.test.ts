@@ -1,17 +1,25 @@
 // The web/worker split is structural, not conventional (#1895): "neither
 // process may do the other's work" is only true if neither process can. What a
-// module graph reaches is what a process loads, so the two entrypoints are
+// module graph reaches is what a process loads, so the four entrypoints are
 // checked against each other here rather than against a habit.
 //
 // The runtime half of the same rule is proved elsewhere: the grants suite
 // (src/jobs/__tests__/grants.test.ts) shows the application role's `fetch()`
 // refused with 42501, so even a web process that did load the worker could not
 // execute a job.
+//
+// Since stage 1 of the Effect 4 migration (#1927) each entry is a one-line
+// file over a program in src/programs/, and the graph is read from the entry
+// — so the program, the shell it composes and every service it wires are what
+// is inspected, the same way the bundler sees them (vite.config.ts names the
+// same four files as its entries).
 import { readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 import { sourceTokens } from './support/source-tokens.ts';
 
@@ -20,6 +28,8 @@ const SERVER_ROOT = resolve(
   '..',
   '..',
 );
+
+const REPO_ROOT = resolve(SERVER_ROOT, '..', '..', '..');
 
 /**
  * Every module specifier in a file, through the tokenizer rather than a
@@ -100,6 +110,14 @@ function reached(
   return names.filter((name) => modules.has(name) || packages.has(name));
 }
 
+/** The four bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
+const ENTRIES = {
+  'src/index.ts': './programs/serve.ts',
+  'src/worker.ts': './programs/worker.ts',
+  'src/migrate.ts': './programs/migrate.ts',
+  'src/rotate-secrets.ts': './programs/rotate-secrets.ts',
+} as const;
+
 describe('the import inventory', () => {
   it('follows every form one module reaches another by', () => {
     // The inventory above is only as complete as this: a specifier it does
@@ -131,23 +149,58 @@ describe('the import inventory', () => {
   });
 });
 
+describe('every entry', () => {
+  it('is one file over its program', () => {
+    // D8: the bundle entries stay one file each, because this test — and the
+    // bundler — read the graph from them. The only module an entry names is
+    // its program; everything the process is lives there.
+    for (const [entry, program] of Object.entries(ENTRIES)) {
+      const relativeSpecifiers = moduleSpecifiers(
+        readFileSync(resolve(SERVER_ROOT, entry), 'utf8'),
+      ).filter((specifier) => specifier.startsWith('.'));
+      expect(relativeSpecifiers, entry).toEqual([program]);
+    }
+  });
+
+  it('reaches @effect/platform-node by subpath only', () => {
+    // The package's barrel imports its Redis module, and `redis` is
+    // deliberately not installed (pnpm-workspace.yaml makes the peer
+    // optional so a second Redis client stays out of the image): a bare
+    // `from '@effect/platform-node'` fails at boot with
+    // ERR_MODULE_NOT_FOUND. Mutation: import `NodeRuntime` from the barrel in
+    // any entry.
+    for (const entry of Object.keys(ENTRIES)) {
+      const { packages } = moduleGraph(entry);
+      expect(packages.has('@effect/platform-node'), entry).toBe(false);
+      expect(packages.has('@effect/platform-node/NodeRuntime'), entry).toBe(
+        true,
+      );
+      expect(packages.has('redis'), entry).toBe(false);
+    }
+  });
+});
+
 describe('the worker process', () => {
   const graph = moduleGraph('src/worker.ts');
 
   it('serves nothing but the health routes', () => {
-    // It does serve HTTP now — the loopback health listener a container
-    // healthcheck polls (#1897) — so "binds no port" is no longer the reading.
-    // What stays true is that it holds none of Studio's surfaces: loading the
-    // app or the RPC router would not make it answer a request by itself, but
-    // it is how one arrives a refactor later, and the import is the observable
-    // half of "this process serves no user".
+    // It does serve HTTP — the loopback health listener a container
+    // healthcheck polls (#1897) — so "binds no port" is not the reading. What
+    // stays true is that it holds none of Studio's surfaces: loading the
+    // router, the Hono residue or the RPC router would not make it answer a
+    // request by itself, but it is how one arrives a refactor later, and the
+    // import is the observable half of "this process serves no user".
     expect(
       reached(graph, [
         'src/app.ts',
+        'src/http/router.ts',
+        'src/http/hono-bridge.ts',
+        'src/http/ws-bridge.ts',
         'src/rpc.ts',
         'src/api.ts',
         'src/assets.ts',
         '@orpc/server',
+        'hono',
         // The WebSocket server is the web process's; nothing upgrades here.
         'ws',
       ]),
@@ -155,27 +208,37 @@ describe('the worker process', () => {
   });
 
   it('answers the healthcheck from a module that reaches no surface', () => {
-    // The positive half: the routes it does serve come from src/health.ts,
-    // whose own graph is checked below. Without this, "no app" would also be
-    // satisfied by a worker that had quietly stopped answering at all.
-    expect(reached(graph, ['src/health.ts', '@hono/node-server'])).toEqual([
-      'src/health.ts',
-      '@hono/node-server',
-    ]);
+    // The positive half: the routes it does serve come from
+    // src/http/health.ts, whose own graph is checked below, on Effect's Node
+    // server. Without this, "no app" would also be satisfied by a worker that
+    // had quietly stopped answering at all.
+    expect(
+      reached(graph, [
+        'src/http/health.ts',
+        '@effect/platform-node/NodeHttpServer',
+      ]),
+    ).toEqual(['src/http/health.ts', '@effect/platform-node/NodeHttpServer']);
   });
 
   it('is the process that holds the mail transport', () => {
     // The other half of the split: sends happen here, so this graph must
     // reach the transport where the web process's must not.
-    expect(reached(graph, ['src/auth/email.ts', 'nodemailer'])).toEqual([
-      'src/auth/email.ts',
-      'nodemailer',
-    ]);
+    expect(
+      reached(graph, ['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']),
+    ).toEqual(['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']);
+  });
+
+  it('is the process that executes jobs', () => {
+    // pg-boss's worker instance supervises, schedules and fetches; the
+    // registrations are the list of what this deployment runs.
+    expect(
+      reached(graph, ['src/jobs/worker.ts', 'src/jobs/registrations.ts']),
+    ).toEqual(['src/jobs/worker.ts', 'src/jobs/registrations.ts']);
   });
 });
 
 describe('the health routes', () => {
-  const graph = moduleGraph('src/health.ts');
+  const graph = moduleGraph('src/http/health.ts');
 
   it('reach neither the app nor the RPC router', () => {
     // Both processes mount these routes, so this module is the one place a
@@ -186,9 +249,12 @@ describe('the health routes', () => {
     expect(
       reached(graph, [
         'src/app.ts',
+        'src/http/router.ts',
         'src/rpc.ts',
         'src/api.ts',
+        'src/assets.ts',
         '@orpc/server',
+        'hono',
         'ws',
       ]),
     ).toEqual([]);
@@ -216,7 +282,13 @@ describe('the migrate process', () => {
   it('serves nothing', () => {
     // A one-shot: it connects, applies, and exits.
     expect(
-      reached(graph, ['src/app.ts', 'src/rpc.ts', 'hono', '@hono/node-server']),
+      reached(graph, [
+        'src/app.ts',
+        'src/http/router.ts',
+        'src/rpc.ts',
+        'hono',
+        '@effect/platform-node/NodeHttpServer',
+      ]),
     ).toEqual([]);
   });
 });
@@ -224,21 +296,47 @@ describe('the migrate process', () => {
 describe('the web process', () => {
   const graph = moduleGraph('src/index.ts');
 
+  it('serves through the Effect router over the Hono residue', () => {
+    // The positive half of the shell: the process is the Effect server, with
+    // today's Hono app mounted behind it until stage 9 removes it.
+    expect(
+      reached(graph, [
+        'src/http/router.ts',
+        'src/http/hono-bridge.ts',
+        'src/http/ws-bridge.ts',
+        'src/app.ts',
+        '@effect/platform-node/NodeHttpServer',
+      ]),
+    ).toEqual([
+      'src/http/router.ts',
+      'src/http/hono-bridge.ts',
+      'src/http/ws-bridge.ts',
+      'src/app.ts',
+      '@effect/platform-node/NodeHttpServer',
+    ]);
+  });
+
   it('loads nothing that executes a job', () => {
     // pg-boss's worker instance supervises, schedules and fetches; the web
     // process's instance may only create a job. Reaching either the worker or
     // its registrations would put the fetch loop one call away in a process
     // whose role cannot execute one anyway.
     expect(
-      reached(graph, ['src/jobs/worker.ts', 'src/jobs/register.ts']),
+      reached(graph, ['src/jobs/worker.ts', 'src/jobs/registrations.ts']),
     ).toEqual([]);
   });
 
   it('holds no mail transport', () => {
     // "The web process holds no mail transport" (#1895) as a property of the
     // build rather than of the wiring: with nodemailer out of the graph there
-    // is no transport to construct, whatever an entrypoint asks for.
-    expect(reached(graph, ['src/auth/email.ts', 'nodemailer'])).toEqual([]);
+    // is no transport to construct, whatever an entrypoint asks for. The
+    // `Mailer` tag itself (src/mail/mailer.ts) may travel — it is
+    // implementation-free — but the selector and the transport may not.
+    //
+    // Mutation: import src/mail/live.ts from src/programs/serve.ts.
+    expect(
+      reached(graph, ['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']),
+    ).toEqual([]);
   });
 
   it('cannot re-key the database while it is serving it', () => {
@@ -258,7 +356,7 @@ describe('the web process', () => {
   });
 });
 
-// The third entry, and the other side of "the web process cannot re-key the
+// The fourth entry, and the other side of "the web process cannot re-key the
 // database while it is serving it" above: the rotation is a process of its own
 // (#1900), so the separation runs both ways — the web process cannot reach the
 // rotation, and the rotation loads neither the HTTP surface nor the job
@@ -281,13 +379,60 @@ describe('the rotation process', () => {
     expect(
       reached(graph, [
         'src/app.ts',
+        'src/http/router.ts',
         'src/rpc.ts',
         'hono',
-        '@hono/node-server',
+        '@effect/platform-node/NodeHttpServer',
         'ws',
         'src/jobs/worker.ts',
-        'src/jobs/register.ts',
+        'src/jobs/registrations.ts',
       ]),
     ).toEqual([]);
+  });
+});
+
+describe('the image', () => {
+  /**
+   * Only what the assertion below reads: the snapshots section, each entry's
+   * dependency names. Decoded rather than cast, so a lockfile shape pnpm
+   * changes fails here with the path rather than as `undefined` somewhere
+   * below.
+   */
+  const Lockfile = Schema.Struct({
+    snapshots: Schema.Record(
+      Schema.String,
+      Schema.Struct({
+        dependencies: Schema.optionalKey(
+          Schema.Record(Schema.String, Schema.String),
+        ),
+      }),
+    ),
+  });
+
+  /** The lockfile snapshot of `@effect/platform-node`, whatever its resolution suffix. */
+  function platformNodeSnapshot() {
+    const lockfile = Schema.decodeUnknownSync(Lockfile)(
+      parseYaml(readFileSync(resolve(REPO_ROOT, 'pnpm-lock.yaml'), 'utf8')),
+    );
+    const entries = Object.entries(lockfile.snapshots).filter(([key]) =>
+      key.startsWith('@effect/platform-node@'),
+    );
+    expect(entries, 'exactly one @effect/platform-node snapshot').toHaveLength(
+      1,
+    );
+    return entries[0]![1];
+  }
+
+  it('carries one Redis client', () => {
+    // `@effect/platform-node` declares `redis` as a hard peer for a cluster
+    // module Studio never imports. With `autoInstallPeers` pnpm installs a
+    // hard peer regardless of `peerDependencyRules.ignoreMissing`, and it
+    // would reach the image beside ioredis (the rate-limit store's client).
+    // pnpm-workspace.yaml makes the peer optional through
+    // `packageExtensions`; this is what says it worked. Mutation: remove that
+    // extension and reinstall.
+    expect(
+      Object.keys(platformNodeSnapshot().dependencies ?? {}),
+    ).not.toContain('redis');
   });
 });

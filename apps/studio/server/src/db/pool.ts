@@ -69,7 +69,8 @@ export function createOwnerPool(db: DbEnv): pg.Pool {
  * never applied is refused at connect, before any query could tell the
  * schema is absent. Either pinned role answers for that: the web process
  * verifies the schema on the application pool and the worker on the
- * maintenance one (src/boot.ts), and an unapplied database is missing both.
+ * maintenance one (src/platform/schema-gate.ts), and an unapplied database is
+ * missing both.
  */
 export function isMissingRoleError(error: unknown): boolean {
   return (

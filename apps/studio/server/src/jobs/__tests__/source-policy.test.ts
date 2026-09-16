@@ -92,7 +92,7 @@ describe('job source policy', () => {
       'apps/studio/server/src/jobs/handlers/invitation-delivery.ts',
       'apps/studio/server/src/jobs/install.ts',
       'apps/studio/server/src/jobs/queues.ts',
-      'apps/studio/server/src/jobs/register.ts',
+      'apps/studio/server/src/jobs/registrations.ts',
       'apps/studio/server/src/jobs/worker.ts',
     ]);
   });
@@ -110,9 +110,13 @@ describe('job source policy', () => {
     // The S3 calls are the AWS SDK's command dispatch, which has nothing to do
     // with a queue; they are listed rather than filtered so that a `send` on
     // something else has to be classified here before it can land.
+    // The ws-bridge suite's two are a WebSocket peer's `send` — the stub
+    // handler echoing a frame and the `ws` client sending one — and have
+    // nothing to do with a queue either.
     expect(callers).toEqual([
       'apps/studio/server/src/__tests__/assets.test.ts: send',
       'apps/studio/server/src/assets.ts: send, send, send, send',
+      'apps/studio/server/src/http/__tests__/ws-bridge.test.ts: send, send',
       `${ENQUEUE_MODULE}: send`,
     ]);
   });

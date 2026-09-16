@@ -1,3 +1,4 @@
+import { Effect, Layer } from 'effect';
 import { Redis } from 'ioredis';
 
 // The one connection to the rate-limit store, and the only module that imports
@@ -152,8 +153,19 @@ export function getRateLimitStore(url: string): RateLimitStore {
 }
 
 /** Ends every memoised connection; the entrypoints call it on SIGTERM. */
-export async function closeRateLimitStores(): Promise<void> {
+async function closeRateLimitStores(): Promise<void> {
   const open = [...stores.values()];
   stores.clear();
   await Promise.all(open.map((store) => store.close()));
 }
+
+/**
+ * The stage-1 slot for stage 4's `RateLimitStoreLive`: today's memoised
+ * stores, ended when the layer's scope closes. Acquired after the database
+ * pool and before anything that enqueues, so it releases after the job
+ * client stops and before the pool ends — the order the hand-written
+ * shutdown handlers kept.
+ */
+export const RateLimitStoresLive: Layer.Layer<never> = Layer.effectDiscard(
+  Effect.addFinalizer(() => Effect.promise(() => closeRateLimitStores())),
+);

@@ -1,13 +1,12 @@
-import type pg from 'pg';
+import { Context, Effect, Layer, Schema } from 'effect';
 import { PgBoss } from 'pg-boss';
 
 import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
-import type { StudioMailer } from '../auth/email.ts';
 import type { DbEnv } from '../env.ts';
-import type { RateLimitStore } from '../rate-limit/store.ts';
-import { registerJobs } from './register.ts';
+import { Environment } from '../env.ts';
+import { SchemaStatus } from '../platform/schema-gate.ts';
 
 // The worker process's pg-boss: it fetches, supervises and schedules, and
 // never binds a port. It owns its own pool because LISTEN/NOTIFY needs a
@@ -18,9 +17,26 @@ import { registerJobs } from './register.ts';
 /** The container's stop window, less the time the pool takes to drain. */
 const DEFAULT_STOP_TIMEOUT_MS = 25_000;
 
+/** Longer than the graceful stop above, so it only ever backstops it. */
+const SHUTDOWN_BACKSTOP = '30 seconds';
+
+/**
+ * A queue this process cannot work: pg-boss would not start, or a registration
+ * it needs was refused. Nothing the worker does works without one, so this
+ * fails the layer rather than being reported and carried on from.
+ */
+export class QueueUnavailable extends Schema.TaggedError<QueueUnavailable>()(
+  'QueueUnavailable',
+  { queue: Schema.optionalKey(Schema.String), reason: Schema.String },
+) {
+  override get message(): string {
+    return this.reason;
+  }
+}
+
 /**
  * pg-boss's background cadences. Production leaves them at their defaults
- * apart from the maintenance pass, which `createJobWorker` sets because a
+ * apart from the maintenance pass, which `jobWorkerConfig` sets because a
  * queue's retention is only as short as the pass that enforces it; the suites
  * turn them all down so a test does not wait out a 30-second cron monitor to
  * observe one pass.
@@ -35,44 +51,11 @@ export type JobWorkerIntervals = {
   clockMonitorIntervalSeconds?: number;
 };
 
-export type JobWorkerDeps = {
-  /** How pg-boss reaches Postgres; it builds its own pool from this. */
-  db: DbEnv;
-  /** What the handlers run their own statements on. */
-  maintenancePool: pg.Pool;
-  /** Absent means no mail transport is configured; mail jobs queue up. */
-  mailer?: StudioMailer;
-  /** The browser-facing origin the handlers mint links against. */
-  publicBaseUrl: string;
-  /**
-   * Where the rate limiter keeps its counters (#1909). Absent means none is
-   * configured, and the denied-attempts summary then has nothing to read.
-   */
-  rateLimitStore?: RateLimitStore | undefined;
+export type JobWorkerOptions = {
   /** The suites provision a job schema per scratch database. */
-  schema?: string;
-  /**
-   * What the registered handlers poll at. Production leaves it at the floor
-   * `registerJobs` chooses; a suite that has to prove delivery came from
-   * LISTEN/NOTIFY rather than from a poll turns it up so that polling could
-   * not have been what delivered the job.
-   */
-  workPollingIntervalSeconds?: number;
-  intervals?: JobWorkerIntervals;
-  stopTimeoutMs?: number;
-};
-
-export type JobWorker = {
-  /** The instance, for tests that observe pg-boss rather than drive it. */
-  boss: PgBoss;
-  /**
-   * What pg-boss was constructed with. pg-boss keeps its own copy private, so
-   * this is how a suite reads back a cadence a deployment depends on — a
-   * default left to pg-boss is a promise this build does not keep.
-   */
-  config: JobWorkerConfig;
-  start(): Promise<void>;
-  stop(): Promise<void>;
+  readonly schema?: string;
+  readonly intervals?: JobWorkerIntervals;
+  readonly stopTimeoutMs?: number;
 };
 
 /**
@@ -87,15 +70,20 @@ export type JobWorker = {
  * what pg already does with it — a DSN carrying its own `options`, or one pg
  * accepts that `new URL` does not parse, such as a Unix socket host.
  */
-type JobWorkerConfig = NonNullable<ConstructorParameters<typeof PgBoss>[0]> & {
+export type JobWorkerConfig = NonNullable<
+  ConstructorParameters<typeof PgBoss>[0]
+> & {
   options?: string;
 };
 
-export function createJobWorker(deps: JobWorkerDeps): JobWorker {
-  const config: JobWorkerConfig = {
-    connectionString: deps.db.url,
+export function jobWorkerConfig(
+  db: DbEnv,
+  options: JobWorkerOptions = {},
+): JobWorkerConfig {
+  return {
+    connectionString: db.url,
     options: `-c role=${TENANT_ROLES.maintenance}`,
-    schema: deps.schema ?? JOB_SCHEMA,
+    schema: options.schema ?? JOB_SCHEMA,
     // The schema is applied once, by apply-schema, and verified by every
     // process at boot: a worker that migrated at start could move the database
     // out from under a web process already serving requests.
@@ -115,58 +103,97 @@ export function createJobWorker(deps: JobWorkerDeps): JobWorker {
     // magic link itself, would sit in the table for most of a day after the
     // link expired. A minute makes the queue's declared minute mean it.
     maintenanceIntervalSeconds: 60,
-    ...deps.intervals,
+    ...options.intervals,
   };
-  const boss = new PgBoss(config);
+}
 
-  // An `error` event with no listener is an uncaught exception, which would
-  // take the worker down over a transient maintenance failure that pg-boss
-  // retries on its next interval.
-  boss.on('error', (error) => {
-    // oxlint-disable-next-line no-console -- background worker diagnostics
-    console.error('Job worker error:', error);
-  });
+export class JobWorker extends Context.Service<
+  JobWorker,
+  {
+    /** The instance, for tests that observe pg-boss rather than drive it. */
+    readonly boss: PgBoss;
+    /**
+     * What pg-boss was constructed with. pg-boss keeps its own copy private, so
+     * this is how a suite reads back a cadence a deployment depends on — a
+     * default left to pg-boss is a promise this build does not keep.
+     */
+    readonly config: JobWorkerConfig;
+  }
+>()('@studio/JobWorker') {
+  static readonly layerPgBoss = (
+    options: JobWorkerOptions = {},
+  ): Layer.Layer<JobWorker, QueueUnavailable, Environment | SchemaStatus> =>
+    Layer.effect(
+      JobWorker,
+      Effect.gen(function* () {
+        const env = yield* Environment;
+        const schema = yield* SchemaStatus;
+        // Nothing this process does is possible against a schema that is not
+        // this build's, so the queue waits for the verdict rather than
+        // connecting to a database it would then have to be stopped against.
+        yield* schema.current;
 
-  let starting: Promise<void> | undefined;
-  let stopping: Promise<void> | undefined;
+        const db = env.db;
+        if (!db) {
+          return yield* new QueueUnavailable({
+            reason:
+              'DATABASE_URL is required for the worker process: there are no jobs to run without a database.',
+          });
+        }
 
-  return {
-    boss,
-    config,
-    start: () => {
-      starting ??= (async () => {
-        await boss.start();
-        await registerJobs(boss, deps);
-      })();
-      return starting;
-    },
-    // Memoised because pg-boss emits `stopped` once: a second call would wait
-    // for an event that has already been and gone. SIGTERM and SIGINT can both
-    // arrive, and a test stops a worker a failing case left running.
-    stop: () => {
-      stopping ??= (async () => {
-        // The graceful wait is the contract SIGTERM depends on, so the event
-        // is waited on explicitly rather than inferred from the call. Not
-        // `events.once`, which would turn a transient pg-boss error during
-        // shutdown into a rejection.
-        const stopped = new Promise<void>((resolve) => {
-          boss.once('stopped', () => resolve());
+        const config = jobWorkerConfig(db, options);
+        const boss = new PgBoss(config);
+
+        // The program's own services, so that a line written from one of
+        // pg-boss's callbacks goes through the loggers and the tracer this
+        // process was built with rather than a bare runtime's defaults.
+        const services = yield* Effect.context();
+
+        // An `error` event with no listener is an uncaught exception, which
+        // would take the worker down over a transient maintenance failure that
+        // pg-boss retries on its next interval.
+        boss.on('error', (error) => {
+          Effect.runForkWith(services)(
+            Effect.logError('Job worker error:', error),
+          );
         });
-        const halted = boss.stop({
-          graceful: true,
-          timeout: deps.stopTimeoutMs ?? DEFAULT_STOP_TIMEOUT_MS,
-        });
-        // An instance that is already stopped — never started, or stopped by
-        // something else — returns from `stop()` without emitting anything, so
-        // the event alone would wait forever. `stop()` resolves after the
-        // event when there was something to shut down, and immediately when
-        // there was not; racing the two is the wait in both cases.
-        await Promise.race([stopped, halted]);
-        // Awaited after the race so a failed stop is reported rather than
-        // dropped: SIGTERM's handler logs it.
-        await halted;
-      })();
-      return stopping;
-    },
-  };
+
+        yield* Effect.acquireRelease(
+          Effect.tryPromise({
+            try: () => boss.start(),
+            catch: (cause) =>
+              new QueueUnavailable({
+                reason: cause instanceof Error ? cause.message : String(cause),
+              }),
+          }),
+          () =>
+            // One finalizer on a built layer, run once when the scope closes.
+            // Today's `stop()` raced pg-boss's `stopped` event against the call
+            // because a second stop — a repeated signal, or a test stopping a
+            // worker a failing case left running — would have waited for an
+            // event that had already been and gone; a scope runs its finalizers
+            // exactly once, and only for a layer that was built, so neither the
+            // never-started nor the stopped-twice case exists here.
+            Effect.promise(() =>
+              boss.stop({
+                graceful: true,
+                timeout: options.stopTimeoutMs ?? DEFAULT_STOP_TIMEOUT_MS,
+              }),
+            ).pipe(
+              Effect.timeoutOrElse({
+                duration: SHUTDOWN_BACKSTOP,
+                orElse: () =>
+                  Effect.logError(
+                    `Job worker shutdown did not finish within ${SHUTDOWN_BACKSTOP}`,
+                  ),
+              }),
+              Effect.catchCause((cause) =>
+                Effect.logError('Job worker shutdown failed', cause),
+              ),
+            ),
+        );
+
+        return JobWorker.of({ boss, config });
+      }),
+    );
 }

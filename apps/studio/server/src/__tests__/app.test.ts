@@ -1,16 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { createApp, createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
+import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { composeStudio } from './support/serve.ts';
 
 describe('studio server', () => {
   it('reports healthy on /healthz', async () => {
-    const app = createApp();
-    const res = await app.request('/healthz');
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ status: 'ok' });
+    // Through the composed stack: liveness is an Effect route now
+    // (src/http/health.ts), not one of the Hono app's.
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request('/healthz');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ status: 'ok' });
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('serves instance status from the versioned API', async () => {
