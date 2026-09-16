@@ -127,6 +127,11 @@ export const TEST_SHARDS = [
       // local measurement (one file, 0.5s) scaled for CI rather than read off
       // a sharded run, because this shard had not run it yet.
       { name: '@codaco/protocol-builder-core', seconds: 4 },
+      // The two Effect-4 contract packages (#1946), placed with
+      // protocol-builder-core for the same reason: a handful of files each,
+      // weighted from a local measurement rather than a sharded run.
+      { name: '@codaco/studio-contract', seconds: 4 },
+      { name: '@codaco/effect-query', seconds: 4 },
     ],
   },
   {
