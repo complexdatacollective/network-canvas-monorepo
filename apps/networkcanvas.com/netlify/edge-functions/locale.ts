@@ -227,6 +227,10 @@ export function getGalleryCanonicalRedirect(url: URL) {
  * because the mapping is a plain prefix insertion it maps the per-directory RSC
  * payloads the client router fetches just as well as the HTML — which is why it
  * cannot reuse `shouldBypass`, whose extension test skips every `.txt`.
+ *
+ * The target is lowercase because Netlify answers a mixed-case page path with a
+ * visible redirect to its lowercase form. That redirect would expose the
+ * exported route, which `getGalleryCanonicalRedirect` sends straight back here.
  */
 export function getGalleryRewrite(url: URL) {
   if (
@@ -239,7 +243,8 @@ export function getGalleryRewrite(url: URL) {
   if (!pathLocale) return undefined;
 
   const rewrite = new URL(url);
-  rewrite.pathname = `/${pathLocale.locale}${protocolGalleryPathPrefix}${pathLocale.unlocalizedPath}`;
+  rewrite.pathname =
+    `/${pathLocale.locale}${protocolGalleryPathPrefix}${pathLocale.unlocalizedPath}`.toLowerCase();
   return rewrite;
 }
 
