@@ -11,7 +11,10 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
-import type { StageSectionsStore } from '@codaco/protocol-builder/stage-editor-contract';
+import type {
+  StageProblemsStore,
+  StageSectionsStore,
+} from '@codaco/protocol-builder/stage-editor-contract';
 import { stageDocument } from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
@@ -115,6 +118,8 @@ type StageEditorActionsProps = Readonly<{
   formId: string;
   /** Whether the package opened this stage read-only. */
   readOnly: boolean;
+  /** The refusals no section of the editor answers for. */
+  problems: StageProblemsStore;
   /** The stage being edited, or `null` while one is being created. */
   stageId: string | null;
   /** Where a stage being created will land in the stage order. */
@@ -128,8 +133,6 @@ type StageEditorChromeProps = StageEditorActionsProps &
     sections: StageSectionsStore;
     /** The route's left column, which the section list is portalled into. */
     outlineHost: HTMLElement | null;
-    /** The band above both columns, which the stage's title is portalled into. */
-    titleHost: HTMLElement | null;
   }>;
 
 /**
@@ -138,19 +141,20 @@ type StageEditorChromeProps = StageEditorActionsProps &
  * The slot is called inside the stage form's provider, which is what lets this
  * read the document as the researcher is typing it: the toolbar's save control
  * belongs to that form, the preview launches what is on screen rather than what
- * was last saved, the stage's name is a field of it, and the beacon publishes
- * the same reading to the guards outside. Everything it renders is displayed
- * elsewhere — the toolbar into the app's own toolbar host, the title into the
- * band above the route's two columns, the section list into its left column —
- * so nothing here occupies the place in the page where the slot happens to
- * sit.
+ * was last saved, and the beacon publishes the same reading to the guards
+ * outside. Everything it renders is displayed elsewhere — the toolbar into the
+ * app's own toolbar host, the section list into the route's left column — so
+ * nothing here occupies the place in the page where the slot happens to sit.
+ *
+ * The stage's TITLE is the header slot's rather than this one's; see
+ * `StageEditorHeader`.
  */
 export default function StageEditorChrome({
   formId,
   readOnly,
   sections,
+  problems,
   outlineHost,
-  titleHost,
   stageId,
   insertAtIndex,
   onCancel,
@@ -158,13 +162,12 @@ export default function StageEditorChrome({
   return (
     <>
       <StageDraftPublisher />
-      {titleHost !== null &&
-        createPortal(<StageTitleForStage stageId={stageId} />, titleHost)}
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
+        problems={problems}
         stageId={stageId}
         {...(insertAtIndex === undefined ? {} : { insertAtIndex })}
         onCancel={onCancel}
@@ -174,15 +177,23 @@ export default function StageEditorChrome({
 }
 
 /**
- * The stage's title, told where the stage sits in the interview.
+ * Architect's chrome ABOVE the form: the stage's title, told where the stage
+ * sits in the interview.
  *
- * Read from the protocol this tab holds rather than passed down from the
- * route, because the stage order is protocol content and a title told
- * something the protocol disagrees with would be orienting the researcher
+ * The editor's header slot, which is called inside the form's provider and
+ * rendered immediately before the form element — so the name is a field of
+ * that form and the title is drawn where a title belongs, with no portal
+ * standing in for a slot.
+ *
+ * The position is read from the protocol this tab holds rather than passed
+ * down from the route, because the stage order is protocol content and a title
+ * told something the protocol disagrees with would be orienting the researcher
  * wrongly. A stage the order does not contain yet — one being created — has no
  * position to state.
  */
-function StageTitleForStage({ stageId }: Readonly<{ stageId: string | null }>) {
+export function StageEditorHeader({
+  stageId,
+}: Readonly<{ stageId: string | null }>) {
   const protocol = useSelector(getProtocol);
   const index = useSelector((state: RootState) =>
     getStageIndex(state, stageId ?? ''),
@@ -231,6 +242,7 @@ function StageDraftPublisher() {
 function StageEditorActions({
   formId,
   readOnly,
+  problems,
   stageId,
   insertAtIndex,
   onCancel,
@@ -378,6 +390,7 @@ function StageEditorActions({
       <StageEditorToolbar
         formId={formId}
         readOnly={readOnly}
+        problems={problems}
         onCancel={onCancel}
         onPreview={handlePreview}
         previewLabel={

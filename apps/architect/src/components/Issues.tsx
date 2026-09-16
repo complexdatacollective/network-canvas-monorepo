@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
@@ -18,6 +19,7 @@ import {
   ToolbarButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 
 import {
   flattenIssues,
@@ -69,7 +71,20 @@ const sameTargets = (a: ResolvedTargets, b: ResolvedTargets): boolean => {
   );
 };
 
-export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
+export function useIssuesToolbarControl(
+  /**
+   * What the protocol refused about the stage that no section of the editor
+   * answers for.
+   *
+   * Listed here with the field errors because this panel is Architect's whole
+   * account of a refused save, and these are the only refusals nothing else on
+   * the page states: they belong to no field, so no control shows them, and to
+   * no section, so the section list does not either. The editor publishes them
+   * rather than printing them itself — where a stage's problems are shown is
+   * the host's.
+   */
+  problems: StageProblemsStore,
+): UseIssuesToolbarControlResult {
   const intl = useAppIntl();
   // The stage form's field errors are already flat and keyed by field name.
   // The panel only surfaces them once a save has been ATTEMPTED, which the form
@@ -79,18 +94,34 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   // goes with them.
   const fieldErrors = useFormStore((state) => state.errors.fieldErrors);
   const submitFailed = useFormStore((state) => state.errorFocusRequest > 0);
-  // Decoded here rather than where they were raised: a field's message crosses
-  // the form as an encoded descriptor so that a refusal already on screen
-  // follows a change of language, and this panel is one of the places it is
-  // read out. A host message that was never encoded is already in the
-  // researcher's language and passes through.
+  const stageProblems = useSyncExternalStore(
+    problems.subscribe,
+    problems.getSnapshot,
+    problems.getServerSnapshot,
+  );
   const flatIssues = useMemo(
     () =>
-      flattenIssues(fieldErrors).map((issue) => ({
+      [
+        ...flattenIssues(fieldErrors),
+        // After the fields, and with no field of their own: `field` is what a
+        // row is resolved and named by, and these name nothing on screen
+        // because nothing on screen is what they are about. The row is then
+        // the sentence alone.
+        ...stageProblems.map((problem, index) => ({
+          id: `stage#${index}`,
+          issue: problem,
+          field: undefined,
+        })),
+        // Decoded here rather than where they were raised: a refusal crosses
+        // the form and the editor's seams as an encoded descriptor so that one
+        // already on screen follows a change of language, and this panel is
+        // one of the places it is read out. A host message that was never
+        // encoded is already in the researcher's language and passes through.
+      ].map((issue) => ({
         ...issue,
         issue: formatMessageError(issue.issue, intl) ?? issue.issue,
       })),
-    [fieldErrors, intl],
+    [fieldErrors, intl, stageProblems],
   );
   const hasIssues = flatIssues.length > 0;
   const issueCount = flatIssues.length;
@@ -183,6 +214,7 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   useLayoutEffect(() => {
     const resolved: ResolvedTargets = {};
     for (const { field } of flatIssues) {
+      if (field === undefined) continue;
       resolved[field] ??= resolveIssueTarget(field);
     }
     setTargets((current) =>
@@ -227,15 +259,20 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
               // Row identity (`id`) and the field it is about are separate:
               // several rows can share one field, and the target below is
               // resolved once per field.
-              const target = targets[field];
-              const detail = intl.formatMessage(messages.issueDetail, {
-                // The name on screen, and the store's own key only when the
-                // field is nowhere to be found — at which point the key is all
-                // there is to tell one row from another.
-                field: target?.label ?? field,
-                issue,
-                fieldLabel: (children) => <span>{children}</span>,
-              });
+              const target = field === undefined ? null : targets[field];
+              // A row about no field is its sentence and nothing else: the
+              // frame below names a field, and there is none to name.
+              const detail =
+                field === undefined
+                  ? issue
+                  : intl.formatMessage(messages.issueDetail, {
+                      // The name on screen, and the store's own key only when
+                      // the field is nowhere to be found — at which point the
+                      // key is all there is to tell one row from another.
+                      field: target?.label ?? field,
+                      issue,
+                      fieldLabel: (children) => <span>{children}</span>,
+                    });
               return (
                 <li
                   key={id}
@@ -253,8 +290,13 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
                     href="#field_prompts">` pointing at an id nothing renders,
                     announced as a link and offered to "open in a new tab",
                     and it went nowhere when taken.
+
+                    A refusal about no field at all takes that last shape for
+                    the same reason: there is nowhere to send anybody.
                   */}
-                  {target === null || target === undefined ? (
+                  {field === undefined ||
+                  target === null ||
+                  target === undefined ? (
                     <span className="block w-full px-5 py-2.5 before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]">
                       {detail}
                     </span>

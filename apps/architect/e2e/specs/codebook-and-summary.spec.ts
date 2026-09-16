@@ -415,28 +415,32 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
   expect(focused.text).toBe(destination?.trim());
 
   // …and the next Tab continues INTO the editor rather than restarting at the
-  // app header. The first thing after the heading is the stage's own title,
-  // which is what a reader arriving here meets first on screen too: the name
-  // is drawn above both columns.
+  // app header: the first thing after the heading is the editor's own section
+  // outline, which is what a reader arriving here is offered first.
   await architectPage.keyboard.press('Tab');
   await expect(
-    architectPage.getByRole('textbox', { name: 'Stage name' }),
+    architectPage
+      .getByRole('navigation', { name: 'Stage sections' })
+      .getByRole('button')
+      .first(),
   ).toBeFocused();
 
-  // And the list of the stage's sections still comes before the form itself,
-  // so a reader is offered the whole stage before its first control. Asserted
-  // as document order rather than by counting Tab presses, which would be a
-  // claim about how many controls the title happens to hold.
+  // And the whole list comes before the editor, so a reader is offered every
+  // section before the first control of the first one. Asserted as document
+  // order rather than by counting Tab presses, which would be a claim about
+  // how many controls the list happens to hold — and the stage's own title is
+  // now the editor's first block, inside the form's column rather than above
+  // both.
   expect(
     await architectPage.evaluate(() => {
       const list = document.querySelector('nav[aria-label="Stage sections"]');
-      const form = document.querySelector('form');
-      if (list === null || form === null) return 'one of them is missing';
-      return (list.compareDocumentPosition(form) &
+      const name = document.querySelector('[data-field-name="label"]');
+      if (list === null || name === null) return 'one of them is missing';
+      return (list.compareDocumentPosition(name) &
         Node.DOCUMENT_POSITION_FOLLOWING) !==
         0
         ? 'list first'
-        : 'form first';
+        : 'title first';
     }),
   ).toBe('list first');
 });

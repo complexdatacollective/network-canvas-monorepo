@@ -15,6 +15,7 @@ import {
   ToolbarSeparator,
   type ToolbarButtonProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { useIssuesToolbarControl } from '~/components/Issues';
 import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
@@ -146,6 +147,11 @@ export type StageEditorToolbarProps = Readonly<{
   formId: string;
   /** Whether the editor opened on a stage this tab may not write. */
   readOnly: boolean;
+  /**
+   * The refusals no section of the editor answers for, which the issues panel
+   * lists beside the form's own field errors.
+   */
+  problems: StageProblemsStore;
   onCancel: () => void;
   onPreview: () => void;
   previewLabel: string;
@@ -165,6 +171,7 @@ export type StageEditorToolbarProps = Readonly<{
 export const StageEditorToolbar = ({
   formId,
   readOnly,
+  problems,
   onCancel,
   onPreview,
   previewLabel,
@@ -173,7 +180,8 @@ export const StageEditorToolbar = ({
   isOpeningPreview,
 }: StageEditorToolbarProps) => {
   const intl = useAppIntl();
-  const { control: issuesControl, openIssues } = useIssuesToolbarControl();
+  const { control: issuesControl, openIssues } =
+    useIssuesToolbarControl(problems);
   const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
   const isSubmitting = useFormStore((state) => state.isSubmitting);
   const hasUnsavedChanges = useStageDraft((beacon) => beacon.dirty);

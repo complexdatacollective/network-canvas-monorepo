@@ -27,7 +27,9 @@ import {
   useStageDraft,
 } from '~/components/StageEditor/stageDraftBeacon';
 import StageDraftConflictDialog from '~/components/StageEditor/StageDraftConflictDialog';
-import StageEditorChrome from '~/components/StageEditor/StageEditorChrome';
+import StageEditorChrome, {
+  StageEditorHeader,
+} from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/store';
@@ -100,7 +102,6 @@ const StageEditorPage = () => {
   // has to re-render when the element arrives: a ref's mutation tells React
   // nothing, and the list would wait for some other reason to render.
   const [outlineHost, setOutlineHost] = useState<HTMLElement | null>(null);
-  const [titleHost, setTitleHost] = useState<HTMLElement | null>(null);
 
   // The create flow carries its interface and its place in the interview on the
   // URL, so a new stage can be linked to the way an existing one is.
@@ -255,19 +256,27 @@ const StageEditorPage = () => {
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(
-    ({ formId, readOnly, sections }: StageEditorActionContext) => (
+    ({ formId, readOnly, sections, problems }: StageEditorActionContext) => (
       <StageEditorChrome
         formId={formId}
         readOnly={readOnly}
         sections={sections}
+        problems={problems}
         outlineHost={outlineHost}
-        titleHost={titleHost}
         stageId={stageId}
         {...(insertAtIndex === undefined ? {} : { insertAtIndex })}
         onCancel={() => void handleCancel()}
       />
     ),
-    [handleCancel, insertAtIndex, outlineHost, stageId, titleHost],
+    [handleCancel, insertAtIndex, outlineHost, stageId],
+  );
+
+  // The title goes in the editor's HEADER slot, which the shell renders
+  // immediately before the form and inside the form's own provider — which is
+  // what the stage's name needs, being a field of that form.
+  const renderHeader = useCallback(
+    () => <StageEditorHeader stageId={stageId} />,
+    [stageId],
   );
 
   const handleSaved = useCallback(() => {
@@ -303,9 +312,10 @@ const StageEditorPage = () => {
        * the name because naming the stage IS the next step, and RouteFocus
        * leaves any destination that has already claimed focus alone.
        *
-       * Above everything else the route draws, so the reading order is the
-       * order on screen: this heading, then the stage's title, then the list
-       * of the stage's sections, then the form.
+       * Above everything else the route draws, so the reading order starts
+       * here: this heading, then the list of the stage's sections in the
+       * column beside the editor, then the editor itself — whose first thing
+       * is the stage's title, drawn in its header slot.
        */}
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {stageName}
@@ -329,14 +339,6 @@ const StageEditorPage = () => {
           instead — which is nothing, and the two columns would never arrive.
         */}
         <div className="@container mx-auto w-full max-w-6xl">
-          {/*
-            Where the stage's title goes: a picture of the interface, the name
-            at hero size, and what kind of stage this is. The editor publishes
-            the name's bindings rather than a title, so the chrome rendered in
-            its action slot portals a title of Architect's own up here — above
-            the two columns, so it spans both and both begin under it.
-          */}
-          <div ref={setTitleHost} />
           <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
             {/*
               Where the section list goes. The editor publishes its sections on
@@ -356,11 +358,11 @@ const StageEditorPage = () => {
               phone width, 48px above it.
 
               The ladder is stated here because it is this route's, not the
-              editor's: the page's `h1` is the stage's name, the title above
-              writes the `h2` the name field is labelled by, and every section
-              the editor draws is a subsection of that. The package states
-              nothing of its own — where its sections sit in a document is a
-              fact about the page it was dropped on.
+              editor's: the page's `h1` is the stage's name, the title in the
+              editor's header slot writes the `h2` the name field is labelled
+              by, and every section the editor draws is a subsection of that.
+              The package states nothing of its own — where its sections sit in
+              a document is a fact about the page it was dropped on.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
               <ProtocolBuilder client={client} protocolId={activeProtocolId}>
@@ -369,6 +371,7 @@ const StageEditorPage = () => {
                     target={target}
                     formId={STAGE_FORM_ID}
                     actions={renderChrome}
+                    header={renderHeader}
                     onSaved={handleSaved}
                   />
                 </EnclosingHeadingLevel>

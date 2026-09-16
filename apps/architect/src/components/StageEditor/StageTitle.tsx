@@ -3,13 +3,13 @@ import { useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import { BaseField } from '@codaco/fresco-ui/form/Field/BaseField';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import StageNameInput from '@codaco/protocol-builder/fields/StageNameInput';
+import StageNameField from '@codaco/protocol-builder/fields/StageNameField';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { useStageTypeInfo } from '@codaco/protocol-builder/interfaces/useStageTypeInfo';
+import { useAutoStageName } from '@codaco/protocol-builder/naming/useAutoStageName';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
 const messages = defineMessages({
   position: {
@@ -31,18 +31,21 @@ const messages = defineMessages({
  * where it sits in the interview, and what the researcher calls it.
  *
  * Architect's rather than the editor package's, for the same reason the section
- * list is: the package publishes the name's bindings (`useStageName`) and the
+ * list is: the package publishes the name as a field (`StageNameField`) and the
  * facts about the interface (`useStageTypeInfo`), and what a stage title LOOKS
  * like belongs to the app the editor is drawn in. Everything about the NAME —
- * its value, the proposal a new stage arrives with, the refusal an unnamed one
- * earns — comes from the hook; this decides that it is drawn at hero size
- * beside a picture of the interface.
+ * its value, the refusal an unnamed stage earns, the form the control belongs
+ * to — comes from that field; this decides that it is drawn at hero size beside
+ * a picture of the interface.
  *
- * Rendered from the editor's action slot, so it is inside the stage form's own
- * provider and the name is a field of that form, and portalled above the
- * route's two columns, so it spans both. That is also what dissolves the
- * section list's old top offset: the list and the form now begin at the same
- * point, because nothing of the editor's is drawn above either of them.
+ * Architect also opts into the proposed name (`useAutoStageName`): a new stage
+ * arrives already called something rather than with an empty heading to fill in
+ * first. That is this app's decision about authoring, not the protocol's, which
+ * is why it is a hook the host calls rather than something the field does.
+ *
+ * Rendered from the editor's HEADER slot, so it is inside the stage form's own
+ * provider — the name is a field of that form — and above the form's own
+ * fields, which is where a title belongs.
  */
 export default function StageTitle({
   position,
@@ -61,23 +64,27 @@ export default function StageTitle({
   const intl = useAppIntl();
   const headingId = useId();
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
-  const { label, error, id, containerProps, fieldProps, isNewStage } =
-    useStageName();
+  const { label, isNewStage } = useStageName();
+  const { onBlur } = useAutoStageName();
 
   return (
     <div
       aria-labelledby={headingId}
       // The rhythm Architect's stage editor has always had between the top of
       // the page and its first section: 1.75rem above the title, 3.5rem below
-      // it. Both columns begin under this, so the section list beside the form
-      // is spaced by it too.
+      // it. Only 2rem of that is stated here — the editor lays its own slots
+      // out in a column with `gap-6`, so the 1.5rem between this and the form
+      // below is already there, and stating the whole 3.5rem again would put
+      // 5rem between the title and the first card.
       //
-      // Two columns from `56rem` of CONTAINER, which is the route's own column
-      // rather than the editor's: this block spans both, so at the threshold
-      // the name has 896 − 20rem of rail − `gap-8` = 544px, which is what
-      // Architect's heading gave it before the editor moved into a package.
-      // Below that the rail would be taking room the name has not got.
-      className="mb-14 flex w-full flex-col gap-5 pt-7 @min-[56rem]:grid @min-[56rem]:grid-cols-[20rem_auto] @min-[56rem]:gap-8 @min-[56rem]:pt-10"
+      // Two columns from `48rem` of CONTAINER, which is the column the editor
+      // was given — the title is drawn in the editor's header slot, so that is
+      // what answers the query. The editor pads its own column by 24px a side,
+      // so at the threshold the name has 768 − 48 of gutter − 14rem of rail −
+      // `gap-8` = 464px, and about 580px at the route's widest. Below the
+      // threshold the rail would be taking room the name has not got, so the
+      // two stack and the name keeps the whole width.
+      className="mb-8 flex w-full flex-col gap-5 pt-7 @min-[48rem]:grid @min-[48rem]:grid-cols-[14rem_auto] @min-[48rem]:gap-8 @min-[48rem]:pt-10"
     >
       <div className="flex items-center justify-center">
         {/*
@@ -102,9 +109,7 @@ export default function StageTitle({
           />
         </div>
       </div>
-      {/* The field's own margin is dropped so the hero input sits directly
-          under the position line, as one block of heading. */}
-      <div className="flex min-w-0 flex-col justify-center *:data-[field-name=label]:m-0">
+      <div className="flex min-w-0 flex-col justify-center">
         {/*
           A real heading rather than a label: the visible one is the name field
           itself, which is a control and cannot be a heading. Written at `h2`
@@ -134,28 +139,14 @@ export default function StageTitle({
             })}
           </Paragraph>
         )}
-        <BaseField
-          id={id}
-          name={fieldProps.name}
-          // The hero input is the visible heading, so the label exists for
-          // assistive technology — but it still has to exist, because it is
-          // what the editor's outline and the Issues panel call this field.
-          label={label}
-          labelHidden
-          required
-          errors={error === undefined ? undefined : [error]}
-          showErrors={error !== undefined}
-          containerProps={containerProps}
-        >
-          {/*
-            Focus lands here only for a stage being created, where naming the
-            stage IS the next step — and the route's own focus handling leaves
-            a destination that has already claimed focus alone, so the two do
-            not fight. Opening an edit the researcher did not ask for would be
-            worse than a silent arrival on an existing stage.
-          */}
-          <StageNameInput {...fieldProps} autoFocus={isNewStage} />
-        </BaseField>
+        {/*
+          Focus lands here only for a stage being created, where naming the
+          stage IS the next step — and the route's own focus handling leaves a
+          destination that has already claimed focus alone, so the two do not
+          fight. Opening an edit the researcher did not ask for would be worse
+          than a silent arrival on an existing stage.
+        */}
+        <StageNameField autoFocus={isNewStage} onBlur={onBlur} />
         <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{interfaceName}</Badge>
           <NativeLink

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { expect, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -27,8 +26,7 @@ const STAGE: SectionDoc = {
 
 /**
  * The stage editor route, cut down to the part this is about: the gutter, the
- * query container the two columns are decided in, the band the title is
- * portalled into, and the columns themselves.
+ * query container the two columns are decided in, and the columns themselves.
  *
  * The same nesting as `pages/StageEditorPage`, because that nesting is what
  * the measurements below mean anything about — a container declared on the
@@ -43,7 +41,6 @@ function StageTitleInTheRoute({
   /** Opens a stage the interview does not contain yet, as the create flow does. */
   creating?: boolean;
 }>) {
-  const [titleHost, setTitleHost] = useState<HTMLElement | null>(null);
   const [host] = useState(() =>
     createInMemoryHost({
       sections: {
@@ -66,10 +63,12 @@ function StageTitleInTheRoute({
       </Heading>
       <div className="phone-landscape:px-6 px-4">
         <div className="@container mx-auto w-full max-w-6xl">
-          <div ref={setTitleHost} data-testid="title-band" />
           <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
             <div />
-            <div className="phone-landscape:-mx-6 -mx-4">
+            <div
+              className="phone-landscape:-mx-6 -mx-4"
+              data-testid="editor-column"
+            >
               <ProtocolBuilder
                 client={host.client}
                 protocolId={host.protocolId}
@@ -82,16 +81,14 @@ function StageTitleInTheRoute({
                         : { sectionId: STAGE_SECTION }
                     }
                     formId="stage-form"
-                    actions={() =>
-                      titleHost === null
-                        ? null
-                        : createPortal(
-                            <StageTitle
-                              {...(position === undefined ? {} : { position })}
-                            />,
-                            titleHost,
-                          )
-                    }
+                    // The editor's HEADER slot: above the form element and
+                    // inside the form's own provider, which is the pair a
+                    // stage title needs — the name is a field of that form.
+                    header={() => (
+                      <StageTitle
+                        {...(position === undefined ? {} : { position })}
+                      />
+                    )}
                   />
                 </EnclosingHeadingLevel>
               </ProtocolBuilder>
@@ -111,7 +108,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The stage being edited, at the top of its page: a picture of the interface, where the stage sits in the interview, its name at hero size, what kind of stage it is and where that interface is documented. Architect’s rather than the editor package’s — the package publishes the name’s bindings and the facts about the interface, and this decides what they look like. It is drawn above both of the route’s columns, so the name has the whole page to wrap in and the section list beside the form starts level with the form.',
+          'The stage being edited, at the top of its page: a picture of the interface, where the stage sits in the interview, its name at hero size, what kind of stage it is and where that interface is documented. Architect’s rather than the editor package’s — the package publishes the name as a field and the facts about the interface, and this decides what they look like. It is drawn in the editor’s header slot, above the form and inside the form’s own provider, because the name is a field of that form.',
       },
     },
   },
@@ -142,67 +139,69 @@ export const Editing: Story = {
 
     /*
       The rhythm Architect's stage editor has always had between the top of the
-      page and its first section — 3.5rem — measured rather than asserted about
-      classes: a class list is the source written out twice, and jsdom resolves
-      no Tailwind at all, so this only means anything in the browser the
-      `storybook` project runs.
+      title and its first section — 3.5rem — measured rather than asserted
+      about classes: a class list is the source written out twice, and jsdom
+      resolves no Tailwind at all, so this only means anything in the browser
+      the `storybook` project runs.
 
-      Measured from the TITLE to the first card rather than added up from
-      parts, because that distance is also what the section list beside the
-      form now relies on: both columns begin under this block, so nothing has
-      to measure it any more.
+      The title is found through the relationship it declares rather than
+      through a class or a position: it is the element that names itself by the
+      heading inside it.
     */
-    // The band the title is portalled into, which is what the columns begin
-    // under. Taken from the story's own wrapper rather than walked up from the
-    // control: the title's own root is a plain block, and every ancestor of
-    // the name between here and there belongs to the field rather than to the
-    // title.
-    const titleBand = canvas.getByTestId('title-band');
-    const title = titleBand.firstElementChild;
+    const heading = canvas.getByRole('heading', {
+      level: 2,
+      name: 'Stage name',
+    });
+    const title = canvasElement.querySelector(
+      `[aria-labelledby="${CSS.escape(heading.id)}"]`,
+    );
     if (!(title instanceof HTMLElement)) {
       throw new Error('the title is not on the page');
     }
     const firstSection = canvas.getByRole('region', { name: 'Page content' });
     await expect(
       firstSection.getBoundingClientRect().top -
-        titleBand.getBoundingClientRect().bottom,
+        title.getBoundingClientRect().bottom,
     ).toBeCloseTo(56, 0);
 
     /*
       And where the picture rail is allowed beside the name, which is a fact
-      about the ROOM the title has rather than about the window: the editor is
-      drawn in whatever column the route gives it, and the title spans both of
-      them.
+      about the ROOM the title has rather than about the window: the title is
+      drawn in the editor's header slot, so what answers its container query is
+      the column the route gave the editor.
 
-      The rail arrives at 56rem of container, which is a floor under the NAME:
-      896 of container − 20rem of rail − 32 of gap leaves it 544px, the width
-      Architect's heading drew it at before the editor moved into a package.
-      Narrower than that and the rail would be taking room the name has not
-      got, so the title stacks and the name keeps the whole width.
+      The rail arrives at 48rem of that column, which is a floor under the
+      NAME: the editor pads its own column by 24px a side, so 768 − 48 of
+      gutter − 14rem of rail − 32 of gap leaves the name 464px. Narrower than
+      that and the rail would be taking room the name has not got, so the title
+      stacks and the name keeps the whole width.
     */
-    const container = titleBand.parentElement;
-    const gutterWrapper = container?.parentElement ?? null;
-    const scroller = gutterWrapper?.parentElement ?? null;
-    if (gutterWrapper === null || scroller === null) {
+    const column = canvas.getByTestId('editor-column');
+    const scroller = canvasElement.firstElementChild;
+    if (!(scroller instanceof HTMLElement)) {
       throw new Error('the route wrapper is not there');
     }
 
     const initialWidth = scroller.style.width;
-    const atContainerWidth = async (width: number) => {
-      // The gutters sit OUTSIDE the capped container, so the container is the
-      // width asked for only once they are added back.
-      const gutter =
-        Number.parseFloat(getComputedStyle(gutterWrapper).paddingLeft) +
-        Number.parseFloat(getComputedStyle(gutterWrapper).paddingRight);
-      scroller.style.width = `${width + gutter}px`;
+    /*
+      The column is a grid track beside a 16rem rail inside a capped, guttered
+      container, so the width to ASK the page for is not the width wanted. It
+      is converged on instead: set a width, measure what the column became, and
+      correct by the difference. Two passes settle it, because every step
+      between the two is a fixed subtraction.
+    */
+    const atColumnWidth = async (width: number) => {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const measured = column.getBoundingClientRect().width;
+        if (Math.abs(measured - width) < 0.5) break;
+        const outer = scroller.getBoundingClientRect().width;
+        scroller.style.width = `${outer + (width - measured)}px`;
+        await new Promise(requestAnimationFrame);
+      }
       // A container query is resolved in layout, so the frame after the write
       // is the first one that can have answered it.
       await new Promise(requestAnimationFrame);
-      await new Promise(requestAnimationFrame);
-      await expect(container?.getBoundingClientRect().width).toBeCloseTo(
-        width,
-        0,
-      );
+      await expect(column.getBoundingClientRect().width).toBeCloseTo(width, 0);
       return {
         title: getComputedStyle(title).display,
         name: name.getBoundingClientRect().width,
@@ -210,16 +209,15 @@ export const Editing: Story = {
     };
 
     // One pixel below the threshold is still one column, and the name has all
-    // of it.
-    const narrow = await atContainerWidth(895);
+    // of it bar the editor's own gutter.
+    const narrow = await atColumnWidth(767);
     await expect(narrow.title).toBe('flex');
-    await expect(narrow.name).toBeCloseTo(895, 0);
+    await expect(narrow.name).toBeCloseTo(767 - 48, 0);
 
-    // At the threshold the rail arrives and the name is at its floor — never
-    // narrower beside a picture than Architect's own heading drew it.
-    const atThreshold = await atContainerWidth(896);
+    // At the threshold the rail arrives and the name is at its floor.
+    const atThreshold = await atColumnWidth(768);
     await expect(atThreshold.title).toBe('grid');
-    await expect(atThreshold.name).toBeCloseTo(544, 0);
+    await expect(atThreshold.name).toBeCloseTo(464, 0);
 
     // Left as the story draws itself, so what Chromatic photographs is the
     // page rather than the last width this measured.
