@@ -416,6 +416,11 @@ describe.skipIf(!url)('the limited request paths', () => {
     // host, which is served over `/ws` alone until stage 8. That is also why
     // there is no response status to assert here any more — a frame has none,
     // and the refusal the caller reads is the error itself.
+    //
+    // `builderClientFor` hands the router a principal outright, so the user
+    // the limiter charges is the one this case names rather than one resolved
+    // from a session. Nothing here covers the auth path; what it covers is
+    // that the limit is charged at all.
     const client = builderClientFor(
       studioWith({ rpc_user: perMinute(2) }, userId),
       userId,

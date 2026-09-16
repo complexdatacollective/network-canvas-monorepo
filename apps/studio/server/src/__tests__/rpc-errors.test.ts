@@ -137,11 +137,10 @@ describe('refusals that need no database', () => {
   });
 
   // §6.1's last row: `TOO_MANY_REQUESTS` + `data.retryAfter` becomes
-  // `RateLimited({ retryAfterSeconds })`. The per-user and per-team scopes are
-  // proved on an ordinary procedure in rpc-team.test.ts; this is the third
-  // scope, `invitation_accept`, which is charged per invitation token before
-  // anything is looked up — so a guessed token costs nothing to refuse, and the
-  // refusal arrives before the database is asked for at all.
+  // `RateLimited({ retryAfterSeconds })`. The per-user scope is proved on an
+  // ordinary procedure in rpc-team.test.ts and the per-team scope in
+  // rate-limit-routes.test.ts; this is the third scope, `invitation_accept`,
+  // whose budget the first call below spends and the second is refused by.
   it.skipIf(!limiterStore)(
     'refuses a spent invitation budget with the interval to wait',
     async () => {
@@ -164,11 +163,18 @@ describe('refusals that need no database', () => {
       );
 
       // The first call spends the window and then dies on the absent pool; the
-      // second never reaches it.
+      // second never reaches it. Asserting the death names which of the two
+      // happened: a budget of nought would refuse the first call too, and
+      // "the first call failed" alone cannot tell that apart from a budget
+      // that was spent.
       const spent = await client.callExit(
         client.rpc('team.acceptInvitation', { invitationId }),
       );
       expect(Exit.isFailure(spent)).toBe(true);
+      if (Exit.isFailure(spent)) {
+        expect(Cause.hasDies(spent.cause)).toBe(true);
+        expect(Cause.pretty(spent.cause)).toContain('without a database pool');
+      }
 
       const refused = await expectRpcFailure(
         client.callExit(client.rpc('team.acceptInvitation', { invitationId })),
@@ -297,6 +303,25 @@ describe.skipIf(!db)('the error map', () => {
       ),
       'Forbidden',
     );
+  });
+
+  // The same word, a different error. A refusal raised inside a team command
+  // leaves as `TeamCommandError({ code: 'FORBIDDEN' })` rather than as the
+  // shared `Forbidden` above: `handleTeamCommand` used to fold the two
+  // together, and `teamRefusal` (rpc/handlers/team.ts) deliberately no longer
+  // does. An unknown, expired, cancelled or wrong-account token is the one
+  // refusal (team/commands.ts, `acceptTeamInvitation`), so a guess learns
+  // nothing about which it was.
+  it('carries an invitation token it cannot place out as the command code', async () => {
+    const refused = await expectRpcFailure(
+      client.callExit(
+        client.rpc('team.acceptInvitation', {
+          invitationId: TeamInvitationId.make(randomUUID()),
+        }),
+      ),
+      'TeamCommandError',
+    );
+    expect(refused.code).toBe('FORBIDDEN');
   });
 
   // §6.1 row 4: an audit read the caller's committed role does not grant is the

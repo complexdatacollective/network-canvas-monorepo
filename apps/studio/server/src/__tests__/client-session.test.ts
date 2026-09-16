@@ -8,9 +8,14 @@
 // before anything downstream reads it.
 //
 // No `StudioRpcs` procedure declares `ClientSessionMiddleware` yet, so the `/rpc`
-// half serves a scratch group of one procedure whose whole implementation is to
-// report the id it was given. Everything around it — the real rpc server, the
-// real ndjson framing, the real middleware layer — is the deployed wiring.
+// half is a scratch mount: a group of one procedure whose whole implementation
+// is to report the id it was given, served by a scratch `RpcServer.layerHttp`
+// rather than by `RpcRoutes`. What it shares with the deployment is the real rpc
+// server, the real ndjson framing and the real middleware layer — not the mount.
+// So nothing here is an oracle for `/rpc`'s own provision of that middleware:
+// deleting `Layer.provide(ClientSessionMiddlewareLive)` from
+// `http/rpc-routes.ts` is behaviour-identical today and fails no case. It gets
+// one when a procedure declares the middleware, at stage 8.
 import { randomUUID } from 'node:crypto';
 
 import { Effect, Layer, Predicate, Schema } from 'effect';
@@ -93,6 +98,12 @@ const probeServed = HttpRouter.toWebHandler(
  */
 async function probeOverHttp(
   headers: Record<string, string>,
+  /**
+   * Headers on the message rather than on the request — what a caller attaches
+   * with `RpcClient.withHeaders`, which the rpc server merges over the
+   * request's own before a middleware sees them.
+   */
+  messageHeaders: ReadonlyArray<readonly [string, string]> = [],
 ): Promise<unknown> {
   const response = await probeServed.handler(
     new Request('http://studio.test/rpc', {
@@ -103,7 +114,7 @@ async function probeOverHttp(
         id: 1,
         tag: 'probe',
         payload: null,
-        headers: [],
+        headers: messageHeaders,
       })}\n`,
     }),
   );
@@ -236,6 +247,25 @@ describe('the tab behind a call, over /rpc', () => {
 
   it('reports no tab for a request that named none', async () => {
     expect(await probeOverHttp({})).toBeNull();
+  });
+
+  it('names the tab the request carried, whatever tab the message names', async () => {
+    // A lease belongs to the tab the transport says is calling. `RpcServer`
+    // merges a message's own headers over the request's, so reading the merged
+    // set would let a caller name another tab as the owner of a lock —
+    // the same thing the `/ws` query-only rule was hardened against.
+    const otherTab = randomUUID();
+    expect(
+      await probeOverHttp({ [CLIENT_SESSION_HEADER]: TAB }, [
+        [CLIENT_SESSION_HEADER, otherTab],
+      ]),
+    ).toBe(TAB);
+
+    // And a request that named no tab stays nameless: a message cannot mint
+    // an owner the transport never carried.
+    expect(
+      await probeOverHttp({}, [[CLIENT_SESSION_HEADER, otherTab]]),
+    ).toBeNull();
   });
 
   it('reports no tab for an id the contract rejects', async () => {

@@ -6,6 +6,8 @@ import {
   ManagedRuntime,
   Option,
   Predicate,
+  Result,
+  SchemaIssue,
   Scope,
 } from 'effect';
 import type { RpcClient, RpcGroup } from 'effect/unstable/rpc';
@@ -132,15 +134,64 @@ export async function expectRpcFailure<A, E, T extends string>(
   return error.value;
 }
 
+/** One formatter for the file; building one per assertion says nothing more. */
+const formatIssue = SchemaIssue.makeFormatterStandardSchemaV1();
+
 /**
  * A payload the contract's schema refuses never reaches a handler, so it is not
- * one of the procedure's declared errors: the rpc server answers the decode
- * failure itself and the call dies rather than failing with a tag. What a case
- * using this asserts is that the refusal happened before anything was written.
+ * one of the procedure's declared errors: the call dies rather than failing
+ * with a tag. What a case using this asserts is that the refusal happened
+ * before anything was written.
+ *
+ * Under `RpcTest.makeClient` the refusal is the *client's*: the generated
+ * client encodes the payload before it sends it (`RpcClient.ts`,
+ * `rpc.payloadSchema.make(payload)` and `encodePayload(...).pipe(Effect.orDie)`),
+ * so it is that encoder that refuses, not the server. The server-boundary
+ * decode is a different code path and is covered by the suites that drive the
+ * whole stack over a transport (`support/serve.ts`).
+ *
+ * `field` is the payload field the refusal has to name, and it is not optional.
+ * "Failed with a die" alone is the same shape a call produces when it is
+ * admitted and then throws — `expectAdmitted` in `rate-limit-routes.test.ts`
+ * relies on exactly that equivalence — so without the field this could not tell
+ * a boundary refusal from a query that reached Postgres and raised. Drop
+ * `DecimalSequence`'s range filter and an over-range cursor does reach the
+ * `::bigint` cast; that is the mutation this argument exists to kill.
  */
-export function expectPayloadRejected(exit: Exit.Exit<unknown, unknown>): void {
+export function expectPayloadRejected(
+  exit: Exit.Exit<unknown, unknown>,
+  field: string,
+): void {
   expect(Exit.isFailure(exit)).toBe(true);
-  if (Exit.isFailure(exit)) {
-    expect(Cause.hasDies(exit.cause)).toBe(true);
+  if (!Exit.isFailure(exit)) return;
+  const defect = Cause.findDefect(exit.cause);
+  if (Result.isFailure(defect)) {
+    expect.unreachable(
+      `expected ${field} to be refused at the payload boundary, but the call did not die: ${Cause.pretty(exit.cause)}`,
+    );
   }
+  // The encoder throws an `Error` carrying the schema issue as its `cause`; a
+  // handler that ran and blew up carries something else entirely.
+  const issue =
+    defect.success instanceof Error ? defect.success.cause : undefined;
+  if (!SchemaIssue.isIssue(issue)) {
+    expect.unreachable(
+      `expected ${field} to be refused at the payload boundary, but the call died on something else: ${Cause.pretty(exit.cause)}`,
+    );
+  }
+  // The Standard Schema shape rather than the formatted message: it gives the
+  // path of every leaf issue, which is the stable thing, where the message is
+  // wording that churns with the check.
+  const named = formatIssue(issue).issues.map((one) =>
+    (one.path ?? [])
+      .map((segment) =>
+        // A path segment is a key or a wrapper around one; Effect emits the
+        // key, but the Standard Schema type allows either.
+        Predicate.hasProperty(segment, 'key')
+          ? String(segment.key)
+          : String(segment),
+      )
+      .join('.'),
+  );
+  expect(named).toContain(field);
 }

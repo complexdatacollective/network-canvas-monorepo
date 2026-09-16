@@ -104,7 +104,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
         locale: 'fr' as unknown as SupportedStudioLocale,
       }),
     );
-    expectPayloadRejected(rejected);
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 
@@ -117,7 +117,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
         locale: 'not a tag' as unknown as SupportedStudioLocale,
       }),
     );
-    expectPayloadRejected(rejected);
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 
@@ -136,7 +136,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
         locale: 'EN-gb' as unknown as SupportedStudioLocale,
       }),
     );
-    expectPayloadRejected(rejected);
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 

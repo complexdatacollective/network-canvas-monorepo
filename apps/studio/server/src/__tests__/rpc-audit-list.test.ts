@@ -729,11 +729,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       await client.callExit(
         client.rpc('audit.list', { teamId: TEAM, limit: 101 }),
       ),
+      'limit',
     );
     expectPayloadRejected(
       await client.callExit(
         client.rpc('audit.list', { teamId: TEAM, cursor: 'not-a-sequence' }),
       ),
+      'cursor',
     );
     expectPayloadRejected(
       await client.callExit(
@@ -745,6 +747,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
           eventId: 'not-a-uuid' as unknown as AuditEventId,
         }),
       ),
+      'eventId',
     );
   });
 
@@ -761,6 +764,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
           cursor: '99999999999999999999',
         }),
       ),
+      'cursor',
     );
 
     // One past bigint's maximum, at the same digit count as the maximum.
@@ -771,6 +775,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
           cursor: '9223372036854775808',
         }),
       ),
+      'cursor',
     );
 
     // The maximum itself stays a valid cursor: it is a representable sequence.

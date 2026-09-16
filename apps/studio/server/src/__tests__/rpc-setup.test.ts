@@ -391,7 +391,7 @@ describe.skipIf(!db)('setup.complete', () => {
         owner: owner(),
       }),
     );
-    expectPayloadRejected(blankName);
+    expectPayloadRejected(blankName, 'instanceName');
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
 
     const shortPassword = await client.callExit(
@@ -401,7 +401,7 @@ describe.skipIf(!db)('setup.complete', () => {
         owner: owner('short'),
       }),
     );
-    expectPayloadRejected(shortPassword);
+    expectPayloadRejected(shortPassword, 'owner.password');
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { transportHeaders } from './request-headers.ts';
 
 // The server half of the contract's `Authenticated` middleware: the only place
 // on the rpc plane that reads a cookie and asks the auth provider who is
@@ -39,11 +40,10 @@ const principalOf = (session: SessionPrincipal): Principal['Service'] =>
   });
 
 /**
- * `options.headers` is Effect's lower-cased header record, and `RpcServer`'s
- * HTTP protocol prepends the request's own headers onto every message it
- * decodes (`RpcServer.ts`, `requestHeaders.concat(message.headers)`), so the
- * browser's cookie is there on both transports: the fetch request carries it
- * directly, and a `/ws` frame inherits the handshake's.
+ * The browser's cookie reaches here on both transports: a fetch request to
+ * `/rpc` carries it directly, and a `/ws` frame inherits the handshake's. Both
+ * are headers of the HTTP request, which is the only set this reads —
+ * `transportHeaders` says why.
  *
  * A caller with no cookie, an expired one, an instance with auth switched off,
  * and a caller on the token plane are one answer — `Unauthorized`, saying no
@@ -61,12 +61,21 @@ export const AuthenticatedLive = (
       if (options.headers['authorization'] !== undefined) {
         return yield* new Unauthorized({});
       }
-      // The whole header set, not the cookie alone: better-auth reads
-      // `user-agent` and the forwarded address off the headers it is given when
-      // it refreshes a session, so handing it a cookie-only set would rewrite
-      // every session row with an empty agent and address. The one header that
-      // must not be forwarded — `authorization` — is refused above.
-      const headers = new Headers(options.headers);
+      // The provider is handed a request, not a cookie: `auth.getSession` runs
+      // a better-auth endpoint, and which headers that endpoint consults is its
+      // business and changes between versions. So the rule is about where they
+      // come from rather than which ones they are — the ones this deployment
+      // received, never the ones the caller attached to the message.
+      //
+      // `options.headers` cannot be used for that: it is the request's headers
+      // with the message's written over the top, so a caller could present a
+      // `user-agent` and an `x-forwarded-for` of their own choosing. With
+      // `TRUSTED_PROXIES` set, the address better-auth resolves comes off that
+      // forwarded header (`auth/better-auth.ts`, `advanced.ipAddress`) — out of
+      // the request body, where no reverse proxy can correct it, which is the
+      // forgery that configuration exists to prevent. The one header that must
+      // not be forwarded at all — `authorization` — is refused above.
+      const headers = new Headers(yield* transportHeaders(options.headers));
       const session = yield* Effect.promise(() => auth.getSession(headers));
       if (!session) return yield* new Unauthorized({});
       return yield* Effect.provideService(

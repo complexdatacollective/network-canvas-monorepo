@@ -13,6 +13,7 @@ import {
 } from './support/postgres.ts';
 import { createRpcClient, expectRpcFailure } from './support/rpc.ts';
 import { testCipher, testKeyring } from './support/secrets.ts';
+import { composeStudio } from './support/serve.ts';
 
 /** `me` over the rpc plane, with the harness disposed however the case ends. */
 async function meOver(studio: Studio, headers?: Record<string, string>) {
@@ -103,11 +104,65 @@ describe('principal resolution', () => {
     });
     expect(me.userId).toBe('user-1');
     expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
-    // Better Auth reads the address and the agent off the headers it is
-    // handed when it refreshes a session, so forwarding the cookie alone
-    // would rewrite every refreshed session row with neither. This is the
-    // header set `createPrincipalMiddleware` passed on the Hono mount.
+    // The provider is handed a request rather than a cookie: which headers
+    // its endpoint consults is its own business, so the whole set goes
+    // through — the header set `createPrincipalMiddleware` passed on the Hono
+    // mount. This client talks to the handlers in process, so the set it
+    // presents is the only one there is; the case below is where a real
+    // request and a message that contradicts it are told apart.
     expect(asked?.get('user-agent')).toBe('Studio Test Agent');
+  });
+
+  it('asks the provider with the headers the request carried, not ones a message attached', async () => {
+    // `RpcServer` merges each message's own headers over the request's, so
+    // `options.headers` is partly caller-supplied. A header a caller attaches
+    // with `RpcClient.withHeaders` must not reach the auth provider as though
+    // the deployment had received it: with `TRUSTED_PROXIES` set, the address
+    // better-auth resolves comes off `x-forwarded-for`, and the forgery would
+    // arrive in the request body where no reverse proxy can correct it.
+    let asked: Headers | undefined;
+    const auth = stubAuthService({
+      getSession: (headers) => {
+        asked = headers;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    // Over the transport, because that is the only place the two sets differ:
+    // the in-process client has no HTTP request behind it at all.
+    const configured = readEnv();
+    const stack = composeStudio(configured, createStudio(configured, { auth }));
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+          'cookie': 'studio.session_token=opaque',
+          'user-agent': 'The Real Agent',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'me',
+          payload: null,
+          headers: [
+            ['user-agent', 'A Forged Agent'],
+            ['x-forwarded-for', '203.0.113.9'],
+          ],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      expect(asked?.get('user-agent')).toBe('The Real Agent');
+      // Not overwritten and not invented: a header the request never carried
+      // stays absent however loudly the message names it.
+      expect(asked?.get('x-forwarded-for')).toBeNull();
+      // Still the request's own credential, which is the point of forwarding
+      // the set at all.
+      expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('refuses protected procedures without a session', async () => {
