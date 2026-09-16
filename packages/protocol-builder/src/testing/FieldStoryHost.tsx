@@ -10,7 +10,9 @@ import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import BuilderSection from '../sections/BuilderSection.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
-import { StageEditSession } from '../stageEdit.tsx';
+import { isStageType } from '../stage-types.ts';
+import type { StageFormDraft } from '../stageDocument.ts';
+import { StageEditSession, type StageEditTarget } from '../stageEdit.tsx';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -36,6 +38,15 @@ const hostChrome: StageEditorActions = ({ formId, readOnly }) => (
   </div>
 );
 
+/** Every fixture stage carries its own interface; nothing here works without it. */
+const stageTypeOf = (fields: StageFormDraft) => {
+  const { type } = fields;
+  if (typeof type !== 'string' || !isStageType(type)) {
+    throw new Error('The fixture stage does not name an interface.');
+  }
+  return type;
+};
+
 const COLLABORATOR = {
   sessionId: 'collaborator-tab',
   userId: 'collaborator',
@@ -51,6 +62,17 @@ export type FieldStoryHostProps = Readonly<{
   children: ReactNode;
   /** Somebody else holds the stage, so this editor opens read-only. */
   readOnly?: boolean;
+  /**
+   * Opens a stage being CREATED of the same interface, rather than the one the
+   * fixture holds.
+   *
+   * What a field does while the stage does not exist yet is sometimes a
+   * different thing — a name is proposed for a new stage and never for an
+   * existing one — and only the open edit says which this is. The fixture
+   * stage's own configuration comes with it, minus its identity and its name,
+   * so the new stage collects what the fixture's does and arrives unnamed.
+   */
+  creating?: boolean;
   /**
    * A change to the protocol, applied to the host before anything is rendered.
    *
@@ -81,6 +103,7 @@ export function FieldStoryHost({
   sectionTitle,
   children,
   readOnly = false,
+  creating = false,
   seedEdit,
 }: FieldStoryHostProps) {
   const [saved, setSaved] = useState<SectionDoc | null>(null);
@@ -91,13 +114,29 @@ export function FieldStoryHost({
     if (readOnly) built.store.acquire(stage, COLLABORATOR);
     return built;
   });
+  const [target] = useState<StageEditTarget>(() => {
+    if (!creating) return { sectionId: stage };
+    // Its identity and its name are the two things a stage being created does
+    // not have yet: the host mints the first, and the second is what the
+    // editor is about to propose.
+    const {
+      id: _id,
+      label: _label,
+      ...fields
+    } = host.store.read(stage).document as StageFormDraft;
+    return {
+      stageType: stageTypeOf(fields),
+      position: 0,
+      fields,
+    };
+  });
 
   return (
     <DialogProvider>
       <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
         <ResourceClientProvider>
           <StageEditSession
-            target={{ sectionId: stage }}
+            target={target}
             formId={STAGE_FORM_ID}
             onSaved={(id) => setSaved(host.store.read(id).document)}
           >

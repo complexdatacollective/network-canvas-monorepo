@@ -3,38 +3,20 @@ import { createElement, useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Field from '@codaco/fresco-ui/form/Field/Field';
+import { BaseField } from '@codaco/fresco-ui/form/Field/BaseField';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import StageNameInput from '../../fields/StageNameInput.tsx';
-import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useOutlineSection } from '../../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../../interfaces/interfaceNames.ts';
 import StageTypeImage from '../../interfaces/StageTypeImage.tsx';
-import {
-  type AutoStageNamePanel,
-  useAutoStageName,
-} from '../../naming/useAutoStageName.ts';
-
-/** The character limit is the control's own; it is not a validation rule. */
-const STAGE_NAME_LIMIT = 50;
+import { useStageName } from '../../naming/useStageName.ts';
 
 const messages = defineMessages({
-  stageName: {
-    id: 'protocolBuilder.stageName.name',
-    defaultMessage: 'Stage name',
-    description:
-      'Section heading and accessible field label for the researcher-authored stage name.',
-  },
-  placeholder: {
-    id: 'protocolBuilder.stageName.placeholder',
-    defaultMessage: 'Enter stage name...',
-    description: 'Placeholder for the researcher-authored stage name field.',
-  },
   position: {
     id: 'protocolBuilder.stageName.position',
     defaultMessage: 'Stage {index, number} of {total, number}',
@@ -57,31 +39,12 @@ export type StageNameSectionProps = Readonly<{
   /**
    * Whether the name field takes focus when the editor opens.
    *
-   * The edit's own answer by default, for the same reason `autoName` reads it:
-   * naming the stage is the first thing there is to do in a stage that does
-   * not exist yet, and an existing stage was opened to be looked at rather
-   * than renamed. An editor with a reason to differ overrides it either way.
+   * The edit's own answer by default: naming the stage is the first thing
+   * there is to do in a stage that does not exist yet, and an existing stage
+   * was opened to be looked at rather than renamed. An editor with a reason to
+   * differ overrides it either way.
    */
   autoFocus?: boolean;
-  /**
-   * What a proposed name is derived from, and whether to propose one at all.
-   *
-   * Whether to propose is the edit's own answer by default — only a stage being
-   * created is named automatically, and an existing stage's name is already the
-   * researcher's — so an editor that serves both cases leaves `propose` out and
-   * gets the right behaviour in each. `propose` overrides that answer, in
-   * either direction, for an editor that has a reason to.
-   *
-   * `panels` is supplied by the editor rather than read from the draft here,
-   * because only an interface that HAS panels may ask about them: the schema
-   * gives `panels` to two of the three name generators and to nothing else, so
-   * a heading that read the path itself would be asking every stage about a
-   * key most of them do not have.
-   */
-  autoName?: Readonly<{
-    propose?: boolean;
-    panels?: readonly AutoStageNamePanel[];
-  }>;
 }>;
 
 /**
@@ -90,19 +53,26 @@ export type StageNameSectionProps = Readonly<{
  * A section like any other — it appears in the outline, and it owns a field
  * that can be incomplete — but it wears the page's heading rather than a card,
  * because it identifies the stage rather than configuring part of it.
+ *
+ * Everything about the NAME comes from `useStageName`, which owns the value,
+ * the proposal, the refusal and the field's registration; this composes those
+ * bindings into the arrangement a stage editor page has always had.
  */
 export default function StageNameSection({
   position,
   documentationUrl,
   autoFocus,
-  autoName,
 }: StageNameSectionProps) {
-  const { identity, creation } = useStageEditorForm();
-  const isNewStage = creation !== undefined;
+  const { identity } = useStageEditorForm();
   const intl = useAppIntl();
-  // One descriptor read twice: the section's name in the outline and the
-  // field's own label are the same words, and a translator moves them once.
-  const stageNameLabel = intl.formatMessage(messages.stageName);
+  const {
+    label: stageNameLabel,
+    error,
+    id,
+    containerProps,
+    fieldProps,
+    isNewStage,
+  } = useStageName();
   // The stage's heading rather than a card, which is what a host lining its
   // own chrome up with the form has to know: everything below this is the
   // stage being configured, and this is the stage being named.
@@ -119,10 +89,6 @@ export default function StageNameSection({
   const headingLevel = useEnclosingHeadingLevel() ?? 'h2';
   const interfaceName =
     interfaceDisplayName(identity.type, intl) ?? identity.type;
-  const { onLabelBlur } = useAutoStageName({
-    isNewStage: autoName?.propose ?? isNewStage,
-    panels: autoName?.panels,
-  });
 
   return (
     <section
@@ -145,27 +111,6 @@ export default function StageNameSection({
       // outside that cap (as Architect's did), so 56rem of container is 848px
       // of column, and 848 − 20rem of rail − `gap-8` leaves the name block
       // 496px. Below that the rail would be taking room the name has not got.
-      //
-      // Stated as a floor under the name rather than as "wherever the column
-      // reaches its 896px cap", which would read better and is what this said
-      // while the gutters were inside the cap. With them outside it that rule
-      // means 944px of container.
-      //
-      // Neither number crosses once as the WINDOW grows, because the container
-      // does not: Architect's stage-editor route hands the editor the whole
-      // width while its section list is stacked, and window − 296px (its 16rem
-      // list, `gap-10` and the gutter the editor column gives back), capped at
-      // 904px by the route's `max-w-6xl`, once the list takes its own column.
-      // Measured in Chromium on this branch, this heading is therefore
-      // two-column from about 900px of window, back in ONE column from 1008px
-      // where the list arrives, and two-column again from about 1192px, where
-      // window − 296 reaches the 56rem asked for. A split at the 944px cap
-      // would keep the first band and lose the last one for good, since 904
-      // never reaches 944 — worse, but the same shape. So the threshold is
-      // written as what it can honestly promise: Architect's own heading drew
-      // 544px beside the picture because nothing sat beside its column; a host
-      // that draws a list gives the editor less, and this is the width below
-      // which the rail is not worth its room.
       className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[56rem]:grid @min-[56rem]:grid-cols-[20rem_auto] @min-[56rem]:gap-8 @min-[56rem]:pt-10"
     >
       <div className="flex items-center justify-center">
@@ -223,20 +168,28 @@ export default function StageNameSection({
             })}
           </Paragraph>
         )}
-        <Field<typeof StageNameInput>
-          name="label"
-          component={StageNameInput}
+        {/*
+          The markup every connected field in this editor wears, around the
+          control this package publishes for a stage name: the label the
+          control is named by, the marker saying it must be answered, and the
+          region its refusal is read out of. `useStageName` points the control
+          at all three.
+        */}
+        <BaseField
+          id={id}
+          name={fieldProps.name}
           // The hero input is the visible heading, so the label exists for
           // assistive technology — but it still has to exist, because it is
           // what the outline and a host's problem panel call this field.
           label={stageNameLabel}
           labelHidden
-          placeholder={intl.formatMessage(messages.placeholder)}
-          characterLimit={STAGE_NAME_LIMIT}
-          required={REQUIRED}
-          autoFocus={autoFocus ?? isNewStage}
-          onFieldBlur={onLabelBlur}
-        />
+          required
+          errors={error === undefined ? undefined : [error]}
+          showErrors={error !== undefined}
+          containerProps={containerProps}
+        >
+          <StageNameInput {...fieldProps} autoFocus={autoFocus ?? isNewStage} />
+        </BaseField>
         <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{interfaceName}</Badge>
           {documentationUrl !== undefined && (

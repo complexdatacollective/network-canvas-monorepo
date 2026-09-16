@@ -1,18 +1,10 @@
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import StageNameSection, {
-  type StageNameSectionProps,
-} from './StageNameSection.tsx';
+import StageNameSection from './StageNameSection.tsx';
 
 export type StageHeadingSectionProps = Readonly<{
   /** Where this interface is documented. */
   documentationUrl: string;
-  /**
-   * What a proposed name is derived from, for an interface whose stages are
-   * named after something more than their type. Interfaces that have nothing
-   * to add leave it out.
-   */
-  autoName?: StageNameSectionProps['autoName'];
 }>;
 
 /**
@@ -32,7 +24,6 @@ export type StageHeadingSectionProps = Readonly<{
  */
 export default function StageHeadingSection({
   documentationUrl,
-  autoName,
 }: StageHeadingSectionProps) {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
@@ -43,7 +34,6 @@ export default function StageHeadingSection({
   return (
     <StageNameSection
       documentationUrl={documentationUrl}
-      {...(autoName === undefined ? {} : { autoName })}
       {...(index === -1
         ? {}
         : {

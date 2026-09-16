@@ -1,12 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
+import { BaseField } from '@codaco/fresco-ui/form/Field/BaseField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { REQUIRED } from '../form/requiredField.ts';
-import { useAutoStageName } from '../naming/useAutoStageName.ts';
+import { useStageName } from '../naming/useStageName.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import StageNameInput from './StageNameInput.tsx';
@@ -14,9 +13,6 @@ import StageNameInput from './StageNameInput.tsx';
 const STAGE = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
 
 const STAGE_NAME_LABEL = 'Stage name';
-
-/** The control's own cap, as `StageNameSection` sets it. It is not a rule. */
-const STAGE_NAME_LIMIT = 50;
 
 /**
  * What a stage arranging a person's network is called when nobody has named
@@ -29,32 +25,35 @@ const STAGE_NAME_LIMIT = 50;
 const PROPOSED_NAME = 'Person Sociogram';
 
 /**
- * The name control, with the auto-namer behind it.
+ * The name control, wired the way a host wires it.
  *
- * The two halves are separate on purpose, and `StageNameSection` wires them
- * together exactly like this: the control reports that the researcher has left
- * it, and the naming hook decides what leaving an empty name means. `propose`
- * is that section's `autoName.propose` — the override it documents for an
- * editor with a reason to differ from the edit's own answer.
+ * `useStageName` owns the value, the refusal, the proposal and the field's
+ * registration; everything below is chrome, and it is exactly the chrome
+ * Architect's own stage title draws around the same bindings. Nothing about
+ * WHEN a name is proposed is decided here: the open edit says whether the
+ * stage is being created, and the hook does the rest.
  */
-function StageName({ propose = false }: Readonly<{ propose?: boolean }>) {
-  const { onLabelBlur } = useAutoStageName({ isNewStage: propose });
+function StageName() {
+  const { label, error, id, containerProps, fieldProps, isNewStage } =
+    useStageName();
 
   return (
-    <Field<typeof StageNameInput>
-      name="label"
-      component={StageNameInput}
-      label={STAGE_NAME_LABEL}
+    <BaseField
+      id={id}
+      name={fieldProps.name}
       // Hidden because this control IS the stage's heading: a visible label
-      // above it would name the stage twice, and the label still has to exist
-      // because it is what the outline and a host's problem panel call the
-      // field.
+      // above it would name the stage twice. It still has to exist — it is
+      // what the control takes its accessible name from, and what a host's
+      // problem panel calls the field.
+      label={label}
       labelHidden
-      placeholder="Enter stage name..."
-      characterLimit={STAGE_NAME_LIMIT}
-      required={REQUIRED}
-      onFieldBlur={onLabelBlur}
-    />
+      required
+      errors={error === undefined ? undefined : [error]}
+      showErrors={error !== undefined}
+      containerProps={containerProps}
+    >
+      <StageNameInput {...fieldProps} autoFocus={isNewStage} />
+    </BaseField>
   );
 }
 
@@ -168,7 +167,7 @@ export const EnterSavesTheStage: Story = {
  * recognise the stage by rather than an empty heading to fill in first.
  */
 export const ANameProposedForANewStage: Story = {
-  args: { seedEdit: unnamed, children: <StageName propose /> },
+  args: { creating: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -186,7 +185,7 @@ export const ANameProposedForANewStage: Story = {
  * act, and the proposal comes back rather than the stage losing its name.
  */
 export const TheProposalComesBackWhenTheNameIsLeftEmpty: Story = {
-  args: { seedEdit: unnamed, children: <StageName propose /> },
+  args: { creating: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -213,7 +212,7 @@ export const TheProposalComesBackWhenTheNameIsLeftEmpty: Story = {
  * over it, on this blur or on any later change to what the stage collects.
  */
 export const ANameTheResearcherWroteIsKept: Story = {
-  args: { seedEdit: unnamed, children: <StageName propose /> },
+  args: { creating: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();

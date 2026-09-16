@@ -112,39 +112,13 @@ describe('the stage heading', () => {
   });
 
   /**
-   * The other thing an interface may tell it: what a proposed name is derived
-   * from. Handed straight through to the name section, and nothing else in
-   * this package passes it yet — so without a case here a family passing
-   * `autoName` would get silence rather than a proposal, and the suite would
-   * stay green.
-   *
-   * `propose` is the half that can be observed from outside a family: the
-   * default answer for an EXISTING stage is "do not propose", so a heading
-   * that dropped the prop would leave the emptied name empty.
+   * A stage the interview already contains is never named for the researcher,
+   * whatever it holds: an existing stage's name is theirs — they may have
+   * typed it, or accepted a proposal months ago — and nothing later done to
+   * its configuration is licence to rewrite it. A hand-authored or migrated
+   * stage with no name at all is still one of those.
    */
-  it('hands a family’s naming rule to the name section', async () => {
-    renderStageEditor({
-      stage: {
-        id: 'information-unnamed',
-        type: 'Information',
-        fields: { label: '', title: 'Welcome', items: [] },
-      },
-      sections: (
-        <StageHeadingSection
-          documentationUrl={DOCUMENTATION_URL}
-          autoName={{ propose: true }}
-        />
-      ),
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        'Information #2',
-      ),
-    );
-  });
-
-  it('proposes nothing for the same stage when no rule is given', async () => {
+  it('proposes nothing for an existing stage that has no name', async () => {
     renderStageEditor({
       stage: {
         id: 'information-unnamed',
