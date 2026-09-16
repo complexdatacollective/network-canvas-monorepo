@@ -268,7 +268,7 @@ export default function PasskeySettings({
                     <span className="font-medium wrap-break-word">
                       {formatPasskeyName(intl, passkey)}
                     </span>
-                    <Badge variant="outline">
+                    <Badge tone="neutral" appearance="soft">
                       {passkey.deviceType === 'multiDevice'
                         ? intl.formatMessage(messages.copySynced)
                         : intl.formatMessage(messages.copyDeviceBound)}

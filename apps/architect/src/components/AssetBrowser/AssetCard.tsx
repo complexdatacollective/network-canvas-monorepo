@@ -414,18 +414,12 @@ const AssetCard = ({
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} source={source} type={type} />
         {isUnresolved ? (
-          <Badge
-            variant="destructive"
-            className="absolute top-3 left-3 border-0"
-          >
+          <Badge tone="destructive" className="absolute top-3 left-3">
             {intl.formatMessage(messages.missing)}
           </Badge>
         ) : (
           !isUsed && (
-            <Badge
-              variant="destructive"
-              className="absolute top-3 left-3 border-0"
-            >
+            <Badge tone="destructive" className="absolute top-3 left-3">
               {intl.formatMessage(messages.unused)}
             </Badge>
           )
@@ -445,7 +439,7 @@ const AssetCard = ({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
-          <Badge variant="outline" color={typeColor} className="shrink-0">
+          <Badge appearance="soft" color={typeColor} className="shrink-0">
             {typeLabel}
           </Badge>
 

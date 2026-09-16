@@ -1,97 +1,141 @@
-import type * as React from 'react';
+import { type useRender as UseRender, useRender } from '@base-ui/react';
+import * as React from 'react';
 
 import { type PaletteColor, paletteColorStyles } from './styles/palette';
-import { cva, cx, type VariantProps } from './utils/cva';
-
-const BADGE_BASE_CLASSES =
-  'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold';
+import { cva, type VariantProps } from './utils/cva';
 
 const badgeVariants = cva({
-  base: BADGE_BASE_CLASSES,
+  base: 'inline-flex shrink-0 items-center rounded-full border font-semibold whitespace-nowrap',
   variants: {
-    variant: {
-      default: 'bg-primary text-primary-contrast border-transparent',
-      secondary: 'bg-secondary text-secondary-contrast border-transparent',
+    size: {
+      sm: 'text-2xs gap-1 px-2 py-0.5 leading-tight',
+      md: 'gap-1.5 px-2.5 py-0.5 text-xs leading-tight',
+      lg: 'gap-2 px-3 py-1 text-sm leading-tight',
+    },
+    tone: {
+      neutral:
+        '[--badge-color:var(--neutral)] [--badge-contrast:var(--neutral-contrast)]',
+      primary:
+        '[--badge-color:var(--primary)] [--badge-contrast:var(--primary-contrast)]',
+      secondary:
+        '[--badge-color:var(--secondary)] [--badge-contrast:var(--secondary-contrast)]',
+      accent:
+        '[--badge-color:var(--accent)] [--badge-contrast:var(--accent-contrast)]',
+      info: '[--badge-color:var(--info)] [--badge-contrast:var(--info-contrast)]',
+      success:
+        '[--badge-color:var(--success)] [--badge-contrast:var(--success-contrast)]',
+      warning:
+        '[--badge-color:var(--warning)] [--badge-contrast:var(--warning-contrast)]',
       destructive:
-        'bg-destructive text-destructive-contrast border-transparent',
-      outline: 'text-current',
+        '[--badge-color:var(--destructive)] [--badge-contrast:var(--destructive-contrast)]',
+    },
+    appearance: {
+      filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
+      soft: 'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
+    },
+    mono: {
+      true: 'font-monospace',
+      false: '',
+    },
+    uppercase: {
+      true: 'uppercase',
+      false: '',
     },
   },
+  compoundVariants: [
+    { uppercase: true, size: 'sm', className: 'tracking-wide' },
+    { uppercase: true, size: ['md', 'lg'], className: 'tracking-widest' },
+  ],
   defaultVariants: {
-    variant: 'default',
+    size: 'md',
+    tone: 'neutral',
+    appearance: 'filled',
+    mono: false,
+    uppercase: false,
   },
 });
 
+type BadgeVariantProps = VariantProps<typeof badgeVariants>;
+
+type BadgeTone = NonNullable<BadgeVariantProps['tone']>;
+type BadgeAppearance = NonNullable<BadgeVariantProps['appearance']>;
+type BadgeSize = NonNullable<BadgeVariantProps['size']>;
 type BadgeColor = PaletteColor;
 
-/** Every colour a badge can be, enumerable: a type cannot be iterated. */
 const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
+  '--badge-contrast'?: string;
 };
 
-type BadgeProps = object &
-  Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> &
-  VariantProps<typeof badgeVariants> & {
-    color?: BadgeColor;
-  };
+type BadgeProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
+  tone?: BadgeTone;
+  appearance?: BadgeAppearance;
+  size?: BadgeSize;
+  mono?: boolean;
+  uppercase?: boolean;
+  icon?: React.ReactNode;
+  color?: BadgeColor;
+  render?: UseRender.RenderProp;
+};
 
-const themedBadgeVariants = cva({
-  base: BADGE_BASE_CLASSES,
-  variants: {
-    variant: {
-      /**
-       * `contrast-color()` reads the label in whichever of black or white
-       * contrasts with the fill further, so no hand-written ink can disagree
-       * with the colour it sits on. Winning that comparison is not itself WCAG
-       * AA, so the `ThemeColors` story measures every colour: the worst is
-       * neon coral at 4.62:1.
-       */
-      filled:
-        'border-transparent bg-(--badge-color) text-[contrast-color(var(--badge-color))]',
-      /**
-       * The colour is the border and a wash of it behind the label; the label
-       * itself is the contrast colour the surface underneath publishes.
-       *
-       * Not the theme colour: most of this palette sits in the middle of the
-       * lightness range, where the colour reaches neither 4.5:1 against a 14%
-       * wash of itself nor against white — cerulean blue is 4.43:1 either way.
-       *
-       * `--published-text` rather than `--text`, because the page's text token
-       * is only guaranteed against the page: on Architect's accent series
-       * `--text` measures 2.69:1 where the surface's own contrast colour is
-       * 5.16:1. Off a published surface it is unset and the inherited colour
-       * applies.
-       *
-       * The wash stays mixed toward `transparent` rather than toward
-       * `--published-bg`, which is the surface's colour only while the badge
-       * sits directly on it.
-       */
-      outline:
-        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
-    },
+const Badge = React.forwardRef<HTMLElement, BadgeProps>(function Badge(
+  {
+    tone,
+    appearance,
+    size,
+    mono,
+    uppercase,
+    icon,
+    color,
+    render,
+    className,
+    style,
+    children,
+    ...props
   },
-});
-
-function Badge({ className, color, variant, style, ...props }: BadgeProps) {
-  const colorVariant = variant === 'outline' ? 'outline' : 'filled';
+  ref,
+) {
   const badgeStyle: BadgeStyle | undefined = color
-    ? { ...style, '--badge-color': paletteColorStyles[color].color }
+    ? {
+        ...style,
+        '--badge-color': paletteColorStyles[color].color,
+        '--badge-contrast': 'contrast-color(var(--badge-color))',
+      }
     : style;
 
-  return (
-    <div
-      className={cx(
-        color
-          ? themedBadgeVariants({ variant: colorVariant })
-          : badgeVariants({ variant }),
+  return useRender({
+    render,
+    ref,
+    props: {
+      className: badgeVariants({
+        tone,
+        appearance,
+        size,
+        mono,
+        uppercase,
         className,
-      )}
-      style={badgeStyle}
-      {...props}
-    />
-  );
-}
+      }),
+      style: badgeStyle,
+      children: (
+        <>
+          {icon}
+          {children}
+        </>
+      ),
+      ...props,
+    },
+    defaultTagName: 'span',
+  });
+});
 
-export { Badge, BADGE_COLORS, type BadgeColor };
+export {
+  Badge,
+  BADGE_COLORS,
+  type BadgeAppearance,
+  type BadgeColor,
+  type BadgeProps,
+  type BadgeSize,
+  type BadgeTone,
+};

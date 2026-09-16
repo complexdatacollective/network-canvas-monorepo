@@ -6,7 +6,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import { Badge } from '@codaco/fresco-ui/Badge';
+import { Badge, type BadgeProps } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -163,10 +163,12 @@ const PARTICIPATION_MODE_LABELS: Record<
  * destructive: closing a study archives it (#1262, 2026-08-07), and colouring
  * an archive like a failure would be a claim about the work.
  */
-function stateVariant(state: StudyState): 'default' | 'secondary' | 'outline' {
-  if (state === 'live') return 'default';
-  if (state === 'closed') return 'secondary';
-  return 'outline';
+function stateBadge(
+  state: StudyState,
+): Pick<BadgeProps, 'tone' | 'appearance'> {
+  if (state === 'live') return { tone: 'primary' };
+  if (state === 'closed') return { tone: 'secondary' };
+  return { tone: 'neutral', appearance: 'soft' };
 }
 
 export default function TeamStudies({ teamId }: { teamId: string }) {
@@ -238,7 +240,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                     {study.name}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={stateVariant(study.state)}>
+                    <Badge {...stateBadge(study.state)}>
                       {intl.formatMessage(STUDY_STATE_MESSAGES[study.state])}
                     </Badge>
                     <span className="text-sm">

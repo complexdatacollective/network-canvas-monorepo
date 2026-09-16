@@ -22,7 +22,6 @@ export function FacetGroup({
             key={value}
             pressed={selected.includes(value)}
             onPressedChange={() => onToggle(value)}
-            size="sm"
             uppercase={false}
           >
             {value}

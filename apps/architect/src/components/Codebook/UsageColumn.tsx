@@ -2,8 +2,8 @@ import { Link } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 
-import Tag from './Tag';
 const messages = defineMessages({
   notInUse: {
     id: 'architect.codebook.usageColumn.notInUse',
@@ -26,9 +26,13 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
   const intl = useAppIntl();
   if (!inUse) {
     return (
-      <Tag key="unused" notUsed>
+      <Badge
+        key="unused"
+        tone="warning"
+        className="wrap-break-word whitespace-normal"
+      >
         {intl.formatMessage(messages.notInUse)}
-      </Tag>
+      </Badge>
     );
   }
 
@@ -37,14 +41,21 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
     // variables that are only in use as validation options. Include the index
     // in the key since validation labels can repeat (e.g. "unknown").
     if (!id) {
-      return <Tag key={`validation-option-${index}`}>{label}</Tag>;
+      return (
+        <Badge
+          key={`validation-option-${index}`}
+          className="wrap-break-word whitespace-normal"
+        >
+          {label}
+        </Badge>
+      );
     }
 
     const href = `/protocol/stage/${id}`;
 
     return (
       <Link key={id} href={href}>
-        <Tag>{label}</Tag>
+        <Badge className="wrap-break-word whitespace-normal">{label}</Badge>
       </Link>
     );
   });

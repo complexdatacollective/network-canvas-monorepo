@@ -28,7 +28,7 @@ function ValueList({ values }: { values: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {values.map((value) => (
-        <Tag key={value} size="sm" uppercase={false}>
+        <Tag key={value} uppercase={false}>
           {value}
         </Tag>
       ))}

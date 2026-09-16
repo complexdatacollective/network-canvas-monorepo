@@ -59,7 +59,7 @@ describe('Tag', () => {
 
     expect(screen.queryByRole('button')).toBeNull();
     const tag = screen.getByTestId('tag');
-    expect(tag.tagName).toBe('DIV');
+    expect(tag.tagName).toBe('SPAN');
     expect(tag).toHaveAttribute('title', 'Capability');
   });
 
@@ -104,7 +104,7 @@ describe('Tag', () => {
     );
 
     const filter = screen.getByRole('button', { name: 'Edges' });
-    expect(filter).toHaveClass('bg-text');
-    expect(filter).not.toHaveClass('bg-platinum');
+    expect(filter).toHaveClass('[--badge-color:var(--text)]');
+    expect(filter).not.toHaveClass('[--badge-color:var(--color-platinum)]');
   });
 });

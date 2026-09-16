@@ -7,7 +7,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import { Badge } from '@codaco/fresco-ui/Badge';
+import { Badge, type BadgeProps } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -123,13 +123,13 @@ const OUTCOME_LABELS: Record<AuditOutcome, MessageDescriptor> = {
   failed: outcomeMessages.failed,
 };
 
-const OUTCOME_BADGE_VARIANTS: Record<
+const OUTCOME_BADGE_PROPS: Record<
   AuditOutcome,
-  'secondary' | 'outline' | 'destructive'
+  Pick<BadgeProps, 'tone' | 'appearance'>
 > = {
-  succeeded: 'secondary',
-  denied: 'outline',
-  failed: 'destructive',
+  succeeded: { tone: 'success' },
+  denied: { tone: 'neutral', appearance: 'soft' },
+  failed: { tone: 'destructive' },
 };
 
 const actorKindMessages = defineMessages({
@@ -930,7 +930,11 @@ export default function TeamActivity() {
                         {event.title}
                       </Button>
                       {!event.rendered && (
-                        <Badge className="ms-2" variant="outline">
+                        <Badge
+                          className="ms-2"
+                          tone="neutral"
+                          appearance="soft"
+                        >
                           {intl.formatMessage(messages.unrecognizedEvent)}
                         </Badge>
                       )}
@@ -940,7 +944,7 @@ export default function TeamActivity() {
                       {target?.label ?? target?.id ?? '—'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={OUTCOME_BADGE_VARIANTS[event.outcome]}>
+                      <Badge {...OUTCOME_BADGE_PROPS[event.outcome]}>
                         {intl.formatMessage(OUTCOME_LABELS[event.outcome])}
                       </Badge>
                     </TableCell>

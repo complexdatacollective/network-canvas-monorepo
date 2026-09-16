@@ -23,7 +23,7 @@ import {
 } from '~/lib/getStarted';
 
 const treatmentClasses = {
-  featured: 'bg-cyber-grape text-white elevation-high',
+  featured: 'bg-cyber-grape text-white elevation-high publish-colors',
   fresco: 'bg-slate-blue/10 text-text backdrop-blur-md elevation-low',
   classic: 'bg-surface/55 text-text backdrop-blur-md elevation-low',
 };
@@ -122,13 +122,9 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
           {app.name}
         </Heading>
         <Badge
-          variant="outline"
-          className={cn(
-            'rounded-full border-0 px-3 py-1.5 text-xs font-bold tracking-wide',
-            featured
-              ? 'bg-surface/15 text-white'
-              : 'bg-cyber-grape/10 text-text',
-          )}
+          appearance="soft"
+          color={featured ? 'white' : 'cyber-grape'}
+          className="border-transparent font-bold tracking-wide"
         >
           {t(`apps.${app.messageKey}.status`)}
         </Badge>

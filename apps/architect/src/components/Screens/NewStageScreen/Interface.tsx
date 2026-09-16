@@ -32,6 +32,7 @@ const InterfaceThumbnail = ({
   const titleId = useId();
   const descriptionId = useId();
   const tagsId = useId();
+  const tagId = (index: number) => `${tagsId}-${index}`;
   const meta = useMemo(
     () => find(getInterfaceTypes(intl), ['type', interfaceType]),
     [interfaceType, intl],
@@ -73,7 +74,10 @@ const InterfaceThumbnail = ({
       type="button"
       ref={ref}
       aria-labelledby={titleId}
-      aria-describedby={`${descriptionId} ${tagsId}`}
+      aria-describedby={[
+        descriptionId,
+        ...tags.map((_, index) => tagId(index)),
+      ].join(' ')}
       className={`border-outline focusable w-full flex-1 cursor-pointer border-x-0 border-t-0 border-b-2 py-4 text-left ${highlighted ? 'bg-action' : 'bg-transparent'}`}
       onClick={handleSelect}
       onMouseEnter={setHighlighted}
@@ -106,9 +110,14 @@ const InterfaceThumbnail = ({
           >
             {description}
           </div>
-          <div id={tagsId} className="flex flex-wrap gap-2">
-            {tags.map((tag: string) => (
-              <Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag: string, index) => (
+              <Tag
+                key={tag}
+                id={tagId(index)}
+                color={get(TAG_COLORS, tag)}
+                light
+              >
                 {interfaceTagLabel(tag, intl)}
               </Tag>
             ))}

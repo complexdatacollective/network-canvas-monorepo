@@ -261,7 +261,7 @@ function ComposerConnectionPreview({ item }: RowPreviewProps) {
   }
 
   return (
-    <Badge>
+    <Badge tone={definition ? 'neutral' : 'warning'}>
       {definition?.name ??
         // The type the entry still names and the codebook no longer defines.
         // Shown rather than hidden, for the reason every dangling reference in

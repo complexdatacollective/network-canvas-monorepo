@@ -6,11 +6,11 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { Badge } from '../Badge';
 import Button from '../Button';
 import Dialog from '../dialogs/Dialog';
 import Icon from '../Icon';
 import Surface from '../layout/Surface';
-import Pill from '../Pill';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
@@ -24,7 +24,6 @@ import {
 } from '../Tooltip';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
-import { cx } from '../utils/cva';
 import type {
   InstallAppUpdate,
   ReleaseNotes,
@@ -173,36 +172,43 @@ export default function AppUpdateIndicator({
 
   if (status === 'idle') {
     return (
-      <Pill size={size} variant="ghost" className={className} icon={idleIcon}>
+      <Badge
+        size={size}
+        mono
+        appearance="soft"
+        className={className}
+        icon={idleIcon}
+      >
         {label}
-      </Pill>
+      </Badge>
     );
   }
 
   const isAvailable = status === 'available';
 
   const pillButton = (
-    <Pill
-      as="button"
+    <Badge
+      render={
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={intl.formatMessage(
+            isAvailable ? messages.updateAvailablePill : messages.updatedPill,
+            { appName },
+          )}
+        />
+      }
       size={size}
-      variant="ghost"
+      mono
+      appearance="soft"
+      tone={isAvailable ? 'info' : 'success'}
       icon={
         <Icon name={isAvailable ? 'RefreshCw' : 'Check'} className="size-3.5" />
       }
-      onClick={() => setOpen(true)}
-      aria-label={intl.formatMessage(
-        isAvailable ? messages.updateAvailablePill : messages.updatedPill,
-        { appName },
-      )}
-      className={cx(
-        'focusable cursor-pointer transition-colors',
-        isAvailable
-          ? 'bg-sea-serpent/20 text-sea-serpent hover:bg-sea-serpent/30'
-          : 'bg-sea-green/20 text-sea-green hover:bg-sea-green/30',
-      )}
+      className="focusable cursor-pointer transition-colors hover:bg-[color-mix(in_oklab,var(--badge-color)_25%,transparent)]"
     >
       {label}
-    </Pill>
+    </Badge>
   );
 
   const changelog =

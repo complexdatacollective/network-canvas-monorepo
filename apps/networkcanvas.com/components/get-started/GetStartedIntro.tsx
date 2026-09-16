@@ -5,10 +5,10 @@ import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 
+import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { useHeroScrollDeparture } from '~/components/ui/useHeroScrollDeparture';
@@ -18,26 +18,32 @@ import { createHeroEntrance } from '~/lib/heroEntrance';
 type StartingPath = {
   id: 'design' | 'collect' | 'learn';
   href: string;
-  accent: 'bg-neon-coral' | 'bg-cerulean-blue' | 'bg-sea-green';
+  accent: Extract<BadgeColor, 'neon-coral' | 'cerulean-blue' | 'sea-green'>;
   external?: boolean;
+};
+
+const ACCENT_DISC: Record<StartingPath['accent'], string> = {
+  'sea-green': 'bg-sea-green',
+  'neon-coral': 'bg-neon-coral',
+  'cerulean-blue': 'bg-cerulean-blue',
 };
 
 const startingPaths: readonly StartingPath[] = [
   {
     id: 'learn',
     href: externalLinks.documentation,
-    accent: 'bg-sea-green',
+    accent: 'sea-green',
     external: true,
   },
   {
     id: 'design',
     href: '#design',
-    accent: 'bg-neon-coral',
+    accent: 'neon-coral',
   },
   {
     id: 'collect',
     href: '#collect',
-    accent: 'bg-cerulean-blue',
+    accent: 'cerulean-blue',
   },
 ];
 
@@ -126,24 +132,14 @@ export function GetStartedIntro() {
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
                 className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative min-h-64 rounded p-8 pb-24 backdrop-blur-md"
               >
-                <span
-                  className={cx(
-                    'font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase',
-                    stage.accent === 'bg-sea-green' &&
-                      'bg-sea-green/15 text-sea-green',
-                    stage.accent === 'bg-neon-coral' &&
-                      'bg-neon-coral/15 text-neon-coral',
-                    stage.accent === 'bg-cerulean-blue' &&
-                      'bg-cerulean-blue/15 text-cerulean-blue',
-                  )}
-                >
+                <Badge mono uppercase appearance="soft" color={stage.accent}>
                   {t(`intro.stages.${stage.id}.label`)}
-                </span>
+                </Badge>
                 <span className="font-heading text-text tablet-portrait:text-2xl mt-8 block max-w-lg text-xl font-black tracking-tight text-balance">
                   {t(`intro.stages.${stage.id}.title`)}
                 </span>
                 <span
-                  className={`${stage.accent} tablet-portrait:right-10 tablet-portrait:bottom-10 absolute right-8 bottom-8 flex size-12 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
+                  className={`${ACCENT_DISC[stage.accent]} tablet-portrait:right-10 tablet-portrait:bottom-10 absolute right-8 bottom-8 flex size-12 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
                 >
                   <ArrowDownRight aria-hidden className="size-6" />
                 </span>

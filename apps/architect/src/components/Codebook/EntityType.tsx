@@ -6,6 +6,7 @@ import { Link } from 'wouter';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
@@ -21,7 +22,6 @@ import type { RootState } from '~/ducks/store';
 import EntityIcon from './EntityIcon';
 import { filterEntityType } from './filterEntityType';
 import { getEntityProperties } from './helpers';
-import Tag from './Tag';
 import Variables from './Variables';
 const messages = defineMessages({
   cannotDeleteType: {
@@ -227,11 +227,18 @@ const EntityType = ({
     // usages that are only present as validation options. Include the index
     // in the key since validation labels can repeat (e.g. "unknown").
     if (!id) {
-      return <Tag key={`validation-${index}-${label}`}>{label}</Tag>;
+      return (
+        <Badge
+          key={`validation-${index}-${label}`}
+          className="wrap-break-word whitespace-normal"
+        >
+          {label}
+        </Badge>
+      );
     }
     return (
       <Link key={id} href={`/protocol/stage/${id}`}>
-        <Tag>{label}</Tag>
+        <Badge className="wrap-break-word whitespace-normal">{label}</Badge>
       </Link>
     );
   });
@@ -249,7 +256,11 @@ const EntityType = ({
           />
         </div>
         <div className="flex-1">
-          {!inUse && <Tag notUsed>{intl.formatMessage(messages.notInUse)}</Tag>}
+          {!inUse && (
+            <Badge tone="warning" className="wrap-break-word whitespace-normal">
+              {intl.formatMessage(messages.notInUse)}
+            </Badge>
+          )}
           {inUse && (
             <div className="flex flex-wrap items-center gap-1">
               <span>{intl.formatMessage(messages.usedIn)}</span>

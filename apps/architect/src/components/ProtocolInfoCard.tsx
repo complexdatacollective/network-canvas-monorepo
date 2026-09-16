@@ -13,6 +13,7 @@ import { Link } from 'wouter';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
@@ -398,10 +399,16 @@ const ProtocolInfoCard = () => {
             requires-internet pill, mirroring interviewer's DeckCard. */}
         <div className="flex min-h-14 items-start justify-end">
           {requiresInternet && (
-            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
-              <Globe className="size-4" />
+            <Badge
+              tone="warning"
+              appearance="soft"
+              mono
+              uppercase
+              icon={<Globe className="size-4" />}
+              className="backdrop-blur-sm"
+            >
               {intl.formatMessage(messages.requiresInternet)}
-            </span>
+            </Badge>
           )}
         </div>
 
