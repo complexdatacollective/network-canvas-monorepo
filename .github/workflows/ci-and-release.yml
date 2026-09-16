@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # `integration/studio-effect4` is the Effect 4 integration branch
+    # (#1927 §15, delivery finding B1): stage PRs target it, so it must be a
+    # listed base or they get no CI at all. The final PR of that branch into
+    # `main` removes it again.
+    branches: [main, integration/studio-effect4]
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
