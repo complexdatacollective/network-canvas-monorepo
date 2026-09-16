@@ -930,11 +930,7 @@ export default function TeamActivity() {
                         {event.title}
                       </Button>
                       {!event.rendered && (
-                        <Badge
-                          className="ms-2"
-                          tone="neutral"
-                          appearance="outline"
-                        >
+                        <Badge className="ms-2" appearance="outline">
                           {intl.formatMessage(messages.unrecognizedEvent)}
                         </Badge>
                       )}

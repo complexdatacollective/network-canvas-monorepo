@@ -178,11 +178,7 @@ export const InterviewColumns = (
             className="flex items-center gap-2"
             title={row.original.participant.identifier}
           >
-            <Badge
-              tone="neutral"
-              appearance="outline"
-              className="max-w-80 truncate"
-            >
+            <Badge appearance="outline" className="max-w-80 truncate">
               {row.original.participant.identifier}
             </Badge>
           </div>
