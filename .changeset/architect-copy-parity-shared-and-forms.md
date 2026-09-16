@@ -20,10 +20,7 @@ attribute that already exists explains why the list of input controls is short
 ("Attribute type is locked") and choosing a control for an attribute being
 invented says which type it will create; and a form field's collapsed row
 names its attribute type and input control in the reader's own language,
-outlined and washed in that type's colour, instead of showing a raw schema
-token. Outlined rather than filled: white on the filled colour is below the
-contrast a reader is owed for text that size on four of the nine attribute
-types.
+filled in that type's colour, instead of showing a raw schema token.
 
 A validation rule is now called the same thing everywhere: the names come from
 `@codaco/protocol-validation`, which is what a protocol's own validation errors

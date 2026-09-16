@@ -12,10 +12,8 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  * allows, on the surface the row list draws them on.
  *
  * That surface is an accent `Surface`, because that is what an `ArrayField`
- * row is — and the accent ladder is where the badge's colours are hardest to
- * read. Drawn on a plain `bg-surface` instead, this preview showed the badge
- * against a background no row ever uses, and the a11y check below was
- * measuring the wrong thing.
+ * row is. Drawn on a plain `bg-surface` instead, this preview showed the badge
+ * against a background no row ever uses.
  *
  * Every colour at once because the badge's colour is the whole of what varies
  * between rows: the a11y check this preview runs over every story is what says
@@ -60,7 +58,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'What a form field collects, as its collapsed row says it: the kind of attribute and the control the participant answers with, marked in the colour that attribute type carries everywhere else. Outlined rather than filled — white on the filled colour is under 4.5:1 for several of these types.',
+          'What a form field collects, as its collapsed row says it: the kind of attribute and the control the participant answers with, marked in the colour that attribute type carries everywhere else. The colour is the badge’s fill, so the badge itself is the mark.',
       },
     },
   },
