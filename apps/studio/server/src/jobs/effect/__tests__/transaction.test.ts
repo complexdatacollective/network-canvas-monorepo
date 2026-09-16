@@ -1,9 +1,9 @@
-import { assert, describe, layer } from '@effect/vitest';
+import { assert, describe, it, layer } from '@effect/vitest';
 import { Effect, Exit, Layer } from 'effect';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
 import { Database, Transaction, withTransaction } from '../database.ts';
-import { Jobs } from '../jobs.ts';
+import { Jobs, RecordedJobs } from '../jobs.ts';
 import {
   asApp,
   asOwner,
@@ -40,13 +40,30 @@ const db = await reachableDb();
  * is exactly the shape a row written by an older release would have, and the
  * reason `onExcessProperty: 'error'` exists at all.
  */
+/**
+ * The recording layer never issues a statement, so the `Transaction` it is
+ * handed carries a client nothing calls. Reaching for it throws, which is the
+ * honest shape: a recorded enqueue that ran SQL would not be recording.
+ */
+const NO_SQL: Transaction['Service']['sql'] = new Proxy(
+  (() => undefined) as unknown as Transaction['Service']['sql'],
+  {
+    get() {
+      throw new Error('the recording enqueue must not issue a statement');
+    },
+    apply() {
+      throw new Error('the recording enqueue must not issue a statement');
+    },
+  },
+);
+
 const withExcessField = Object.assign(
   { deliveryId: '44444444-4444-4444-8444-444444444444' },
   { teamId: 'a-team' },
 );
 
 describe.skipIf(!db)('the transaction guarantee', () => {
-  layer(layerQueueHarness(db!))('with the queue installed', (it) => {
+  layer(layerQueueHarness(db!))('with the queue installed', (suite) => {
     const DOMAIN_TABLE = 'spike_domain';
 
     const withDomainTable = Effect.gen(function* () {
@@ -98,7 +115,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       ),
     );
 
-    it.effect(
+    suite.effect(
       'commits a domain row and its job together, or neither',
       () =>
         Effect.gen(function* () {
@@ -142,7 +159,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       { timeout: 30_000 },
     );
 
-    it.effect(
+    suite.effect(
       'hides the job from every other connection until the commit',
       () =>
         Effect.gen(function* () {
@@ -174,7 +191,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       { timeout: 30_000 },
     );
 
-    it.effect(
+    suite.effect(
       'enqueues on the very backend the domain write ran on',
       () =>
         Effect.gen(function* () {
@@ -225,7 +242,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       { timeout: 30_000 },
     );
 
-    it.effect('does not offer an enqueue outside a transaction', () =>
+    suite.effect('does not offer an enqueue outside a transaction', () =>
       Effect.gen(function* () {
         const jobs = yield* Jobs;
         // The type-level half of the guarantee. `Effect.runSync` demands
@@ -240,7 +257,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect(
+    suite.effect(
       'refuses a payload carrying a field the queue does not declare',
       () =>
         Effect.gen(function* () {
@@ -262,4 +279,64 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       { timeout: 30_000 },
     );
   });
+});
+
+// The recording layer is the alternative `Jobs` implementation the domain
+// suites use (#1927 §4). It needs no database, so it needs no harness — but it
+// must keep the same two promises the live one makes, or a command tested
+// under it would be tested against a weaker contract than it ships with.
+describe('the recording enqueue', () => {
+  it.effect('records what the live layer would have inserted', () =>
+    Effect.gen(function* () {
+      const jobs = yield* Jobs;
+      const store = yield* RecordedJobs;
+      const deliveryId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+      const id = yield* Effect.provideService(
+        jobs.enqueue('invitation-delivery', { deliveryId }),
+        Transaction,
+        Transaction.of({ sql: NO_SQL, teamId: 'a-team' }),
+      );
+
+      assert.deepStrictEqual(store.recorded, [
+        {
+          id,
+          queue: 'invitation-delivery',
+          payload: { deliveryId },
+          startAfter: undefined,
+          singletonKey: undefined,
+        },
+      ]);
+      yield* store.clear;
+      assert.deepStrictEqual(store.recorded, []);
+    }).pipe(Effect.provide(Jobs.layerRecording)),
+  );
+
+  it.effect('validates the payload the live layer validates', () =>
+    Effect.gen(function* () {
+      const jobs = yield* Jobs;
+      const store = yield* RecordedJobs;
+      const refused = yield* Effect.exit(
+        Effect.provideService(
+          jobs.enqueue('invitation-delivery', withExcessField),
+          Transaction,
+          Transaction.of({ sql: NO_SQL, teamId: null }),
+        ),
+      );
+      // A defect, as under the live layer: a command that built its own
+      // payload wrongly has nothing useful to do about it.
+      assert.isTrue(Exit.isFailure(refused));
+      assert.deepStrictEqual(store.recorded, []);
+    }).pipe(Effect.provide(Jobs.layerRecording)),
+  );
+
+  it.effect('still refuses to run outside a transaction', () =>
+    Effect.gen(function* () {
+      const jobs = yield* Jobs;
+      const outsideTransaction = () =>
+        // @ts-expect-error -- the recording enqueue requires Transaction too
+        Effect.runSync(jobs.enqueue('protocol-store-gc', {}));
+      assert.isFunction(outsideTransaction);
+    }).pipe(Effect.provide(Jobs.layerRecording)),
+  );
 });
