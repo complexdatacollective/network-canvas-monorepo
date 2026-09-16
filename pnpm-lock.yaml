@@ -192,6 +192,9 @@ catalogs:
     chromatic:
       specifier: ^18.1.0
       version: 18.1.0
+    clsx:
+      specifier: ^2.1.1
+      version: 2.1.1
     csvtojson:
       specifier: ^2.0.14
       version: 2.0.14
@@ -472,6 +475,9 @@ importers:
       '@types/redux-logger':
         specifier: ^3.0.13
         version: 3.0.13
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
@@ -2303,6 +2309,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.31.3
         version: 3.31.3
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
       comlink:
         specifier: ^4.4.2
         version: 4.4.2

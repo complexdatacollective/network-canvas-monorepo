@@ -59,9 +59,6 @@ export const sliderTrackVariants = cva({
   },
 });
 
-// Keeps its own fill and state colours so a thumb styled with this alone still
-// looks like a thumb — `./styles/controlVariants` is a published entry point and
-// consumers may use it without the surface variant below.
 const sliderThumbOwnVariants = cva({
   base: cx(
     // Positioning - base-ui sets --slider-thumb-position
@@ -89,6 +86,9 @@ const sliderThumbOwnVariants = cva({
   },
 });
 
+// Keeps its own fill and state colours so a thumb styled with this alone still
+// looks like a thumb — `./styles/controlVariants` is a published entry point and
+// consumers may use it without the surface variant below.
 export const sliderThumbVariants = compose(
   smallSizeVariants,
   sliderThumbOwnVariants,
