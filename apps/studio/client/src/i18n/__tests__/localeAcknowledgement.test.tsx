@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { type UpdateAccountLocaleResult } from '@codaco/studio-contract/schema/account';
 
 import { sessionQueryOptions } from '../../lib/session.ts';
+import { rpcKey } from '../../runtime/rpc.ts';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
 import { StudioI18nProvider, useStudioLocale } from '../StudioI18nProvider.tsx';
 
 /**
@@ -24,19 +31,20 @@ import { StudioI18nProvider, useStudioLocale } from '../StudioI18nProvider.tsx';
  * two replies racing.
  */
 
-const updateLocale = vi.fn();
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({ queryKey: ['me'], queryFn: vi.fn() }),
-      key: () => ['me'],
-    },
-  },
-  rpcClient: {
-    account: { updateLocale: (...args: unknown[]) => updateLocale(...args) },
-  },
-}));
+/**
+ * The account write, as the procedure's own handler minus the options argument
+ * the harness passes it. Typed from the contract, so a fixture that has
+ * drifted from `account.updateLocale` fails `tsc` rather than passing here.
+ */
+type UpdateLocaleHandler = StudioHandlers['account.updateLocale'];
+/** What the procedure answers with; the schema module exports no type alias. */
+type LocaleResult = (typeof UpdateAccountLocaleResult)['Type'];
+const updateLocale =
+  vi.fn<
+    (
+      payload: Parameters<UpdateLocaleHandler>[0],
+    ) => ReturnType<UpdateLocaleHandler>
+  >();
 
 const MIRROR_KEY = 'studio.locale';
 
@@ -75,7 +83,7 @@ function renderProvider({
     signedIn ? 'signedIn' : 'signedOut',
   );
   if (userId !== undefined) {
-    queryClient.setQueryData(['me'], { userId, locale: null });
+    queryClient.setQueryData(rpcKey('me'), { userId, locale: null });
   }
   render(
     <QueryClientProvider client={queryClient}>
@@ -95,7 +103,12 @@ beforeEach(() => {
     value: ['en-US', 'en'],
     configurable: true,
   });
-  updateLocale.mockResolvedValue({ locale: null });
+  updateLocale.mockReturnValue(Effect.succeed({ locale: null }));
+  // The in-process rpc client, installed per test: the provider's write goes
+  // through `rpcCall`, so the procedure itself is what these cases drive.
+  installRpcHarness({
+    'account.updateLocale': (payload) => updateLocale(payload),
+  });
 });
 
 describe('a choice that never reached the account', () => {
@@ -190,7 +203,7 @@ describe('an unacknowledged write', () => {
     // A failed write deliberately keeps its marker. The provider is mounted at
     // the root and survives sign-out, so without an owner that marker answers
     // for the next account and locks them out of their own preference.
-    updateLocale.mockRejectedValue(new Error('offline'));
+    updateLocale.mockReturnValue(Effect.die(new Error('offline')));
     renderProvider({ signedIn: true, userId: 'user-1' });
 
     act(() => harness.setLocale('en-GB'));
@@ -210,9 +223,11 @@ describe('two choices in quick succession', () => {
     // this screen still reporting the newer one as saved. Only one write is on
     // the wire at a time, which is what makes the order the server sees the
     // order the researcher chose in.
-    const settle: ((value: { locale: string | null }) => void)[] = [];
-    updateLocale.mockImplementation(
-      () => new Promise((resolve) => settle.push(resolve)),
+    const settle: ((value: LocaleResult) => void)[] = [];
+    updateLocale.mockImplementation(() =>
+      Effect.promise(
+        () => new Promise<LocaleResult>((resolve) => settle.push(resolve)),
+      ),
     );
     renderProvider({ signedIn: true, userId: 'user-1' });
 
@@ -267,9 +282,11 @@ describe('two choices in quick succession', () => {
     // inside the SPA — so a write left waiting here goes out with the NEXT
     // researcher's cookie and stores this researcher's choice on their
     // account.
-    const settle: ((value: { locale: string | null }) => void)[] = [];
-    updateLocale.mockImplementation(
-      () => new Promise((resolve) => settle.push(resolve)),
+    const settle: ((value: LocaleResult) => void)[] = [];
+    updateLocale.mockImplementation(() =>
+      Effect.promise(
+        () => new Promise<LocaleResult>((resolve) => settle.push(resolve)),
+      ),
     );
     const queryClient = renderProvider({ signedIn: true, userId: 'user-1' });
 
@@ -297,9 +314,11 @@ describe('two choices in quick succession', () => {
     // The queued write is a request the server would have to process and then
     // immediately overwrite, and while it is in flight the account holds a
     // language nothing on screen ever claimed.
-    const settle: ((value: { locale: string | null }) => void)[] = [];
-    updateLocale.mockImplementation(
-      () => new Promise((resolve) => settle.push(resolve)),
+    const settle: ((value: LocaleResult) => void)[] = [];
+    updateLocale.mockImplementation(() =>
+      Effect.promise(
+        () => new Promise<LocaleResult>((resolve) => settle.push(resolve)),
+      ),
     );
     renderProvider({ signedIn: true, userId: 'user-1' });
 

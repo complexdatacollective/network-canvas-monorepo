@@ -8,9 +8,19 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Me } from '@codaco/studio-contract/schema/account';
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+
 import { createAppRouter } from '../../router.tsx';
+import { rpcKey } from '../../runtime/rpc.ts';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
 
 /**
  * `/account/language` (2026-09-04 localization design §5.3).
@@ -29,7 +39,12 @@ const fixtures = vi.hoisted(() => ({
    * is still in flight.
    */
   meGate: Promise.resolve(),
-  updateLocale: vi.fn(),
+  updateLocale:
+    vi.fn<
+      (
+        payload: Parameters<StudioHandlers['account.updateLocale']>[0],
+      ) => ReturnType<StudioHandlers['account.updateLocale']>
+    >(),
   listTeams: vi.fn(),
   setActive: vi.fn(),
   useListOrganizations: vi.fn(),
@@ -53,65 +68,31 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: async () => {
-          await fixtures.meGate;
-          return {
-            userId: 'user-1',
-            email: 'researcher@example.org',
-            emailVerified: true,
-            name: 'Researcher',
-            locale: fixtures.meLocale,
-            teams: [{ teamId: 'team-a', role: 'owner' }],
-          };
-        },
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: vi.fn().mockResolvedValue({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
+/** The signed-in researcher, once `meGate` lets identity through. */
+function me(): Me {
+  return {
+    userId: 'user-1',
+    email: 'researcher@example.org',
+    emailVerified: true,
+    name: 'Researcher',
+    locale: fixtures.meLocale,
+    teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+  };
+}
+
+/** What this instance says about itself; nothing here turns on any of it. */
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
   },
-  rpcClient: {
-    account: { updateLocale: fixtures.updateLocale },
-    protocols: {},
-    team: {},
-  },
-}));
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 const MIRROR_KEY = 'studio.locale';
 
@@ -148,7 +129,7 @@ beforeEach(() => {
   document.documentElement.lang = 'en';
   fixtures.meLocale = null;
   fixtures.meGate = Promise.resolve();
-  fixtures.updateLocale.mockResolvedValue({ locale: 'en-GB' });
+  fixtures.updateLocale.mockReturnValue(Effect.succeed({ locale: 'en-GB' }));
   fixtures.listTeams.mockResolvedValue({
     data: [{ id: 'team-a', name: 'Alpha research team' }],
     error: null,
@@ -174,6 +155,14 @@ beforeEach(() => {
   Object.defineProperty(window.navigator, 'languages', {
     value: ['en-US', 'en'],
     configurable: true,
+  });
+  // The in-process rpc client. `meGate` is held open by the case that stages
+  // the window before identity resolves.
+  installRpcHarness({
+    'me': () => Effect.promise(() => fixtures.meGate.then(me)),
+    'status': () => Effect.succeed(STATUS),
+    'studies.list': () => Effect.succeed([]),
+    'account.updateLocale': (payload) => fixtures.updateLocale(payload),
   });
 });
 
@@ -246,7 +235,7 @@ describe('the language screen', () => {
   });
 
   it('keeps the local change when the account write fails, and says so', async () => {
-    fixtures.updateLocale.mockRejectedValue(new Error('offline'));
+    fixtures.updateLocale.mockReturnValue(Effect.die(new Error('offline')));
 
     renderLanguagePage();
     await screen.findByRole('heading', { level: 1, name: 'Language' });
@@ -291,7 +280,7 @@ describe('the language screen', () => {
     // it this would assert on a screen the answer had not reached yet.
     admitIdentity();
     await waitFor(() => {
-      expect(queryClient.getQueryData(['me'])).toBeDefined();
+      expect(queryClient.getQueryData(rpcKey('me'))).toBeDefined();
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));

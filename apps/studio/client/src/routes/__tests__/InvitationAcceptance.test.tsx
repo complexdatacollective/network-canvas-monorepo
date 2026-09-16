@@ -8,13 +8,37 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { Me } from '@codaco/studio-contract/schema/account';
+import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import {
+  MemberId,
+  TeamId,
+  TeamInvitationId,
+} from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { createAppRouter } from '../../router.tsx';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
 
 const mocks = vi.hoisted(() => ({
-  acceptInvitation: vi.fn(),
+  /**
+   * The acceptance command, as its own handler minus the options argument the
+   * harness passes it: a fixture that has drifted from the contract fails
+   * `tsc` rather than passing here.
+   */
+  acceptInvitation:
+    vi.fn<
+      (
+        payload: Parameters<StudioHandlers['team.acceptInvitation']>[0],
+      ) => ReturnType<StudioHandlers['team.acceptInvitation']>
+    >(),
   getSession: vi.fn(),
   magicLink: vi.fn(),
   setActive: vi.fn(),
@@ -55,62 +79,40 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
+/** The signed-in researcher; nothing here turns on any of it. */
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
+
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
   },
-  rpcClient: {
-    team: { acceptInvitation: mocks.acceptInvitation },
-    protocols: {},
-  },
-}));
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
+/** What the server answers with when the invitation is accepted. */
+const ACCEPTED = {
+  invitationId: TeamInvitationId.make(INVITATION_ID),
+  teamId: TeamId.make('team-a'),
+  teamName: 'Alpha research team',
+  memberId: MemberId.make('member-a'),
+  role: 'admin',
+  status: 'accepted',
+} as const;
+
 const SESSION = {
   user: {
     id: 'invitee-user',
@@ -155,13 +157,13 @@ beforeEach(() => {
   });
   mocks.setActive.mockResolvedValue({ data: { id: 'team-a' }, error: null });
   mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
-  mocks.acceptInvitation.mockResolvedValue({
-    invitationId: INVITATION_ID,
-    teamId: 'team-a',
-    teamName: 'Alpha research team',
-    memberId: 'member-a',
-    role: 'admin',
-    status: 'accepted',
+  mocks.acceptInvitation.mockReturnValue(Effect.succeed(ACCEPTED));
+  // The in-process rpc client, installed per test.
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () => Effect.succeed(STATUS),
+    'studies.list': () => Effect.succeed([]),
+    'team.acceptInvitation': (payload) => mocks.acceptInvitation(payload),
   });
 });
 
@@ -240,7 +242,7 @@ describe('invitation acceptance', () => {
       isPending: false,
       error: null,
     });
-    mocks.acceptInvitation.mockRejectedValue(new Error('forbidden'));
+    mocks.acceptInvitation.mockReturnValue(Effect.fail(new Forbidden({})));
     renderAt(`/invitations/${INVITATION_ID}`);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Join team' }));
@@ -279,17 +281,12 @@ describe('invitation acceptance', () => {
     );
     // The invitation is what changes the answer, so the server starts giving
     // the new one the moment it is accepted.
-    mocks.acceptInvitation.mockImplementation(() => {
-      mocks.teams = [{ id: 'team-a', name: 'Alpha research team' }];
-      return Promise.resolve({
-        invitationId: INVITATION_ID,
-        teamId: 'team-a',
-        teamName: 'Alpha research team',
-        memberId: 'member-a',
-        role: 'admin',
-        status: 'accepted',
-      });
-    });
+    mocks.acceptInvitation.mockImplementation(() =>
+      Effect.sync(() => {
+        mocks.teams = [{ id: 'team-a', name: 'Alpha research team' }];
+        return ACCEPTED;
+      }),
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'Join team' }));
 
     fireEvent.click(await screen.findByRole('link', { name: 'Open team' }));

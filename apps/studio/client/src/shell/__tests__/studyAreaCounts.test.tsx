@@ -2,11 +2,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import type { Me } from '@codaco/studio-contract/schema/account';
+import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { createAppRouter } from '../../router.tsx';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
 import { destinationItems } from '../everythingBarDestinations.ts';
 import { studyDestinations } from '../navigationManifest.ts';
 
@@ -25,9 +34,25 @@ const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   /** Read at call time so a test can sign the researcher out of every team. */
   activeTeam: undefined as { id: string } | undefined,
-  /** The `studies.counts` answer, per test. */
-  counts: vi.fn(),
+  /**
+   * The `studies.counts` answer, per test — the procedure's own handler minus
+   * the options argument, so a fixture that has drifted from the contract
+   * fails `tsc` rather than passing here.
+   */
+  counts:
+    vi.fn<
+      (
+        payload: Parameters<StudioHandlers['studies.counts']>[0],
+      ) => ReturnType<StudioHandlers['studies.counts']>
+    >(),
 }));
+
+/**
+ * Study ids are UUIDs in the contract, and the payload schema checks them at
+ * the call, so the URLs below carry real ones.
+ */
+const STUDY_1 = '11111111-1111-4111-8111-111111111111';
+const STUDY_7 = '77777777-7777-4777-8777-777777777777';
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -62,80 +87,32 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    protocols: {
-      list: {
-        queryOptions: () => ({ queryKey: ['protocols'], queryFn: () => [] }),
-        key: () => ['protocols'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-    studies: {
-      // The header's study chip asks these on every study route; they are
-      // not under test here, so they answer nothing.
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: vi.fn() }),
-        key: () => ['study'],
-      },
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      counts: {
-        // What `@orpc/tanstack-query` itself builds, in the one respect these
-        // cases depend on: a `skipToken` input (a symbol) becomes a
-        // `skipToken` queryFn, which is what stops the query being asked at
-        // all rather than being asked and ignored.
-        queryOptions: ({ input, ...options }: { input: unknown }) => ({
-          ...options,
-          queryKey: ['study-counts', input],
-          queryFn:
-            typeof input === 'symbol' ? input : () => fixtures.counts(input),
-        }),
-      },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
-}));
+/** The signed-in researcher; nothing here turns on any of it. */
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  // `me` carries the account's UI-language preference; null means
+  // "follow the browser" (2026-09-04 localization design §5.2).
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
 
-function renderStudy(path = '/study/study-1') {
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
+
+function renderStudy(path = `/study/${STUDY_1}`) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -242,22 +219,33 @@ async function countedRow(
 beforeEach(() => {
   fixtures.activeTeam = { id: fixtures.TEAM.id };
   fixtures.counts.mockReset();
+  // The in-process rpc client. The header's study chip asks `studies.get` on
+  // every study route; it is not under test here, so it answers nothing —
+  // which, like every unreachable study, is `Forbidden` (§6.3).
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () => Effect.succeed(STATUS),
+    'studies.get': () => Effect.fail(new Forbidden({})),
+    'studies.counts': (payload) => fixtures.counts(payload),
+  });
 });
 
 describe('the study sidebar’s counts', () => {
   it('names the number beside each countable destination', async () => {
-    fixtures.counts.mockResolvedValue({
-      versions: 6,
-      participants: 84,
-      waves: 3,
-      sessions: 212,
-    });
+    fixtures.counts.mockReturnValue(
+      Effect.succeed({
+        versions: 6,
+        participants: 84,
+        waves: 3,
+        sessions: 212,
+      }),
+    );
     renderStudy();
     const sidebar = await studySidebar();
 
     expect(
       await countedRow(sidebar, 'Participants', 'Participants 84'),
-    ).toHaveAttribute('href', '/study/study-1/participants');
+    ).toHaveAttribute('href', `/study/${STUDY_1}/participants`);
     expect(
       sidebar.getByRole('link', { name: 'Versions 6' }),
     ).toBeInTheDocument();
@@ -273,26 +261,23 @@ describe('the study sidebar’s counts', () => {
   });
 
   it('asks about the study in the URL, and nothing else', async () => {
-    fixtures.counts.mockResolvedValue({
-      versions: 1,
-      participants: 2,
-      waves: 3,
-      sessions: 4,
-    });
-    renderStudy('/study/study-7/waves');
+    fixtures.counts.mockReturnValue(
+      Effect.succeed({ versions: 1, participants: 2, waves: 3, sessions: 4 }),
+    );
+    renderStudy(`/study/${STUDY_7}/waves`);
     const sidebar = await studySidebar();
 
     await countedRow(sidebar, 'Waves', 'Waves 3');
     // A study route names no team, and the procedure needs none: the server
     // resolves it from the study. Asking about the wrong study would put
     // another study's numbers on this one's sidebar.
-    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: 'study-7' });
+    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: STUDY_7 });
   });
 
   it('shows no number at all while the answer is outstanding', async () => {
     // A promise that never settles: the state every sidebar is in for its
     // first paint, and the one a `?? 0` would render as an empty study.
-    fixtures.counts.mockReturnValue(new Promise(() => undefined));
+    fixtures.counts.mockReturnValue(Effect.never);
     renderStudy();
     const sidebar = await studySidebar();
 
@@ -304,7 +289,7 @@ describe('the study sidebar’s counts', () => {
   });
 
   it('shows no number when the procedure refuses', async () => {
-    fixtures.counts.mockRejectedValue(new Error('FORBIDDEN'));
+    fixtures.counts.mockReturnValue(Effect.fail(new Forbidden({})));
     renderStudy();
     const sidebar = await studySidebar();
 
@@ -318,12 +303,9 @@ describe('the study sidebar’s counts', () => {
   });
 
   it('leaves an empty study’s rows unnumbered rather than showing zeroes', async () => {
-    fixtures.counts.mockResolvedValue({
-      versions: 0,
-      participants: 0,
-      waves: 0,
-      sessions: 0,
-    });
+    fixtures.counts.mockReturnValue(
+      Effect.succeed({ versions: 0, participants: 0, waves: 0, sessions: 0 }),
+    );
     renderStudy();
     const sidebar = await studySidebar();
 
@@ -341,19 +323,16 @@ describe('the study sidebar’s counts', () => {
     // opened on a first sign-in. The study is in the URL, and that is all the
     // procedure takes, so the numbers arrive as soon as they would anywhere.
     fixtures.activeTeam = undefined;
-    fixtures.counts.mockResolvedValue({
-      versions: 2,
-      participants: 5,
-      waves: 1,
-      sessions: 3,
-    });
+    fixtures.counts.mockReturnValue(
+      Effect.succeed({ versions: 2, participants: 5, waves: 1, sessions: 3 }),
+    );
     renderStudy();
     const sidebar = await studySidebar();
 
     expect(
       await countedRow(sidebar, 'Participants', 'Participants 5'),
     ).toBeInTheDocument();
-    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: 'study-1' });
+    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: STUDY_1 });
   });
 });
 

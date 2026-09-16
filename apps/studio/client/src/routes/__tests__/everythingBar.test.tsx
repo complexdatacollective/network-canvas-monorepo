@@ -8,9 +8,19 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import type { Me } from '@codaco/studio-contract/schema/account';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+import { type StudySummary } from '@codaco/studio-contract/schema/study';
 
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
@@ -30,6 +40,7 @@ import {
   clearSurfaceRequest,
   readSurfaceRequest,
 } from '../../shell/surfaceRequests.ts';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * The everything bar as Studio actually mounts it (everything-bar design §4,
@@ -43,19 +54,21 @@ import {
 
 const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  deployment: { mode: 'managed', billing: false },
+  // Read at call time, so a test can put the client on a self-hosted instance
+  // before it renders.
+  deployment: {
+    mode: 'managed',
+    billing: false,
+  } as InstanceStatus['deployment'],
   getSession: vi.fn(),
-  STUDY: {
-    id: 'study-1',
-    name: 'Shell proof',
-    state: 'draft',
-    participationMode: 'managed',
-    protocolId: 'protocol-1',
-    createdAt: new Date('2026-08-28T00:00:00Z'),
-    waveCount: 0,
-    participantCount: 0,
-  },
 }));
+
+/**
+ * Study, protocol and draft ids are UUIDs in the contract, and the payload
+ * schema checks them at the call, so the study URLs below carry real ones.
+ */
+const STUDY_ID = '11111111-1111-4111-8111-111111111111';
+const STUDY_PATH = `/study/${STUDY_ID}`;
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -92,110 +105,27 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          // Read at call time, so a test can put the client on a self-hosted
-          // instance before it renders.
-          deployment: fixtures.deployment,
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({
-          queryKey: ['studies'],
-          queryFn: () => [fixtures.STUDY],
-        }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({
-          queryKey: ['study'],
-          queryFn: () => ({
-            teamId: fixtures.TEAM.id,
-            study: fixtures.STUDY,
-            protocolDraftId: 'draft-1',
-          }),
-        }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-      counts: {
-        queryOptions: () => ({
-          queryKey: ['study-counts'],
-          queryFn: () => ({
-            versions: 0,
-            participants: 0,
-            waves: 0,
-            sessions: 0,
-          }),
-        }),
-      },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-    // The study sidebar's counts. The bar never renders one, so an empty study
-    // is the honest fixture: a result's label is its destination's name and
-    // nothing else, whatever the sidebar beside it shows.
-    audit: {
-      list: {
-        infiniteOptions: (options: {
-          initialPageParam: string | undefined;
-          getNextPageParam: (page: {
-            nextCursor: string | null;
-          }) => string | undefined;
-        }) => ({
-          queryKey: ['audit-list'],
-          queryFn: () => ({ events: [], nextCursor: null }),
-          initialPageParam: options.initialPageParam,
-          getNextPageParam: options.getNextPageParam,
-        }),
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['audit-get'], queryFn: vi.fn() }),
-      },
-      filterOptions: {
-        queryOptions: () => ({
-          queryKey: ['audit-filter-options'],
-          queryFn: () => ({ actors: [] }),
-        }),
-      },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
-}));
+const STUDY: (typeof StudySummary)['Type'] = {
+  id: StudyId.make(STUDY_ID),
+  name: 'Shell proof',
+  state: 'draft',
+  participationMode: 'managed',
+  protocolId: ProtocolId.make('22222222-2222-4222-8222-222222222222'),
+  createdAt: new Date('2026-08-28T00:00:00Z'),
+  waveCount: 0,
+  participantCount: 0,
+};
+
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  // `me` carries the account's UI-language preference; null means
+  // "follow the browser" (2026-09-04 localization design §5.2).
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
 
 const DIALOG_NAME = 'Search and commands';
 const NO_RESULTS = 'Nothing matches that search.';
@@ -290,11 +220,44 @@ beforeEach(() => {
   // otherwise: an activation in one test would seed the empty state of the next.
   window.localStorage.clear();
   clearSurfaceRequest();
+  // The in-process rpc client. The study sidebar's counts answer an empty
+  // study: the bar never renders one, so that is the honest fixture — a
+  // result's label is its destination's name and nothing else.
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        deployment: fixtures.deployment,
+        setup: { required: false },
+      }),
+    'studies.list': () => Effect.succeed([STUDY]),
+    'studies.get': () =>
+      Effect.succeed({
+        teamId: TeamId.make(fixtures.TEAM.id),
+        study: STUDY,
+        protocolDraftId: DraftId.make('33333333-3333-4333-8333-333333333333'),
+      }),
+    'studies.counts': () =>
+      Effect.succeed({
+        versions: 0,
+        participants: 0,
+        waves: 0,
+        sessions: 0,
+      }),
+  });
 });
 
 describe('opening the bar', () => {
   it('opens on the keyboard shortcut from any app route', async () => {
-    renderAt('/study/study-1');
+    renderAt(STUDY_PATH);
     await screen.findByRole('link', { name: 'Overview' });
 
     // Not open until asked: a bar that renders its dialog unconditionally would
@@ -337,7 +300,7 @@ describe('opening the bar', () => {
 
 describe('go to', () => {
   it('navigates to the destination a result names', async () => {
-    const router = renderAt('/study/study-1');
+    const router = renderAt(STUDY_PATH);
     await screen.findByRole('link', { name: 'Overview' });
 
     const { dialog, input } = await openBar();
@@ -354,7 +317,7 @@ describe('go to', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/study/study-1/waves'),
+      expect(router.state.location.pathname).toBe(`${STUDY_PATH}/waves`),
     );
     await waitFor(() =>
       expect(
@@ -364,7 +327,7 @@ describe('go to', () => {
   });
 
   it('finds another area from inside a study, not only the mounted one', async () => {
-    renderAt('/study/study-1');
+    renderAt(STUDY_PATH);
     await screen.findByRole('link', { name: 'Overview' });
 
     const { dialog, input } = await openBar();
@@ -436,7 +399,7 @@ describe('go to', () => {
 
 describe('commands', () => {
   it('launches a command from another area, and records its surface', async () => {
-    const router = renderAt('/study/study-1');
+    const router = renderAt(STUDY_PATH);
     await screen.findByRole('link', { name: 'Overview' });
 
     const { dialog, input } = await openBar();

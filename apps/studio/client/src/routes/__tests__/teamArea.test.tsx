@@ -9,9 +9,37 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Me } from '@codaco/studio-contract/schema/account';
+import {
+  MemberId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+  TeamInvitationId,
+} from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+import {
+  type CreateStudyResult,
+  type StudySummary,
+} from '@codaco/studio-contract/schema/study';
+
 import { createAppRouter } from '../../router.tsx';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
+
+/**
+ * Each procedure's own handler, minus the options argument the harness passes
+ * it: a fixture that has drifted from the contract fails `tsc` rather than
+ * passing here.
+ */
+type Answer<Tag extends keyof StudioHandlers> = (
+  payload: Parameters<StudioHandlers[Tag]>[0],
+) => ReturnType<StudioHandlers[Tag]>;
 
 const fixtures = vi.hoisted(() => {
   const TEAM_A = {
@@ -92,46 +120,10 @@ const fixtures = vi.hoisted(() => {
     members: [BETA_MEMBER],
     invitations: [],
   };
-  const studiesByTeam = {
-    'team-a': [
-      {
-        id: 'study-a',
-        name: 'Alpha study',
-        state: 'draft',
-        participationMode: 'managed',
-        protocolId: 'protocol-a',
-        createdAt: new Date('2026-08-28T00:00:00Z'),
-        waveCount: 0,
-        participantCount: 0,
-      },
-      {
-        id: 'study-a-live',
-        name: 'Alpha fieldwork',
-        state: 'live',
-        participationMode: 'anonymous',
-        protocolId: 'protocol-a-live',
-        createdAt: new Date('2026-08-27T00:00:00Z'),
-        waveCount: 2,
-        participantCount: 1,
-      },
-    ],
-    'team-b': [
-      {
-        id: 'study-b',
-        name: 'Beta study',
-        state: 'draft',
-        participationMode: 'managed',
-        protocolId: 'protocol-b',
-        createdAt: new Date('2026-08-28T00:00:00Z'),
-        waveCount: 0,
-        participantCount: 0,
-      },
-    ],
-  };
-  const createStudy = vi.fn();
-  const createInvitation = vi.fn();
-  const updateMemberRole = vi.fn();
-  const cancelInvitation = vi.fn();
+  const createStudy = vi.fn<Answer<'studies.create'>>();
+  const createInvitation = vi.fn<Answer<'team.createInvitation'>>();
+  const updateMemberRole = vi.fn<Answer<'team.updateMemberRole'>>();
+  const cancelInvitation = vi.fn<Answer<'team.cancelInvitation'>>();
   const authStore = {
     revision: 0,
     listeners: new Set<() => void>(),
@@ -177,7 +169,6 @@ const fixtures = vi.hoisted(() => {
     ACTIVE_TEAM_A,
     BETA_MEMBER,
     ACTIVE_TEAM_B,
-    studiesByTeam,
     createStudy,
     createInvitation,
     updateMemberRole,
@@ -262,75 +253,75 @@ vi.mock('../../lib/auth.ts', async () => {
   };
 });
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
+/**
+ * Study and protocol ids are UUIDs in the contract, and the payload schema
+ * checks them at the call, so the study URLs below carry real ones.
+ */
+const STUDY_A = '11111111-1111-4111-8111-111111111111';
+const STUDY_A_LIVE = '22222222-2222-4222-8222-222222222222';
+const STUDY_B = '33333333-3333-4333-8333-333333333333';
+
+const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
+  'team-a': [
+    {
+      id: StudyId.make(STUDY_A),
+      name: 'Alpha study',
+      state: 'draft',
+      participationMode: 'managed',
+      protocolId: ProtocolId.make('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+      createdAt: new Date('2026-08-28T00:00:00Z'),
+      waveCount: 0,
+      participantCount: 0,
     },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
+    {
+      id: StudyId.make(STUDY_A_LIVE),
+      name: 'Alpha fieldwork',
+      state: 'live',
+      participationMode: 'anonymous',
+      protocolId: ProtocolId.make('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+      createdAt: new Date('2026-08-27T00:00:00Z'),
+      waveCount: 2,
+      participantCount: 1,
     },
-    studies: {
-      list: {
-        queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['studies', input.teamId],
-          queryFn: () =>
-            fixtures.studiesByTeam[
-              input.teamId as keyof typeof fixtures.studiesByTeam
-            ] ?? [],
-        }),
-        key: ({ input }: { input: { teamId: string } }) => [
-          'studies',
-          input.teamId,
-        ],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: vi.fn() }),
-        key: () => ['study'],
-      },
-      create: {
-        mutationOptions: (options: object) => ({
-          mutationFn: fixtures.createStudy,
-          ...options,
-        }),
-      },
+  ],
+  'team-b': [
+    {
+      id: StudyId.make(STUDY_B),
+      name: 'Beta study',
+      state: 'draft',
+      participationMode: 'managed',
+      protocolId: ProtocolId.make('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+      createdAt: new Date('2026-08-28T00:00:00Z'),
+      waveCount: 0,
+      participantCount: 0,
     },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
+  ],
+};
+
+/** The signed-in researcher; nothing here turns on any of it. */
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  // `me` carries the account's UI-language preference; null means
+  // "follow the browser" (2026-09-04 localization design §5.2).
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
+
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
   },
-  rpcClient: {
-    protocols: {},
-    team: {
-      createInvitation: fixtures.createInvitation,
-      updateMemberRole: fixtures.updateMemberRole,
-      cancelInvitation: fixtures.cancelInvitation,
-    },
-  },
-}));
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 /** The two halves §5.4 split the shipped team screen into. */
 const STUDIES = `/team/${fixtures.TEAM_A.id}`;
@@ -379,31 +370,40 @@ beforeEach(() => {
       return Promise.resolve({ data: authState.activeTeam, error: null });
     },
   );
-  fixtures.createInvitation.mockResolvedValue({
-    invitationId: 'new-invitation',
-    email: 'new@example.com',
-    role: 'admin',
-    status: 'pending',
-    expiresAt: new Date(Date.now() + 86_400_000),
-  });
-  fixtures.updateMemberRole.mockResolvedValue({
-    memberId: COLLABORATOR.id,
-    role: 'admin',
-  });
-  fixtures.cancelInvitation.mockResolvedValue({
-    invitationId: 'invitation-1',
-    status: 'canceled',
-  });
-  fixtures.createStudy.mockImplementation(
-    (input: { studyId: string; protocolId: string; draftId: string }) =>
-      Promise.resolve({
-        studyId: input.studyId,
-        protocolId: input.protocolId,
-        draftId: input.draftId,
-      }),
+  fixtures.createInvitation.mockReturnValue(
+    Effect.succeed({
+      invitationId: TeamInvitationId.make('new-invitation'),
+      email: 'new@example.com',
+      role: 'admin',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 86_400_000),
+    }),
   );
+  fixtures.updateMemberRole.mockReturnValue(
+    Effect.succeed({
+      memberId: MemberId.make(COLLABORATOR.id),
+      role: 'admin',
+    }),
+  );
+  fixtures.cancelInvitation.mockReturnValue(
+    Effect.succeed({
+      invitationId: TeamInvitationId.make('invitation-1'),
+      status: 'canceled',
+    }),
+  );
+  fixtures.createStudy.mockImplementation((input) => Effect.succeed(input));
   authState.refetchActiveTeam.mockResolvedValue(undefined);
   authState.refetchActiveMember.mockResolvedValue(undefined);
+  // The in-process rpc client, installed per test.
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () => Effect.succeed(STATUS),
+    'studies.list': ({ teamId }) => Effect.succeed(studiesByTeam[teamId] ?? []),
+    'studies.create': (payload) => fixtures.createStudy(payload),
+    'team.createInvitation': (payload) => fixtures.createInvitation(payload),
+    'team.updateMemberRole': (payload) => fixtures.updateMemberRole(payload),
+    'team.cancelInvitation': (payload) => fixtures.cancelInvitation(payload),
+  });
 });
 /**
  * §5.4's split of the shipped team screen, asserted at the two addresses it
@@ -429,7 +429,7 @@ describe('the team studies list', () => {
     // wrong object the moment a study retargets its protocol line.
     expect(
       await screen.findByRole('link', { name: 'Alpha study' }),
-    ).toHaveAttribute('href', '/study/study-a');
+    ).toHaveAttribute('href', `/study/${STUDY_A}`);
     expect(screen.queryByText('Beta study')).toBeNull();
 
     // Where each study is in its lifecycle, and who takes part, on the row
@@ -512,12 +512,14 @@ describe('the team studies list', () => {
   });
 
   it('leaves a researcher who moved on where they went', async () => {
-    let finishCreation: ((created: { studyId: string }) => void) | undefined;
-    fixtures.createStudy.mockImplementation(
-      () =>
-        new Promise<{ studyId: string }>((resolve) => {
-          finishCreation = resolve;
-        }),
+    let finishCreation: (() => void) | undefined;
+    fixtures.createStudy.mockImplementation((input) =>
+      Effect.promise(
+        () =>
+          new Promise<(typeof CreateStudyResult)['Type']>((resolve) => {
+            finishCreation = () => resolve(input);
+          }),
+      ),
     );
     const { router } = renderTeam(STUDIES);
 
@@ -538,7 +540,7 @@ describe('the team studies list', () => {
     );
 
     await act(async () => {
-      finishCreation?.({ studyId: 'slow-study' });
+      finishCreation?.();
     });
 
     // §6.5: a continuation that resolves after a later navigation has
@@ -557,12 +559,14 @@ describe('the team studies list', () => {
   });
 
   it('leaves a researcher who came back where they came back to', async () => {
-    let finishCreation: ((created: { studyId: string }) => void) | undefined;
-    fixtures.createStudy.mockImplementation(
-      () =>
-        new Promise<{ studyId: string }>((resolve) => {
-          finishCreation = resolve;
-        }),
+    let finishCreation: (() => void) | undefined;
+    fixtures.createStudy.mockImplementation((input) =>
+      Effect.promise(
+        () =>
+          new Promise<(typeof CreateStudyResult)['Type']>((resolve) => {
+            finishCreation = () => resolve(input);
+          }),
+      ),
     );
     const { router } = renderTeam(STUDIES);
 
@@ -592,7 +596,7 @@ describe('the team studies list', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      finishCreation?.({ studyId: 'slow-study' });
+      finishCreation?.();
     });
 
     // Waiting for the form to finish submitting is what makes this able to
@@ -612,15 +616,8 @@ describe('the team studies list', () => {
 
   it('reuses the creation identity after a lost response', async () => {
     fixtures.createStudy
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockImplementationOnce(
-        (input: { studyId: string; protocolId: string; draftId: string }) =>
-          Promise.resolve({
-            studyId: input.studyId,
-            protocolId: input.protocolId,
-            draftId: input.draftId,
-          }),
-      );
+      .mockReturnValueOnce(Effect.die(new Error('response lost')))
+      .mockImplementationOnce((input) => Effect.succeed(input));
     const { router } = renderTeam(STUDIES);
 
     fireEvent.change(
@@ -645,7 +642,9 @@ describe('the team studies list', () => {
   });
 
   it('does not carry a creation identity across a team switch', async () => {
-    fixtures.createStudy.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.createStudy.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
+    );
     const { router } = renderTeam(STUDIES);
 
     const nameIn = async (value: string) => {
@@ -799,7 +798,9 @@ describe('the team members screen', () => {
       id: 'invitation-reconciled',
       email: 'reconciled@example.com',
     };
-    fixtures.createInvitation.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.createInvitation.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
+    );
     authState.refetchActiveTeam.mockImplementationOnce(async () => {
       authState.activeTeam = {
         ...ACTIVE_TEAM_A,
@@ -920,7 +921,9 @@ describe('the team members screen', () => {
   });
 
   it('recovers the committed role after an ambiguous response', async () => {
-    fixtures.updateMemberRole.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.updateMemberRole.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
+    );
     authState.refetchActiveTeam.mockImplementationOnce(async () => {
       authState.activeTeam = {
         ...ACTIVE_TEAM_A,
@@ -1029,7 +1032,9 @@ describe('the team members screen', () => {
   });
 
   it('retries reconciliation instead of repeating an ambiguous role mutation', async () => {
-    fixtures.updateMemberRole.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.updateMemberRole.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
+    );
     authState.refetchActiveTeam
       .mockRejectedValueOnce(new Error('refresh failed'))
       .mockImplementationOnce(async () => {
@@ -1068,16 +1073,16 @@ describe('the team members screen', () => {
       ...ACTIVE_TEAM_A,
       members: [OWNER, selfAdmin],
     };
-    fixtures.updateMemberRole.mockImplementation(
-      (input: { memberId: string; role: 'owner' | 'admin' | 'member' }) => {
+    fixtures.updateMemberRole.mockImplementation((input) =>
+      Effect.sync(() => {
         const demoted = { ...selfAdmin, role: input.role };
         authState.activeMember = demoted;
         authState.activeTeam = {
           ...ACTIVE_TEAM_A,
           members: [OWNER, demoted],
         };
-        return Promise.resolve(input);
-      },
+        return input;
+      }),
     );
     renderTeam(MEMBERS);
 
@@ -1120,7 +1125,9 @@ describe('the team members screen', () => {
   });
 
   it('recovers a committed cancellation after an ambiguous response', async () => {
-    fixtures.cancelInvitation.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.cancelInvitation.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
+    );
     authState.refetchActiveTeam.mockImplementationOnce(async () => {
       authState.activeTeam = {
         ...ACTIVE_TEAM_A,
