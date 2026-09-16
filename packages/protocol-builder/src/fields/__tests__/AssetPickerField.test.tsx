@@ -585,10 +585,7 @@ describe('AssetPickerField', () => {
 
   /**
    * The card describes the resource the field holds; it does not manage it.
-   * Saving a copy of a resource and deleting one are the resource library's
-   * own actions, over every resource the protocol has, and a stage field that
-   * offered them put protocol-wide actions on whichever stage happened to name
-   * this file.
+   * Saving a copy and deleting are the resource library's own actions.
    */
   it('offers nothing on the card of a resource the protocol already holds', async () => {
     renderResourceEditor({
@@ -597,7 +594,7 @@ describe('AssetPickerField', () => {
       children: imageField(),
     });
 
-    // The card is up — so the absences below are the card's own, and not a
+    // The card is up, so the absences below are the card's own rather than a
     // check made before the resource arrived.
     expect(await screen.findByText('Neighbourhood photo')).toBeVisible();
     expect(
@@ -606,7 +603,6 @@ describe('AssetPickerField', () => {
     expect(
       screen.queryByRole('button', { name: 'Remove this resource' }),
     ).toBeNull();
-    // What the field itself decides is still there: which resource it names.
     expect(
       screen.getByRole('button', { name: 'Change the image' }),
     ).toBeEnabled();
@@ -1328,13 +1324,7 @@ describe('the validation state a picker exposes', () => {
   });
 });
 
-/**
- * A picker left showing something that is no longer true: a source chosen but
- * never followed through.
- *
- * The other way — a call still in flight for a resource the field has let go —
- * is above, with the rest of what a field does when it changes its mind.
- */
+/** A picker left showing a source chosen but never followed through. */
 describe('a picker the researcher backs out of', () => {
   it('keeps the interview network when the browser is cancelled', async () => {
     const user = userEvent.setup();

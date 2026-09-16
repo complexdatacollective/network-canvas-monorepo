@@ -894,9 +894,8 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     check: async () => {
       const user = userEvent.setup();
       // A map layer rather than an image, so the throwing procedure is asked
-      // only by the discard the researcher asked for: an image would have a
-      // preview beside it, whose own failure would put a second notice on
-      // screen.
+      // only by the discard: an image would have a preview beside it, whose
+      // own failure would put a second notice on screen.
       renderResourceEditor({
         // Thrown synchronously, which is the shape a `.catch()` chained onto
         // the call itself cannot see: the throw happens before there is a

@@ -50,11 +50,10 @@ export type BadgedAttribute = Readonly<{
  * (audit candidate 25) and is not touched here, so this stays inside the
  * package until the second caller arrives.
  *
- * The colour is the badge's fill, which is how Architect has always marked an
- * attribute's type: the badge IS the type's colour, and the sentence is read
- * in the contrast colour that colour publishes. `Badge` draws a coloured badge
- * filled unless it is asked for an outline, so the fill is the absent
- * `variant` rather than a named one.
+ * The colour is the badge's fill, as Architect marks an attribute's type, and
+ * the sentence is read in the ink that fill contrasts with. `Badge` fills a
+ * coloured badge unless asked for an outline, so the fill is the absent
+ * `variant`.
  */
 export default function AttributeControlBadge({
   attribute,

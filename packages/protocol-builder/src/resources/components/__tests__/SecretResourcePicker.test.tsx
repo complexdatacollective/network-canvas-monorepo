@@ -259,9 +259,7 @@ describe('the secret resource picker', () => {
     await addKey(user, 'Mapbox key');
 
     expect(await screen.findByText('Mapbox key')).toBeVisible();
-    // Secret material has no content an editor may hand back to anyone, so
-    // the only thing the card offers for a key added a moment ago is throwing
-    // it away again.
+    // Secret material has no content an editor may hand back to anyone.
     expect(
       screen.getByRole('button', { name: 'Discard this resource' }),
     ).toBeEnabled();

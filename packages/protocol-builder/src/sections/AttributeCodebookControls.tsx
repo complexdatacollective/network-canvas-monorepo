@@ -209,12 +209,6 @@ export type AttributeCodebookControlsProps = Readonly<{
      * they choose a control, which is the state these controls offer nothing
      * in — the kind decides both what else the attribute needs before it can
      * exist and which rules can be written about it.
-     *
-     * Read from the row rather than asked for: neither inventing family has a
-     * kind-of-answer control, because every control the schema knows collects
-     * exactly one kind (`variableTypeForComponent`), which is Architect's own
-     * rule for this (`sections/Form/withFieldsHandlers.js`'s
-     * `getTypeForComponent`).
      */
     type: string;
     /** The name they typed into the picker's create row. */
@@ -491,8 +485,7 @@ export default function AttributeCodebookControls({
    * rules below cannot disagree about one invention — and so a kind of answer
    * that starts or stops needing more than a name moves both at once. The
    * picker's create row asks the same question (`useCreateAttributeForSlot`),
-   * and so does each family's own save, which is what refuses a row that got
-   * this far with the control still set to one of those kinds.
+   * and so does each family's own save.
    */
   const canCreate =
     inventedType !== undefined && needsCodebookEditorToCreate(inventedType);
@@ -502,9 +495,8 @@ export default function AttributeCodebookControls({
    * The draft is the ROW's — there is no attribute to write it to until the
    * row's own save creates one — and the input control that decides the kind
    * is one the researcher can go back to. A rule the new kind does not accept
-   * is refused
-   * by that create, and a rules editor opened on the new kind lists the new
-   * kind's rules alone: the researcher can then neither save the row nor
+   * is refused by that create, and a rules editor opened on the new kind lists
+   * the new kind's rules alone: the researcher can then neither save the row nor
    * switch the rule off, which is a dialog with no way out of it. So the draft
    * follows the kind, by the same reading the codebook editor's own type
    * control makes of a variable draft (`rulesSurvivingTypeChange`).

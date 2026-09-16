@@ -27,9 +27,8 @@ export const INVENTED_TYPE_NOTICE = defineMessages({
  * Shared by both inventing rows for the reason the notice above is: one rule,
  * `needsCodebookEditorToCreate`, decides which inventions come here, and a row
  * that phrased the refusal for itself could say something the rule does not
- * mean. Both file them against the control that DECIDED the kind, which is the
- * input control in either row — the one question this package asks about an
- * invention, and the one the researcher has to change to get past the refusal.
+ * mean. Both file them against the input control, which is what decided the
+ * kind and what the researcher has to change to get past the refusal.
  */
 export const CREATE_FIRST_REFUSALS = defineMessages({
   createWithValuesFirst: {
@@ -72,8 +71,7 @@ export const CREATE_FIRST_REFUSALS = defineMessages({
  *
  * Its own module because both form families invent: the shared form-fields
  * row and the network composer's. One sentinel and one pair of keys, so a row
- * of either shape is recognised as inventing by the same question — and both
- * shapes answer the kind of answer the same way, from the input control.
+ * of either shape is recognised as inventing by the same question.
  */
 export const NEW_VARIABLE = '#create-new-attribute';
 

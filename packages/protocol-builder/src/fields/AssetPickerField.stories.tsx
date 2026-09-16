@@ -274,14 +274,10 @@ export const Chosen: Story = {
   // assertion below would pass on any button at all.
   parameters: { playsInJsdom: false },
   /**
-   * The card describes the resource and does not manage it. Saving a copy of
-   * one and deleting one belong to the resource library, where every resource
-   * in the protocol is listed; a stage field that offered them put two
-   * protocol-wide actions on whichever stage happened to name this file.
-   *
-   * What is left is the one thing the field itself decides: which resource it
-   * points at. That is Architect's own add affordance — primary, with a plus
-   * (`Codebook/EntityType.tsx:177` for the same treatment).
+   * The card describes the resource and does not manage it: saving a copy and
+   * deleting belong to the resource library. What is left is the one thing the
+   * field decides — which resource it points at — as Architect's own add
+   * affordance, primary with a plus.
    */
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

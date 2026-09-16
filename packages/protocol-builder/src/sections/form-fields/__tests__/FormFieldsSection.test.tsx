@@ -101,12 +101,8 @@ const collectedAttributeName = (dialog: RowDialog, name: string) =>
 
 /**
  * The notice under the input control, which is the only place an invention's
- * kind of answer is ever stated.
- *
- * This dialog asks for no kind: the control the researcher picks decides it,
- * permanently, and this sentence is what says so back to them. It bolds the
- * kind inside itself, so the whole sentence lives in no single text node —
- * hence `exactlyText`.
+ * kind of answer is stated. It bolds the kind inside itself, so the sentence
+ * lives in no single text node — hence `exactlyText`.
  */
 const saysTheTypeWillBe = (variableType: string) =>
   exactlyText(
@@ -156,8 +152,6 @@ const addInventedAttribute = async (
 ) => {
   const dialog = await openField(harness, 'Create new form field');
   await inventThroughThePicker(harness, dialog, attributeName);
-  // The input control is the only question this dialog asks about the
-  // attribute's shape: a plain text box is what makes it a `text` attribute.
   await harness.user.selectOptions(
     await dialog.findByRole('combobox', { name: 'Input control' }),
     'Text',
@@ -447,8 +441,6 @@ describe('the fields a form collects', () => {
 
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'contact_setting');
-    // A checkbox group is one of the controls a list of answers is collected
-    // with, so choosing it is how this row says the attribute is categorical.
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
       'CheckboxGroup',
@@ -2814,11 +2806,8 @@ describe('rebinding a form field to another attribute', () => {
   });
 
   /**
-   * The same rule where there is no attribute yet, met from the other side.
-   * The invention has no attribute to be rebound to: the control IS the
-   * decision, and the kind of answer follows it — so moving the control across
-   * a type boundary moves what the attribute will be, and the last choice is
-   * the one the create writes. A row that had kept the kind of the control the
+   * The same rule where there is no attribute yet: the last control chosen is
+   * the one the create writes, because keeping the kind of a control the
    * researcher left behind would create a `number` collected with a `Text`
    * box, which the variable schema refuses outright.
    */
@@ -2833,9 +2822,6 @@ describe('rebinding a form field to another attribute', () => {
     const control = await dialog.findByRole('combobox', {
       name: 'Input control',
     });
-    // Every control a form can offer is on this one list while the row is
-    // inventing, so a text box and a number box are both reachable from it —
-    // and the notice under it is where the kind each one decides is said back.
     await harness.user.selectOptions(control, 'Text');
     await waitFor(() =>
       expect(dialog.getByText(saysTheTypeWillBe('Text'))).toBeVisible(),
@@ -3139,10 +3125,9 @@ describe('an attribute id that collides with the create option', () => {
       attributePicker(dialog),
       COLLIDING_ID,
     );
-    // The attribute exists, so its kind is settled and no control on this
-    // dialog can move it: the input control narrows from every control a form
-    // can offer to the two a `text` attribute allows, and opens on the one the
-    // codebook records. A row still INVENTING would be offered the whole list.
+    // The attribute exists, so its kind is settled: the control narrows to
+    // the two a `text` attribute allows, where a row still inventing would be
+    // offered the whole list.
     const control = await dialog.findByRole('combobox', {
       name: 'Input control',
     });
@@ -3652,11 +3637,6 @@ describe('a stored field the schema refuses for its own shape', () => {
  * create — the same shape the rules beside them take.
  */
 describe('the answers a boolean a field is inventing offers', () => {
-  /**
-   * The control is what says the answer is a yes or a no: `Boolean` is the
-   * pair of buttons a boolean attribute is collected with, so choosing it is
-   * how this row invents one.
-   */
   const inventBoolean = async (
     harness: ReturnType<typeof renderStageEditor>,
     control = 'Boolean',
@@ -3864,11 +3844,6 @@ describe('the answers a boolean a field is inventing offers', () => {
  * on the row and go into the create.
  */
 describe('rules for the attribute a field is inventing', () => {
-  /**
-   * Starts an invention on the control that collects the kind of answer the
-   * test is about — which rules are offered follows from the kind, and the
-   * control is the only thing this dialog asks that decides it.
-   */
   const startInventing = async (
     harness: ReturnType<typeof renderStageEditor>,
     control: string,
@@ -3953,11 +3928,10 @@ describe('rules for the attribute a field is inventing', () => {
   });
 
   /**
-   * The input control is a control the researcher can go back to, and the kind
-   * of answer goes with it — so moving the control across a type boundary is a
-   * change of kind. The rules are held on the ROW rather than on an attribute,
-   * so they outlive the kind they were written about unless something moves
-   * them.
+   * The input control is one the researcher can go back to, and the kind of
+   * answer goes with it. The rules are held on the row rather than on an
+   * attribute, so they outlive the kind they were written about unless
+   * something moves them.
    *
    * Every variable schema's `validation` is picked from its own kind's rule
    * set, so a rule the new kind does not accept is refused by the create; and
@@ -4272,13 +4246,7 @@ describe('rules for the attribute a field is inventing', () => {
     expect(asRecord(created[1]).validation).toEqual({ required: true });
   });
 
-  /**
-   * And a row that has not said how the participant answers has no rules: the
-   * control is what decides the kind of answer, and the rules on offer are
-   * that kind's. It opens on its placeholder rather than on a control the
-   * dialog picked, because picking one would be deciding the kind for the
-   * researcher.
-   */
+  /** And a row that has not chosen a control has no kind, so it has no rules. */
   it('offers none until the input control is chosen', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
@@ -4301,8 +4269,6 @@ describe('inventing an attribute answered on a scale', () => {
   ) => {
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'closeness');
-    // The slider is the only control a scale is collected with, so choosing it
-    // is how this row says the answer is placed on a line.
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
       'VisualAnalogScale',
@@ -4323,9 +4289,8 @@ describe('inventing an attribute answered on a scale', () => {
         name: 'Create this attribute and what it accepts',
       }),
     ).toBeInTheDocument();
-    // The input control stays, still holding the slider: it is the question
-    // that sent the researcher here, so taking it away would leave them with
-    // no way to change their mind about the kind of attribute they are making.
+    // The control stays, so the researcher can still change their mind about
+    // the kind of attribute they are making.
     expect(dialog.getByRole('combobox', { name: 'Input control' })).toHaveValue(
       'VisualAnalogScale',
     );
@@ -4652,15 +4617,10 @@ describe('dismissing a codebook editor while its save is in flight', () => {
  * label on screen: it changes how that attribute is collected in every form
  * that asks for it, out of a save the researcher made about a question.
  *
- * The routes differ in what the control is an answer ABOUT as they run. While
- * a row is inventing, the control is the question the invention turns on — the
- * whole grouped list is offered and what the researcher picks is what the
- * attribute will be — so an answer left over from the attribute the row used
- * to collect would decide the new one's kind for them. A field's value
- * survives a rebinding and even an unmount (`registerField` prefers a dormant
- * value over the initial one it is handed), so every route here that passes
- * through the sentinel is a route where whatever remembers the binding has to
- * outlive whatever the field is showing.
+ * A field's value survives a rebinding and even an unmount (`registerField`
+ * prefers a dormant value over the initial one it is handed), so every route
+ * here that passes through the sentinel is a route where whatever remembers
+ * the binding has to outlive whatever the field is showing.
  */
 describe('the control a row saves for the attribute it finally collects', () => {
   /** Resolves the attribute the row ended up collecting, after the save. */
@@ -4714,11 +4674,7 @@ describe('the control a row saves for the attribute it finally collects', () => 
     await chooseControl(harness, dialog, 'ToggleButtonGroup');
   };
 
-  /**
-   * Invents an attribute of this name, collected with this control — which is
-   * the whole of what the invention decides. The control names the kind of
-   * answer, so it is the choice that has to survive every route below.
-   */
+  /** Invents an attribute of this name, collected with this control. */
   const inventCollectedWith = async (
     harness: ReturnType<typeof renderStageEditor>,
     dialog: RowDialog,

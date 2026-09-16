@@ -438,10 +438,8 @@ export const authorsDateSettingsFromField = async (
 ) => {
   const dating = await openField(harness, 'Create new form field');
   await inventAttributeFromRow(harness, dating, 'met_on');
-  // One question, not two: the dialog never asks what kind of answer the
-  // attribute holds, because every control it offers collects exactly one kind
-  // — so picking the date picker is what makes this a `datetime` attribute,
-  // which is asserted at the end.
+  // Picking the date picker is what makes this a `datetime` attribute, which
+  // is asserted at the end.
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Input control' }),
     'DatePicker',

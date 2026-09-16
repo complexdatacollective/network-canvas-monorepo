@@ -78,11 +78,7 @@ export type OutlineSectionIssue = Readonly<{
 export type OutlineSection = Readonly<{
   id: string;
   title: string;
-  /**
-   * Whether the section is drawn as a card or as the stage's own heading, as
-   * it registered itself. Carried through to the host, which has no other way
-   * to tell the two apart — see `StageSectionChrome`.
-   */
+  /** Whether the section is drawn as a card or as the stage's own heading. */
   chrome: StageSectionChrome;
   availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];

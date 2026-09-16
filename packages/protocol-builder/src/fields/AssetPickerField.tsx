@@ -43,15 +43,10 @@ import type { ResourceDescriptor } from '../resources/types.ts';
 const INTERVIEW_NETWORK = 'existing';
 
 /**
- * The picker's own control chrome: the rounded, bordered, padded box every
- * other field in the system draws its control inside.
- *
- * Taken from `CheckboxGroup` and `RadioGroup`, the two composite fields whose
- * control is a region rather than a single input — the same composition, so a
- * roster's data source is framed exactly as the radio group directly above it
- * is. `controlVariants` shapes a single-line control, so the three rules that
- * would clip a region are lifted: the box wraps, wraps its text, and is free
- * to shrink with the field that holds it.
+ * The picker's own control chrome, composed as `CheckboxGroup` and
+ * `RadioGroup` compose theirs. `controlVariants` shapes a single-line control,
+ * so the three rules that would clip a region are lifted at the call site: the
+ * box wraps, wraps its text, and is free to shrink.
  */
 const pickerChromeVariants = compose(
   controlVariants,
@@ -259,12 +254,9 @@ export default function AssetPickerField({
   /**
    * Whether another resource may be chosen right now.
    *
-   * Not while a discard of the resource this field holds is undecided — the
-   * discard is the only call this field makes that changes what it holds.
-   * Choosing again disowns that call, so the discard the host goes on to carry
-   * out would no longer clear the field, and the field would be left naming a
-   * resource the host has deleted — a stage that cannot be saved, reached by
-   * an action the researcher was told had worked.
+   * Not while a discard of the resource this field holds is undecided:
+   * choosing again disowns that call, and the field would be left naming a
+   * resource the host goes on to delete.
    */
   const canBrowse = !locked && !action.busy;
 
@@ -475,18 +467,11 @@ export default function AssetPickerField({
 
           {inspection !== undefined && descriptor !== undefined && (
             /*
-              The card says what the field holds, and nothing on it manages the
-              resource itself: saving a copy and deleting one are the resource
-              library's own actions, and a researcher who wants either goes
-              where every resource in the protocol is listed rather than to
-              whichever stage field happens to name this one. Changing the
-              field's mind is the button below the card.
-
-              The one exception is a file imported since this stage was opened,
-              which the library cannot show at all: it is not in the protocol
-              yet, and until the stage is saved this card is the only place it
-              exists. So the undo for that import is offered here, and it goes
-              as soon as the import is saved.
+              Nothing on the card manages the resource: saving a copy and
+              deleting one are the resource library's own actions. The
+              exception is a file imported since this stage was opened, which
+              is not in the protocol yet and which this card is the only place
+              to undo.
             */
             <ResourceCard
               inspection={inspection}

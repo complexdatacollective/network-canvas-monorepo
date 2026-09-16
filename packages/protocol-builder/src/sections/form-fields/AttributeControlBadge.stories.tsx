@@ -11,9 +11,7 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  * One badge per kind of attribute, each with the first control its type
  * allows, on the surface the row list draws them on.
  *
- * That surface is an accent `Surface`, because that is what an `ArrayField`
- * row is. Drawn on a plain `bg-surface` instead, this preview showed the badge
- * against a background no row ever uses.
+ * An accent `Surface`, because that is what an `ArrayField` row is.
  *
  * Every colour at once because the badge's colour is the whole of what varies
  * between rows: the a11y check this preview runs over every story is what says

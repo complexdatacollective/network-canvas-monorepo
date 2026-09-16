@@ -103,16 +103,8 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
           {descriptor.name}
         </Heading>
         {/*
-          The type's own colour, which is the colour the protocol's resource
-          library badges it in — so the resource a field holds is recognisably
-          the one the researcher picked out of that library.
-
-          Outlined rather than filled, because this palette cannot carry a
-          white label: sea green measures 2.28:1 against white, well under the
-          4.5:1 a badge's small text needs. `outline` keeps the colour as the
-          border and a wash behind the label and puts the label in the theme's
-          own text colour, which is the one colour the theme guarantees against
-          the surface — see `Badge.tsx`.
+          The type's own colour, which is what the protocol's resource library
+          badges it in.
         */}
         <Badge
           variant="outline"

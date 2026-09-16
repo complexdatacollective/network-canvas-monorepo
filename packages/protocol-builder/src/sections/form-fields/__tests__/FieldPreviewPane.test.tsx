@@ -331,11 +331,8 @@ describe('FieldPreviewPane', () => {
   });
 
   it('reads an invented attribute’s kind off the control and nothing else', () => {
-    // The row holds no kind of answer at all — there is no such key, and the
-    // dialog never asks — so the control is the whole of what the preview has
-    // to go on. Two rows alike in every other respect, and the participant
-    // meets a different kind of answer in each: the pairing the interview
-    // resolves is coming from the control alone.
+    // Two rows alike in every other respect, and the participant meets a
+    // different kind of answer in each.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
@@ -346,8 +343,6 @@ describe('FieldPreviewPane', () => {
     expect(
       screen.getByRole('textbox', { name: 'Research_Question_Á2' }),
     ).toBeVisible();
-    // Not a number: a `text` attribute is what `Text` makes, and nothing here
-    // could have said so but the control.
     expect(
       screen.queryByRole('spinbutton', { name: 'Research_Question_Á2' }),
     ).not.toBeInTheDocument();
@@ -382,8 +377,6 @@ describe('FieldPreviewPane', () => {
     // would be right; throwing on `options.map` would not.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
-      // A list of answers is what `RadioGroup` collects, and the row says so by
-      // naming that control: the kind is never written beside it.
       _component: 'RadioGroup',
       prompt: 'How often?',
     });
@@ -530,12 +523,9 @@ describe('FieldPreviewPane', () => {
   });
 
   it('previews a composer’s invented attribute from the control it chose', () => {
-    // No row of either family is asked for a kind of answer: the input control
-    // is the question, so the control alone says what the participant will
-    // meet. The composer's row differs only in WHERE it keeps that control —
-    // its own `component`, rather than the `_component` the form family's
-    // dialog writes to the codebook — and this pins that the composer reads
-    // its own key.
+    // The composer's row keeps its control on its own `component` rather than
+    // the `_component` the form family's dialog writes, so this pins that the
+    // preview reads the composer's own key.
     renderPreview(
       {
         variable: CREATE_NEW_ATTRIBUTE,

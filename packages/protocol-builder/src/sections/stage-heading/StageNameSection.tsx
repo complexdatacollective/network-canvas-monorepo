@@ -104,8 +104,7 @@ export default function StageNameSection({
   // field's own label are the same words, and a translator moves them once.
   const stageNameLabel = intl.formatMessage(messages.stageName);
   // The stage's heading rather than a card, which is what a host lining its
-  // own chrome up with the form has to know: everything below this is the
-  // stage being configured, and this is the stage being named.
+  // own chrome up with the form has to know.
   const { sectionId } = useOutlineSection(
     stageNameLabel,
     'available',

@@ -17,11 +17,7 @@ import { useStageEditorForm } from './stageEditorContext.ts';
 export function useOutlineSection(
   title: string,
   availability: SectionAvailability = 'available',
-  /**
-   * What this section wears on the page. A constant of the section rather than
-   * a state of it — a card does not become the stage's heading — so it is read
-   * once, where the section registers.
-   */
+  /** What this section wears on the page; read once, at registration. */
   chrome: StageSectionChrome = 'card',
 ): Readonly<{ sectionId: string }> {
   const { outline } = useStageEditorForm();

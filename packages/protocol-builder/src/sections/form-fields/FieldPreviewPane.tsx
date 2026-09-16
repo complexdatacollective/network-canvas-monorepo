@@ -257,9 +257,7 @@ export default function FieldPreviewPane({
     : undefined;
 
   // An attribute nobody has created yet has no type of its own, so the kind
-  // the chosen control implies stands in, which is unambiguous. Both rows say
-  // it the same way: the input control IS the question, and neither asks for a
-  // kind of answer beside it.
+  // the chosen control implies stands in.
   //
   // That reading belongs to a row that is INVENTING, and a row that is not
   // gets none. A row naming an attribute the codebook does not hold —

@@ -147,8 +147,8 @@ describe("a roster stage's data file", () => {
   it('clears everything chosen from the old file when the file changes', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-roster-1',
-      // A second data file, because a swap is what this is about: the protocol
-      // ships one roster, and choosing it again is not a change at all.
+      // A second data file: the protocol ships one roster, and choosing it
+      // again is not a change at all.
       assets: {
         second_roster_data: {
           name: 'Second roster',
@@ -171,9 +171,6 @@ describe("a roster stage's data file", () => {
       ),
     });
 
-    // The way a researcher swaps rosters: choose another file over the one the
-    // stage was opened on. Everything chosen from the old file's columns goes
-    // with it.
     await harness.user.click(
       await screen.findByRole('button', { name: 'Change the data file' }),
     );
