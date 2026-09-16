@@ -19,6 +19,10 @@ import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import Checkbox from './Checkbox';
 
+const checkboxGroupOwnVariants = cva({
+  base: 'items-start',
+});
+
 // Compose fieldset wrapper variants
 const checkboxGroupComposedVariants = compose(
   controlVariants,
@@ -27,9 +31,7 @@ const checkboxGroupComposedVariants = compose(
   stateVariants,
   interactiveStateVariants,
   orientationVariants,
-  cva({
-    base: 'items-start',
-  }),
+  checkboxGroupOwnVariants,
 );
 
 type CheckboxOption = {

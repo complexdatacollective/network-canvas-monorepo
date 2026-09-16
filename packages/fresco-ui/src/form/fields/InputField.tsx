@@ -52,6 +52,41 @@ const messages = defineMessages({
   },
 });
 
+const inputFieldOwnVariants = cva({
+  base: cx(
+    'max-w-full min-w-0',
+    // `controlVariants` sets `min-w-fit` (sensible for buttons whose
+    // label should never be clipped), but combined with
+    // `field-sizing-content` on the inner `<input>` that produces a
+    // wrapper whose min-width is the input's entire content width —
+    // so pasting e.g. an UploadThing API token (~200 chars, no
+    // whitespace) causes the whole settings field to overflow its
+    // container. `min-w-0` lets flex shrink the wrapper below its
+    // intrinsic content size; combined with `min-w-0` on the inner
+    // `<input>` (see `inputVariants` below), text is clipped inside
+    // a container-sized field instead of blowing out the layout.
+    'w-auto shrink-0',
+    // Focus indication is one ring per focused element: the wrapper's
+    // `focus-styles` ring (from the composed `interactiveStateVariants`) is
+    // the inner <input>'s proxy — the input sets `focus:ring-0` and has none
+    // of its own. Slot controls render their own design-system focus ring
+    // (`Button`/`IconButton` use `focusable`), so the wrapper deliberately
+    // does NOT add a second ring on slot focus, which would double-ring.
+    //
+    // The wrapper clips to its rounded corners (`overflow-hidden` from
+    // `controlVariants`, needed for child backgrounds such as the number
+    // steppers). A focused slot button's outward offset ring (outline-offset-3
+    // + outline-2 = 5px) exceeds the ~4px vertical clearance and would be
+    // clipped, so un-clip while a slot control is focus-visible — the ring
+    // then paints in full. Number steppers instead paint an INSET ring (see
+    // `stepperButtonVariants`) so they stay fully visible without depending on
+    // this un-clip, and number fields keep their clipped corners.
+    'has-[button:focus-visible]:overflow-visible',
+    // Child buttons should have reduced height, but their icons should stay the same size
+    '[&_button]:h-10',
+  ),
+});
+
 export const inputFieldControlVariants = compose(
   heightVariants,
   textSizeVariants,
@@ -62,69 +97,35 @@ export const inputFieldControlVariants = compose(
   proportionalLucideIconVariants,
   stateVariants,
   interactiveStateVariants,
-  cva({
-    base: cx(
-      'max-w-full min-w-0',
-      // `controlVariants` sets `min-w-fit` (sensible for buttons whose
-      // label should never be clipped), but combined with
-      // `field-sizing-content` on the inner `<input>` that produces a
-      // wrapper whose min-width is the input's entire content width —
-      // so pasting e.g. an UploadThing API token (~200 chars, no
-      // whitespace) causes the whole settings field to overflow its
-      // container. `min-w-0` lets flex shrink the wrapper below its
-      // intrinsic content size; combined with `min-w-0` on the inner
-      // `<input>` (see `inputVariants` below), text is clipped inside
-      // a container-sized field instead of blowing out the layout.
-      'w-auto shrink-0',
-      // Focus indication is one ring per focused element: the wrapper's
-      // `focus-styles` ring (from the composed `interactiveStateVariants`) is
-      // the inner <input>'s proxy — the input sets `focus:ring-0` and has none
-      // of its own. Slot controls render their own design-system focus ring
-      // (`Button`/`IconButton` use `focusable`), so the wrapper deliberately
-      // does NOT add a second ring on slot focus, which would double-ring.
-      //
-      // The wrapper clips to its rounded corners (`overflow-hidden` from
-      // `controlVariants`, needed for child backgrounds such as the number
-      // steppers). A focused slot button's outward offset ring (outline-offset-3
-      // + outline-2 = 5px) exceeds the ~4px vertical clearance and would be
-      // clipped, so un-clip while a slot control is focus-visible — the ring
-      // then paints in full. Number steppers instead paint an INSET ring (see
-      // `stepperButtonVariants`) so they stay fully visible without depending on
-      // this un-clip, and number fields keep their clipped corners.
-      'has-[button:focus-visible]:overflow-visible',
-      // Child buttons should have reduced height, but their icons should stay the same size
-      '[&_button]:h-10',
-    ),
-  }),
+  inputFieldOwnVariants,
 );
 
+const inputOwnVariants = cva({
+  base: cx(
+    'cursor-[inherit]',
+    '[font-size:inherit]', // Ensure input inherits text size from wrapper
+    'p-0',
+    // `field-sizing-content` sets the intrinsic width to the content,
+    // so very long single-token values (e.g. an UploadThing API token)
+    // would blow out the flex parent unless we let flex shrink the
+    // input. `min-w-0` + default `shrink: 1` lets it collapse to fit
+    // the container; `grow basis-0` makes it expand to fill any
+    // remaining space when the content is short.
+    'field-sizing-content min-w-0 grow basis-0',
+    'border-none bg-transparent outline-none focus:ring-0',
+    'transition-none',
+    // Hide browser's native clear button on search inputs (we provide our own)
+    '[&::-webkit-search-cancel-button]:hidden',
+    '[&::-webkit-search-decoration]:hidden',
+    // Hide browser's native spinner on number inputs (we provide our own)
+    '[&::-webkit-outer-spin-button]:appearance-none',
+    '[&::-webkit-inner-spin-button]:appearance-none',
+    '[appearance:textfield]',
+  ),
+});
+
 // Input element when used with wrapper (prefix/suffix)
-const inputVariants = compose(
-  placeholderVariants,
-  cva({
-    base: cx(
-      'cursor-[inherit]',
-      '[font-size:inherit]', // Ensure input inherits text size from wrapper
-      'p-0',
-      // `field-sizing-content` sets the intrinsic width to the content,
-      // so very long single-token values (e.g. an UploadThing API token)
-      // would blow out the flex parent unless we let flex shrink the
-      // input. `min-w-0` + default `shrink: 1` lets it collapse to fit
-      // the container; `grow basis-0` makes it expand to fill any
-      // remaining space when the content is short.
-      'field-sizing-content min-w-0 grow basis-0',
-      'border-none bg-transparent outline-none focus:ring-0',
-      'transition-none',
-      // Hide browser's native clear button on search inputs (we provide our own)
-      '[&::-webkit-search-cancel-button]:hidden',
-      '[&::-webkit-search-decoration]:hidden',
-      // Hide browser's native spinner on number inputs (we provide our own)
-      '[&::-webkit-outer-spin-button]:appearance-none',
-      '[&::-webkit-inner-spin-button]:appearance-none',
-      '[appearance:textfield]',
-    ),
-  }),
-);
+const inputVariants = compose(placeholderVariants, inputOwnVariants);
 
 // Native <input type="date"> doesn't expose its empty-state format hint via
 // ::placeholder, and :placeholder-shown doesn't match an empty date input. The

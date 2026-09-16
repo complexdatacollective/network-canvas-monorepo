@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tears down release-test stacks (containers, network, volumes). With no
-# arguments both lanes are removed; pass --lane upgrade|fresh for one.
+# arguments every lane is removed; pass --lane <name> (repeatable as a
+# space-separated list) for a subset.
 # --purge also removes the locally built pending image.
 set -euo pipefail
 
@@ -15,7 +16,10 @@ while [ $# -gt 0 ]; do
     *) echo "Unknown argument: $1" >&2; exit 1 ;;
   esac
 done
-[ -n "$LANES" ] || LANES="upgrade fresh"
+# Every lane up.sh can start. A lane missing from here survives a teardown
+# that claims to have removed everything, and its published ports then break
+# the next run.
+[ -n "$LANES" ] || LANES="upgrade fresh analytics twofactor"
 
 for lane in $LANES; do
   # Interpolation values are irrelevant for `down`, but compose warns on unset

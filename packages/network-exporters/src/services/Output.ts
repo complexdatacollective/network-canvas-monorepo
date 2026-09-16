@@ -3,7 +3,7 @@ import { Context, type Effect } from 'effect';
 import type { OutputError } from '../errors';
 import type { OutputEntry, OutputHandle, OutputResult } from '../output';
 
-export class Output extends Context.Tag('NetworkExporters/Output')<
+export class Output extends Context.Service<
   Output,
   {
     readonly begin: () => Effect.Effect<OutputHandle, OutputError>;
@@ -19,4 +19,4 @@ export class Output extends Context.Tag('NetworkExporters/Output')<
     // backend holds outside the interrupted fiber (buffers, forked fibers).
     readonly abort?: (handle: OutputHandle) => Effect.Effect<void>;
   }
->() {}
+>()('NetworkExporters/Output') {}

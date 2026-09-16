@@ -24,7 +24,9 @@
   // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
   // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
   // is never imported from source.
-  "ignoreDependencies": ["@typescript/typescript6"],
+  // effect is a root devDependency only so node_modules/effect/AGENTS.md and
+  // src/ are readable (see "Learning more about Effect" in CLAUDE.md).
+  "ignoreDependencies": ["@typescript/typescript6", "effect"],
   "tags": ["-public"],
   "workspaces": {
     // The release-test walkers are invoked with node by the

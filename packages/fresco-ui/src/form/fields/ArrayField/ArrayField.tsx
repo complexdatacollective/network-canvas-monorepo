@@ -176,20 +176,22 @@ function isItemList<T extends Record<string, unknown>>(
   );
 }
 
+const arrayFieldOwnVariants = cva({
+  // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
+  // whose labels should never be clipped. On this list that floor is
+  // `fit-content` of every row at once — a row of selects and buttons — so
+  // the group refused to shrink below ~428px and pushed the roster editor
+  // past a 390px viewport (#1388). The list wraps and clips its own rows
+  // (`overflow-hidden text-wrap`), so it has no need of a content floor.
+  base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
+});
+
 const arrayFieldVariants = compose(
   controlVariants,
   inputControlVariants,
   groupSpacingVariants,
   stateVariants,
-  cva({
-    // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
-    // whose labels should never be clipped. On this list that floor is
-    // `fit-content` of every row at once — a row of selects and buttons — so
-    // the group refused to shrink below ~428px and pushed the roster editor
-    // past a 390px viewport (#1388). The list wraps and clips its own rows
-    // (`overflow-hidden text-wrap`), so it has no need of a content floor.
-    base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
-  }),
+  arrayFieldOwnVariants,
 );
 
 const itemVariants = cva({

@@ -2,6 +2,14 @@
 
 A runtime-agnostic [Effect-TS](https://effect.website) pipeline that exports Network Canvas interview sessions to GraphML and CSV. Hosts plug in three Layers (`InterviewRepository`, `ProtocolRepository`, `Output`) and call `exportPipeline`. The package owns no persistence, pulls in no `node:*` modules from its core, and runs unchanged on Node, browsers, and Cloudflare Workers.
 
+## Install
+
+`effect` is a peer dependency, so install it alongside the package. Effect 4 has not reached a stable release, so ask for the release candidate by tag:
+
+```bash
+npm install @codaco/network-exporters effect@rc
+```
+
 ```ts
 import { Effect, Layer, Queue } from 'effect';
 import { exportPipeline } from '@codaco/network-exporters/pipeline';
@@ -62,7 +70,7 @@ Export logic was historically embedded in [Fresco](https://github.com/complexdat
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-Three injected services (`Context.Tag`s) form the package's input/output boundary:
+Three injected services (`Context.Service`s) form the package's input/output boundary:
 
 | Service               | Provided by                       | Responsibility                                                                           |
 | --------------------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -310,7 +318,7 @@ This implementation skips `makeZipOutput` entirely: each successful generation r
 ### 4. Run the pipeline
 
 ```ts
-import { Effect, Layer, Queue } from 'effect';
+import { type Cause, Effect, Fiber, Layer, Queue, Stream } from 'effect';
 import { exportPipeline } from '@codaco/network-exporters/pipeline';
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import {
@@ -324,41 +332,49 @@ const exportLayer = Layer.mergeAll(
   S3ZipOutput,
 );
 
-const result = await Effect.gen(function* () {
-  const queue = yield* Queue.unbounded<ExportEvent>();
+const result = await Effect.scoped(
+  Effect.gen(function* () {
+    // `Cause.Done` in the error type is what lets `Queue.end` close the queue
+    // below: `Queue.end` takes an `Enqueue<A, E | Done>`.
+    const queue = yield* Queue.unbounded<ExportEvent, Cause.Done>();
 
-  // Spawn a fiber that drains the queue and forwards events to the UI
-  // (e.g. an SSE response). The pipeline writes; this consumer reads.
-  yield* Effect.forkDaemon(
-    Effect.gen(function* () {
-      while (true) {
-        const event = yield* Queue.take(queue);
-        yield* renderEventToClient(event);
-      }
-    }),
-  );
+    // Drain the queue into the UI (e.g. an SSE response). Hold the fiber:
+    // finishing the export is not the same as having delivered every event,
+    // and the join below is what makes delivery a property rather than a
+    // matter of how the scheduler happened to interleave.
+    const drain = yield* Effect.forkScoped(
+      Stream.fromQueue(queue).pipe(Stream.runForEach(renderEventToClient)),
+    );
 
-  return yield* exportPipeline(
-    ['interview-1', 'interview-2'],
-    {
-      exportGraphML: true,
-      exportCSV: true,
-      globalOptions: {
-        useScreenLayoutCoordinates: true,
-        screenLayoutHeight: 1080,
-        screenLayoutWidth: 1920,
+    const pipelineResult = yield* exportPipeline(
+      ['interview-1', 'interview-2'],
+      {
+        exportGraphML: true,
+        exportCSV: true,
+        globalOptions: {
+          useScreenLayoutCoordinates: true,
+          screenLayoutHeight: 1080,
+          screenLayoutWidth: 1920,
+        },
+        // optional: defaults to os.cpus().length on Node, 4 elsewhere
+        concurrency: 4,
+        // optional: only used to populate session metadata
+        appVersion: '3.0.0',
+        commitHash: process.env.COMMIT_HASH,
       },
-      // optional: defaults to os.cpus().length on Node, 4 elsewhere
-      concurrency: 4,
-      // optional: only used to populate session metadata
-      appVersion: '3.0.0',
-      commitHash: process.env.COMMIT_HASH,
-    },
-    queue,
-  );
-}).pipe(
+      queue,
+    );
+
+    // `end` lets the buffered events drain and then terminates the stream;
+    // `Queue.shutdown` would discard whatever is still buffered.
+    yield* Queue.end(queue);
+    yield* Fiber.join(drain);
+
+    return pipelineResult;
+  }),
+).pipe(
   Effect.provide(exportLayer),
-  Effect.catchAll((error: ExportError) =>
+  Effect.catch((error: ExportError) =>
     Effect.succeed({
       status: 'error' as const,
       message: describeExportError(error, 'running export'),
@@ -417,7 +433,7 @@ A failure inside `Output.writeEntry` is fatal — once partial bytes are in the 
 `describeExportError(error, stage?)` produces a human-readable message. It dispatches on the tag and inspects `error.cause` for known runtime patterns (`code === "ENOSPC"`, OOM messages, timeouts, connection refused) before falling back to a tag-aware default. Use it at the consumer boundary — the package itself never builds user-facing strings.
 
 ```ts
-Effect.catchAll((error) =>
+Effect.catch((error) =>
   Effect.succeed({
     status: 'error' as const,
     message: describeExportError(error, 'running export'),
@@ -503,7 +519,7 @@ pnpm --filter @codaco/network-exporters test:watch
 pnpm --filter @codaco/network-exporters typecheck   # tsc --noEmit
 ```
 
-Internal consumers resolve `package.json#exports` directly against `src/*.ts` — no build step is required to pick up source changes. The `build` script still runs `vite build`, which emits `dist/<entry>.{js,d.ts}` per public sub-path defined in `vite.config.ts`; that output is consumed only by the published npm artifact, via `package.json#publishConfig.exports` swapped in at pack time. All runtime dependencies (`effect`, `fflate`, `@codaco/shared-consts`, `@codaco/protocol-validation`, `es-toolkit`, `sanitize-filename`, `zod`, `@xmldom/xmldom`, `ohash`) are externalised at build time.
+Internal consumers resolve `package.json#exports` directly against `src/*.ts` — no build step is required to pick up source changes. The `build` script still runs `vite build`, which emits `dist/<entry>.{js,d.ts}` per public sub-path defined in `vite.config.ts`; that output is consumed only by the published npm artifact, via `package.json#publishConfig.exports` swapped in at pack time. All runtime dependencies (`effect`, `fflate`, `@codaco/shared-consts`, `@codaco/protocol-validation`, `es-toolkit`, `sanitize-filename`, `zod`, `@xmldom/xmldom`, `ohash`) are externalised at build time. `effect` is a peer rather than a dependency, so there is exactly one copy — and one fiber runtime — in an application that also uses Effect directly.
 
 ### Adding a new entry point
 
