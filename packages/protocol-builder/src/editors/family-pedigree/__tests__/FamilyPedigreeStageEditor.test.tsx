@@ -7,9 +7,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   inventAttribute,
-  offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -88,17 +88,6 @@ function variableIdByName(
     ([, variable]) => isRecord(variable) && variable.name === name,
   )?.[0];
 }
-
-/**
- * The attributes a picker is currently offering, by their ids.
- *
- * The picker is a trigger and a window, so this opens the window, reads the
- * rows and closes it again — leaving the field exactly as it found it.
- */
-const optionsOf = (
-  harness: StageEditorHarness,
-  name: string,
-): Promise<string[]> => offeredAttributes(harness.user, attributeField(name));
 
 /**
  * Binds one attribute slot, through the window a researcher opens.
@@ -450,10 +439,10 @@ describe('a codebook that changes while the pedigree is open', () => {
       },
     });
 
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Display label')).toContain(
-        'fm_nickname',
-      ),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Display label'),
+      (offered) => expect(offered).toContain('fm_nickname'),
     );
     expectStageUntouched(harness);
   });
