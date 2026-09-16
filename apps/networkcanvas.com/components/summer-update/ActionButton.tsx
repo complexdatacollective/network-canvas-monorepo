@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { ButtonLink } from '~/components/ui/ButtonLink';
+import Button from '@codaco/fresco-ui/Button';
 
 export function ActionButton({
   children,
@@ -16,16 +16,16 @@ export function ActionButton({
   target?: string;
 }) {
   return (
-    <ButtonLink
-      external
-      href={href}
+    <Button
+      asChild
       color={secondary ? 'dynamic' : 'success'}
       size={compact ? 'md' : 'lg'}
       textStyle={secondary ? 'uppercase' : undefined}
       variant={secondary ? 'outline' : 'raised'}
-      target={target}
     >
-      {children}
-    </ButtonLink>
+      <a href={href} target={target} rel="noreferrer">
+        {children}
+      </a>
+    </Button>
   );
 }

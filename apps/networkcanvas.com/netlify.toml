@@ -10,5 +10,21 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 [functions]
 deno_import_map = "apps/networkcanvas.com/netlify/import-map.json"
 
+# The gallery is served from its own domain alias of this site. Its exported
+# routes stay in the publish directory as the rewrite target, so a plain
+# redirect would lose to the real file — these have to be forced. Only the
+# localized paths need rules: the edge function localizes everything else first.
+[[redirects]]
+from = "https://networkcanvas.com/:locale/protocol-gallery/*"
+to = "https://protocolgallery.networkcanvas.com/:locale/:splat"
+status = 301
+force = true
+
+[[redirects]]
+from = "https://networkcanvas.com/:locale/protocol-gallery"
+to = "https://protocolgallery.networkcanvas.com/:locale/"
+status = 301
+force = true
+
 [context.deploy-preview]
 ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes turbo@2.10.4 query affected --packages @codaco/documentation networkcanvas.com --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"

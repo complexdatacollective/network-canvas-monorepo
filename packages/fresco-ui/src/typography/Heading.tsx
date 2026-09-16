@@ -25,6 +25,10 @@ export const headingVariants = cva({
       'display-heading': 'text-6xl font-black',
       'section-heading': 'text-4xl font-black',
       'subheading': 'text-2xl font-black',
+      // A long descriptive title set beneath a name: the level picks the size,
+      // the variant trades heading weight and leading for something that can
+      // run to two or three lines without opening up.
+      'subtitle': 'leading-snug font-semibold',
     },
     margin: {
       default: 'mt-0 mb-0 not-first:mt-[1em] not-last:mb-[0.5em]',

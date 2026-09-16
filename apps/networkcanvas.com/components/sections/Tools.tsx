@@ -1,8 +1,8 @@
 import { useTranslations } from 'next-intl';
 
+import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
 import { Reveal } from '~/components/ui/Reveal';
@@ -67,23 +67,29 @@ export function Tools() {
                   {t(`${tool.id}.description`)}
                 </Paragraph>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <ButtonLink
-                    href={tool.href}
-                    external
+                  <Button
+                    asChild
                     color="default"
                     className={`rounded-full ${accent.button}`}
                   >
-                    {t(`${tool.id}.action`)}
-                  </ButtonLink>
+                    <a href={tool.href} target="_blank" rel="noreferrer">
+                      {t(`${tool.id}.action`)}
+                    </a>
+                  </Button>
                   {tool.id === 'fresco' ? (
-                    <ButtonLink
-                      href={webDestinations.frescoDeployment}
-                      external
+                    <Button
+                      asChild
                       color="default"
                       className="text-slate-blue bg-surface rounded-full"
                     >
-                      {t('fresco.deployAction')}
-                    </ButtonLink>
+                      <a
+                        href={webDestinations.frescoDeployment}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {t('fresco.deployAction')}
+                      </a>
+                    </Button>
                   ) : null}
                 </div>
               </div>

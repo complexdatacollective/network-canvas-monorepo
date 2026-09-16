@@ -1,5 +1,10 @@
 import '@fontsource-variable/nunito';
 import '@fontsource-variable/inclusive-sans';
+// Resolves to the same hashed URLs the CSS above references, for the preloads
+// below. Latin only: every site locale's glyphs are in that subset.
+import inclusiveSansLatin from '@fontsource-variable/inclusive-sans/files/inclusive-sans-latin-wght-normal.woff2';
+import nunitoLatin from '@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2';
+
 import '~/app/globals.css';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
@@ -10,6 +15,7 @@ import {
 } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { preload } from 'react-dom';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
@@ -82,6 +88,17 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const messages = await getMessages({ locale });
+
+  // Not <link> elements: React hoists preloads into <head> itself, emitting
+  // each tag twice. crossOrigin is required even same-origin — @font-face
+  // always fetches in CORS mode, and without it the font downloads twice.
+  for (const href of [nunitoLatin, inclusiveSansLatin]) {
+    preload(href, {
+      as: 'font',
+      type: 'font/woff2',
+      crossOrigin: 'anonymous',
+    });
+  }
 
   return (
     <html

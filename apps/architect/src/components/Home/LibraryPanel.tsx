@@ -531,9 +531,10 @@ const PanelRow = ({
             so the clamp's ellipsis lands on the wrong end. */}
         <Heading
           level="label"
+          variant="subtitle"
           title={name}
           dir="auto"
-          className="line-clamp-2 font-semibold wrap-anywhere"
+          className="line-clamp-2 wrap-anywhere"
           margin="none"
         >
           {name}
@@ -1211,7 +1212,11 @@ const LibraryPanel = ({
             // className="p-0"
             // viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
-              <Paragraph className="px-5 py-10 text-center text-sm text-current/70">
+              <Paragraph
+                intent="smallText"
+                emphasis="muted"
+                className="px-5 py-10 text-center"
+              >
                 {intl.formatMessage(messages.noRecentProtocolsYet)}
               </Paragraph>
             }
@@ -1233,8 +1238,7 @@ const LibraryPanel = ({
                 selectionMode="none"
                 animate={false}
                 aria-label={intl.formatMessage(messages.protocolTemplates)}
-                viewportClassName="overflow-visible"
-                className="overflow-visible"
+                scrollable={false}
               >
                 {(CollectionElements) => CollectionElements}
               </Collection>

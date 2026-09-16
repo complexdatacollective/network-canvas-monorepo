@@ -8,6 +8,8 @@ import type { Variant } from '~/components/ui/DeviceMockup';
 import { webDestinations } from '~/lib/getStarted';
 import { documentationUrl } from '~/lib/siteUrls';
 
+export const contactEmail = 'info@networkcanvas.com';
+
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
   documentation: documentationUrl(),

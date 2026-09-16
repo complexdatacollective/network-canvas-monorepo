@@ -151,6 +151,127 @@
     "twitter": "Twitter",
     "github": "GitHub"
   },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "Galería de protocolos",
+      "description": "Explore protocolos de investigación creados con Network Canvas, incluidos resúmenes de estudios, libros de códigos y archivos de protocolo listos para usar."
+    },
+    "intro": {
+      "heading": "Galería de protocolos",
+      "introduction": "Explore los protocolos compartidos por investigadores que usan Network Canvas. Revise cómo se diseñó cada estudio, descargue su libro de códigos y su protocolo, o previsualice la entrevista en su navegador.",
+      "featured": "Protocolo destacado"
+    },
+    "collection": {
+      "heading": "Explore la colección",
+      "searchLabel": "Buscar protocolos",
+      "searchPlaceholder": "Buscar protocolos",
+      "clearSearch": "Borrar búsqueda",
+      "clearFilters": "Borrar todo",
+      "resultsOfTotal": "{count} de {total, plural, =1 {# protocolo} other {# protocolos}}",
+      "filterLabel": "Filtrar protocolos",
+      "facets": {
+        "fields": "Campo de estudio",
+        "edgeGeneration": "Generación de aristas"
+      },
+      "sortLabel": "Ordenar por",
+      "sortOptions": {
+        "newest": "Más recientes",
+        "oldest": "Más antiguos primero",
+        "titleAsc": "Título A–Z",
+        "titleDesc": "Título Z–A"
+      },
+      "emptyHeading": "No se encontraron protocolos",
+      "emptyDescription": "Pruebe a cambiar la búsqueda o el filtro.",
+      "openProtocol": "Explorar {title}",
+      "viewDetails": "Ver"
+    },
+    "card": {
+      "edges": "Aristas",
+      "fields": "Campos",
+      "added": "Añadido el {date}"
+    },
+    "stages": {
+      "heading": "Secuencia de etapas",
+      "waveTabs": "Oleadas",
+      "count": "{count, plural, =1 {# etapa} other {# etapas}}",
+      "waves": "{count, plural, =1 {# oleada} other {# oleadas}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# sociograma} other {# sociogramas}}",
+        "DyadCensus": "{count, plural, =1 {# censo de díadas} other {# censos de díadas}}",
+        "TieStrengthCensus": "{count, plural, =1 {# censo de fuerza de vínculos} other {# censos de fuerza de vínculos}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# censo de díadas de uno a muchos} other {# censos de díadas de uno a muchos}}",
+        "NetworkComposer": "{count, plural, =1 {# compositor de redes} other {# compositores de redes}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "Formulario por arista de alter",
+      "AlterForm": "Formulario por alter",
+      "Anonymisation": "Interfaz de anonimización",
+      "CategoricalBin": "Clasificación categórica",
+      "DyadCensus": "Censo de díadas",
+      "EgoForm": "Formulario de ego",
+      "FamilyPedigree": "Genograma familiar",
+      "Geospatial": "Interfaz geoespacial",
+      "Information": "Información",
+      "NameGenerator": "Generador de nombres (con formularios)",
+      "NameGeneratorQuickAdd": "Generador de nombres (adición rápida)",
+      "NameGeneratorRoster": "Generador de nombres a partir de listas",
+      "Narrative": "Narrativa",
+      "NarrativePedigree": "Genograma narrativo",
+      "NetworkComposer": "Compositor de redes",
+      "OneToManyDyadCensus": "Censo de díadas de uno a muchos",
+      "OrdinalBin": "Clasificación ordinal",
+      "Sociogram": "Sociograma",
+      "TieStrengthCensus": "Censo de fuerza de vínculos"
+    },
+    "detail": {
+      "back": "Volver a la biblioteca",
+      "citation": "Citar esta publicación",
+      "demonstrates": "Qué demuestra este protocolo",
+      "details": "Detalles del estudio",
+      "studyPi": "Investigación principal",
+      "grantNumber": "Número de subvención",
+      "contact": "Contacto del protocolo",
+      "methods": "Generación de aristas",
+      "fields": "Campo(s)",
+      "population": "Población",
+      "usesRosters": "Usa listas",
+      "yes": "Sí",
+      "no": "No",
+      "clinicalTrials": "Registro del ensayo",
+      "publication": "DOI / publicación",
+      "dateAdded": "Fecha de incorporación",
+      "viewPublication": "Ver publicación",
+      "wave": "Oleada {wave}",
+      "preview": "Previsualizar protocolo",
+      "downloadProtocol": "Descargar protocolo",
+      "viewCodebook": "Resumen del libro de códigos"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Previsualización: {name}"
+      },
+      "loading": "Preparando la previsualización…",
+      "finishConfirmation": "Esto es una previsualización, así que no se guarda nada. Finalizar termina esta ejecución del protocolo, y después puede volver a iniciarla.",
+      "finishedHeading": "Previsualización finalizada",
+      "finishedDescription": "La entrevista finalizó tal como lo haría para un participante. No se guardó nada.",
+      "restart": "Iniciar la previsualización de nuevo",
+      "backToProtocol": "Volver al protocolo",
+      "errorHeading": "Este protocolo no se puede previsualizar",
+      "errors": {
+        "unavailable": "No se pudo descargar el archivo del protocolo. Compruebe su conexión e inténtelo de nuevo.",
+        "unreadable": "No se pudo abrir el archivo del protocolo. Puede estar dañado.",
+        "unsupported-version": "Este protocolo usa una versión del esquema que el motor de entrevistas no puede ejecutar.",
+        "invalid": "El protocolo no superó la validación, por lo que el motor de entrevistas no puede ejecutarlo."
+      },
+      "retry": "Intentar de nuevo"
+    },
+    "submit": {
+      "heading": "Envíe su protocolo",
+      "description": "Envíenos su archivo .netcanvas, el libro de códigos y la cita, y lo revisaremos para incluirlo en la galería.",
+      "action": "Enviar su protocolo por correo"
+    }
+  },
   "GetStarted": {
     "metadata": {
       "title": "Comenzar",

@@ -98,11 +98,11 @@ export default function StageTitle({
         </h2>
         {position && (
           <Paragraph
+            emphasis="muted"
             className={headingVariants({
               level: 'label',
               variant: 'all-caps',
               margin: 'none',
-              className: 'text-current/70',
             })}
           >
             {intl.formatMessage(messages.position, {

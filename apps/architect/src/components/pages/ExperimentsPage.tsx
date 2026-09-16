@@ -122,7 +122,7 @@ const ExperimentsPage = () => {
               <Heading level="h4" id={encryptedVariablesLabelId}>
                 {intl.formatMessage(messages.encryptedAttributes)}
               </Heading>
-              <Paragraph className="text-sm text-current/70">
+              <Paragraph intent="smallText" emphasis="muted">
                 {intl.formatMessage(
                   messages.enableSupportForEncryptedAttributesIn,
                 )}

@@ -1,5 +1,6 @@
 import type * as React from 'react';
 
+import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const BADGE_BASE_CLASSES =
@@ -21,54 +22,10 @@ const badgeVariants = cva({
   },
 });
 
-/**
- * The palette a coloured badge may be drawn in, each name mapped to the theme
- * token that paints it. The ink the label is read in is computed from the fill
- * (see `themedBadgeVariants`), never written down beside it.
- */
-const themeColorStyles = {
-  'white': 'var(--color-white)',
-  'black': 'var(--color-black)',
-  'neon-coral': 'var(--color-neon-coral)',
-  'neon-coral-dark': 'var(--color-neon-coral-dark)',
-  'sea-green': 'var(--color-sea-green)',
-  'sea-green-dark': 'var(--color-sea-green-dark)',
-  'slate-blue': 'var(--color-slate-blue)',
-  'slate-blue-dark': 'var(--color-slate-blue-dark)',
-  'navy-taupe': 'var(--color-navy-taupe)',
-  'navy-taupe-dark': 'var(--color-navy-taupe-dark)',
-  'cyber-grape': 'var(--color-cyber-grape)',
-  'cyber-grape-dark': 'var(--color-cyber-grape-dark)',
-  'mustard': 'var(--color-mustard)',
-  'mustard-dark': 'var(--color-mustard-dark)',
-  'rich-black': 'var(--color-rich-black)',
-  'rich-black-dark': 'var(--color-rich-black-dark)',
-  'charcoal': 'var(--color-charcoal)',
-  'charcoal-dark': 'var(--color-charcoal-dark)',
-  'platinum': 'var(--color-platinum)',
-  'platinum-dark': 'var(--color-platinum-dark)',
-  'sea-serpent': 'var(--color-sea-serpent)',
-  'sea-serpent-dark': 'var(--color-sea-serpent-dark)',
-  'purple-pizazz': 'var(--color-purple-pizazz)',
-  'purple-pizazz-dark': 'var(--color-purple-pizazz-dark)',
-  'paradise-pink': 'var(--color-paradise-pink)',
-  'paradise-pink-dark': 'var(--color-paradise-pink-dark)',
-  'cerulean-blue': 'var(--color-cerulean-blue)',
-  'cerulean-blue-dark': 'var(--color-cerulean-blue-dark)',
-  'kiwi': 'var(--color-kiwi)',
-  'kiwi-dark': 'var(--color-kiwi-dark)',
-  'neon-carrot': 'var(--color-neon-carrot)',
-  'neon-carrot-dark': 'var(--color-neon-carrot-dark)',
-  'barbie-pink': 'var(--color-barbie-pink)',
-  'barbie-pink-dark': 'var(--color-barbie-pink-dark)',
-  'tomato': 'var(--color-tomato)',
-  'tomato-dark': 'var(--color-tomato-dark)',
-} satisfies Record<string, string>;
-
-type BadgeColor = keyof typeof themeColorStyles;
+type BadgeColor = PaletteColor;
 
 /** Every colour a badge can be, enumerable: a type cannot be iterated. */
-const BADGE_COLORS = Object.keys(themeColorStyles) as readonly BadgeColor[];
+const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
@@ -120,7 +77,7 @@ const themedBadgeVariants = cva({
 function Badge({ className, color, variant, style, ...props }: BadgeProps) {
   const colorVariant = variant === 'outline' ? 'outline' : 'filled';
   const badgeStyle: BadgeStyle | undefined = color
-    ? { ...style, '--badge-color': themeColorStyles[color] }
+    ? { ...style, '--badge-color': paletteColorStyles[color].color }
     : style;
 
   return (

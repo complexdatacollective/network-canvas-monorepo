@@ -6,7 +6,9 @@
 import { expose } from 'comlink';
 import Fuse, { type IFuseOptions } from 'fuse.js';
 
-type SearchableItem = Record<string, unknown> & { _key: string };
+import type { Key } from '../types';
+
+type SearchableItem = Record<string, unknown> & { _key: Key };
 
 class SearchEngine {
   private fuse: Fuse<SearchableItem> | null = null;
@@ -41,9 +43,9 @@ class SearchEngine {
     query: string,
     minQueryLength = 1,
   ): {
-    matchingKeys: string[];
+    matchingKeys: Key[];
     matchCount: number;
-    scores: [string, number][];
+    scores: [Key, number][];
   } {
     if (!this.fuse || query.length < minQueryLength) {
       // No filter - return all items
@@ -55,8 +57,8 @@ class SearchEngine {
     }
 
     const results = this.fuse.search(query);
-    const matchingKeys: string[] = [];
-    const scores: [string, number][] = [];
+    const matchingKeys: Key[] = [];
+    const scores: [Key, number][] = [];
 
     for (const result of results) {
       matchingKeys.push(result.item._key);

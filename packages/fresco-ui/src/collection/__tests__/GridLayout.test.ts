@@ -233,4 +233,46 @@ describe('GridLayout', () => {
       expect(rows).toEqual([]);
     });
   });
+
+  describe('maxColumns', () => {
+    it('caps the column count used for keyboard navigation', () => {
+      // minItemWidth: 200, gap: 16 → 1000px would fit 4 columns uncapped
+      const layout = new GridLayout({ minItemWidth: 200, maxColumns: 3 });
+      const collection = createMockCollection(12);
+
+      const delegate = layout.getKeyboardDelegate(collection, new Set(), 1000);
+
+      expect(delegate.getKeyBelow('1')).toBe('4');
+      expect(delegate.getKeyBelow('3')).toBe('6');
+    });
+
+    it('never raises the column count above what fits', () => {
+      const layout = new GridLayout({ minItemWidth: 200, maxColumns: 3 });
+      const collection = createMockCollection(6);
+
+      const delegate = layout.getKeyboardDelegate(collection, new Set(), 600);
+
+      expect(delegate.getKeyBelow('1')).toBe('3');
+    });
+
+    it('emits a CSS template whose track minimum is an equal share at the cap', () => {
+      const layout = new GridLayout({
+        minItemWidth: 200,
+        gap: 4,
+        maxColumns: 3,
+      });
+
+      expect(layout.getContainerStyles().gridTemplateColumns).toBe(
+        'repeat(auto-fill, minmax(max(min(200px, 100%), calc((100% - 2 * calc(4 * var(--spacing-base, 0.25rem))) / 3)), 1fr))',
+      );
+    });
+
+    it('leaves the template unconstrained without a cap', () => {
+      const layout = new GridLayout({ minItemWidth: 200, gap: 4 });
+
+      expect(layout.getContainerStyles().gridTemplateColumns).toBe(
+        'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
+      );
+    });
+  });
 });

@@ -192,8 +192,9 @@ function ExportErrorFooter({
   return (
     <>
       <Paragraph
+        intent="smallText"
         aria-live="polite"
-        className="phone-landscape:mr-auto min-h-lh text-sm"
+        className="phone-landscape:mr-auto min-h-lh"
         emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
         margin="none"
       >
@@ -326,7 +327,12 @@ export function ExportDialog({
           className="text-sea-green mt-4 h-2"
         />
         {shown.current !== null && shown.total !== null && (
-          <Paragraph margin="none" emphasis="muted" className="mt-2 text-sm">
+          <Paragraph
+            intent="smallText"
+            margin="none"
+            emphasis="muted"
+            className="mt-2"
+          >
             {intl.formatMessage(messages.filesProgress, {
               current: shown.current,
               total: shown.total,
@@ -394,7 +400,12 @@ export function ExportDialog({
             <Paragraph margin="none" className="font-semibold break-all">
               {shown.fileName}
             </Paragraph>
-            <Paragraph emphasis="muted" margin="none" className="mt-1 text-sm">
+            <Paragraph
+              intent="smallText"
+              emphasis="muted"
+              margin="none"
+              className="mt-1"
+            >
               {intl.formatMessage(messages.contains, {
                 count: shown.sessionIds.length,
               })}

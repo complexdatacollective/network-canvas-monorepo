@@ -1,6 +1,7 @@
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
+import { ProtocolCard as ProtocolCardShell } from '@codaco/fresco-ui/ProtocolCard';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { PROTOCOL_NAME_MAX_LENGTH } from '~/config';
 import countGraphemes from '~/utils/countGraphemes';
@@ -49,13 +50,17 @@ const ProtocolCard = ({
 }: ProtocolCardProps) => {
   const intl = useAppIntl();
   return (
-    <div className="text-navy-taupe bg-platinum border-platinum-dark relative w-full max-w-[12cm] zoom-120 overflow-hidden rounded-sm border shadow-xl">
-      {/* The pattern fills the whole card; a top-to-bottom gradient lets it read
-        at the top, then fades to opaque platinum so the content below stays
-        legible. Mirrors the timeline's ProtocolInfoCard. */}
-      <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
-      <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
-
+    <ProtocolCardShell
+      background={
+        <Pattern
+          aria-hidden
+          seed={name}
+          className="absolute inset-0 size-full"
+        />
+      }
+      gradientClassName="from-rich-black/25 via-platinum/50 to-platinum via-20% to-45%"
+      className="max-w-[12cm] zoom-120 rounded-sm shadow-xl"
+    >
       <div className="relative z-10 flex min-h-34 flex-col gap-5 p-7">
         {/* Reserve space above the heading so the dark title clears the
           gradient's dark top, mirroring the timeline card's controls row. */}
@@ -114,7 +119,7 @@ const ProtocolCard = ({
           </span>
         </div>
       </div>
-    </div>
+    </ProtocolCardShell>
   );
 };
 

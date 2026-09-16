@@ -75,7 +75,7 @@ export default function Placeholder({
         {intl.formatMessage(title)}
       </Heading>
       <Paragraph>{intl.formatMessage(description)}</Paragraph>
-      <Paragraph className="text-text/60 text-sm">
+      <Paragraph intent="smallText" className="text-text/60">
         {intl.formatMessage(messages.unbuilt, { issue })}
       </Paragraph>
       {action}

@@ -22,11 +22,17 @@ type GridLayoutOptions = {
    * Default: 4 (= 1rem at default theme).
    */
   gap?: number;
+  /**
+   * Upper bound on the number of columns. Wider containers grow the items
+   * instead of adding columns. Default: unlimited.
+   */
+  maxColumns?: number;
 };
 
 export class GridLayout<T = unknown> extends Layout<T> {
   private minItemWidth: number;
   private gap_: number;
+  private maxColumns: number | undefined;
   private currentColumnCount = 1;
   private currentItemWidth = 0;
   private measuredHeights = new Map<Key, number>();
@@ -36,6 +42,10 @@ export class GridLayout<T = unknown> extends Layout<T> {
     super();
     this.minItemWidth = options?.minItemWidth ?? 200;
     this.gap_ = options?.gap ?? 4;
+    this.maxColumns =
+      options?.maxColumns !== undefined && options.maxColumns >= 1
+        ? Math.floor(options.maxColumns)
+        : undefined;
   }
 
   private getResolvedGap(): number {
@@ -53,11 +63,25 @@ export class GridLayout<T = unknown> extends Layout<T> {
     // forces each column to at least minItemWidth even in a narrower
     // container, so a single column overflows horizontally (e.g. the roster
     // panel at its default width on an iPad), which breaks drag-and-drop.
+    const gap = `calc(${this.gap_} * var(--spacing-base, 0.25rem))`;
+    const minWidth = `min(${this.minItemWidth}px, 100%)`;
+    // With a column cap, no column may be narrower than an equal share of the
+    // container at that cap, so `auto-fill` can never place more than
+    // `maxColumns` tracks.
+    const columnMin =
+      this.maxColumns === undefined
+        ? minWidth
+        : `max(${minWidth}, calc((100% - ${this.maxColumns - 1} * ${gap}) / ${this.maxColumns}))`;
+
     return {
       display: 'grid',
-      gridTemplateColumns: `repeat(auto-fill, minmax(min(${this.minItemWidth}px, 100%), 1fr))`,
-      gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
+      gridTemplateColumns: `repeat(auto-fill, minmax(${columnMin}, 1fr))`,
+      gap,
     };
+  }
+
+  protected getColumnCount(): number {
+    return this.currentColumnCount;
   }
 
   getMeasurementInfo(containerWidth?: number): MeasurementInfo {
@@ -235,7 +259,9 @@ export class GridLayout<T = unknown> extends Layout<T> {
       Math.floor(availableWidth / itemWidthWithGap),
     );
 
-    return columnCount;
+    return this.maxColumns === undefined
+      ? columnCount
+      : Math.min(columnCount, this.maxColumns);
   }
 
   private calculateItemWidth(

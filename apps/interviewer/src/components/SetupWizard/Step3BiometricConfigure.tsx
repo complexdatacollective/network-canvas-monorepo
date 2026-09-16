@@ -170,7 +170,11 @@ export function Step3BiometricConfigureView({
         placeholder={intl.formatMessage(messages.confirmRecoveryPassphrase)}
       />
       {confirmValue.length > 0 && phrase !== confirmValue && (
-        <Paragraph margin="none" className="text-destructive text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          className="text-destructive"
+        >
           {intl.formatMessage(messages.passphrasesDoNotMatch)}
         </Paragraph>
       )}
