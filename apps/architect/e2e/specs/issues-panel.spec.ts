@@ -157,8 +157,14 @@ test('drops a refusal as soon as the researcher answers it', async ({
       'Please name someone you talk to.',
     );
   });
+  // Scoped to the LIST the prompt lands in. Unscoped, the same text is also
+  // in the row dialog that wrote it, and that dialog animates out — so the
+  // locator matched two elements for as long as the exit lasted, which a
+  // strict-mode violation reports rather than retries away.
   await expect(
-    architectPage.getByText('Please name someone you talk to.'),
+    architectPage
+      .getByRole('list', { name: 'Prompts' })
+      .getByText('Please name someone you talk to.'),
   ).toBeVisible();
 
   // The toolbar's issues control is composed from the field errors, so it goes
