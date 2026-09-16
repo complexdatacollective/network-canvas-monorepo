@@ -11,19 +11,13 @@ import type { RootState } from '~/ducks/store';
 import { StageEditorHeader } from '../StageEditorChrome';
 
 /**
- * Where the stage sits in the interview, over the chrome that actually says
- * it.
- *
- * The title is drawn by the package's editor harness through the header slot —
- * the same slot the route uses — and the position comes from this tab's Redux
- * store, so both have to be there. The Redux provider is mounted INSIDE the
- * slot because the harness owns the render; nothing about the chrome cares
- * where in the tree the store arrived from.
+ * Where the stage sits in the interview, over the chrome that says it. The
+ * Redux provider is mounted INSIDE the header slot because the harness owns
+ * the render.
  *
  * Every expectation is derived from the stage order the store is built with,
- * which is the fixture protocol the editor is opened on — so a header that had
- * stopped reading the order, or that read it one place out, disagrees with the
- * protocol rather than with a number written down here.
+ * which is the fixture the editor opens on — so a header that read the order
+ * one place out disagrees with the protocol rather than with a number here.
  */
 const ORDER = fixtureStageIds();
 
@@ -60,12 +54,9 @@ describe('where the stage sits in the interview', () => {
   });
 
   /**
-   * Three ways there is no place to state, and all three have to answer the
-   * same way: a header that filled one of them in would be telling a
-   * researcher the stage is somewhere it is not.
-   *
-   * The title itself is asserted present in each, so "no position" is the
-   * absence of the line rather than the absence of the whole component.
+   * Three ways there is no place to state, all answering the same. The title
+   * is asserted present in each, so "no position" is the absence of the line
+   * rather than of the whole component.
    */
   it('states no position for a stage the interview does not hold yet', () => {
     renderStageEditor({
@@ -94,9 +85,8 @@ describe('where the stage sits in the interview', () => {
   it('states no position for a stage the order does not list', () => {
     renderStageEditor({
       stageId: 'information-1',
-      // A stage id the loaded protocol has no place for — what the route holds
-      // for the moment between a collaborator deleting the stage and the
-      // redirect that follows.
+      // What the route holds between a collaborator deleting the stage and
+      // the redirect that follows.
       ...inTheRoute(
         <StageEditorHeader stageId="a-stage-that-was-deleted" />,
         ORDER,

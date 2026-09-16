@@ -18,33 +18,22 @@ export type StageNameContainerProps = ReturnType<
 >['containerProps'];
 
 /**
- * Everything a single-line text control needs to BE the stage's name.
- *
- * Shaped for `fields/StageNameInput`, which is the control this package
- * publishes for the job, and satisfied by any control that takes the same
- * props.
+ * Everything a single-line text control needs to BE the stage's name, shaped
+ * for `fields/StageNameInput`.
  */
 export type StageNameFieldProps = Readonly<{
   'id': string;
   'name': string;
   /**
-   * The form this control belongs to, as the `form` attribute.
-   *
-   * Load-bearing rather than decorative: a host draws the stage's title
-   * wherever its page has room, which is outside the `<form>` element, and a
-   * control with no form owner has no implicit submission — Enter in the name
-   * became a key that did nothing at all, with no newline and no save. The
-   * attribute is what re-associates a control rendered outside its form, and
-   * it is handed over here because the form id is the editor's to know.
+   * The form this control belongs to, as the `form` attribute. A title is
+   * drawn outside the `<form>` element, and a control with no form owner has
+   * no implicit submission: Enter does nothing at all, with no newline and no
+   * save.
    */
   'form': string;
   'value': string;
   'onChange': (value: string) => void;
-  /**
-   * Blur hook for a host that also proposes names (`useAutoStageName`).
-   * `undefined` when nothing does, which is a host that never writes a name
-   * nobody asked for. The form's own blur handling is on the container.
-   */
+  /** `useAutoStageName().onBlur`, for a host that proposes names. */
   'onFieldBlur'?: (() => void) | undefined;
   'placeholder': string;
   'characterLimit': number;
@@ -57,21 +46,15 @@ export type StageNameFieldProps = Readonly<{
 }>;
 
 export type StageNameField = Readonly<{
-  /**
-   * The field's own DOM id, which everything drawn around the control is named
-   * from. `fieldElementIds` derives the label's and the refusal region's ids
-   * from it, and `fieldProps` already points the control at those.
-   */
+  /** The id `fieldElementIds` derives the label's and the refusal's from. */
   id: string;
   /** What a control naming the field calls it, in the reader's language. */
   label: string;
   /**
    * What the editor refuses about the name, once it is worth saying, as an
-   * encoded descriptor a host decodes with `formatMessageError`.
-   *
-   * One sentence rather than a list: the only rule this package puts on a
-   * stage name is that there has to be one. A host that adds a rule of its own
-   * brings its own words for it.
+   * encoded descriptor a host decodes with `formatMessageError`. One sentence,
+   * because the only rule this package puts on a name is that there has to be
+   * one.
    */
   error: string | undefined;
   containerProps: StageNameContainerProps;
@@ -81,14 +64,10 @@ export type StageNameField = Readonly<{
 /**
  * Binds a control to the stage's name.
  *
- * One caller per CONTROL: a second one would be a second control bound to the
- * same name, which is two boxes showing one value. `fields/StageNameField` is
- * that caller for a host that wants the markup as well; a host drawing its own
- * control calls this instead. A host that wants only to READ or WRITE the name
- * — from a menu, a dialog, a breadcrumb — calls `useStageName`.
- *
- * Both hooks hold the registration, and holders are counted, so neither
- * mounting nor unmounting one disturbs the other.
+ * One caller per CONTROL — `fields/StageNameField` is that caller for a host
+ * that wants the markup too. A host that only READS or WRITES the name calls
+ * `useStageName`; both hold the registration, and holders are counted, so
+ * neither disturbs the other.
  */
 export function useStageNameField(): StageNameField {
   const { formId } = useStageEditorForm();
@@ -105,9 +84,8 @@ export function useStageNameField(): StageNameField {
 
   const label = intl.formatMessage(stageNameMessages.stageName);
   const placeholder = intl.formatMessage(stageNameMessages.placeholder);
-  // A refusal the field is not showing yet is not one a host should print:
-  // `shouldShowError` is what keeps "you have not answered this" from
-  // appearing before the researcher has had a chance to.
+  // `shouldShowError` keeps "you have not answered this" from appearing before
+  // the researcher has had a chance to.
   const error = meta.shouldShowError ? meta.errors?.[0] : undefined;
 
   return {
@@ -119,10 +97,9 @@ export function useStageNameField(): StageNameField {
       'id': id,
       'name': LABEL,
       'form': formId,
-      // Normalised for RENDERING, as every connected control must: the store
-      // owns the value and hands back whatever is at the path, which is not a
-      // string for the one render between a structural write and the effect
-      // that repairs it.
+      // Normalised for RENDERING, as every connected control must: the value
+      // is not a string for the one render between a structural write and the
+      // effect that repairs it.
       'value': typeof fieldProps.value === 'string' ? fieldProps.value : '',
       onChange,
       placeholder,

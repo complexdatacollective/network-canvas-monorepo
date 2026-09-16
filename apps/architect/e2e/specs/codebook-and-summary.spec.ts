@@ -425,12 +425,9 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
       .first(),
   ).toBeFocused();
 
-  // And the whole list comes before the editor, so a reader is offered every
-  // section before the first control of the first one. Asserted as document
-  // order rather than by counting Tab presses, which would be a claim about
-  // how many controls the list happens to hold — and the stage's own title is
-  // now the editor's first block, inside the form's column rather than above
-  // both.
+  // And the whole list comes before the editor, asserted as document order
+  // rather than by counting Tab presses — which would be a claim about how
+  // many controls the list happens to hold.
   expect(
     await architectPage.evaluate(() => {
       const list = document.querySelector('nav[aria-label="Stage sections"]');

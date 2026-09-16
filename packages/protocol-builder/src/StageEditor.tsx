@@ -61,11 +61,7 @@ export type StageEditorProps = Readonly<{
    * editor's slot.
    */
   actions?: StageEditorActions;
-  /**
-   * The host's chrome ABOVE the form, handed to whichever editor this
-   * dispatches to — the other slot, and the only route a host's stage title
-   * has into the editor when it reaches one through the dispatcher.
-   */
+  /** The host's chrome ABOVE the form, handed to whichever editor this dispatches to. */
   header?: StageEditorActions;
   /** The DOM id of the stage form, when the host wants to name it. */
   formId?: string;

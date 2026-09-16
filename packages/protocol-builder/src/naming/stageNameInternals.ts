@@ -17,25 +17,12 @@ import {
   type StageLabelPanel,
 } from './proposeStageLabel.ts';
 
-/**
- * What the three stage-name hooks share, and nothing a host calls.
- *
- * The name is one field with three questions asked of it — what it is, what
- * binds a control to it, and whether this editor proposes one — and each is a
- * hook of its own so a host takes only what it needs. They still have to agree
- * about where the name lives, what it is called, who last wrote it and what
- * would be proposed for it, so those live here rather than in whichever hook
- * happened to need them first.
- */
+/** What the three stage-name hooks share, and nothing a host calls. */
 
 /** Where the stage's own name lives in the stage document. */
 export const LABEL = 'label';
 
-/**
- * The source a panel has until the researcher chooses another one. It is what
- * `NodePanelsSection`'s own row template writes, so a panel created and left
- * alone qualifies the name exactly as it will once the stage is saved.
- */
+/** What `NodePanelsSection`'s row template writes for a panel left alone. */
 const INTERVIEW_NETWORK = 'existing';
 
 export const stageNameMessages = defineMessages({
@@ -53,19 +40,11 @@ export const stageNameMessages = defineMessages({
 });
 
 /**
- * This edit's memory of who last wrote the stage's name.
- *
- * Not part of the stage, so not in the form: it is the difference between a
- * name the researcher chose and one this editor proposed, which the document
- * itself cannot tell you. The classifier reads a non-empty name it did not
- * generate as the researcher's, which is the safe direction — a proposal is
- * never written over a name a person might have chosen.
- *
- * Held against the FORM STORE rather than in a ref, because the hooks that
- * read it are separate and may be mounted in separate places on the page: the
- * title drawing the control, and a rename dialog somewhere else. The store is
- * exactly the right lifetime — a new one is made for a different stage and for
- * a draft started again — and a weak key means the memory goes when it does.
+ * This edit's memory of who last wrote the name — the one thing the document
+ * cannot say. A non-empty name this editor did not generate reads as the
+ * researcher's, which is the safe direction. Keyed on the FORM STORE because
+ * the hooks that read it may be mounted apart, and the store's lifetime is
+ * exactly this edit's.
  */
 export type StageNameOwnership = {
   /** The name on the stage now is the researcher's, not this editor's. */
@@ -90,18 +69,13 @@ export function stageNameOwnership(
 }
 
 /**
- * How the name is written, whoever is writing it.
+ * How the name is written, whoever is writing it, so the read-only refusal and
+ * the ownership record are decided once. A spectator is refused HERE rather
+ * than by the control being disabled, because a host that renders no control
+ * still has a rename to offer.
  *
- * One writer for every route a name can change by — typing into the control,
- * a host's rename, accepting a proposal, the proposal this editor writes for
- * a stage being created — so the read-only refusal and the ownership record
- * are decided once. A spectator's write is refused HERE rather than by the
- * control being disabled, because a host that renders no control still has a
- * rename to offer and `disabled` says nothing about it.
- *
- * `as` says whose the resulting name is. A `proposed` write is this editor's
- * and is remembered as such, so the next recomputation may replace it; a
- * `chosen` write is a person's and is left alone by everything that proposes.
+ * `as` says whose the resulting name is: a `proposed` write may be replaced by
+ * the next recomputation, a `chosen` one never is.
  */
 export type StageNameWriter = (next: string, as: 'proposed' | 'chosen') => void;
 
@@ -128,29 +102,22 @@ export function useStageNameWriter(): StageNameWriter {
 /**
  * Registers the stage's name with the form, and answers with the binding.
  *
- * Called by BOTH name hooks, because registration is what puts the name among
- * the paths a submit is entitled to write — and a host that draws no control
- * at all still renames the stage from a menu. Fresco's registry counts
- * holders, so the two compose: whichever mounts first registers, a later one
- * joins it without resetting the live field's state, and the path survives
- * until the last of them goes.
+ * Called by BOTH name hooks: registration is what puts the name among the
+ * paths a submit may write, and a host that draws no control still renames
+ * from a menu. Fresco counts holders, so the two compose.
  */
 export function useStageNameRegistration(): ReturnType<typeof useField> {
   const { readOnly } = useStageEditorForm();
 
-  // Disabled from the EDIT rather than from `FieldsDisabled`: the shell wraps
-  // the sections in that, and a host draws the title in its own chrome outside
-  // it, so a read-only stage's name would otherwise be the one control in the
-  // editor a spectator could still type into.
+  // Disabled from the EDIT, not from `FieldsDisabled`: the shell wraps only
+  // the sections in that, and the title is drawn outside it.
   return useField({
     name: LABEL,
     required: REQUIRED,
     disabled: readOnly,
-    // The label the control is named by, and the region its refusal is read
-    // out of. Not the requiredness marker: `fields/StageNameField` renders no
-    // such element, because the outline reads requiredness off the fields
-    // INSIDE a section and the stage's name is drawn by the host outside every
-    // one of them. `aria-required` on the control is what says it is required.
+    // No requiredness marker: `StageNameField` renders none, because the
+    // outline reads requiredness off fields inside a SECTION and the name is
+    // drawn outside every one. `aria-required` says it instead.
     renderedElements: { label: true, error: true },
   });
 }
@@ -195,23 +162,12 @@ type StageNameSources = Readonly<{
 /**
  * The draft as it stands right now, for the five values a name is built from.
  *
- * Each is read through the package's one draft-value hook rather than through
- * a resolution of its own, so a proposed name sees exactly what every other
- * section sees — including a subject that only the committed draft holds
- * because the section owning it has not been opened yet, which would otherwise
- * cost the proposal its subject name.
+ * Read through the package's one draft-value hook, so a proposed name sees
+ * what every section sees — including a subject only the committed draft holds
+ * because the section owning it has not been opened.
  *
- * `panels` is read here like the rest, and a stage type that has no panels is
- * no reason not to: `resolveStageQualifier` asks about them for the two name
- * generators that offer them and about nothing else, so reading the path on a
- * Sociogram costs a value that is never consulted. The whole list is ONE
- * registered field value in this package — the list is a field component, and
- * never registers per-index leaves — so the container path IS the panels, and
- * switching the section off parks `undefined` at exactly the path this reads.
- *
- * Parsed inside one memo keyed on the RAW values. Each reader builds a fresh
- * object or array, and the proposal is derived from the result, so parsing on
- * every render would re-derive the name on every render.
+ * Parsed inside one memo keyed on the RAW values: each reader builds a fresh
+ * object, so parsing per render would re-derive the name per render.
  */
 function useStageNameSources(): StageNameSources {
   const rawLabel = useStageValue(LABEL);
@@ -255,9 +211,9 @@ function readItems(value: unknown): Item[] | undefined {
     if (!('id' in entry) || typeof entry.id !== 'string') continue;
     if (!('content' in entry) || typeof entry.content !== 'string') continue;
     if (!('type' in entry)) continue;
-    // Only an asset item can qualify a name, but a text item still has to be
-    // counted: dropping one silently would be indistinguishable from a
-    // malformed entry if the rules ever widen.
+    // A text item is counted as well as an asset one: only assets qualify a
+    // name, but a dropped text item would be indistinguishable from a
+    // malformed entry if the rules widen.
     if (entry.type === 'asset' || entry.type === 'text') {
       items.push({ id: entry.id, type: entry.type, content: entry.content });
     }
@@ -279,11 +235,8 @@ function readNominationPrompts(
 }
 
 /**
- * The panels the stage offers beside its question, as the qualifier reads
- * them.
- *
- * A panel with no source chosen counts as one drawing on the interview's own
- * network, because that is what the row template writes and what the stage
+ * The panels the stage offers beside its question. One with no source chosen
+ * counts as drawing on the interview's own network, which is what the stage
  * will hold once it is saved.
  */
 function readPanels(value: unknown): StageLabelPanel[] | undefined {

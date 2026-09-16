@@ -92,15 +92,7 @@ type UseFieldResult = {
   containerProps: {
     'data-field-name': string;
     'data-field-path': string; // Canonical internal key used to focus errors
-    /**
-     * WHICH form this field belongs to (`useFormFieldScope`).
-     *
-     * A form is React state, not a `<form>` element, so the fields of one form
-     * are not the elements inside one element: a host may draw a field outside
-     * the element and a dialog's form sits inside the page's markup. Anything
-     * that has to pick one form's fields out of the document reads this rather
-     * than guessing from containment. `undefined` outside a store provider.
-     */
+    /** Which form this field belongs to; see `useFormFieldScope`. */
     'data-field-form': string | undefined;
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control

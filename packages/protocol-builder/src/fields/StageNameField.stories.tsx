@@ -24,22 +24,13 @@ const STAGE_NAME_LABEL = 'Stage name';
 const PROPOSED_NAME = 'Person Sociogram';
 
 /**
- * The stage's title, as a host draws one.
- *
- * `StageNameField` is the whole of the field — the control, the accessible
- * label, the refusal and the form association — and `useAutoStageName` is the
- * authoring policy Architect opts into. What is left for a host is where the
- * title sits and what else is beside it, and this one has nothing beside it.
- *
- * Rendered in the HEADER slot below, which is outside the `<form>` element:
- * that is where every host draws a title, and it is the arrangement the
- * control's own behaviour depends on — Enter saves through the `form`
- * attribute, not through being inside the element.
+ * The stage's title, as a host draws one: `StageNameField` is the whole of the
+ * field, `useAutoStageName` the authoring policy Architect opts into, and what
+ * is left is where the title sits — which here is nothing at all.
  */
 function StageName() {
   const { onBlur } = useAutoStageName();
 
-  // `className` is the host's one say over how the field sits on its page.
   return <StageNameField className="mb-2" onBlur={onBlur} />;
 }
 
@@ -63,9 +54,8 @@ const meta = {
   },
   args: {
     stageId: 'sociogram-1',
-    // The header slot, NOT a section: the stage's title is host chrome above
-    // the form, and the story has to mount it where a host does or it is a
-    // story about an arrangement nothing ships.
+    // The header slot, NOT a section: a title is host chrome above the form,
+    // and mounting it elsewhere is a story about an arrangement nothing ships.
     header: <StageName />,
   },
   tags: ['autodocs'],
@@ -123,12 +113,9 @@ export const TheSaveIsRefusedWithoutAName: Story = {
 };
 
 /**
- * Enter saves the stage rather than typing a line into the name.
- *
- * The `<input>` this replaced performed the form's implicit submission, so
- * that is what Enter still does — and the saved document is where the two
- * possible outcomes can be told apart, because a line break inside the name
- * would be saved along with it.
+ * Enter saves the stage rather than typing a line into the name. The saved
+ * document is where the two outcomes are told apart: a line break inside the
+ * name would be saved along with it.
  */
 export const EnterSavesTheStage: Story = {
   play: async ({ canvasElement }) => {

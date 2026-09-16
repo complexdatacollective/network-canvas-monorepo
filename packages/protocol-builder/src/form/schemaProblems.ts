@@ -219,18 +219,11 @@ export function schemaProblemSentence(
 }
 
 /**
- * The same sentence for a refusal NOTHING on screen answers for.
- *
- * The editor mounts no field at, above or below the path, so there is no
- * control to name — and every sentence above names one. The subject becomes a
- * stand-in saying exactly that, which is the honest reading: the stage holds
- * something the protocol refuses and this editor has nowhere to show it. A
- * `custom` message still passes through whole, because a cross-reference rule
- * names the thing it is about rather than a control.
- *
- * The stand-in is itself an encoded descriptor rather than English, and is
- * carried as a message-error REFERENCE, so the decoder resolves it in the
- * reader's language before putting it into the sentence around it.
+ * The same sentence for a refusal nothing on screen answers for: every
+ * sentence above names a control, and there is none, so the subject becomes a
+ * stand-in saying so. The stand-in is carried as a message-error REFERENCE
+ * rather than English, so the decoder resolves it in the reader's language
+ * before putting it into the sentence around it.
  */
 export function unattributedProblemSentence(problem: SchemaProblem): string {
   return problemSentence(problem, {

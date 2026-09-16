@@ -216,14 +216,7 @@ export class SectionOutlineStore {
    */
   private validationIssues: readonly SectionValidationIssue[] = NO_ISSUES;
   private cachedSnapshot: readonly OutlineSection[] = EMPTY_SECTIONS;
-  /**
-   * The refusals the last snapshot could pin on no section, as sentences.
-   *
-   * Kept beside the sections rather than inside one: a problem nothing on
-   * screen edits belongs to the stage, and dropping it was the same as
-   * accepting it — the save is still refused and a host that renders only the
-   * sections had nothing to show for it.
-   */
+  /** The refusals the last snapshot could pin on no section, as sentences. */
   private cachedUnattributed: readonly string[] = NO_SENTENCES;
   private cachedVersion = -1;
   private version = 0;
@@ -283,20 +276,12 @@ export class SectionOutlineStore {
 
   /**
    * What the protocol refused about this stage that no section on screen
-   * answers for, as sentences a host can read out.
-   *
-   * Derived by the same pass that files the rest under their sections, so the
-   * two cannot come apart: a refusal is in exactly one of the two lists, and
-   * the question "is this one anybody's?" is asked once.
-   *
-   * Published rather than rendered. Where a stage's problems are SHOWN is the
-   * host's — it already owns the list of sections and the panel of issues —
-   * and a shell that printed these itself would be the editor drawing chrome
-   * beside a host that has its own.
+   * answers for, as sentences a host can read out. Derived by the same pass
+   * that files the rest under their sections, so a refusal is in exactly one
+   * of the two lists.
    */
   getUnattributedSnapshot = (): readonly string[] => {
-    // Through the snapshot, because that is what derives it: asking for the
-    // sections is what re-reads the page and re-attributes the issues.
+    // Asking for the sections is what re-reads the page and re-attributes.
     this.getSnapshot();
     return this.cachedUnattributed;
   };
@@ -385,12 +370,10 @@ export class SectionOutlineStore {
    * edits the exact value is preferred over one that merely encloses it, and
    * ties go to whichever section comes first on the page.
    *
-   * An issue no mounted field reaches is not pinned somewhere arbitrary, and
-   * not dropped either: nothing on this page can be pointed at for it, so it
-   * goes to the stage-level list `getUnattributedSnapshot` publishes, where a
-   * host reads it beside the sections. Dropping it was the same as accepting
-   * it — the save is still refused, and the researcher met a Save button that
-   * did nothing with no message anywhere on screen.
+   * An issue no mounted field reaches goes to the stage-level list
+   * `getUnattributedSnapshot` publishes, where a host reads it beside the
+   * sections. Dropping it was the same as accepting it: the save is refused
+   * either way, with nothing on screen to say why.
    *
    * The field that claims an issue also decides whether it is a problem at all.
    * A schema that refuses a stage because a value is MISSING is saying what a
@@ -454,9 +437,6 @@ export class SectionOutlineStore {
         owner = field;
       }
       if (owner === undefined) {
-        // Nothing on this page edits the value, so no section can be pointed
-        // at for it — but the save is refused all the same, and a refusal
-        // nobody is told about is a Save button that does nothing.
         unattributed.push(unattributedProblemSentence(issue));
         continue;
       }

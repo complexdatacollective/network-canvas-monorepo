@@ -37,12 +37,8 @@ type FormProps = {
 export function FormWithoutProvider(props: FormProps) {
   const { onSubmit, children, className, ...rest } = props;
 
-  // Scopes the invalid-submit search to THIS form. Two forms can be mounted at
-  // once — a dialog over the page behind it, two interview slides
-  // mid-transition — and they render the same field paths, so an unscoped
-  // search can hand the earlier form's control to the later form's failed
-  // submit. Both halves are given: the element for the markers that belong to
-  // no store, and the store's own identity for a field drawn outside it.
+  // Scoped to THIS form, by both halves: the element for the markers that
+  // belong to no store, and the store's identity for a field drawn outside it.
   const formRef = useRef<HTMLFormElement>(null);
   const fieldScope = useFormFieldScope();
 

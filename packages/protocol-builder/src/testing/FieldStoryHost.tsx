@@ -58,22 +58,13 @@ export type FieldStoryHostProps = Readonly<{
   stageId: string;
   /** What the section around the field is called. */
   sectionTitle?: string;
-  /**
-   * The field, or fields, under the researcher's cursor, inside a section of
-   * the form. Omitted by a story whose field is the host's own chrome rather
-   * than part of the form's body — see `header`.
-   */
+  /** The field, or fields, under the researcher's cursor, inside a section. */
   children?: ReactNode;
   /**
-   * Chrome the host draws ABOVE the form, in the editor's header slot.
-   *
-   * Where the stage's own title goes, and the only place it can be shown
-   * honestly: a title is drawn OUTSIDE the `<form>` element, and a control
-   * rendered outside its form behaves differently from the same control
-   * rendered inside one — its form owner, and therefore what Enter does, comes
-   * from the `form` attribute rather than from where it happens to sit. A
-   * story that mounted it as a section would be showing an arrangement no host
-   * produces.
+   * Chrome the host draws ABOVE the form, in the editor's header slot, where
+   * the stage's title goes. A title sits OUTSIDE the `<form>` element, and a
+   * control's form owner — and so what Enter does — follows from that, so a
+   * story mounting one as a section would show an arrangement no host has.
    */
   header?: ReactNode;
   /** Somebody else holds the stage, so this editor opens read-only. */

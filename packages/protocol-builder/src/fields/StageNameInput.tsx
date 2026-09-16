@@ -4,16 +4,12 @@ import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 /**
- * Type and box metrics the control and its sizing replica below must share.
- * The replica only stands in for the textarea's layout while both break lines
- * in the same places, so every property that affects line breaking has to be
- * set here rather than on one of them.
- *
- * `text-wrap` (normal) overrides the `text-pretty` `headingVariants` sets:
- * `pretty` is a per-engine heuristic, and there is no guarantee a form
- * control's inner text applies it the same way a block does. Plain wrapping is
- * defined identically for both, and at these lengths `pretty` was not changing
- * where the heading broke anyway.
+ * Type and box metrics the control and its sizing replica below MUST share:
+ * the replica only stands in for the textarea's layout while both break lines
+ * in the same places, so anything affecting line breaking belongs here rather
+ * than on one of them. `text-wrap` overrides `headingVariants`' `text-pretty`,
+ * which is a per-engine heuristic a form control need not apply as a block
+ * does.
  */
 const sharedTextLayout = cx(
   headingVariants({ level: 'h1', margin: 'none' }),
@@ -22,10 +18,9 @@ const sharedTextLayout = cx(
 
 /**
  * The button a browser would use for this form's implicit submission: the
- * first submit button the form owns, in tree order. `form.elements` is the
- * right list because it includes controls associated by the `form` attribute —
- * the stage editor's "Finished Editing" button lives in the nav, outside the
- * `<form>`, and is only reachable this way.
+ * first submit button the form owns, in tree order. `form.elements` because it
+ * includes controls associated by the `form` attribute — "Finished Editing"
+ * lives in the nav, outside the `<form>`.
  */
 const findDefaultSubmitButton = (form: HTMLFormElement) =>
   Array.from(form.elements).find(
@@ -39,14 +34,9 @@ type HeadingInputProps = {
   'id'?: string;
   'name'?: string;
   /**
-   * The form this control belongs to, when it is not drawn inside it.
-   *
-   * A stage title is drawn by the HOST, wherever its page has room, and that
-   * is outside the `<form>` element — so without this the control has no form
-   * owner at all: `event.currentTarget.form` is null, the implicit submission
-   * below finds nothing to click, and Enter becomes a key that does nothing
-   * whatever. It is a plain form association, which is exactly what the
-   * attribute is for.
+   * The form this control belongs to, when it is not drawn inside it. Without
+   * it a title drawn outside the `<form>` has no form owner, and the implicit
+   * submission below finds nothing to click.
    */
   'form'?: string;
   'value'?: string;
@@ -55,9 +45,9 @@ type HeadingInputProps = {
   'onFieldBlur'?: () => void;
   'placeholder'?: string;
   /**
-   * Hard cap on typed characters. Not called `maxLength`: that name belongs to
-   * fresco-ui's validation catalogue, where it would become a post-hoc error
-   * instead of the input's own limit.
+   * Hard cap on typed characters. Not `maxLength`: that name belongs to
+   * fresco-ui's validation catalogue, where it becomes a post-hoc error rather
+   * than the input's own limit.
    */
   'characterLimit'?: number;
   'disabled'?: boolean;
@@ -96,17 +86,10 @@ const StageNameInput = ({
   'aria-describedby': ariaDescribedBy,
 }: HeadingInputProps) => {
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    // Reachable by paste and by drop, neither of which `onKeyDown` sees. A
-    // space rather than nothing, so two pasted lines do not run together into
-    // one word.
-    //
-    // One space per break, and deliberately NOT the surrounding whitespace as
-    // well: `maxLength` is the browser's, applied to the raw value before this
-    // runs. Anything that shortened the string here would hand the cap
-    // characters to discard that the finished name had room for — an indented
-    // 51-character paste that normalises to 45 came back cut at 44. Preserving
-    // the length costs a run of spaces where the paste was indented, which the
-    // researcher can see and tidy; the truncation silently took real text.
+    // A space per break, and NOT the surrounding whitespace as well:
+    // `maxLength` is the browser's, applied before this runs, so shortening
+    // the string here spends cap characters the finished name had room for —
+    // an indented 51-character paste normalising to 45 came back cut at 44.
     onChange?.(event.target.value.replace(/[\r\n]/g, ' '));
   };
 
@@ -117,23 +100,12 @@ const StageNameInput = ({
       return;
     }
 
-    // A textarea would insert a line break here. The `<input>` this replaces
-    // performed the form's implicit submission instead, so that is what Enter
-    // still does.
     event.preventDefault();
 
-    // Implicit submission CLICKS the default button rather than submitting the
-    // form behind it, and that distinction is load-bearing here: "Finished
-    // Editing" carries an `onClick` that reopens the Issues panel on a repeat
-    // failed attempt, when neither `submitFailed` nor the error set changes and
-    // the auto-open effect therefore does not re-fire. `requestSubmit()` would
-    // skip it. A click also inherits the browser's own handling of the cases
-    // with nothing to press: no default button (the stage editor renders one
-    // only once there are unsaved changes) and a disabled one both do nothing.
-    //
-    // The control's own form OWNER, which is the element the `form` attribute
-    // names when this is drawn outside it and the enclosing `<form>` when it
-    // is not. Either way it is the form this control is a field of.
+    // CLICKED rather than `requestSubmit()`ed: "Finished Editing" carries an
+    // `onClick` that reopens the Issues panel on a repeat failed attempt, when
+    // neither `submitFailed` nor the error set changes and the auto-open
+    // effect does not re-fire.
     const owner = event.currentTarget.form;
     if (owner) {
       findDefaultSubmitButton(owner)?.click();
@@ -146,24 +118,18 @@ const StageNameInput = ({
 
   return (
     /*
-     * A textarea cannot size itself to its own content, so the same text is
-     * laid out behind it in an ordinary block, which can. Both occupy one grid
-     * cell: the block gives the cell its height and the textarea stretches to
-     * fill it. Layout does all of the work, so the height stays correct across
-     * width changes, zoom, and a web font that arrives after first paint —
-     * none of which a measured height notices without being told to look.
+     * A textarea cannot size itself to its content, so the same text is laid
+     * out behind it in a block that can, both in one grid cell. Layout does the
+     * work, so the height survives width changes, zoom and a late web font.
      *
-     * `minmax(0,1fr)` is what stops the column from widening to the replica's
-     * min-content width. Without it a stage name containing one long unbroken
-     * word pushes the whole hero wider than its container instead of breaking.
+     * `minmax(0,1fr)` stops the column widening to the replica's min-content
+     * width, which one long unbroken word would push past the container.
      */
     <div className="grid w-full grid-cols-[minmax(0,1fr)]">
       <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
         {/*
          * The trailing space holds the height of a line ending in whitespace,
-         * which a block collapses away but the textarea still shows a caret
-         * on. The placeholder stands in while the field is empty because the
-         * textarea renders it at the same size, wrapped the same way.
+         * which a block collapses away and the textarea shows a caret on.
          */}
         {value || placeholder}{' '}
       </div>
@@ -176,9 +142,8 @@ const StageNameInput = ({
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         rows={1}
-        // The control wraps, but the value it holds is one line and Enter
-        // never adds another. Without this a screen reader announces a
-        // multiline textbox, describing an Enter that does not exist.
+        // The value is one line and Enter never adds another; without this a
+        // screen reader describes an Enter that does not exist.
         aria-multiline={false}
         placeholder={placeholder}
         maxLength={characterLimit}

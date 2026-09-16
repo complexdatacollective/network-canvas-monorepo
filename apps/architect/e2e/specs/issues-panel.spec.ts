@@ -157,10 +157,9 @@ test('drops a refusal as soon as the researcher answers it', async ({
       'Please name someone you talk to.',
     );
   });
-  // Scoped to the LIST the prompt lands in. Unscoped, the same text is also
-  // in the row dialog that wrote it, and that dialog animates out — so the
-  // locator matched two elements for as long as the exit lasted, which a
-  // strict-mode violation reports rather than retries away.
+  // Scoped to the LIST: the same text is in the row dialog that wrote it for
+  // as long as its exit lasts, and a strict-mode violation is reported rather
+  // than retried away.
   await expect(
     architectPage
       .getByRole('list', { name: 'Prompts' })

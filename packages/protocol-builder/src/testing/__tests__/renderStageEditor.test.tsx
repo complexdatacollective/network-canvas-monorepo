@@ -237,13 +237,9 @@ describe('the stage-editor test harness', () => {
   });
 
   /**
-   * And the declaration is checked in the other direction too.
-   *
-   * A key named as unowned that something mounted here DOES edit states
-   * something false about the editor, and a tolerated one hides the case the
-   * list exists to catch: twenty-nine of them went on naming `label` after the
-   * stage's name stopped being a section of the editor, each of them silently
-   * excusing whatever the mount stopped owning next.
+   * And in the other direction: a key named as unowned that something mounted
+   * here DOES edit states something false, and silently excuses whatever the
+   * mount stops owning next.
    */
   it('refuses a key declared unowned that a mounted section edits', async () => {
     const harness = renderStageEditor({

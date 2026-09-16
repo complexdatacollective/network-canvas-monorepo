@@ -5,14 +5,10 @@ import { expect, userEvent, within } from 'storybook/test';
 import StageNameInput from './StageNameInput.tsx';
 
 /**
- * The control on its own, holding a value nothing else owns.
- *
- * `fields/StageNameField` is the connected one — it binds this to the stage's
- * name, draws the label an issues panel harvests and the region a refusal is
- * announced in, and is what a host actually mounts. This is the control
- * underneath it, for a host that draws its own field around the same box, and
- * for the two things about the box that are worth seeing on their own: how it
- * grows as a name outruns the column, and what it refuses to accept.
+ * The control on its own, for a host that draws its own field around the same
+ * box — `fields/StageNameField` is the connected one a host usually mounts.
+ * What is worth seeing here is how the box grows as a name outruns the column,
+ * and what it refuses to accept.
  */
 function Control({
   initialValue = '',
@@ -69,10 +65,7 @@ export const AShortName: Story = {
   args: { initialValue: 'Close ties' },
 };
 
-/**
- * And one that does not. The box grows to hold every line rather than
- * scrolling or clipping, which is the whole reason it is a text area.
- */
+/** And one that does not: the box grows rather than scrolling or clipping. */
 export const ANameThatWraps: Story = {
   args: {
     initialValue:
@@ -86,11 +79,8 @@ export const ASpectator: Story = {
 };
 
 /**
- * A pasted name is still one line.
- *
- * Line breaks become spaces rather than being dropped, so two pasted lines do
- * not run together into one word — and nothing downstream has to cope with a
- * stage name that has a break in it.
+ * A pasted name is still one line: breaks become spaces rather than being
+ * dropped, so two pasted lines do not run together into one word.
  */
 export const APasteWithLineBreaks: Story = {
   play: async ({ canvasElement }) => {

@@ -81,13 +81,9 @@ export function createStageSectionsStore(
 }
 
 /**
- * The stage's own refusals — the ones no section on screen answers for — as an
- * external store beside the sections.
- *
- * The outline alone, with no reader of the form: a problem nothing on the page
- * edits cannot be one a control is already stating beside itself, so there is
- * nothing for the form to say about it. Subscribed to the outline directly for
- * the same reason.
+ * The stage's own refusals — the ones no section answers for — beside the
+ * sections. The outline alone, with no reader of the form: a problem nothing
+ * on the page edits cannot be one a control is already stating.
  */
 export function createStageProblemsStore(
   outline: SectionOutlineStore,

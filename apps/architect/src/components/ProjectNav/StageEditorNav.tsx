@@ -147,10 +147,7 @@ export type StageEditorToolbarProps = Readonly<{
   formId: string;
   /** Whether the editor opened on a stage this tab may not write. */
   readOnly: boolean;
-  /**
-   * The refusals no section of the editor answers for, which the issues panel
-   * lists beside the form's own field errors.
-   */
+  /** The refusals no section answers for, for the issues panel. */
   problems: StageProblemsStore;
   onCancel: () => void;
   onPreview: () => void;

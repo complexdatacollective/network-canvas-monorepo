@@ -73,15 +73,10 @@ const sameTargets = (a: ResolvedTargets, b: ResolvedTargets): boolean => {
 
 export function useIssuesToolbarControl(
   /**
-   * What the protocol refused about the stage that no section of the editor
-   * answers for.
-   *
-   * Listed here with the field errors because this panel is Architect's whole
-   * account of a refused save, and these are the only refusals nothing else on
-   * the page states: they belong to no field, so no control shows them, and to
-   * no section, so the section list does not either. The editor publishes them
-   * rather than printing them itself — where a stage's problems are shown is
-   * the host's.
+   * What the protocol refused about the stage that no section answers for.
+   * Listed with the field errors because this panel is the only place in
+   * Architect they can be read: they belong to no field, so no control shows
+   * them, and to no section, so the list beside the form does not either.
    */
   problems: StageProblemsStore,
 ): UseIssuesToolbarControlResult {
@@ -103,20 +98,16 @@ export function useIssuesToolbarControl(
     () =>
       [
         ...flattenIssues(fieldErrors),
-        // After the fields, and with no field of their own: `field` is what a
-        // row is resolved and named by, and these name nothing on screen
-        // because nothing on screen is what they are about. The row is then
-        // the sentence alone.
+        // No field of their own: `field` is what a row is resolved and named
+        // by, and nothing on screen is what these are about.
         ...stageProblems.map((problem, index) => ({
           id: `stage#${index}`,
           issue: problem,
           field: undefined,
         })),
-        // Decoded here rather than where they were raised: a refusal crosses
-        // the form and the editor's seams as an encoded descriptor so that one
-        // already on screen follows a change of language, and this panel is
-        // one of the places it is read out. A host message that was never
-        // encoded is already in the researcher's language and passes through.
+        // Decoded here rather than where they were raised, so a refusal
+        // already on screen follows a change of language. One that was never
+        // encoded is already in the reader's language and passes through.
       ].map((issue) => ({
         ...issue,
         issue: formatMessageError(issue.issue, intl) ?? issue.issue,
@@ -260,8 +251,7 @@ export function useIssuesToolbarControl(
               // several rows can share one field, and the target below is
               // resolved once per field.
               const target = field === undefined ? null : targets[field];
-              // A row about no field is its sentence and nothing else: the
-              // frame below names a field, and there is none to name.
+              // The frame below names a field, and there is none to name.
               const detail =
                 field === undefined
                   ? issue
@@ -289,10 +279,8 @@ export function useIssuesToolbarControl(
                     in the DOM at all is neither: it used to be an `<a
                     href="#field_prompts">` pointing at an id nothing renders,
                     announced as a link and offered to "open in a new tab",
-                    and it went nowhere when taken.
-
-                    A refusal about no field at all takes that last shape for
-                    the same reason: there is nowhere to send anybody.
+                    and it went nowhere when taken. A refusal about no field
+                    at all takes that last shape too: nowhere to send anybody.
                   */}
                   {field === undefined ||
                   target === null ||

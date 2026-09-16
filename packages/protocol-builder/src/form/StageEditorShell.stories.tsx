@@ -74,13 +74,8 @@ function StageEditorHost({
             <StageEditSession target={{ sectionId: STAGE_SECTION }}>
               <main className="mx-auto max-w-6xl p-6">
                 <StageEditorShell
-                  /*
-                    The stage's title is the host's, drawn from the field the
-                    package publishes — see `testing/HostStageTitle`. It goes
-                    in the header slot, which is above the form element and
-                    inside the form's own provider: the two things a title
-                    needs.
-                  */
+                  // The header slot: above the form element and inside the
+                  // form's provider, which is what a title needs.
                   header={() => <HostStageTitle />}
                   actions={({ formId, readOnly: locked }) => (
                     <div className="flex justify-end">

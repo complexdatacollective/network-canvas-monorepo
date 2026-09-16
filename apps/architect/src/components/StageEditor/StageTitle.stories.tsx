@@ -25,13 +25,11 @@ const STAGE: SectionDoc = {
 };
 
 /**
- * The stage editor route, cut down to the part this is about: the gutter, the
- * query container the two columns are decided in, and the columns themselves.
- *
- * The same nesting as `pages/StageEditorPage`, because that nesting is what
- * the measurements below mean anything about — a container declared on the
- * wrong element, or a gutter inside the cap instead of outside it, changes the
- * width the title is answered about and nothing else would notice.
+ * The stage editor route, cut down to the gutter, the query container the two
+ * columns are decided in, and the columns. The same nesting as
+ * `pages/StageEditorPage`, because that is what the measurements below mean
+ * anything about: a container on the wrong element changes the width the title
+ * is answered about and nothing else would notice.
  */
 function StageTitleInTheRoute({
   position,
@@ -81,9 +79,8 @@ function StageTitleInTheRoute({
                         : { sectionId: STAGE_SECTION }
                     }
                     formId="stage-form"
-                    // The editor's HEADER slot: above the form element and
-                    // inside the form's own provider, which is the pair a
-                    // stage title needs — the name is a field of that form.
+                    // Above the form element and inside its provider, which
+                    // is the pair a stage title needs.
                     header={() => (
                       <StageTitle
                         {...(position === undefined ? {} : { position })}
@@ -123,8 +120,8 @@ type Story = StoryObj<typeof meta>;
 export const Editing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The host answers the acquire over a promise, so the editor — and the
-    // title it draws from the slot — arrive a turn after the story mounts.
+    // The acquire is answered over a promise, so the editor arrives a turn
+    // after the story mounts.
     await awaitPassiveEffects();
     const name = await canvas.findByRole('textbox', { name: 'Stage name' });
     await expect(name).toHaveValue('Welcome to the study');
@@ -138,15 +135,10 @@ export const Editing: Story = {
     );
 
     /*
-      The rhythm Architect's stage editor has always had between the top of the
-      title and its first section — 3.5rem — measured rather than asserted
-      about classes: a class list is the source written out twice, and jsdom
-      resolves no Tailwind at all, so this only means anything in the browser
-      the `storybook` project runs.
-
-      The title is found through the relationship it declares rather than
-      through a class or a position: it is the element that names itself by the
-      heading inside it.
+      3.5rem between the title and the first section, measured rather than
+      asserted about classes — a class list is the source written out twice.
+      The title is found through the relationship it declares: the element that
+      names itself by the heading inside it.
     */
     const heading = canvas.getByRole('heading', {
       level: 2,
@@ -165,16 +157,10 @@ export const Editing: Story = {
     ).toBeCloseTo(56, 0);
 
     /*
-      And where the picture rail is allowed beside the name, which is a fact
-      about the ROOM the title has rather than about the window: the title is
-      drawn in the editor's header slot, so what answers its container query is
-      the column the route gave the editor.
-
-      The rail arrives at 48rem of that column, which is a floor under the
-      NAME: the editor pads its own column by 24px a side, so 768 − 48 of
-      gutter − 14rem of rail − 32 of gap leaves the name 464px. Narrower than
-      that and the rail would be taking room the name has not got, so the title
-      stacks and the name keeps the whole width.
+      Where the picture rail is allowed beside the name — a fact about the ROOM
+      the title has, which is the column the route gave the editor. The rail
+      arrives at 48rem of it, a floor of 768 − 48 of gutter − 14rem of rail −
+      32 of gap = 464px under the name.
     */
     const column = canvas.getByTestId('editor-column');
     const scroller = canvasElement.firstElementChild;
@@ -184,11 +170,9 @@ export const Editing: Story = {
 
     const initialWidth = scroller.style.width;
     /*
-      The column is a grid track beside a 16rem rail inside a capped, guttered
-      container, so the width to ASK the page for is not the width wanted. It
-      is converged on instead: set a width, measure what the column became, and
-      correct by the difference. Two passes settle it, because every step
-      between the two is a fixed subtraction.
+      The column is a grid track inside a capped, guttered container, so the
+      width to ASK for is not the width wanted: converged on instead, which two
+      passes settle because every step between is a fixed subtraction.
     */
     const atColumnWidth = async (width: number) => {
       for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -198,8 +182,8 @@ export const Editing: Story = {
         scroller.style.width = `${outer + (width - measured)}px`;
         await new Promise(requestAnimationFrame);
       }
-      // A container query is resolved in layout, so the frame after the write
-      // is the first one that can have answered it.
+      // A container query resolves in layout, so the frame after the write is
+      // the first that can have answered it.
       await new Promise(requestAnimationFrame);
       await expect(column.getBoundingClientRect().width).toBeCloseTo(width, 0);
       return {
@@ -208,8 +192,7 @@ export const Editing: Story = {
       };
     };
 
-    // One pixel below the threshold is still one column, and the name has all
-    // of it bar the editor's own gutter.
+    // One pixel below the threshold is still one column.
     const narrow = await atColumnWidth(767);
     await expect(narrow.title).toBe('flex');
     await expect(narrow.name).toBeCloseTo(767 - 48, 0);
@@ -219,17 +202,16 @@ export const Editing: Story = {
     await expect(atThreshold.title).toBe('grid');
     await expect(atThreshold.name).toBeCloseTo(464, 0);
 
-    // Left as the story draws itself, so what Chromatic photographs is the
-    // page rather than the last width this measured.
+    // Left as the story draws itself, so Chromatic photographs the page.
     scroller.style.width = initialWidth;
   },
 };
 
 /**
- * A stage being created. It has no place in the interview to report yet, and
- * the name it opens on was proposed from what the stage collects rather than
- * typed by anybody — so there is nothing to be dropped into, and the title
- * claims no focus.
+ * A stage being created: no place in the interview to report yet, and a name
+ * proposed from what it collects rather than typed by anybody — so there is
+ * nothing for the researcher to be dropped into, and the title claims no
+ * focus.
  */
 export const BeingCreated: Story = {
   args: { position: undefined, creating: true },
@@ -237,9 +219,8 @@ export const BeingCreated: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    // Named from what the stage is, by the package, so the researcher opens an
-    // editor with something to recognise the stage by rather than an empty
-    // required field.
+    // Named from what the stage is, so the editor opens with something to
+    // recognise it by rather than an empty required field.
     const name = await canvas.findByRole('textbox', { name: 'Stage name' });
     await waitFor(async () => {
       await expect(name).toHaveValue('Information');

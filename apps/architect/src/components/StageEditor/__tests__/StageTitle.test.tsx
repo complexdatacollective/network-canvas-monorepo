@@ -11,16 +11,9 @@ import { renderStageEditor } from '@codaco/protocol-builder/testing/renderStageE
 import StageTitle from '../StageTitle';
 
 /**
- * Architect's own stage title, over the package's editor harness.
- *
- * Mounted through the editor's HEADER slot, which is where the route mounts
- * it: the title is drawn above the form and inside the form's provider, and
- * everything it reads — the name, the interface, whether the stage is being
- * created — comes from the open edit rather than from props.
- *
- * `sections` is an empty fragment so the harness mounts the shell alone: what
- * is under test is the title, and a whole named editor would be three hundred
- * controls of noise around it.
+ * Architect's own stage title, mounted through the editor's HEADER slot as the
+ * route mounts it. `sections` is empty so the harness mounts the shell alone:
+ * a whole named editor would be three hundred controls of noise.
  */
 const openTitle = (stageId: string) =>
   renderStageEditor({
@@ -31,13 +24,9 @@ const openTitle = (stageId: string) =>
 
 describe('the stage title', () => {
   /**
-   * Which of nineteen interfaces is open, at a glance.
-   *
-   * Every interface the fixture protocol holds is asked, the placeholder is
-   * refused, and the screenshot has to be the one captured from THIS
-   * interface. Refusing the placeholder alone is not enough: a title that had
-   * stopped reading the stage's type would show one real screenshot on all
-   * nineteen and still pass.
+   * Which of nineteen interfaces is open, at a glance. The screenshot has to
+   * be the one captured from THIS interface: a title that had stopped reading
+   * the stage's type would show one real screenshot on all nineteen.
    */
   it.each(fixtureStageIds())(
     'shows the interface screenshot for %s',
@@ -48,27 +37,20 @@ describe('the stage title', () => {
       const image = container.querySelector('img');
       expect(image, stageId).not.toBeNull();
 
-      // `@codaco/interface-images` names every generated file after the
-      // interface it was captured from (`Sociogram.4x3.960.webp`), so the file's
-      // own name is the evidence that the title read this stage's type rather
-      // than some fixed one.
+      // `@codaco/interface-images` names every file after the interface it was
+      // captured from (`Sociogram.4x3.960.webp`), so the name is the evidence.
       const file = image?.getAttribute('src')?.split('/').pop() ?? '';
       expect(file, stageId).toMatch(new RegExp(`^${type}\\.`));
 
-      // Decorative: the interface is named in the badge beside it, so the
-      // picture says nothing a reader who cannot see it is not already told.
+      // Decorative: the badge beside it names the interface.
       expect(image?.getAttribute('alt'), stageId).toBe('');
       expect(screen.queryAllByRole('img')).toEqual([]);
     },
   );
 
   /**
-   * And the documentation link is this stage's interface too.
-   *
-   * The expected URL is derived from the stage's own type through the slug
-   * table, which is a different lookup from the one the title makes but the
-   * same fact — and nineteen distinct URLs, so a title that had settled on one
-   * interface fails eighteen of them.
+   * And the documentation link is this stage's interface too: nineteen
+   * distinct URLs, so a title that had settled on one fails eighteen.
    */
   it.each(fixtureStageIds())(
     'points %s at its own documentation',

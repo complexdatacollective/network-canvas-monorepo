@@ -10,13 +10,7 @@ import { stageTypeDocumentationUrl } from '../documentation.ts';
 import { interfaceDisplayName } from '../interfaceNames.ts';
 import { useStageTypeInfo } from '../useStageTypeInfo.ts';
 
-/**
- * What the hook answers, written out where a test can read it.
- *
- * Rendered rather than returned through a ref: what a host does with these is
- * put them on screen, and the three are only useful together — the type the
- * picture is drawn from, the name the badge carries, and where the link goes.
- */
+/** What the hook answers, written out where a test can read it. */
 function TypeInfo() {
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
 
@@ -33,12 +27,9 @@ function TypeInfo() {
 }
 
 /**
- * What kind of stage is open, read from the open EDIT rather than from a prop.
- *
- * Asked of every interface the fixture protocol holds, because the answer is
- * supposed to differ for each: a hook that had settled on one interface — or
- * that read a type handed to it rather than the stage's own — would agree with
- * a fixed expectation on one stage and disagree on the other eighteen.
+ * What kind of stage is open, read from the open EDIT. Asked of every
+ * interface the fixture holds, because a hook that had settled on one would
+ * agree on that stage and disagree on the other eighteen.
  */
 describe('what kind of stage is open', () => {
   it.each(fixtureStageIds())('answers for %s', (stageId) => {
@@ -51,10 +42,7 @@ describe('what kind of stage is open', () => {
     );
   });
 
-  /**
-   * The interface's NAME is copy, so it is asked of the copy catalogue rather
-   * than of a string written here — but it still has to be this stage's.
-   */
+  /** The NAME is copy, so it is asked of the catalogue — but still this stage's. */
   it.each(fixtureStageIds())('names the interface %s uses', (stageId) => {
     const { type } = loadFixtureStage(stageId);
     renderStageEditor({ stageId, sections: <TypeInfo /> });

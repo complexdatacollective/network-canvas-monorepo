@@ -78,13 +78,7 @@ const fieldErrors = {
 
 const NO_STAGE_PROBLEMS: readonly string[] = Object.freeze([]);
 
-/**
- * The stage-level refusals the editor publishes, as a store standing in for
- * the editor's own.
- *
- * Nothing by default: most of what this panel lists is the form's own field
- * errors, and a store that never changes needs no subscription.
- */
+/** The stage-level refusals the editor publishes, over a standing-in store. */
 const problemsStore = (
   problems: readonly string[] = NO_STAGE_PROBLEMS,
 ): StageProblemsStore => ({
@@ -127,13 +121,9 @@ describe('<Issues />', () => {
   });
 
   /**
-   * A refusal about no field at all.
-   *
-   * The editor publishes what the protocol refused that no section of it
-   * answers for — a key nothing on screen edits — and this panel is the only
-   * place in Architect those can be read: no control shows them, because they
-   * belong to no control, and the section list does not, because they belong
-   * to no section. Dropped, the researcher met a Save button that did nothing.
+   * A refusal about no field at all. This panel is the only place in Architect
+   * one can be read: no control shows it and no section lists it. Dropped, the
+   * researcher met a Save button that did nothing.
    */
   it('lists a stage refusal that belongs to no field', async () => {
     const view = renderStageForm({
@@ -150,8 +140,7 @@ describe('<Issues />', () => {
 
     const rows = await screen.findAllByTestId('issue');
     expect(rows).toHaveLength(1);
-    // Its sentence and nothing else: the row's usual frame names the field it
-    // is about, and there is no field to name.
+    // Its sentence and nothing else: the usual frame names a field.
     expect(rows[0]).toHaveTextContent(
       'A setting this editor does not show has no value.',
     );

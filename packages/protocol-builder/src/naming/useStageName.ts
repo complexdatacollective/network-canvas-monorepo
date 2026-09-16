@@ -14,23 +14,17 @@ export type StageName = Readonly<{
   /** The name as the form holds it right now. */
   value: string;
   /**
-   * Write it, exactly as typing into the control would.
-   *
-   * Refused while somebody else holds the stage, and said out loud in the
-   * form's own error region rather than silently: a spectator's host may still
-   * offer a rename, and a write that vanished would look like a save that
-   * worked.
+   * Write it, exactly as typing into the control would. Refused out loud while
+   * somebody else holds the stage: a write that vanished would look to the
+   * researcher like one that worked.
    */
   setValue: (value: string) => void;
   /** What a control naming the field calls it, in the reader's language. */
   label: string;
   /**
    * What this stage would be called if nobody had named it, recomputed as the
-   * stage is configured.
-   *
-   * Offered for every stage, named or not, so a host can put "suggest a name"
-   * in front of a researcher whenever it wants to. Whether it is ever written
-   * WITHOUT being asked is `useAutoStageName`, which a host opts into.
+   * stage is configured. Offered for every stage, named or not; whether it is
+   * ever written unasked is `useAutoStageName`.
    */
   proposal: string;
   /** Write the proposal as the name, and count it as this editor's doing. */
@@ -41,29 +35,17 @@ export type StageName = Readonly<{
  * The stage's name: what it is, how to change it, and what this editor would
  * call the stage if nobody had.
  *
- * Callable anywhere inside the editor, and as many times as a host likes — a
- * title, a rename dialog, a breadcrumb. It holds the field's registration but
- * draws nothing from it, which is the difference between this and
- * `useStageNameField`: that one binds a CONTROL to the name, so one control
- * means one caller.
+ * Callable anywhere in the editor and as many times as a host likes. It holds
+ * the field's registration but draws nothing from it — `useStageNameField`
+ * binds a CONTROL, so one control means one caller of that.
  *
- * Deliberately not a component: what a stage title LOOKS like is host chrome —
- * Architect draws a picture of the interface with the name written across it,
- * and a host with a stage list may want a rename dialog and no title at all —
- * while what the name IS, and whose name is on the stage, is protocol
- * semantics and belongs here.
+ * It registers for the same reason it may be called anywhere: a submit keeps
+ * only the paths the form has a field at, so a host that draws no control and
+ * renames from a menu would otherwise be writing into a form the save ignores.
  *
- * Takes nothing. Everything it needs is already in the editor it is called
- * inside: the stage form holds the draft a name is derived from, the open edit
- * says whether the stage is being created, and `protocolContext` carries the
- * codebook, the asset manifest and the stage order. A host that had to
- * assemble any of that could assemble it differently from the editor beside
- * it.
- *
- * It registers the name for the same reason it can be called anywhere: a
- * submit keeps only the paths the form has a field at, so a host that draws no
- * control and renames from a menu would otherwise write into a form the save
- * then ignored — and watch the rename disappear with nothing said about it.
+ * Takes nothing — the stage form holds the draft, the open edit says whether
+ * the stage is being created, and `protocolContext` carries the codebook, the
+ * assets and the stage order.
  */
 export function useStageName(): StageName {
   const intl = useAppIntl();

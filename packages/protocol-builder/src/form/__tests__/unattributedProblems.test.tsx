@@ -7,11 +7,9 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
 /**
- * A stage the protocol refuses at a key this mount has no control for.
- *
- * `title` is what an Information stage shows at the top of the page, and the
- * schema will not take an empty one. Nothing here edits it, so there is no
- * field to pin the refusal on and no section to send a researcher to.
+ * A stage the protocol refuses at a key this mount has no control for: the
+ * schema will not take an Information stage with an empty `title`, and nothing
+ * here edits it.
  */
 const untitledStage = {
   id: 'information-unowned',
@@ -21,14 +19,9 @@ const untitledStage = {
 
 describe('what the protocol refuses that no section answers for', () => {
   /**
-   * Published rather than dropped.
-   *
-   * These used to end at a `continue`: an issue no mounted field reached was
-   * left out of the sections and out of everything else, so the shortest
-   * correct-looking host — one that renders the editor and a save button —
-   * compiled, ran, and left Save doing nothing with no message anywhere on
-   * screen. Where they are SHOWN is still the host's; that they exist to be
-   * shown is the package's.
+   * Published rather than dropped. These used to end at a `continue`, so the
+   * shortest correct-looking host compiled, ran, and left Save doing nothing
+   * with no message anywhere on screen.
    */
   it('is published to the host beside the sections', async () => {
     const harness = renderStageEditor({
@@ -43,11 +36,8 @@ describe('what the protocol refuses that no section answers for', () => {
   });
 
   /**
-   * And a refusal a section DOES answer for is not published here as well.
-   *
-   * The two lists are one split, not two readings: a researcher told about the
-   * same fault twice, once beside the section that answers for it and once in
-   * a list of things nothing answers for, would go looking for a second
+   * And a refusal a section DOES answer for is not published here as well: a
+   * researcher told about one fault twice would go looking for a second
    * problem that does not exist.
    */
   it('is not published when a mounted section answers for it', async () => {

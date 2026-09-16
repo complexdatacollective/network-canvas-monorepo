@@ -268,10 +268,9 @@ export type StageEditorHarness = RenderResult &
      * stage cannot see or change something their protocol holds. So an
      * unrendered key has to be declared, one at a time, in `unowned`.
      *
-     * The declaration is checked in BOTH directions. A key named in `unowned`
-     * that something mounted here does edit is refused too: a tolerated one
-     * states something false about the editor and hides the case the list is
-     * there to catch.
+     * Checked in BOTH directions: a key named in `unowned` that something
+     * mounted here does edit is refused too, because a tolerated one states
+     * something false and hides the case the list is there to catch.
      */
     roundTrip(
       options?: Readonly<{
@@ -292,12 +291,7 @@ export type StageEditorHarness = RenderResult &
     outline(): { title: string; state: string }[];
     /**
      * What the editor refuses about the stage that NO section answers for, as
-     * the sentences a host would read out.
-     *
-     * The other half of what a refused save is about. A host that renders only
-     * the sections sees nothing of these — they belong to no field and to no
-     * section — so an editor that dropped them left a researcher pressing Save
-     * and being told nothing at all.
+     * the sentences a host would read out — the other half of `outline()`.
      */
     problems(): string[];
     /**
@@ -467,13 +461,9 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     actions?: StageEditorActions;
     /**
-     * The host's own chrome ABOVE the form — its stage title.
-     *
-     * Given, it REPLACES the plain title the harness draws for itself: the
-     * name is one registered field and two titles would be two registrations
-     * of it. For a test about a host's real title — Architect's, which draws a
-     * picture of the interface and where the stage sits — rather than about
-     * the editor beneath it.
+     * The host's own chrome ABOVE the form — its stage title — in place of the
+     * plain one the harness draws. For a test about a host's real title rather
+     * than about the editor beneath it.
      */
     header?: StageEditorActions;
     /**
@@ -881,12 +871,9 @@ export function renderStageEditor<T extends StageType = StageType>(
           `Nothing mounted here edits "${seeded.id}" keys: ${orphaned.join(', ')}. They round-trip untouched, so a researcher cannot see or change them. Add the section that owns each one, or name it in \`unowned\` to say the editor does not own it yet.`,
         );
       }
-      // The declaration polices itself. A key named as unowned that a mounted
-      // section DOES edit is a statement about this editor that is no longer
-      // true, and tolerating it was how twenty-nine declarations went on
-      // naming `label` for a year after the stage's name stopped being a
-      // section of the editor — each one masking the very signal the list
-      // exists to raise.
+      // The declaration polices itself: a key named as unowned that a mounted
+      // section DOES edit states something false about this editor, and masks
+      // the signal the list exists to raise.
       const claimed = unowned.filter((key) => owned.has(key));
       if (claimed.length > 0) {
         throw new Error(
@@ -1067,11 +1054,8 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 }
 
 /**
- * The stage's title, for the shell's header slot.
- *
- * A slot rather than a wrapper around the action chrome: the header is where a
- * host draws a title, so the harness draws one there too and a test about
- * DOCUMENT order reads the same order a host's page has.
+ * The stage's title, for the shell's header slot — where a host draws one, so
+ * a test about DOCUMENT order reads the order a host's page has.
  */
 const stageTitleHeader: StageEditorActions = () => <HostStageTitle />;
 
@@ -1111,12 +1095,9 @@ function HarnessEditor<T extends StageType>({
   // otherwise the same fallback save control the editor would have chosen for
   // itself — and nothing at all for the one call that is about an empty slot.
   //
-  // The stage's title goes in the HEADER slot beside it, whichever chrome a
-  // test asked for, because drawing one is now the host's job and not the
-  // editor's: a harness that left it out would be an editor with no way to
-  // name the stage, and every test that types a name would have to mount a
-  // title of its own. A call that asked for NO chrome gets no title either —
-  // that one is about an empty slot.
+  // The title goes in the HEADER slot whichever chrome a test asked for:
+  // without one there is no way to name the stage. A call that asked for NO
+  // chrome gets no title either — that one is about an empty slot.
   const chrome =
     withoutActionChrome === true
       ? undefined

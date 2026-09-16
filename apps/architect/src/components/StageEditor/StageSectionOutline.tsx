@@ -142,22 +142,13 @@ export default function StageSectionOutline({
       // so a list stuck at `top-0` loses its first rows behind it. `NavShell`
       // measures the bar and publishes the height.
       //
-      // Nothing lifts it down the column any more, and the rule is that the
-      // list starts at the top of ITS column — level with the top of the
-      // editor's column beside it, not with the editor's first section card.
-      // The editor draws things of its own above those cards: the stage's
-      // title in its header slot, and, in the states that have them, a
-      // read-only alert and the list of what a refused save objected to. So
-      // the first card sits lower than the first row of this list, by as much
-      // as those happen to take.
-      //
-      // That is deliberate rather than tolerated. The alternative is what this
-      // used to do: measure the distance to the first card on every layout and
-      // publish it as a custom property — a `ResizeObserver` and an offset
-      // variable, kept in step with a block whose height changes with a name
-      // that wraps, a badge row that wraps, and an error list that appears on
-      // a failed save. It bought an alignment nobody had asked for at the cost
-      // of a mechanism that had to be right in all of those states.
+      // The list starts at the top of ITS column — level with the editor's
+      // column, not with the editor's first section card. The editor draws its
+      // own title above those cards, and a read-only alert and a refused
+      // save's errors in the states that have them, so the first card sits
+      // lower than the first row here. Deliberate: aligning them means
+      // measuring a block whose height moves with a name that wraps, a badge
+      // row that wraps and an error list that appears on a failed save.
       className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height)"
     >
       {/*

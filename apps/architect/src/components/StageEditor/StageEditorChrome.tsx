@@ -136,18 +136,11 @@ type StageEditorChromeProps = StageEditorActionsProps &
   }>;
 
 /**
- * Architect's own chrome, rendered in the editor's action slot.
- *
- * The slot is called inside the stage form's provider, which is what lets this
- * read the document as the researcher is typing it: the toolbar's save control
- * belongs to that form, the preview launches what is on screen rather than what
- * was last saved, and the beacon publishes the same reading to the guards
- * outside. Everything it renders is displayed elsewhere — the toolbar into the
- * app's own toolbar host, the section list into the route's left column — so
- * nothing here occupies the place in the page where the slot happens to sit.
- *
- * The stage's TITLE is the header slot's rather than this one's; see
- * `StageEditorHeader`.
+ * Architect's own chrome, rendered in the editor's action slot — which is
+ * inside the stage form's provider, so the toolbar's save belongs to that form
+ * and the preview launches what is on screen. Everything it renders is
+ * displayed elsewhere: the toolbar in the app's toolbar host, the section list
+ * in the route's left column. The stage's TITLE is `StageEditorHeader`.
  */
 export default function StageEditorChrome({
   formId,
@@ -180,16 +173,10 @@ export default function StageEditorChrome({
  * Architect's chrome ABOVE the form: the stage's title, told where the stage
  * sits in the interview.
  *
- * The editor's header slot, which is called inside the form's provider and
- * rendered immediately before the form element — so the name is a field of
- * that form and the title is drawn where a title belongs, with no portal
- * standing in for a slot.
- *
  * The position is read from the protocol this tab holds rather than passed
- * down from the route, because the stage order is protocol content and a title
- * told something the protocol disagrees with would be orienting the researcher
- * wrongly. A stage the order does not contain yet — one being created — has no
- * position to state.
+ * down from the route: the stage order is protocol content, and a title told
+ * something the protocol disagrees with orients the researcher wrongly. A
+ * stage the order does not contain yet has no position to state.
  */
 export function StageEditorHeader({
   stageId,

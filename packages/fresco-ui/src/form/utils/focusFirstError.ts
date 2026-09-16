@@ -4,10 +4,6 @@ import type { FlattenedErrors } from '../store/types';
 
 const FIELD_CONTAINER_SELECTOR = '[data-field-path], [data-field-name]';
 
-/**
- * The attribute every connected field stamps its own form's identity on. The
- * one owner of the string; `useField` writes it and this reads it.
- */
 const FIELD_FORM_ATTRIBUTE = 'data-field-form';
 
 /**
@@ -198,17 +194,10 @@ export const resolveFieldErrorTarget = (
 };
 
 /**
- * Every field container one form may claim, and none that another form's
- * fields sit in.
- *
- * Two memberships, unioned: what the form's own markup contains, and what
- * carries the form store's identity wherever it was drawn. De-duplicated,
- * because a field inside the element satisfies both — and `findFieldContainer`
- * only trusts a public `data-field-name` when exactly ONE candidate carries
- * it, so the same element twice would silently disqualify it.
- *
- * Neither given is the unscoped case: the whole document, as a caller that
- * knows there is one form on the page asks for.
+ * Every field container one form may claim: what its markup contains, plus
+ * what carries its store's identity wherever it was drawn. De-duplicated,
+ * because `findFieldContainer` only trusts a public `data-field-name` carried
+ * by exactly ONE candidate, and the same element twice disqualifies it.
  */
 const fieldCandidates = (
   root: ParentNode | null | undefined,
@@ -277,25 +266,13 @@ const earliestInDocument = (
  * this for a date input's segment selection even with `preventScroll` — can
  * then no longer leave the scroller somewhere other than where we put it.
  *
- * The search is SCOPED to one form, by two facts that are both about
- * belonging rather than about nesting. `root` is the form's own markup; every
- * field container a form store is behind also carries that store's identity
- * (`data-field-form`), so `formId` reaches the fields of this form that the
- * element does not contain. A form is React state rather than a `<form>`
- * element, so both halves are needed and neither is sufficient: a host may
- * draw a field outside the element — a stage editor's title, drawn above the
- * page the editor sits on, is one — and Architect's whole-editor contradiction
- * alert is a bare `data-field-name` marker inside the element that belongs to
- * no store at all.
- *
- * Nothing outside that scope is ever a candidate, for focus OR for the scroll.
- * Two forms mounted at once (a dialog over a page, two slides mid-transition)
- * render the same field paths, and a search that could see both would hand the
- * background form's control — or, worse, only its scroll position — to the
- * dialog's failed submit.
- *
- * With neither given the whole document is the scope, which is what a caller
- * that knows there is only one form on the page gets.
+ * Scoped to one form by two facts, and neither is sufficient: `root` is the
+ * form's markup, which a host's field drawn outside the element is not in, and
+ * `formId` is the store's identity, which Architect's whole-editor
+ * contradiction alert does not carry. Nothing outside that scope is a
+ * candidate, for the focus OR the scroll — two forms mounted at once render
+ * the same field paths, and the background one must not be reached. With
+ * neither given the scope is the whole document.
  */
 export const focusFirstError = (
   errors: FlattenedErrors | null,

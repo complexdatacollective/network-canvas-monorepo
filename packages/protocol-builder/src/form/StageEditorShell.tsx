@@ -78,13 +78,8 @@ export type StageEditorShellProps = Readonly<{
   actions?: StageEditorActions;
   /**
    * The host's chrome ABOVE the form, drawn immediately before the `<form>`
-   * and inside the form's own provider.
-   *
-   * The same slot as `actions`, in the other place a host has something to
-   * draw: a stage title belongs above the fields, and it has to be inside the
-   * provider because the stage's name is a field of this form. Without it a
-   * host had to render into the action slot and portal the result back up the
-   * page, which is a DOM mechanism standing in for a missing slot.
+   * and inside the form's own provider — which is the pair a stage title
+   * needs, the name being a field of this form.
    */
   header?: StageEditorActions;
   children: ReactNode;
@@ -246,9 +241,6 @@ function StageEditorFormBody({
   const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
-  // Which form a field belongs to, for the invalid-submit search below: the
-  // stage's name is drawn by the host outside this element and is still a
-  // field of this form.
   const fieldScope = useFormFieldScope();
   const outline = useMemo(() => new SectionOutlineStore(), []);
   // Beside the registry rather than derived from it on every render: a host
@@ -262,8 +254,6 @@ function StageEditorFormBody({
         : createStageSectionsStore(outline, storeApi),
     [outline, storeApi],
   );
-  // The other half of what is wrong with the stage, and the outline's alone:
-  // a refusal no section answers for is one no control is stating either.
   const problems = useMemo(() => createStageProblemsStore(outline), [outline]);
 
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
@@ -357,21 +347,15 @@ function StageEditorFormBody({
       });
       working.current = fields;
 
-      // The schema's own reading of the stage, for the researcher's benefit.
-      //
-      // The anchored problems are published to the outline, which files each
-      // under the section that answers for it — and, for the ones no mounted
-      // field reaches, into the stage-level list the `problems` seam
-      // publishes. Both are the host's to render.
+      // The schema's reading of the stage. Anchored problems go to the
+      // outline, which files each under the section that answers for it and
+      // the rest into the stage-level list `problems` publishes — both the
+      // host's to render.
       //
       // What this form says for itself is the account of the REFUSAL: each
-      // section's problems named by that section, in the order the sections
-      // sit on the page, then the rules about the stage as a whole, which have
-      // no section to name and are said in the schema's own words. The
-      // unattributed ones are deliberately not here: a refusal nothing on the
-      // page edits is exactly the kind a host's own issue surfacing is for,
-      // and a shell that printed it as well would be the editor drawing chrome
-      // beside a host that has its own.
+      // section's problems named by that section, then the rules about the
+      // stage as a whole. The unattributed ones are deliberately not here;
+      // they are what a host's own issue surfacing is for.
       const { sections: anchored, whole } = stageProblems(identity, fields);
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
@@ -441,13 +425,9 @@ function StageEditorFormBody({
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
-      // Scoped to this form, by both of the things that say a field belongs to
-      // it. The element, because an item dialog open over the editor renders
-      // the same field names and an unscoped search can hand this form's
-      // failed submit a control belonging to the dialog above it. The store's
-      // own identity, because the stage's NAME is drawn by the host wherever
-      // its page has room — outside this element, and still a field of this
-      // form.
+      // Both halves: the element, because an item dialog over the editor
+      // renders the same field names; the store's identity, because the
+      // stage's NAME is drawn outside this element and is still ours.
       focusFirstError(errors, formRef.current, fieldScope);
     },
   });
@@ -554,10 +534,9 @@ function StageEditorFormBody({
               {/*
                 No heading level is stated here, and that is the whole of this
                 editor's part in the document outline: the stage's own title is
-                the HOST's — it draws one in the header slot above, out of
-                `fields/StageNameField` and whatever else its page has room for
-                — so the host is also the only thing that knows what heading
-                these sections sit under. It says so with
+                the HOST's, drawn in the header slot above, so the host is also
+                the only thing that knows what heading these sections sit
+                under. It says so with
                 `EnclosingHeadingLevel`, and each section counts one below it.
                 A host that states nothing gets fresco's own page convention,
                 where a top-level `Section` is an `h3`.

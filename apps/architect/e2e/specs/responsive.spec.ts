@@ -155,14 +155,9 @@ test('the stage editor lists its sections beside the form at desktop width', asy
   await architectPage.goto(`/protocol/stage/${stage.id}`);
 
   const { outline, form } = await stageEditorColumns(architectPage);
-  // Beside, not above: the list ends where the form's column begins, and it
-  // starts at the top of that column rather than below it.
-  //
-  // Asked horizontally, because that is what two columns MEANS. The editor
-  // draws the stage's title in its own column above the form element, so how
-  // far down the page the form begins is a fact about the title's height —
-  // and a tall title used to read as "stacked" to a test that compared the
-  // two boxes vertically.
+  // Asked horizontally, because that is what two columns MEANS: the editor
+  // draws its title above the form element, so how far down the page the form
+  // begins is a fact about the title's height.
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
   expect(outline.top).toBeLessThanOrEqual(form.top);
 
@@ -284,9 +279,7 @@ test('the stage editor splits into two columns on the room the researcher can se
   // Polled rather than read once: a viewport change re-runs the container
   // query on the next frame, and this reads the frame after the resize is
   // settled rather than racing it.
-  // Horizontal, for the reason the case above gives: stacked, the list spans
-  // the whole column and the form begins under it; beside, the list ends
-  // where the form's column starts.
+  // Horizontal, for the reason the case above gives.
   const arrangement = async () => {
     const { outline, form } = await stageEditorColumns(architectPage);
     return outline.right <= form.left + 1 ? 'beside' : 'stacked';

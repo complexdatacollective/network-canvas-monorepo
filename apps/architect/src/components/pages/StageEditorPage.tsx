@@ -271,9 +271,6 @@ const StageEditorPage = () => {
     [handleCancel, insertAtIndex, outlineHost, stageId],
   );
 
-  // The title goes in the editor's HEADER slot, which the shell renders
-  // immediately before the form and inside the form's own provider — which is
-  // what the stage's name needs, being a field of that form.
   const renderHeader = useCallback(
     () => <StageEditorHeader stageId={stageId} />,
     [stageId],
@@ -301,18 +298,14 @@ const StageEditorPage = () => {
         insertAtIndex={insertAtIndex}
       />
       {/*
-       * The editor's visible hero heading is the stage-name INPUT, which is
-       * a control rather than a heading — so this is the route's real
-       * heading and RouteFocus's landing point, and it is `sr-only`
-       * because the input already shows the same text at hero size.
-       *
-       * Focus lands HERE on every arrival, a stage being created included:
-       * nothing the editor draws claims it.
+       * The route's real heading and `RouteFocus`'s landing point, `sr-only`
+       * because the editor's visible hero heading is the stage-name INPUT —
+       * which is a control and cannot be a heading. Focus lands here on every
+       * arrival, this stage included: nothing the editor draws claims it.
        *
        * Above everything else the route draws, so the reading order starts
-       * here: this heading, then the list of the stage's sections in the
-       * column beside the editor, then the editor itself — whose first thing
-       * is the stage's title, drawn in its header slot.
+       * here: this heading, the section list beside the editor, then the
+       * editor — whose first thing is the stage's title.
        */}
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {stageName}
@@ -354,12 +347,10 @@ const StageEditorPage = () => {
               to leave off. Applying both indents the form twice: 32px at
               phone width, 48px above it.
 
-              The ladder is stated here because it is this route's, not the
-              editor's: the page's `h1` is the stage's name, the title in the
-              editor's header slot writes the `h2` the name field is labelled
-              by, and every section the editor draws is a subsection of that.
-              The package states nothing of its own — where its sections sit in
-              a document is a fact about the page it was dropped on.
+              The ladder is this route's, not the editor's: the page's `h1` is
+              the stage's name, the title's `h2` is what the name field is
+              labelled by, and every section is a subsection of that. The
+              package states nothing of its own.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
               <ProtocolBuilder client={client} protocolId={activeProtocolId}>
