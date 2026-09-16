@@ -193,6 +193,34 @@ describe('completing first-run setup', () => {
     );
   });
 
+  it('records no session when the response carried no cookie', async () => {
+    // Setup completed — the instance has a name and an owner — but the
+    // response did not establish a session, which is what `signedIn: false`
+    // reports: a deployment whose `Set-Cookie` never reached this tab. The
+    // screen may not record one anyway. If it did, `/` would resolve through
+    // a cached `'signedIn'` to this researcher's landing destination, and the
+    // first call made from there would come back `Unauthorized`.
+    installSetupHarness(() =>
+      Effect.sync(() => {
+        setupRequired = false;
+        return { instanceName: OWNER.instanceName, signedIn: false };
+      }),
+    );
+    const { queryClient, router } = renderSetup();
+
+    await fillAndSubmit();
+
+    // The navigation happens either way, and `/` is the one address that
+    // resolves either way: with no session established it resolves to the way
+    // in rather than to a landing destination.
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).not.toBe(
+      'signedIn',
+    );
+  });
+
   it('says the token was refused, and stays on the form', async () => {
     installSetupHarness(() => Effect.fail(new Unauthorized({})));
     const { queryClient, router } = renderSetup();

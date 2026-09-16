@@ -202,6 +202,22 @@ describe('cancelling an invitation the delivery job is holding', () => {
     ).toBeNull();
     // Nothing was cancelled, so the invitation is still listed.
     expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+    // The team is still refreshed: every mutation on this screen is reconciled
+    // the same way, and the refusal changes what the researcher is TOLD, not
+    // whether the screen goes back for the team's state.
+    await waitFor(() =>
+      expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1),
+    );
+    // "Try again in a moment" is only true if there is something to try again
+    // with. The screen disables every team mutation while one is in flight, so
+    // the sentence is a lie unless this button comes back — which it does only
+    // because the `finally` that clears the in-flight invitation still runs
+    // through the early return this branch takes.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Cancel invitation for pending@example.com',
+      }),
+    ).toBeEnabled();
   });
 
   it('keeps the reconcile message for every other refusal', async () => {

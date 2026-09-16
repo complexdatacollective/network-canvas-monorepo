@@ -17,10 +17,8 @@ import {
   StudyId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
-import {
-  unclassifiedSurfacePaths,
-  type DeploymentMode,
-} from '@codaco/studio-contract/surfaces';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+import { unclassifiedSurfacePaths } from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
@@ -36,17 +34,29 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
  * is asked where its entries actually go.
  */
 
-const fixtures = vi.hoisted(() => ({
-  TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  deployment: { mode: 'managed' as DeploymentMode, billing: false },
-  // First-run setup (#1909), read at call time like `deployment`: `/setup` is
-  // a real screen while an instance has no owner and a not-found once it has.
-  setup: { required: true },
-  getSession: vi.fn(),
-  // Read at call time, so a test can put the researcher in no team, or in
-  // several, before it renders.
-  teams: [] as { id: string; name: string }[],
-}));
+const fixtures = vi.hoisted(() => {
+  // Annotated, not asserted. A hoisted factory infers `mode` as `string`, and
+  // an assertion would silence that widening rather than check anything; the
+  // binding's own type is what makes a mode the status document has no member
+  // for a type error here, and it still admits the `self-hosted` the tests
+  // below reassign.
+  const deployment: InstanceStatus['deployment'] = {
+    mode: 'managed',
+    billing: false,
+  };
+
+  return {
+    TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+    deployment,
+    // First-run setup (#1909), read at call time like `deployment`: `/setup` is
+    // a real screen while an instance has no owner and a not-found once it has.
+    setup: { required: true },
+    getSession: vi.fn(),
+    // Read at call time, so a test can put the researcher in no team, or in
+    // several, before it renders.
+    teams: [] as { id: string; name: string }[],
+  };
+});
 
 /**
  * The identifiers the study tier is addressed by. UUIDs because the contract's

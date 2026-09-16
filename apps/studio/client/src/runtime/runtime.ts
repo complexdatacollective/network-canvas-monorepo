@@ -77,17 +77,17 @@ const ProblemDocument = Schema.Struct({
   detail: Schema.optionalKey(Schema.String),
   instance: Schema.optionalKey(Schema.String),
   /**
-   * The contract's own two checks, repeated here on purpose. `RateLimited`
-   * declares `retryAfterSeconds` as an integer >= 0 and an Effect class
-   * constructor validates, so a body carrying `-1` or `1.5` would make
-   * `new RateLimited(...)` throw inside the interceptor — turning a refusal a
-   * screen can read into a defect it cannot. Checking here instead means such
-   * a body fails to decode, which is already the safe path: the document is
-   * dropped, and the status still reports the refusal.
+   * As permissive as the vocabulary's most permissive member declares it, on
+   * purpose: ONE document is decoded for every status, and the two classes
+   * that carry an interval do not declare it alike. `RateLimited` bounds it to
+   * a whole number of seconds; `Maintenance` does not, because a migration's
+   * estimate is whatever the server measured. Bounding it here would bound it
+   * for maintenance too — and a member that fails to decode drops the WHOLE
+   * document, so a 503 saying `1.5` would lose its `detail` as well as its
+   * interval. The rate limiter's bound is applied on the 429 branch below,
+   * where the contract has it.
    */
-  retryAfterSeconds: Schema.optionalKey(
-    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
-  ),
+  retryAfterSeconds: Schema.optionalKey(Schema.Number),
 });
 
 type ProblemDocument = typeof ProblemDocument.Type;
@@ -117,6 +117,21 @@ const retryAfterHeader = (headers: Headers.Headers): number | undefined => {
 const RETRY_AFTER_FLOOR_SECONDS = 1;
 
 /**
+ * `RateLimited`'s own bound on the interval, read off the contract rather than
+ * repeated here, so the two cannot drift apart.
+ *
+ * It has to be applied before the class is constructed: an Effect class
+ * constructor validates, so an interval the contract refuses — a body carrying
+ * `-1` or `1.5`, or a `Retry-After` of more digits than a safe integer —
+ * would make `new RateLimited(...)` throw inside the interceptor, turning a
+ * refusal a screen can read into a defect it cannot. One that does not decode
+ * counts as no interval at all, and the floor stands in for it.
+ */
+const rateLimitInterval = Schema.decodeUnknownOption(
+  RateLimited.fields.retryAfterSeconds,
+);
+
+/**
  * The refusal a status names, or `undefined` for a status that names none.
  *
  * Only `detail` and `instance` are carried over from the document: `type`,
@@ -140,7 +155,9 @@ const refusalFor = (
     case 429:
       return new RateLimited({
         ...members,
-        retryAfterSeconds: interval ?? RETRY_AFTER_FLOOR_SECONDS,
+        retryAfterSeconds:
+          Option.getOrUndefined(rateLimitInterval(interval)) ??
+          RETRY_AFTER_FLOOR_SECONDS,
       });
     case 503:
       return new Maintenance({

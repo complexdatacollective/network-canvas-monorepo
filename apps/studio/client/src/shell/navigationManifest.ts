@@ -28,7 +28,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
-import type { StudyCounts } from '@codaco/studio-rpc';
+import type { StudyCounts } from '@codaco/studio-contract/schema/study';
 
 /**
  * Studio's navigation, declared once as data (everything-bar design §5.2).

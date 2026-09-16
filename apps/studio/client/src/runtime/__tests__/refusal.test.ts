@@ -182,6 +182,31 @@ describe('a refusal on the HTTP plane', () => {
     expect(retryAfterSeconds(error)).toBe(120);
   });
 
+  it('keeps a maintenance interval the rate limiter’s bound would refuse', async () => {
+    // One problem document is decoded for every status, and the two members
+    // that carry an interval are not declared alike: `RateLimited` bounds it
+    // to a whole number of seconds, `Maintenance` does not, because a
+    // migration's estimate is whatever the server measured. Reading a 503 with
+    // the rate limiter's bound drops the WHOLE document — `detail` and all —
+    // and leaves a maintenance refusal that says nothing and names no
+    // interval. The header is absent here on purpose: it is the only other
+    // place the interval could come from.
+    answer(() =>
+      problemResponse(503, {
+        title: 'Service Unavailable',
+        detail: 'A migration is running.',
+        retryAfterSeconds: 1.5,
+      }),
+    );
+
+    const error = await failureOfStatusCall();
+
+    const refusal = carriedRefusal(error);
+    expect(refusal).toBeInstanceOf(Maintenance);
+    expect(refusal).toMatchObject({ detail: 'A migration is running.' });
+    expect(retryAfterSeconds(error)).toBe(1.5);
+  });
+
   it('reports a 403 as forbidden', async () => {
     answer(() =>
       problemResponse(403, {
@@ -216,9 +241,10 @@ describe('a refusal on the HTTP plane', () => {
     // The interval reaches `new RateLimited(...)`, and an Effect class
     // constructor validates: the contract declares the field an integer >= 0,
     // so a body carrying `-1` or `1.5` would throw inside the interceptor and
-    // the refusal would arrive as a defect no screen can read. The decode
-    // carries the same two checks, so such a body is simply not a document —
-    // and the status still reports the refusal, with the floor.
+    // the refusal would arrive as a defect no screen can read. The 429 branch
+    // reads the interval through the contract's own field schema first, so
+    // such a value counts as no interval — the document still decodes, and the
+    // status still reports the refusal, with the floor.
     for (const refused of [-1, 1.5]) {
       answer(() =>
         problemResponse(429, {

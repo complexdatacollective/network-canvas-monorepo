@@ -13,7 +13,7 @@ import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';
-import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { createAppRouter } from '../../router.tsx';
 import { rpcKey } from '../../runtime/rpc.ts';
@@ -29,31 +29,43 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
  * rendered rather than reasoned about.
  */
 
-const fixtures = vi.hoisted(() => ({
-  TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
-  deployment: { mode: 'managed' as DeploymentMode, billing: false },
-  /** Whether `getSession` answers with a session, read at call time. */
-  signedIn: true,
-  /**
-   * How many `getSession` reads answer normally before the rest answer with an
-   * error — the shape better-fetch resolves a refused read with. The landing
-   * resolution reads the session a SECOND time, after the guard's read has
-   * already succeeded, so a transient failure is a failure of that one.
-   */
-  successfulSessionReads: Number.POSITIVE_INFINITY,
-  sessionReads: 0,
-  /** What `organization.list` answers with, read at call time. */
-  teams: [] as { id: string; name: string }[],
-  /** The session's `activeOrganizationId`, which `setActive` moves. */
-  activeTeamId: undefined as string | undefined,
-  listTeams: vi.fn(),
-  setActive: vi.fn(),
-  useListOrganizations: vi.fn(),
-  useActiveOrganization: vi.fn(),
-  useActiveMember: vi.fn(),
-  signOut: vi.fn(),
-}));
+const fixtures = vi.hoisted(() => {
+  // Annotated, not asserted. A hoisted factory infers `mode` as `string`, and
+  // an assertion would silence that widening rather than check it; the
+  // binding's own type is what makes a mode the status document has no member
+  // for a type error here, and it still admits the `self-hosted` the tests
+  // below reassign.
+  const deployment: InstanceStatus['deployment'] = {
+    mode: 'managed',
+    billing: false,
+  };
+
+  return {
+    TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+    TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
+    deployment,
+    /** Whether `getSession` answers with a session, read at call time. */
+    signedIn: true,
+    /**
+     * How many `getSession` reads answer normally before the rest answer with an
+     * error — the shape better-fetch resolves a refused read with. The landing
+     * resolution reads the session a SECOND time, after the guard's read has
+     * already succeeded, so a transient failure is a failure of that one.
+     */
+    successfulSessionReads: Number.POSITIVE_INFINITY,
+    sessionReads: 0,
+    /** What `organization.list` answers with, read at call time. */
+    teams: [] as { id: string; name: string }[],
+    /** The session's `activeOrganizationId`, which `setActive` moves. */
+    activeTeamId: undefined as string | undefined,
+    listTeams: vi.fn(),
+    setActive: vi.fn(),
+    useListOrganizations: vi.fn(),
+    useActiveOrganization: vi.fn(),
+    useActiveMember: vi.fn(),
+    signOut: vi.fn(),
+  };
+});
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {

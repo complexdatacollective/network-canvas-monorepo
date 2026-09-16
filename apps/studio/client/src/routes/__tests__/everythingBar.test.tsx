@@ -52,16 +52,24 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
  * its interaction tests in fresco-ui and is deliberately not re-proved here.
  */
 
-const fixtures = vi.hoisted(() => ({
-  TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+const fixtures = vi.hoisted(() => {
   // Read at call time, so a test can put the client on a self-hosted instance
-  // before it renders.
-  deployment: {
+  // before it renders. Annotated rather than asserted: a hoisted factory infers
+  // `mode` as `string`, and an assertion would silence that widening rather
+  // than check it; the binding's own type is what makes a mode the status
+  // document has no member for a type error here, and it still admits the
+  // `self-hosted` the tests below reassign.
+  const deployment: InstanceStatus['deployment'] = {
     mode: 'managed',
     billing: false,
-  } as InstanceStatus['deployment'],
-  getSession: vi.fn(),
-}));
+  };
+
+  return {
+    TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+    deployment,
+    getSession: vi.fn(),
+  };
+});
 
 /**
  * Study, protocol and draft ids are UUIDs in the contract, and the payload
