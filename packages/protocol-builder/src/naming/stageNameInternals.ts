@@ -1,9 +1,11 @@
 import { useCallback, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
+import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import type { Item, StageSubject } from '@codaco/protocol-validation';
 
 import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
+import { REQUIRED } from '../form/requiredField.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -121,6 +123,36 @@ export function useStageNameWriter(): StageNameWriter {
     },
     [readOnly, reportRefusedWrite, storeApi],
   );
+}
+
+/**
+ * Registers the stage's name with the form, and answers with the binding.
+ *
+ * Called by BOTH name hooks, because registration is what puts the name among
+ * the paths a submit is entitled to write — and a host that draws no control
+ * at all still renames the stage from a menu. Fresco's registry counts
+ * holders, so the two compose: whichever mounts first registers, a later one
+ * joins it without resetting the live field's state, and the path survives
+ * until the last of them goes.
+ */
+export function useStageNameRegistration(): ReturnType<typeof useField> {
+  const { readOnly } = useStageEditorForm();
+
+  // Disabled from the EDIT rather than from `FieldsDisabled`: the shell wraps
+  // the sections in that, and a host draws the title in its own chrome outside
+  // it, so a read-only stage's name would otherwise be the one control in the
+  // editor a spectator could still type into.
+  return useField({
+    name: LABEL,
+    required: REQUIRED,
+    disabled: readOnly,
+    // The label the control is named by, and the region its refusal is read
+    // out of. Not the requiredness marker: `fields/StageNameField` renders no
+    // such element, because the outline reads requiredness off the fields
+    // INSIDE a section and the stage's name is drawn by the host outside every
+    // one of them. `aria-required` on the control is what says it is required.
+    renderedElements: { label: true, error: true },
+  });
 }
 
 /** What this stage would be called if nobody had named it, right now. */

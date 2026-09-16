@@ -2,6 +2,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../../form/stageEditorContext.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { useStageName } from '../useStageName.ts';
 
@@ -124,8 +128,123 @@ describe('a second reader of the name', () => {
 
     await harness.user.type(screen.getByRole('textbox', NAME), 'Named again');
     expect(screen.getByRole('textbox', NAME)).toHaveValue('Named again');
+
+    // And the field is still one the FORM holds rather than a value parked
+    // beside it: emptied again, the save is refused about the name rather
+    // than about a setting nothing on screen shows, which is what a refusal
+    // reaching the protocol schema instead of the field would look like.
+    await harness.user.clear(screen.getByRole('textbox', NAME));
+    expect(await harness.submit()).toBeNull();
+    expect(harness.problems()).toEqual([]);
   });
 });
+
+/**
+ * A host with a rename menu and no stage title at all: `useStageName` and
+ * nothing else.
+ */
+function MenuRename() {
+  const { value, setValue } = useStageName();
+
+  return (
+    <>
+      <p>Called: {value}</p>
+      <button type="button" onClick={() => setValue('Renamed from a menu')}>
+        Rename from a menu
+      </button>
+      <button type="button" onClick={() => setValue('')}>
+        Clear the name
+      </button>
+    </>
+  );
+}
+
+/** A host whose only relationship with the name is `useStageName`. */
+const menuOnlyHost = {
+  sections: <MenuRename />,
+  // No title. That is the whole case: this host draws no control at all.
+  header: () => null,
+} as const;
+
+describe('a host that draws no name control at all', () => {
+  it('renames the stage, and the save carries it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      ...menuOnlyHost,
+    });
+    await harness.opened();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Rename from a menu' }),
+    );
+    expect(screen.getByText('Called: Renamed from a menu')).toBeInTheDocument();
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.label).toBe('Renamed from a menu');
+  });
+
+  /**
+   * And the name is a FIELD of the form, not a value parked beside it.
+   *
+   * `useStageName` holds the registration, so a menu rename is judged by the
+   * editor's own rule about the name: the form refuses the submit itself and
+   * never reaches the host's save. Without it the write is only a staged
+   * value — the form has nothing at `label` to validate, the submit runs, and
+   * the researcher is refused by the protocol schema about "a setting this
+   * editor does not show" instead of about the name they just emptied.
+   *
+   * The save is refused either way, so the refusal's EXISTENCE proves
+   * nothing; which refusal it is, is the whole of it.
+   *
+   * `harness.submit()` cannot be used here: it waits for a refusal to appear
+   * on screen, and this host draws no control for one to appear beside — a
+   * gap that is the host's own issue surfacing to close, out of `problems`
+   * and the form's field errors.
+   */
+  it('refuses an emptied name as the name, not as a setting nothing shows', async () => {
+    let storeApi: StageFormStoreApi | null = null;
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      ...menuOnlyHost,
+      header: () => (
+        <FormProbe
+          onStore={(api) => {
+            storeApi = api;
+          }}
+        />
+      ),
+    });
+    await harness.opened();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear the name' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save stage' }),
+    );
+
+    await waitFor(() => {
+      const state = (storeApi as StageFormStoreApi | null)?.getState();
+      expect(state?.getFieldErrors('label')).toHaveLength(1);
+    });
+    // Refused before the protocol was ever asked, so there is nothing for the
+    // schema to have said about an unshown setting.
+    expect(harness.problems()).toEqual([]);
+    expect(harness.protocolSections()['stage:information-1']).toMatchObject({
+      label: 'Information',
+    });
+  });
+});
+
+/** The stage form's own store, for a host that renders nothing to read. */
+function FormProbe({
+  onStore,
+}: {
+  onStore: (storeApi: StageFormStoreApi) => void;
+}) {
+  onStore(useStageEditorForm().storeApi);
+  return null;
+}
 
 /**
  * A rename offered to somebody who may not write.

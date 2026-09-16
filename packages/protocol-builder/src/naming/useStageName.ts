@@ -4,10 +4,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
+  stageNameMessages,
   useLiveStageLabel,
   useProposedStageLabel,
+  useStageNameRegistration,
   useStageNameWriter,
-  stageNameMessages,
 } from './stageNameInternals.ts';
 
 export type StageName = Readonly<{
@@ -53,11 +54,11 @@ export type StageName = Readonly<{
  * The stage's name: what it is, how to change it, and what this editor would
  * call the stage if nobody had.
  *
- * Callable anywhere inside the editor, and as many times as a host likes —
- * a title, a rename dialog, a breadcrumb — because it registers nothing and
- * owns nothing. That is the whole difference between this and
- * `useStageNameField`, which binds a CONTROL to the name and must therefore
- * have exactly one caller.
+ * Callable anywhere inside the editor, and as many times as a host likes — a
+ * title, a rename dialog, a breadcrumb. It holds the field's registration but
+ * draws nothing from it, which is the difference between this and
+ * `useStageNameField`: that one binds a CONTROL to the name, so one control
+ * means one caller.
  *
  * Deliberately not a component: what a stage title LOOKS like is host chrome —
  * Architect draws a picture of the interface with the name written across it,
@@ -72,14 +73,15 @@ export type StageName = Readonly<{
  * assemble any of that could assemble it differently from the editor beside
  * it.
  *
- * A write reaches the saved stage through the form's registered field, which
- * is `useStageNameField`'s (and so `fields/StageNameField`'s): a submit keeps
- * only the paths the form has fields at. A host that renders no name control
- * anywhere in the editor is a host whose renames the save will not carry.
+ * It registers the name for the same reason it can be called anywhere: a
+ * submit keeps only the paths the form has a field at, so a host that draws no
+ * control and renames from a menu would otherwise write into a form the save
+ * then ignored — and watch the rename disappear with nothing said about it.
  */
 export function useStageName(): StageName {
   const { creation } = useStageEditorForm();
   const intl = useAppIntl();
+  useStageNameRegistration();
   const value = useLiveStageLabel();
   const proposal = useProposedStageLabel();
   const write = useStageNameWriter();

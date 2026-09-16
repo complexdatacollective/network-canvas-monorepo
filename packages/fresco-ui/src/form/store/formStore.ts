@@ -608,6 +608,18 @@ export const createFormStore = (
   let formValidationToken = Symbol('form-validation');
   const fieldRecords = new Map<string, FieldState>();
   const dormantRecords = new Map<string, FieldState>();
+  /**
+   * How many mounted callers are holding each field.
+   *
+   * One path may be bound by more than one thing at a time: a stage editor's
+   * title and a rename dialog over it bind the same name, and a host is
+   * entitled to both. Counted rather than assumed to be one, because
+   * registration is otherwise last-write-wins in both directions — the second
+   * mount reset the field's own meta, and the FIRST unmount deleted the live
+   * field and took its value and its errors with it, leaving whatever was
+   * still on screen bound to nothing.
+   */
+  const fieldHolders = new Map<string, number>();
   // The last container value handed out per container name, so `getValue` can
   // keep returning it by identity while it stays deep-equal. See `getValue`.
   const containerValues = new Map<string, FieldValue>();
@@ -825,6 +837,7 @@ export const createFormStore = (
         invalidateAllValidations();
         fieldRecords.clear();
         dormantRecords.clear();
+        fieldHolders.clear();
         containerValues.clear();
         set((state) => {
           state.fields.clear();
@@ -905,6 +918,16 @@ export const createFormStore = (
         // gate field's post-change revalidation is dropped by the very mount
         // that change caused, so its now-stale "required" error survives until
         // the field is blurred again.
+        // A second caller of a field that is already mounted is another
+        // HOLDER of it, not a fresh registration: the record it would build
+        // carries untouched, unblurred, undirty meta, so registering over the
+        // live one would throw away the state of a field somebody is looking
+        // at. Its own validation is not adopted either — the field that is
+        // mounted is the one whose rules stand.
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        fieldHolders.set(fieldName, holders + 1);
+        if (holders > 0 && fieldRecords.has(fieldName)) return;
+
         const supersededFields = collectSupersededFields(
           fieldRecords,
           fieldName,
@@ -974,6 +997,14 @@ export const createFormStore = (
           dormantRecords,
           fieldReference,
         );
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        if (holders > 1) {
+          // Somebody else is still holding this field, so it is still mounted:
+          // one caller going away is not the field going away.
+          fieldHolders.set(fieldName, holders - 1);
+          return;
+        }
+        fieldHolders.delete(fieldName);
         if (fieldRecords.has(fieldName)) {
           // Unmounting removes a value from the snapshot, so it invalidates
           // every in-flight validation for the same reason `registerField`

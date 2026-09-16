@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { useField } from '@codaco/fresco-ui/form/hooks/useField';
+import type { useField } from '@codaco/fresco-ui/form/hooks/useField';
 
-import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { MAX_LABEL_LENGTH } from './generateStageLabel.ts';
 import {
   LABEL,
   stageNameMessages,
+  useStageNameRegistration,
   useStageNameWriter,
 } from './stageNameInternals.ts';
 
@@ -81,40 +81,20 @@ export type StageNameField = Readonly<{
 /**
  * Binds a control to the stage's name.
  *
- * EXACTLY ONE CALLER per open editor. The field is registered under the
- * stage's own `label` key and fresco's registry counts no references, so a
- * second caller's unmount deletes the live field and takes its refusals with
- * it — a rename dialog closing would leave the title bound to nothing and the
- * "this stage has to be called something" refusal replaced by the form's
- * generic "not finished". `fields/StageNameField` is that one caller for a
- * host that wants the markup as well; a host drawing its own control calls
- * this instead, and a host that wants only to READ or WRITE the name — from a
- * menu, a dialog, a breadcrumb — calls `useStageName`, which registers
- * nothing and may be called anywhere.
+ * One caller per CONTROL: a second one would be a second control bound to the
+ * same name, which is two boxes showing one value. `fields/StageNameField` is
+ * that caller for a host that wants the markup as well; a host drawing its own
+ * control calls this instead. A host that wants only to READ or WRITE the name
+ * — from a menu, a dialog, a breadcrumb — calls `useStageName`.
  *
- * Registering here is also what puts the name in the save: a submit keeps only
- * the paths the form has a field at.
+ * Both hooks hold the registration, and holders are counted, so neither
+ * mounting nor unmounting one disturbs the other.
  */
 export function useStageNameField(): StageNameField {
-  const { formId, readOnly } = useStageEditorForm();
+  const { formId } = useStageEditorForm();
   const intl = useAppIntl();
   const write = useStageNameWriter();
-
-  // Disabled from the EDIT rather than from `FieldsDisabled`: the shell wraps
-  // the sections in that, and a host draws the title in its own chrome outside
-  // it, so a read-only stage's name would otherwise be the one control in the
-  // editor a spectator could still type into.
-  const { id, containerProps, fieldProps, meta } = useField({
-    name: LABEL,
-    required: REQUIRED,
-    disabled: readOnly,
-    // The label the control is named by, and the region its refusal is read
-    // out of. Not the requiredness marker: `fields/StageNameField` renders no
-    // such element, because the outline reads requiredness off the fields
-    // INSIDE a section and the stage's name is drawn by the host outside every
-    // one of them. `aria-required` on the control is what says it is required.
-    renderedElements: { label: true, error: true },
-  });
+  const { id, containerProps, fieldProps, meta } = useStageNameRegistration();
 
   const onChange = useCallback(
     (next: string) => {
