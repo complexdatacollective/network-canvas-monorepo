@@ -89,6 +89,27 @@ describe('principal resolution', () => {
     });
   });
 
+  it('asks the provider with the request headers, not the cookie alone', async () => {
+    let asked: Headers | undefined;
+    const auth = stubAuthService({
+      getSession: (headers) => {
+        asked = headers;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    const me = await meOver(createStudio(readEnv(), { auth }), {
+      'cookie': 'studio.session_token=opaque',
+      'user-agent': 'Studio Test Agent',
+    });
+    expect(me.userId).toBe('user-1');
+    expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+    // Better Auth reads the address and the agent off the headers it is
+    // handed when it refreshes a session, so forwarding the cookie alone
+    // would rewrite every refreshed session row with neither. This is the
+    // header set `createPrincipalMiddleware` passed on the Hono mount.
+    expect(asked?.get('user-agent')).toBe('Studio Test Agent');
+  });
+
   it('refuses protected procedures without a session', async () => {
     const auth = stubAuthService();
     await expectMeUnauthorized(createStudio(readEnv(), { auth }));

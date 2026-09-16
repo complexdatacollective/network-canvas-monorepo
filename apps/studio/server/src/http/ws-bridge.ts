@@ -7,7 +7,10 @@ import {
   HttpServerResponse,
 } from 'effect/unstable/http';
 
-import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
+import {
+  CLIENT_SESSION_HEADER,
+  readClientSessionId,
+} from '@codaco/studio-contract/client-session';
 
 import type { WsBridgeDeps } from '../app.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
@@ -93,7 +96,15 @@ export const WsBridge = (deps: WsBridgeDeps) =>
           // the header before this runs, so both transports carry the id the
           // same way by the time anything reads it. The rewrite is also what
           // keeps "a parameter given twice names no tab" true here.
-          const clientSessionId = request.headers[CLIENT_SESSION_HEADER];
+          //
+          // Validated again even so. The middleware is authoritative for this
+          // route, but the id is client-supplied and ends up in the
+          // `leases.owner` column, so nothing downstream of here should depend
+          // on a middleware having been provided to refuse an unbounded or
+          // exotic string.
+          const clientSessionId = readClientSessionId(
+            request.headers[CLIENT_SESSION_HEADER],
+          );
           const context = {
             principal,
             requestId,

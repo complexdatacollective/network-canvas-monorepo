@@ -131,3 +131,16 @@ export async function expectRpcFailure<A, E, T extends string>(
   }
   return error.value;
 }
+
+/**
+ * A payload the contract's schema refuses never reaches a handler, so it is not
+ * one of the procedure's declared errors: the rpc server answers the decode
+ * failure itself and the call dies rather than failing with a tag. What a case
+ * using this asserts is that the refusal happened before anything was written.
+ */
+export function expectPayloadRejected(exit: Exit.Exit<unknown, unknown>): void {
+  expect(Exit.isFailure(exit)).toBe(true);
+  if (Exit.isFailure(exit)) {
+    expect(Cause.hasDies(exit.cause)).toBe(true);
+  }
+}

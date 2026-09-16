@@ -17,9 +17,14 @@ import {
  * directly. Rewriting here is what lets the bridge, and the rpc middleware that
  * will read it, know only about the header.
  *
- * A client that names nothing, or names an id `readClientSessionId` rejects,
- * leaves the request untouched: a parameter given twice arrives as an array,
- * which names no tab.
+ * The query is the only thing that can name a tab on this route: the header is
+ * always rewritten from it, and removed outright when the query names none.
+ * A handshake is not a browser fetch — any non-browser client can set the
+ * header itself — and the id ends up in the `leases.owner` column, so a value
+ * that never passed `readClientSessionId` must not reach the bridge. A client
+ * that names nothing, or names an id the contract rejects (a parameter given
+ * twice arrives as an array, which names no tab), leaves the route with no
+ * header at all.
  */
 export const ClientSessionQuery = HttpRouter.middleware((httpEffect) =>
   Effect.gen(function* () {
@@ -28,17 +33,19 @@ export const ClientSessionQuery = HttpRouter.middleware((httpEffect) =>
     const clientSessionId = readClientSessionId(
       typeof named === 'string' ? named : undefined,
     );
-    if (clientSessionId === undefined) return yield* httpEffect;
     const request = yield* HttpServerRequest.HttpServerRequest;
     return yield* Effect.provideService(
       httpEffect,
       HttpServerRequest.HttpServerRequest,
       request.modify({
-        headers: Headers.set(
-          request.headers,
-          CLIENT_SESSION_HEADER,
-          clientSessionId,
-        ),
+        headers:
+          clientSessionId === undefined
+            ? Headers.remove(request.headers, CLIENT_SESSION_HEADER)
+            : Headers.set(
+                request.headers,
+                CLIENT_SESSION_HEADER,
+                clientSessionId,
+              ),
       }),
     );
   }),

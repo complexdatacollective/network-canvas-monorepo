@@ -4,7 +4,6 @@
 // whole loop closes: account.updateLocale writes user.locale through the plain
 // pool, and the next session lookup carries the stored value back out
 // through `me`.
-import { Cause, Exit } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -22,6 +21,7 @@ import {
 } from './support/postgres.ts';
 import {
   createRpcClient,
+  expectPayloadRejected,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
@@ -175,16 +175,3 @@ describe.skipIf(!db)('account.updateLocale', () => {
     expect(events.rows).toEqual([]);
   });
 });
-
-/**
- * A payload the contract's schema refuses never reaches a handler, so it is not
- * a declared error: the rpc server answers the decode failure itself and the
- * call dies rather than failing with one of the procedure's tags. What the
- * cases above assert is that the refusal happened before any write.
- */
-function expectPayloadRejected(exit: Exit.Exit<unknown, unknown>): void {
-  expect(Exit.isFailure(exit)).toBe(true);
-  if (Exit.isFailure(exit)) {
-    expect(Cause.hasDies(exit.cause)).toBe(true);
-  }
-}

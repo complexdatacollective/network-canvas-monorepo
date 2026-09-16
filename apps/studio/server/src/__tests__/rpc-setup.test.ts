@@ -3,7 +3,6 @@
 // and the real cookie plane — the session it returns is carried back in as a
 // cookie and asked to answer `me`, because a set-cookie header that does not
 // sign anybody in is the failure this exists to catch.
-import { Cause, Exit } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -17,6 +16,7 @@ import {
 } from './support/postgres.ts';
 import {
   createRpcClient,
+  expectPayloadRejected,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
@@ -79,7 +79,11 @@ describe.skipIf(!db)('setup.complete', () => {
         _tag: 'Request',
         id: 1,
         tag: 'status',
-        payload: undefined,
+        // `null`, not `undefined`: `status` takes `Schema.Void`, whose wire
+        // form is `null`, and `JSON.stringify` drops an `undefined` value
+        // entirely — a request with no payload key at all dies on decode
+        // before the handler, while the transport still answers 200.
+        payload: null,
         headers: [],
       })}\n`,
     });
@@ -259,6 +263,14 @@ describe.skipIf(!db)('setup.complete', () => {
 
     const next = await statusOverHttp();
     expect(next.status).toBe(200);
+    // The 200 is the transport's verdict, not the call's: a request the rpc
+    // server refuses is answered 200 with a failing exit frame. Asserting the
+    // answer — and that it is the answer of a `status` handler that read the
+    // installation the request before it wrote — is what keeps the
+    // set-cookie assertion below about a served call.
+    expect(await exitFrameOf(next)).toMatchObject({
+      setup: { required: false },
+    });
     expect(next.headers.getSetCookie()).toEqual([]);
   });
 
@@ -393,16 +405,3 @@ describe.skipIf(!db)('setup.complete', () => {
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
   });
 });
-
-/**
- * A payload the contract's schema refuses never reaches a handler, so it is not
- * one of the procedure's declared errors: the rpc server answers the decode
- * failure itself and the call dies. What matters here is that it was refused
- * before anything was written.
- */
-function expectPayloadRejected(exit: Exit.Exit<unknown, unknown>): void {
-  expect(Exit.isFailure(exit)).toBe(true);
-  if (Exit.isFailure(exit)) {
-    expect(Cause.hasDies(exit.cause)).toBe(true);
-  }
-}

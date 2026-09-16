@@ -18,10 +18,10 @@ import { TeamScoped } from '../schema/team.ts';
 //
 // Every audit denial is `Forbidden` and nothing else, including the
 // denial-rate-limit refusal; `AuditReadDenied`/`AuditTeamNotFound` are
-// internal to the read path and never declared here. `RateLimited` is a
-// different thing entirely: the per-user and per-team CALL limits (#1909),
-// charged by the handler that resolves the caller's team before any audit row
-// is read.
+// internal to the read path and never declared here. The `RateLimited` below
+// is a different thing entirely — the call limits, not the audit log's own
+// suppression, which stays unobservable.
+//
 // Every procedure here declares `RateLimited` as well as its own refusals. The
 // per-user and per-team call limits (#1909) are charged inside the handlers
 // that resolve the caller's team, not inside the `Authenticated` middleware, and

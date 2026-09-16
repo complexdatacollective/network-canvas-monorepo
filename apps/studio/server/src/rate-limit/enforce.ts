@@ -5,18 +5,23 @@ import type { RateLimitScope } from './scopes.ts';
 
 // Refusing an oRPC call whose scope has spent its window (#1909).
 //
-// It takes the response headers rather than the whole `RpcContext` so that it
-// can be used from both routers: `src/rpc.ts` owns that type and imports
-// `src/protocol-builder/router.ts`, so a helper shaped around the context
-// could not be shared with the router that needs it most.
+// One caller is left: `src/protocol-builder/router.ts`, the only oRPC router
+// still served — and served over the WebSocket alone until stage 8 mounts it
+// on the rpc plane. Every researcher procedure now charges its limits on the
+// Effect plane instead and refuses with the contract's `RateLimited`
+// (`src/rpc/bridge.ts`'s `chargeLimit`).
+//
+// It takes the response headers rather than the whole `RpcContext` because
+// `src/rpc.ts` owns that type and imports the protocol-builder router, so a
+// helper shaped around the context could not be imported back.
 
 /**
- * `Retry-After` goes on the response through oRPC's `ResponseHeadersPlugin`,
- * and the same number goes in the error's data — which is what a caller over
- * the WebSocket has, because a frame carries no headers. A client reads one or
- * the other without having to know which transport it is on.
+ * The retry interval goes in the error's data, which is what a caller over the
+ * WebSocket has: a frame carries no response headers at all.
  *
- * @param resHeaders absent for a call that arrived over the socket.
+ * @param resHeaders always `undefined` from the one caller, for that reason.
+ *   It stays a parameter because stage 8's unary `/rpc/protocol-builder` mount
+ *   is where a response to put `Retry-After` on appears.
  */
 export async function enforceRateLimit(
   limiter: RateLimiter | undefined,

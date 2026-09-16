@@ -61,8 +61,12 @@ export const AuthenticatedLive = (
       if (options.headers['authorization'] !== undefined) {
         return yield* new Unauthorized({});
       }
-      const cookie = options.headers['cookie'];
-      const headers = new Headers(cookie === undefined ? {} : { cookie });
+      // The whole header set, not the cookie alone: better-auth reads
+      // `user-agent` and the forwarded address off the headers it is given when
+      // it refreshes a session, so handing it a cookie-only set would rewrite
+      // every session row with an empty agent and address. The one header that
+      // must not be forwarded — `authorization` — is refused above.
+      const headers = new Headers(options.headers);
       const session = yield* Effect.promise(() => auth.getSession(headers));
       if (!session) return yield* new Unauthorized({});
       return yield* Effect.provideService(
