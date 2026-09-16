@@ -292,49 +292,45 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     // its staging areas, its lease keeper — is built here, so calling it again
     // is a restarted server serving the same database.
     buildRouter = () =>
-      createRpcRouter(
-        {
+      createRpcRouter({
+        auth: stubAuthService({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        capabilities: {
           enabled: true,
           emailAndPassword: true,
           magicLink: false,
           socialProviders: [],
         },
-        {
-          auth: stubAuthService({
-            listMemberships: memberships,
-            getMembership: membership,
-          }),
-          deployment: { mode: 'self-hosted', billing: false },
-          // Nothing here reads `status`; the installation row is the
-          // first-run bootstrap's (#1909), and an unset one is "no
-          // installation to report".
-          readInstallation: () => Promise.resolve(null),
-          pool: scratch.app,
-          protocolBuilder: createProtocolBuilderRuntime(() => now),
-          assetStore,
-          cipher: testCipher(),
-        },
-      );
-    router = createRpcRouter(
-      {
+        deployment: { mode: 'self-hosted', billing: false },
+        // Nothing here reads `status`; the installation row is the first-run
+        // bootstrap's (#1909), and an unset one is "no installation to
+        // report".
+        readInstallation: () => Promise.resolve(null),
+        pool: scratch.app,
+        protocolBuilder: createProtocolBuilderRuntime(() => now),
+        assetStore,
+        cipher: testCipher(),
+      });
+    router = createRpcRouter({
+      auth: stubAuthService({
+        listMemberships: memberships,
+        getMembership: membership,
+      }),
+      capabilities: {
         enabled: true,
         emailAndPassword: true,
         magicLink: false,
         socialProviders: [],
       },
-      {
-        auth: stubAuthService({
-          listMemberships: memberships,
-          getMembership: membership,
-        }),
-        deployment: { mode: 'self-hosted', billing: false },
-        readInstallation: () => Promise.resolve(null),
-        pool: scratch.app,
-        protocolBuilder: runtime,
-        assetStore,
-        cipher: testCipher(),
-      },
-    );
+      deployment: { mode: 'self-hosted', billing: false },
+      readInstallation: () => Promise.resolve(null),
+      pool: scratch.app,
+      protocolBuilder: runtime,
+      assetStore,
+      cipher: testCipher(),
+    });
     clients = new Map([
       [ADA, clientFor(ADA)],
       [GRACE, clientFor(GRACE)],

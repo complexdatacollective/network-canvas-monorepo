@@ -3,10 +3,13 @@ import { Effect } from 'effect';
 import { Hono } from 'hono';
 import { WebSocket } from 'ws';
 
+import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import type { Studio, WsBridgeDeps } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import { getDeploymentStatus } from '../../domain.ts';
 import { resolve } from '../../env/resolve.ts';
+import type { RpcDeps } from '../../rpc/deps.ts';
 
 // The socket route on its own, with the RPC router stubbed out: what the
 // protocol-builder suite proves is that the wiring carries a real session,
@@ -43,7 +46,20 @@ function echoing(): Studio & { readonly closed: () => number } {
       },
     },
   };
-  return { app: new Hono(), ws, checks: {}, closed: () => closed };
+  // The `/rpc` route is registered from this too, and answers nothing useful
+  // here: this suite drives the socket alone.
+  const rpc: RpcDeps = {
+    auth: stubAuthService(),
+    capabilities: {
+      enabled: false,
+      magicLink: false,
+      emailAndPassword: false,
+      socialProviders: [],
+    },
+    deployment: getDeploymentStatus('self-hosted'),
+    readInstallation: () => Promise.resolve(null),
+  };
+  return { app: new Hono(), ws, rpc, checks: {}, closed: () => closed };
 }
 
 /** Resolves on the socket's next event of this kind, or rejects on its error. */

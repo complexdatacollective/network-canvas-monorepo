@@ -1,7 +1,6 @@
-import { safe } from '@orpc/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { createApp, createStudio, type Studio } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
@@ -12,8 +11,44 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import { createRpcClient, expectRpcFailure } from './support/rpc.ts';
 import { testCipher, testKeyring } from './support/secrets.ts';
+
+/** `me` over the rpc plane, with the harness disposed however the case ends. */
+async function meOver(studio: Studio, headers?: Record<string, string>) {
+  const client = await createRpcClient(studio, headers);
+  try {
+    return await client.call(client.rpc('me', undefined));
+  } finally {
+    await client.dispose();
+  }
+}
+
+/** The same call, asserted to be refused as `Unauthorized`. */
+async function expectMeUnauthorized(
+  studio: Studio,
+  headers?: Record<string, string>,
+): Promise<void> {
+  const client = await createRpcClient(studio, headers);
+  try {
+    await expectRpcFailure(
+      client.callExit(client.rpc('me', undefined)),
+      'Unauthorized',
+    );
+  } finally {
+    await client.dispose();
+  }
+}
+
+/** The instance descriptor over the rpc plane. */
+async function statusOver(studio: Studio) {
+  const client = await createRpcClient(studio);
+  try {
+    return await client.call(client.rpc('status', undefined));
+  } finally {
+    await client.dispose();
+  }
+}
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -40,8 +75,7 @@ describe('principal resolution', () => {
           { teamId: 'team-b', role: 'admin,member' },
         ]),
     });
-    const client = createRpcClient(createApp(readEnv(), { auth }));
-    const me = await client.me();
+    const me = await meOver(createStudio(readEnv(), { auth }));
     expect(me).toEqual({
       userId: 'user-1',
       email: 'researcher@example.com',
@@ -57,9 +91,7 @@ describe('principal resolution', () => {
 
   it('refuses protected procedures without a session', async () => {
     const auth = stubAuthService();
-    const client = createRpcClient(createApp(readEnv(), { auth }));
-    const { error } = await safe(client.me());
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(createStudio(readEnv(), { auth }));
   });
 
   it('never falls back to the cookie when an Authorization header is present', async () => {
@@ -70,23 +102,19 @@ describe('principal resolution', () => {
         return Promise.resolve(PRINCIPAL);
       },
     });
-    const app = createApp(readEnv(), { auth });
+    const studio = createStudio(readEnv(), { auth });
 
-    const me = await createRpcClient(app).me();
+    const me = await meOver(studio);
     expect(me.userId).toBe('user-1');
 
     // With the header, the request is on the token plane (#1248): the cookie
     // session must not even be consulted.
-    const { error } = await safe(
-      createRpcClient(app, { authorization: 'Bearer some-token' }).me(),
-    );
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(studio, { authorization: 'Bearer some-token' });
     expect(getSessionCalls).toBe(1);
   });
 
   it('reports auth capabilities in the RPC status', async () => {
-    const client = createRpcClient(createApp());
-    const status = await client.status();
+    const status = await statusOver(createStudio());
     expect(status.auth).toEqual({
       enabled: true,
       magicLink: true,
@@ -101,10 +129,9 @@ describe('principal resolution', () => {
     // capability answers whether the method exists, and `mail` is the worker's
     // resolution — the web process's read leaves it undefined entirely.
     const base = readEnv();
-    const client = createRpcClient(
-      createApp({ ...base, mail: { kind: 'refuse' } }),
+    const status = await statusOver(
+      createStudio({ ...base, mail: { kind: 'refuse' } }),
     );
-    const status = await client.status();
     expect(status.auth.magicLink).toBe(true);
   });
 
@@ -121,8 +148,7 @@ describe('principal resolution', () => {
         },
       },
     };
-    const client = createRpcClient(createApp(withProviders));
-    const status = await client.status();
+    const status = await statusOver(createStudio(withProviders));
     expect(status.auth.socialProviders).toEqual(['google', 'microsoft']);
   });
 });
@@ -159,8 +185,7 @@ describe('unconfigured auth', () => {
   });
 
   it('reports auth as disabled in status', async () => {
-    const client = createRpcClient(createApp(env));
-    const status = await client.status();
+    const status = await statusOver(createStudio(env));
     expect(status.auth).toEqual({
       enabled: false,
       magicLink: false,
@@ -170,9 +195,7 @@ describe('unconfigured auth', () => {
   });
 
   it('refuses protected procedures', async () => {
-    const client = createRpcClient(createApp(env));
-    const { error } = await safe(client.me());
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(createStudio(env));
   });
 });
 
@@ -259,18 +282,17 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, email, cookie } = await signInWithMagicLink(
+      const { studio, email, cookie } = await signInWithMagicLink(
         env,
         scratch.app,
         'researcher',
       );
 
-      const me = await createRpcClient(app, { cookie }).me();
+      const me = await meOver(studio, { cookie });
       expect(me.email).toBe(email);
       expect(me.emailVerified).toBe(true);
 
-      const { error } = await safe(createRpcClient(app).me());
-      expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+      await expectMeUnauthorized(studio);
     } finally {
       await scratch.dispose();
     }
@@ -297,11 +319,11 @@ describe.skipIf(!db)('email/password sign-in', () => {
   const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
-  let app: ReturnType<typeof createApp>;
+  let studio: Studio;
 
   const signIn = (password: string) => {
     if (!env.auth) throw new Error('dev env must configure auth');
-    return app.request('/api/auth/sign-in/email', {
+    return studio.app.request('/api/auth/sign-in/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -328,7 +350,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     // ten minutes, which a developer re-running this file would reach on the
     // third run. The limiter is not what this file is about, so it states a
     // limit of its own rather than sharing the constant's window (#1909).
-    app = createApp(env, {
+    studio = createStudio(env, {
       auth,
       limits: { sign_in_email: SIGN_IN_ALLOWANCE },
     });
@@ -345,7 +367,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     expect(setCookie).toBeTruthy();
     const cookie = (setCookie ?? '').split(';')[0]!;
 
-    const me = await createRpcClient(app, { cookie }).me();
+    const me = await meOver(studio, { cookie });
     expect(me.email).toBe(SEED_ADMIN_EMAIL);
   });
 
@@ -365,12 +387,12 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, auth, cookie } = await signInWithMagicLink(
+      const { studio, auth, cookie } = await signInWithMagicLink(
         env,
         scratch.app,
         'owner',
       );
-      const me = await createRpcClient(app, { cookie }).me();
+      const me = await meOver(studio, { cookie });
 
       // Call the plugin handler directly in this integration test. Studio's
       // public forwarding boundary blocks organization creation until the
