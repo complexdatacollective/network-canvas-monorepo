@@ -125,6 +125,7 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/vanilla',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
+            'cva/config',
             'jszip',
             'zod',
             'zod/mini',
