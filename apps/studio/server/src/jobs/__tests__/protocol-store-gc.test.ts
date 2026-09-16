@@ -13,6 +13,7 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  type ScratchJobWorker,
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
 import type { JobClient } from '../client.ts';
@@ -20,7 +21,6 @@ import {
   createProtocolStoreGcHandler,
   PROTOCOL_STORE_GC_BOUNDS,
 } from '../handlers/protocol-store-gc.ts';
-import type { JobWorker } from '../worker.ts';
 
 const db = await reachableDb();
 
@@ -92,13 +92,13 @@ describe.skipIf(!db)('the protocol store sweep on the queue', () => {
     await scratch.dispose();
   });
 
-  const twoWorkers = async (): Promise<JobWorker[]> => {
+  const twoWorkers = async (): Promise<ScratchJobWorker[]> => {
     const workers = [scratch.createJobWorker(), scratch.createJobWorker()];
     await Promise.all(workers.map((worker) => worker.start()));
     return workers;
   };
 
-  const stopAll = (workers: JobWorker[]): Promise<void[]> =>
+  const stopAll = (workers: ScratchJobWorker[]): Promise<void[]> =>
     Promise.all(workers.map((worker) => worker.stop()));
 
   const enqueueGc = async (): Promise<string> => {

@@ -2,7 +2,7 @@
 // image's second command (#1895). Everything here is a property of the whole
 // process — what it prints at boot, what it binds, what its healthcheck reads,
 // and that a container stop ends it cleanly — none of which an in-process test
-// of `createJobWorker` can answer.
+// of the worker layers can answer.
 import { networkInterfaces } from 'node:os';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -54,7 +54,7 @@ const STOP_TIMEOUT_MS = 10_000;
 
 /**
  * The in-flight case waits out nodemailer's greeting timeout (10 s, set in
- * src/auth/email.ts) on top of a boot, which is more than the file's default
+ * src/mail/smtp.ts) on top of a boot, which is more than the file's default
  * budget and still well inside the 25-second graceful window the process asks
  * pg-boss for.
  */
@@ -165,15 +165,18 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       expect(rpc.status).toBe(404);
 
       worker.child.kill('SIGTERM');
-      // A container stop is a SIGTERM and a deadline. Anything but a clean
-      // zero here is a stop the orchestrator would eventually have to kill.
+      // A container stop is a SIGTERM and a deadline. The process exits 130
+      // — `NodeRuntime.runMain`'s code for an interruption that ran every
+      // finalizer and nothing else — before the deadline; any other code is a
+      // finalizer that failed, and a process still alive at the deadline is a
+      // stop the orchestrator would have to kill.
       const timeout = setTimeout(
         () => worker.child.kill('SIGKILL'),
         STOP_TIMEOUT_MS,
       );
       const { code, signal } = await worker.exited;
       clearTimeout(timeout);
-      expect({ code, signal }).toEqual({ code: 0, signal: null });
+      expect({ code, signal }).toEqual({ code: 130, signal: null });
       // The listener goes with the process, so nothing holds the port against
       // the container the deployment replaces it with.
       expect(await connectionRefused(healthPort)).toBe(true);
@@ -389,7 +392,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         clearTimeout(backstop);
         const waited = Date.now() - signalled;
 
-        expect({ code, signal }).toEqual({ code: 0, signal: null });
+        expect({ code, signal }).toEqual({ code: 130, signal: null });
         // The send cannot fail before nodemailer's greeting timeout, so an exit
         // this far after the signal is the process having waited for it. A
         // handler that was dropped would have let the process exit at once.
@@ -434,7 +437,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     // Outside development a stale or absent schema is an answer, not a
     // transient failure — the same verdict the web process boots on, reached
-    // through the same boot module.
+    // through the same schema gate (src/platform/schema-gate.ts).
     const empty = await createScratchDatabase(db);
     const worker = startWorker({ DATABASE_URL: empty.db.url });
     try {

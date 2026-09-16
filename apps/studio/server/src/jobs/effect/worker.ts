@@ -20,7 +20,7 @@ import type { SqlClient, SqlError } from 'effect/unstable/sql';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
-import { Database, Transaction, withTransaction } from './database.ts';
+import { type Database, Transaction, withTransaction } from './database.ts';
 import { causeError, deepestMessage } from './errors.ts';
 import { Jobs, type JobId } from './jobs.ts';
 import {

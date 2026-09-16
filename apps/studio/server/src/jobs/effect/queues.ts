@@ -1,4 +1,4 @@
-import { Effect, Schema } from 'effect';
+import { type Effect, Schema } from 'effect';
 
 import {
   JOB_QUEUES,

@@ -19,7 +19,6 @@ import {
   reachableDb,
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
-import type { InvitationMailer } from '../../auth/email.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import type { JobClient } from '../../jobs/client.ts';
 import {
@@ -27,6 +26,7 @@ import {
   registerInvitationDelivery,
 } from '../../jobs/handlers/invitation-delivery.ts';
 import type { HandledJob } from '../../jobs/handlers/job.ts';
+import type { InvitationMailer } from '../../mail/mailer.ts';
 import { cancelTeamInvitation, createTeamInvitation } from '../commands.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
 

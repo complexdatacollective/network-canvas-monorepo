@@ -508,7 +508,7 @@ describe.skipIf(!db)('the worker’s background fibers', () => {
      */
     const workerUntil = (
       startClosing: Deferred.Deferred<void>,
-      handler: Effect.Effect<JobOutcome, never>,
+      handler: Effect.Effect<JobOutcome>,
     ) =>
       Effect.forkChild(
         Effect.gen(function* () {

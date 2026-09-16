@@ -234,10 +234,25 @@ export const EnvironmentSchema = Schema.Struct({
   STUDIO_TELEMETRY: variable(Flag, {
     group: 'Process',
     summary:
-      'Whether this instance reports anonymous usage telemetry. Declared here so the development lane can turn it off; nothing reads it until #1897 builds the reporting it governs.',
+      'Whether this instance reports anonymous usage telemetry. Also the switch on telemetry export: with it off, no exporter is built whatever `OTEL_EXPORTER_OTLP_ENDPOINT` says. #1897 builds the reporting it governs.',
     deployment:
       'Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.',
     example: 'true',
+  }),
+
+  /**
+   * Absence is the gate: no endpoint means no exporter is built at all, so a
+   * deployment that says nothing pays nothing. `STUDIO_TELEMETRY=false` turns
+   * the export off even where an endpoint is configured, which is why the two
+   * are separate variables rather than one.
+   */
+  OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
+    group: 'Process',
+    summary:
+      'OTLP/HTTP collector that receives this instance’s logs, traces and metrics (#1897).',
+    deployment:
+      'Unset ⇒ nothing is exported; logs stay on stdout. Set to a collector’s base URL (the OTLP/HTTP paths `/v1/logs`, `/v1/traces`, `/v1/metrics` are appended). `STUDIO_TELEMETRY=false` overrides it.',
+    example: 'http://otel-collector:4318',
   }),
 
   /**

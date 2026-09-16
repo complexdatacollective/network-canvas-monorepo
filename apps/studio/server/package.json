@@ -41,9 +41,9 @@
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
+    "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@faker-js/faker": "catalog:",
-    "@hono/node-server": "^2.1.0",
     "@noble/hashes": "^2.3.0",
     "@orpc/contract": "catalog:",
     "@orpc/openapi": "catalog:",
@@ -58,7 +58,6 @@
     "pg": "^8.23.0",
     "pg-boss": "12.31.1",
     "pg-connection-string": "^2.14.0",
-    "ws": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -74,6 +73,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
+    "ws": "catalog:",
     "yaml": "^2.9.0"
   },
   "engines": {

@@ -1,7 +1,9 @@
 import { BlockList, isIPv4, isIPv6 } from 'node:net';
 
-import { getConnInfo } from '@hono/node-server/conninfo';
-import type { Context } from 'hono';
+import { Context, Effect, Option } from 'effect';
+import { HttpRouter, HttpServerRequest } from 'effect/unstable/http';
+
+import { Environment } from '../../env.ts';
 
 // Who is calling, for the rate-limit scopes keyed by client address (#1909).
 //
@@ -19,9 +21,18 @@ import type { Context } from 'hono';
 // separate on purpose: better-auth's is inside a library Studio does not
 // control, and replacing it would mean patching a code path that its own
 // tests, not Studio's, hold to this behaviour.
+//
+// `HttpMiddleware.xForwardedHeaders` is deliberately not used: it replaces the
+// peer with the *first* entry of the header, which is the one value in the
+// chain a client writes for itself.
 
 /** What a request whose peer address cannot be read is counted against. */
-const UNKNOWN_ADDRESS = 'unknown';
+export const UNKNOWN_ADDRESS = 'unknown';
+
+/** The address this request is limited against, for the routes behind it. */
+export class ClientAddress extends Context.Service<ClientAddress, string>()(
+  '@studio/ClientAddress',
+) {}
 
 /**
  * `::ffff:198.51.100.7` and `198.51.100.7` are the same client, and a limit
@@ -95,34 +106,28 @@ function isTrusted(list: BlockList, address: string): boolean {
   return family !== null && list.check(address, family);
 }
 
-/** The socket peer, or `unknown` where the adapter exposes no connection. */
-function peerAddress(c: Context): string {
-  try {
-    const address = getConnInfo(c).remote.address;
-    return address ? normalize(address) : UNKNOWN_ADDRESS;
-  } catch {
-    // No connection information at all — an in-process `app.request()` in the
-    // suites, or an adapter that does not expose one. Every such request
-    // shares one bucket, which is the safe direction.
-    return UNKNOWN_ADDRESS;
-  }
-}
-
 /**
  * The address this request is rate-limited against.
  *
+ * @param peerAddress the socket peer, absent where the transport exposes none — an
+ * in-process request in the suites, or an adapter with no connection. Every
+ * such request shares one bucket, which is the safe direction.
+ * @param forwarded the raw `X-Forwarded-For` header, if any.
  * @param trustedProxies from `createTrustedProxies`; without it the forwarded
  * header is never read, whatever the request claims.
  */
-export function clientAddress(
-  c: Context,
+export function resolveClientAddress(
+  peerAddress: Option.Option<string>,
+  forwarded: string | undefined,
   trustedProxies: BlockList | undefined,
 ): string {
-  const peer = peerAddress(c);
+  const peer = Option.match(peerAddress, {
+    onNone: () => UNKNOWN_ADDRESS,
+    onSome: normalize,
+  });
   if (!trustedProxies || peer === UNKNOWN_ADDRESS) return peer;
   if (!isTrusted(trustedProxies, peer)) return peer;
 
-  const forwarded = c.req.header('X-Forwarded-For');
   if (!forwarded) return peer;
   const hops = forwarded
     .split(',')
@@ -139,3 +144,32 @@ export function clientAddress(
   // Every hop was one of our own proxies, so none of them names a client.
   return peer;
 }
+
+/**
+ * Resolves the address once, for every route. The trusted list is parsed at
+ * layer build rather than per request: it comes from the environment and
+ * cannot change while the process runs, and parsing it here is also what makes
+ * its one warning appear once at boot instead of once per request.
+ */
+export const ClientAddressLive = HttpRouter.middleware<{
+  provides: ClientAddress;
+}>()(
+  Effect.gen(function* () {
+    const env = yield* Environment;
+    const trustedProxies = createTrustedProxies(env.trustedProxies);
+    return (httpEffect) =>
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest;
+        return yield* Effect.provideService(
+          httpEffect,
+          ClientAddress,
+          resolveClientAddress(
+            request.remoteAddress,
+            request.headers['x-forwarded-for'],
+            trustedProxies,
+          ),
+        );
+      });
+  }),
+  { global: true },
+);

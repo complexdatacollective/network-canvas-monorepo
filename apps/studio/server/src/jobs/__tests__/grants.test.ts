@@ -8,12 +8,12 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  type ScratchJobWorker,
   type ScratchSchema,
   sqlState,
 } from '../../__tests__/support/postgres.ts';
-import type { StudioMailer } from '../../auth/email.ts';
+import type { StudioMailer } from '../../mail/mailer.ts';
 import type { JobClient } from '../client.ts';
-import type { JobWorker } from '../worker.ts';
 
 const db = await reachableDb();
 
@@ -139,7 +139,7 @@ describe.skipIf(!db)('pg-boss grants', () => {
   });
 
   describe('the maintenance role', () => {
-    let worker: JobWorker;
+    let worker: ScratchJobWorker;
 
     beforeAll(async () => {
       worker = scratch.createJobWorker({ mailer: silentMailer });

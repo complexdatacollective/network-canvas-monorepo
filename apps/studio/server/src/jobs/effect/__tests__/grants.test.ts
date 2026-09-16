@@ -58,7 +58,7 @@ describe.skipIf(!db)('what each role may do with a job', () => {
       run: (
         sql: Transaction['Service']['sql'],
         schema: string,
-      ) => Effect.Effect<A, unknown, never>,
+      ) => Effect.Effect<A, unknown>,
     ) =>
       Effect.flatMap(QueueHarness, ({ schema }) =>
         Effect.exit(

@@ -5,16 +5,14 @@
 // socket, through the real origin and principal guards, to the real router.
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-import { serve } from '@hono/node-server';
 import { createORPCClient, getEventMeta } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket } from 'ws';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type contract } from '@codaco/studio-rpc';
@@ -22,7 +20,7 @@ import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import { createApp } from '../app.ts';
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { ProtocolStore } from '../protocol/store.ts';
@@ -34,6 +32,7 @@ import {
   seedTeam,
 } from './support/postgres.ts';
 import { testCipher } from './support/secrets.ts';
+import { startStudioServer } from './support/serve.ts';
 
 const db = await reachableDb();
 const env = readEnv();
@@ -57,7 +56,7 @@ type Connected = { client: StudioClient; socket: WebSocket };
 
 describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   let dispose: () => Promise<void>;
-  let server: ReturnType<typeof serve>;
+  let server: Awaited<ReturnType<typeof startStudioServer>>;
   let sockets: WebSocket[];
   let protocolId: string;
   let origin: string;
@@ -176,33 +175,24 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     // Self-hosted rather than the dev default: the managed topology refuses
     // anything that has not come through its proxy, and this suite is the
     // socket rather than the ingress boundary.
-    const app = createApp(
-      { ...env, deploymentMode: 'self-hosted' },
-      {
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(PRINCIPAL),
-          listMemberships: () =>
-            Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
-        }),
-        pool: scratch.app as pg.Pool,
-      },
-    );
-    server = serve({
-      fetch: app.fetch,
-      port: 0,
-      hostname: '127.0.0.1',
-      websocket: { server: new WebSocketServer({ noServer: true }) },
+    const serverEnv = { ...env, deploymentMode: 'self-hosted' } as const;
+    const studio = createStudio(serverEnv, {
+      auth: stubAuthService({
+        getSession: () => Promise.resolve(PRINCIPAL),
+        listMemberships: () =>
+          Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
+      }),
+      pool: scratch.app as pg.Pool,
     });
-    await new Promise<void>((resolve) => server.once('listening', resolve));
-    const address = server.address() as AddressInfo;
+    server = await startStudioServer(serverEnv, studio);
     origin = new URL(env.auth.baseUrl).origin;
-    url = `ws://127.0.0.1:${address.port}/ws`;
+    url = `${server.origin.replace('http://', 'ws://')}/ws`;
     sockets = [];
   });
 
   afterAll(async () => {
     for (const socket of sockets ?? []) socket.close();
-    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    await server?.dispose();
     await dispose?.();
   });
 

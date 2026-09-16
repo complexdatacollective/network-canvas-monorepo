@@ -142,6 +142,7 @@ describe('unconfigured auth', () => {
     trustedProxies: undefined,
     devDefaults: false,
     telemetry: true,
+    telemetryEndpoint: undefined,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
   };

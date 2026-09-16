@@ -44,6 +44,7 @@ catalog:
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
   '@effect/sql-pg': 4.0.0-rc.115
+  '@effect/platform-node': 4.0.0-rc.115
   '@effect/vitest': 4.0.0-rc.115
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
@@ -236,6 +237,18 @@ overrides:
   sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
+packageExtensions:
+  # `@effect/platform-node` declares `redis` as a hard peer for its
+  # NodeClusterSocket module, which Studio never imports. With
+  # `autoInstallPeers` a hard peer is installed whether or not
+  # `peerDependencyRules.ignoreMissing` names it (that rule only silences the
+  # warning), and it would ship a second Redis client beside ioredis into the
+  # studio-api image. Making the peer optional is what keeps it out;
+  # apps/studio/server's process-separation suite asserts that it stays out.
+  '@effect/platform-node':
+    peerDependenciesMeta:
+      redis:
+        optional: true
 peerDependencyRules:
   allowedVersions:
     # `@storybook/addon-vitest@10.6` predates Vitest 5 and still pins its peer

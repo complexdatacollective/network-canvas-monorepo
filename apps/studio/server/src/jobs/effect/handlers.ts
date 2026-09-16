@@ -4,7 +4,7 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
-import { Database, Transaction, withTransaction } from './database.ts';
+import { type Database, Transaction, withTransaction } from './database.ts';
 import {
   causeError,
   deepestMessage,
