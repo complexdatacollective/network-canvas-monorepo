@@ -8,6 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
+  RESOURCE_KIND_BADGE_COLORS,
   resourceKindLabel,
   resourceStatusLabel,
 } from './resourceKinds.ts';
@@ -101,7 +102,14 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         <Heading level="h4" margin="none">
           {descriptor.name}
         </Heading>
-        <Badge variant="outline">
+        {/*
+          The type's own colour, which is what the protocol's resource library
+          badges it in.
+        */}
+        <Badge
+          variant="outline"
+          color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
+        >
           {resourceKindLabel(descriptor.kind, intl)}
         </Badge>
         <Badge>{resourceStatusLabel(descriptor.status, intl)}</Badge>

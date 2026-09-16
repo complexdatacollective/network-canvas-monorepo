@@ -34,7 +34,7 @@ test('creates a valid NameGenerator stage from scratch', async ({
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text input',
+    inputControl: 'Text Input',
   });
 
   // The `prompts` list (`sections/name-generator-prompts/`) is a second

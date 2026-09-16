@@ -9,7 +9,6 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { REQUIRED } from '../requiredField.ts';
@@ -61,7 +60,6 @@ const settingsCapability = {
 
 const threeSections = (pageContentTitle = 'Page content') => (
   <>
-    <StageNameSection position={{ index: 1, total: 3 }} />
     <BuilderSection title={pageContentTitle}>
       <Field
         name="title"
@@ -163,9 +161,8 @@ describe('StageEditorShell', () => {
   it('lists every mounted section in the order they appear on the page', async () => {
     const harness = renderEditor();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
-      { title: 'Stage name', state: 'Finished' },
       { title: 'Page content', state: 'Finished' },
       { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
@@ -176,9 +173,8 @@ describe('StageEditorShell', () => {
       fields: { label: '', title: '', items: [] },
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
-      { title: 'Stage name', state: 'Not finished' },
       { title: 'Page content', state: 'Not finished' },
       { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
@@ -186,7 +182,7 @@ describe('StageEditorShell', () => {
 
   it('renders no list of the sections and no second column', async () => {
     const harness = renderEditor();
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
 
     // The sections are published, and drawn by nobody here: where a list of
     // them belongs on the page is the host's to decide, so the editor is one
@@ -245,8 +241,8 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       fields: { ...initialFields, interviewScript: 'Read this aloud' },
     });
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
-    expect(harness.outline()[2]).toEqual({
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    expect(harness.outline()[1]).toEqual({
       title: 'Interviewer guidance',
       state: 'Finished',
     });
@@ -261,7 +257,7 @@ describe('StageEditorShell', () => {
     // The value the capability owned is gone, so the section is off — not
     // still reading as configured from the document it was opened with.
     await waitFor(() =>
-      expect(harness.outline()[2]).toEqual({
+      expect(harness.outline()[1]).toEqual({
         title: 'Interviewer guidance',
         state: 'Switched off',
       }),
@@ -328,7 +324,7 @@ describe('StageEditorShell', () => {
   it('keeps a switched-off capability out of the way until it is asked for', async () => {
     const harness = renderEditor();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(
       screen.queryByRole('textbox', { name: 'Interviewer script text' }),
     ).toBeNull();
@@ -412,9 +408,8 @@ describe('StageEditorShell', () => {
     // Fresco's required validator trims, so a form that accepted this would
     // reject it on submit. The outline has to say the same thing the submit
     // will.
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
-      { title: 'Stage name', state: 'Not finished' },
       { title: 'Page content', state: 'Not finished' },
       { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
@@ -1124,13 +1119,15 @@ describe('StageEditorShell', () => {
     expect(
       screen.getByRole('textbox', { name: 'Page heading' }),
     ).toBeDisabled();
-    // The stage name sits outside any section's fieldset, so nothing but the
-    // field itself can refuse to be edited here.
+    // The stage's name is drawn by the HOST, outside the fieldset the shell
+    // disables — so nothing but the field itself can refuse to be edited here,
+    // and `useStageName` reads that refusal off the open edit rather than off
+    // the fieldset it is not inside.
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toBeDisabled();
     // Read-only is not the same as switched off. A spectator still needs to
     // see how much of the stage is done.
     await waitFor(() =>
-      expect(harness.outline()[1]).toEqual({
+      expect(harness.outline()[0]).toEqual({
         title: 'Page content',
         state: 'Finished',
       }),

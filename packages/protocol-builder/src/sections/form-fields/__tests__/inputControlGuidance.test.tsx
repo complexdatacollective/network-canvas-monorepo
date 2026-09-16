@@ -104,9 +104,9 @@ describe('the guidance under the input control', () => {
   });
 
   /**
-   * The invented attribute has no type yet, so the control the researcher
-   * picks here is what fixes it — permanently, for every form that ever
-   * collects it.
+   * The invented attribute has no type yet, and the dialog never asks for one:
+   * the control fixes it permanently, and this notice is the only place that
+   * decision is stated back to the researcher.
    */
   it('says what type the chosen control will fix a new attribute as', async () => {
     const harness = renderStageEditor(openAlterForm());
@@ -116,8 +116,8 @@ describe('the guidance under the input control', () => {
     await inventAttribute(harness.user, picker, 'nickname');
     await within(picker).findByText('nickname');
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      'text',
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Text',
     );
 
     expect(

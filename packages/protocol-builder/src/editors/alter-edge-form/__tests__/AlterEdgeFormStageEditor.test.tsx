@@ -55,7 +55,7 @@ const createFixture = () => ({
 });
 
 /** What the collapsed field row's badge says about the `edgeNotes` field. */
-const FIELD_ROW_BADGE = 'Text attribute using Text area input control';
+const FIELD_ROW_BADGE = 'Text attribute using Text Area input control';
 
 /**
  * What is true of THIS interface and no other. The list of sections it

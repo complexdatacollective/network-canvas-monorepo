@@ -19,10 +19,8 @@ type QualifierResolvers = {
 
 /**
  * Only the data source distinguishes the panel qualifiers, so a caller may
- * pass panels carrying nothing else. Both callers do: Architect's
- * `usePanelsForAutoName` assembles them from the per-index `dataSource` leaves
- * its form registers, and this package's assembles them from the one `panels`
- * field value its form registers.
+ * pass panels carrying nothing else — and `proposeStageLabel`, the only caller,
+ * does: its own `StageLabelPanel` is this same slice of the schema's `Panel`.
  */
 type PanelQualifierInput = Pick<Panel, 'dataSource'>;
 
@@ -37,7 +35,7 @@ type QualifierStageFields = {
  * The English fragments below are English on purpose, and stay English.
  *
  * Every one of them is a part of the SEEDED stage label `generateStageLabel`
- * assembles and `useAutoStageName` writes into the protocol's stored
+ * assembles and `useStageName` writes into the protocol's stored
  * `stage.label` — not copy anybody reads on its own. That is the case
  * `INTERFACE_NAMES` in `interfaces/interfaceNames.ts` is the precedent for:
  * names are localized where they are DISPLAYED, and left English where they

@@ -1,10 +1,6 @@
 import type * as React from 'react';
 
-import {
-  type PaletteColor,
-  paletteColorStyles,
-  type ThemeColorStyle,
-} from './styles/palette';
+import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const BADGE_BASE_CLASSES =
@@ -28,9 +24,11 @@ const badgeVariants = cva({
 
 type BadgeColor = PaletteColor;
 
+/** Every colour a badge can be, enumerable: a type cannot be iterated. */
+const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
+
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
-  '--badge-contrast'?: string;
 };
 
 type BadgeProps = object &
@@ -43,35 +41,43 @@ const themedBadgeVariants = cva({
   base: BADGE_BASE_CLASSES,
   variants: {
     variant: {
-      filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
+      /**
+       * `contrast-color()` reads the label in whichever of black or white
+       * contrasts with the fill further, so no hand-written ink can disagree
+       * with the colour it sits on. Winning that comparison is not itself WCAG
+       * AA, so the `ThemeColors` story measures every colour: the worst is
+       * neon coral at 4.62:1.
+       */
+      filled:
+        'border-transparent bg-(--badge-color) text-[contrast-color(var(--badge-color))]',
       /**
        * The colour is the border and a wash of it behind the label; the label
-       * itself is the surface's own text colour.
+       * itself is the contrast colour the surface underneath publishes.
        *
        * Not the theme colour: most of this palette sits in the middle of the
        * lightness range, where the colour reaches neither 4.5:1 against a 14%
        * wash of itself nor against white — cerulean blue is 4.43:1 either way.
-       * The text token is the one colour the theme already guarantees against
-       * the surface this badge sits on, in light and dark alike, and a wash
-       * this thin does not move it.
+       *
+       * `--published-text` rather than `--text`, because the page's text token
+       * is only guaranteed against the page: on Architect's accent series
+       * `--text` measures 2.69:1 where the surface's own contrast colour is
+       * 5.16:1. Off a published surface it is unset and the inherited colour
+       * applies.
+       *
+       * The wash stays mixed toward `transparent` rather than toward
+       * `--published-bg`, which is the surface's colour only while the badge
+       * sits directly on it.
        */
       outline:
-        'text-text border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)]',
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
     },
   },
 });
 
 function Badge({ className, color, variant, style, ...props }: BadgeProps) {
   const colorVariant = variant === 'outline' ? 'outline' : 'filled';
-  const colorStyle: ThemeColorStyle | null = color
-    ? paletteColorStyles[color]
-    : null;
-  const badgeStyle: BadgeStyle | undefined = colorStyle
-    ? {
-        ...style,
-        '--badge-color': colorStyle.color,
-        '--badge-contrast': colorStyle.contrast,
-      }
+  const badgeStyle: BadgeStyle | undefined = color
+    ? { ...style, '--badge-color': paletteColorStyles[color].color }
     : style;
 
   return (
@@ -88,4 +94,4 @@ function Badge({ className, color, variant, style, ...props }: BadgeProps) {
   );
 }
 
-export { Badge, type BadgeColor };
+export { Badge, BADGE_COLORS, type BadgeColor };

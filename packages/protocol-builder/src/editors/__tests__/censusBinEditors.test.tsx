@@ -295,7 +295,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'dyad-census-1',
     editor: dyadCensusStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Task introduction',
@@ -335,7 +334,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'tie-strength-census-1',
     editor: tieStrengthCensusStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Task introduction',
@@ -373,7 +371,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'one-to-many-dyad-census-1',
     editor: oneToManyDyadCensusStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Prompt collection',
@@ -419,7 +416,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'ordinal-bin-1',
     editor: ordinalBinStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Prompt collection',
@@ -459,7 +455,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'categorical-bin-1',
     editor: categoricalBinStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Prompt collection',
@@ -517,7 +512,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'name-generator-quick-add-1',
     editor: nameGeneratorQuickAddStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Quick add configuration',
       'Prompt collection',
@@ -552,7 +546,6 @@ const CASES: readonly EditorCase[] = [
     stageId: 'name-generator-roster-1',
     editor: nameGeneratorRosterStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Roster source',
       'Prompt collection',

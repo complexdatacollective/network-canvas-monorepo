@@ -28,9 +28,8 @@ const UNREACHABLE = createMessageError(resourceFailureMessages.unreachable);
 /**
  * The bytes of one stored resource, in two steps.
  *
- * The contract has no download: `preview` is the only thing that turns an
- * asset id into something a browser can fetch, so reading a file is that URL
- * fetched — the same route `downloadResourceContent` takes to save a copy. The
+ * `preview` is the only thing the contract has that turns an asset id into
+ * something a browser can fetch, so reading a file is that URL fetched. The
  * fetch is inside the result contract rather than beside it, so a URL that has
  * expired, or a host that is unreachable, is one failure the control already
  * knows how to show and offer a retry for.

@@ -95,14 +95,6 @@ describe('the interfaces the pedigree family claims', () => {
         stageType,
         new Set(harness.outline().map((section) => section.title)),
       );
-      // Where this stage sits in the interview it is part of. Read here
-      // because each editor's own create-mode test asserts this line is
-      // ABSENT for a stage the interview does not contain yet, and an absence
-      // is worth nothing until something has seen the presence.
-      expect(
-        harness.getByText(/^Stage \d+ of \d+$/),
-        `${stageType} does not say where it sits in the interview`,
-      ).toBeInTheDocument();
       harness.unmount();
     }
 

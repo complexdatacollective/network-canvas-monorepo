@@ -194,6 +194,65 @@ describe('FormStore', () => {
       );
     });
 
+    /**
+     * One path, two mounted callers.
+     *
+     * A stage editor's title and a rename dialog over it bind the same name,
+     * and a host is entitled to both. Registration is counted so that neither
+     * of them disturbs the other: the second mount does not reset the live
+     * field, and the first unmount does not delete it.
+     */
+    describe('a field two callers are holding', () => {
+      const held: FieldConfig = { name: 'label', initialValue: 'Named' };
+
+      it('keeps the live field when the second caller registers', () => {
+        store.getState().registerField(held);
+        store.getState().setFieldValue('label', 'Renamed');
+        store.getState().setFieldBlurred('label');
+
+        store.getState().registerField(held);
+
+        expect(store.getState().getFieldState('label')?.value).toBe('Renamed');
+        expect(store.getState().getFieldState('label')?.meta.isBlurred).toBe(
+          true,
+        );
+      });
+
+      it('keeps the field mounted until the last caller goes', () => {
+        store.getState().registerField(held);
+        store.getState().registerField(held);
+        store.getState().setFieldValue('label', 'Renamed');
+
+        store.getState().unregisterField('label');
+
+        // Still mounted, so still a path a submit is entitled to write.
+        expect(store.getState().fields.has('label')).toBe(true);
+        expect(store.getState().getFieldState('label')?.value).toBe('Renamed');
+
+        store.getState().unregisterField('label');
+
+        expect(store.getState().fields.has('label')).toBe(false);
+      });
+
+      it('keeps the field’s own errors when one caller goes', () => {
+        store.getState().registerField(held);
+        store.getState().registerField(held);
+        store.getState().setErrors({
+          formErrors: [],
+          fieldErrors: { label: ['This field is required.'] },
+        });
+
+        store.getState().unregisterField('label');
+
+        // The refusal is what a researcher is looking at. Losing it when a
+        // dialog closes left the editor's own sentence replaced by the form's
+        // generic "not finished".
+        expect(store.getState().getFieldErrors('label')).toEqual([
+          'This field is required.',
+        ]);
+      });
+    });
+
     it('should not error when unregistering non-existent field', () => {
       expect(() => {
         store.getState().unregisterField('nonexistent');

@@ -69,7 +69,7 @@ async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
-    inputControl: 'Number input',
+    inputControl: 'Number Input',
   });
   return editor;
 }
@@ -261,12 +261,11 @@ test('the option editor rejects canonically equivalent labels', async ({
   );
   // An attribute a participant chooses an answer from IS its list of values —
   // the schema refuses fewer than two — so it is invented in the codebook's
-  // own editor rather than from a name and a type. Driven here rather than
-  // through forms.ts's helper because the whole point is the refusal, which
-  // that helper would wait for a successful create through.
+  // own editor rather than from a name and a control. Driven here rather than
+  // through forms.ts's helper, which would wait for a successful create.
   await fieldDialog
-    .getByRole('combobox', { name: 'Kind of answer', exact: true })
-    .selectOption({ label: 'Categorical' });
+    .getByRole('combobox', { name: 'Input control', exact: true })
+    .selectOption({ label: 'Checkbox Group' });
   const openEditor = 'Create this attribute and its values';
   await fieldDialog
     .getByRole('button', { name: openEditor, exact: true })

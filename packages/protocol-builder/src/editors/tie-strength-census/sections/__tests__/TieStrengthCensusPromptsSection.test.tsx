@@ -103,7 +103,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     // The stage's name, the type it asks about and the screen shown before it
     // belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 
@@ -497,7 +497,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
 
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 });

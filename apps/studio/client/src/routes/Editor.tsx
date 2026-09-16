@@ -28,6 +28,8 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import StageNameField from '@codaco/protocol-builder/fields/StageNameField';
+import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
@@ -1141,6 +1143,7 @@ function EditorWorkspace({
                     stageId: selection.stageId,
                   }),
                 }}
+                header={() => <ScreenTitle />}
                 actions={(context) => (
                   <StageActions
                     context={context}
@@ -1188,6 +1191,35 @@ function OutlineButton(props: {
         {props.children}
       </button>
     </li>
+  );
+}
+
+/**
+ * The screen's name, at the top of Studio's editor panel.
+ *
+ * Studio's rather than the package's: the package publishes the name as a
+ * field, and what a title looks like around it belongs to the host. The least
+ * of one — no picture, no badge — because the rename Studio is heading for is
+ * a menu on the outline rather than a title here.
+ *
+ * Rendered from the editor's HEADER slot: inside the stage form's provider,
+ * because the name is a field of it, and above the form's own fields.
+ */
+function ScreenTitle() {
+  const { label } = useStageName();
+
+  return (
+    <div className="flex w-full flex-col">
+      {/*
+        A heading rather than a label: the visible one is the name field, which
+        is a control and cannot be a heading. Hidden, so the name is the only
+        title on screen.
+      */}
+      <Heading level="h2" className="sr-only">
+        {label}
+      </Heading>
+      <StageNameField />
+    </div>
   );
 }
 

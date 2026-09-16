@@ -31,7 +31,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     // The stage's name, the type it asks about and what becomes of a person
     // already considered belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'behaviours'],
+      unowned: ['subject', 'behaviours'],
     });
   });
 

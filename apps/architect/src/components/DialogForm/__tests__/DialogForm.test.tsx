@@ -218,8 +218,10 @@ describe('DialogForm', () => {
         expect.objectContaining({
           fieldErrors: { label: ['Name already used'] },
         }),
-        // The form element the search is scoped to.
+        // The form element the search is scoped to, and the store's identity,
+        // which is what reaches a field the element does not contain.
         expect.anything(),
+        expect.any(String),
       );
     });
   });

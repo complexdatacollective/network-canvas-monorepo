@@ -68,7 +68,7 @@ function SectionsOnThePage({
 }
 
 const EVERY_STATUS: readonly StageSection[] = [
-  section('s-1', 'Stage name', 'complete'),
+  section('s-1', 'Subject', 'complete'),
   section('s-2', 'Page content', 'incomplete'),
   section('s-3', 'Prompts', 'error'),
   section('s-4', 'Interviewer guidance', 'switchedOff'),
@@ -219,18 +219,41 @@ describe('the list of a stage’s sections', () => {
     render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+    // The card holds the height and the scrolling, so a long list scrolls
+    // inside it rather than sliding out from under its own top edge.
+    const card = screen.getByRole('list').parentElement;
 
     expect(outline.className).toContain(
       `@min-[60rem]:top-(${NAV_HEIGHT_VARIABLE})`,
     );
-    expect(outline.className).toContain(
+    expect(card?.className).toContain(
       `@min-[60rem]:max-h-[calc(100dvh-var(${NAV_HEIGHT_VARIABLE}))]`,
     );
     expect(outline.className).not.toContain('@min-[60rem]:top-0');
-    expect(outline.className).not.toContain('@min-[60rem]:max-h-dvh');
+    expect(card?.className).not.toContain('@min-[60rem]:max-h-dvh');
     // The 56px of top padding that stood in for the bar's height is gone with
     // it: kept alongside the offset it would be a second, unrelated gap.
     expect(outline.className).not.toContain('@min-[60rem]:py-14');
+  });
+
+  /**
+   * Where the list STARTS, now that nothing of the editor's is drawn above it.
+   *
+   * It used to clear a block of unknown height: the stage's heading was the
+   * first thing the editor drew in the column beside this one, so the list was
+   * lifted down by a distance measured on every layout and published as a
+   * custom property. Architect draws the stage's title itself now, above both
+   * columns, so the list and the form begin together and there is nothing left
+   * to measure. A declaration left behind would move the list down past a
+   * heading that is no longer there.
+   */
+  it('begins at the top of its column, with nothing lifting it down', () => {
+    render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
+
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
+
+    expect(outline.className).not.toContain('mt-(');
+    expect(outline.getAttribute('style')).toBeNull();
   });
 
   it('is not there at all before the editor has any sections to list', () => {

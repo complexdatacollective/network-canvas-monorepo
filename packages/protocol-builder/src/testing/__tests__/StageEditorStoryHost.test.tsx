@@ -8,7 +8,6 @@ import ContentBlockEditor from '../../sections/content-blocks/ContentBlockEditor
 import ContentBlockPreview from '../../sections/content-blocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTypes.ts';
 import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { StageEditSession } from '../../stageEdit.tsx';
 import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
@@ -30,7 +29,9 @@ const renderHost = (stageId: string, readOnly = false) =>
         <ResourceClientProvider>
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
             <StageEditorShell actions={actions}>
-              <StageNameSection />
+              {/* The host's own chrome draws the stage's name; nothing here
+                  is about the sections. */}
+              {null}
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -134,7 +135,6 @@ describe('what a family’s story tells the host', () => {
           <ResourceClientProvider>
             <StageEditSession target={target} formId={formId} onSaved={onSaved}>
               <StageEditorShell actions={actions}>
-                <StageNameSection />
                 <PageContentSection
                   ItemEditor={ContentBlockEditor}
                   ItemPreview={ContentBlockPreview}

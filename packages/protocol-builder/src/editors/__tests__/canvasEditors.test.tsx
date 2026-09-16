@@ -43,7 +43,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     stageId: 'sociogram-1',
     editor: sociogramStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Prompt collection',
@@ -59,7 +58,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     stageId: 'narrative-1',
     editor: narrativeStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Visualization presets',
@@ -75,7 +73,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     stageId: 'network-composer-1',
     editor: networkComposerStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Node configuration',
       'Editable attributes',
@@ -105,7 +102,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     // ask about it, and how it looks and where it opens are settled once the
     // questions are written.
     sections: [
-      'Stage name',
       'Node setup',
       'Stage filter',
       'Map access',
@@ -126,7 +122,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     // the node type its diseases are attributes of is the source pedigree's,
     // resolved through the stage it names rather than chosen here.
     sections: [
-      'Stage name',
       'Pedigree source',
       'Disease mappings',
       'At-risk statuses',
@@ -143,7 +138,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     // to a codebook attribute, so that section writes the codebook under its
     // own lock rather than through this stage's save.
     sections: [
-      'Stage name',
       'Task explanation',
       'Passphrase validation',
       'Encrypted attributes',

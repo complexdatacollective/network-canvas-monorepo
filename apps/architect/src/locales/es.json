@@ -640,6 +640,8 @@
   "architect.stageEditor.stageEditor.yourBrowserBlockedThePreviewPopup": "El navegador bloqueó la ventana emergente de vista previa. Permite las ventanas emergentes para este sitio y vuelve a pulsar Vista previa.",
   "architect.stageEditor.stageEditorChrome.oK": "Aceptar",
   "architect.stageEditor.stageEditorPage.otherTab": "Otra pestaña",
+  "architect.stageEditor.stageTitle.documentation": "Documentación",
+  "architect.stageEditor.stageTitle.position": "Etapa {index, number} de {total, number}",
   "architect.storageUnavailableBanner.downloadFailed": "La descarga falló",
   "architect.storageUnavailableBanner.downloadNetcanvas": "Descargar .netcanvas",
   "architect.storageUnavailableBanner.oK": "Aceptar",

@@ -424,6 +424,22 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
       .getByRole('button')
       .first(),
   ).toBeFocused();
+
+  // And the whole list comes before the editor, asserted as document order
+  // rather than by counting Tab presses — which would be a claim about how
+  // many controls the list happens to hold.
+  expect(
+    await architectPage.evaluate(() => {
+      const list = document.querySelector('nav[aria-label="Stage sections"]');
+      const name = document.querySelector('[data-field-name="label"]');
+      if (list === null || name === null) return 'one of them is missing';
+      return (list.compareDocumentPosition(name) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+        ? 'list first'
+        : 'title first';
+    }),
+  ).toBe('list first');
 });
 
 // #1392: a valid but very long variable name broke the delete confirmation.

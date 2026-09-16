@@ -578,7 +578,7 @@ describe('the pedigree’s own configuration', () => {
     const harness = renderStageEditor(openFixture());
 
     // The stage's name belongs to a section this mount does not include.
-    await harness.roundTrip({ unowned: ['label'] });
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('saves an edit to every key it owns', async () => {
@@ -642,7 +642,7 @@ describe('the pedigree’s own configuration', () => {
     });
 
     const request = await harness.roundTrip({
-      unowned: ['label', 'introScreen'],
+      unowned: ['introScreen'],
     });
     expect(request.stageDocument.introScreen).toEqual({
       items: [
@@ -1163,7 +1163,7 @@ describe('the pedigree’s nomination prompts', () => {
     const harness = renderStageEditor(openWithNominationPrompts());
 
     // The stage's name belongs to a section this mount does not include.
-    await harness.roundTrip({ unowned: ['label'] });
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('edits a prompt through its own dialog', async () => {
@@ -1833,11 +1833,12 @@ describe('what a family member form field’s attribute holds', () => {
     await within(attributeField('Attribute', dialog)).findByText(
       'household_role',
     );
-    // An attribute participants choose from IS its values, so a name is not
-    // enough: the row sends the researcher to the editor that authors both.
+    // An attribute participants choose from IS its values, so a name and a
+    // control are not enough — the row sends the researcher to the editor that
+    // authors both.
     await harness.user.selectOptions(
-      await field.findByRole('combobox', { name: 'Kind of answer' }),
-      'categorical',
+      await field.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
     );
     await harness.user.click(
       field.getByRole('button', {

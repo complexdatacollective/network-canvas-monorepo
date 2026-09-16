@@ -75,7 +75,7 @@ after the fact is marked in place.
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                                                                                                                        | #1702     |
 | `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                                                                                                                       | #1702     |
-| `stageName`                 | `sections/stage-heading/StageNameSection.tsx`                                                                                                                                                                                                                                         | #1702     |
+| `stageName`                 | `naming/stageNameInternals.ts`                                                                                                                                                                                                                                                        | #1702     |
 | `operators`                 | `rules/operators.ts`                                                                                                                                                                                                                                                                  | i18n-1a   |
 | `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                                                                                                                                 | i18n-1a   |
 | `ruleSet`                   | `rules/ruleSet.ts`, `fields/RuleSetField.tsx`                                                                                                                                                                                                                                         | i18n-1a   |
@@ -389,8 +389,11 @@ for something else or reopens a decision that has been made:
   changed, so the only surface that can tell a researcher what actually
   happened is the one that knows which attribute the editor was opened on.
 
-`sections/stage-heading/StageHeadingSection.tsx` holds no copy either: it
-composes `StageNameSection` from the protocol's own stage order.
+`stageName` moved out of a section and into the module the name's three hooks
+share. What a stage TITLE looks like is host chrome now — Architect draws the
+picture, the interface badge and the documentation link, and owns the copy for
+them — so what is left here is what the name IS: what the field is called, and
+what it says while it is empty.
 
 `sections/collectableTypes.ts` DOES hold copy, and used not to. It was a list
 of schema tokens offered as their own labels — a researcher choosing what kind
@@ -400,9 +403,14 @@ everything else in the same dialog was translated. Neither guard could see it:
 a string with no descriptor behind it is invisible to `checkFullLocale`, to the
 attribute scan and to the sweeps alike. The kinds of answer are now named by
 the same `codebookVariable.type*` descriptors the codebook editor uses — moved
-into `codebook/variableTypeLabels.ts` so the two surfaces read one list — and
-the input controls have their own `formFields.control*` names, following
-Architect's own long-standing wording for the same controls.
+into `codebook/variableTypeLabels.ts` so the two surfaces read one list, and
+read here as the heading over each group of input controls — and the input
+controls have their own `formFields.control*` names, which are Architect's own
+long-standing names for the same controls (`TextInput`, `BooleanChoice`,
+`ToggleButtonGroup`) with their words separated. Descriptive paraphrases were
+tried in their place and reverted: they broke the correspondence between what
+the dialog offers, what the documentation calls the control, and what a
+protocol file spells it.
 
 The RESOURCE half of `schemaProblem` — what a researcher is told about a stored
 resource entry the asset schema refuses — is declared in `form/schemaProblems.ts`

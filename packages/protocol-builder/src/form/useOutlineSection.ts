@@ -7,11 +7,9 @@ import { useStageEditorForm } from './stageEditorContext.ts';
  * Registers one section with the editor's outline and hands back the id the
  * section must put on its own element.
  *
- * Separate from the section component because not every section looks like
- * one: the stage's name is rendered as the page's own heading rather than as
- * a card, and it still belongs in the outline. What makes something a section
- * is that it is a named part of the stage a researcher can navigate to, not
- * the chrome it happens to wear.
+ * Separate from the section component because what makes something a section
+ * is that it is a named part of the stage a researcher can navigate to, rather
+ * than the markup it happens to be drawn in.
  */
 export function useOutlineSection(
   title: string,
