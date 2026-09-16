@@ -64,9 +64,21 @@ const Countdown = Rpc.make('Countdown', {
   stream: true,
 });
 
+class StreamBroke extends Schema.TaggedError<StreamBroke>()('StreamBroke', {
+  after: Schema.Number,
+}) {}
+
+/** Emits `1..after`, then fails: the stream's own typed error, mid-stream. */
+const Broken = Rpc.make('Broken', {
+  payload: { after: Schema.Number },
+  success: Schema.Number,
+  error: StreamBroke,
+  stream: true,
+});
+
 const Secret = Rpc.make('Secret', { success: Schema.String });
 
-const group = RpcGroup.make(GetUser, ListItems, Slow, Countdown).merge(
+const group = RpcGroup.make(GetUser, ListItems, Slow, Countdown, Broken).merge(
   RpcGroup.make(Secret).middleware(Guard),
 );
 
@@ -116,6 +128,10 @@ const handlers = group.toLayer({
         }),
       ),
     ),
+  Broken: ({ after }) =>
+    Stream.fromIterable(
+      Array.from({ length: after }, (_, index) => index + 1),
+    ).pipe(Stream.concat(Stream.fail(new StreamBroke({ after })))),
   Secret: () => Effect.succeed('classified'),
 });
 
@@ -261,6 +277,35 @@ describe('makeRpcAdapter', () => {
     await waitFor(() => expect(released).toBe(true));
   });
 
+  it('reports a completed stream as done', async () => {
+    const chunks: number[] = [];
+    const { result } = renderHook(() =>
+      adapter.useRpcStream('Countdown', { from: 2 }, (chunk) => {
+        chunks.push(chunk);
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('done'));
+    expect(chunks).toEqual([2, 1]);
+    expect(result.current.error).toBeUndefined();
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it("reports a stream's typed failure as failed and hands it to onFailure", async () => {
+    const chunks: number[] = [];
+    const { result } = renderHook(() =>
+      adapter.useRpcStream('Broken', { after: 2 }, (chunk) => {
+        chunks.push(chunk);
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('failed'));
+    expect(chunks).toEqual([1, 2]);
+    expect(result.current.error).toBeInstanceOf(StreamBroke);
+    expect(onFailure).toHaveBeenCalledTimes(1);
+    expect(onFailure).toHaveBeenCalledWith(result.current.error);
+  });
+
   it('runs nothing while a stream is disabled', async () => {
     const chunks: number[] = [];
     const { result } = renderHook(() =>
@@ -360,6 +405,30 @@ const _typeProbes = (probe: RpcAdapter<Rpcs>) => {
   probe.rpcQuery('GetUser', { id: 1 });
   // @ts-expect-error — 'Nope' is not a tag in the group.
   probe.rpcMutation('Nope');
+};
+
+/**
+ * Pins what the adapter's two casts assume about a flat client, for a concrete
+ * group: a unary tag answers with an `Effect` of the rpc's success and error
+ * types, a streaming tag with a `Stream` of its chunks. If an Effect release
+ * reshapes `RpcClient.Flat`, this stops compiling before the casts can lie.
+ */
+const _flatClientShapeProbe = (
+  flat: RpcClient.RpcClient.Flat<Rpcs, RpcClientError.RpcClientError>,
+) => {
+  const unary: Effect.Effect<
+    { readonly id: string; readonly name: string },
+    UserNotFound | RpcClientError.RpcClientError
+  > = flat('GetUser', { id: 'x' });
+  const streaming: Stream.Stream<number, RpcClientError.RpcClientError> = flat(
+    'Countdown',
+    { from: 1 },
+  );
+  const failing: Stream.Stream<
+    number,
+    StreamBroke | RpcClientError.RpcClientError
+  > = flat('Broken', { after: 1 });
+  return { unary, streaming, failing };
 };
 
 /**

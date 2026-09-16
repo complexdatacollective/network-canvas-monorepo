@@ -50,8 +50,12 @@ type PagePayloadOf<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = Omit<
  * The flat client's return type is a conditional on the rpc's success schema, which
  * TypeScript leaves unresolved while `Tag` is generic. These two function types are the
  * resolved views of it — one for the rpcs that answer with an effect, one for the rpcs
- * that answer with a stream — and the two `as` they are used with are the only casts in
- * this package.
+ * that answer with a stream — and the two `as unknown as` they are used with are the
+ * only casts in this package. The erasure through `unknown` is deliberate and written
+ * where it happens: the conditional type and these views do not overlap for the
+ * compiler, so nothing here can check them against each other. What pins them is the
+ * compile-time probe in `__tests__/adapter.test.tsx` (`_flatClientShapeProbe`), which
+ * assigns a real flat client's results for a concrete group to exactly these shapes.
  */
 type CallAt<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = (
   tag: Tag,
@@ -95,8 +99,8 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     signal?: AbortSignal,
   ): Promise<SuccessOf<Rpcs, Tag>> => {
     const exit = await runtime.runPromiseExit(
-      Effect.flatMap(client, (c: unknown) =>
-        (c as CallAt<Rpcs, Tag>)(tag, payload),
+      Effect.flatMap(client, (c) =>
+        (c as unknown as CallAt<Rpcs, Tag>)(tag, payload),
       ),
       signal === undefined ? undefined : { signal },
     );
@@ -224,9 +228,9 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
       setState(STREAMING);
       let live = true;
       const fiber = runtime.runFork(
-        Effect.flatMap(client, (c: unknown) =>
+        Effect.flatMap(client, (c) =>
           Stream.runForEach(
-            (c as StreamAt<Rpcs, Tag>)(tag, payloadRef.current),
+            (c as unknown as StreamAt<Rpcs, Tag>)(tag, payloadRef.current),
             (chunk) => Effect.sync(() => onChunkRef.current(chunk)),
           ),
         ),

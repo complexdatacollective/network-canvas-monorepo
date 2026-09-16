@@ -7,7 +7,7 @@ import pg from 'pg';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
-import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
+import { StudioRpcs, StudioStreams } from '@codaco/studio-contract/rpc/studio';
 import { contract } from '@codaco/studio-rpc';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -255,11 +255,10 @@ describe('audit mutation policy', () => {
     // Keep the two walks agreeing until stage 2b deletes the oRPC one.
     const effectProcedures = [
       ...StudioRpcs.requests.keys(),
-      // The protocol-builder surface is still oRPC until stage 8; its leaves
-      // come from today's contract.
-      ...contractLeaves(contract).filter((p) =>
-        p.startsWith('protocolBuilder.'),
-      ),
+      // The protocol-builder surface is still oRPC until stage 8, so its
+      // leaves are walked the oRPC way — but through the contract's own
+      // `StudioStreams` re-export, which is the one name that surface keeps.
+      ...contractLeaves(StudioStreams, 'protocolBuilder'),
     ];
     const effectMutations = effectProcedures.filter((p) => !reads.has(p));
     expect(effectMutations.toSorted()).toEqual(

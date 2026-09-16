@@ -183,9 +183,13 @@ export type QueueReconciliation =
 export function reconcileQueue(
   name: string,
   declared: DeclaredJobQueueOptions,
-  existing: InstalledJobQueue | null,
+  existing: InstalledJobQueue | null | undefined,
 ): QueueReconciliation {
-  if (existing === null) return { kind: 'create', options: declared };
+  // pg-boss reports "not installed" as `null` today; a release that reports it
+  // as `undefined` must take the create path too, not throw on `.policy`.
+  if (existing === null || existing === undefined) {
+    return { kind: 'create', options: declared };
+  }
   const { policy = 'standard', partition: _partition, ...updatable } = declared;
   if (existing.policy !== policy) {
     return {

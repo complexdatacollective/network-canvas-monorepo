@@ -155,6 +155,10 @@ function transactionControlIn(
   );
 }
 
+// The three scenarios are one story on one database, in order: the fresh
+// install leaves the schema the re-apply finds, and the replacement edits that
+// schema's version row. Run them together and in file order (no `.only`, no
+// shuffle), or the later ones report failures that are not real.
 describe.skipIf(!db)('the statements schema application sends', () => {
   let scratch: { pool: pg.Pool; dispose: () => Promise<void> };
   let client: pg.PoolClient;

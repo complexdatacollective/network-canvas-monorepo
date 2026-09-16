@@ -217,7 +217,10 @@ export function splitStatements(script: string): readonly string[] {
       continue;
     }
 
-    if (character === '$') {
+    // A dollar quote must be separated from a preceding identifier: in
+    // `my$tbl$name` the `$` continues the identifier, and Postgres reads the
+    // whole thing as one name rather than as `my` followed by a quote.
+    if (character === '$' && !isNameCharacter(script[index - 1])) {
       const bodyStart = dollarQuoteBodyStart(script, index);
       if (bodyStart !== -1) {
         hasCommand = true;

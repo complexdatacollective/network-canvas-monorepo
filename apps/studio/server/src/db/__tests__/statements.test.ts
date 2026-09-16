@@ -105,6 +105,16 @@ $body$ LANGUAGE plpgsql;`;
     expect(splitStatements('   \n\t ')).toEqual([]);
   });
 
+  it('reads a `$` inside an identifier as part of the name', () => {
+    // Postgres allows `$` as an identifier continuation character, and a
+    // dollar quote must be separated from a preceding identifier by whitespace.
+    // Reading `$tbl$` here as an opener would swallow the rest of the script.
+    expect(splitStatements('select * from my$tbl$name; select 2;')).toEqual([
+      'select * from my$tbl$name',
+      'select 2',
+    ]);
+  });
+
   it('reads a positional parameter as ordinary text', () => {
     // `$1` is not a dollar-quote opener; treating it as one would swallow the
     // rest of the script into a string that never closes.

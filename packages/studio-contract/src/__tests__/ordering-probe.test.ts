@@ -125,7 +125,7 @@ const adminLastLayer = Layer.mergeAll(
 // nothing and then ADDS `Principal`, leaving it for whoever builds the handler
 // layer to supply — which no server can do, because a principal exists only per
 // request. The other order subtracts it again and lands on `never`.
-// @ts-expect-error
+// @ts-expect-error -- Principal is an unmet requirement of the adminLast handler layer
 const AdminLastLayer = withoutRequirements(adminLastLayer);
 
 describe('declared middleware ordering (design §20 Q8)', () => {
