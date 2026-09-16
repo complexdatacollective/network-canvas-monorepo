@@ -447,14 +447,12 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     // Outside the claim's transaction on purpose: a handler makes a network
     // call, and holding a transaction open across one is how a pool starves.
     const exit = yield* Effect.exit(
-      inFlight.withPermit(
-        handler({
-          id: jobId,
-          payload: claimed.payload,
-          attempt: claimed.attempts,
-          finalAttempt: claimed.attempts > declaration.retryLimit,
-        }),
-      ),
+      handler({
+        id: jobId,
+        payload: claimed.payload,
+        attempt: claimed.attempts,
+        finalAttempt: claimed.attempts > declaration.retryLimit,
+      }),
     );
 
     const settledAt = yield* DateTime.now;
@@ -496,7 +494,11 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           `job ${queue} ${jobId} failed on attempt ${claimed.attempts}: ${message}`,
         );
     return step;
-  });
+  },
+  // The whole step holds a permit, not just the handler: a graceful stop that
+  // let go the moment a handler returned would interrupt the fiber before it
+  // had written the outcome, leaving a completed send recorded as `active`.
+  (effect) => inFlight.withPermit(effect));
 
   /**
    * An attempt whose lease ran out. The row goes back to `created` with its
