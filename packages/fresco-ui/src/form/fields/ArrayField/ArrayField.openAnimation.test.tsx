@@ -59,6 +59,23 @@ function enterStyleOf(label: string): { opacity: string; transform: string } {
   return { opacity: row.style.opacity, transform: row.style.transform };
 }
 
+/**
+ * The two states a row can be mounted in, exactly as Motion leaves them in the
+ * element's inline style.
+ *
+ * Both are measured rather than reasoned about: Motion writes out whichever
+ * variant `initial` resolves to, so a row that is not animating carries an
+ * explicit `opacity: 1; transform: none`, not an absent declaration.
+ *
+ * They are compared whole, and by value. Asserting merely that a row is NOT at
+ * `opacity: 0` and NOT at `scale(0.6)` would pass a row mounted part-way into
+ * the animation — at `opacity: 0.2`, say, or `scale(0.8)` — which is a row
+ * that animates in just the same. Only the resting values themselves rule
+ * that out.
+ */
+const AT_REST = { opacity: '1', transform: 'none' };
+const ENTERING = { opacity: '0', transform: 'scale(0.6)' };
+
 describe('rows that are simply there when the list opens', () => {
   it('does not animate in rows delivered a render after mount', () => {
     render(<Host />);
@@ -67,13 +84,11 @@ describe('rows that are simply there when the list opens', () => {
       deliver(ROWS);
     });
 
-    // Both rows are at rest the instant they are mounted: no fade from
-    // transparent, no scale up from 0.6. A row that animated in would be at
-    // `opacity: 0` with a `scale(0.6)` transform here.
+    // Both rows are at rest the instant they are mounted — fully opaque and
+    // unscaled. A row that animated in would be at `ENTERING` here, and a row
+    // that animated in from anywhere else would be at neither.
     for (const { label } of ROWS) {
-      const { opacity, transform } = enterStyleOf(label);
-      expect(opacity, `${label} opacity`).not.toBe('0');
-      expect(transform, `${label} transform`).not.toMatch(/scale\(0\.6\)/);
+      expect(enterStyleOf(label), label).toEqual(AT_REST);
     }
   });
 
@@ -81,9 +96,7 @@ describe('rows that are simply there when the list opens', () => {
     render(<Host initialRows={ROWS} />);
 
     for (const { label } of ROWS) {
-      const { opacity, transform } = enterStyleOf(label);
-      expect(opacity, `${label} opacity`).not.toBe('0');
-      expect(transform, `${label} transform`).not.toMatch(/scale\(0\.6\)/);
+      expect(enterStyleOf(label), label).toEqual(AT_REST);
     }
   });
 
@@ -101,9 +114,7 @@ describe('rows that are simply there when the list opens', () => {
 
     // The row the researcher asked for is the one thing in this list that
     // SHOULD arrive animating.
-    const { opacity, transform } = enterStyleOf('New');
-    expect(opacity).toBe('0');
-    expect(transform).toMatch(/scale\(0\.6\)/);
+    expect(enterStyleOf('New')).toEqual(ENTERING);
   });
 
   it('still animates in the first row added to a list that really is empty', () => {
@@ -113,8 +124,6 @@ describe('rows that are simply there when the list opens', () => {
     // not because it is still waiting. Its first row is an add like any other.
     fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
 
-    const { opacity, transform } = enterStyleOf('New');
-    expect(opacity).toBe('0');
-    expect(transform).toMatch(/scale\(0\.6\)/);
+    expect(enterStyleOf('New')).toEqual(ENTERING);
   });
 });
