@@ -188,7 +188,12 @@ describe('the reference compose stack', () => {
       // tags, which the YAML parser does not know and only warns about.
       const overlay = parse(source, { logLevel: 'silent' }) as ComposeFile;
       const worker = overlay.services?.worker;
-      expect({ name, grace: worker?.stop_grace_period ?? '40s' }).toEqual({
+      // Key presence, not its value: an overlay that never mentions
+      // `stop_grace_period` inherits the 40s above, but one that mentions it at
+      // all — including to reset it, which Compose spells `!reset` and which
+      // hands the worker back Docker's 10s default — has to say 40s itself.
+      if (!worker || !('stop_grace_period' in worker)) continue;
+      expect({ name, grace: worker.stop_grace_period }).toEqual({
         name,
         grace: '40s',
       });
