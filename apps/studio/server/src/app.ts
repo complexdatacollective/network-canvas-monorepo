@@ -1,16 +1,8 @@
-import { randomUUID } from 'node:crypto';
-
-import { RPCHandler } from '@orpc/server/fetch';
-import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
 import { Effect } from 'effect';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
-import {
-  CLIENT_SESSION_HEADER,
-  readClientSessionId,
-} from '@codaco/studio-contract/client-session';
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
@@ -43,6 +35,7 @@ import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRateLimiter } from './rate-limit.ts';
 import type { RateLimitSettings } from './rate-limit/scopes.ts';
 import { createRpcRouter, type RpcContext } from './rpc.ts';
+import type { RpcDeps } from './rpc/deps.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
 
@@ -191,6 +184,13 @@ export type WsBridgeDeps = {
 export type Studio = {
   readonly app: Hono<StudioHonoEnv>;
   readonly ws: WsBridgeDeps;
+  /**
+   * What the `/rpc` handlers are wired from. Resolved here because this is
+   * where the pool, the auth service, the limiter and the cipher are decided,
+   * and handed to the Effect shell, which owns the route
+   * (src/http/rpc-routes.ts).
+   */
+  readonly rpc: RpcDeps;
   /**
    * The readiness checks this process runs, minus `schema`: whether the
    * database is this build's is the program's verdict (SchemaStatus), not the
@@ -415,58 +415,37 @@ export function createStudio(
   });
   app.route('/storage', createAssetRoutes(assetStore));
 
-  // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
-  // implementing the @codaco/studio-rpc boundary contract.
-  if (env.auth) {
-    app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
-  }
-  app.use('/rpc/*', createPrincipalMiddleware(auth));
   // One cipher for the process. Absent only where no keyring was given, which
   // the env layer allows only where there is no database — and every surface
   // that would seal or open a secret needs one of those too (#1900).
   const cipher = env.secrets ? createSecretsCipher(env.secrets) : undefined;
-  const rpcRouter = createRpcRouter(authCaps, {
+  // What the `/rpc` handlers are wired from, resolved once and handed to the
+  // Effect shell as `studio.rpc` (src/http/rpc-routes.ts). `/rpc` is not a
+  // Hono route any more: the SPA's twenty procedures are Effect rpc handlers
+  // served on the shell's own router, behind their own same-origin gate, and
+  // the principal is resolved by the `Authenticated` middleware rather than by
+  // a Hono middleware on this app.
+  const rpcDeps: RpcDeps = {
     auth,
+    capabilities: authCaps,
     deployment,
     readInstallation: readInstallationRow,
     jobs: deps.jobs,
     pool,
-    protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
     cipher,
     limiter,
-  });
-  // The plugin puts a `resHeaders` Headers on every call's context and folds
-  // whatever a procedure writes into the response. Two things write to it:
-  // `setup.complete`, which signs the first owner in and so has to carry
-  // better-auth's own `set-cookie` out of a procedure rather than out of
-  // `/api/auth/*`, and a call the limiter refuses, which puts `Retry-After`
-  // on its own response (#1909).
-  //
-  // The socket handler below gets no such plugin: a WebSocket frame has no
-  // response headers at all, so a call refused over the socket carries its
-  // retry-after in the error data and nowhere else.
-  const rpcHandler = new RPCHandler(rpcRouter, {
-    plugins: [new ResponseHeadersPlugin()],
-  });
-  // The same router over the socket: unary calls keep working on /rpc, and
-  // the streaming procedure the fetch transport cannot serve — the protocol
-  // builder's `watchProtocol` — is served here.
-  const socketHandler = new WebSocketRPCHandler<RpcContext>(rpcRouter);
-  app.use('/rpc/*', async (c, next) => {
-    const { matched, response } = await rpcHandler.handle(c.req.raw, {
-      prefix: '/rpc',
-      context: {
-        principal: c.get('principal'),
-        requestId: c.env?.requestId ?? randomUUID(),
-        clientSessionId: readClientSessionId(
-          c.req.header(CLIENT_SESSION_HEADER),
-        ),
-      },
-    });
-    if (matched) return c.newResponse(response.body, response);
-    await next();
-  });
+  };
+  // The protocol builder over the socket, which is the only transport it has:
+  // the streaming procedure the fetch transport could never serve — the
+  // builder's `watchProtocol` — is served here, and so is everything else on
+  // that router until stage 8 moves it onto the rpc plane.
+  const socketHandler = new WebSocketRPCHandler<RpcContext>(
+    createRpcRouter({
+      ...rpcDeps,
+      protocolBuilder: createProtocolBuilderRuntime(),
+    }),
+  );
 
   // Unknown machine-surface paths must 404 as JSON (RFC 9457 problem shape,
   // per the API ADR #1248) — never fall through to the SPA fallback, which
@@ -540,7 +519,7 @@ export function createStudio(
     return { principal };
   };
 
-  return { app, ws: { admit, socket: socketHandler }, checks };
+  return { app, ws: { admit, socket: socketHandler }, rpc: rpcDeps, checks };
 }
 
 /**
