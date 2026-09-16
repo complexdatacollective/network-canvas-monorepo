@@ -20,9 +20,9 @@ import {
 import { JobWorker, type JobWorkerConfig } from '../worker.ts';
 
 // One scratch job schema per suite, with a client per identity. The three
-// identities are three `Database` *values* rather than three tags — the spike
-// keeps one `Database` tag and one `identity` field, and a program picks which
-// one it runs as by providing the service. Stage 3 splits them into
+// identities are three `Database` *values* rather than three tags — today
+// there is one `Database` tag and one `identity` field, and a program picks
+// which one it runs as by providing the service. Stage 3 splits them into
 // `Database` / `MaintenanceDatabase` / `OwnerDatabase` for the same reason
 // `PgClient.layer` cannot serve two: a tag holds one value.
 
@@ -58,7 +58,7 @@ const client = (identity: 'app' | 'maintenance' | 'owner', db: DbEnv) =>
   Database.layer(identity, {
     url: db.url,
     maxConnections: 4,
-    applicationName: `studio-jobs-spike-${identity}`,
+    applicationName: `studio-test-${identity}`,
   });
 
 /**
@@ -247,7 +247,7 @@ export const layerDeliveryHarness = (
               Database.layer(identity, {
                 url: db.url,
                 maxConnections: 6,
-                applicationName: `studio-jobs-spike-${identity}`,
+                applicationName: `studio-test-${identity}`,
                 searchPath: studioSchema,
               }),
             ),

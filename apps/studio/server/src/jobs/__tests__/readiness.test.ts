@@ -70,6 +70,30 @@ describe.skipIf(!db)('the jobs readiness check', () => {
       }),
     );
 
+    it.effect('is ok on a worker that was never asked to listen', () =>
+      Effect.gen(function* () {
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          const { maintenance } = yield* QueueHarness;
+          yield* worker.queueDepths;
+
+          // `degraded` is for a listener that is down, and a worker told not
+          // to hold one has nothing down. Without the distinction every suite
+          // here — and every deployment that turns the listener off — would
+          // report degraded for a connection nobody asked for.
+          const verdict = yield* readiness({
+            jobs: jobsCheck(worker, maintenance),
+          });
+          assert.deepStrictEqual(verdict, {
+            status: 'ok',
+            checks: { jobs: 'ok' },
+          });
+        }).pipe(
+          Effect.provide(layerWorker({ background: true, listen: false })),
+        );
+      }),
+    );
+
     it.effect('is failing when the role cannot read the queue tables', () =>
       Effect.gen(function* () {
         yield* Effect.gen(function* () {

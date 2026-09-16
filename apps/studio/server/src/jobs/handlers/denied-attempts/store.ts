@@ -106,9 +106,9 @@ export class DeniedAttemptsStore extends Context.Service<
   {
     /**
      * False when the deployment has no store at all. The job then has nothing
-     * to summarise and says so; stage 3 provides `layerAbsent` when
-     * `REDIS_URL` is unset, which is the same posture today's optional
-     * `deps.store` takes.
+     * to summarise and says so; `src/programs/worker.ts` provides `layerAbsent`
+     * when `REDIS_URL` is unset, and the real layer over the rate-limit store
+     * when it is set.
      */
     readonly configured: boolean;
     /** Every suppression key under `prefix`, read a page at a time. */

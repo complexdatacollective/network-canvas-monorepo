@@ -33,7 +33,7 @@ export type JobId = string;
  * enqueue; it only keeps the second job `created` until the first stops being
  * `active`.
  *
- * Decided for the spike: a collision is a typed failure, not a silent no-op.
+ * Decided: a collision is a typed failure, not a silent no-op.
  * The insert is `ON CONFLICT DO NOTHING` rather than letting the unique index
  * raise `23505`, because a unique violation aborts the caller's transaction —
  * which would turn "the recurring job is already queued", an ordinary and

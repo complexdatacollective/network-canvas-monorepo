@@ -16,9 +16,15 @@ import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { Database, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
 import { resolvedQueue } from '../queues.ts';
-import { backoffSeconds, JobWorker, type JobOutcome } from '../worker.ts';
+import {
+  backoffSeconds,
+  JobWorker,
+  type JobOutcome,
+  returnToQueue,
+} from '../worker.ts';
 import {
   asApp,
+  asMaintenance,
   asOwner,
   layerQueueHarness,
   layerWorker,
@@ -45,7 +51,7 @@ const DELIVERY = resolvedQueue('invitation-delivery');
 const DELIVERY_ID = '55555555-5555-4555-8555-555555555555';
 
 /** A pinned seed, so the jittered backoff has one answer. */
-const SEED = 'effect-native-jobs-spike';
+const SEED = 'studio-jobs';
 
 /** What `reapExpired` writes to `last_error` in place of a handler's. */
 const LEASE_EXPIRED = 'the attempt did not finish before its lease expired';
@@ -350,6 +356,144 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
         // retry a handler that hangs every time at its own cadence, throwing
         // away the ladder `invitation-delivery` declares.
         assert.notStrictEqual(row?.run_at, DateTime.toDate(now).getTime());
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('tells a handler which attempt the queue will not retry', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const jobId = yield* enqueueDelivery();
+        // One retry left, so attempt 1 is not the last and attempt 2 is. The
+        // boundary is the whole of it: `finalAttempt` is what makes
+        // `invitation-delivery`'s handler stamp `failed_at` on the delivery
+        // row, a terminal mark the queue must agree with. Off by one and the
+        // row says an invitation failed for good while an attempt is still
+        // owed.
+        yield* updateJob(jobId, 'retry_limit = 1');
+
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          const handed: { attempt: number; finalAttempt: boolean }[] = [];
+          yield* worker.work('invitation-delivery', (job) =>
+            Effect.gen(function* () {
+              handed.push({
+                attempt: job.attempt,
+                finalAttempt: job.finalAttempt,
+              });
+              return yield* Effect.fail(
+                new Error('SMTP refused the recipient'),
+              );
+            }),
+          );
+
+          const first = yield* worker.drainOnce('invitation-delivery');
+          assert.strictEqual(first._tag, 'retrying');
+          assert.deepStrictEqual(handed, [{ attempt: 1, finalAttempt: false }]);
+
+          const [retried] = yield* readJobs('invitation-delivery');
+          yield* TestClock.setTime(retried!.run_at);
+
+          const second = yield* worker.drainOnce('invitation-delivery');
+          assert.strictEqual(second._tag, 'failed');
+          assert.deepStrictEqual(handed, [
+            { attempt: 1, finalAttempt: false },
+            { attempt: 2, finalAttempt: true },
+          ]);
+        }).pipe(Effect.provide(layerWorker()));
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('puts back a job it registers no handler for', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        yield* enqueueDelivery();
+
+        const step = yield* Effect.gen(function* () {
+          // No `work()` call at all: a replica that does not work this queue.
+          const worker = yield* JobWorker;
+          return yield* worker.drainOnce('invitation-delivery');
+        }).pipe(Effect.provide(layerWorker()));
+
+        assert.strictEqual(step._tag, 'idle');
+        const [row] = yield* readJobs('invitation-delivery');
+        // The claim spent an attempt; putting the row back gives it back, so a
+        // replica without the handler costs the job nothing.
+        assert.strictEqual(row?.state, 'created');
+        assert.strictEqual(row?.attempts, 0);
+        assert.strictEqual(row?.locked_until, null);
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('will not put back a row a later attempt has claimed', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const jobId = yield* enqueueDelivery();
+        const { schema } = yield* QueueHarness;
+
+        const firstHeld = yield* Deferred.make<void>();
+        const firstStarted = yield* Deferred.make<void>();
+        const secondHeld = yield* Deferred.make<void>();
+        const secondStarted = yield* Deferred.make<void>();
+
+        const wrote = yield* Effect.gen(function* () {
+          const first = yield* JobWorker;
+          const running = yield* claimAndHold(
+            first,
+            firstStarted,
+            firstHeld,
+            Effect.succeed<JobOutcome>('completed'),
+          );
+
+          // The reap-then-reclaim every case in this file builds: the lease
+          // runs out, the reaper puts the row back, a second worker takes the
+          // second attempt and is still running it.
+          yield* TestClock.adjust(
+            Duration.seconds(DELIVERY.expireInSeconds + 1),
+          );
+          assert.strictEqual(yield* first.reapExpired, 1);
+          const [returned] = yield* readJobs('invitation-delivery');
+          yield* TestClock.setTime(returned!.run_at);
+
+          const secondRunning = yield* Effect.gen(function* () {
+            const other = yield* JobWorker;
+            return yield* claimAndHold(
+              other,
+              secondStarted,
+              secondHeld,
+              Effect.succeed<JobOutcome>('completed'),
+            );
+          }).pipe(Effect.provide(layerWorker()));
+
+          const [claimed] = yield* readJobs('invitation-delivery');
+          assert.strictEqual(claimed?.state, 'active');
+          assert.strictEqual(claimed?.attempts, 2);
+
+          // The write the first attempt's worker would make if it had claimed
+          // from a queue it registers no handler for. Run directly because
+          // `drainOnce` claims and puts back in the same breath, with no seam
+          // a case could suspend it at — the statement is the real one, and
+          // the row underneath it is the real reclaimed row.
+          const answered = yield* asMaintenance(
+            withTransaction(returnToQueue(schema, jobId, 1)),
+          );
+
+          yield* Deferred.succeed(secondHeld, undefined);
+          yield* Fiber.join(secondRunning);
+          yield* Deferred.succeed(firstHeld, undefined);
+          yield* Fiber.join(running);
+          return answered;
+        }).pipe(Effect.provide(layerWorker()));
+
+        assert.isFalse(
+          wrote,
+          'the stale attempt reported putting back a row it no longer owned',
+        );
+        const [row] = yield* readJobs('invitation-delivery');
+        // Unfenced, this write resurrects a job the second worker is running:
+        // `created` again with its ladder wound back an attempt, which fans the
+        // send out rather than merely repeating it.
+        assert.strictEqual(row?.state, 'completed');
+        assert.strictEqual(row?.attempts, 2);
       }).pipe(Effect.provide(jobsLayer)),
     );
 

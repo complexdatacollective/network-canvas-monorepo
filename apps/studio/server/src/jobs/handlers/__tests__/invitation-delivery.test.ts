@@ -1196,7 +1196,7 @@ async function holdInvitation(
 /**
  * `vi.waitFor`, in Effect. Real time rather than `Effect.sleep`, deliberately:
  * these cases wait on another *connection* doing real work, which the virtual
- * clock knows nothing about. The rest of the spike's suites run in virtual
+ * clock knows nothing about. The rest of the queue's suites run in virtual
  * time; this file is the exception and says so.
  */
 const realSleep = (ms: number): Effect.Effect<void> =>

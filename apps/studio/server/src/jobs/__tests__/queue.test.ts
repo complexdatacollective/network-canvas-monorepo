@@ -22,6 +22,7 @@ import { Jobs } from '../jobs.ts';
 import { resolvedQueue } from '../queues.ts';
 import {
   backoffSeconds,
+  EXPIRY_BATCH_SIZE,
   JobWorker,
   type JobOutcome,
   type JobStep,
@@ -50,7 +51,7 @@ const DELIVERY = resolvedQueue('invitation-delivery');
 const DELIVERY_ID = '55555555-5555-4555-8555-555555555555';
 
 /** A pinned seed, so the jittered backoff below has one answer. */
-const SEED = 'effect-native-jobs-spike';
+const SEED = 'studio-jobs';
 
 describe.skipIf(!db)('the native queue', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
@@ -576,6 +577,77 @@ describe.skipIf(!db)('the native queue', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
+    it.effect('settles a backlog of expired leases in bounded pieces', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const { schema } = yield* QueueHarness;
+        // Two full batches and a short one, so the case can tell a bounded
+        // pass from an unbounded one by how the work was divided rather than
+        // only by how much of it got done.
+        const rows = EXPIRY_BATCH_SIZE * 2 + 50;
+        yield* asOwner(
+          Effect.flatMap(Database, ({ sql }) =>
+            sql.unsafe(
+              // Claimed attempts whose lease ran out at the epoch, which is
+              // where this suite's virtual clock starts. Flat retry delay so
+              // the ladder needs no `Random` draw per row.
+              `INSERT INTO ${schema}.jobs
+                 (queue, payload, state, policy, attempts, retry_limit,
+                  retry_delay, retry_backoff, retry_delay_max,
+                  expire_in_seconds, run_at, keep_until, created_at,
+                  locked_until)
+               SELECT 'invitation-delivery',
+                      jsonb_build_object('deliveryId', '${DELIVERY_ID}'),
+                      'active', 'standard', 1, 7,
+                      5, false, NULL,
+                      60, to_timestamp(0), to_timestamp(0) + interval '1 day',
+                      to_timestamp(0), to_timestamp(0)
+                 FROM generate_series(1, ${rows})`,
+            ),
+          ),
+        );
+
+        const reaped = yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          return yield* worker.reapExpired;
+        }).pipe(Effect.provide(layerWorker()));
+        assert.strictEqual(reaped, rows);
+
+        const settled = yield* readJobs('invitation-delivery');
+        assert.lengthOf(settled, rows);
+        assert.isTrue(
+          settled.every(
+            (row) =>
+              row.state === 'created' &&
+              row.last_error ===
+                'the attempt did not finish before its lease expired',
+          ),
+          'a pass left some of the backlog unsettled',
+        );
+
+        // `xmin` is the transaction that last wrote each row, so the sizes of
+        // its groups are the sizes of the reaper's transactions. One group of
+        // every row is the unbounded pass this replaced: a single transaction
+        // holding a lock on the whole backlog.
+        const transactions = yield* asOwner(
+          Effect.flatMap(
+            Database,
+            ({ sql }) =>
+              sql<{ tx: string; count: number }>`
+                SELECT xmin::text AS tx, count(*)::int AS count
+                  FROM ${sql(schema)}.jobs
+                 WHERE queue = 'invitation-delivery'
+                 GROUP BY xmin
+                 ORDER BY count DESC`,
+          ),
+        );
+        assert.deepStrictEqual(
+          transactions.map(({ count }) => count),
+          [EXPIRY_BATCH_SIZE, EXPIRY_BATCH_SIZE, rows - EXPIRY_BATCH_SIZE * 2],
+        );
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
     it.effect('deletes terminal rows and jobs nothing ever claimed', () =>
       Effect.gen(function* () {
         yield* clear;
@@ -671,6 +743,54 @@ describe.skipIf(!db)('the native queue', () => {
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'completed');
         assert.strictEqual(row?.outcome, 'uncertain');
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('says out loud that an outcome was uncertain', () =>
+      Effect.gen(function* () {
+        const recorded: { level: LogLevel.LogLevel; message: string }[] = [];
+        const recordingLogger = Logger.layer([
+          Logger.make<unknown, void>(({ logLevel, message }) => {
+            recorded.push({
+              level: logLevel,
+              message: Array.isArray(message)
+                ? message.map(String).join(' ')
+                : String(message),
+            });
+          }),
+        ]);
+
+        // Nothing sets a minimum log level, so Effect's own default of `Info`
+        // decides what a deployment sees: a line written at debug is not
+        // written at all. That is the whole of this case — an `uncertain`
+        // outcome is the one a person has to look at, and it used to be logged
+        // beside the two that are the queue working.
+        yield* clear;
+        yield* enqueueDelivery('cccccccc-3333-4333-8333-cccccccccccc');
+        yield* withWorker(
+          () => Effect.succeed<JobOutcome>('completed'),
+          (worker) => worker.drainOnce('invitation-delivery'),
+        ).pipe(Effect.provide(recordingLogger));
+        assert.deepStrictEqual(
+          recorded,
+          [],
+          'an ordinary success reached the log a deployment reads',
+        );
+
+        yield* clear;
+        const abandoned = yield* enqueueDelivery(
+          'dddddddd-4444-4444-8444-dddddddddddd',
+        );
+        yield* withWorker(
+          () => Effect.succeed<JobOutcome>('uncertain'),
+          (worker) => worker.drainOnce('invitation-delivery'),
+        ).pipe(Effect.provide(recordingLogger));
+        assert.deepStrictEqual(recorded, [
+          {
+            level: 'Warn',
+            message: `job invitation-delivery ${abandoned} ended uncertain on attempt 1: a side effect left the process and its record could not be written`,
+          },
+        ]);
       }).pipe(Effect.provide(jobsLayer)),
     );
 

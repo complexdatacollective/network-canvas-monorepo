@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { assert, describe, layer } from '@effect/vitest';
+import { assert, describe, it, layer } from '@effect/vitest';
 import { Cause, Effect, Exit, Layer } from 'effect';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import { JOB_QUEUES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
@@ -47,6 +47,33 @@ const WORKED = [
   'sign-in-email',
   'invitation-delivery',
 ] as const satisfies readonly JobQueueName[];
+
+/**
+ * The one queue `JobHandlersLive` deliberately registers no handler for. It is
+ * #1307's parking queue: an invitation whose delivery exhausted its ladder is
+ * copied here so a researcher can re-send it by hand, and a worker that
+ * claimed from it would retry the send the dead letter exists to stop
+ * retrying.
+ */
+const UNWORKED = [
+  'invitation-delivery-dead-letter',
+] as const satisfies readonly JobQueueName[];
+
+describe('the queues this deployment declares', () => {
+  it('are each either worked or deliberately parked', () => {
+    // Registration is a hand-written list, so the failure mode it has is
+    // omission: a sixth queue added to `JOB_QUEUES` with no handler passes
+    // every case below — each of them names the queues it drives — while its
+    // jobs sit `created` forever (`pollQueue` never claims from a queue with
+    // no handler). This is the only assertion that reads the declarations
+    // rather than a list written beside them.
+    assert.deepStrictEqual(
+      [...WORKED, ...UNWORKED].toSorted(),
+      JOB_QUEUES.map(({ name }) => name).toSorted(),
+      'every declared queue must be worked by JobHandlersLive or listed in UNWORKED as one nothing claims from — a queue in neither list accumulates jobs no replica will ever run',
+    );
+  });
+});
 
 function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
   if (queue === 'sign-in-email') {
@@ -108,7 +135,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
       DeniedAttemptsStore.layerAbsent,
       layerRecordingWriter,
     ).pipe(Layer.provideMerge(layerDeliveryHarness(db!))),
-  )('over Studio and the queue', (it) => {
+  )('over Studio and the queue', (suite) => {
     /**
      * One worker of its own per case, because registration mutates the
      * worker's registry: a shared worker would carry the previous case's mail
@@ -142,7 +169,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
       return rows.map((row) => row.name);
     });
 
-    it.effect(
+    suite.effect(
       'settles a job on every queue a transport is configured for',
       () =>
         Effect.gen(function* () {
@@ -162,7 +189,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
         }).pipe(Effect.provide(registered(configured), { local: true })),
     );
 
-    it.effect(
+    suite.effect(
       'leaves the two mail queues unworked without a transport, and says so once',
       () => {
         const logs = collectLogs();
@@ -212,7 +239,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
       },
     );
 
-    it.effect(
+    suite.effect(
       'upserts the declared schedules and drops one this build no longer declares',
       () =>
         Effect.gen(function* () {
@@ -242,7 +269,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
         }),
     );
 
-    it.effect('refuses to register delivery without a public base URL', () =>
+    suite.effect('refuses to register delivery without a public base URL', () =>
       Effect.gen(function* () {
         // The worker program refuses a database without one before it ever
         // gets here; this is the second refusal, at the one registration that

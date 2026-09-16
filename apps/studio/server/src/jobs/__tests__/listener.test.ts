@@ -2,8 +2,10 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Duration, Effect, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { readiness } from '../../http/health.ts';
 import { Database, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
+import { jobsCheck } from '../readiness.ts';
 import { JobWorker } from '../worker.ts';
 import {
   asApp,
@@ -107,6 +109,101 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
           if (!settled) yield* Effect.sleep(Duration.millis(10));
         }
       }).pipe(Effect.timeoutOption(BUDGET));
+
+      /** Kills the one backend holding this suite's `LISTEN`, and says which. */
+      const terminateListener = Effect.gen(function* () {
+        const before = yield* awaitAnswer(
+          listeners(),
+          (rows) => rows.length === 1,
+          RECONNECT_BUDGET,
+        );
+        assert.isTrue(
+          Option.isSome(before),
+          'the worker never took a listening connection, so nothing below is evidence',
+        );
+        const pid = Option.getOrThrow(before)[0]!.pid;
+        yield* asOwner(
+          Effect.flatMap(
+            Database,
+            ({ sql }) =>
+              sql<{
+                terminated: boolean;
+              }>`SELECT pg_terminate_backend(${pid}) AS terminated`,
+          ),
+        );
+        return pid;
+      });
+
+      it.effect('reports the listener degraded until it is back', () =>
+        Effect.gen(function* () {
+          yield* clear;
+
+          yield* Effect.gen(function* () {
+            const worker = yield* JobWorker;
+            const { maintenance } = yield* QueueHarness;
+            const probe = readiness({ jobs: jobsCheck(worker, maintenance) });
+            // A queue this replica works: a poll fiber skips a queue with no
+            // handler, and it is the first answered claim that makes the
+            // worker ready at all.
+            yield* worker.work('invitation-delivery', () =>
+              Effect.succeed('completed' as const),
+            );
+            yield* Effect.sleep(SETTLE);
+
+            // The baseline: without it, `degraded` below could be a probe that
+            // has simply never seen a listener rather than one reporting a
+            // listener that went away.
+            const healthy = yield* awaitAnswer(
+              probe,
+              (result) => result.status === 'ok',
+              RECONNECT_BUDGET,
+            );
+            assert.isTrue(
+              Option.isSome(healthy),
+              'the probe never read ok while the listener was up',
+            );
+
+            yield* terminateListener;
+
+            // What an operator has instead of counting warning lines: the
+            // listener is down, the worker still claims on its poll interval,
+            // and the verdict says which of those two things is true.
+            const degraded = yield* awaitAnswer(
+              probe,
+              (result) => result.status !== 'ok',
+              RECONNECT_BUDGET,
+            );
+            assert.isTrue(
+              Option.isSome(degraded),
+              'the probe never reported the listener down',
+            );
+            assert.deepStrictEqual(Option.getOrThrow(degraded), {
+              status: 'degraded',
+              checks: { jobs: 'degraded' },
+            });
+
+            // And it goes back on its own, without the probe being told
+            // anything: the reconnection is what clears it.
+            const recovered = yield* awaitAnswer(
+              probe,
+              (result) => result.status === 'ok',
+              RECONNECT_BUDGET,
+            );
+            assert.isTrue(
+              Option.isSome(recovered),
+              'the probe never saw the listener come back',
+            );
+          }).pipe(
+            Effect.provide(
+              layerWorker({
+                background: true,
+                pollInterval: POLL_INTERVAL,
+                listen: true,
+              }),
+            ),
+          );
+        }),
+      );
 
       it.effect('reconnects and drains on a notification again', () =>
         Effect.gen(function* () {

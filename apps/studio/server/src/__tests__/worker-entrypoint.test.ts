@@ -44,6 +44,26 @@ async function readReadiness(
   };
 }
 
+/**
+ * `HTTP <status>` while the listener answers at all, and otherwise why it did
+ * not. Used where the question is whether the listener is still there rather
+ * than what it says: during a drain, a check reporting `failing` is an answer
+ * and a refused connection is not.
+ */
+async function readinessAnswer(port: number): Promise<string> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
+      signal: AbortSignal.timeout(READINESS_ANSWER_TIMEOUT_MS),
+    });
+    // Read the body so the connection is not left open against a process the
+    // case is about to wait for the exit of.
+    await response.text();
+    return `HTTP ${response.status}`;
+  } catch (error) {
+    return `unreachable: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 const db = await reachableDb();
 const redis = await reachableRedis(REDIS_DATABASES.workerEntrypoint);
 
@@ -60,6 +80,23 @@ const IN_FLIGHT_CASE_TIMEOUT_MS = 45_000;
 
 /** Longer than the send this case is waiting out, shorter than the case. */
 const IN_FLIGHT_STOP_TIMEOUT_MS = 30_000;
+
+/**
+ * How far into the drain `/readyz` is read. Well past a finalizer that ran at
+ * the signal — a listener closed first is still open for a few milliseconds
+ * after it, so a read taken at the signal would pass either way — and well
+ * short of the 10-second greeting timeout that ends the drain.
+ */
+const DRAIN_SAMPLE_MS = 2500;
+
+/** A loopback request to a listener that is either there or is not. */
+const READINESS_ANSWER_TIMEOUT_MS = 2000;
+
+/** A boot, an enqueue, and one poll pass claiming and running the job. */
+const CROSS_PROCESS_CASE_TIMEOUT_MS = 60_000;
+
+/** The child claims on its first poll pass; this is a bound, not a cadence. */
+const SETTLE_WAIT_MS = 20_000;
 
 /** A boot, a drizzle-kit push against a fresh database, and the retry after it. */
 const READINESS_CASE_TIMEOUT_MS = 240_000;
@@ -364,8 +401,10 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       // Enqueued the way the web process does: one statement inside a
       // transaction of the caller's, on the database the child is working.
       const jobs = createJobClient();
+      const healthPort = await freePort();
       const worker = startWorker({
         DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
         // A transport the child will really connect to, because a console
         // mailer resolves instantly and there would be nothing in flight.
         SMTP_URL: `smtp://127.0.0.1:${smtp.port}`,
@@ -422,6 +461,34 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           () => worker.child.kill('SIGKILL'),
           IN_FLIGHT_STOP_TIMEOUT_MS,
         );
+
+        // The shutdown half of the finalizer order (src/programs/worker.ts's
+        // header): the health listener is acquired before the queue, so it is
+        // finalized after the drain and `/readyz` is still answerable while
+        // the job finishes. Without it, a container runtime polling through a
+        // stop reads a refused connection for as long as the drain takes and
+        // cannot tell a worker finishing its work from one that has fallen
+        // over.
+        //
+        // What it says is not the point — a check may report `failing` mid-
+        // teardown — only that it says anything.
+        //
+        // Mutation: move `Layer.provide(Health)` to the front of the pipe in
+        // src/programs/worker.ts (built last, therefore finalized first) and
+        // this reads `unreachable` while the handler is still in its send.
+        await new Promise((settled) => setTimeout(settled, DRAIN_SAMPLE_MS));
+        const draining = {
+          // Asserted beside the answer, so a child that had already exited
+          // would fail as "the drain was over" rather than as a listener
+          // closed too early.
+          running: worker.child.exitCode === null,
+          readyz: await readinessAnswer(healthPort),
+        };
+        expect(draining).toEqual({
+          running: true,
+          readyz: expect.stringMatching(/^HTTP \d{3}$/),
+        });
+
         const { code, signal } = await worker.exited;
         clearTimeout(backstop);
         const waited = Date.now() - signalled;
@@ -453,6 +520,83 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       }
     },
     IN_FLIGHT_CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'finishes a job the web process created, in the process that claimed it',
+    async () => {
+      // The whole point of the split, end to end and across the boundary: one
+      // process creates a job inside a transaction of its own, another
+      // process claims it, runs it and settles it. Every other cross-process
+      // case here stops short of that — the in-flight one above proves the
+      // interrupted path, and the happy path is otherwise proved only
+      // in-process (src/jobs/__tests__/registrations.test.ts), where "the
+      // worker" is a value in the same heap as the enqueue.
+      //
+      // `denied-attempts-summary` is the queue that needs nothing configured:
+      // with no REDIS_URL the store is absent, so the handler has nothing to
+      // summarise, says so and answers `completed`
+      // (src/jobs/handlers/denied-attempts-summary.ts).
+      const healthPort = await freePort();
+      const worker = startWorker({
+        DATABASE_URL: applied.db.url,
+        WORKER_HEALTH_PORT: String(healthPort),
+      });
+      const jobs = createJobClient();
+      const settledRow = async (
+        jobId: string,
+      ): Promise<{ state: string; outcome: string | null } | undefined> => {
+        const rows = await applied.pool.query<{
+          state: string;
+          outcome: string | null;
+        }>(`select state, outcome from ${JOB_SCHEMA}.jobs where id = $1`, [
+          jobId,
+        ]);
+        return rows.rows[0];
+      };
+
+      try {
+        await worker.waitForOutput(
+          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        );
+
+        const client = await applied.pool.connect();
+        let jobId: string;
+        try {
+          await client.query('BEGIN');
+          jobId = await jobs.enqueue(client, 'denied-attempts-summary', {});
+          await client.query('COMMIT');
+        } finally {
+          client.release();
+        }
+
+        // The child's own outcome line, naming this job's id: the schedule
+        // creates a job on this queue every minute, so the id is what says
+        // the run being read below is the one this case enqueued and not a
+        // tick's.
+        await worker.waitForOutput(
+          new RegExp(
+            `denied-attempts-summary ${jobId} attempt 1: no rate limit store is configured`,
+          ),
+          SETTLE_WAIT_MS,
+        );
+
+        // And the settle reached the row. `outcome` is what the handler
+        // answered rather than merely the absence of a throw, which is the
+        // distinction the column exists for.
+        await vi.waitFor(
+          async () =>
+            expect(await settledRow(jobId)).toEqual({
+              state: 'completed',
+              outcome: 'completed',
+            }),
+          { timeout: SETTLE_WAIT_MS, interval: 50 },
+        );
+      } finally {
+        worker.child.kill('SIGKILL');
+      }
+    },
+    CROSS_PROCESS_CASE_TIMEOUT_MS,
   );
 
   it('refuses to run with no database at all', async () => {

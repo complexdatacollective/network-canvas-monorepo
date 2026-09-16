@@ -142,10 +142,11 @@ describe('job source policy', () => {
       .map(({ path }) => path)
       .toSorted();
 
-    // `jobs.ts` renders the statement and sends it on the `Transaction` the
-    // caller opened; `client.ts` sends that same rendered statement on the
-    // `pg.PoolClient` a command hands it, which is why it holds no SQL of its
-    // own and does not appear here (the next case is the positive half).
+    // `insert.ts` renders the statement; `jobs.ts` sends it on the
+    // `Transaction` the caller opened and `client.ts` sends that same
+    // rendered statement on the `pg.PoolClient` a command hands it. Neither
+    // sender holds SQL of its own, which is why only the renderer appears
+    // here (the next case is the positive half).
     //
     // The worker's is listed rather than filtered out, the way the old suite
     // listed the S3 `send` calls: it is not an enqueue at all but the

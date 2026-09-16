@@ -6,7 +6,7 @@ import type { SqlClient, SqlError } from 'effect/unstable/sql';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 // The `Database` and `Transaction` seam of #1927 §4, reduced to what the job
-// spike needs. The names and shapes are the ones stage 3 will own, so the
+// queue needs. The names and shapes are the ones stage 3 will own, so the
 // queue below slots into that stage rather than inventing a second vocabulary
 // for the same two things.
 //
@@ -16,7 +16,7 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 // `Database` re-tags one client so each identity is a separate service, which
 // is what §9's "one client value per identity per program" means.
 //
-// SPIKE LIMITATION: `@effect/sql-pg` 4.0.0-rc.115 has no `startupParameters`,
+// LIMITATION: `@effect/sql-pg` 4.0.0-rc.115 has no `startupParameters`,
 // so the role cannot be pinned the way src/db/pool.ts pins it (a startup
 // parameter survives RESET ROLE). Until rc.116 the role is pinned with
 // `set local role` as the first statement of every transaction, which is

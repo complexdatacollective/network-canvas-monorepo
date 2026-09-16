@@ -19,9 +19,9 @@ import { deepestMessage } from '../../errors.ts';
 // Until then this tag is the seam, and its live layer is where the pool
 // crosses the boundary: `layer(pool)` takes the **maintenance** pool, because
 // a summary is by construction a write into a team no request pinned and
-// cross-team writes are the maintenance role's alone. Stage 3 hands this layer
-// the pool it already builds; stage 4 replaces the layer with one over the
-// audit store itself and this file goes away.
+// cross-team writes are the maintenance role's alone. `src/programs/worker.ts`
+// hands it the maintenance pool it already builds; stage 4 replaces the layer
+// with one over the audit store itself and this file goes away.
 //
 // Reading is deliberately not here. Whether a window's event is already in the
 // log is the handler's own idempotency rule (`summaryAlreadyWritten`), it runs
@@ -61,9 +61,10 @@ export class DeniedAuditSummaryWriter extends Context.Service<
   }
 >()('@studio/jobs/handlers/DeniedAuditSummaryWriter') {
   /**
-   * Today's writer over the maintenance pool. The pool is the stage-3/4 seam:
-   * stage 3 passes the one it already has, stage 4 replaces this layer with
-   * one over an Effect audit store and the pool stops crossing the boundary.
+   * Today's writer over the maintenance pool. The pool is the stage-4 seam:
+   * `src/programs/worker.ts` passes the one it already has, and stage 4
+   * replaces this layer with one over an Effect audit store, at which point
+   * the pool stops crossing the boundary.
    *
    * The pool this is handed must reach the same database, as the same
    * maintenance role, with the same `search_path`, as the `Database` the

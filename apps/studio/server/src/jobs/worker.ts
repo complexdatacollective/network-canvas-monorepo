@@ -48,7 +48,7 @@ import { assertSchemaName, type JobState, jobNotifyChannel } from './schema.ts';
 // between the two. An app-clock queue is `TestClock`-drivable end to end, which
 // is what lets every case below run in virtual time against a real Postgres; it
 // is also skew-sensitive across replicas, which is what `JobClock.layer`'s
-// correction against `select now()` answers (clock.ts). See the spike report.
+// correction against `select now()` answers (clock.ts).
 
 /**
  * What a handler says happened, per #1927 §11. `retrying` and `failed` are
@@ -150,10 +150,20 @@ export type JobWorkerConfig = {
   readonly background?: boolean | undefined;
 };
 
+/**
+ * How often the retention pass runs — a coupling rather than a taste. A
+ * terminal row is deleted on this sweep and nowhere else, so a queue that
+ * declares a `deleteAfterSeconds` shorter than this cadence does not get it:
+ * `sign-in-email` asks for 60 seconds because its payload *is* the magic link.
+ * Exported so `__tests__/declarations.test.ts` can hold the two together
+ * rather than leaving the invariant to a comment in the declaration.
+ */
+export const RETENTION_INTERVAL = Duration.seconds(60);
+
 const DEFAULTS = {
   pollInterval: Duration.seconds(2),
   reaperInterval: Duration.seconds(30),
-  retentionInterval: Duration.seconds(60),
+  retentionInterval: RETENTION_INTERVAL,
   cronInterval: Duration.seconds(15),
   stopTimeout: Duration.seconds(25),
   maxInFlight: 8,
@@ -175,6 +185,17 @@ const MAX_ERROR_LENGTH = 1_000;
 
 /** What an expired lease writes to `last_error`, in place of a handler's. */
 const LEASE_EXPIRED = 'the attempt did not finish before its lease expired';
+
+/**
+ * How many expired leases one transaction settles. The pass used to take every
+ * expired row at once, which on a backlog is a single long transaction holding
+ * a row lock on each of them and writing a dead-letter copy for some — the
+ * kind of transaction that blocks a schema application and keeps a vacuum from
+ * reclaiming anything older than it. The pass repeats until one transaction
+ * settles fewer than this, so a backlog is still cleared in one tick, in
+ * bounded pieces.
+ */
+export const EXPIRY_BATCH_SIZE = 200;
 
 /**
  * The declarations by name. The reaper reads a queue name back out of a row
@@ -247,6 +268,13 @@ export class JobWorker extends Context.Service<
     ) => Effect.Effect<readonly string[], SqlError.SqlError, Database>;
     /** True once the worker has read the queue tables at least once. */
     readonly ready: Effect.Effect<boolean>;
+    /**
+     * Whether the `LISTEN` this worker was configured to hold is held right
+     * now. `None` where there is no listener to report on — a worker told
+     * `listen: false`, or one that forks nothing at all — so a reader can tell
+     * "no listener was wanted" from "the listener is down" (readiness.ts).
+     */
+    readonly listening: Effect.Effect<Option.Option<boolean>>;
     readonly setFetching: (fetching: boolean) => Effect.Effect<void>;
     readonly queueDepths: Effect.Effect<
       readonly QueueDepth[],
@@ -281,11 +309,43 @@ export class JobWorker extends Context.Service<
     Layer.effect(JobWorker, make(config));
 }
 
+/**
+ * Putting a claimed row back, for a worker that claimed from a queue it
+ * registers no handler for. Fenced exactly as the three settles are — `state`
+ * and `attempts` both the claim's own — because this write moves the ladder
+ * backwards: applied to a row a later attempt owns it would resurrect a job
+ * another worker is still running, which fans out rather than merely
+ * double-executing. Answers whether it wrote, like every other fenced write.
+ *
+ * At module level, with `backoffSeconds`, because the window it guards cannot
+ * be opened from outside the worker: `drainOnce` claims, finds no handler, and
+ * writes this in the next breath, with no seam a suite could suspend it at.
+ * The fence is proven by running the statement itself against a row a later
+ * attempt owns (`__tests__/settle.test.ts`).
+ */
+export const returnToQueue = Effect.fnUntraced(function* (
+  schema: string,
+  jobId: JobId,
+  attempts: number,
+) {
+  const { sql } = yield* Transaction;
+  const returned = yield* sql<{ id: string }>`
+    UPDATE ${sql(schema)}.jobs
+       SET state = 'created', attempts = attempts - 1, locked_until = NULL
+     WHERE id = ${jobId}
+       AND state = 'active'
+       AND attempts = ${attempts}
+    RETURNING id`;
+  return returned.length === 1;
+});
+
 const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const schema = assertSchemaName(config.schema);
   const registry = new Map<JobQueueName, RegisteredHandler>();
   const fetching = MutableRef.make(true);
   const started = MutableRef.make(false);
+  /** Set when `forkListener` acquires its `LISTEN`, cleared when it loses it. */
+  const listening = MutableRef.make(false);
   const maxInFlight = config.maxInFlight ?? DEFAULTS.maxInFlight;
   const inFlight = Semaphore.makeUnsafe(maxInFlight);
   // Read once, here: every timestamp the worker writes comes from the same
@@ -342,10 +402,14 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     const declaration = resolvedQueue(queue);
     const { sql } = yield* Transaction;
     const at = DateTime.toDate(now);
-    // `singleton` means one *active* job per queue. The index enforces it; this
-    // keeps the claim from trying, which is what turns "the second job errors"
-    // into "the second job waits". pg-boss does both in the same two places:
-    // `job_i2` and the `ignoreSingletons` filter its fetch builds.
+    // `singleton` means one *active* job per queue. `jobs_singleton_active_idx`
+    // is what enforces that; this guard is only an optimisation, sparing the
+    // index a raise in the common case where the active job is already
+    // committed and visible. Nothing depends on it — a claim that passes it
+    // and loses to the index answers `idle` just the same, which is the path
+    // `__tests__/concurrency.test.ts` proves end to end. pg-boss pairs the
+    // same two things: `job_i2` and the `ignoreSingletons` filter its fetch
+    // builds.
     const singletonGuard =
       declaration.policy === 'singleton'
         ? sql`AND NOT EXISTS (
@@ -559,14 +623,6 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       `job ${queue} ${jobId} lost its lease before attempt ${attempt} could settle; the row belongs to a later attempt`,
     );
 
-  const returnToQueue = Effect.fnUntraced(function* (jobId: JobId) {
-    const { sql } = yield* Transaction;
-    yield* sql`
-      UPDATE ${table(sql)}.jobs
-         SET state = 'created', attempts = attempts - 1, locked_until = NULL
-       WHERE id = ${jobId}`;
-  });
-
   const drainOnce = Effect.fn('JobWorker.drainOnce')(
     function* (queue: JobQueueName) {
       const idle: JobStep = { _tag: 'idle' };
@@ -605,7 +661,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       if (handler === undefined) {
         // Claimed by a worker that does not work this queue. Put it back rather
         // than fail it: another replica may have the handler.
-        yield* withTransaction(returnToQueue(jobId));
+        const returned = yield* withTransaction(
+          returnToQueue(schema, jobId, claimed.attempts),
+        );
+        if (!returned) yield* leaseLost(queue, jobId, claimed.attempts);
         return idle;
       }
 
@@ -631,9 +690,19 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           yield* leaseLost(queue, jobId, claimed.attempts);
           return idle;
         }
-        yield* Effect.logDebug(
-          `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
-        );
+        // `uncertain` is the one outcome that wants a human: a side effect
+        // left the process and its record could not be written, so nothing
+        // will retry it and the column is the only other trace. At debug it
+        // was dropped outright — `LoggerLive` sets no minimum, so Effect's
+        // default `Info` swallowed it. `completed` and `suppressed` stay at
+        // debug: they are the queue working.
+        yield* exit.value === 'uncertain'
+          ? Effect.logWarning(
+              `job ${queue} ${jobId} ended uncertain on attempt ${claimed.attempts}: a side effect left the process and its record could not be written`,
+            )
+          : Effect.logDebug(
+              `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
+            );
         const settled: JobStep = {
           _tag: 'settled',
           jobId,
@@ -706,50 +775,68 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
    * The attempt was already counted at claim time, so a handler that hangs on
    * every attempt still walks the ladder to its end rather than looping.
    *
-   * One transaction per pass, not per row: the rows are taken `FOR UPDATE SKIP
-   * LOCKED` so a second reaper skips what this one holds, and that lock only
-   * exists inside the transaction that took it — settling per row would need a
-   * fresh select and a fresh lock for each.
+   * One transaction per batch of `EXPIRY_BATCH_SIZE`, not per row: the rows are
+   * taken `FOR UPDATE SKIP LOCKED` so a second reaper skips what this one
+   * holds, and that lock only exists inside the transaction that took it —
+   * settling per row would need a fresh select and a fresh lock for each. A
+   * tick keeps opening transactions until one settles fewer rows than the
+   * batch, so a backlog is still cleared in a tick without any one transaction
+   * being unbounded.
+   *
+   * The loop reads the count *settled*, not the count seen, and that is what
+   * keeps it finite: a row this build cannot settle — one on a queue no
+   * declaration names — is logged and left where it is, and would otherwise be
+   * re-read at the head of every pass forever. A pass that settles nothing
+   * ends the tick and the next one makes whatever progress it can behind it.
+   * The cutoff instant is read once, before the first pass, so a lease
+   * expiring while the reaper runs waits for the next tick rather than
+   * extending this one.
    */
   const reapExpired = Effect.fn('JobWorker.reapExpired')(function* () {
     const now = yield* clock.now;
     const at = DateTime.toDate(now);
-    return yield* withTransaction(
-      Effect.gen(function* () {
-        const { sql } = yield* Transaction;
-        const expired = yield* sql<ExpiredRow>`
+    const onePass = Effect.gen(function* () {
+      const { sql } = yield* Transaction;
+      const expired = yield* sql<ExpiredRow>`
           SELECT id, queue, attempts,
                  retry_limit, retry_delay, retry_backoff, retry_delay_max
             FROM ${table(sql)}.jobs
            WHERE state = 'active'
              AND locked_until <= ${at}
            ORDER BY locked_until
-             FOR UPDATE SKIP LOCKED`;
-        let reaped = 0;
-        for (const row of expired) {
-          const declaration = declaredQueues.get(row.queue);
-          if (declaration === undefined) {
-            // A row on a queue this build does not declare. Nothing here can
-            // settle it — the ladder it would walk does not exist — so it is
-            // named rather than guessed at.
-            yield* Effect.logError(
-              `job ${row.id} sits on ${row.queue}, which no queue declares; its expired lease cannot be settled`,
-            );
-            continue;
-          }
-          const step = yield* settleFailure(
-            declaration.name,
-            row.id,
-            row.attempts,
-            row,
-            LEASE_EXPIRED,
-            now,
+             FOR UPDATE SKIP LOCKED
+           LIMIT ${EXPIRY_BATCH_SIZE}`;
+      let reaped = 0;
+      for (const row of expired) {
+        const declaration = declaredQueues.get(row.queue);
+        if (declaration === undefined) {
+          // A row on a queue this build does not declare. Nothing here can
+          // settle it — the ladder it would walk does not exist — so it is
+          // named rather than guessed at.
+          yield* Effect.logError(
+            `job ${row.id} sits on ${row.queue}, which no queue declares; its expired lease cannot be settled`,
           );
-          if (step !== null) reaped += 1;
+          continue;
         }
-        return reaped;
-      }),
-    );
+        const step = yield* settleFailure(
+          declaration.name,
+          row.id,
+          row.attempts,
+          row,
+          LEASE_EXPIRED,
+          now,
+        );
+        if (step !== null) reaped += 1;
+      }
+      return reaped;
+    });
+
+    let settled = 0;
+    for (;;) {
+      const reaped = yield* withTransaction(onePass);
+      settled += reaped;
+      if (reaped < EXPIRY_BATCH_SIZE) return settled;
+    }
   });
 
   /**
@@ -944,11 +1031,20 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     return depths;
   });
 
+  // Whether this worker holds a listener at all, decided by the config rather
+  // than by the flag: a worker that forks nothing, or one told not to listen,
+  // has no listener to be up or down, and reporting one as down would make
+  // every suite's readiness probe degraded for a listener nobody wanted.
+  const listens = config.background !== false && config.listen !== false;
+
   const service = JobWorker.of({
     work,
     schedule,
     dropUndeclaredSchedules,
     ready: Effect.sync(() => MutableRef.get(started)),
+    listening: Effect.sync((): Option.Option<boolean> =>
+      listens ? Option.some(MutableRef.get(listening)) : Option.none(),
+    ),
     setFetching: (value) => Effect.sync(() => MutableRef.set(fetching, value)),
     queueDepths: queueDepths(),
     drainOnce,
@@ -964,6 +1060,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     inFlight,
     maxInFlight,
     registry,
+    listening,
   });
   return service;
 });
@@ -983,6 +1080,7 @@ const forkBackground = Effect.fnUntraced(function* (
     readonly inFlight: Semaphore.Semaphore;
     readonly maxInFlight: number;
     readonly registry: ReadonlyMap<JobQueueName, unknown>;
+    readonly listening: MutableRef.MutableRef<boolean>;
   },
 ) {
   /**
@@ -1052,11 +1150,7 @@ const forkBackground = Effect.fnUntraced(function* (
     );
 
   if (config.listen !== false) {
-    yield* forkListener(
-      schema,
-      wake,
-      config.pollInterval ?? DEFAULTS.pollInterval,
-    );
+    yield* forkListener(schema, wake, state.listening);
   }
 
   // Over the map rather than the declarations, so every latch has exactly one
@@ -1106,6 +1200,34 @@ const forkBackground = Effect.fnUntraced(function* (
 const LISTEN_RETRY_BASE = Duration.millis(200);
 
 /**
+ * And where it stops — deliberately far above the poll interval, which is what
+ * it used to be capped at. A listener that cannot be re-acquired at all (a
+ * pooler that refuses a long-lived reservation, a role that lost `LISTEN`)
+ * retried every two seconds for the life of the process, writing a
+ * pretty-printed cause each time: some forty thousand lines a day. Thirty
+ * seconds costs a couple of thousand instead, and is no slower for an ordinary
+ * reconnection, which takes the first step or two of the ladder.
+ */
+const LISTEN_RETRY_CAP = Duration.seconds(30);
+
+/**
+ * The ladder, off the number of losses since the last successful acquire
+ * rather than off the schedule's own recurrence count — so it resets when the
+ * listener comes back, and a process that loses its listener once a month does
+ * not eventually reconnect at the cap.
+ */
+const listenRetryDelay = (consecutiveLosses: number): Duration.Duration =>
+  Duration.min(
+    LISTEN_RETRY_CAP,
+    Duration.times(
+      LISTEN_RETRY_BASE,
+      // Clamped at both ends: the first loss waits the base, and 2^8 already
+      // overshoots the cap, so nothing above it can change the answer.
+      2 ** Math.min(8, Math.max(0, consecutiveLosses - 1)),
+    ),
+  );
+
+/**
  * The one `LISTEN` the worker holds, and the fiber that turns what arrives on
  * it into a wake-up for the right queue.
  *
@@ -1119,17 +1241,24 @@ const LISTEN_RETRY_BASE = Duration.millis(200);
  * open (`PgClient.make` wires `listenAcquirer` to `pool.reserve`), which is why
  * the pool is sized with one connection to spare rather than exactly.
  *
- * The acquire and the take loop are one unit, retried forever on a backoff
- * capped at the poll interval, because a lost reserved connection is not an
- * error the take loop can see coming: `PgConnection.fatal` fails every listen
- * queue with `Cause.interrupt()`, so the take simply ends. Without the retry
- * the worker is deaf for the rest of the process's life with no log line and
- * no metric, and the two queues that declare `notify` — the two where a person
- * is waiting — quietly fall back to the poll interval. The scope is per
- * attempt rather than the layer's, so a reconnection releases the dead
- * reservation before it takes a new one. External interruption (the layer's
- * scope closing) skips the failure continuation entirely, so a stop ends the
- * loop rather than reconnecting through it.
+ * The acquire and the take loop are one unit, retried forever on the backoff
+ * above, because a lost reserved connection is not an error the take loop can
+ * see coming: `PgConnection.fatal` fails every listen queue with
+ * `Cause.interrupt()`, so the take simply ends. Without the retry the worker is
+ * deaf for the rest of the process's life with no log line and no metric, and
+ * the two queues that declare `notify` — the two where a person is waiting —
+ * quietly fall back to the poll interval. The scope is per attempt rather than
+ * the layer's, so a reconnection releases the dead reservation before it takes
+ * a new one. External interruption (the layer's scope closing) skips the
+ * failure continuation entirely, so a stop ends the loop rather than
+ * reconnecting through it.
+ *
+ * What it is like to read: the first loss of a run is a warning carrying the
+ * cause, every consecutive loss after it is a debug line, and the acquire that
+ * ends the run is an info line naming how many there were. So a listener that
+ * is genuinely dead says so once and then goes quiet, and `listening` — which
+ * `jobsCheck` reads as `degraded` — is what an operator watches instead of the
+ * log volume.
  */
 const forkListener = Effect.fnUntraced(function* (
   schema: string,
@@ -1137,14 +1266,24 @@ const forkListener = Effect.fnUntraced(function* (
   // trigger put on the channel, and a name this build does not declare simply
   // finds no latch.
   wake: ReadonlyMap<string, Latch.Latch>,
-  retryCap: Duration.Input,
+  listening: MutableRef.MutableRef<boolean>,
 ) {
   const { sql } = yield* Database;
   const channel = jobNotifyChannel(schema);
+  // Losses since the last acquire. It decides the backoff step and the level a
+  // loss is logged at, so the two cannot disagree about what "still down"
+  // means.
+  const losses = MutableRef.make(0);
 
   const session = Effect.gen(function* () {
     const notifications = yield* sql.listen(channel);
-    yield* Effect.logInfo(`job listener acquired on ${channel}`);
+    MutableRef.set(listening, true);
+    const recovered = MutableRef.getAndSet(losses, 0);
+    yield* recovered === 0
+      ? Effect.logInfo(`job listener acquired on ${channel}`)
+      : Effect.logInfo(
+          `job listener re-acquired on ${channel} after ${recovered} consecutive losses`,
+        );
     return yield* Effect.forever(
       Effect.flatMap(Queue.take(notifications), (notification) => {
         const latch = wake.get(notification.payload);
@@ -1155,21 +1294,30 @@ const forkListener = Effect.fnUntraced(function* (
     );
   }).pipe(Effect.scoped);
 
-  const cap = Duration.fromInputUnsafe(retryCap);
-  const backoff = Schedule.modifyDelay(
-    Schedule.exponential(LISTEN_RETRY_BASE),
-    ({ duration }) => Effect.succeed(Duration.min(duration, cap)),
+  const lost = (cause: Cause.Cause<unknown>) =>
+    Effect.suspend(() => {
+      MutableRef.set(listening, false);
+      const consecutive = MutableRef.incrementAndGet(losses);
+      const reconnecting = `reconnecting in ${Duration.toMillis(listenRetryDelay(consecutive))}ms`;
+      return consecutive === 1
+        ? Effect.logWarning(
+            `job listener lost; ${reconnecting}: ${Cause.pretty(cause)}`,
+          )
+        : Effect.logDebug(
+            `job listener still down after ${consecutive} consecutive losses; ${reconnecting}: ${Cause.pretty(cause)}`,
+          );
+    });
+
+  // `Schedule.forever` with the delay read off `losses`, rather than
+  // `Schedule.exponential`, whose own recurrence count never resets: a process
+  // that loses its listener now and then would otherwise end its life
+  // reconnecting at the cap however healthy the run in between was.
+  const backoff = Schedule.modifyDelay(Schedule.forever, () =>
+    Effect.succeed(listenRetryDelay(MutableRef.get(losses))),
   );
 
   yield* Effect.forkScoped(
-    session.pipe(
-      Effect.catchCause((cause) =>
-        Effect.logWarning(
-          `job listener lost; reconnecting: ${Cause.pretty(cause)}`,
-        ),
-      ),
-      Effect.repeat(backoff),
-    ),
+    session.pipe(Effect.catchCause(lost), Effect.repeat(backoff)),
   );
 });
 

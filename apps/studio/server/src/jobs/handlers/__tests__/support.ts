@@ -11,7 +11,7 @@ import {
 // What the handler suites need beyond `__tests__/support.ts` (which owns the
 // scratch schema, the three identities and the worker layer): a transport.
 //
-// The spike carried a `Mailer` of its own inside the handler module; the
+// The first draft carried a `Mailer` of its own inside the handler module; the
 // handlers now take stage 1's (src/mail/mailer.ts), so the recording transport
 // moves here — a test double belongs beside the tests rather than beside the
 // production service. Both sends are recorded by one layer because a case

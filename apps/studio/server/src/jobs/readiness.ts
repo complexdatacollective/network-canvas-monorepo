@@ -1,4 +1,4 @@
-import { Effect, Schema } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
 import type { CheckVerdict, HealthCheck } from '../http/health.ts';
 import { Database } from './database.ts';
@@ -47,9 +47,20 @@ class JobQueuesUnreadable extends Schema.TaggedError<JobQueuesUnreadable>()(
  * obligation encoded in a comment, of the kind a deployment discovers at three
  * in the morning.
  *
- * There is no `degraded` verdict here. A degraded dependency is one whose
- * loss changes behaviour without making the process unfit to serve; a worker
- * that cannot reach its queue is unfit for the only thing it does.
+ * Reaching the queue is the failing half: a worker that cannot read its tables
+ * is unfit for the only thing it does. The listener is the degraded half — a
+ * worker whose `LISTEN` is down still claims every job it has, only on its
+ * poll interval instead of on the announcement, so the loss changes latency
+ * rather than fitness, and taking the container out of rotation for it would
+ * turn a slow queue into a stopped one. It is reported at all because the
+ * alternative is inferring it from log volume, which is what the round-2
+ * review objected to. A worker that was never asked to listen answers `None`
+ * and is `ok`: there is nothing down.
+ *
+ * A worker is `ready` before its first acquire on a boot of a few
+ * milliseconds, so a probe that lands in that window reads `degraded` for one
+ * answer. That is the honest reading — the listener is in fact not up yet —
+ * and `degraded` is not a 503.
  */
 const check: Effect.Effect<CheckVerdict, unknown, JobWorker | Database> =
   Effect.gen(function* () {
@@ -66,7 +77,10 @@ const check: Effect.Effect<CheckVerdict, unknown, JobWorker | Database> =
           message: deepestMessage(error) ?? String(error),
         }),
     );
-    const verdict: CheckVerdict = 'ok';
+    const listening = yield* worker.listening;
+    const verdict: CheckVerdict = Option.getOrElse(listening, () => true)
+      ? 'ok'
+      : 'degraded';
     return verdict;
   });
 

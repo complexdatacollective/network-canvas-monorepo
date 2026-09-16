@@ -178,7 +178,7 @@ CREATE OR REPLACE TRIGGER jobs_notify_trigger
 }
 
 /**
- * The same division of labour `jobGrantsSql` makes over pg-boss's schema: the
+ * The same division of labour Studio made over pg-boss's own schema: the
  * application may create a job and learn its id, and nothing more — it cannot
  * read a payload, claim, retry, cancel or delete one, which keeps every team's
  * queued work invisible to the role that serves requests. The worker runs as

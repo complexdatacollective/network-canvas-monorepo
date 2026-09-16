@@ -15,8 +15,9 @@ import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 //
 // The payload schemas are the stage-5 move of `JOB_PAYLOAD_SCHEMAS` from zod to
 // Effect Schema (#1927 §17 stage 5). They are declared here rather than in
-// studio-sync because the spike changes nothing outside this directory; the
-// shapes are the zod ones, field for field.
+// studio-sync because that package is compiled into contexts that never run a
+// job and still need the zod shapes for the payload policy; these are the zod
+// ones, field for field.
 
 /**
  * pg-boss's own defaults (`QUEUE_DEFAULTS`, pg-boss 12.31.1

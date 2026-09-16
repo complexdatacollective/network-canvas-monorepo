@@ -27,9 +27,10 @@ import { layerRecordingMailer, RecordedMail } from './support.ts';
 // differences that are the port's, not the handler's:
 //
 //  - Its "works no mail queue without a transport" case is about the worker's
-//    registration, which stage 3 wires. What is left of it here is the fact
-//    the registration exists to avoid: with no transport the attempt fails
-//    like any other, and the reason lands on the row.
+//    registration, which `src/jobs/registrations.ts` decides and
+//    `src/jobs/__tests__/registrations.test.ts` owns. What is left of it here
+//    is the fact the registration exists to avoid: with no transport the
+//    attempt fails like any other, and the reason lands on the row.
 //  - Its "woken by the notify rather than by its poll" case is the worker's,
 //    not the handler's: W1's notify.test.ts owns it.
 //
@@ -185,12 +186,12 @@ describe.skipIf(!db)('the sign-in email handler', () => {
           yield* clear;
           yield* enqueue;
 
-          // Registering the queue without a transport is what stage 3's
-          // registration exists to avoid (#1895): the worker leaves the mail
-          // queues unworked rather than burning the ladder while an operator
-          // is still setting SMTP up. Until that wiring lands, a send
-          // attempted anyway is an ordinary failed attempt — and the reason
-          // an operator reads is on the row.
+          // Registering the queue without a transport is what
+          // `src/jobs/registrations.ts` exists to avoid (#1895): the worker
+          // leaves the mail queues unworked rather than burning the ladder
+          // while an operator is still setting SMTP up. This is the handler
+          // half — a send attempted anyway is an ordinary failed attempt, and
+          // the reason an operator reads is on the row.
           const step = yield* drain.pipe(Effect.provide(Mailer.layerRefuse));
           assert.strictEqual(step._tag, 'retrying');
           const [row] = yield* readJobs('sign-in-email');

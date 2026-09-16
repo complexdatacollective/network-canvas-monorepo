@@ -362,11 +362,37 @@ describe('the web process', () => {
   it('creates jobs through the enqueue-only client', () => {
     // The positive half, so that "no worker" cannot be satisfied by having no
     // queue at all. One module now: the node-postgres enqueue, which renders
-    // its statement through `src/jobs/jobs.ts` and sends it on the
+    // its statement through `src/jobs/insert.ts` and sends it on the
     // command's own transaction client.
     expect(reached(graph, ['src/jobs/client.ts'])).toEqual([
       'src/jobs/client.ts',
     ]);
+  });
+
+  it('carries no Effect SQL driver for that enqueue', () => {
+    // The invariant `src/jobs/insert.ts`'s own header exists for, and which
+    // `src/jobs/queues.ts` repeats over `JOB_SCHEMA`: the statement lives
+    // apart from `src/jobs/jobs.ts` so that this graph reaches no
+    // `@effect/sql-pg`. The web process runs its commands on node-postgres,
+    // and a second Postgres driver pulled in behind the enqueue would be paid
+    // for by every web container while nothing here could use it.
+    //
+    // The modules are named beside the package because the package is only
+    // absent as long as they are: each of them imports it (directly, or
+    // through `database.ts`), so naming them says which import would be the
+    // one that did it.
+    //
+    // Mutation: `import { Transaction } from './database.ts';` in
+    // src/jobs/client.ts — the module and the package both appear.
+    expect(
+      reached(graph, [
+        '@effect/sql-pg',
+        'src/jobs/database.ts',
+        'src/jobs/jobs.ts',
+        'src/jobs/clock.ts',
+        'src/jobs/install.ts',
+      ]),
+    ).toEqual([]);
   });
 });
 

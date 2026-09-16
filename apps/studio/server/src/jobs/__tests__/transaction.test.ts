@@ -12,7 +12,7 @@ import {
   readJobs,
 } from './support.ts';
 
-// The transaction guarantee, which is the spike's reason to exist: a domain
+// The transaction guarantee, which is the queue's reason to exist: a domain
 // change and the job it schedules are committed together or not at all.
 //
 // Three oracles, in order of strength:
@@ -64,7 +64,7 @@ const withExcessField = Object.assign(
 
 describe.skipIf(!db)('the transaction guarantee', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (suite) => {
-    const DOMAIN_TABLE = 'spike_domain';
+    const DOMAIN_TABLE = 'jobs_domain';
 
     const withDomainTable = Effect.gen(function* () {
       const { schema } = yield* QueueHarness;
