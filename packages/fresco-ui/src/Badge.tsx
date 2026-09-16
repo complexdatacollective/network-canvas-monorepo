@@ -97,26 +97,26 @@ const themedBadgeVariants = cva({
        * the colour itself, so the palette carries no second, hand-written ink
        * that can disagree with the fill it is supposed to sit on.
        *
-       * Relative colour syntax does the choosing. `clamp(0, (l - 0.58) *
-       * -1000, 1)` reads the fill's OKLCH lightness and collapses to a
-       * lightness of 1 below the threshold and 0 above it, which at zero
-       * chroma is white or black; the multiplier is only large enough to make
-       * the ramp between them narrower than any two palette entries.
+       * `contrast-color()` asks for exactly that: the browser compares the
+       * fill against black and against white and returns whichever contrasts
+       * further. Nothing here has to pick a lightness threshold, because the
+       * rule is not "lighter or darker than some number" — it is whichever
+       * ink actually wins, decided per colour. A palette entry whose
+       * lightness moves is answered again rather than landing on the wrong
+       * side of a constant.
        *
-       * 0.58 is where black overtakes white across this palette, measured by
-       * compositing each colour and its two candidate inks: purple pizazz dark
-       * (L 0.575) is the lightest colour that still needs white, and cerulean
-       * blue (L 0.582) the darkest that needs black. Every one of the
-       * thirty-six then clears WCAG AA for normal text, the worst being neon
-       * coral at 4.62:1 — a margin the `ThemeColors` story measures rather
-       * than assumes, because the window between those two colours is narrow
-       * enough that a change to either one's lightness could close it.
+       * Winning the comparison is not by itself a guarantee of WCAG AA: the
+       * better of two inks can still be the poor side of a fill no ink suits.
+       * Across this palette every one of the thirty-six clears it, the worst
+       * being neon coral at 4.62:1 — a margin the `ThemeColors` story
+       * measures rather than assumes, and the reason it measures each colour
+       * rather than trusting the mechanism.
        *
        * Unlike the outline variant below, the badge here is opaque, so what is
        * underneath it does not enter the calculation.
        */
       filled:
-        'border-transparent bg-(--badge-color) text-[oklch(from_var(--badge-color)_clamp(0,(l-0.58)*-1000,1)_0_0)]',
+        'border-transparent bg-(--badge-color) text-[contrast-color(var(--badge-color))]',
       /**
        * The colour is the border and a wash of it behind the label; the label
        * itself is the contrast colour the surface underneath publishes.

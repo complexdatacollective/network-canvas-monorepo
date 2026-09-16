@@ -58,12 +58,13 @@ export const Variants: Story = {
  * Every colour as a filled badge, which is how a coloured badge is drawn
  * unless it is asked for an outline.
  *
- * The play function is what keeps the palette honest. `Badge` picks the label
- * colour by lightness threshold rather than carrying a written-down ink per
- * colour, and the threshold that works sits in a narrow window: purple pizazz
- * dark needs white, cerulean blue seven thousandths lighter needs black.
- * Moving any palette entry's lightness, or adding a colour that lands between
- * them, can put a label below WCAG AA — which this measures, colour by colour.
+ * The play function is what keeps the palette honest. `Badge` asks the browser
+ * for the label colour — `contrast-color()` returns whichever of black or
+ * white contrasts with the fill further — rather than carrying a written-down
+ * ink per colour. Winning that comparison is not the same as clearing WCAG AA,
+ * though: a fill neither candidate suits still gets the better of the two. So
+ * the ratio is measured here, colour by colour, and a palette entry whose
+ * lightness moves into that territory fails this story rather than shipping.
  */
 export const ThemeColors: Story = {
   render: () => (
@@ -94,9 +95,10 @@ export const ThemeColors: Story = {
       );
 
       // Black or white and nothing else. Were the browser to drop the
-      // relative-colour declaration it would inherit the page's ink instead,
-      // which on a light page is dark enough to pass the ratio check below on
-      // most of the palette while the mechanism under test did nothing.
+      // `contrast-color()` declaration it would inherit the page's ink
+      // instead, which on a light page is dark enough to pass the ratio check
+      // below on most of the palette while the mechanism under test did
+      // nothing.
       await expect({
         color,
         ink: ink.join(),
