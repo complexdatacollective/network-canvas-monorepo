@@ -78,7 +78,13 @@ describe('processSessions', () => {
 
   it('removes legacy null attributes before grouping formatted sessions', async () => {
     const session = mkSession('s1', 'hA');
-    session.network.ego[entityAttributesProperty].unanswered = null;
+    // The attribute type models the post-cleanup shape, so the legacy null this
+    // test feeds in has to go round it.
+    Reflect.set(
+      session.network.ego[entityAttributesProperty],
+      'unanswered',
+      null,
+    );
     const repo = mkRepo({ hA: protocol('hA') });
 
     const { grouped, failures } = await Effect.runPromise(

@@ -87,7 +87,7 @@
     "i18n:extract": "node scripts/extract-i18n.mjs",
     "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
