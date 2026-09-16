@@ -236,7 +236,7 @@ describe.skipIf(!db)('row-level security', () => {
   // "Refuses to garbage-collect as any role but maintenance" lived here while
   // the sweep was node-postgres over a pool this suite already had. The sweep
   // is an Effect over a `Database` now, so the claim moved to the suite that
-  // builds one: `src/jobs/effect/handlers/__tests__/protocol-store-gc.test.ts`
+  // builds one: `src/jobs/handlers/__tests__/protocol-store-gc.test.ts`
   // refuses the application identity, and refuses a login that may not assume
   // the role at all — which this case never covered.
 });

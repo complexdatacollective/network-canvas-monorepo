@@ -16,8 +16,8 @@ import {
   stampFingerprint,
 } from '../src/db/schema.ts';
 import { seed, type SeedOptions } from '../src/db/seed.ts';
-import { installNativeJobSchema } from '../src/jobs/effect/install.ts';
-import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
+import { installJobSchema } from '../src/jobs/install.ts';
+import { JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach the
 // image's bundles. `studio-api migrate` applies the same schema from the DDL
@@ -27,7 +27,7 @@ import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
 // drizzle-kit's module graph, so they are rendered in src/jobs/queues.ts and
 // re-exported here — this file stays the one place that describes what a
 // schema application consists of. Installing the job schema lives in
-// src/jobs/effect/install.ts for the same reason: `studio-api migrate` in the
+// src/jobs/install.ts for the same reason: `studio-api migrate` in the
 // image does exactly what the call below does, and nothing in src/ may import
 // drizzle-kit.
 export { renderJobStatements };
@@ -111,7 +111,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     });
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
-    // One transaction for everything after the push: `installNativeJobSchema`
+    // One transaction for everything after the push: `installJobSchema`
     // applies its statements one at a time, so a failure part-way needs the
     // caller's transaction to undo it — and the stamp belongs with what it
     // vouches for either way. The push above stays outside it; drizzle-kit
@@ -122,7 +122,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
       // After the sidecars, because the grants name the roles the sync sidecar
       // creates, and before the stamp, because a stamped database has to be
       // one where a process can already enqueue.
-      await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
+      await installJobSchema(lock, JOB_SCHEMA);
       await stampFingerprint(lock, fingerprint);
       await lock.query('commit');
     } catch (error) {
@@ -166,7 +166,7 @@ export async function resetSchemaAndSeed(
   // jobs naming rows the reset had just removed. `pgboss` goes with it for as
   // long as databases created before #1957 are still around: it is nothing
   // this build installs, reads or recreates.
-  await pool.query(`drop schema if exists ${NATIVE_JOB_SCHEMA} cascade`);
+  await pool.query(`drop schema if exists ${JOB_SCHEMA} cascade`);
   await pool.query('drop schema if exists pgboss cascade');
 
   if (options.sweepScratch) await sweepScratch(pool);

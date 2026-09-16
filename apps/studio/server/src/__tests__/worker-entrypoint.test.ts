@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { applySchema } from '../../scripts/apply.ts';
 import { createJobClient } from '../jobs/client.ts';
-import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import {
   connectionRefused,
   type Entrypoint,
@@ -356,7 +356,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     async () => {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
       // The graceful stop is proved in-process by the queue's own suites
-      // (src/jobs/effect/__tests__); what only the real process can show is that
+      // (src/jobs/__tests__); what only the real process can show is that
       // its signal handler waits for the same thing — a container stop arriving
       // mid-send must not abandon the handler and leave the row `active` until
       // its lease expires.
@@ -383,7 +383,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           attempts: number;
           last_error: string | null;
         }>(
-          `select state, attempts, last_error from ${NATIVE_JOB_SCHEMA}.jobs where id = $1`,
+          `select state, attempts, last_error from ${JOB_SCHEMA}.jobs where id = $1`,
           [jobId],
         );
         const row = rows.rows[0];

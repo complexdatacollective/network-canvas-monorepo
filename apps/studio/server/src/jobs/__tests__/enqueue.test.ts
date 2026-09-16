@@ -22,9 +22,9 @@ import {
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
 import { createJobClient, type JobClient } from '../client.ts';
-import { Database, withTransaction } from '../effect/database.ts';
-import { Jobs } from '../effect/jobs.ts';
-import type { JobPayload } from '../effect/queues.ts';
+import { Database, withTransaction } from '../database.ts';
+import { Jobs } from '../jobs.ts';
+import type { JobPayload } from '../queues.ts';
 
 const db = await reachableDb();
 
@@ -92,7 +92,7 @@ describe.skipIf(!db)('the web process enqueue', () => {
               retry_limit, retry_delay, retry_backoff, retry_delay_max,
               expire_in_seconds,
               extract(epoch from (keep_until - run_at))::int as retention_seconds
-         from ${scratch.nativeJobSchema}.jobs
+         from ${scratch.jobSchema}.jobs
         where $1::text is null or queue = $1
         order by created_at, id`,
       [queue ?? null],
@@ -102,7 +102,7 @@ describe.skipIf(!db)('the web process enqueue', () => {
 
   const countJobs = async (pool: pg.Pool): Promise<number> => {
     const rows = await pool.query<{ count: string }>(
-      `select count(*) as count from ${scratch.nativeJobSchema}.jobs`,
+      `select count(*) as count from ${scratch.jobSchema}.jobs`,
     );
     return Number(rows.rows[0]!.count);
   };
@@ -125,12 +125,12 @@ describe.skipIf(!db)('the web process enqueue', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    jobs = createJobClient({ schema: scratch.nativeJobSchema });
+    jobs = createJobClient({ schema: scratch.jobSchema });
 
     scope = Effect.runSync(Scope.make());
     const built = await Effect.runPromise(
       Layer.buildWithScope(
-        Jobs.layer({ schema: scratch.nativeJobSchema }).pipe(
+        Jobs.layer({ schema: scratch.jobSchema }).pipe(
           Layer.provideMerge(
             Database.layer('app', {
               url: db.url,
@@ -147,7 +147,7 @@ describe.skipIf(!db)('the web process enqueue', () => {
   });
 
   afterEach(async () => {
-    await scratch.pool.query(`delete from ${scratch.nativeJobSchema}.jobs`);
+    await scratch.pool.query(`delete from ${scratch.jobSchema}.jobs`);
   });
 
   afterAll(async () => {

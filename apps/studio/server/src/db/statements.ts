@@ -6,7 +6,7 @@
 // outright — SQLSTATE 42601, "cannot insert multiple commands into a prepared
 // statement". Everything Studio applies its schema from is a multi-command
 // string: drizzle-kit's rendered DDL, the nineteen sidecars in src/db/schema.ts,
-// and the job queue's schema and grants (src/jobs/effect/schema.ts). Several of
+// and the job queue's schema and grants (src/jobs/schema.ts). Several of
 // those carry dollar-quoted plpgsql function bodies of their own, so splitting
 // on `;` would cut a function in half.
 //

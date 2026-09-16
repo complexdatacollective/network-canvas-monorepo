@@ -404,7 +404,7 @@ with their owners, plus the queue declarations beside them:
   Studio declares and how each one retries and expires, the cron schedules the
   worker registers, and what a job on each queue may carry. Declarations rather
   than Drizzle tables — the queue's own two tables are raw SQL in
-  `server/src/jobs/effect/schema.ts` (see [Background work](#background-work))
+  `server/src/jobs/schema.ts` (see [Background work](#background-work))
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
@@ -751,7 +751,7 @@ neither the HTTP app nor the RPC router, which a source test holds it to.
 `pnpm dev` runs both.
 
 The queue is Studio's own, written on Effect over two Postgres tables
-(`server/src/jobs/effect/`, whose README is its reference). It replaced
+(`server/src/jobs/`, whose README is its reference). It replaced
 pg-boss on 16 September 2026 (#1957) and keeps pg-boss's semantics where they
 were worth keeping — the retry ladder and its backoff, per-queue singletons,
 dead-letter copies, retention and deletion — with the differences, and the
@@ -762,7 +762,7 @@ own database client to the enqueue, so the job is inserted on that connection,
 inside that transaction, alongside the domain row and its audit event: a
 command that rolls back leaves no job, and a command that commits always leaves
 exactly one. Nothing enqueues after a commit, and `server/src/jobs/client.ts`
-and `server/src/jobs/effect/jobs.ts` are the only modules that create a job at
+and `server/src/jobs/jobs.ts` are the only modules that create a job at
 all — another source test holds the codebase to that, because an enqueue on its
 own connection reopens both windows this closes.
 

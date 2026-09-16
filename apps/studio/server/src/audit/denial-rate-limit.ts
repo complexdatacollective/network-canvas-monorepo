@@ -19,7 +19,7 @@ import { getRateLimitStore, type RateLimitStore } from '../rate-limit/store.ts';
 // container killed rather than stopped lost its summaries. The state is now
 // one hash per (actor, team, operation, window) in the shared store, expiring
 // shortly after its window, and the summaries are written by a worker job
-// every minute (src/jobs/effect/handlers/denied-attempts-summary.ts).
+// every minute (src/jobs/handlers/denied-attempts-summary.ts).
 //
 // **Two bounds, and why neither of them waits.** The version this replaces
 // queued excess concurrent attempts outside the audit lock and admitted them

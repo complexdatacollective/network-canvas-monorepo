@@ -128,7 +128,7 @@ describe.skipIf(!db)('a seeded database at rest', () => {
     // The queue installs into a schema of its own, so a secret that reached a
     // job payload would not be in the first dump at all.
     const jobs = await dumpSchemaRows(scratch.pool, {
-      schema: scratch.nativeJobSchema,
+      schema: scratch.jobSchema,
     });
     dump = [...studio.values(), ...jobs.values()]
       .map((rows) => rows.join('\n'))

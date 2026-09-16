@@ -9,7 +9,7 @@ import {
   sqlState,
 } from '../../__tests__/support/postgres.ts';
 import { scratchSchemaDdl } from '../../__tests__/support/schema-ddl.ts';
-import { jobSchemaGrantsSql, jobSchemaSql } from '../../jobs/effect/schema.ts';
+import { jobSchemaGrantsSql, jobSchemaSql } from '../../jobs/schema.ts';
 import { SIDECARS } from '../schema.ts';
 import { splitStatements } from '../statements.ts';
 
@@ -283,7 +283,7 @@ describe.skipIf(!db)('splitStatements against Postgres', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     whole = await createScratchSchema(db);
     split = await createScratchSchema(db);
-    jobSchema = `${split.nativeJobSchema}_split`;
+    jobSchema = `${split.jobSchema}_split`;
 
     const ddl = await scratchSchemaDdl();
     await whole.pool.query(ddl);

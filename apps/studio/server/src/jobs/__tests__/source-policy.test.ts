@@ -37,13 +37,13 @@ const SCANNED_ROOTS = [
 const SERVER_MANIFEST = 'apps/studio/server/package.json';
 
 /** The one renderer of the statement both enqueue paths send. */
-const ENQUEUE_MODULE = 'apps/studio/server/src/jobs/effect/insert.ts';
+const ENQUEUE_MODULE = 'apps/studio/server/src/jobs/insert.ts';
 
 /** The node-postgres twin, which sends that statement on a caller's client. */
 const CLIENT_MODULE = 'apps/studio/server/src/jobs/client.ts';
 
 /** The worker, whose only insert is the dead-letter copy; see below. */
-const WORKER_MODULE = 'apps/studio/server/src/jobs/effect/worker.ts';
+const WORKER_MODULE = 'apps/studio/server/src/jobs/worker.ts';
 
 function typescriptFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -161,7 +161,7 @@ describe('job source policy', () => {
     // The node-postgres half of the transaction guarantee. The Effect half is
     // structural — `Jobs.enqueue` requires `Transaction`, and only
     // `withTransaction` provides it, proved three ways in
-    // `src/jobs/effect/__tests__/transaction.test.ts` — but this path takes a
+    // `src/jobs/__tests__/transaction.test.ts` — but this path takes a
     // `pg.PoolClient` as an argument, so nothing in the types stops it from
     // fetching a connection of its own instead. It may not: a client it
     // connected for itself would commit the job separately from the domain row
@@ -173,7 +173,7 @@ describe('job source policy', () => {
     // is what keeps the columns frozen onto a job at enqueue the same however
     // the job was created.
     expect(client).toMatch(
-      /import\s*\{[^}]*\binsertJobStatement\b[^}]*\}\s*from\s*'\.\/effect\/insert\.ts'/,
+      /import\s*\{[^}]*\binsertJobStatement\b[^}]*\}\s*from\s*'\.\/insert\.ts'/,
     );
   });
 });

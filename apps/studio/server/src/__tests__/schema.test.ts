@@ -29,10 +29,10 @@ import {
 } from '../db/schema.ts';
 import type { DbEnv } from '../env.ts';
 import { createJobClient } from '../jobs/client.ts';
-import { Database, withTransaction } from '../jobs/effect/database.ts';
-import { installNativeJobSchemaEffect } from '../jobs/effect/install.ts';
-import { jobSchemaGrantsSql, jobSchemaSql } from '../jobs/effect/schema.ts';
-import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
+import { Database, withTransaction } from '../jobs/database.ts';
+import { installJobSchemaEffect } from '../jobs/install.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { jobSchemaGrantsSql, jobSchemaSql } from '../jobs/schema.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -66,8 +66,8 @@ describe('fingerprint constant', () => {
   // worker off a database whose queue is not the shape this build claims.
   it('covers the job schema and its grants', async () => {
     const jobStatements = renderJobStatements();
-    expect(jobStatements).toContain(jobSchemaSql(NATIVE_JOB_SCHEMA));
-    expect(jobStatements).toContain(jobSchemaGrantsSql(NATIVE_JOB_SCHEMA));
+    expect(jobStatements).toContain(jobSchemaSql(JOB_SCHEMA));
+    expect(jobStatements).toContain(jobSchemaGrantsSql(JOB_SCHEMA));
 
     // And they are inside the hash rather than merely rendered beside it: the
     // same fingerprint computed over the public statements alone differs.
@@ -565,7 +565,7 @@ describe.skipIf(!db)('schema verification', () => {
 
   // A scratch schema is what forty or so suites take for a deployed database,
   // so everything a schema application installs outside `public` has to be
-  // there too — the queue's schema above all. Read through `nativeJobSchema`
+  // there too — the queue's schema above all. Read through `jobSchema`
   // rather than by rebuilding the name here, because that field is what a
   // suite builds a `Database` against.
   it('provisions the job schema beside the scratch schema', async () => {
@@ -575,7 +575,7 @@ describe.skipIf(!db)('schema verification', () => {
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
           where table_schema = $1 order by 1`,
-        [scratch.nativeJobSchema],
+        [scratch.jobSchema],
       );
       const names = tables.rows.map((row) => row.table_name);
       expect(names).toContain('jobs');
@@ -594,16 +594,16 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       const throughNodePostgres = await nativeSchemaCatalogue(
         pool,
-        scratch.nativeJobSchema,
+        scratch.jobSchema,
       );
       // Not merely equal: both non-empty, so a catalogue query that returned
       // nothing would not read as agreement.
       expect(throughNodePostgres.length).toBeGreaterThan(0);
 
-      const sibling = `${scratch.nativeJobSchema}_effect`;
+      const sibling = `${scratch.jobSchema}_effect`;
       try {
         await Effect.runPromise(
-          withTransaction(installNativeJobSchemaEffect(sibling)).pipe(
+          withTransaction(installJobSchemaEffect(sibling)).pipe(
             Effect.provide(
               Database.layer('owner', { url: db!.url, maxConnections: 2 }),
             ),
@@ -822,7 +822,7 @@ describe.skipIf(!db)('schema application', () => {
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
           where table_schema = $1 order by 1`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       const names = tables.rows.map((row) => row.table_name);
       expect(names).toContain('jobs');
@@ -846,7 +846,7 @@ describe.skipIf(!db)('schema application', () => {
            has_table_privilege('studio_maintenance', $1 || '.jobs', 'UPDATE') as maintenance_update,
            has_table_privilege('studio_maintenance', $1 || '.jobs', 'DELETE') as maintenance_delete,
            has_table_privilege('studio_maintenance', $1 || '.job_schedules', 'INSERT') as maintenance_schedules`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       expect(privileges.rows[0]).toEqual({
         app_schema: true,
@@ -880,14 +880,14 @@ describe.skipIf(!db)('schema application', () => {
       // The DDL is idempotent, so a second apply reapplies it over the live
       // tables rather than replacing them — and the queued job is still there.
       const jobs = await pool.query<{ id: string; queue: string }>(
-        `select id, queue from ${NATIVE_JOB_SCHEMA}.jobs`,
+        `select id, queue from ${JOB_SCHEMA}.jobs`,
       );
       expect(jobs.rows).toEqual([{ id: queued, queue: 'protocol-store-gc' }]);
 
       // And the schema still enqueues afterwards: the grants survived too.
       await enqueueAsApplication(scratch.db);
       const after = await pool.query<{ count: string }>(
-        `select count(*)::text from ${NATIVE_JOB_SCHEMA}.jobs`,
+        `select count(*)::text from ${JOB_SCHEMA}.jobs`,
       );
       expect(after.rows[0]?.count).toBe('2');
     });

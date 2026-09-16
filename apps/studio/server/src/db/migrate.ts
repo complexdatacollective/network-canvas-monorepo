@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 
 import type pg from 'pg';
 
-import { installNativeJobSchema } from '../jobs/effect/install.ts';
-import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
+import { installJobSchema } from '../jobs/install.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import {
   checkSchema,
@@ -38,7 +38,7 @@ export type SchemaDdl = {
   /**
    * The job queue's schema and its grants. Hashed rather than executed from
    * here: the schema is installed through the module that owns it
-   * (`src/jobs/effect/install.ts`), which is in the image, so what this
+   * (`src/jobs/install.ts`), which is in the image, so what this
    * document carries is what the fingerprint covers.
    */
   jobStatements: string[];
@@ -147,8 +147,8 @@ export async function migrateDatabase(
       // creates, and before the stamp, because a stamped database has to be
       // one where a process can already enqueue — the order `applySchema`
       // runs in.
-      log(`Installing the ${NATIVE_JOB_SCHEMA} schema.`);
-      await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
+      log(`Installing the ${JOB_SCHEMA} schema.`);
+      await installJobSchema(lock, JOB_SCHEMA);
 
       // The first-run bootstrap token is issued by the entry (src/migrate.ts)
       // once this has returned: the installation table it writes exists only

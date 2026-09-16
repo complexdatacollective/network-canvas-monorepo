@@ -9,7 +9,7 @@ import { createOwnerPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 import { createJobClient, type JobClient } from '../../jobs/client.ts';
-import { installNativeJobSchema } from '../../jobs/effect/install.ts';
+import { installJobSchema } from '../../jobs/install.ts';
 import { CI } from './env.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
 
@@ -64,7 +64,7 @@ export async function reachableDb(): Promise<DbEnv | null> {
  * run, and after the production schema (`studio_jobs`) so a suite reading the
  * name can see what it is looking at.
  */
-function nativeJobSchemaFor(schema: string): string {
+function jobSchemaFor(schema: string): string {
   return `${schema}_studio_jobs`;
 }
 
@@ -76,7 +76,7 @@ export type ScratchSchema = {
   /** What garbage collection runs as. */
   maintenance: pg.Pool;
   /** This scratch schema's job schema, once provisioned. */
-  nativeJobSchema: string;
+  jobSchema: string;
   /**
    * The web process's enqueue-only job client, against this scratch job
    * schema — the production construction with only the schema changed. It
@@ -118,25 +118,23 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
   const pool = connect();
   const app = connect(TENANT_ROLES.app);
   const maintenance = connect(TENANT_ROLES.maintenance);
-  const nativeJobSchema = nativeJobSchemaFor(name);
+  const jobSchema = jobSchemaFor(name);
 
   return {
     pool,
     app,
     maintenance,
-    nativeJobSchema,
+    jobSchema,
     createJobClient: () =>
       // The search path the scratch pools carry is not the client's concern:
       // every statement it runs names its schema, and it runs them on the
       // connection its caller hands it.
-      Promise.resolve(createJobClient({ schema: nativeJobSchema })),
+      Promise.resolve(createJobClient({ schema: jobSchema })),
     dispose: async () => {
       await Promise.all([app.end(), maintenance.end(), pool.end()]);
       const cleanup = createOwnerPool(db);
       try {
-        await cleanup.query(
-          `drop schema if exists "${nativeJobSchema}" cascade`,
-        );
+        await cleanup.query(`drop schema if exists "${jobSchema}" cascade`);
         await cleanup.query(`drop schema if exists "${name}" cascade`);
       } finally {
         await cleanup.end();
@@ -162,7 +160,7 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
     'select current_schema() as schema',
   );
   const schema = current.rows[0]!.schema;
-  await provisionScratchNativeJobSchema(pool, nativeJobSchemaFor(schema));
+  await provisionScratchJobSchema(pool, jobSchemaFor(schema));
 }
 
 /**
@@ -172,18 +170,18 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
  * `studio-api migrate` call, so the suites cannot be provisioned by a
  * different set of statements from the one a deployment gets.
  *
- * On a client of its own rather than the pool, because `installNativeJobSchema`
+ * On a client of its own rather than the pool, because `installJobSchema`
  * applies the DDL one statement at a time and must not have them land on
  * different connections.
  */
-async function provisionScratchNativeJobSchema(
+async function provisionScratchJobSchema(
   pool: pg.Pool,
   schema: string,
 ): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    await installNativeJobSchema(client, schema);
+    await installJobSchema(client, schema);
     await client.query('commit');
   } catch (error) {
     await client.query('rollback').catch(() => undefined);

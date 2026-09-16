@@ -40,7 +40,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
-    jobSchema = scratch.nativeJobSchema;
+    jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM_ID);

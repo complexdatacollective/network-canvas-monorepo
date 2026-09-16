@@ -10,20 +10,17 @@ import {
   HealthRoutes,
   schemaCheckOnPool,
 } from '../http/health.ts';
-import { JobClock } from '../jobs/effect/clock.ts';
-import { Database } from '../jobs/effect/database.ts';
-import { DeniedAuditSummaryWriter } from '../jobs/effect/handlers/denied-attempts/audit-writer.ts';
-import { DeniedAttemptsStore } from '../jobs/effect/handlers/denied-attempts/store.ts';
-import { Jobs } from '../jobs/effect/jobs.ts';
-import {
-  JobMaintenanceGate,
-  MaintenanceState,
-} from '../jobs/effect/maintenance.ts';
-import { JobQueueMetrics } from '../jobs/effect/metrics.ts';
-import { jobsCheck } from '../jobs/effect/readiness.ts';
-import { JobHandlersLive } from '../jobs/effect/registrations.ts';
-import { JobWorker } from '../jobs/effect/worker.ts';
-import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
+import { JobClock } from '../jobs/clock.ts';
+import { Database } from '../jobs/database.ts';
+import { DeniedAuditSummaryWriter } from '../jobs/handlers/denied-attempts/audit-writer.ts';
+import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
+import { Jobs } from '../jobs/jobs.ts';
+import { JobMaintenanceGate, MaintenanceState } from '../jobs/maintenance.ts';
+import { JobQueueMetrics } from '../jobs/metrics.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { jobsCheck } from '../jobs/readiness.ts';
+import { JobHandlersLive } from '../jobs/registrations.ts';
+import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
 import { WorkerHealthServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
@@ -195,8 +192,8 @@ function workerWith(env: StudioEnv, db: DbEnv) {
             : DeniedAttemptsStore.layerAbsent,
         ),
         Layer.provide(DeniedAuditSummaryWriter.layer(pool)),
-        Layer.provideMerge(JobWorker.layer({ schema: NATIVE_JOB_SCHEMA })),
-        Layer.provide(Jobs.layer({ schema: NATIVE_JOB_SCHEMA })),
+        Layer.provideMerge(JobWorker.layer({ schema: JOB_SCHEMA })),
+        Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
         // The production skew correction, measured against this client's own
         // `now()`; the uncorrected clock is the suites'.
         Layer.provide(JobClock.layer()),

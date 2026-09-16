@@ -5,8 +5,8 @@ import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import { installNativeJobSchema } from '../../jobs/effect/install.ts';
-import { NATIVE_JOB_SCHEMA } from '../../jobs/queues.ts';
+import { installJobSchema } from '../../jobs/install.ts';
+import { JOB_SCHEMA } from '../../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
@@ -135,12 +135,12 @@ describe.skipIf(!db)('migrate', () => {
         log: (line) => lines.push(line),
       });
 
-      expect(lines).toContain(`Installing the ${NATIVE_JOB_SCHEMA} schema.`);
+      expect(lines).toContain(`Installing the ${JOB_SCHEMA} schema.`);
 
       const tables = await scratch.pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
           where table_schema = $1 order by 1`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       const names = tables.rows.map((row) => row.table_name);
       expect(names).toContain('jobs');
@@ -167,7 +167,7 @@ describe.skipIf(!db)('migrate', () => {
            has_table_privilege('studio_maintenance', $1 || '.jobs', 'UPDATE') as maintenance_update,
            has_table_privilege('studio_maintenance', $1 || '.jobs', 'DELETE') as maintenance_delete,
            has_table_privilege('studio_maintenance', $1 || '.job_schedules', 'INSERT') as maintenance_schedules`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       expect(privileges.rows[0]).toEqual({
         app_schema: true,
@@ -252,7 +252,7 @@ describe.skipIf(!db)('migrate', () => {
   it(
     'installs the job schema inside the caller’s transaction',
     async () => {
-      // `installNativeJobSchema` must carry no transaction control of its own:
+      // `installJobSchema` must carry no transaction control of its own:
       // a COMMIT anywhere inside it would make everything `migrate` had applied
       // before that point durable — no error, no warning anyone reads — and
       // defeat every other guarantee here.
@@ -265,7 +265,7 @@ describe.skipIf(!db)('migrate', () => {
       try {
         await client.query('begin');
         await client.query('create table rollback_marker (id int)');
-        await installNativeJobSchema(client, NATIVE_JOB_SCHEMA);
+        await installJobSchema(client, JOB_SCHEMA);
         await client.query('rollback');
       } finally {
         client.release();
@@ -277,7 +277,7 @@ describe.skipIf(!db)('migrate', () => {
       }>(
         `select to_regclass('rollback_marker') is not null as marker,
                 exists (select 1 from pg_namespace where nspname = $1) as jobs`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       expect(after.rows[0]).toEqual({ marker: false, jobs: false });
     },
@@ -302,9 +302,9 @@ describe.skipIf(!db)('migrate', () => {
       // Created outside the transaction under test, so the rollback below
       // cannot be credited with removing it: what has to disappear is
       // everything `migrate` itself wrote.
-      await scratch.pool.query(`create schema ${NATIVE_JOB_SCHEMA}`);
+      await scratch.pool.query(`create schema ${JOB_SCHEMA}`);
       await scratch.pool.query(
-        `create table ${NATIVE_JOB_SCHEMA}.jobs (id uuid primary key)`,
+        `create table ${JOB_SCHEMA}.jobs (id uuid primary key)`,
       );
 
       await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
@@ -325,12 +325,12 @@ describe.skipIf(!db)('migrate', () => {
       // job schema is outside `public`, where `checkSchema` does not look.
       const jobTables = await scratch.pool.query<{ tablename: string }>(
         `select tablename from pg_tables where schemaname = $1 order by 1`,
-        [NATIVE_JOB_SCHEMA],
+        [JOB_SCHEMA],
       );
       expect(jobTables.rows.map((row) => row.tablename)).toEqual(['jobs']);
 
       // And with the obstruction removed, the same database applies cleanly.
-      await scratch.pool.query(`drop schema ${NATIVE_JOB_SCHEMA} cascade`);
+      await scratch.pool.query(`drop schema ${JOB_SCHEMA} cascade`);
       expect(await migrateDatabase(scratch.pool, ddl)).toEqual({
         kind: 'applied',
       });

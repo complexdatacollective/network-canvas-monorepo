@@ -7,7 +7,7 @@ policies. Everything else Postgres needs — the roles the application runs as,
 functions that enforce transitions — is written as raw SQL in **sidecars**. The
 third part is the background queue's own schema, `studio_jobs`: two tables,
 their indexes, a notify trigger and their grants, installed by
-`scripts/apply.ts` from `src/jobs/effect/schema.ts`, with the queue
+`scripts/apply.ts` from `src/jobs/schema.ts`, with the queue
 declarations beside them in `@codaco/studio-sync/jobs` (#1895, #1927).
 
 All three are hashed into one fingerprint and applied together. A sidecar is
@@ -129,7 +129,7 @@ verifies.
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
 - `renderJobStatements()` = the job queue's DDL and grants for the
-  `studio_jobs` schema (`src/jobs/effect/schema.ts`). They are rendered
+  `studio_jobs` schema (`src/jobs/schema.ts`). They are rendered
   separately from the public statements because that list is the DDL the
   suites execute into a scratch schema by setting `search_path`, and these
   statements name a schema of their own instead.
@@ -152,7 +152,7 @@ verifies.
   in the image, where drizzle-kit does not exist. The build renders the same
   statements into `dist/schema-ddl.json` (`scripts/render-schema-ddl.ts`) and
   this executes them in one transaction, then installs `studio_jobs` through
-  the same `src/jobs/effect/install.ts` that `applySchema` calls, and stamps
+  the same `src/jobs/install.ts` that `applySchema` calls, and stamps
   the fingerprint. It refuses a
   document whose statements do not hash to the fingerprint beside them, and —
   pre-release — it refuses a database another build created rather than
@@ -164,7 +164,7 @@ The job queue (#1927) installs two tables of its own, outside `public`:
 `applySchema` pushes `public` with drizzle-kit, which reconciles everything it
 introspects there against what Drizzle declares, and would drop an undeclared
 jobs table on the next push. The DDL and grants live in
-`src/jobs/effect/schema.ts`, the install in `src/jobs/effect/install.ts` (a
+`src/jobs/schema.ts`, the install in `src/jobs/install.ts` (a
 node-postgres function for the two callers that apply a schema, and an Effect
 twin over an open `Transaction` for a caller that already owns a `Database`),
 and the schema name in `src/jobs/queues.ts`.

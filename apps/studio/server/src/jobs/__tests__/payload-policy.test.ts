@@ -62,7 +62,7 @@ describe('job queue declarations', () => {
   // The case that checked the declarations against pg-boss's own option types
   // went with pg-boss (#1957). There is no library to drift from now: the
   // options are resolved against `QUEUE_DEFAULTS` in
-  // `src/jobs/effect/queues.ts`, in this repository, where a renamed field is
+  // `src/jobs/queues.ts`, in this repository, where a renamed field is
   // a typecheck failure at the use site rather than a runtime surprise.
 });
 

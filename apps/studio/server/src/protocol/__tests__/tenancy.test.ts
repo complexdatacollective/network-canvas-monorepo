@@ -15,8 +15,8 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { seedTeam } from '../../__tests__/support/postgres.ts';
 import { testCipher } from '../../__tests__/support/secrets.ts';
-import { Database } from '../../jobs/effect/database.ts';
-import { gcProtocolStore } from '../../jobs/effect/handlers/protocol-store-gc.ts';
+import { Database } from '../../jobs/database.ts';
+import { gcProtocolStore } from '../../jobs/handlers/protocol-store-gc.ts';
 import { ProtocolStore, ProtocolStoreError } from '../store.ts';
 import {
   GC_OPTS,
@@ -40,7 +40,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
 
   /**
    * The sweep. It is an Effect over its own maintenance client now
-   * (`src/jobs/effect/handlers/protocol-store-gc.ts`), so the scratch schema
+   * (`src/jobs/handlers/protocol-store-gc.ts`), so the scratch schema
    * goes in as a `search_path` rather than as a pool. Built per call —
    * `local: true` — because a shared layer's pool would outlive the suite.
    */

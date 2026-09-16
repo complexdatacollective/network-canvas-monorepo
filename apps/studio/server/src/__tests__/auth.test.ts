@@ -232,7 +232,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       const queued = await scratch.pool.query<{
         queue: string;
         payload: unknown;
-      }>(`select queue, payload from ${scratch.nativeJobSchema}.jobs`);
+      }>(`select queue, payload from ${scratch.jobSchema}.jobs`);
       expect(queued.rows).toEqual([
         {
           queue: 'sign-in-email',

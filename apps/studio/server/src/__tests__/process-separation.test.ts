@@ -4,7 +4,7 @@
 // checked against each other here rather than against a habit.
 //
 // The runtime half of the same rule is proved elsewhere: the grants suite
-// (src/jobs/effect/__tests__/grants.test.ts) shows the application role refused
+// (src/jobs/__tests__/grants.test.ts) shows the application role refused
 // a claim with 42501, so even a web process that did load the worker could not
 // execute a job.
 //
@@ -116,12 +116,12 @@ function reached(
  * the worker process may reach any of it.
  */
 const JOB_EXECUTION = [
-  'src/jobs/effect/worker.ts',
-  'src/jobs/effect/registrations.ts',
-  'src/jobs/effect/handlers/invitation-delivery.ts',
-  'src/jobs/effect/handlers/sign-in-email.ts',
-  'src/jobs/effect/handlers/protocol-store-gc.ts',
-  'src/jobs/effect/handlers/denied-attempts-summary.ts',
+  'src/jobs/worker.ts',
+  'src/jobs/registrations.ts',
+  'src/jobs/handlers/invitation-delivery.ts',
+  'src/jobs/handlers/sign-in-email.ts',
+  'src/jobs/handlers/protocol-store-gc.ts',
+  'src/jobs/handlers/denied-attempts-summary.ts',
 ];
 
 /** The four bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
@@ -362,7 +362,7 @@ describe('the web process', () => {
   it('creates jobs through the enqueue-only client', () => {
     // The positive half, so that "no worker" cannot be satisfied by having no
     // queue at all. One module now: the node-postgres enqueue, which renders
-    // its statement through `src/jobs/effect/jobs.ts` and sends it on the
+    // its statement through `src/jobs/jobs.ts` and sends it on the
     // command's own transaction client.
     expect(reached(graph, ['src/jobs/client.ts'])).toEqual([
       'src/jobs/client.ts',

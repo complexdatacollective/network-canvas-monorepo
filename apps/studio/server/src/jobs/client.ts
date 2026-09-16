@@ -3,15 +3,15 @@ import type pg from 'pg';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
-import { insertJobStatement } from './effect/insert.ts';
+import { insertJobStatement } from './insert.ts';
 import {
   type JobPayload,
   payloadCodec,
   resolvedQueue,
-} from './effect/queues.ts';
-import { NATIVE_JOB_SCHEMA } from './queues.ts';
+  JOB_SCHEMA,
+} from './queues.ts';
 
-// The web process's enqueue, and the only module outside `src/jobs/effect` that
+// The web process's enqueue, and the only module outside `src/jobs` that
 // creates a job — a source-policy test pins that.
 //
 // It is a node-postgres twin of `Jobs.enqueue` because the commands that create
@@ -32,7 +32,7 @@ export type JobEnqueueOptions = {
   /**
    * One job per (queue, key) among `created` and `active`; a second is
    * refused. Unrelated to a queue's `singleton` *policy*, which bounds how many
-   * run at once and lets the rest wait (`src/jobs/effect/README.md` §2).
+   * run at once and lets the rest wait (`src/jobs/README.md` §2).
    */
   readonly singletonKey?: string;
   /** Not claimable before this instant; the default is the commit's own. */
@@ -78,7 +78,7 @@ function decodePayload<Queue extends JobQueueName>(
  * process booted.
  */
 export function createJobClient(options: JobClientOptions = {}): JobClient {
-  const schema = options.schema ?? NATIVE_JOB_SCHEMA;
+  const schema = options.schema ?? JOB_SCHEMA;
 
   return {
     enqueue: async (client, queue, data, enqueueOptions) => {

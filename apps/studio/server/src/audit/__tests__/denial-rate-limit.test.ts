@@ -19,7 +19,7 @@ import {
 // The window that caps how many denial events one actor can write into one
 // team's audit log for one operation (#1909). What it used to be — a Map, a
 // waiter queue and a flush at shutdown — is gone: the state is in Valkey, the
-// summaries are the worker's (src/jobs/effect/handlers/denied-attempts-summary.ts),
+// summaries are the worker's (src/jobs/handlers/denied-attempts-summary.ts),
 // and nothing waits. What survives from the old contract is what the call
 // sites depend on: the allowance is spent only by a confirmed denial, it
 // resets at the window boundary, and past it the attempt is suppressed rather

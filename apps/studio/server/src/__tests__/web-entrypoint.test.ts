@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { applySchema } from '../../scripts/apply.ts';
-import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { freePort, startEntrypoint } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
@@ -67,7 +67,7 @@ describe.skipIf(!db)('the web entrypoint', () => {
         expect(response.status, await response.clone().text()).toBe(200);
 
         const queued = await scratch.pool.query<{ queue: string }>(
-          `select queue from ${NATIVE_JOB_SCHEMA}.jobs`,
+          `select queue from ${JOB_SCHEMA}.jobs`,
         );
         expect(queued.rows).toEqual([{ queue: 'sign-in-email' }]);
       } finally {

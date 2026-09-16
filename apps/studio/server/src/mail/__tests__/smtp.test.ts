@@ -3,7 +3,7 @@
 // numbers are a deployment property rather than a preference: an invitation
 // attempt expires after 60 seconds (packages/studio-sync/src/jobs.ts) and a
 // container stop gives an in-flight send 25 (`stopTimeout`,
-// src/jobs/effect/worker.ts), so a send left at nodemailer's own defaults —
+// src/jobs/worker.ts), so a send left at nodemailer's own defaults —
 // 2 minutes to connect, 30 seconds for a greeting, 10 idle minutes — outlasts
 // both: the stop interrupts the attempt mid-send and the row stays `active`
 // until its lease expires and the reaper walks it down the retry ladder,

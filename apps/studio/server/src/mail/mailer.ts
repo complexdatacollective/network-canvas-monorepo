@@ -25,7 +25,7 @@ export class MailNotConfigured extends Schema.TaggedError<MailNotConfigured>()(
  * The transport refused the send. The message is the transport's own, because
  * that is what lands in the job row's `last_error` and what an operator reads —
  * nodemailer's `Greeting never received` among them. The queue reads it through
- * `deepestMessage` (src/jobs/effect/errors.ts), which walks the cause chain for
+ * `deepestMessage` (src/jobs/errors.ts), which walks the cause chain for
  * exactly this getter.
  */
 export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
