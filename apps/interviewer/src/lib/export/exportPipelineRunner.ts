@@ -1,4 +1,4 @@
-import { Effect, Layer, Queue, Stream } from 'effect';
+import { type Cause, Effect, Fiber, Layer, Queue, Stream } from 'effect';
 
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import type {
@@ -78,9 +78,9 @@ export async function runPipelineWithData({
   const outputLayer = makeZipOutput(sink);
 
   const program = Effect.gen(function* () {
-    const queue = yield* Queue.unbounded<ExportEvent>();
+    const queue = yield* Queue.unbounded<ExportEvent, Cause.Done>();
 
-    const drain = Effect.forkScoped(
+    const drain = yield* Effect.forkScoped(
       Stream.fromQueue(queue).pipe(
         Stream.runForEach((event) =>
           Effect.sync(() => {
@@ -90,14 +90,13 @@ export async function runPipelineWithData({
       ),
     );
 
-    yield* drain;
-
     const result = yield* exportPipeline(
       data.sessions.map((session) => session.id),
       options,
       queue,
     );
-    yield* Queue.shutdown(queue);
+    yield* Queue.end(queue);
+    yield* Fiber.join(drain);
     return result;
   });
 

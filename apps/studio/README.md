@@ -843,8 +843,8 @@ first failure alone, and never quotes the value it rejected, because half of
 these variables are credentials and a boot failure is written to the log of
 every container that restarts.
 
-`src/env.ts` also exports an `Environment` service (an Effect `Context.Tag` and
-a `Layer` that decodes and resolves once). Nothing consumes it yet — the server
+`src/env.ts` also exports an `Environment` service (an Effect `Context.Service`
+and a `Layer` that decodes and resolves once). Nothing consumes it yet — the server
 is a Hono app and a pg-boss worker, neither of which runs under Effect — but it
 is the sanctioned way in for the first module that does.
 

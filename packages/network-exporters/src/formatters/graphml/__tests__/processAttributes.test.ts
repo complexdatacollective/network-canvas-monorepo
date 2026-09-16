@@ -24,12 +24,10 @@ const mockExportOptions: ExportOptions = {
 // Helper to extract data elements from the document fragment
 const getDataElements = (fragment: XmlDomDocumentFragment) => {
   const result: Record<string, string> = {};
-  for (const node of Array.from(fragment.childNodes)) {
-    const child = node as unknown as Element;
-    const key = child.getAttribute?.('key');
-    const value = child.textContent;
+  for (const child of fragment.children) {
+    const key = child.getAttribute('key');
     if (key) {
-      result[key] = value ?? '';
+      result[key] = child.textContent ?? '';
     }
   }
   return result;

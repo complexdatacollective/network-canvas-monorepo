@@ -156,6 +156,30 @@ test('fails when a changeset names a tooling workspace nothing releases', () => 
   assert.match(res.stderr, /never released: @codaco\/tsconfig$/m);
 });
 
+test('fails when a changeset names a package that is not in the workspace', () => {
+  // The stale-rename shape: `changeset version` looks every release name up in
+  // the workspace before it reads the config `ignore` list, so it throws
+  // "which is not in the workspace" in the Version Packages PR — at release
+  // time — for a name nothing in the repo carries.
+  const cwd = fixture({
+    'renamed.md': `---\n"@codaco/does-not-exist": patch\n---\n\nstale name`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /renamed\.md/);
+  assert.match(res.stderr, /not in the workspace: @codaco\/does-not-exist$/m);
+});
+
+test('passes when a changeset names a real but ignored workspace package', () => {
+  // Being in the config `ignore` list is not being absent from the workspace:
+  // the classic apps are real workspaces that `changeset version` resolves and
+  // then skips. Refusing them would break the lane they belong to.
+  const cwd = fixture({
+    'classic.md': `---\n"@codaco/architect-classic": patch\n---\n\nclassic fix`,
+  });
+  assert.equal(run(cwd).status, 0);
+});
+
 test('names both halves when one changeset releases the pair', () => {
   const cwd = fixture({
     'both-halves.md': `---\n"@codaco/protocol-builder": minor\n"@codaco/protocol-builder-core": minor\n---\n\nsplit`,

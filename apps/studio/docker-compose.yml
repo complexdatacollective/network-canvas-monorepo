@@ -192,6 +192,8 @@ services:
     image: ${STUDIO_API_IMAGE}
     restart: unless-stopped
     command: [worker]
+    # The documented drain takes 25-30s; Docker's 10s default would SIGKILL it.
+    stop_grace_period: 40s
     environment: *studio-env
     secrets: *studio-secrets
     # Readiness, not liveness: the pg-boss connection is the one thing a

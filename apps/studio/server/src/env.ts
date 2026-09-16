@@ -88,9 +88,9 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
  * are memoised, so a program that provides this one decodes once however many
  * services ask for it.
  */
-export class Environment extends Context.Tag(
-  '@codaco/studio-server/Environment',
-)<Environment, StudioEnv>() {
+export class Environment extends Context.Service<Environment, StudioEnv>()(
+  '@studio/Environment',
+) {
   /** For a process that does not send mail: the web process, and every script. */
   static readonly layer = Layer.effect(
     Environment,

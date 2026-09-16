@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -27,6 +27,7 @@ type ComposeService = {
   ports?: string[];
   environment?: Record<string, string>;
   secrets?: string[];
+  stop_grace_period?: string;
 };
 type ComposeFile = {
   services: Record<string, ComposeService>;
@@ -37,6 +38,20 @@ type ComposeFile = {
 // Parsed with interpolation left alone: `${VAR}` is a plain string to the YAML
 // parser, which is what lets the checks below reason about the references
 // themselves rather than about one machine's values for them.
+/** Every overlay `stack-test/lib.sh` layers over `docker-compose.yml`. */
+function composeOverlays(): [string, string][] {
+  const variants = new URL('stack-test/variants/', studioRoot);
+  return [
+    ['docker-compose.local.yml', localComposeSource],
+    ...readdirSync(fileURLToPath(variants))
+      .filter((name) => name.endsWith('.yml'))
+      .map((name): [string, string] => [
+        name,
+        readFileSync(fileURLToPath(new URL(name, variants)), 'utf8'),
+      ]),
+  ];
+}
+
 const compose = parse(composeSource) as ComposeFile;
 const devCompose = parse(devComposeSource) as ComposeFile;
 const localCompose = parse(localComposeSource) as ComposeFile;
@@ -158,6 +173,29 @@ describe('the reference compose stack', () => {
       expect({ name, file: environment.DATABASE_PASSWORD_FILE }).toEqual({
         name,
         file: '/run/secrets/postgres_password',
+      });
+    }
+  });
+
+  it('gives the worker time to drain before Docker kills it', () => {
+    // The documented drain takes 25-30s; Docker's 10s default would SIGKILL it.
+    expect(compose.services.worker!.stop_grace_period).toBe('40s');
+
+    // Every overlay layers on top of the file above, so an overlay that leaves
+    // the key alone inherits it. One that sets it must not shorten it.
+    for (const [name, source] of composeOverlays()) {
+      // logLevel: the overlays carry Compose's own `!override` / `!reset`
+      // tags, which the YAML parser does not know and only warns about.
+      const overlay = parse(source, { logLevel: 'silent' }) as ComposeFile;
+      const worker = overlay.services?.worker;
+      // Key presence, not its value: an overlay that never mentions
+      // `stop_grace_period` inherits the 40s above, but one that mentions it at
+      // all — including to reset it, which Compose spells `!reset` and which
+      // hands the worker back Docker's 10s default — has to say 40s itself.
+      if (!worker || !('stop_grace_period' in worker)) continue;
+      expect({ name, grace: worker.stop_grace_period }).toEqual({
+        name,
+        grace: '40s',
       });
     }
   });
