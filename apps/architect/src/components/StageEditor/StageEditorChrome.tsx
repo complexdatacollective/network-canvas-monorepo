@@ -25,9 +25,10 @@ import {
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
+import type { RootState } from '~/ducks/store';
 import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { toSubmissionError } from '~/i18n/submissionErrors';
-import { getProtocol } from '~/selectors/protocol';
+import { getProtocol, getStageIndex } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
@@ -158,7 +159,7 @@ export default function StageEditorChrome({
     <>
       <StageDraftPublisher />
       {titleHost !== null &&
-        createPortal(<StageTitle stageId={stageId} />, titleHost)}
+        createPortal(<StageTitleForStage stageId={stageId} />, titleHost)}
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
@@ -170,6 +171,28 @@ export default function StageEditorChrome({
       />
     </>
   );
+}
+
+/**
+ * The stage's title, told where the stage sits in the interview.
+ *
+ * Read from the protocol this tab holds rather than passed down from the
+ * route, because the stage order is protocol content and a title told
+ * something the protocol disagrees with would be orienting the researcher
+ * wrongly. A stage the order does not contain yet — one being created — has no
+ * position to state.
+ */
+function StageTitleForStage({ stageId }: Readonly<{ stageId: string | null }>) {
+  const protocol = useSelector(getProtocol);
+  const index = useSelector((state: RootState) =>
+    getStageIndex(state, stageId ?? ''),
+  );
+  const position =
+    stageId === null || index === -1 || protocol === null
+      ? undefined
+      : { index: index + 1, total: protocol.stages.length };
+
+  return <StageTitle {...(position === undefined ? {} : { position })} />;
 }
 
 /**

@@ -1,5 +1,4 @@
 import { useId } from 'react';
-import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -12,9 +11,6 @@ import StageNameInput from '@codaco/protocol-builder/fields/StageNameInput';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { useStageTypeInfo } from '@codaco/protocol-builder/interfaces/useStageTypeInfo';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
-import type { RootState } from '~/ducks/store';
-import { getProtocol, getStageIndex } from '~/selectors/protocol';
-
 const messages = defineMessages({
   position: {
     id: 'architect.stageEditor.stageTitle.position',
@@ -49,17 +45,24 @@ const messages = defineMessages({
  * point, because nothing of the editor's is drawn above either of them.
  */
 export default function StageTitle({
-  stageId,
+  position,
 }: Readonly<{
-  /** The stage being edited, or `null` while one is being created. */
-  stageId: string | null;
+  /**
+   * Where this stage sits in the interview, for orientation.
+   *
+   * Handed in rather than read here, because it comes from this tab's Redux
+   * store and everything else this draws comes from the open edit: the chrome
+   * that renders this is already connected, and a title that reached for the
+   * store as well could not be drawn anywhere else. A stage the order does not
+   * contain yet — one being created — has no position to state.
+   */
+  position?: Readonly<{ index: number; total: number }>;
 }>) {
   const intl = useAppIntl();
   const headingId = useId();
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
   const { label, error, id, containerProps, fieldProps, isNewStage } =
     useStageName();
-  const position = useStagePosition(stageId);
 
   return (
     <div
@@ -166,23 +169,4 @@ export default function StageTitle({
       </div>
     </div>
   );
-}
-
-/**
- * Where this stage sits in the interview, for orientation.
- *
- * Read from the protocol this tab holds rather than passed in, because the
- * stage order is protocol content and a title told something the protocol
- * disagrees with would be orienting the researcher wrongly. A stage the order
- * does not contain yet — one being created — has no position to state.
- */
-function useStagePosition(
-  stageId: string | null,
-): Readonly<{ index: number; total: number }> | undefined {
-  const protocol = useSelector(getProtocol);
-  const index = useSelector((state: RootState) =>
-    getStageIndex(state, stageId ?? ''),
-  );
-  if (stageId === null || index === -1 || protocol === null) return undefined;
-  return { index: index + 1, total: protocol.stages.length };
 }

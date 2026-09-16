@@ -270,7 +270,9 @@ export const focusFirstError = (
     return found;
   };
 
-  const scoped = root ? resolveEach(root, fieldNames) : new Map();
+  const scoped = root
+    ? resolveEach(root, fieldNames)
+    : new Map<string, HTMLElement>();
   const elsewhere = resolveEach(
     document,
     fieldNames.filter((fieldName) => !scoped.has(fieldName)),
