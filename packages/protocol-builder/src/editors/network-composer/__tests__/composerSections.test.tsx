@@ -7,6 +7,7 @@ import {
 } from '../../../codebook/variableValidation.ts';
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   createRowIn,
   inventAttribute,
@@ -730,10 +731,8 @@ describe('what a network composer lets the participant build', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'circle',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('circle'),
     );
     await chooseAttributeById(harness.user, grouping, 'circle');
     await switchOnNodeForm(harness);
@@ -775,10 +774,8 @@ describe('what a network composer lets the participant build', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'circle',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('circle'),
     );
     expect(await offeredAttributes(harness.user, grouping)).not.toContain(
       'contactType',
@@ -1513,10 +1510,8 @@ describe('an attribute another stage starts writing mid-edit', () => {
     // value the row is holding would blank the control and write the blank
     // over the reference the researcher has to resolve — so the row's own gate
     // is the only thing left that can refuse it.
-    await waitFor(async () =>
-      expect(
-        await offeredAttributes(harness.user, picker('Attribute')),
-      ).toContain('highlighted'),
+    await awaitOfferedAttributes(harness.user, picker('Attribute'), (offered) =>
+      expect(offered).toContain('highlighted'),
     );
     expect(
       await offeredAttributes(harness.user, picker('Attribute')),
@@ -1925,17 +1920,13 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'region',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('region'),
     );
 
     collectInAnAlterForm(harness, 'contactType', 'region');
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).not.toContain(
-        'region',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).not.toContain('region'),
     );
     expect(await offeredAttributes(harness.user, grouping)).toContain(
       'contactType',
@@ -1955,19 +1946,15 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     const quickAdd = await waitFor(() =>
       picker('Create or select an attribute for the quick-add form'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, quickAdd)).toContain(
-        'relationship_to_ego',
-      ),
+    await awaitOfferedAttributes(harness.user, quickAdd, (offered) =>
+      expect(offered).toContain('relationship_to_ego'),
     );
 
     // Two claims in one edit, for the same reason: `composerName` is what this
     // picker is holding, so its leaving is not something a test can watch for.
     highlightInASociogram(harness, 'composerName', 'relationship_to_ego');
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, quickAdd)).not.toContain(
-        'relationship_to_ego',
-      ),
+    await awaitOfferedAttributes(harness.user, quickAdd, (offered) =>
+      expect(offered).not.toContain('relationship_to_ego'),
     );
     expect(await offeredAttributes(harness.user, quickAdd)).toContain(
       'composerName',
