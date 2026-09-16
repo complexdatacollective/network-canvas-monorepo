@@ -38,6 +38,17 @@ const findDefaultSubmitButton = (form: HTMLFormElement) =>
 type HeadingInputProps = {
   'id'?: string;
   'name'?: string;
+  /**
+   * The form this control belongs to, when it is not drawn inside it.
+   *
+   * A stage title is drawn by the HOST, wherever its page has room, and that
+   * is outside the `<form>` element — so without this the control has no form
+   * owner at all: `event.currentTarget.form` is null, the implicit submission
+   * below finds nothing to click, and Enter becomes a key that does nothing
+   * whatever. It is a plain form association, which is exactly what the
+   * attribute is for.
+   */
+  'form'?: string;
   'value'?: string;
   'onChange'?: (value: string) => void;
   /** Blur hook for auto-naming; the form's own blur handling is on the container. */
@@ -59,8 +70,9 @@ type HeadingInputProps = {
 };
 
 /**
- * The stage's name, rendered at the size of the page's own heading. The label and error text come from
- * the surrounding `BaseField`, so this is only the control.
+ * The stage's name, rendered at the size of the page's own heading. The label
+ * and the refusal beneath it are drawn by `fields/StageNameField` around this,
+ * so this is only the control.
  *
  * It is a `<textarea>` rather than an `<input>` for one reason: an input lays
  * its value out on a single unwrappable line, so a stage name longer than the
@@ -71,6 +83,7 @@ type HeadingInputProps = {
 const StageNameInput = ({
   id,
   name,
+  form,
   value = '',
   onChange,
   onFieldBlur,
@@ -119,9 +132,13 @@ const StageNameInput = ({
     // skip it. A click also inherits the browser's own handling of the cases
     // with nothing to press: no default button (the stage editor renders one
     // only once there are unsaved changes) and a disabled one both do nothing.
-    const form = event.currentTarget.form;
-    if (form) {
-      findDefaultSubmitButton(form)?.click();
+    //
+    // The control's own form OWNER, which is the element the `form` attribute
+    // names when this is drawn outside it and the enclosing `<form>` when it
+    // is not. Either way it is the form this control is a field of.
+    const owner = event.currentTarget.form;
+    if (owner) {
+      findDefaultSubmitButton(owner)?.click();
     }
   };
 
@@ -155,6 +172,7 @@ const StageNameInput = ({
       <textarea
         id={id}
         name={name}
+        form={form}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

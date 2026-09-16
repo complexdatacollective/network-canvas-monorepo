@@ -1374,6 +1374,7 @@
   "protocolBuilder.schemaProblem.nothingThere": "{fieldLabel} has no value, and this stage needs one.",
   "protocolBuilder.schemaProblem.tooBig": "{fieldLabel} holds more than this stage allows.",
   "protocolBuilder.schemaProblem.tooSmall": "{fieldLabel} holds less than this stage needs.",
+  "protocolBuilder.schemaProblem.unnamedSetting": "A setting this editor does not show",
   "protocolBuilder.schemaProblem.unrecognised": "{fieldLabel} holds something this stage cannot use.",
   "protocolBuilder.schemaProblem.unrecognizedKeys": "{fieldLabel} holds settings this stage does not have.",
   "protocolBuilder.searchOptions.clearConfirm": "Turn off search",

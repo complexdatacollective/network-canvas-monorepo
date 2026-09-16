@@ -8,7 +8,7 @@ export type Qualifier = { full: string; summary: string };
 /**
  * Everything in this module is English on purpose, and stays English.
  *
- * What it produces is not copy: it is a SEEDED VALUE. `useStageName` writes
+ * What it produces is not copy: it is a SEEDED VALUE. `useAutoStageName` writes
  * the result straight into the stage form's `label` field, which is saved into
  * the protocol document as `stage.label` — a researcher-authored name that then
  * travels with the protocol into exports, printed codebooks, and every other

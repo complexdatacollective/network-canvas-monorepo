@@ -37,8 +37,17 @@ export type StageLabelPanel = Pick<Panel, 'dataSource'>;
  * for Family Pedigree, and about nothing at all for every other interface.
  */
 export type StageLabelDraft = Readonly<{
-  /** Excluded from the names already taken; see `existingStageLabels`. */
-  id: string;
+  /**
+   * The stage this name is for, excluded from the names already taken; omit
+   * for a stage that does not exist yet.
+   *
+   * A stage already in the protocol has to name itself here or every proposal
+   * collides with its own last accepted name and comes back suffixed ` #2`,
+   * then ` #3`. A stage being created has no id to give, and nothing in the
+   * interview can be it — so there is nothing to exclude, and a caller should
+   * not have to invent an id that matches nothing to say so.
+   */
+  id?: string | undefined;
   type: StageType;
   subject?: StageSubject | undefined;
   items?: readonly Item[] | undefined;
@@ -51,10 +60,10 @@ export type StageLabelDraft = Readonly<{
  *
  * Pure, and callable without mounting anything: a timeline offering to name a
  * stage, a create flow seeding one before any editor opens, a host writing a
- * name from a menu, and `useStageName`'s own policy all ask the same question
- * and get the same answer. The policy — whether the proposal is WRITTEN, and
- * whether the name on the stage is the researcher's — is `useStageName`'s and
- * is deliberately not here.
+ * name from a menu, and `useAutoStageName`'s own policy all ask the same
+ * question and get the same answer. The policy — whether the proposal is
+ * WRITTEN, and whether the name on the stage is the researcher's — is
+ * `useAutoStageName`'s and is deliberately not here.
  *
  * Always answers with a name. Every stage type has an English name of its own
  * in `STAGE_TYPE_NAMES`, so there is no stage this cannot propose something
@@ -138,7 +147,7 @@ function allVariablesById(
  */
 function existingStageLabels(
   context: ProtocolBuilderProtocolContext,
-  stageId: string,
+  stageId: string | undefined,
 ): string[] {
   return context.orderedStages
     .filter((stage) => stage.id !== stageId)

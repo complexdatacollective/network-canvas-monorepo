@@ -30,6 +30,7 @@ import {
 } from '../../testing/seedProtocolCache.tsx';
 import type { StageLabelPanel } from '../proposeStageLabel.ts';
 import { type StageName, useStageName } from '../useStageName.ts';
+import { useStageNameField } from '../useStageNameField.ts';
 
 const EDITED_STAGE_ID = 'stage-edited';
 const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
@@ -141,14 +142,19 @@ function Probe({
 }
 
 /**
- * The hook with nothing rendered from it: no control, no label, no refusal.
+ * The name with nothing DRAWN from it: no control, no label, no refusal.
  *
- * Called exactly once in the tree, as a host must call it — the field is
- * registered under the stage's own `label` key, so two callers would be two
- * registrations of one field.
+ * Two hooks, because they answer two different questions. `useStageName` is
+ * the value and the writes, and may be called anywhere and as often as a host
+ * likes. `useStageNameField` is the registration — the one thing that puts the
+ * name among the paths a submit is entitled to write — and has exactly one
+ * caller. A host with a rename dialog and no title needs both: without the
+ * second, the rename is written into a form the save then ignores, and the
+ * researcher watches it disappear on save.
  */
 function HeadlessName({ onName }: { onName: (name: StageName) => void }) {
   onName(useStageName());
+  useStageNameField();
   return null;
 }
 
@@ -446,13 +452,13 @@ describe('useStageName', () => {
   });
 
   /**
-   * A host that renders no name control at all still renames the stage.
+   * A host that DRAWS no name control still renames the stage, as long as it
+   * has bound the field.
    *
-   * The hook registers the field, so the rename is one of the paths a submit
-   * is entitled to write. Were it left to whatever draws the control, a host
-   * with a rename dialog and no stage title would write the name into a form
-   * the save then ignored, and the researcher would watch their rename
-   * disappear on save.
+   * `useStageNameField` is what registers it, and registration is what makes
+   * the name one of the paths a submit is entitled to write — a rename written
+   * at an unregistered path round-trips untouched, like every other key the
+   * editor never rendered.
    */
   it('renames a stage from a host that draws no control', async () => {
     const { name, liveDraft } = renderEditor({
@@ -462,7 +468,13 @@ describe('useStageName', () => {
       headless: true,
     });
 
-    await waitFor(() => expect(name()?.value).toBe('Hand named'));
+    // Settled rather than merely rendered: until the host has answered the
+    // acquire the editor may not write at all, and a rename made in that
+    // window is refused like any other — which is the same answer a
+    // structural write gets, and the reason it is worth trying again in a
+    // moment.
+    await settle();
+    expect(name()?.value).toBe('Hand named');
 
     act(() => {
       name()?.setValue('Renamed from a menu');

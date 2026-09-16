@@ -1374,6 +1374,7 @@
   "protocolBuilder.schemaProblem.nothingThere": "{fieldLabel} no tiene ningún valor, y esta etapa necesita uno.",
   "protocolBuilder.schemaProblem.tooBig": "{fieldLabel} contiene más de lo que permite esta etapa.",
   "protocolBuilder.schemaProblem.tooSmall": "{fieldLabel} contiene menos de lo que necesita esta etapa.",
+  "protocolBuilder.schemaProblem.unnamedSetting": "Un ajuste que este editor no muestra",
   "protocolBuilder.schemaProblem.unrecognised": "{fieldLabel} contiene algo que esta etapa no puede usar.",
   "protocolBuilder.schemaProblem.unrecognizedKeys": "{fieldLabel} contiene ajustes que esta etapa no tiene.",
   "protocolBuilder.searchOptions.clearConfirm": "Desactivar la búsqueda",

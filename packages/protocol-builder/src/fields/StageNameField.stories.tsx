@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { BaseField } from '@codaco/fresco-ui/form/Field/BaseField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { useAutoStageName } from '../naming/useAutoStageName.ts';
 import { useStageName } from '../naming/useStageName.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
-import StageNameInput from './StageNameInput.tsx';
+import StageNameField from './StageNameField.tsx';
 
 const STAGE = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
 
@@ -25,35 +25,25 @@ const STAGE_NAME_LABEL = 'Stage name';
 const PROPOSED_NAME = 'Person Sociogram';
 
 /**
- * The name control, wired the way a host wires it.
+ * The stage's title, as a host draws one.
  *
- * `useStageName` owns the value, the refusal, the proposal and the field's
- * registration; everything below is chrome, and it is exactly the chrome
- * Architect's own stage title draws around the same bindings. Nothing about
- * WHEN a name is proposed is decided here: the open edit says whether the
- * stage is being created, and the hook does the rest.
+ * `StageNameField` is the whole of the field — the control, the accessible
+ * label, the refusal and the form association — and `useAutoStageName` is the
+ * authoring policy Architect opts into. What is left for a host is where the
+ * title sits and what else is beside it, and this one has nothing beside it.
+ *
+ * Rendered in the HEADER slot below, which is outside the `<form>` element:
+ * that is where every host draws a title, and it is the arrangement the
+ * control's own behaviour depends on — Enter saves through the `form`
+ * attribute, not through being inside the element.
  */
 function StageName() {
-  const { label, error, id, containerProps, fieldProps, isNewStage } =
-    useStageName();
+  const { isNewStage } = useStageName();
+  const { onBlur } = useAutoStageName();
 
+  // `className` is the host's one say over how the field sits on its page.
   return (
-    <BaseField
-      id={id}
-      name={fieldProps.name}
-      // Hidden because this control IS the stage's heading: a visible label
-      // above it would name the stage twice. It still has to exist — it is
-      // what the control takes its accessible name from, and what a host's
-      // problem panel calls the field.
-      label={label}
-      labelHidden
-      required
-      errors={error === undefined ? undefined : [error]}
-      showErrors={error !== undefined}
-      containerProps={containerProps}
-    >
-      <StageNameInput {...fieldProps} autoFocus={isNewStage} />
-    </BaseField>
+    <StageNameField className="mb-2" autoFocus={isNewStage} onBlur={onBlur} />
   );
 }
 
@@ -77,8 +67,10 @@ const meta = {
   },
   args: {
     stageId: 'sociogram-1',
-    sectionTitle: 'What this stage is called',
-    children: <StageName />,
+    // The header slot, NOT a section: the stage's title is host chrome above
+    // the form, and the story has to mount it where a host does or it is a
+    // story about an arrangement nothing ships.
+    header: <StageName />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;

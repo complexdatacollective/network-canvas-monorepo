@@ -1,231 +1,105 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
-import { BaseField } from '@codaco/fresco-ui/form/Field/BaseField';
-import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
-
-import { useStageName } from '../naming/useStageName.ts';
-import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import StageNameInput from './StageNameInput.tsx';
 
-const STAGE = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
-
-const STAGE_NAME_LABEL = 'Stage name';
-
 /**
- * What a stage arranging a person's network is called when nobody has named
- * it: the interface's own name, qualified by whose network it collects.
+ * The control on its own, holding a value nothing else owns.
  *
- * Written down rather than derived, so a change to how a name is proposed
- * fails here instead of being absorbed by a story that asks the namer what it
- * would say and then agrees with it.
+ * `fields/StageNameField` is the connected one — it binds this to the stage's
+ * name, draws the label an issues panel harvests and the region a refusal is
+ * announced in, and is what a host actually mounts. This is the control
+ * underneath it, for a host that draws its own field around the same box, and
+ * for the two things about the box that are worth seeing on their own: how it
+ * grows as a name outruns the column, and what it refuses to accept.
  */
-const PROPOSED_NAME = 'Person Sociogram';
-
-/**
- * The name control, wired the way a host wires it.
- *
- * `useStageName` owns the value, the refusal, the proposal and the field's
- * registration; everything below is chrome, and it is exactly the chrome
- * Architect's own stage title draws around the same bindings. Nothing about
- * WHEN a name is proposed is decided here: the open edit says whether the
- * stage is being created, and the hook does the rest.
- */
-function StageName() {
-  const { label, error, id, containerProps, fieldProps, isNewStage } =
-    useStageName();
+function Control({
+  initialValue = '',
+  ...props
+}: Readonly<{
+  initialValue?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  characterLimit?: number;
+}>) {
+  const [value, setValue] = useState(initialValue);
 
   return (
-    <BaseField
-      id={id}
-      name={fieldProps.name}
-      // Hidden because this control IS the stage's heading: a visible label
-      // above it would name the stage twice. It still has to exist — it is
-      // what the control takes its accessible name from, and what a host's
-      // problem panel calls the field.
-      label={label}
-      labelHidden
-      required
-      errors={error === undefined ? undefined : [error]}
-      showErrors={error !== undefined}
-      containerProps={containerProps}
-    >
-      <StageNameInput {...fieldProps} autoFocus={isNewStage} />
-    </BaseField>
+    <div className="max-w-2xl p-6">
+      {/* Named here because nothing is drawing a label around it. */}
+      <label className="sr-only" htmlFor="stage-name">
+        Stage name
+      </label>
+      <StageNameInput
+        id="stage-name"
+        name="label"
+        value={value}
+        onChange={setValue}
+        {...props}
+      />
+    </div>
   );
 }
 
-/** A stage nobody has named, which is where a stage being created starts. */
-const unnamed = (host: InMemoryHost) => {
-  const { document } = host.store.read(STAGE);
-  host.store.applyAsCollaborator(STAGE, { ...document, label: '' });
-};
-
 const meta = {
-  title: 'Protocol Builder/Fields/Stage name',
-  component: FieldStoryHost,
+  title: 'Protocol Builder/Fields/Stage name control',
+  component: Control,
   parameters: {
     layout: 'fullscreen',
     docs: {
       description: {
         component:
-          'What the researcher calls one step of their interview, worn at the size of the page’s own heading. It is a text area rather than a single-line box for one reason: a name longer than the column has to wrap instead of being cut off at the edge with nothing saying more of it exists. The value it holds is still one line — Enter saves the stage the way it would in an ordinary text box, and a pasted name’s line breaks become spaces without the name being shortened. A stage being created is named from what it collects, and the proposal is put back if the researcher clears the name and moves on; a name they wrote themselves is never written over.',
+          'The box a stage’s name is typed into, at the size of the page’s own heading. It is a text area rather than a single-line box for one reason: a name longer than the column has to wrap instead of being cut off at the edge with nothing saying more of it exists. The value it holds is still one line — Enter performs the form’s own submission instead of adding a break, and a pasted name’s line breaks become spaces.',
       },
     },
   },
-  args: {
-    stageId: 'sociogram-1',
-    sectionTitle: 'What this stage is called',
-    children: <StageName />,
-  },
+  args: { placeholder: 'Enter stage name...' },
   tags: ['autodocs'],
-} satisfies Meta<typeof FieldStoryHost>;
+} satisfies Meta<typeof Control>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The stage as the protocol holds it: a name the researcher settled on. */
-export const Named: Story = {};
+/** Nothing typed yet, so the placeholder stands in at the size the name will be. */
+export const Empty: Story = {};
 
-/** Nothing yet, so the placeholder stands in at the same size the name will be. */
-export const NotYetNamed: Story = {
-  args: { seedEdit: unnamed },
+/** A name that fits on one line. */
+export const AShortName: Story = {
+  args: { initialValue: 'Close ties' },
 };
 
-/** Held elsewhere: the name can be read and not rewritten. */
+/**
+ * And one that does not. The box grows to hold every line rather than
+ * scrolling or clipping, which is the whole reason it is a text area.
+ */
+export const ANameThatWraps: Story = {
+  args: {
+    initialValue:
+      'People you would talk to about something personal, difficult or worrying',
+  },
+};
+
+/** Held elsewhere: readable, and not rewritable. */
 export const ASpectator: Story = {
-  args: { readOnly: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    // The stage arrives from the host over a promise, so the editor — and
-    // every control in it — is drawn a turn after the story mounts. Every play
-    // in this file awaits its FIRST query for that reason.
-    await awaitPassiveEffects();
-
-    await expect(
-      await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL }),
-    ).toBeDisabled();
-  },
+  args: { initialValue: 'Close ties', disabled: true },
 };
 
 /**
- * A stage has to be called something. The refusal appears only once the
- * researcher tries to save, which is also how this story knows the save was
- * refused rather than still in flight: the sentence does not exist until the
- * submit has come back.
- */
-export const TheSaveIsRefusedWithoutAName: Story = {
-  args: { seedEdit: unnamed },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL });
-    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
-
-    await expect(
-      await canvas.findByText('This field is required.'),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole('status', { name: 'Save status' }),
-    ).toHaveTextContent('Nothing saved yet.');
-  },
-};
-
-/**
- * Enter saves the stage rather than typing a line into the name.
+ * A pasted name is still one line.
  *
- * The `<input>` this replaced performed the form's implicit submission, so
- * that is what Enter still does — and the saved document is where the two
- * possible outcomes can be told apart, because a line break inside the name
- * would be saved along with it.
+ * Line breaks become spaces rather than being dropped, so two pasted lines do
+ * not run together into one word — and nothing downstream has to cope with a
+ * stage name that has a break in it.
  */
-export const EnterSavesTheStage: Story = {
+export const APasteWithLineBreaks: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await awaitPassiveEffects();
+    const box = canvas.getByRole('textbox', { name: 'Stage name' });
 
-    await userEvent.type(
-      await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL }),
-      ' (revised)',
-    );
-    await userEvent.keyboard('{Enter}');
+    await userEvent.click(box);
+    await userEvent.paste('Who you turn to\nwhen things are hard');
 
-    await waitFor(async () => {
-      await expect(
-        canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('"label":"Sociogram (revised)"');
-    });
-  },
-};
-
-/**
- * A stage being created arrives already named, from what it collects and what
- * kind of stage it is. The researcher opens an editor with something to
- * recognise the stage by rather than an empty heading to fill in first.
- */
-export const ANameProposedForANewStage: Story = {
-  args: { creating: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const box = await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL });
-    await waitFor(async () => {
-      await expect(box).toHaveValue(PROPOSED_NAME);
-    });
-  },
-};
-
-/**
- * Clearing the name to rename the stage is not fought mid-keystroke: the box
- * stays empty while the researcher is in it. Leaving it empty is a different
- * act, and the proposal comes back rather than the stage losing its name.
- */
-export const TheProposalComesBackWhenTheNameIsLeftEmpty: Story = {
-  args: { creating: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const box = await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL });
-    await waitFor(async () => {
-      await expect(box).toHaveValue(PROPOSED_NAME);
-    });
-
-    await userEvent.clear(box);
-    await expect(box).toHaveValue('');
-
-    // Tabbed rather than clicked away: the next thing that takes focus is the
-    // save, and clicking it would submit the stage as well as leave the field.
-    await userEvent.tab();
-    await waitFor(async () => {
-      await expect(box).toHaveValue(PROPOSED_NAME);
-    });
-  },
-};
-
-/**
- * And a name the researcher wrote is theirs. The proposal is never put back
- * over it, on this blur or on any later change to what the stage collects.
- */
-export const ANameTheResearcherWroteIsKept: Story = {
-  args: { creating: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const box = await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL });
-    await waitFor(async () => {
-      await expect(box).toHaveValue(PROPOSED_NAME);
-    });
-
-    await userEvent.clear(box);
-    await userEvent.type(box, 'Who you turn to');
-    await userEvent.tab();
-
-    await expect(box).toHaveValue('Who you turn to');
+    await expect(box).toHaveValue('Who you turn to when things are hard');
   },
 };
