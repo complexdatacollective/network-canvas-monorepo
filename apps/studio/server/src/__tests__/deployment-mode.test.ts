@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
+import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
 import { createApp } from '../app.ts';
 import { resolve } from '../env/resolve.ts';

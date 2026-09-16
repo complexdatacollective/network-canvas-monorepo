@@ -12,15 +12,14 @@
   "type": "module",
   "exports": {
     ".": "./src/contract.ts",
-    "./client-session": "./src/clientSession.ts",
-    "./protocol-builder": "./src/protocolBuilder.ts",
-    "./surfaces": "./src/surfaces.ts"
+    "./protocol-builder": "./src/protocolBuilder.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@codaco/protocol-builder-core": "workspace:^",
+    "@codaco/studio-contract": "workspace:^",
     "@orpc/contract": "catalog:",
     "zod": "catalog:"
   },

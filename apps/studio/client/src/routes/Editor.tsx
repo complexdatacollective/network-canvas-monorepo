@@ -42,8 +42,8 @@ import {
   type ProtocolReading,
 } from '@codaco/protocol-builder/state/protocolContext';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import type { contract } from '@codaco/studio-rpc';
-import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 

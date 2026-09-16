@@ -41,11 +41,6 @@ import {
 } from './schemas.ts';
 
 export {
-  SUPPORTED_STUDIO_LOCALES,
-  type SupportedStudioLocale,
-} from './locales.ts';
-
-export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,

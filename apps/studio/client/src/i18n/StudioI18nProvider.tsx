@@ -13,8 +13,8 @@ import type { ReactNode } from 'react';
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
-import type { SupportedStudioLocale } from '@codaco/studio-rpc';
+import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
+import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
 
 import { orpc, rpcClient } from '../lib/api.ts';
 import { sessionQueryOptions } from '../lib/session.ts';

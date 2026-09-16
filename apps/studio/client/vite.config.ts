@@ -37,9 +37,11 @@ export default defineConfig({
     // pre-bundling so Vite transforms them through its own pipeline rather
     // than attempting to pre-bundle them.
     exclude: [
+      '@codaco/effect-query',
       '@codaco/fresco-ui',
       '@codaco/protocol-builder',
       '@codaco/protocol-builder-core',
+      '@codaco/studio-contract',
       '@codaco/studio-sync',
     ],
   },

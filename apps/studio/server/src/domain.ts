@@ -1,7 +1,7 @@
 import type { InferContractRouterOutputs } from '@orpc/contract';
 
+import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 import type { contract } from '@codaco/studio-rpc';
-import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import type { Installation } from './setup/bootstrap.ts';
 import { STUDIO_VERSION } from './version.ts';

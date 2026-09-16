@@ -15,8 +15,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { type contract } from '@codaco/studio-rpc';
-import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 

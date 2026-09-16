@@ -8,7 +8,7 @@ import {
   MANAGED_ONLY_PATHS,
   SELF_HOST_ONLY_PATHS,
   type DeploymentMode,
-} from '@codaco/studio-rpc/surfaces';
+} from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
 

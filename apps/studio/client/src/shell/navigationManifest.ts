@@ -44,7 +44,7 @@ import type { StudyCounts } from '@codaco/studio-rpc';
  * What is deliberately NOT here yet: the `access` capability and `topology`
  * fields §5.2 requires. Studio has no capability vocabulary to type them
  * against — the team area asks Better Auth for a role, and deployment gating
- * goes through `@codaco/studio-rpc/surfaces` — so the two gates that exist
+ * goes through `@codaco/studio-contract/surfaces` — so the two gates that exist
  * today are passed in as context (`canManageTeam`, `billingUnavailableReason`)
  * instead of declared per entry. They become entry fields with #1257's
  * capability model, and the filter below is the one place that has to change.

@@ -10,7 +10,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { unclassifiedSurfacePaths } from '@codaco/studio-rpc/surfaces';
+import { unclassifiedSurfacePaths } from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
 

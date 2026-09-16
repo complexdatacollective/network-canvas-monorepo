@@ -6,7 +6,7 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   isSurfaceServed,
   type DeploymentMode,
-} from '@codaco/studio-rpc/surfaces';
+} from '@codaco/studio-contract/surfaces';
 
 import { orpc } from './api.ts';
 

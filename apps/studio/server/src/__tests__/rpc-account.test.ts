@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   SUPPORTED_STUDIO_LOCALES,
   type SupportedStudioLocale,
-} from '@codaco/studio-rpc';
+} from '@codaco/studio-contract/locales';
 
 import type { createApp } from '../app.ts';
 import { readEnv } from '../env.ts';

@@ -230,7 +230,12 @@
     "apps/studio/client": {
       "entry": ["index.html!"],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}"],
+      // The client declares the Effect rpc adapter ahead of the module that
+      // uses it: the dependency and the lockfile entry land with the package
+      // move (stage 2b task 1), and src/runtime/rpc.ts imports it a few tasks
+      // later. Delete this entry then.
+      "ignoreDependencies": ["@codaco/effect-query"]
     },
     "apps/studio/server": {
       // The image's third entry (#1909). src/index.ts and src/worker.ts are

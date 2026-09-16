@@ -10,7 +10,7 @@ import {
 import {
   CLIENT_SESSION_PARAM,
   readClientSessionId,
-} from '@codaco/studio-rpc/client-session';
+} from '@codaco/studio-contract/client-session';
 
 import type { WsBridgeDeps } from '../app.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';

@@ -4,7 +4,7 @@ import {
   pseudoAppLocale,
 } from '@codaco/app-i18n/locales';
 import type { AppLocale } from '@codaco/app-i18n/locales';
-import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
+import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 
 /**
  * The locales Studio ships a UI in (2026-09-04 localization design §5.1).

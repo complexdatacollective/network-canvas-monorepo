@@ -75,7 +75,7 @@ export type RpcContext = {
   connectionId?: string;
   /**
    * The browser tab behind this call, when it named one — see
-   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * `@codaco/studio-contract/client-session`. A protocol-builder lock belongs to
    * this rather than to the connection, so two tabs of one researcher are two
    * lock owners and one tab's reconnection is not a third.
    */

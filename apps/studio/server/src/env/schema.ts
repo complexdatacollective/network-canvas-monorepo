@@ -7,7 +7,7 @@ import {
   SchemaIssue,
 } from 'effect';
 
-import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+import { DEPLOYMENT_MODES } from '@codaco/studio-contract/surfaces';
 
 // Every environment variable the Studio server reads, declared once: what it
 // must look like, what it means, what a deployment does with it, and what the

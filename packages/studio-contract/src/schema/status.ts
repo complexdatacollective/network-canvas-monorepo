@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+import { DEPLOYMENT_MODES } from '../surfaces.ts';
 
 // What an instance says about itself before anyone has signed in.
 //
@@ -13,7 +13,7 @@ export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
 
 export const Deployment = Schema.Struct({
-  /** Which topology this deployment serves; see `@codaco/studio-rpc/surfaces`. */
+  /** Which topology this deployment serves; see `../surfaces.ts`. */
   mode: Schema.Literals(DEPLOYMENT_MODES),
   /**
    * Whether the deployment offers billing. Not implied by `managed`: billing

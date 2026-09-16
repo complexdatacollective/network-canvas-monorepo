@@ -1,7 +1,23 @@
 import { z } from 'zod';
 
-import { SUPPORTED_STUDIO_LOCALES } from './locales.ts';
-import { DEPLOYMENT_MODES } from './surfaces.ts';
+// The enum tuples and the locale list are imported from the Effect contract
+// rather than declared twice: this file's zod schemas and the contract's
+// `Schema` ones describe the same wire values, so one tuple each is what stops
+// the two boundaries drifting. They are re-exported below, beside the zod
+// schema each one feeds, because today's importers read them from here.
+import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
+import {
+  AUDIT_ACTOR_KINDS,
+  AUDIT_CATEGORIES,
+  AUDIT_OUTCOMES,
+} from '@codaco/studio-contract/schema/audit';
+import { SOCIAL_PROVIDERS } from '@codaco/studio-contract/schema/status';
+import {
+  STUDY_PARTICIPATION_MODES,
+  STUDY_STATES,
+} from '@codaco/studio-contract/schema/study';
+import { TEAM_ROLES } from '@codaco/studio-contract/schema/team';
+import { DEPLOYMENT_MODES } from '@codaco/studio-contract/surfaces';
 
 // Schemas for the internal RPC boundary, shared source-first between server
 // validation and the client's types (type-only on the client). This surface
@@ -12,9 +28,8 @@ import { DEPLOYMENT_MODES } from './surfaces.ts';
 // schemas are also the serialization allowlist: fields not named here are
 // stripped before they reach the wire.
 
-export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
+export { SOCIAL_PROVIDERS, TEAM_ROLES };
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
-export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
 export const TeamRoleSchema = z.enum(TEAM_ROLES);
 export type TeamRole = z.infer<typeof TeamRoleSchema>;
 export const TeamInvitationIdSchema = z
@@ -26,7 +41,7 @@ export const TeamInvitationIdSchema = z
 // Read through `StatusSchema`; the server's `DeploymentStatus` and the
 // client's view of it are both inferred from that one output type.
 const DeploymentSchema = z.object({
-  /** Which topology this deployment serves; see `./surfaces.ts`. */
+  /** Which topology this deployment serves; see `@codaco/studio-contract/surfaces`. */
   mode: z.enum(DEPLOYMENT_MODES),
   /**
    * Whether the deployment offers billing. Not implied by `managed`: billing
@@ -242,11 +257,11 @@ export const ProtocolNameSchema = z
 // `studies_participation_mode_check` constraints, so a value the database
 // refuses cannot reach it, and a value it gains needs a migration this
 // boundary is versioned alongside.
-export const STUDY_STATES = ['draft', 'live', 'paused', 'closed'] as const;
+export { STUDY_STATES };
 export const StudyStateSchema = z.enum(STUDY_STATES);
 export type StudyState = z.infer<typeof StudyStateSchema>;
 
-export const STUDY_PARTICIPATION_MODES = ['managed', 'anonymous'] as const;
+export { STUDY_PARTICIPATION_MODES };
 export const StudyParticipationModeSchema = z.enum(STUDY_PARTICIPATION_MODES);
 export type StudyParticipationMode = z.infer<
   typeof StudyParticipationModeSchema
@@ -401,28 +416,14 @@ export const StudyCountsSchema = z.object({
 });
 export type StudyCounts = z.infer<typeof StudyCountsSchema>;
 
-// Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
-// new value requires a schema migration, which the fingerprint pipeline keeps
-// in lockstep with deployed code.
-export const AUDIT_CATEGORIES = [
-  'team_access',
-  'protocol',
-  'study',
-  'participant_data',
-  'data_egress',
-  'credential',
-  'integration',
-  'security',
-  'audit',
-] as const;
+export { AUDIT_CATEGORIES };
 export const AuditCategorySchema = z.enum(AUDIT_CATEGORIES);
 export type AuditCategory = z.infer<typeof AuditCategorySchema>;
 
-export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
+export { AUDIT_OUTCOMES };
 export const AuditOutcomeSchema = z.enum(AUDIT_OUTCOMES);
 export type AuditOutcome = z.infer<typeof AuditOutcomeSchema>;
 
-const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
 export const AuditActorKindSchema = z.enum(AUDIT_ACTOR_KINDS);
 
 // One actor exactly as the feed renders it. `id` is null only for a system

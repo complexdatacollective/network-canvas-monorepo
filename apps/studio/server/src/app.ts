@@ -7,11 +7,11 @@ import { Effect } from 'effect';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
-import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 import {
   CLIENT_SESSION_HEADER,
   readClientSessionId,
-} from '@codaco/studio-rpc/client-session';
+} from '@codaco/studio-contract/client-session';
+import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';

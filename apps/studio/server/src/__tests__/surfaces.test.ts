@@ -10,7 +10,7 @@ import {
   SELF_HOST_ONLY_PATHS,
   SURFACE_PATHS,
   unclassifiedSurfacePaths,
-} from '@codaco/studio-rpc/surfaces';
+} from '@codaco/studio-contract/surfaces';
 
 // @codaco/studio-rpc carries no test runner of its own; its surfaces module is
 // exercised here, in the suite of the deployable whose HTTP gate reads it.

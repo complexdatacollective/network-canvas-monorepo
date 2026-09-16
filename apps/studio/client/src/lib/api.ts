@@ -3,8 +3,8 @@ import { RPCLink } from '@orpc/client/fetch';
 import type { RouterContractClient } from '@orpc/contract';
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 
+import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 import type { contract } from '@codaco/studio-rpc';
-import { CLIENT_SESSION_HEADER } from '@codaco/studio-rpc/client-session';
 
 import { clientSessionId } from './clientSession.ts';
 import { reportUnauthorizedResponse } from './session.ts';
