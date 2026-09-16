@@ -43,6 +43,7 @@ catalog:
   '@chromatic-com/storybook': ^5.2.1
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
+  '@effect/sql-pg': 4.0.0-rc.115
   '@effect/vitest': 4.0.0-rc.115
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
