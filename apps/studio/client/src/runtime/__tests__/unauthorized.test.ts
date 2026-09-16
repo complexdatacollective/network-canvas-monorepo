@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Predicate } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChunkOf } from '@codaco/effect-query/types';
@@ -105,7 +105,25 @@ describe('a failure that is not a lost session', () => {
       Promise.reject(new TypeError('Failed to fetch')),
     );
 
-    await rejectionOf(rpcCall('status', undefined));
+    const error = await rejectionOf(rpcCall('status', undefined));
+
+    // The rejection has to be the browser's, not the harness's.
+    // `installFetchStub`'s default answer rejects too — with "the fetch stub
+    // has no answer for this URL" — so on `reported` alone this case stays
+    // green with the `mockImplementation` above deleted, and would then be
+    // about an unstubbed URL rather than about a socket that never connected.
+    // What tells the two apart is only the value `fetch` threw, which the
+    // client hands back wrapped twice: `RpcClientError` carries the HTTP
+    // layer's `RequestError` as its `reason`'s cause, and that carries the
+    // throw.
+    const thrown =
+      Predicate.hasProperty(error, 'reason') &&
+      Predicate.hasProperty(error.reason, 'cause') &&
+      Predicate.hasProperty(error.reason.cause, 'cause')
+        ? error.reason.cause.cause
+        : error;
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toHaveProperty('message', 'Failed to fetch');
 
     expect(reported).not.toHaveBeenCalled();
   });

@@ -40,9 +40,13 @@ const principalOf = (session: SessionPrincipal): Principal['Service'] =>
   });
 
 /**
- * The browser's cookie reaches here on both transports: a fetch request to
- * `/rpc` carries it directly, and a `/ws` frame inherits the handshake's. Both
- * are headers of the HTTP request, which is the only set this reads —
+ * The browser's cookie reaches here on the one transport `StudioRpcs` is
+ * mounted on: a fetch request to `/rpc`, which carries it directly
+ * (`RpcServer.layerHttp` in `http/rpc-routes.ts`, the group's only mount).
+ * `/ws` is the protocol builder's oRPC bridge and runs no rpc middleware at
+ * all; when stage 8 moves it onto this plane, a frame will inherit the
+ * handshake's cookie and arrive here the same way. Either transport puts it on
+ * the headers of the HTTP request, which is the only set this reads —
  * `transportHeaders` says why.
  *
  * A caller with no cookie, an expired one, an instance with auth switched off,
@@ -54,13 +58,6 @@ export const AuthenticatedLive = (
 ): Layer.Layer<Authenticated> =>
   Layer.succeed(Authenticated)((effect, options) =>
     Effect.gen(function* () {
-      // An Authorization header puts the request on the token plane, which must
-      // never fall back silently to cookies (#1248) — the rule
-      // `createPrincipalMiddleware` carried on the Hono `/rpc` mount. Until
-      // #1288 lands, the token plane resolves to no principal.
-      if (options.headers['authorization'] !== undefined) {
-        return yield* new Unauthorized({});
-      }
       // The provider is handed a request, not a cookie: `auth.getSession` runs
       // a better-auth endpoint, and which headers that endpoint consults is its
       // business and changes between versions. So the rule is about where they
@@ -73,9 +70,30 @@ export const AuthenticatedLive = (
       // `TRUSTED_PROXIES` set, the address better-auth resolves comes off that
       // forwarded header (`auth/better-auth.ts`, `advanced.ipAddress`) — out of
       // the request body, where no reverse proxy can correct it, which is the
-      // forgery that configuration exists to prevent. The one header that must
-      // not be forwarded at all — `authorization` — is refused above.
-      const headers = new Headers(yield* transportHeaders(options.headers));
+      // forgery that configuration exists to prevent.
+      const transport = yield* transportHeaders(options.headers);
+      // An Authorization header puts the request on the token plane, which must
+      // never fall back silently to cookies (#1248) — the rule
+      // `createPrincipalMiddleware` carried on the Hono `/rpc` mount. Until
+      // #1288 lands, the token plane resolves to no principal.
+      //
+      // Asked of `transport` rather than of `options.headers`, so that the set
+      // refused over and the set forwarded are one. Splitting them is a bypass
+      // rather than an inconsistency: a message's headers are raw `JSON.parse`
+      // output — `layerNdjson` never decodes the envelope against
+      // `RequestEncoded` — and `Headers.fromInput` merges them through its
+      // iterable branch, which assigns `out[k] = v` without filtering
+      // `undefined`. A one-element entry `["authorization"]` therefore writes
+      // the key as `undefined` in the merged set, where this check cannot see
+      // it, while the request's real `Authorization` still reaches
+      // `getSession` beside the cookie — the silent token-to-cookie fallback
+      // #1248 forbids. Put the two reads back on different sets and
+      // `auth.test.ts`'s 'refuses the token plane even when the message erases
+      // the header' fails.
+      if (transport['authorization'] !== undefined) {
+        return yield* new Unauthorized({});
+      }
+      const headers = new Headers(transport);
       const session = yield* Effect.promise(() => auth.getSession(headers));
       if (!session) return yield* new Unauthorized({});
       return yield* Effect.provideService(

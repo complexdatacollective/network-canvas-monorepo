@@ -1,3 +1,4 @@
+import { Predicate } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApp, createStudio, type Studio } from '../app.ts';
@@ -39,6 +40,29 @@ async function expectMeUnauthorized(
   } finally {
     await client.dispose();
   }
+}
+
+/**
+ * The `exit` of the one `Exit` frame in an ndjson `/rpc` response body — the
+ * shape `rpc-setup.test.ts` reads a response with, left unnarrowed because the
+ * cases below are about how a call was refused rather than what it returned.
+ *
+ * Note that a refusal is still a 200: the rpc server answers the transport and
+ * puts the verdict in the frame, so a case that only read the status would pass
+ * on every one of these.
+ */
+async function exitFrameOf(response: Response): Promise<unknown> {
+  const frames = (await response.text())
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line: string): unknown => JSON.parse(line));
+  const frame = frames.find(
+    (one) => Predicate.hasProperty(one, '_tag') && one._tag === 'Exit',
+  );
+  if (!Predicate.hasProperty(frame, 'exit')) {
+    throw new Error(`no Exit frame in ${JSON.stringify(frames)}`);
+  }
+  return frame.exit;
 }
 
 /** The instance descriptor over the rpc plane. */
@@ -187,6 +211,129 @@ describe('principal resolution', () => {
     // session must not even be consulted.
     await expectMeUnauthorized(studio, { authorization: 'Bearer some-token' });
     expect(getSessionCalls).toBe(1);
+  });
+
+  it('refuses the token plane even when the message erases the header', async () => {
+    // The bypass a guard reading the merged set leaves open, and the reason
+    // the case above cannot stand for this one: it drives the in-process
+    // client, where the request's headers and the message's are one set, so it
+    // passes whichever set the guard asks.
+    //
+    // A message's headers are raw `JSON.parse` output — `layerNdjson` parses
+    // the envelope and never decodes it against `RequestEncoded` — so a caller
+    // may put a one-element entry there, which `Headers.fromInput` merges as
+    // `authorization: undefined`. The merged set then answers `undefined` to a
+    // `!== undefined` guard while the request still carries a real
+    // `Authorization`, and the cookie beside it would be the silent
+    // token-to-cookie fallback #1248 forbids.
+    let getSessionCalls = 0;
+    const auth = stubAuthService({
+      getSession: () => {
+        getSessionCalls += 1;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    const configured = readEnv();
+    const stack = composeStudio(configured, createStudio(configured, { auth }));
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+          'cookie': 'studio.session_token=opaque',
+          'authorization': 'Bearer real-token',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'me',
+          payload: null,
+          // Deliberately not a pair. The wire type says `[string, string]`;
+          // nothing on this path enforces it.
+          headers: [['authorization']],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      expect(await exitFrameOf(response)).toMatchObject({
+        _tag: 'Failure',
+        cause: [{ _tag: 'Fail', error: { _tag: 'Unauthorized' } }],
+      });
+      // And refused before the provider was consulted at all: a call that
+      // reached `getSession` had already handed it the cookie and the token
+      // together, whatever it went on to answer.
+      expect(getSessionCalls).toBe(0);
+    } finally {
+      await stack.dispose();
+    }
+  });
+
+  it('refuses a payload the contract rejects, at the server boundary', async () => {
+    // The server-side half of `expectPayloadRejected` (`support/rpc.ts`),
+    // which can only ever see the *client's* encoder refuse: under
+    // `RpcTest.makeClient` the payload never leaves the process. Over the
+    // transport the bytes arrive as sent, and it is `RpcServer`'s decode that
+    // refuses — a different code path, and the one a caller who is not using
+    // our client reaches.
+    //
+    // `setup.complete` because it is public: the refusal has to be the
+    // payload's, not a middleware's, and this way nothing else could have
+    // produced it.
+    const configured = readEnv();
+    const stack = composeStudio(
+      configured,
+      createStudio(configured, { auth: stubAuthService() }),
+    );
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'setup.complete',
+          payload: {
+            token: 'a-token',
+            // Blank once trimmed, which the contract refuses.
+            instanceName: '   ',
+            owner: {
+              name: 'First Owner',
+              email: 'owner@example.test',
+              password: 'first-owner-password',
+            },
+          },
+          headers: [],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      // A `Die`, not a declared failure: a payload the schema refuses is not
+      // one of the procedure's errors.
+      const exit = await exitFrameOf(response);
+      expect(exit).toMatchObject({
+        _tag: 'Failure',
+        cause: [{ _tag: 'Die' }],
+      });
+      // And the defect — `SchemaIssue.defaultFormatter`'s rendering of the
+      // refusal — has to name the field. "Died" alone is the same shape a call
+      // produces when it is admitted and then throws, which is the argument
+      // `expectPayloadRejected` makes for taking `field` at all; here it is
+      // also what says the decode refused this payload rather than the
+      // envelope around it.
+      const defect =
+        Predicate.hasProperty(exit, 'cause') &&
+        Predicate.hasProperty(exit.cause, 0) &&
+        Predicate.hasProperty(exit.cause[0], 'defect')
+          ? exit.cause[0].defect
+          : undefined;
+      expect(defect).toContain('instanceName');
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('reports auth capabilities in the RPC status', async () => {

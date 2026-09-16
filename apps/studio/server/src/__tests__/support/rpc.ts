@@ -147,8 +147,11 @@ const formatIssue = SchemaIssue.makeFormatterStandardSchemaV1();
  * client encodes the payload before it sends it (`RpcClient.ts`,
  * `rpc.payloadSchema.make(payload)` and `encodePayload(...).pipe(Effect.orDie)`),
  * so it is that encoder that refuses, not the server. The server-boundary
- * decode is a different code path and is covered by the suites that drive the
- * whole stack over a transport (`support/serve.ts`).
+ * decode is a different code path — the one a caller who is not using our
+ * client reaches — and it has its own case over the transport:
+ * `auth.test.ts`'s 'refuses a payload the contract rejects, at the server
+ * boundary', which posts a raw ndjson frame and reads the `Die` out of the
+ * response's `Exit`.
  *
  * `field` is the payload field the refusal has to name, and it is not optional.
  * "Failed with a die" alone is the same shape a call produces when it is
