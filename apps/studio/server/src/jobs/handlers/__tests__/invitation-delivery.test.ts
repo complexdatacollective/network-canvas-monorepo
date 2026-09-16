@@ -330,7 +330,6 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // ---------------------------------------------------------------- 5 ----
     // -------------------------------------------------------------- 5, 20 ----
     it.effect(
       'records a failed attempt and sends the snapshot, end to end, on the next',
