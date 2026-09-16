@@ -50,7 +50,9 @@ describe('Collection virtualized', () => {
     // renderer has found its viewport and measured the items it sizes the
     // scroll body to the rows, which never happens if it is still waiting.
     await waitFor(() => {
-      const body = container.querySelector<HTMLElement>('section > .relative');
+      const body = container.querySelector<HTMLElement>(
+        '[role="listbox"] > .relative',
+      );
       expect(body).not.toBeNull();
       expect(Number.parseFloat(body?.style.height ?? '0')).toBeGreaterThan(0);
     });
