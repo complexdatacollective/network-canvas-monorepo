@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.5.1
+
+### Patch Changes
+
+- Fix the US and UK English pages of the protocol gallery at protocolgallery.networkcanvas.com, which redirected back and forth between two addresses instead of loading.
+
 ## 0.5.0
 
 ### Minor Changes
