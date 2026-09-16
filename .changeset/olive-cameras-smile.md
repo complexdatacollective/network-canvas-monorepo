@@ -16,4 +16,5 @@ reordering and opening a row's editor animate exactly as before.
 Asking the attribute window to create an attribute whose kind of answer needs
 more than a name now brings the attribute editor to the front. The window that
 opened it was being drawn over it, so the editor looked like it had not opened
-at all.
+at all. The codebook’s own attribute window, which could have been drawn over a
+dialog the same way, is stacked like every other window now too.
