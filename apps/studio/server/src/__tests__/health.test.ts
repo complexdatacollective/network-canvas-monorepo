@@ -1,14 +1,19 @@
 import { afterAll, describe, expect, it } from '@effect/vitest';
 import { Effect, Fiber } from 'effect';
 import { TestClock } from 'effect/testing';
+import type pg from 'pg';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
 import { createAssetStore } from '../assets.ts';
 import { migrateDatabase } from '../db/migrate.ts';
-import { checkSchema } from '../db/schema.ts';
+import { createOwnerPool } from '../db/pool.ts';
 import { resolve } from '../env/resolve.ts';
-import { type HealthChecks, readiness, schemaCheck } from '../http/health.ts';
+import {
+  type HealthChecks,
+  readiness,
+  schemaCheckOnPool,
+} from '../http/health.ts';
 import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { testKeyringEntry } from './support/secrets.ts';
@@ -106,6 +111,31 @@ describe('a readiness verdict', () => {
       expect(result.checks.schema).toBe('ok');
     }),
   );
+});
+
+describe('the schema check over a pool', () => {
+  it('names the database error when the pool cannot connect', async () => {
+    // What a worker container's `/readyz` says when Postgres is down — the
+    // only diagnostic it exposes, so the reason has to be the driver's.
+    // Mutation: build the read with `Effect.tryPromise(() => checkSchema(pool))`
+    // (the one-thunk form) and the reason becomes Effect's own
+    // `An error occurred in Effect.tryPromise` instead of the address that
+    // refused.
+    const pool = createOwnerPool({
+      url: 'postgres://studio:studio@127.0.0.1:59999/studio',
+    });
+    try {
+      const result = await Effect.runPromise(
+        readiness({ schema: schemaCheckOnPool(pool) }),
+      );
+      expect(result.status).toBe('failing');
+      expect(result.checks.schema).toMatch(
+        /^failed: connect ECONNREFUSED 127\.0\.0\.1:59999/,
+      );
+    } finally {
+      await pool.end();
+    }
+  });
 });
 
 describe('the object-store check', () => {
@@ -275,16 +305,9 @@ describe.skipIf(!db)('the web process against a real database', () => {
       } as const;
 
       // The `schema` check is the program's, not the app's, so the suite
-      // supplies it the same way a program does — from a fresh read of the
-      // fingerprint.
-      const schema = (pool: Parameters<typeof checkSchema>[0]) => ({
-        schema: schemaCheck(
-          Effect.tryPromise({
-            try: () => checkSchema(pool),
-            catch: (cause: unknown) => cause,
-          }),
-        ),
-      });
+      // supplies it the same way the worker program does — from a fresh read
+      // of the fingerprint on the pool.
+      const schema = (pool: pg.Pool) => ({ schema: schemaCheckOnPool(pool) });
 
       // Before the schema exists, readiness says so by name rather than
       // reporting a healthy process with nothing behind it.

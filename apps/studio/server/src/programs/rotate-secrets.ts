@@ -6,6 +6,7 @@ import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { reportingRefusals } from './command.ts';
 
 // The rotation command: the same image as the web process and the worker,
 // started with a different command (#1900). It re-encrypts every stored
@@ -90,6 +91,7 @@ const rotateSecrets = Effect.gen(function* () {
 /** The command, with the environment decoded once at its root. */
 export const RotateSecretsProgram = rotateSecrets.pipe(
   Effect.scoped,
+  reportingRefusals,
   Effect.provide(
     Layer.mergeAll(LoggerLive, TracingLive('rotate-secrets')).pipe(
       Layer.provideMerge(Environment.layer),

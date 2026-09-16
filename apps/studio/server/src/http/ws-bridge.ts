@@ -102,16 +102,35 @@ export const WsBridge = (deps: WsBridgeDeps) =>
             clientSessionId,
           };
 
-          // What oRPC sends a frame through. The write needs no services, and
-          // nothing reads its result — a send that fails is a socket that is
-          // already gone, which the pull loop below is about to notice.
+          // This request's services, so that a write oRPC asks for from its
+          // own callback and a line logged about it go through the program's
+          // loggers rather than a bare runtime's.
+          const services = yield* Effect.context();
+
+          // What oRPC sends a frame through. Nothing reads the write's result
+          // — a send that fails is a socket that is already gone, which the
+          // pull loop below is about to notice.
           const peer = {
             send: (data: string | Uint8Array<ArrayBuffer>) => {
-              Effect.runFork(writer.write(data));
+              Effect.runForkWith(services)(writer.write(data));
             },
           };
 
-          const services = yield* Effect.context();
+          // oRPC keeps per-peer state (the calls in flight on this socket)
+          // until it is told the peer is gone. A finalizer rather than a
+          // statement after the loop, so it runs however this request ends —
+          // a clean close, a dropped connection, or the interruption that
+          // follows the drain's bound expiring.
+          yield* Effect.addFinalizer(() =>
+            Effect.tryPromise({
+              try: () => deps.socket.close(peer),
+              catch: (cause: unknown) => cause,
+            }).pipe(
+              Effect.catch((cause) =>
+                Effect.logError('WebSocket peer close failed', cause),
+              ),
+            ),
+          );
           const pump = Effect.flatMap(reader.pull, (frames) =>
             Effect.forEach(
               frames,
@@ -141,7 +160,6 @@ export const WsBridge = (deps: WsBridgeDeps) =>
             Effect.race(drain.closing),
           );
 
-          yield* Effect.promise(() => deps.socket.close(peer));
           return HttpServerResponse.empty();
         }),
       );

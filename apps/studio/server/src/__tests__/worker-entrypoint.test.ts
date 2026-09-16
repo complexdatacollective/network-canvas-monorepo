@@ -2,7 +2,7 @@
 // image's second command (#1895). Everything here is a property of the whole
 // process — what it prints at boot, what it binds, what its healthcheck reads,
 // and that a container stop ends it cleanly — none of which an in-process test
-// of `createJobWorker` can answer.
+// of the worker layers can answer.
 import { networkInterfaces } from 'node:os';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -54,7 +54,7 @@ const STOP_TIMEOUT_MS = 10_000;
 
 /**
  * The in-flight case waits out nodemailer's greeting timeout (10 s, set in
- * src/auth/email.ts) on top of a boot, which is more than the file's default
+ * src/mail/smtp.ts) on top of a boot, which is more than the file's default
  * budget and still well inside the 25-second graceful window the process asks
  * pg-boss for.
  */
@@ -437,7 +437,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     // Outside development a stale or absent schema is an answer, not a
     // transient failure — the same verdict the web process boots on, reached
-    // through the same boot module.
+    // through the same schema gate (src/platform/schema-gate.ts).
     const empty = await createScratchDatabase(db);
     const worker = startWorker({ DATABASE_URL: empty.db.url });
     try {

@@ -30,6 +30,14 @@ const Routes = HttpRouter.use((router) =>
         { status: 404, contentType: 'application/problem+json' },
       ),
     );
+    yield* router.add(
+      'GET',
+      '/challenge',
+      HttpServerResponse.empty({
+        status: 401,
+        headers: { 'www-authenticate': 'Bearer realm="studio"' },
+      }),
+    );
   }),
 );
 
@@ -107,6 +115,28 @@ describe('an empty refusal', () => {
       expect(await response.json()).toEqual({
         title: 'Internal Server Error',
         status: 500,
+      });
+    } finally {
+      await dispose();
+    }
+  });
+});
+
+describe('an empty refusal with headers', () => {
+  it('keeps the headers it came with', async () => {
+    // Mutation: build the problem body as a fresh response without carrying
+    // `response.headers` over → the challenge header is gone, and a 401 that
+    // named how to authenticate no longer does.
+    const { handler, dispose } = composed();
+    try {
+      const response = await get(handler, '/challenge');
+      expect(response.status).toBe(401);
+      expect(response.headers.get('www-authenticate')).toBe(
+        'Bearer realm="studio"',
+      );
+      expect(await response.json()).toEqual({
+        title: 'Unauthorized',
+        status: 401,
       });
     } finally {
       await dispose();

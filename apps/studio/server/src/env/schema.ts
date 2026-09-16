@@ -234,7 +234,7 @@ export const EnvironmentSchema = Schema.Struct({
   STUDIO_TELEMETRY: variable(Flag, {
     group: 'Process',
     summary:
-      'Whether this instance reports anonymous usage telemetry. Declared here so the development lane can turn it off; nothing reads it until #1897 builds the reporting it governs.',
+      'Whether this instance reports anonymous usage telemetry. Also the switch on telemetry export: with it off, no exporter is built whatever `OTEL_EXPORTER_OTLP_ENDPOINT` says. #1897 builds the reporting it governs.',
     deployment:
       'Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.',
     example: 'true',

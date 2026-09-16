@@ -13,6 +13,7 @@ import {
   printBootstrapToken,
 } from '../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { reportingRefusals } from './command.ts';
 
 // The image's third entry: `studio-api migrate`, the one-shot that creates the
 // schema (#1909). It runs once per deployment, never per replica, which is why
@@ -124,6 +125,7 @@ const migrate = Effect.gen(function* () {
 /** The command, with the environment decoded once at its root. */
 export const MigrateProgram = migrate.pipe(
   Effect.scoped,
+  reportingRefusals,
   Effect.provide(
     Layer.mergeAll(LoggerLive, TracingLive('migrate')).pipe(
       Layer.provideMerge(Environment.layer),

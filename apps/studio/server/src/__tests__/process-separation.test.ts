@@ -417,10 +417,13 @@ describe('the image', () => {
     const entries = Object.entries(lockfile.snapshots).filter(([key]) =>
       key.startsWith('@effect/platform-node@'),
     );
-    expect(entries, 'exactly one @effect/platform-node snapshot').toHaveLength(
-      1,
-    );
-    return entries[0]![1];
+    const [snapshot, ...others] = entries;
+    if (snapshot === undefined || others.length > 0) {
+      throw new Error(
+        `expected exactly one @effect/platform-node snapshot, found ${entries.length}`,
+      );
+    }
+    return snapshot[1];
   }
 
   it('carries one Redis client', () => {

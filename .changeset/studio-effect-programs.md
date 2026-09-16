@@ -17,6 +17,11 @@ programs on Effect's Node HTTP server (stage 1 of the Effect 4 migration,
 shutting down`; browsers report it as a clean close (#1247).
 - Every response carries an `x-request-id` header, and every error response
   Studio synthesises is RFC 9457 problem JSON.
+- The worker keeps answering `/readyz` while it finishes its in-flight jobs
+  on a stop; the health listener now closes after the job drain rather than
+  before it.
+- `migrate` and `rotate-secrets` still print a refusal as the one sentence
+  to act on, and still exit 1.
 - A new optional `OTEL_EXPORTER_OTLP_ENDPOINT` variable exports logs, traces
   and metrics to an OTLP/HTTP collector when `STUDIO_TELEMETRY` is on; unset
   means nothing is exported (#1897).

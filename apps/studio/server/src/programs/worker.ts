@@ -2,14 +2,13 @@ import { Effect, Layer, Option, Ref, Schema } from 'effect';
 import { HttpRouter } from 'effect/unstable/http';
 
 import { DatabasePool } from '../db/database-pool.ts';
-import { checkSchema } from '../db/schema.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import {
   type CheckVerdict,
   databaseCheck,
   type HealthChecks,
   HealthRoutes,
-  schemaCheck,
+  schemaCheckOnPool,
 } from '../http/health.ts';
 import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
@@ -97,7 +96,7 @@ function workerChecks(
     db: databaseCheck(pool),
     // Checked live on the pool rather than through `SchemaStatus`, because the
     // listener is acquired before the gate on purpose (above).
-    schema: schemaCheck(Effect.tryPromise(() => checkSchema(pool))),
+    schema: schemaCheckOnPool(pool),
     // `degraded`, never `failed`: the limiter fails open, so a worker that
     // cannot reach it still runs every job it has — only the summary job has
     // nothing to drain. Omitted where no store is configured, like every other

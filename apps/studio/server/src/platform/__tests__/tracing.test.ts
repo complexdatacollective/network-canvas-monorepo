@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
+import { FetchHttpClient } from 'effect/unstable/http';
 
 import { Environment, readEnv } from '../../env.ts';
 import { TracingLive } from '../tracing.ts';
@@ -97,17 +98,38 @@ describe('TracingLive', () => {
     ),
   );
 
-  // Mutation: fall back to a default endpoint when none is configured → the
-  // sink is not this test's, but the layer is no longer `Layer.empty`, and a
-  // deployment that configured nothing would open connections. Asserted here
-  // through the one observable that survives: with the endpoint withheld and
-  // the sink's URL never reaching the layer, nothing arrives.
+  // Mutation: fall back to a default endpoint when none is configured (say
+  // `env.telemetryEndpoint ?? 'http://127.0.0.1:4318'`) → the layer is no
+  // longer `Layer.empty`, and a deployment that configured nothing would open
+  // connections. The sink cannot see that, because its URL never reaches the
+  // layer — so the observable here is `fetch` itself: the exporter's client
+  // reads it from the `FetchHttpClient.Fetch` reference at request time, and a
+  // recording one provided around the program counts every call whatever the
+  // URL. The positive control below is the same recorder seeing the export
+  // when an endpoint is set, so a recorder that recorded nothing would fail
+  // there rather than pass here.
   it.live('builds no exporter at all without an endpoint', () =>
-    withSink((sink) =>
-      Effect.gen(function* () {
-        yield* emitUnder(true, undefined);
-        expect(sink.requests).toEqual([]);
-      }),
-    ),
+    Effect.gen(function* () {
+      const calls: string[] = [];
+      const recording: typeof globalThis.fetch = (input, init) => {
+        calls.push(String(input instanceof Request ? input.url : input));
+        return globalThis.fetch(input, init);
+      };
+
+      yield* withSink((sink) =>
+        Effect.gen(function* () {
+          yield* emitUnder(true, sink.url).pipe(
+            Effect.provideService(FetchHttpClient.Fetch, recording),
+          );
+          expect(calls.length).toBeGreaterThan(0);
+          calls.length = 0;
+
+          yield* emitUnder(true, undefined).pipe(
+            Effect.provideService(FetchHttpClient.Fetch, recording),
+          );
+          expect(calls).toEqual([]);
+        }),
+      );
+    }),
   );
 });

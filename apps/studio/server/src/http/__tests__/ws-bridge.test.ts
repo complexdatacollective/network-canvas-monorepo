@@ -24,8 +24,12 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'ws-bridge-session',
 };
 
-/** A socket handler that answers every frame, so the loop is observable. */
-function echoing(): Studio {
+/**
+ * A socket handler that answers every frame, so the loop is observable, and
+ * counts the peers it was told had gone.
+ */
+function echoing(): Studio & { readonly closed: () => number } {
+  let closed = 0;
   const ws: WsBridgeDeps = {
     admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: {
@@ -33,10 +37,13 @@ function echoing(): Studio {
         peer.send(typeof data === 'string' ? `echo:${data}` : 'echo:binary');
         return Promise.resolve({ matched: true });
       },
-      close: () => Promise.resolve(),
+      close: () => {
+        closed += 1;
+        return Promise.resolve();
+      },
     },
   };
-  return { app: new Hono(), ws, checks: {} };
+  return { app: new Hono(), ws, checks: {}, closed: () => closed };
 }
 
 /** Resolves on the socket's next event of this kind, or rejects on its error. */
@@ -75,7 +82,8 @@ describe('the socket bridge', () => {
     // run this under the TestClock, where nothing over a wire ever arrives.
     Effect.promise(async () => {
       const env = resolve({ NODE_ENV: 'test' });
-      const { origin, dispose } = await startStudioServer(env, echoing());
+      const studio = echoing();
+      const { origin, dispose } = await startStudioServer(env, studio);
       const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
       try {
         await opened(socket);
@@ -108,6 +116,9 @@ describe('the socket bridge', () => {
         // dropped connection gives.
         expect(event.code).toBe(1005);
         expect(event.reason).toBe('');
+        // oRPC was told the peer is gone, exactly once, on the way out.
+        // Mutation: drop the `close` finalizer from the bridge → 0.
+        expect(studio.closed()).toBe(1);
       } finally {
         socket.close();
       }

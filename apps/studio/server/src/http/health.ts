@@ -2,7 +2,7 @@ import { Cause, Duration, Effect, type Layer, Record } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
 import type pg from 'pg';
 
-import type { SchemaState } from '../db/schema.ts';
+import { checkSchema, type SchemaState } from '../db/schema.ts';
 
 // The two health routes, shared by both processes (#1897, #1909). The web
 // process mounts them on its own listener; the worker serves them on a
@@ -120,6 +120,22 @@ export function schemaCheck(
               : `not this build's schema (${state.reason})`,
           ),
         ),
+  );
+}
+
+/**
+ * `schemaCheck` over a fresh read of the fingerprint on a pool, for the
+ * process whose listener binds before its schema gate exists (the worker).
+ * The rejection is kept as the driver raised it — `{ try, catch }` rather than
+ * the one-thunk form, which would wrap it in Effect's own `UnknownError` and
+ * report its boilerplate instead of `connect ECONNREFUSED …`.
+ */
+export function schemaCheckOnPool(pool: pg.Pool): HealthCheck {
+  return schemaCheck(
+    Effect.tryPromise({
+      try: () => checkSchema(pool),
+      catch: (cause: unknown) => cause,
+    }),
   );
 }
 

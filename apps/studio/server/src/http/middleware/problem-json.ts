@@ -17,10 +17,12 @@ import {
 // in here rather than left as the only refusals on the server with nothing to
 // read.
 //
-// Only empty bodies are rewritten. Anything a handler chose is already an
-// answer: the Hono app's own problem JSON, better-auth's `{ message }` errors,
-// an asset's bytes. Replacing those would throw away a considered response,
-// and in better-auth's case would break a client that reads its shape.
+// Only empty bodies are rewritten, and only the body: the status, the headers
+// and the cookies the response carried stay on it. Anything a handler chose
+// is already an answer: the Hono app's own problem JSON, better-auth's
+// `{ message }` errors, an asset's bytes. Replacing those would throw away a
+// considered response, and in better-auth's case would break a client that
+// reads its shape.
 //
 // The mechanism is a pre-response handler rather than error handling in the
 // middleware itself: the router's type forbids a global middleware from
@@ -44,6 +46,8 @@ export const ProblemJson: Layer.Layer<never, never, HttpRouter.HttpRouter> =
             {
               status: response.status,
               contentType: 'application/problem+json',
+              headers: response.headers,
+              cookies: response.cookies,
             },
           ),
         );
