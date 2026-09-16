@@ -17,12 +17,12 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { SocialProvider } from '@codaco/studio-rpc';
+import type { SocialProvider } from '@codaco/studio-contract/schema/status';
 
-import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { sessionQueryOptions } from '../lib/session.ts';
+import { rpcQuery } from '../runtime/rpc.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/focused/sign-in');
@@ -164,7 +164,7 @@ const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 export default function SignIn() {
   const intl = useAppIntl();
   const { error, invitationId } = route.useSearch();
-  const status = useQuery(orpc.status.queryOptions());
+  const status = useQuery(rpcQuery('status', undefined));
   const queryClient = useQueryClient();
   const router = useRouter();
   const [sentTo, setSentTo] = useState<string | null>(null);
