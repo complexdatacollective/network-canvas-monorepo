@@ -21,10 +21,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { compose, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { useResourceClient } from '../resources/client.tsx';
-import {
-  downloadResourceContent,
-  resourceDownloadName,
-} from '../resources/components/downloadResourceContent.ts';
 import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
 import ResourceCard from '../resources/components/ResourceCard.tsx';
 import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
@@ -116,19 +112,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.resourcePicker.retryAction',
     defaultMessage: 'Try that again',
     description:
-      'Button beside a failure notice, which repeats the download or discard the researcher just asked for.',
+      'Button beside a failure notice, which repeats the discard the researcher just asked for.',
   },
   remove: {
     id: 'protocolBuilder.resourcePicker.remove',
     defaultMessage: 'Remove this resource',
     description:
-      'Button that clears this stage field, leaving the resource itself in the protocol.',
-  },
-  download: {
-    id: 'protocolBuilder.resourcePicker.download',
-    defaultMessage: 'Download this resource',
-    description:
-      'Button that saves a copy of the resource this stage field holds to the researcher’s computer.',
+      'Button that clears this stage field, leaving the resource itself in the protocol. Offered beside a failure or a refusal, where choosing a replacement is not the only thing a researcher can reasonably want to do.',
   },
   discard: {
     id: 'protocolBuilder.resourcePicker.discard',
@@ -165,12 +155,6 @@ const messages = defineMessages({
     defaultMessage: 'The imported resource was discarded.',
     description:
       'Announced to assistive technology when a resource imported while this stage has been open is thrown away.',
-  },
-  downloadedAnnouncement: {
-    id: 'protocolBuilder.resourcePicker.downloadedAnnouncement',
-    defaultMessage: '{name} was downloaded.',
-    description:
-      'Announced to assistive technology once a copy of a resource has been saved to the researcher’s computer. name is the resource’s name.',
   },
   interviewNetworkAnnouncement: {
     id: 'protocolBuilder.resourcePicker.interviewNetworkAnnouncement',
@@ -261,14 +245,6 @@ export default function AssetPickerField({
    * researcher has to notice and put back.
    */
   const [askedForResource, setAskedForResource] = useState(false);
-  /**
-   * Whether the call the attempt below is running is the discard rather than
-   * the download. It answers the one question about a call in flight that
-   * `busy` cannot: whether the answer still to come will change what this
-   * field holds. Read only while the attempt is busy, so it does not have to
-   * be unset when the call it describes settles.
-   */
-  const [discarding, setDiscarding] = useState(false);
 
   const copy = RESOURCE_PICKER_COPY[kind];
   const usesInterviewNetwork = canUseExisting && value === INTERVIEW_NETWORK;
@@ -283,17 +259,14 @@ export default function AssetPickerField({
   /**
    * Whether another resource may be chosen right now.
    *
-   * Not while a discard of the resource this field holds is undecided.
+   * Not while a discard of the resource this field holds is undecided — the
+   * discard is the only call this field makes that changes what it holds.
    * Choosing again disowns that call, so the discard the host goes on to carry
    * out would no longer clear the field, and the field would be left naming a
    * resource the host has deleted — a stage that cannot be saved, reached by
    * an action the researcher was told had worked.
-   *
-   * A download in flight is not the same thing: its answer is a file, and a
-   * researcher who has moved on from a slow one has lost nothing, so it does
-   * not hold the field's own choice up.
    */
-  const canBrowse = !locked && !(action.busy && discarding);
+  const canBrowse = !locked && !action.busy;
 
   const handleSelect = (chosen: ResourceDescriptor) => {
     setBrowserOpen(false);
@@ -345,7 +318,6 @@ export default function AssetPickerField({
       return;
     }
     setRefusal(undefined);
-    setDiscarding(true);
     action.run(
       () => resources.discardStaged(selectedId),
       () => {
@@ -353,27 +325,6 @@ export default function AssetPickerField({
         // so a reference left behind could only ever be dangling.
         onChange?.(undefined);
         setStatus(createMessageError(messages.discardedAnnouncement));
-      },
-    );
-  };
-
-  // The contract has no download: what it can answer with is the URL a preview
-  // renders from, so saving a copy is that URL handed to a link the page
-  // clicks. A researcher who asks for the file therefore waits for the same
-  // call an image on the card already made, and gets a file named the way the
-  // protocol names the resource — see `resourceDownloadName`.
-  const handleDownload = () => {
-    if (selectedId === undefined || descriptor === undefined) return;
-    setDiscarding(false);
-    action.run(
-      () => resources.resolvePreview(selectedId),
-      (resolved) => {
-        downloadResourceContent(resolved.url, resourceDownloadName(descriptor));
-        setStatus(
-          createMessageError(messages.downloadedAnnouncement, {
-            name: descriptor.name,
-          }),
-        );
       },
     );
   };
@@ -501,8 +452,8 @@ export default function AssetPickerField({
           )}
 
           {/* The reference outlives the resource, so the way off it has to
-              outlive the resource too: the actions below are all about a
-              descriptor there is none of here. */}
+              outlive the resource too: the card below describes a resource
+              there is none of here, and it is not drawn at all. */}
           {selectedId !== undefined &&
             inspection === undefined &&
             failure !== undefined && (
@@ -523,45 +474,38 @@ export default function AssetPickerField({
             )}
 
           {inspection !== undefined && descriptor !== undefined && (
+            /*
+              The card says what the field holds, and nothing on it manages the
+              resource itself: saving a copy and deleting one are the resource
+              library's own actions, and a researcher who wants either goes
+              where every resource in the protocol is listed rather than to
+              whichever stage field happens to name this one. Changing the
+              field's mind is the button below the card.
+
+              The one exception is a file imported since this stage was opened,
+              which the library cannot show at all: it is not in the protocol
+              yet, and until the stage is saved this card is the only place it
+              exists. So the undo for that import is offered here, and it goes
+              as soon as the import is saved.
+            */
             <ResourceCard
               inspection={inspection}
               previewShape={canvasBackgroundPreview ? 'canvas' : 'thumbnail'}
-              actions={
-                <>
-                  {descriptor.kind !== 'apikey' && (
-                    <Button
-                      type="button"
-                      color="info"
-                      size="sm"
-                      disabled={action.busy}
-                      onClick={handleDownload}
-                    >
-                      {intl.formatMessage(messages.download)}
-                    </Button>
-                  )}
-                  {descriptor.status === 'staged' ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      color="destructive"
-                      disabled={locked || action.busy}
-                      onClick={handleDiscard}
-                    >
-                      {intl.formatMessage(messages.discard)}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      color="destructive"
-                      size="sm"
-                      disabled={locked}
-                      onClick={handleRemove}
-                    >
-                      {intl.formatMessage(messages.remove)}
-                    </Button>
-                  )}
-                </>
-              }
+              {...(descriptor.status === 'staged'
+                ? {
+                    actions: (
+                      <Button
+                        type="button"
+                        size="sm"
+                        color="destructive"
+                        disabled={locked || action.busy}
+                        onClick={handleDiscard}
+                      >
+                        {intl.formatMessage(messages.discard)}
+                      </Button>
+                    ),
+                  }
+                : {})}
             />
           )}
 

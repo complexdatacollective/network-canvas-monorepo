@@ -1160,8 +1160,6 @@
   "protocolBuilder.resourceKinds.videoSelectAction": "Selecciona un vídeo",
   "protocolBuilder.resourcePicker.discard": "Descartar este recurso",
   "protocolBuilder.resourcePicker.discardedAnnouncement": "El recurso importado se descartó.",
-  "protocolBuilder.resourcePicker.download": "Descargar este recurso",
-  "protocolBuilder.resourcePicker.downloadedAnnouncement": "{name} se descargó.",
   "protocolBuilder.resourcePicker.importedFileOption": "Usar un archivo de datos de red",
   "protocolBuilder.resourcePicker.interviewNetworkAnnouncement": "Esta etapa usará la red de la propia entrevista.",
   "protocolBuilder.resourcePicker.interviewNetworkOption": "Usar la red de la entrevista en curso",

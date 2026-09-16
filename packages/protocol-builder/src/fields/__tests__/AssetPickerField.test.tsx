@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -584,41 +584,32 @@ describe('AssetPickerField', () => {
   });
 
   /**
-   * The contract has no download. What it can answer with is the URL a preview
-   * renders from, so saving a copy is that URL handed to a link the page clicks
-   * — which is what puts the file on the researcher's computer, under the name
-   * the protocol records for it.
+   * The card describes the resource the field holds; it does not manage it.
+   * Saving a copy of a resource and deleting one are the resource library's
+   * own actions, over every resource the protocol has, and a stage field that
+   * offered them put protocol-wide actions on whichever stage happened to name
+   * this file.
    */
-  it('saves a copy of the resource a field holds, from the URL the host resolved', async () => {
-    const user = userEvent.setup();
-    const saved: { href: string; download: string }[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
-      function (this: HTMLAnchorElement) {
-        saved.push({ href: this.href, download: this.download });
-      },
-    );
+  it('offers nothing on the card of a resource the protocol already holds', async () => {
     renderResourceEditor({
       resources: [imageSeed],
       fields: withBackgroundImage('image-1'),
       children: imageField(),
     });
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Download this resource' }),
-    );
-
+    // The card is up — so the absences below are the card's own, and not a
+    // check made before the resource arrived.
+    expect(await screen.findByText('Neighbourhood photo')).toBeVisible();
     expect(
-      await screen.findByText('Neighbourhood photo was downloaded.'),
-    ).toBeVisible();
-    // Named as the protocol names the resource, carrying the extension of the
-    // file it came from, and pointed at what the host answered with rather
-    // than at anything this editor made up. NOT the name the bytes are filed
-    // under: a copy called sixty-four hex characters is one the researcher
-    // cannot recognise on their own computer.
-    expect(saved).toHaveLength(1);
-    expect(saved[0]?.download).toBe('Neighbourhood photo.png');
-    expect(saved[0]?.href).toContain('base64,');
-    vi.restoreAllMocks();
+      screen.queryByRole('button', { name: 'Download this resource' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Remove this resource' }),
+    ).toBeNull();
+    // What the field itself decides is still there: which resource it names.
+    expect(
+      screen.getByRole('button', { name: 'Change the image' }),
+    ).toBeEnabled();
   });
 
   /**
@@ -871,56 +862,55 @@ describe('a picker whose in-flight call is superseded', () => {
     ).toBeVisible();
   });
 
-  it('drops a download that fails after the field has moved off', async () => {
+  it('drops a discard that failed once the field has moved off', async () => {
     const user = userEvent.setup();
-    const held = deferred<void>();
     renderResourceEditor({
-      resources: [imageSeed, secondImageSeed],
-      // Only the resource the field is about to move off: a download and a
-      // preview are the same call now, so refusing every one of them would
-      // put the second image's own preview failure where this row expects
-      // silence.
+      resources: [imageSeed],
       client: (host) =>
         withResourceProcedures(host.client, {
-          preview: async (input) => {
-            if (input.resourceId !== 'image-1') {
-              return host.client.resources.preview(input);
-            }
-            await held.promise;
-            return {
-              status: 'failed' as const,
-              failure: {
-                reason: 'unavailable' as const,
-                message: 'the download could not be completed',
-                retryable: true,
-              },
-            };
-          },
+          discard: async () => ({
+            status: 'failed' as const,
+            failure: {
+              reason: 'unavailable' as const,
+              message: 'the resource could not be discarded',
+              retryable: true,
+            },
+          }),
         }),
-      fields: withBackgroundImage('image-1'),
       children: imageField(),
     });
 
+    // Imported here, because the discard is offered for a file staged in this
+    // edit and for nothing else.
     await user.click(
-      await screen.findByRole('button', { name: 'Download this resource' }),
+      await screen.findByRole('button', { name: 'Select an image' }),
     );
-    // The researcher does not wait for the download before choosing another
-    // resource.
-    await user.click(screen.getByRole('button', { name: 'Change the image' }));
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+    );
     await user.click(
-      await screen.findByRole('button', { name: 'Community centre' }),
+      await screen.findByRole('button', { name: 'Discard this resource' }),
     );
     expect(
-      await screen.findByRole('heading', { name: 'Community centre' }),
+      await screen.findByText('the resource could not be discarded'),
     ).toBeVisible();
 
-    held.settle(undefined);
-    await act(flushPendingWork);
-
-    // The download was of the resource this field no longer holds, so a
-    // failure notice beside the new one would be about nothing on screen.
+    // The researcher gives up on the discard and points the field at the
+    // resource the protocol already holds instead.
+    await user.click(screen.getByRole('button', { name: 'Change the image' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Neighbourhood photo' }),
+    );
     expect(
-      screen.queryByText('the download could not be completed'),
+      await screen.findByRole('heading', { name: 'Neighbourhood photo' }),
+    ).toBeVisible();
+
+    // The discard was of the resource this field no longer holds, so a failure
+    // notice beside the new one would be about nothing on screen, and its
+    // retry would delete a file this field has let go of.
+    expect(
+      screen.queryByText('the resource could not be discarded'),
     ).toBeNull();
     expect(screen.queryByRole('button', { name: 'Try that again' })).toBeNull();
   });
@@ -1339,54 +1329,13 @@ describe('the validation state a picker exposes', () => {
 });
 
 /**
- * The two ways a picker can be left showing something that is no longer true:
- * a call still in flight for a resource the field has let go, and a source
- * chosen but never followed through.
+ * A picker left showing something that is no longer true: a source chosen but
+ * never followed through.
+ *
+ * The other way — a call still in flight for a resource the field has let go —
+ * is above, with the rest of what a field does when it changes its mind.
  */
 describe('a picker the researcher backs out of', () => {
-  it('drops an in-flight download when the resource is removed', async () => {
-    const user = userEvent.setup();
-    const held = deferred<void>();
-    const { fieldValue } = renderResourceEditor({
-      resources: [imageSeed],
-      client: (host) =>
-        withResourceProcedures(host.client, {
-          preview: async () => {
-            await held.promise;
-            return {
-              status: 'failed' as const,
-              failure: {
-                reason: 'unavailable' as const,
-                message: 'the download could not be completed',
-                retryable: true,
-              },
-            };
-          },
-        }),
-      fields: withBackgroundImage('image-1'),
-      children: imageField(),
-    });
-
-    await user.click(
-      await screen.findByRole('button', { name: 'Download this resource' }),
-    );
-    await user.click(
-      screen.getByRole('button', { name: 'Remove this resource' }),
-    );
-    await waitFor(() => expect(fieldValue('backgroundImage')).toBeUndefined());
-
-    held.settle(undefined);
-    await act(flushPendingWork);
-
-    // The download was of the resource the field just let go of, so a notice
-    // beside "No resource selected" would be about nothing on screen, and its
-    // retry would download the removed resource all over again.
-    expect(
-      screen.queryByText('the download could not be completed'),
-    ).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Try that again' })).toBeNull();
-  });
-
   it('keeps the interview network when the browser is cancelled', async () => {
     const user = userEvent.setup();
     const { fieldValue } = renderResourceEditor({

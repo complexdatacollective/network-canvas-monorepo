@@ -1160,8 +1160,6 @@
   "protocolBuilder.resourceKinds.videoSelectAction": "Select a video",
   "protocolBuilder.resourcePicker.discard": "Discard this resource",
   "protocolBuilder.resourcePicker.discardedAnnouncement": "The imported resource was discarded.",
-  "protocolBuilder.resourcePicker.download": "Download this resource",
-  "protocolBuilder.resourcePicker.downloadedAnnouncement": "{name} was downloaded.",
   "protocolBuilder.resourcePicker.importedFileOption": "Use a network data file",
   "protocolBuilder.resourcePicker.interviewNetworkAnnouncement": "This stage will use the network from the interview itself.",
   "protocolBuilder.resourcePicker.interviewNetworkOption": "Use the network from the in-progress interview",

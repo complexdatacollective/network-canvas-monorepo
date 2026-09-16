@@ -147,6 +147,20 @@ describe("a roster stage's data file", () => {
   it('clears everything chosen from the old file when the file changes', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-roster-1',
+      // A second data file, because a swap is what this is about: the protocol
+      // ships one roster, and choosing it again is not a change at all.
+      assets: {
+        second_roster_data: {
+          name: 'Second roster',
+          type: 'network',
+          source: 'second-roster.json',
+        },
+      },
+      assetBytes: {
+        'second-roster.json': JSON.stringify({
+          nodes: [{ attributes: { nickname: 'Ama' } }],
+        }),
+      },
       sections: (
         <>
           <ExternalDataSourceSection />
@@ -157,21 +171,18 @@ describe("a roster stage's data file", () => {
       ),
     });
 
-    // The way a researcher swaps rosters: take the old file off the stage,
-    // then choose one. Everything chosen from the old file's columns goes with
-    // the first half of that.
+    // The way a researcher swaps rosters: choose another file over the one the
+    // stage was opened on. Everything chosen from the old file's columns goes
+    // with it.
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove this resource' }),
+      await screen.findByRole('button', { name: 'Change the data file' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: /Select/ }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Roster' }),
+      await screen.findByRole('button', { name: 'Second roster' }),
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.dataSource).toBe('roster_data');
+    expect(request?.stageDocument.dataSource).toBe('second_roster_data');
     expect(request?.stageDocument.cardOptions).toBeUndefined();
     expect(request?.stageDocument.sortOptions).toBeUndefined();
     expect(request?.stageDocument.searchOptions).toBeUndefined();

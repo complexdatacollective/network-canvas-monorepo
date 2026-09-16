@@ -274,35 +274,34 @@ export const Chosen: Story = {
   // assertion below would pass on any button at all.
   parameters: { playsInJsdom: false },
   /**
-   * Architect carries destructive intent on the colour, never on a variant
-   * (`Codebook/EntityType.tsx:177` filled, `AssetCard.tsx:277` on a row) and
-   * has no hollow button anywhere. Letting go of a resource is the one
-   * irreversible thing this field offers, and it used to look exactly like
-   * the download beside it.
+   * The card describes the resource and does not manage it. Saving a copy of
+   * one and deleting one belong to the resource library, where every resource
+   * in the protocol is listed; a stage field that offered them put two
+   * protocol-wide actions on whichever stage happened to name this file.
+   *
+   * What is left is the one thing the field itself decides: which resource it
+   * points at. That is Architect's own add affordance — primary, with a plus
+   * (`Codebook/EntityType.tsx:177` for the same treatment).
    */
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const remove = buttonPaint(
-      await canvas.findByRole('button', { name: 'Remove this resource' }),
-    );
-    await expect(remove.colour).toBe(remove.token('destructive'));
-    await expect(remove.background).not.toBe(TRANSPARENT);
-    await expect(remove.borderWidth).toBe('0px');
+    // The card is on screen, so the absences below are the card's own and not
+    // a play that ran before the resource arrived.
+    await canvas.findByRole('img', { name: IMAGE_RESOURCE.name });
+    await expect(
+      canvas.queryByRole('button', { name: 'Download this resource' }),
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole('button', { name: 'Remove this resource' }),
+    ).toBeNull();
 
-    // The action that only reads the resource is not painted as the one that
-    // lets go of it.
-    const download = buttonPaint(
-      canvas.getByRole('button', { name: 'Download this resource' }),
-    );
-    await expect(download.colour).not.toBe(download.token('destructive'));
-
-    // Choosing another is Architect's own add affordance: primary, with a plus.
     const browse = canvas.getByRole('button', { name: 'Change the image' });
     await expect(buttonPaint(browse).colour).toBe(
       buttonPaint(browse).token('primary'),
     );
+    await expect(buttonPaint(browse).background).not.toBe(TRANSPARENT);
     await expect(browse.querySelector('svg')).not.toBeNull();
   },
 };

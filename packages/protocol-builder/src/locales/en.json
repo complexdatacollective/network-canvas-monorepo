@@ -4643,14 +4643,6 @@
     "defaultMessage": "The imported resource was discarded.",
     "description": "Announced to assistive technology when a resource imported while this stage has been open is thrown away."
   },
-  "protocolBuilder.resourcePicker.download": {
-    "defaultMessage": "Download this resource",
-    "description": "Button that saves a copy of the resource this stage field holds to the researcher’s computer."
-  },
-  "protocolBuilder.resourcePicker.downloadedAnnouncement": {
-    "defaultMessage": "{name} was downloaded.",
-    "description": "Announced to assistive technology once a copy of a resource has been saved to the researcher’s computer. name is the resource’s name."
-  },
   "protocolBuilder.resourcePicker.importedFileOption": {
     "defaultMessage": "Use a network data file",
     "description": "Radio option choosing imported participant data (a roster) rather than the network the interview has built so far."
@@ -4669,7 +4661,7 @@
   },
   "protocolBuilder.resourcePicker.remove": {
     "defaultMessage": "Remove this resource",
-    "description": "Button that clears this stage field, leaving the resource itself in the protocol."
+    "description": "Button that clears this stage field, leaving the resource itself in the protocol. Offered beside a failure or a refusal, where choosing a replacement is not the only thing a researcher can reasonably want to do."
   },
   "protocolBuilder.resourcePicker.removedAnnouncement": {
     "defaultMessage": "The resource was removed from this field.",
@@ -4677,7 +4669,7 @@
   },
   "protocolBuilder.resourcePicker.retryAction": {
     "defaultMessage": "Try that again",
-    "description": "Button beside a failure notice, which repeats the download or discard the researcher just asked for."
+    "description": "Button beside a failure notice, which repeats the discard the researcher just asked for."
   },
   "protocolBuilder.resourcePicker.retryInspection": {
     "defaultMessage": "Try loading this resource again",
