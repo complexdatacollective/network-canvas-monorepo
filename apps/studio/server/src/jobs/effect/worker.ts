@@ -21,6 +21,7 @@ import type { SqlClient, SqlError } from 'effect/unstable/sql';
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { Database, Transaction, withTransaction } from './database.ts';
+import { causeError, deepestMessage } from './errors.ts';
 import { Jobs, type JobId } from './jobs.ts';
 import {
   type JobPayload,
@@ -469,7 +470,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       return settled;
     }
 
-    const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause));
+    const error = causeError(exit.cause);
     if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
       yield* withTransaction(settleDead(jobId, describe(error), settledAt));
       yield* Effect.logError(
@@ -479,7 +480,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       return dead;
     }
 
-    const message = describe(error ?? Cause.squash(exit.cause));
+    const message = describe(error);
     const step = yield* withTransaction(
       settleFailure(queue, jobId, claimed.attempts, message, settledAt),
     );
@@ -675,7 +676,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             // A singleton queue whose last run has not finished. Ordinary:
             // the next tick picks it up.
             yield* Effect.logInfo(
-              `schedule ${row.name} did not enqueue: ${describe(Cause.squash(enqueued.cause))}`,
+              `schedule ${row.name} did not enqueue: ${describe(causeError(enqueued.cause))}`,
             );
           }
         }
@@ -831,9 +832,5 @@ export const backoffSeconds = Effect.fnUntraced(function* (
     : Math.min(declaration.retryDelayMax, delay);
 });
 
-const describe = (error: unknown): string => {
-  const text = Predicate.hasProperty(error, 'message')
-    ? String(error.message)
-    : String(error);
-  return text.slice(0, MAX_ERROR_LENGTH);
-};
+const describe = (error: unknown): string =>
+  (deepestMessage(error) ?? String(error)).slice(0, MAX_ERROR_LENGTH);

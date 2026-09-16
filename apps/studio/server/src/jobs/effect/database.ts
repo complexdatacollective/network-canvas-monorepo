@@ -30,6 +30,14 @@ export type DatabaseConfig = {
   readonly url: string;
   readonly maxConnections?: number | undefined;
   readonly applicationName?: string | undefined;
+  /**
+   * A schema to resolve unqualified names against, pinned per transaction. The
+   * production clients carry none — the server's pools deliberately do not —
+   * but the suites provision a scratch schema per file and every Studio table
+   * in it is unqualified. This is the `search_path` half of #1927 §20 Q6's
+   * fallback A, which rc.116's `startupParameters` replaces.
+   */
+  readonly searchPath?: string | undefined;
 };
 
 /** The role a given identity runs as; the owner is the connecting login. */
@@ -49,6 +57,7 @@ export class Database extends Context.Service<
   {
     readonly identity: DatabaseIdentity;
     readonly sql: PgClient.PgClient;
+    readonly searchPath: string | null;
   }
 >()('@studio/jobs/effect/Database') {
   static readonly layer = (
@@ -63,7 +72,8 @@ export class Database extends Context.Service<
           maxConnections: config.maxConnections ?? 10,
           applicationName: config.applicationName ?? `studio-${identity}`,
         }),
-        (sql) => Database.of({ identity, sql }),
+        (sql) =>
+          Database.of({ identity, sql, searchPath: config.searchPath ?? null }),
       ),
     ).pipe(Layer.provide(Reactivity.layer));
 }
@@ -87,18 +97,30 @@ export class Transaction extends Context.Service<
   }
 >()('@studio/jobs/effect/Transaction') {}
 
-/** `set local role`, the rc.115 stand-in for a `role` startup parameter. */
-const pinRole = (
+/**
+ * `set local role` and `set local search_path`, the rc.115 stand-ins for the
+ * two startup parameters rc.116 adds. Neither is a bindable parameter: the
+ * role comes from a constant this module owns, and the search path is checked
+ * against the same identifier rule the DDL is.
+ */
+const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
+
+const pinSession = (
   sql: SqlClient.SqlClient,
-  identity: DatabaseIdentity,
-): Effect.Effect<void, SqlError.SqlError> => {
-  const role = roleFor(identity);
-  // A role name is not a bindable parameter; these two come from a constant
-  // this module owns, never from a caller.
-  return role === null
-    ? Effect.void
-    : Effect.asVoid(sql.unsafe(`set local role ${role}`));
-};
+  service: Database['Service'],
+): Effect.Effect<void, SqlError.SqlError> =>
+  Effect.gen(function* () {
+    const role = roleFor(service.identity);
+    if (role !== null) yield* sql.unsafe(`set local role ${role}`);
+    if (service.searchPath !== null) {
+      if (!IDENTIFIER.test(service.searchPath)) {
+        return yield* Effect.die(
+          new Error(`invalid search path: ${JSON.stringify(service.searchPath)}`),
+        );
+      }
+      yield* sql.unsafe(`set local search_path to ${service.searchPath}`);
+    }
+  });
 
 /**
  * One transaction on the identity's client, with `Transaction` provided to the
@@ -113,12 +135,12 @@ export const withTransaction = <A, E, R>(
   E | SqlError.SqlError,
   Database | Exclude<R, Transaction>
 > =>
-  Database.use(({ identity, sql }) =>
-    sql.withTransaction(
+  Database.use((service) =>
+    service.sql.withTransaction(
       Effect.provideService(
-        Effect.flatMap(pinRole(sql, identity), () => body),
+        Effect.flatMap(pinSession(service.sql, service), () => body),
         Transaction,
-        Transaction.of({ sql, teamId: null }),
+        Transaction.of({ sql: service.sql, teamId: null }),
       ),
     ),
   );
@@ -136,16 +158,16 @@ export const withTenantTransaction = <A, E, R>(
   E | SqlError.SqlError,
   Database | Exclude<R, Transaction>
 > =>
-  Database.use(({ identity, sql }) =>
-    sql.withTransaction(
+  Database.use((service) =>
+    service.sql.withTransaction(
       Effect.provideService(
         Effect.gen(function* () {
-          yield* pinRole(sql, identity);
-          yield* sql`select set_config('app.team_id', ${teamId}, true)`;
+          yield* pinSession(service.sql, service);
+          yield* service.sql`select set_config('app.team_id', ${teamId}, true)`;
           return yield* body;
         }),
         Transaction,
-        Transaction.of({ sql, teamId }),
+        Transaction.of({ sql: service.sql, teamId }),
       ),
     ),
   );

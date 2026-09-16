@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { Context, Effect, Layer } from 'effect';
 
+import {
+  createScratchSchema,
+  provisionScratchSchema,
+  type ScratchSchema,
+} from '../../../__tests__/support/postgres.ts';
 import type { DbEnv } from '../../../env.ts';
 import { Database, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
@@ -191,3 +196,97 @@ export const readJobs = Effect.fnUntraced(function* (queue?: string) {
     ),
   );
 });
+
+// The delivery suite needs Studio's own schema as well as the queue's, so it
+// reuses the pg-based scratch-schema helpers every other Studio suite uses and
+// installs the queue into a sibling schema. The pg pools stay available for
+// fixtures and oracles; the queue and the handler run on the Effect clients,
+// which carry `search_path` so the unqualified Studio tables resolve.
+
+export type DeliveryHarnessShape = QueueHarnessShape & {
+  /** The Studio schema these clients resolve unqualified names against. */
+  readonly studioSchema: string;
+  readonly scratch: ScratchSchema;
+};
+
+export class DeliveryHarness extends Context.Service<
+  DeliveryHarness,
+  DeliveryHarnessShape
+>()('@studio/jobs/effect/test/DeliveryHarness') {}
+
+export const layerDeliveryHarness = (
+  db: DbEnv,
+): Layer.Layer<DeliveryHarness | QueueHarness> =>
+  Layer.effectContext(
+    Effect.gen(function* () {
+      const scratch = yield* Effect.promise(async () => {
+        const created = await createScratchSchema(db);
+        await provisionScratchSchema(created.pool);
+        return created;
+      });
+      const studioSchema = yield* Effect.promise(async () => {
+        const { rows } = await scratch.pool.query<{ schema: string }>(
+          'select current_schema() as schema',
+        );
+        return rows[0]!.schema;
+      });
+      // A sibling of the Studio schema, named so the `studio_test_%` sweep in
+      // scripts/apply.ts reclaims it after a crashed run — the same rule
+      // pg-boss's scratch schema follows.
+      const schema = `${studioSchema}_ejobs`;
+
+      const build = (identity: 'app' | 'maintenance' | 'owner') =>
+        Effect.map(
+          Effect.orDie(
+            Layer.build(
+              Database.layer(identity, {
+                url: db.url,
+                maxConnections: 6,
+                applicationName: `studio-jobs-spike-${identity}`,
+                searchPath: studioSchema,
+              }),
+            ),
+          ),
+          (context) => Context.get(context, Database),
+        );
+      const owner = yield* build('owner');
+      const app = yield* build('app');
+      const maintenance = yield* build('maintenance');
+
+      yield* Effect.orDie(
+        Effect.provideService(
+          withTransaction(
+            Effect.gen(function* () {
+              const { sql } = yield* Database;
+              for (const statement of [
+                ...splitPlainStatements(jobSchemaSql(schema)),
+                ...splitPlainStatements(jobSchemaGrantsSql(schema)),
+              ]) {
+                yield* sql.unsafe(statement);
+              }
+            }),
+          ),
+          Database,
+          owner,
+        ),
+      );
+
+      yield* Effect.addFinalizer(() =>
+        Effect.promise(async () => {
+          await scratch.dispose();
+        }),
+      );
+
+      const shape: DeliveryHarnessShape = {
+        schema,
+        studioSchema,
+        app,
+        maintenance,
+        owner,
+        scratch,
+      };
+      return Context.make(DeliveryHarness, DeliveryHarness.of(shape)).pipe(
+        Context.add(QueueHarness, QueueHarness.of(shape)),
+      );
+    }),
+  );

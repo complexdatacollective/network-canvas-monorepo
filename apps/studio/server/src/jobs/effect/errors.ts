@@ -1,0 +1,92 @@
+import { Cause, Exit, Option, Predicate } from 'effect';
+
+// Reading a SQLSTATE back out of an Effect failure. `@effect/sql-pg` classifies
+// a driver error into a `SqlError` reason — `LockTimeoutError`,
+// `AuthorizationError` and so on — but the reasons are coarser than the codes
+// the queue and the delivery handler act on, and the reason for `55P03` on
+// rc.115 is `UnknownError`. The original driver error is still in the cause
+// chain, so the code is read off that, the way
+// `src/__tests__/support/postgres.ts` reads it today.
+//
+// #1927 §9 plans `sqlState(error)` as a stage-3 helper over drizzle's wrapper
+// as well; this is the same function with one fewer wrapper to walk.
+
+/** `lock_not_available`: the statement asked not to wait, and would have. */
+const LOCK_NOT_AVAILABLE = '55P03';
+
+/** `insufficient_privilege`. */
+export const INSUFFICIENT_PRIVILEGE = '42501';
+
+/** `unique_violation`. */
+export const UNIQUE_VIOLATION = '23505';
+
+/** `foreign_key_violation`. */
+export const FOREIGN_KEY_VIOLATION = '23503';
+
+/**
+ * The SQLSTATE a value carries, wherever in its cause chain it sits. Read
+ * through the chain rather than off the top: a missing `code` would otherwise
+ * read the same as a privilege error that never happened.
+ */
+export function sqlState(error: unknown): string | undefined {
+  let current: unknown = error;
+  while (Predicate.isObject(current)) {
+    if (
+      Predicate.hasProperty(current, 'code') &&
+      Predicate.isString(current.code)
+    ) {
+      return current.code;
+    }
+    if (!Predicate.hasProperty(current, 'cause')) return undefined;
+    current = current.cause;
+  }
+  return undefined;
+}
+
+/** The failure a `Cause` carries — its typed error, or its defect. */
+export function causeError(cause: Cause.Cause<unknown>): unknown {
+  return (
+    Option.getOrUndefined(Cause.findErrorOption(cause)) ?? Cause.squash(cause)
+  );
+}
+
+/** The SQLSTATE a failed `Exit` carries, if it carries one. */
+export function exitSqlState(
+  exit: Exit.Exit<unknown, unknown>,
+): string | undefined {
+  return Exit.isSuccess(exit) ? undefined : sqlState(causeError(exit.cause));
+}
+
+/**
+ * The most specific message in a failure's cause chain. `@effect/sql-pg` wraps
+ * the driver error in a `SqlError` whose own message is always
+ * `PgConnection: Query failed`, so the outermost `message` says nothing about
+ * what went wrong — the useful one is the Postgres error underneath it. A
+ * failure with no chain (a tagged error of our own) answers with its own.
+ */
+export function deepestMessage(value: unknown): string | undefined {
+  let current: unknown = value;
+  let deepest: string | undefined;
+  while (Predicate.isObject(current)) {
+    if (
+      Predicate.hasProperty(current, 'message') &&
+      Predicate.isString(current.message) &&
+      current.message.length > 0
+    ) {
+      deepest = current.message;
+    }
+    if (!Predicate.hasProperty(current, 'cause')) break;
+    current = current.cause;
+  }
+  return deepest;
+}
+
+/** True when the statement asked not to wait for a lock and would have. */
+export function isLockUnavailable(error: unknown): boolean {
+  return sqlState(error) === LOCK_NOT_AVAILABLE;
+}
+
+/** The same question of a whole `Cause`, which is what an `Exit` carries. */
+export function isLockUnavailableCause(cause: Cause.Cause<unknown>): boolean {
+  return isLockUnavailable(causeError(cause));
+}
