@@ -13,7 +13,7 @@ describe('what becomes of a person already considered', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openSection());
 
-    await harness.roundTrip({ unowned: ['label', 'subject', 'prompts'] });
+    await harness.roundTrip({ unowned: ['subject', 'prompts'] });
   });
 
   /**

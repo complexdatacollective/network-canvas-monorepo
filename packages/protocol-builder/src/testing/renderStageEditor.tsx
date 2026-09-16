@@ -41,6 +41,7 @@ import type {
   StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
+  StageProblemsStore,
   StageSection,
   StageSectionsStore,
   StageSectionStatus,
@@ -266,6 +267,11 @@ export type StageEditorHarness = RenderResult &
      * The editor is simply missing a section, and a researcher who opens the
      * stage cannot see or change something their protocol holds. So an
      * unrendered key has to be declared, one at a time, in `unowned`.
+     *
+     * The declaration is checked in BOTH directions. A key named in `unowned`
+     * that something mounted here does edit is refused too: a tolerated one
+     * states something false about the editor and hides the case the list is
+     * there to catch.
      */
     roundTrip(
       options?: Readonly<{
@@ -284,6 +290,16 @@ export type StageEditorHarness = RenderResult &
      * a host's list would use. See {@link SECTION_STATE_WORDS}.
      */
     outline(): { title: string; state: string }[];
+    /**
+     * What the editor refuses about the stage that NO section answers for, as
+     * the sentences a host would read out.
+     *
+     * The other half of what a refused save is about. A host that renders only
+     * the sections sees nothing of these — they belong to no field and to no
+     * section — so an editor that dropped them left a researcher pressing Save
+     * and being told nothing at all.
+     */
+    problems(): string[];
     /**
      * Hands the stage's lock to somebody else while this editor still believes
      * it holds it.
@@ -450,6 +466,16 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * only control that path has.
      */
     actions?: StageEditorActions;
+    /**
+     * The host's own chrome ABOVE the form — its stage title.
+     *
+     * Given, it REPLACES the plain title the harness draws for itself: the
+     * name is one registered field and two titles would be two registrations
+     * of it. For a test about a host's real title — Architect's, which draws a
+     * picture of the interface and where the stage sits — rather than about
+     * the editor beneath it.
+     */
+    header?: StageEditorActions;
     /**
      * Mounts the editor with its action slot EMPTY, as a spectator view is.
      *
@@ -692,6 +718,9 @@ export function renderStageEditor<T extends StageType = StageType>(
               {...(options.actions === undefined
                 ? {}
                 : { actions: options.actions })}
+              {...(options.header === undefined
+                ? {}
+                : { hostHeader: options.header })}
               {...(options.editor === undefined
                 ? {}
                 : { editor: options.editor })}
@@ -852,6 +881,18 @@ export function renderStageEditor<T extends StageType = StageType>(
           `Nothing mounted here edits "${seeded.id}" keys: ${orphaned.join(', ')}. They round-trip untouched, so a researcher cannot see or change them. Add the section that owns each one, or name it in \`unowned\` to say the editor does not own it yet.`,
         );
       }
+      // The declaration polices itself. A key named as unowned that a mounted
+      // section DOES edit is a statement about this editor that is no longer
+      // true, and tolerating it was how twenty-nine declarations went on
+      // naming `label` for a year after the stage's name stopped being a
+      // section of the editor — each one masking the very signal the list
+      // exists to raise.
+      const claimed = unowned.filter((key) => owned.has(key));
+      if (claimed.length > 0) {
+        throw new Error(
+          `"${seeded.id}" names ${claimed.join(', ')} in \`unowned\`, but something mounted here edits ${claimed.length === 1 ? 'it' : 'them'}. Drop ${claimed.length === 1 ? 'it' : 'them'} from the list: an editor that owns a key must not also declare that it does not.`,
+        );
+      }
       const written = await submit();
       if (written === null) {
         throw new Error(
@@ -877,6 +918,8 @@ export function renderStageEditor<T extends StageType = StageType>(
       return written;
     },
     outline: () => readOutline(sectionsProbe.read()),
+    problems: () =>
+      sectionsProbe.readProblems().map((problem) => readMessage(problem)),
     takeOverLock: () => {
       store.release(stageSectionId, HARNESS_PRINCIPAL);
       store.acquire(stageSectionId, COLLABORATOR);
@@ -1023,15 +1066,14 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
   };
 }
 
-/** The host's own chrome, with the stage's title above it. */
-const withStageTitle =
-  (inner: StageEditorActions): StageEditorActions =>
-  (context) => (
-    <>
-      <HostStageTitle />
-      {inner(context)}
-    </>
-  );
+/**
+ * The stage's title, for the shell's header slot.
+ *
+ * A slot rather than a wrapper around the action chrome: the header is where a
+ * host draws a title, so the harness draws one there too and a test about
+ * DOCUMENT order reads the same order a host's page has.
+ */
+const stageTitleHeader: StageEditorActions = () => <HostStageTitle />;
 
 function HarnessEditor<T extends StageType>({
   target,
@@ -1040,6 +1082,7 @@ function HarnessEditor<T extends StageType>({
   submitLabel,
   onSaved,
   actions,
+  hostHeader,
   editor: Editor,
   sections,
   registry,
@@ -1054,6 +1097,8 @@ function HarnessEditor<T extends StageType>({
   submitLabel: string;
   onSaved: (sectionId: ProtocolSectionId) => void;
   actions?: StageEditorActions;
+  /** The host's own title, in place of the harness's plain one. */
+  hostHeader?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
@@ -1066,16 +1111,18 @@ function HarnessEditor<T extends StageType>({
   // otherwise the same fallback save control the editor would have chosen for
   // itself — and nothing at all for the one call that is about an empty slot.
   //
-  // The stage's title goes in with it, whichever chrome a test asked for,
-  // because drawing one is now the host's job and not the editor's: a harness
-  // that left it out would be an editor with no way to name the stage, and
-  // every test that types a name would have to mount a title of its own. A
-  // call that asked for NO chrome gets no title either — that one is about an
-  // empty slot.
+  // The stage's title goes in the HEADER slot beside it, whichever chrome a
+  // test asked for, because drawing one is now the host's job and not the
+  // editor's: a harness that left it out would be an editor with no way to
+  // name the stage, and every test that types a name would have to mount a
+  // title of its own. A call that asked for NO chrome gets no title either —
+  // that one is about an empty slot.
   const chrome =
     withoutActionChrome === true
       ? undefined
-      : captureSections(withStageTitle(actions ?? saveStageAction));
+      : captureSections(actions ?? saveStageAction);
+  const header =
+    withoutActionChrome === true ? undefined : (hostHeader ?? stageTitleHeader);
 
   if (sections === undefined && Editor === undefined) {
     return (
@@ -1086,6 +1133,7 @@ function HarnessEditor<T extends StageType>({
         onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
         {...(chrome === undefined ? {} : { actions: chrome })}
+        {...(header === undefined ? {} : { header })}
       />
     );
   }
@@ -1095,6 +1143,7 @@ function HarnessEditor<T extends StageType>({
       <StageEditSession target={target} formId={formId} onSaved={onSaved}>
         {Editor === undefined ? (
           <StageEditorShell
+            {...(header === undefined ? {} : { header })}
             {...(chrome === undefined
               ? {}
               : {
@@ -1103,13 +1152,11 @@ function HarnessEditor<T extends StageType>({
                     // slot anyway: read from the prop rather than out of the
                     // context so the name means one thing in this component.
                     actions === undefined
-                      ? captureSections(
-                          withStageTitle(() => (
-                            <SubmitButton form={formId}>
-                              {submitLabel}
-                            </SubmitButton>
-                          )),
-                        )
+                      ? captureSections(() => (
+                          <SubmitButton form={formId}>
+                            {submitLabel}
+                          </SubmitButton>
+                        ))
                       : chrome,
                 })}
           >
@@ -1119,6 +1166,7 @@ function HarnessEditor<T extends StageType>({
           <NamedEditorUnderTest
             editor={Editor}
             {...(chrome === undefined ? {} : { actions: chrome })}
+            {...(header === undefined ? {} : { header })}
           />
         )}
       </StageEditSession>
@@ -1136,9 +1184,11 @@ function HarnessEditor<T extends StageType>({
 function NamedEditorUnderTest<T extends StageType>({
   editor: Editor,
   actions,
+  header,
 }: Readonly<{
   editor: StageEditorComponent<T>;
   actions?: StageEditorActions;
+  header?: StageEditorActions;
 }>) {
   const { identity } = useStageEdit();
   if (identity === undefined) return null;
@@ -1146,6 +1196,7 @@ function NamedEditorUnderTest<T extends StageType>({
     <Editor
       stageType={identity.type as T}
       {...(actions === undefined ? {} : { actions })}
+      {...(header === undefined ? {} : { header })}
     />
   );
 }
@@ -1392,14 +1443,18 @@ function readOutline(sections: readonly StageSection[]): {
 function createSectionsProbe(): Readonly<{
   wrap: (inner: StageEditorActions) => StageEditorActions;
   read: () => readonly StageSection[];
+  readProblems: () => readonly string[];
 }> {
   let published: StageSectionsStore | undefined;
+  let publishedProblems: StageProblemsStore | undefined;
   return {
     wrap: (inner) => (context) => {
       published = context.sections;
+      publishedProblems = context.problems;
       return inner(context);
     },
     read: () => published?.getSnapshot() ?? [],
+    readProblems: () => publishedProblems?.getSnapshot() ?? [],
   };
 }
 

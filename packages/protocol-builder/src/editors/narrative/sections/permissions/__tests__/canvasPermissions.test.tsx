@@ -18,7 +18,7 @@ describe('what the participant may do to a narrative canvas', () => {
     // Everything else about a narrative stage belongs to sections this mount
     // does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'presets', 'background'],
+      unowned: ['subject', 'presets', 'background'],
     });
   });
 

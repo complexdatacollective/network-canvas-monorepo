@@ -128,7 +128,6 @@ describe('a page shown before a task begins', () => {
   });
 
   const pedigreeUnowned = [
-    'label',
     'nodeConfig',
     'edgeConfig',
     'framing',

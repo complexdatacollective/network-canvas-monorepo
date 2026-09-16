@@ -143,7 +143,7 @@ describe('the map a geospatial stage shows', () => {
 
     // The type the stage places on the map, and the stage's own name, belong
     // to sections this mount does not include.
-    await harness.roundTrip({ unowned: ['subject', 'label'] });
+    await harness.roundTrip({ unowned: ['subject'] });
   });
 
   /**

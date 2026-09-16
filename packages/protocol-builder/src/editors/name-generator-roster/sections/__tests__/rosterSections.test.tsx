@@ -288,7 +288,7 @@ describe("what a roster's cards show", () => {
     // The stage's name, the type it lists, what it asks and how it behaves
     // belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'prompts', 'behaviours'],
+      unowned: ['subject', 'prompts', 'behaviours'],
     });
   });
 

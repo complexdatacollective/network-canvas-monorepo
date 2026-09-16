@@ -106,7 +106,7 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background'],
+      unowned: ['subject', 'background'],
     });
     // Read back as well as compared: a round trip that agreed about an empty
     // document would otherwise pass.
@@ -1728,7 +1728,7 @@ describe('what a composer field’s control accepts', () => {
     await screen.findByText(DATE_ATTRIBUTE);
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background', 'quickAdd', 'layoutVariable'],
+      unowned: ['subject', 'background'],
     });
     expect(nodeFormFieldsOf(saved.stageDocument)[0]).toMatchObject({
       parameters: { type: 'full', min: '2020-01-01' },

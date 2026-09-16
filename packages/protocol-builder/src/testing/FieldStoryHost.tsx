@@ -57,9 +57,25 @@ export type FieldStoryHostProps = Readonly<{
   /** The stage of the shared all-interfaces protocol the field is a part of. */
   stageId: string;
   /** What the section around the field is called. */
-  sectionTitle: string;
-  /** The field, or fields, under the researcher's cursor. */
-  children: ReactNode;
+  sectionTitle?: string;
+  /**
+   * The field, or fields, under the researcher's cursor, inside a section of
+   * the form. Omitted by a story whose field is the host's own chrome rather
+   * than part of the form's body — see `header`.
+   */
+  children?: ReactNode;
+  /**
+   * Chrome the host draws ABOVE the form, in the editor's header slot.
+   *
+   * Where the stage's own title goes, and the only place it can be shown
+   * honestly: a title is drawn OUTSIDE the `<form>` element, and a control
+   * rendered outside its form behaves differently from the same control
+   * rendered inside one — its form owner, and therefore what Enter does, comes
+   * from the `form` attribute rather than from where it happens to sit. A
+   * story that mounted it as a section would be showing an arrangement no host
+   * produces.
+   */
+  header?: ReactNode;
   /** Somebody else holds the stage, so this editor opens read-only. */
   readOnly?: boolean;
   /**
@@ -102,6 +118,7 @@ export function FieldStoryHost({
   stageId,
   sectionTitle,
   children,
+  header,
   readOnly = false,
   creating = false,
   seedEdit,
@@ -141,8 +158,15 @@ export function FieldStoryHost({
             onSaved={(id) => setSaved(host.store.read(id).document)}
           >
             <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-              <StageEditorShell actions={hostChrome}>
-                <BuilderSection title={sectionTitle}>{children}</BuilderSection>
+              <StageEditorShell
+                actions={hostChrome}
+                {...(header === undefined ? {} : { header: () => header })}
+              >
+                {children === undefined ? null : (
+                  <BuilderSection title={sectionTitle ?? 'This field'}>
+                    {children}
+                  </BuilderSection>
+                )}
               </StageEditorShell>
               {/*
                 Named, because the editor above mounts live regions of its own:

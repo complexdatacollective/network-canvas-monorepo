@@ -255,7 +255,7 @@ describe('the fields a form collects', () => {
     // The stage's name, the type it collects about, and the screen shown
     // before it belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 
@@ -423,7 +423,7 @@ describe('the fields a form collects', () => {
     ).not.toBeInTheDocument();
     // An ego form has no subject to own; its name and its introduction screen
     // belong to sections this mount does not include.
-    await harness.roundTrip({ unowned: ['label', 'introductionPanel'] });
+    await harness.roundTrip({ unowned: ['introductionPanel'] });
   });
 
   /**
@@ -484,7 +484,7 @@ describe('the fields a form collects', () => {
     // The stage's name, the relationship it collects about, and the screen
     // shown before it belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 

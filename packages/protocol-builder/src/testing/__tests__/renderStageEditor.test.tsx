@@ -237,6 +237,26 @@ describe('the stage-editor test harness', () => {
   });
 
   /**
+   * And the declaration is checked in the other direction too.
+   *
+   * A key named as unowned that something mounted here DOES edit states
+   * something false about the editor, and a tolerated one hides the case the
+   * list exists to catch: twenty-nine of them went on naming `label` after the
+   * stage's name stopped being a section of the editor, each of them silently
+   * excusing whatever the mount stopped owning next.
+   */
+  it('refuses a key declared unowned that a mounted section edits', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <SubjectSection entity="node" />,
+    });
+
+    await expect(
+      harness.roundTrip({ unowned: ['form', 'prompts', 'subject'] }),
+    ).rejects.toThrow(/names subject in `unowned`, but something mounted/);
+  });
+
+  /**
    * A refusal reported as the last request that DID save is a refusal no test
    * can see: `submit()` answers truthfully, and `roundTrip()` compares against
    * a save that never happened.
