@@ -12,11 +12,6 @@
     "getStartedTitle": "Comenzar",
     "getStartedDescription": "Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes."
   },
-  "LanguageSelector": {
-    "label": "Idioma",
-    "searchPlaceholder": "Buscar idiomas...",
-    "emptyMessage": "No se encontraron idiomas."
-  },
   "Hero": {
     "headline": "Simplificando la recopilación de datos de redes complejas.",
     "description": "Network Canvas ofrece software <strong>gratuito y de código abierto</strong> para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",

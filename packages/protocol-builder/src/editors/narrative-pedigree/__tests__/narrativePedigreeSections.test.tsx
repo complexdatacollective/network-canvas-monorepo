@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import {
@@ -68,6 +69,20 @@ const offeredAttributesOf = (harness: StageEditorHarness): Promise<string[]> =>
   offeredAttributes(
     harness.user,
     attributeField('Node attribute', screen.getByRole('dialog')),
+  );
+
+/**
+ * The same list, read once it is the one the caller is waiting for — the
+ * window opened once and watched, rather than reopened on every attempt.
+ */
+const awaitOfferedAttributesOf = (
+  harness: StageEditorHarness,
+  areRight: (offered: string[]) => void,
+): Promise<string[]> =>
+  awaitOfferedAttributes(
+    harness.user,
+    attributeField('Node attribute', screen.getByRole('dialog')),
+    areRight,
   );
 
 /** The source pedigree with its only nomination prompt taken away. */
@@ -277,11 +292,9 @@ describe('the diseases a narrative pedigree defines', () => {
     // The prompt and the codebook both arrive over the protocol's own channel,
     // so the window is read until it has been told about the attribute this
     // case turns on rather than once, before either landed.
-    const offered = await waitFor(async () => {
-      const list = await offeredAttributesOf(harness);
-      expect(list).toContain('hasConditionZ');
-      return list;
-    });
+    const offered = await awaitOfferedAttributesOf(harness, (list) =>
+      expect(list).toContain('hasConditionZ'),
+    );
     // `is_ego` is the pedigree's participant marker, so a disease mapped to it
     // would paint the participant as affected in every interview;
     // `hasConditionX` is already mapped by the disease this stage holds.
@@ -302,11 +315,9 @@ describe('the diseases a narrative pedigree defines', () => {
     });
 
     await addDisease(harness);
-    const offered = await waitFor(async () => {
-      const list = await offeredAttributesOf(harness);
-      expect(list).toContain('hasConditionZ');
-      return list;
-    });
+    const offered = await awaitOfferedAttributesOf(harness, (list) =>
+      expect(list).toContain('hasConditionZ'),
+    );
     expect(offered).not.toContain('conditionNotes');
   });
 

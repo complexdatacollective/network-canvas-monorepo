@@ -754,6 +754,17 @@ describe('the header switcher lockup', () => {
     // team to name. A combobox here would open onto a list holding only the
     // study already on screen.
     expect(screen.queryByRole('combobox', { name: /^Study/ })).toBeNull();
-    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    // The team switcher is the lockup's one combobox; the header's language
+    // switcher is a combobox too, and not part of the lockup.
+    expect(
+      screen
+        .getAllByRole('combobox')
+        .filter(
+          (control) =>
+            !(control.getAttribute('aria-label') ?? '').startsWith(
+              'Interface language:',
+            ),
+        ),
+    ).toHaveLength(1);
   });
 });

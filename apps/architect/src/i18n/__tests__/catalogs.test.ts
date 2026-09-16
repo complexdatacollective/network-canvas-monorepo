@@ -64,10 +64,14 @@ describe('Architect catalog contract', () => {
   });
   it('detects a removed Spanish message and an altered ICU argument', () => {
     const incomplete = { ...es };
-    delete incomplete['architect.language.title'];
+    delete incomplete[
+      'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet'
+    ];
     expect(
       checkFullLocale(en, incomplete, esSources).some((x) =>
-        x.includes('architect.language.title'),
+        x.includes(
+          'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet',
+        ),
       ),
     ).toBe(true);
     const corrupt = {
@@ -103,11 +107,13 @@ describe('Architect catalog contract', () => {
     expect(issues[0]).toContain(en[id]?.defaultMessage ?? '');
   });
   it('detects a Spanish message with no record of the English behind it', () => {
-    const { 'architect.language.title': _unrecorded, ...missing } = esSources;
+    // Derived rather than named, for the reason given above: a hardcoded id
+    // makes this test fail the next time that message is renamed or removed.
+    const id = Object.keys(esSources).find((key) => en[key] !== undefined);
+    if (!id) throw new Error('The fixture needs one translated, recorded id');
+    const { [id]: _unrecorded, ...missing } = esSources;
     expect(
-      checkFullLocale(en, es, missing).filter((issue) =>
-        issue.includes('architect.language.title'),
-      ),
-    ).toEqual(['no recorded English source: architect.language.title']);
+      checkFullLocale(en, es, missing).filter((issue) => issue.includes(id)),
+    ).toEqual([`no recorded English source: ${id}`]);
   });
 });

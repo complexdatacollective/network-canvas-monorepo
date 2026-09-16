@@ -5,6 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   offeredAttributes,
   openAttributePicker,
@@ -269,8 +270,8 @@ describe('what a quick-add name generator records', () => {
       },
     });
 
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, field)).toContain('alias'),
+    await awaitOfferedAttributes(harness.user, field, (offered) =>
+      expect(offered).toContain('alias'),
     );
   });
 });

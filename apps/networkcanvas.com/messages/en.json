@@ -12,11 +12,6 @@
     "getStartedTitle": "Get Started",
     "getStartedDescription": "Choose the right Network Canvas app for designing a protocol or collecting network data."
   },
-  "LanguageSelector": {
-    "label": "Language",
-    "searchPlaceholder": "Search languages...",
-    "emptyMessage": "No languages found."
-  },
   "Hero": {
     "headline": "Simplifying complex network data collection.",
     "description": "Network Canvas provides <strong>free and open-source</strong> software for surveying networks, designed around the needs of both researchers and their participants.",

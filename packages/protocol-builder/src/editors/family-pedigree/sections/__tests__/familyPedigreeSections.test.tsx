@@ -16,11 +16,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
-  closeAttributePicker,
   inventAttribute,
   offeredAttributes,
-  openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
 import {
   renderStageEditor,
@@ -190,15 +189,9 @@ const awaitOffered = async (
   name: string,
   variableId: string,
 ): Promise<void> => {
-  await openAttributePicker(harness.user, attributeField(name, undefined));
-  await waitFor(() => {
-    expect(
-      screen
-        .getByRole('dialog')
-        .querySelector(`[role="option"][data-attribute-id="${variableId}"]`),
-    ).not.toBeNull();
-  });
-  await closeAttributePicker(harness.user);
+  await awaitOfferedAttributes(harness.user, attributeField(name), (offered) =>
+    expect(offered).toContain(variableId),
+  );
 };
 
 const FAMILY_MEMBER_SECTION = sectionId({
@@ -783,11 +776,10 @@ describe('the attributes a pedigree may bind', () => {
 
     // The two booleans this node type had before the field was added, and not
     // the one it now collects.
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Participant identifier')).toEqual([
-        'hasConditionX',
-        'is_ego',
-      ]),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Participant identifier'),
+      (offered) => expect(offered).toEqual(['hasConditionX', 'is_ego']),
     );
   });
 
@@ -979,8 +971,10 @@ describe('the attributes a pedigree may bind', () => {
       'kinship',
     );
 
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Display label')).toEqual(['fm_name']),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Display label'),
+      (offered) => expect(offered).toEqual(['fm_name']),
     );
   });
 
@@ -1031,10 +1025,10 @@ describe('the attributes a pedigree may bind', () => {
       'preferred_name',
     );
 
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Relationship to participant')).toEqual([
-        'fm_relationship_to_ego',
-      ]),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Relationship to participant'),
+      (offered) => expect(offered).toEqual(['fm_relationship_to_ego']),
     );
     // And the pedigree still saves, with each control holding its own
     // attribute: the exclusion withholds a pick, it does not block the stage.
@@ -2671,10 +2665,10 @@ describe('picks this session has already claimed', () => {
       'together',
     );
 
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Gestational carrier')).toEqual([
-        'isGestationalCarrier',
-      ]),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Gestational carrier'),
+      (offered) => expect(offered).toEqual(['isGestationalCarrier']),
     );
   });
 });

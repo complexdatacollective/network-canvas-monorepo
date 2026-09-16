@@ -737,7 +737,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   // chain or a timer that a real typist's fingers would have let through
   // arrives here only after the whole string is in.
   const keyboard = userEvent.setup({ delay: null });
-  const user = afterTheStageHasOpened(withSafeTypingIntoRichText(keyboard));
+  const user = asAResearcherActs(withSafeTypingIntoRichText(keyboard));
 
   /**
    * THIS harness's stage form, or `null` when what is mounted has none.
@@ -832,12 +832,7 @@ export function renderStageEditor<T extends StageType = StageType>(
         view.unmount();
       });
     },
-    opened: async () => {
-      // Everything the mount set in motion, settled: the acquire is a promise
-      // the effect made, so a turn of the microtask queue inside `act` is what
-      // its answer and the render that follows are waiting for.
-      await act(async () => {});
-    },
+    opened: settled,
     receiveCodebookUpdate: (patch) => {
       act(() => {
         for (const [id, document] of Object.entries(codebookSections(patch))) {
@@ -917,30 +912,55 @@ export function renderStageEditor<T extends StageType = StageType>(
 type HarnessUser = ReturnType<typeof userEvent.setup>;
 
 /**
- * The researcher's own actions, taken once the stage has finished opening.
+ * Every update the editor has in flight, run to a stop.
  *
- * A stage is not editable until the host has answered its acquire: until then
- * nobody has said whether this researcher may write to it, so the form renders
- * with its controls disabled. A test's first keystroke is otherwise in the
- * same turn as the render — earlier than any researcher could act, and into a
- * form that is on screen but not yet theirs.
+ * `act` drains the microtask queue and flushes what React has queued, again
+ * and again until nothing is left — so a chain of promise, state, render,
+ * effect, promise is followed the whole way down. What it deliberately does
+ * NOT wait out is a real timer, or a host that has not answered: those are
+ * waits a test states for itself, with an assertion that says what it is
+ * waiting for.
+ */
+const settled = async (): Promise<void> => {
+  await act(async () => {});
+};
+
+/**
+ * The researcher's own actions, taken on a settled editor and handed back on
+ * one.
  *
- * Waited for here, in the one place every test's interaction goes through,
+ * BEFORE, because a stage is not editable until the host has answered its
+ * acquire: until then nobody has said whether this researcher may write to it,
+ * so the form renders with its controls disabled. A test's first keystroke is
+ * otherwise in the same turn as the render — earlier than any researcher could
+ * act, and into a form that is on screen but not yet theirs.
+ *
+ * AFTER, because a control does not always answer a click in the click's own
+ * turn, and a researcher never sees a half-applied answer. A toggleable
+ * `Section` asks its owner whether it may open before it opens, so the panel
+ * arrives a microtask later — with the switch marked busy and the panel empty
+ * until it does. Nothing between one action and the next flushes that, because
+ * `userEvent` is set up here with no delay at all; a test reading the DOM
+ * straight after an action reads it mid-answer. Which test that bites varies
+ * run to run, because what settles the queue is whichever wait happened to
+ * poll.
+ *
+ * Both are done here, in the one place every test's interaction goes through,
  * rather than by each test: what a test is about is what it does to an open
  * editor, and "await the acquire first" in three hundred tests would be the
  * harness's own timing written out three hundred times.
  */
-function afterTheStageHasOpened(keyboard: HarnessUser): HarnessUser {
+function asAResearcherActs(keyboard: HarnessUser): HarnessUser {
   return new Proxy(keyboard, {
     get: (target, property, receiver) => {
       const value: unknown = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
       const action = value as (...args: unknown[]) => unknown;
       return async (...args: unknown[]) => {
-        // Everything the mount set in motion, settled: the acquire above all,
-        // which is what takes the controls out of their disabled state.
-        await act(async () => {});
-        return action.apply(target, args);
+        await settled();
+        const outcome: unknown = await action.apply(target, args);
+        await settled();
+        return outcome;
       };
     },
   });
