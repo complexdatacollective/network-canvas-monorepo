@@ -12,9 +12,9 @@ import type { JobClient } from './client.ts';
 /**
  * A transaction of its own, because better-auth mints the link outside any
  * transaction of ours: there is no domain write for this job to join. It is
- * still a transaction rather than a bare enqueue so `enqueueJob`'s contract —
- * a job is created by a client, inside a transaction — holds for every caller,
- * and so a failure leaves nothing half-written.
+ * still a transaction rather than a bare enqueue so the job client's contract —
+ * a job is created on a connection inside a transaction — holds for every
+ * caller, and so a failure leaves nothing half-written.
  */
 export async function enqueueSignInEmail(
   jobs: JobClient,

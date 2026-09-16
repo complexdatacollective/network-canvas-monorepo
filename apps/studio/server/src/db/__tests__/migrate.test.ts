@@ -1,14 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { JOB_QUEUES, JOB_SCHEMA } from '@codaco/studio-sync/jobs';
-
 import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
 import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import { installJobSchema } from '../../jobs/install.ts';
-import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../../jobs/queues.ts';
+import { installNativeJobSchema } from '../../jobs/effect/install.ts';
+import { NATIVE_JOB_SCHEMA } from '../../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
@@ -112,18 +110,7 @@ describe.skipIf(!db)('migrate', () => {
       expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
       expect(lines.at(-1)).toBe('Schema applied.');
 
-      // Not merely "tables exist": the queues are what the worker fetches from
-      // and the web process enqueues on, and they are created through pg-boss's
-      // own API rather than by the DDL — so a migrate that ran the statements
-      // and stopped would leave a database that boots and can queue nothing.
-      const queues = await scratch.pool.query<{ name: string }>(
-        `select name from ${JOB_SCHEMA}.queue order by name`,
-      );
-      expect(queues.rows.map((row) => row.name)).toEqual(
-        JOB_QUEUES.map(({ name }) => name).toSorted(),
-      );
-
-      // And the roles the server's pools pin themselves to, which the sidecars
+      // The roles the server's pools pin themselves to, which the sidecars
       // create: without them every pool is refused at connect.
       const roles = await scratch.pool.query<{ rolname: string }>(
         `select rolname from pg_roles where rolname in ('studio_app', 'studio_maintenance') order by rolname`,
@@ -139,10 +126,8 @@ describe.skipIf(!db)('migrate', () => {
   it(
     'creates the native job schema with its grants',
     async () => {
-      // The Effect-native queue (#1927) is installed by `migrate` from now on
-      // and worked by nothing in the image until stage 3 switches the callers
-      // onto it. It is in `SCHEMA_FINGERPRINT`, so a database this build
-      // stamped has to carry it — which makes the stamp, and not a later
+      // The queue's schema is in `SCHEMA_FINGERPRINT`, so a database this
+      // build stamped has to carry it — which makes the stamp, and not a later
       // migration, what this case is really about.
       const scratch = await emptyDatabase();
       const lines: string[] = [];
@@ -265,17 +250,14 @@ describe.skipIf(!db)('migrate', () => {
   );
 
   it(
-    "runs pg-boss's construction plan inside the caller's transaction",
+    'installs the job schema inside the caller’s transaction',
     async () => {
-      // The statement that would otherwise defeat every other guarantee here.
-      // `getConstructionPlans` returns a self-contained `BEGIN…COMMIT` script:
-      // run unaltered on a client that already has a transaction open, its
-      // COMMIT commits THAT transaction — no error, no warning anyone reads —
-      // and everything applied before it becomes durable. `installJobSchema`
-      // strips that outer transaction control, always, so there is no flag a
-      // caller can forget.
+      // `installNativeJobSchema` must carry no transaction control of its own:
+      // a COMMIT anywhere inside it would make everything `migrate` had applied
+      // before that point durable — no error, no warning anyone reads — and
+      // defeat every other guarantee here.
       //
-      // The marker table is the oracle: it is written before the plan and
+      // The marker table is the oracle: it is written before the install and
       // rolled back after it, so it survives only if something in between
       // committed.
       const scratch = await emptyDatabase();
@@ -283,7 +265,7 @@ describe.skipIf(!db)('migrate', () => {
       try {
         await client.query('begin');
         await client.query('create table rollback_marker (id int)');
-        await installJobSchema(client, JOB_SCHEMA);
+        await installNativeJobSchema(client, NATIVE_JOB_SCHEMA);
         await client.query('rollback');
       } finally {
         client.release();
@@ -295,7 +277,7 @@ describe.skipIf(!db)('migrate', () => {
       }>(
         `select to_regclass('rollback_marker') is not null as marker,
                 exists (select 1 from pg_namespace where nspname = $1) as jobs`,
-        [JOB_SCHEMA],
+        [NATIVE_JOB_SCHEMA],
       );
       expect(after.rows[0]).toEqual({ marker: false, jobs: false });
     },
@@ -305,11 +287,11 @@ describe.skipIf(!db)('migrate', () => {
   it(
     'leaves an empty database behind when a step fails, and applies next time',
     async () => {
-      // The failure that made atomicity necessary, at the last step that can
-      // have one: a queue whose policy the declaration no longer matches.
-      // `syncJobQueues` refuses that outright — pg-boss cannot change a policy
-      // after creation — and it refuses it AFTER the public schema and
-      // pg-boss's own have been applied.
+      // A failure at the last step that can have one: a database that already
+      // carries a `studio_jobs.jobs` of some other shape, so the install gets
+      // past `CREATE TABLE IF NOT EXISTS` and fails on the first index, whose
+      // predicate names a column that relation does not have — after the
+      // public schema has been applied inside the same transaction.
       //
       // A partial application is not a half-working database. The next run
       // reads tables with no fingerprint as `stale` and REFUSES it, so an
@@ -317,24 +299,16 @@ describe.skipIf(!db)('migrate', () => {
       // database that had never worked. Rolling back to empty means the next
       // run simply applies.
       const scratch = await emptyDatabase();
-      // Installed outside the transaction under test, so the rollback below
+      // Created outside the transaction under test, so the rollback below
       // cannot be credited with removing it: what has to disappear is
       // everything `migrate` itself wrote.
-      // Through the server's own renderer rather than pg-boss directly: the
-      // job source policy keeps that import to src/jobs (source-policy.test.ts),
-      // and these are the same two statements `installJobSchema` would run.
-      const [plan, grants] = renderJobStatements();
-      await scratch.pool.query(plan!);
-      await scratch.pool.query(grants!);
-      const [conflicting] = JOB_QUEUES;
-      // Declared `standard`; installed here as `singleton`.
+      await scratch.pool.query(`create schema ${NATIVE_JOB_SCHEMA}`);
       await scratch.pool.query(
-        `select ${JOB_SCHEMA}.create_queue($1, $2::jsonb)`,
-        [conflicting.name, JSON.stringify({ policy: 'singleton' })],
+        `create table ${NATIVE_JOB_SCHEMA}.jobs (id uuid primary key)`,
       );
 
       await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        /policy/,
+        /column "state" does not exist/,
       );
 
       // Nothing `migrate` wrote survives: not the tables, not the stamp.
@@ -347,20 +321,16 @@ describe.skipIf(!db)('migrate', () => {
       );
       expect(relations.rows[0]?.count).toBe('0');
 
-      // The native job schema is created inside the same transaction, after
-      // the step that failed here — so "nothing survives" has to cover a
-      // schema outside `public` that `checkSchema` does not look at.
-      const nativeJobs = await scratch.pool.query<{ present: boolean }>(
-        `select exists (select 1 from pg_namespace where nspname = $1) as present`,
+      // And what the install did manage before it failed is gone too: the
+      // job schema is outside `public`, where `checkSchema` does not look.
+      const jobTables = await scratch.pool.query<{ tablename: string }>(
+        `select tablename from pg_tables where schemaname = $1 order by 1`,
         [NATIVE_JOB_SCHEMA],
       );
-      expect(nativeJobs.rows[0]?.present).toBe(false);
+      expect(jobTables.rows.map((row) => row.tablename)).toEqual(['jobs']);
 
-      // And with the conflict removed — the remedy `syncJobQueues` names —
-      // the same database applies cleanly.
-      await scratch.pool.query(`select ${JOB_SCHEMA}.delete_queue($1)`, [
-        conflicting.name,
-      ]);
+      // And with the obstruction removed, the same database applies cleanly.
+      await scratch.pool.query(`drop schema ${NATIVE_JOB_SCHEMA} cascade`);
       expect(await migrateDatabase(scratch.pool, ddl)).toEqual({
         kind: 'applied',
       });

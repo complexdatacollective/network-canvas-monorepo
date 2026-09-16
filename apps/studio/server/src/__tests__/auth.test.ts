@@ -229,19 +229,23 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       });
       expect(send.status).toBe(200);
 
-      const queued = await scratch.pool.query<{ name: string; data: unknown }>(
-        `select name, data from ${scratch.jobSchema}.job_common`,
-      );
+      const queued = await scratch.pool.query<{
+        queue: string;
+        payload: unknown;
+      }>(`select queue, payload from ${scratch.nativeJobSchema}.jobs`);
       expect(queued.rows).toEqual([
         {
-          name: 'sign-in-email',
-          data: { email, url: expect.stringContaining('/api/auth/magic-link') },
+          queue: 'sign-in-email',
+          payload: {
+            email,
+            url: expect.stringContaining('/api/auth/magic-link'),
+          },
         },
       ]);
 
       // The link in the payload is the real one: the worker sends what is
       // here, so a job carrying anything else would sign nobody in.
-      const { url } = queued.rows[0]!.data as { url: string };
+      const { url } = queued.rows[0]!.payload as { url: string };
       const verify = await app.request(url);
       expect([302, 200]).toContain(verify.status);
       expect(verify.headers.get('set-cookie')).toBeTruthy();

@@ -19,19 +19,26 @@ import {
   DeniedAuditRateLimiter,
 } from '../../../../audit/denial-rate-limit.ts';
 import { DENIED_SCOPE_COUNTS_KEY } from '../../../../rate-limit.ts';
-import { createRateLimitStore } from '../../../../rate-limit/store.ts';
+import {
+  createRateLimitStore,
+  type RateLimitStore,
+} from '../../../../rate-limit/store.ts';
 import {
   DeliveryHarness,
   layerDeliveryHarness,
   layerWorker,
 } from '../../__tests__/support.ts';
 import { Database, withTransaction } from '../../database.ts';
+import { causeError } from '../../errors.ts';
 import { Jobs } from '../../jobs.ts';
 import { resolvedQueue } from '../../queues.ts';
 import { JobWorker, type HandledJob } from '../../worker.ts';
 import { deniedAttemptsSummary } from '../denied-attempts-summary.ts';
 import { DeniedAuditSummaryWriter } from '../denied-attempts/audit-writer.ts';
-import { DeniedAttemptsStore } from '../denied-attempts/store.ts';
+import {
+  DeniedAttemptsStore,
+  DeniedAttemptsStoreFailed,
+} from '../denied-attempts/store.ts';
 import {
   DeniedAttemptsMemory,
   layerMemoryStore,
@@ -43,13 +50,14 @@ import {
 // `src/jobs/__tests__/denied-attempts-summary.test.ts`, ported to the native
 // queue. The original file is untouched; this is a sibling, and every one of
 // its cases is here in its order, followed by the branches of the handler the
-// original never reached and the two cases the port adds: the job run through
-// `JobWorker`, and the same work against a real Valkey.
+// original never reached and the cases the port adds: the job run through
+// `JobWorker`, and two against a real Valkey — one whole run, and the claim
+// race the original ran.
 //
 // Two things differ from the original by construction. The store is the
 // in-memory layer of `denied-attempts/testing.ts` rather than Valkey itself,
-// so the cases run without one — the real-Valkey case at the bottom is what
-// holds the claim script and the limiter's key shape to each other. And the
+// so the cases run without one — the real-Valkey cases at the bottom are what
+// hold the claim script and the limiter's key shape to each other. And the
 // clock is `TestClock`: the original injected a `now()` to reach the recovery
 // path — a claim whose write failed, retaken once it is stale — and virtual
 // time reaches it with no seam in production code.
@@ -233,6 +241,50 @@ describe.skipIf(!db)(
         return key;
       });
 
+      /**
+       * The same burst `seedWindow` fabricates, made by the limiter itself
+       * against a real Valkey: one admitted denial spends the window's
+       * allowance of one, and the `count` attempts behind it are suppressed.
+       * Answers the window's key.
+       */
+      const suppressInValkey = Effect.fnUntraced(function* (input: {
+        store: RateLimitStore;
+        keyPrefix: string;
+        teamId: string;
+        actorId: string;
+        count: number;
+        windowStart: number;
+      }) {
+        let clock = input.windowStart;
+        const limiter = new DeniedAuditRateLimiter({
+          store: input.store,
+          limit: 1,
+          windowMs: WINDOW_MS,
+          keyPrefix: input.keyPrefix,
+          now: () => clock,
+        });
+        const subject = {
+          teamId: input.teamId,
+          actorId: input.actorId,
+          operation: OPERATION,
+        };
+        const admitted = yield* Effect.promise(() => limiter.reserve(subject));
+        if (!admitted.admitted) throw new Error('expected an admission');
+        yield* Effect.promise(() => admitted.complete('denied'));
+        for (let attempt = 0; attempt < input.count; attempt += 1) {
+          clock = input.windowStart + 1_000 * (attempt + 1);
+          const refused = yield* Effect.promise(() => limiter.reserve(subject));
+          assert.isFalse(refused.admitted);
+        }
+        return limiter.keyFor(subject);
+      });
+
+      /** A store open on this file's own logical Valkey database. */
+      const openStore = Effect.acquireRelease(
+        Effect.sync(() => createRateLimitStore(redisUrl!)),
+        (open) => Effect.promise(() => open.close()),
+      );
+
       /** One run of the job, as the maintenance role the worker runs as. */
       const runSummary = (keyPrefix: string) =>
         Effect.flatMap(DeliveryHarness, (harness) =>
@@ -306,6 +358,13 @@ describe.skipIf(!db)(
           // The claim is a read-and-rename in one store operation, so only the
           // run that got the contents can write them. The `singleton` policy
           // makes this rare; the claim makes it impossible.
+          //
+          // The two fibers really do interleave: every memory-store operation
+          // yields before it runs (`denied-attempts/testing.ts`), so the
+          // second fiber's scan and claim are scheduled between the first
+          // fiber's, which is where two processes racing the Lua would meet.
+          // Split the memory layer's `claimWindow` into a read and a write
+          // with a yield between them and this case writes two events.
           const at = yield* startCase();
           const { teamId, actorId } = yield* seedActor();
           const keyPrefix = `test-summary-${randomUUID()}`;
@@ -422,24 +481,45 @@ describe.skipIf(!db)(
           const memory = yield* DeniedAttemptsMemory;
           const { teamId, actorId } = yield* seedActor('Live Researcher');
           const keyPrefix = `test-summary-${randomUUID()}`;
-          // The window the clock is inside: it cannot have ended, whatever the
-          // margin, because its own minute is still running.
-          const key = yield* seedWindow({
+          // Two windows in one run, because "left alone" has to be something
+          // the handler chose rather than something that follows from it
+          // never having run: a closed window it must summarise, and the
+          // window the clock is inside, which cannot have ended whatever the
+          // margin because its own minute is still running.
+          const closedKey = yield* seedWindow({
             keyPrefix,
             teamId,
             actorId,
             count: 2,
+            windowStart: at.closedAt,
+          });
+          const liveKey = yield* seedWindow({
+            keyPrefix,
+            teamId,
+            actorId,
+            count: 5,
             windowStart: at.liveAt,
           });
 
           yield* runSummary(keyPrefix);
 
-          // Nothing written and nothing taken: a live window is still
+          // The closed one, and only the closed one: one event, carrying the
+          // closed window's first attempt rather than the live window's.
+          assert.deepInclude(yield* onlySummary(teamId), {
+            suppressedCount: 2,
+            firstSuppressedAt: new Date(at.closedAt + 1_000).toISOString(),
+          });
+          assert.isFalse(yield* memory.exists(closedKey));
+
+          // Nothing written and nothing taken for the live one: it is still
           // collecting, and summarising it now would report a burst that is
-          // still happening.
-          assert.deepStrictEqual(yield* summariesFor(teamId), []);
-          assert.isTrue(yield* memory.exists(key));
-          assert.isFalse(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
+          // still happening. Its fields are exactly as the limiter left them
+          // — no `claimedAt`, so it was never even claimed and rolled back.
+          const live = yield* memory.read(liveKey);
+          assert.isNotNull(live);
+          assert.strictEqual(live?.get('suppressed'), '5');
+          assert.isFalse(live?.has('claimedAt') ?? true);
+          assert.isFalse(yield* memory.exists(`${liveKey}${CLAIMED_SUFFIX}`));
         }),
       );
 
@@ -574,7 +654,133 @@ describe.skipIf(!db)(
           );
           yield* memory.failOn(null);
           assert.isTrue(Exit.isFailure(exit));
+          // The store's own error, naming the operation that rejected —
+          // not merely "something failed", which any unrelated breakage in
+          // this case would also satisfy.
+          const failure = Exit.isFailure(exit) ? causeError(exit.cause) : null;
+          if (!(failure instanceof DeniedAttemptsStoreFailed)) {
+            throw new Error(
+              `expected the store's own failure, got ${String(failure)}`,
+            );
+          }
+          assert.strictEqual(failure._tag, 'DeniedAttemptsStoreFailed');
+          assert.strictEqual(failure.operation, 'drain');
         }),
+      );
+
+      it.effect(
+        'counts a summary it wrote even when the claim cannot be given up',
+        () =>
+          Effect.gen(function* () {
+            // The event is in the log by the time the discard runs, so a
+            // discard that fails must not un-report it: an operator reading
+            // `summary events 0` for a minute that wrote one has been told the
+            // opposite of what happened, and the next run — which finds the
+            // row already there — reports zero too, so the write is never
+            // counted anywhere.
+            const at = yield* startCase();
+            const memory = yield* DeniedAttemptsMemory;
+            const { teamId, actorId } = yield* seedActor();
+            const keyPrefix = `test-summary-${randomUUID()}`;
+            const key = yield* seedWindow({
+              keyPrefix,
+              teamId,
+              actorId,
+              count: 11,
+              windowStart: at.closedAt,
+            });
+
+            const lines: string[] = [];
+            yield* memory.failOn('del');
+            const outcome = yield* runSummary(keyPrefix).pipe(
+              Effect.provide(recordingLogger(lines)),
+            );
+            yield* memory.failOn(null);
+
+            assert.strictEqual(outcome, 'completed');
+            assert.deepInclude(yield* onlySummary(teamId), {
+              suppressedCount: 11,
+            });
+            assert.include(
+              lines.join('\n'),
+              'attempt 1: summary events 1, limiter scopes 0',
+            );
+            assert.include(lines.join('\n'), 'stays claimed for a later run');
+            // And the claim is still there, so a later run takes the window
+            // again, finds the row already written, and only lets it go.
+            assert.isTrue(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
+
+            yield* TestClock.adjust(LATER);
+            yield* runSummary(keyPrefix);
+            assert.lengthOf(yield* summariesFor(teamId), 1);
+            assert.isFalse(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
+          }),
+      );
+
+      it.effect(
+        'skips only the window whose write died, and summarises the rest',
+        () =>
+          Effect.gen(function* () {
+            // A defect is not a window's problem alone if it escapes: the
+            // original's `try`/`catch` skipped one window whatever went wrong
+            // inside it, and catching only the typed failure would let one bad
+            // window abandon every window behind it in the same pass.
+            const at = yield* startCase();
+            const memory = yield* DeniedAttemptsMemory;
+            const first = yield* seedActor();
+            const second = yield* seedActor('Second Researcher');
+            const keyPrefix = `test-summary-${randomUUID()}`;
+            const dyingKey = yield* seedWindow({
+              keyPrefix,
+              teamId: first.teamId,
+              actorId: first.actorId,
+              count: 2,
+              windowStart: at.closedAt,
+            });
+            const nextKey = yield* seedWindow({
+              keyPrefix,
+              teamId: second.teamId,
+              actorId: second.actorId,
+              count: 7,
+              windowStart: at.closedAt,
+            });
+
+            const lines: string[] = [];
+            const recorded = yield* Effect.provide(
+              Effect.gen(function* () {
+                const writer = yield* RecordedSummaries;
+                yield* writer.setBehaviour((_, call) =>
+                  call === 1
+                    ? Effect.die(new Error('the writer has a bug'))
+                    : Effect.void,
+                );
+                const outcome = yield* runSummary(keyPrefix).pipe(
+                  Effect.provide(recordingLogger(lines)),
+                );
+                assert.strictEqual(outcome, 'completed');
+                return writer;
+              }),
+              layerRecordingWriter,
+            );
+
+            // Both windows were reached: the defect in the first did not end
+            // the pass.
+            assert.lengthOf(recorded.written, 2);
+            assert.deepInclude(recorded.written[1], {
+              teamId: second.teamId,
+              summary: {
+                suppressedCount: 7,
+                firstSuppressedAt: at.closedAt + 1_000,
+                lastSuppressedAt: at.closedAt + 7_000,
+              },
+            });
+            // The one that died keeps its claim for a later run; the one that
+            // was written gives its claim up, and only it is counted.
+            assert.isTrue(yield* memory.exists(`${dyingKey}${CLAIMED_SUFFIX}`));
+            assert.isFalse(yield* memory.exists(`${nextKey}${CLAIMED_SUFFIX}`));
+            assert.include(lines.join('\n'), 'summary events 1');
+            assert.include(lines.join('\n'), 'stays claimed for a later run');
+          }),
       );
 
       it.effect('runs as a job the worker claims and settles', () =>
@@ -620,36 +826,16 @@ describe.skipIf(!db)(
           Effect.gen(function* () {
             const at = yield* startCase();
             const { teamId, actorId } = yield* seedActor();
-            const store = yield* Effect.acquireRelease(
-              Effect.sync(() => createRateLimitStore(redisUrl!)),
-              (open) => Effect.promise(() => open.close()),
-            );
-
-            // A real suppressed burst: one admitted denial spends the window's
-            // allowance of one, and the four behind it are suppressed.
+            const store = yield* openStore;
             const keyPrefix = `test-summary-${randomUUID()}`;
-            let clock = at.closedAt;
-            const limiter = new DeniedAuditRateLimiter({
+            const key = yield* suppressInValkey({
               store,
-              limit: 1,
-              windowMs: WINDOW_MS,
               keyPrefix,
-              now: () => clock,
+              teamId,
+              actorId,
+              count: 4,
+              windowStart: at.closedAt,
             });
-            const input = { teamId, actorId, operation: OPERATION };
-            const admitted = yield* Effect.promise(() =>
-              limiter.reserve(input),
-            );
-            if (!admitted.admitted) throw new Error('expected an admission');
-            yield* Effect.promise(() => admitted.complete('denied'));
-            for (let attempt = 0; attempt < 4; attempt += 1) {
-              clock = at.closedAt + 1_000 * (attempt + 1);
-              const refused = yield* Effect.promise(() =>
-                limiter.reserve(input),
-              );
-              assert.isFalse(refused.admitted);
-            }
-            const key = limiter.keyFor(input);
 
             const outcome = yield* runSummary(keyPrefix).pipe(
               Effect.provide(DeniedAttemptsStore.layer(store)),
@@ -665,6 +851,46 @@ describe.skipIf(!db)(
 
             // Nothing of the window is left in the store: neither the window
             // nor the claim it was renamed to.
+            const left = yield* Effect.promise(() =>
+              store.run((redis) =>
+                redis.exists(key, `${key}${CLAIMED_SUFFIX}`),
+              ),
+            );
+            assert.strictEqual(left, 0);
+          }),
+      );
+
+      // The concurrency case above races two fibers over a `Map`; this races
+      // two runs over one Valkey, so the thing keeping the second run from
+      // writing a second event is the claim script's own atomicity at the
+      // server rather than a scheduling decision in this process. It is the
+      // race the original suite ran, and the only one that can fail if
+      // `CLAIM_SCRIPT` stops being a single execution.
+      it.effect.skipIf(!redisUrl)(
+        'writes one event when two runs race the same window at a real Valkey',
+        () =>
+          Effect.gen(function* () {
+            const at = yield* startCase();
+            const { teamId, actorId } = yield* seedActor();
+            const store = yield* openStore;
+            const keyPrefix = `test-summary-${randomUUID()}`;
+            const key = yield* suppressInValkey({
+              store,
+              keyPrefix,
+              teamId,
+              actorId,
+              count: 3,
+              windowStart: at.closedAt,
+            });
+
+            yield* Effect.all([runSummary(keyPrefix), runSummary(keyPrefix)], {
+              concurrency: 'unbounded',
+            }).pipe(Effect.provide(DeniedAttemptsStore.layer(store)));
+
+            assert.deepInclude(yield* onlySummary(teamId), {
+              suppressedCount: 3,
+              firstSuppressedAt: new Date(at.closedAt + 1_000).toISOString(),
+            });
             const left = yield* Effect.promise(() =>
               store.run((redis) =>
                 redis.exists(key, `${key}${CLAIMED_SUFFIX}`),

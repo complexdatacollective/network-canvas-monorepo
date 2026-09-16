@@ -13,10 +13,10 @@ import {
 } from '../errors.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
-// `invitation-delivery` as an Effect (#1927 §11): the same state machine
-// src/jobs/handlers/invitation-delivery.ts runs today, with pg-boss's job
-// metadata replaced by `HandledJob` and its two pool transactions replaced by
-// two `withTransaction` calls on the maintenance `Database`.
+// `invitation-delivery` as an Effect (#1927 §11): the same state machine the
+// pg-boss handler ran, with that queue's job metadata replaced by `HandledJob`
+// and its two pool transactions replaced by two `withTransaction` calls on the
+// maintenance `Database`.
 //
 // The transport is stage 1's `Mailer` (src/mail/mailer.ts), the one every
 // other sender already uses: `sendTeamInvitation` fails with `MailFailed` when

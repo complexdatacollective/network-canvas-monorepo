@@ -75,12 +75,12 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
 
 /**
  * The resolved environment as an Effect service, which is how Effect code asks
- * for it: `const env = yield* Environment`. Nothing runs under Effect yet —
- * the server is a Hono app and a pg-boss worker — so nothing consumes this but
- * its own test. It exists so that the first module that does run under Effect
- * has a sanctioned way in rather than reaching for `readEnv` from inside a
- * fiber, and because `Layer` is what makes "decoded and resolved once, at the
- * edge of the program" a property of the wiring instead of a convention.
+ * for it: `const env = yield* Environment`. The worker program provides it —
+ * the job queue's layers are built over it — and it is the sanctioned way in
+ * for anything else that runs under Effect, rather than reaching for `readEnv`
+ * from inside a fiber, because `Layer` is what makes "decoded and resolved
+ * once, at the edge of the program" a property of the wiring instead of a
+ * convention.
  *
  * `Layer.effect` rather than `Layer.succeed`: the read must happen when the
  * layer is built, not when this module is imported, or a failure would be

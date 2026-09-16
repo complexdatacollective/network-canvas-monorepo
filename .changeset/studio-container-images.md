@@ -28,7 +28,7 @@ in a checkout.
 
 Both processes answer `GET /healthz` (liveness) and `GET /readyz`, which
 reports each dependency — the database, the schema fingerprint, the object
-store, and, on the worker, the pg-boss connection — and answers 503 naming the
+store, and, on the worker, the job queue — and answers 503 naming the
 one that failed. The worker serves them on a loopback-only listener, on the new
 `WORKER_HEALTH_PORT` (default 3001), so a container healthcheck can ask a
 process that answers nothing else whether it is working.

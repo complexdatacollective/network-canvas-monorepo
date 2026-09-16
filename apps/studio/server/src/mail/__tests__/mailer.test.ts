@@ -1,17 +1,10 @@
 // What Studio can send, without a transport under it: the two refusals name
-// what they could not send, the development loop puts the link in the log, and
-// the Promise-shaped view the job handlers still take reports a failure as a
-// rejection carrying the same message a job row would show.
+// what they could not send, and the development loop puts the link in the log
+// rather than sending it.
 import { describe, expect, it } from '@effect/vitest';
-import { type Context, Effect, type Layer, Logger } from 'effect';
+import { Effect, type Layer, Logger } from 'effect';
 
-import {
-  MailFailed,
-  Mailer,
-  MailNotConfigured,
-  promiseMailer,
-  type TeamInvitationInput,
-} from '../mailer.ts';
+import { Mailer, type TeamInvitationInput } from '../mailer.ts';
 
 const MAGIC_LINK = {
   email: 'researcher@example.org',
@@ -65,23 +58,6 @@ describe('the mailer with no transport', () => {
   );
 });
 
-describe('a failure on its way to a job row', () => {
-  it('carries the reason, which is the whole of what an operator can read', () => {
-    // pg-boss serialises a thrown error with `serialize-error`, which takes an
-    // object's `toJSON` over walking it. The schema's own renders the declared
-    // fields — a `Defect` cause encodes to `{}` and the message is a getter —
-    // so without this the failed job would record no reason at all.
-    expect(
-      new MailFailed({ cause: new Error('Greeting never received') }).toJSON(),
-    ).toEqual({ _tag: 'MailFailed', message: 'Greeting never received' });
-
-    expect(new MailNotConfigured({ what: 'invitation' }).toJSON()).toEqual({
-      _tag: 'MailNotConfigured',
-      message: 'No SMTP transport is configured; cannot send invitation',
-    });
-  });
-});
-
 describe('the console mailer', () => {
   it.effect('logs the sign-in link rather than sending it', () => {
     const lines: string[] = [];
@@ -111,70 +87,5 @@ describe('the console mailer', () => {
       Effect.provide(Mailer.layerConsole),
       Effect.provide(capturingLogger(lines)),
     );
-  });
-});
-
-describe('the Promise-shaped view', () => {
-  it.effect('rejects with the failure message a job row would carry', () =>
-    Effect.gen(function* () {
-      const services = yield* Effect.context();
-      const sender = promiseMailer(
-        Mailer.of({
-          sendMagicLink: () =>
-            Effect.fail(
-              new MailFailed({ cause: new Error('Greeting never received') }),
-            ),
-          sendTeamInvitation: () => Effect.void,
-        }),
-        services,
-      );
-
-      // The handlers await this promise and put its message on the job, which
-      // is the only place an operator can read why an attempt failed.
-      yield* Effect.promise(() =>
-        expect(sender.sendMagicLink(MAGIC_LINK)).rejects.toThrow(
-          /Greeting never received/,
-        ),
-      );
-    }),
-  );
-
-  it.effect('resolves a send that succeeded', () =>
-    Effect.gen(function* () {
-      const services = yield* Effect.context();
-      const sent: string[] = [];
-      const sender = promiseMailer(
-        Mailer.of({
-          sendMagicLink: ({ email }) =>
-            Effect.sync(() => {
-              sent.push(email);
-            }),
-          sendTeamInvitation: () => Effect.void,
-        }),
-        services,
-      );
-
-      yield* Effect.promise(() => sender.sendMagicLink(MAGIC_LINK));
-      expect(sent).toEqual([MAGIC_LINK.email]);
-    }),
-  );
-
-  it.effect('carries the calling program services into the send', () => {
-    const lines: string[] = [];
-    return Effect.gen(function* () {
-      const services: Context.Context<never> = yield* Effect.context();
-      const sender = promiseMailer(
-        Mailer.of({
-          sendMagicLink: ({ email }) => Effect.log(`sent to ${email}`),
-          sendTeamInvitation: () => Effect.void,
-        }),
-        services,
-      );
-
-      yield* Effect.promise(() => sender.sendMagicLink(MAGIC_LINK));
-      // The loggers the program was built with, not a bare runtime's: a line a
-      // pg-boss callback writes has to reach the same place as everything else.
-      expect(lines).toEqual([`sent to ${MAGIC_LINK.email}`]);
-    }).pipe(Effect.provide(capturingLogger(lines)));
   });
 });

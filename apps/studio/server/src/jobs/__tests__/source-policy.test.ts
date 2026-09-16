@@ -1,14 +1,21 @@
-// Where pg-boss is allowed to appear, and where a job may be created.
+// Where a job may be created, and that the queue Studio no longer runs stays
+// gone.
 //
-// The rule both halves serve: a job is created by the transaction that caused
-// it, through `enqueueJob`. An enqueue on its own connection reopens the two
-// windows the transactional path closes — a committed change with no job, and
-// a job for a change that rolled back — and pg-boss's own `send`/`insert` are
-// the only way to reach one, so they stay in a single module.
-import { readFileSync, readdirSync } from 'node:fs';
+// The rule the second half serves: a job is created by the transaction that
+// caused it. An enqueue on a connection of its own reopens the two windows the
+// transactional path closes — a committed change with no job, and a job for a
+// change that rolled back — so the statement that creates one lives in the two
+// modules that are handed a caller's transaction and nowhere else.
+//
+// The rule the first half serves is narrower: pg-boss was removed with the
+// native queue (#1957), and a dependency that is gone from the manifest can
+// still be reachable through another package's tree. This is what says nothing
+// imports it back.
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -27,7 +34,16 @@ const SCANNED_ROOTS = [
   'packages/studio-sync/src',
 ];
 
-const ENQUEUE_MODULE = 'apps/studio/server/src/jobs/enqueue.ts';
+const SERVER_MANIFEST = 'apps/studio/server/package.json';
+
+/** The one renderer of the statement both enqueue paths send. */
+const ENQUEUE_MODULE = 'apps/studio/server/src/jobs/effect/insert.ts';
+
+/** The node-postgres twin, which sends that statement on a caller's client. */
+const CLIENT_MODULE = 'apps/studio/server/src/jobs/client.ts';
+
+/** The worker, whose only insert is the dead-letter copy; see below. */
+const WORKER_MODULE = 'apps/studio/server/src/jobs/effect/worker.ts';
 
 function typescriptFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -70,61 +86,94 @@ function importsPgBoss(source: string): boolean {
   );
 }
 
+/**
+ * An insert into a queue's `jobs` table, however the schema in front of it is
+ * interpolated — `${sql(schema)}.jobs`, `${schema}.jobs`, a literal name.
+ */
+const INSERTS_A_JOB = /INSERT\s+INTO[\s\S]{0,60}\.jobs\b/i;
+
+/** Only the fields this suite reads; a manifest shape change fails here. */
+const Manifest = Schema.Struct({
+  dependencies: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+  devDependencies: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.String),
+  ),
+  peerDependencies: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.String),
+  ),
+});
+
 describe('job source policy', () => {
-  it('keeps pg-boss to the job module, schema application and test support', () => {
+  it('has no pg-boss left to import', () => {
     const importers = scannedFiles()
       .filter(({ source }) => importsPgBoss(source))
       .map(({ path }) => path)
       .toSorted();
 
-    // src/jobs/install.ts installs pg-boss's schema and reconciles the queues,
-    // for both callers that apply a schema — scripts/apply.ts from a checkout
-    // and src/db/migrate.ts in the image; support/postgres.ts does the same for
-    // a scratch schema. Everything else reaches a queue through src/jobs, which
-    // is what keeps `send` in one place — including the job suites themselves,
-    // which drive pg-boss through the seams the server uses rather than
-    // constructing their own.
-    expect(importers).toEqual([
-      'apps/studio/server/src/__tests__/support/postgres.ts',
-      'apps/studio/server/src/jobs/client.ts',
-      'apps/studio/server/src/jobs/database.ts',
-      'apps/studio/server/src/jobs/enqueue.ts',
-      'apps/studio/server/src/jobs/handlers/invitation-delivery.ts',
-      'apps/studio/server/src/jobs/install.ts',
-      'apps/studio/server/src/jobs/queues.ts',
-      'apps/studio/server/src/jobs/registrations.ts',
-      'apps/studio/server/src/jobs/worker.ts',
-    ]);
+    // Not "kept to the job modules" any more: the native queue replaced it
+    // whole (#1957), so the only true list is the empty one. A file matched
+    // here even by a specifier written inside a comment is a finding rather
+    // than a false alarm, since no comment has a reason to write one now.
+    expect(importers).toEqual([]);
+
+    const manifest = Schema.decodeUnknownSync(Manifest)(
+      JSON.parse(readFileSync(resolve(REPO_ROOT, SERVER_MANIFEST), 'utf8')),
+    );
+    // And it is not installed, which is what stops an import from being added
+    // back without anyone deciding to: a dependency that is present resolves.
+    expect(
+      Object.keys({
+        ...manifest.dependencies,
+        ...manifest.devDependencies,
+        ...manifest.peerDependencies,
+      }),
+    ).not.toContain('pg-boss');
   });
 
-  it('creates a job in exactly one module', () => {
-    const callers = scannedFiles()
-      .map(({ path, source }) => ({
-        path,
-        calls: memberCalls(source, ['send', 'insert']),
-      }))
-      .filter(({ calls }) => calls.length > 0)
-      .map(({ path, calls }) => `${path}: ${calls.toSorted().join(', ')}`)
+  it('creates a job in the two modules a transaction reaches', () => {
+    const inserters = scannedFiles()
+      // The suites are out of scope, and deliberately: three of them write a
+      // row by hand — the payload an older release left, the row a writer
+      // other than the enqueue makes `created` — and each of those rows is the
+      // fixture the case reads back. None of them is a way a running server
+      // creates a job, which is what this rule is about.
+      .filter(({ path }) => !path.includes('/__tests__/'))
+      .filter(({ source }) => INSERTS_A_JOB.test(source))
+      .map(({ path }) => path)
       .toSorted();
 
-    // The S3 calls are the AWS SDK's command dispatch, which has nothing to do
-    // with a queue; they are listed rather than filtered so that a `send` on
-    // something else has to be classified here before it can land.
-    // The ws-bridge suite's two are a WebSocket peer's `send` — the stub
-    // handler echoing a frame and the `ws` client sending one — and have
-    // nothing to do with a queue either.
-    expect(callers).toEqual([
-      'apps/studio/server/src/__tests__/assets.test.ts: send',
-      'apps/studio/server/src/assets.ts: send, send, send, send',
-      'apps/studio/server/src/http/__tests__/ws-bridge.test.ts: send, send',
-      `${ENQUEUE_MODULE}: send`,
-    ]);
+    // `jobs.ts` renders the statement and sends it on the `Transaction` the
+    // caller opened; `client.ts` sends that same rendered statement on the
+    // `pg.PoolClient` a command hands it, which is why it holds no SQL of its
+    // own and does not appear here (the next case is the positive half).
+    //
+    // The worker's is listed rather than filtered out, the way the old suite
+    // listed the S3 `send` calls: it is not an enqueue at all but the
+    // dead-letter copy of a row already in the table, written inside the same
+    // transaction that settles the job it copies. A fourth file appearing here
+    // has to be classified in this comment before it can land.
+    expect(inserters).toEqual([ENQUEUE_MODULE, WORKER_MODULE].toSorted());
   });
 
-  it('creates that job inside the caller transaction', () => {
-    const source = readFileSync(resolve(REPO_ROOT, ENQUEUE_MODULE), 'utf8');
-    // The handle is what puts the INSERT in the command's own transaction; a
-    // send without it runs on pg-boss's instance connection and commits alone.
-    expect(source).toMatch(/\.send\([^;]*db:\s*jobDatabaseFor\(client\)/s);
+  it('creates that job on the caller’s own connection', () => {
+    const client = readFileSync(resolve(REPO_ROOT, CLIENT_MODULE), 'utf8');
+
+    // The node-postgres half of the transaction guarantee. The Effect half is
+    // structural — `Jobs.enqueue` requires `Transaction`, and only
+    // `withTransaction` provides it, proved three ways in
+    // `src/jobs/effect/__tests__/transaction.test.ts` — but this path takes a
+    // `pg.PoolClient` as an argument, so nothing in the types stops it from
+    // fetching a connection of its own instead. It may not: a client it
+    // connected for itself would commit the job separately from the domain row
+    // the command is writing.
+    expect(memberCalls(client, ['connect'])).toEqual([]);
+    expect(client).not.toMatch(/new\s+pg\.Pool\b/);
+
+    // And it does send the shared statement rather than one of its own, which
+    // is what keeps the columns frozen onto a job at enqueue the same however
+    // the job was created.
+    expect(client).toMatch(
+      /import\s*\{[^}]*\binsertJobStatement\b[^}]*\}\s*from\s*'\.\/effect\/insert\.ts'/,
+    );
   });
 });

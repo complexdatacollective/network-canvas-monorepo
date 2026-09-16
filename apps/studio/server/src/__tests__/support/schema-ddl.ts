@@ -18,8 +18,8 @@ import { CI } from './env.ts';
  * own behaviour and still imports it directly.
  *
  * Whoever renders first checks the result against `SCHEMA_FINGERPRINT` — the
- * committed sha256 of these bytes together with pg-boss's job statements, the
- * same equality `applySchema` asserts before it pushes — so a tree whose
+ * committed sha256 of these bytes together with the job schema's statements,
+ * the same equality `applySchema` asserts before it pushes — so a tree whose
  * schema has moved without `sync-fingerprint` fails with the message that names the fix rather than
  * provisioning something the fingerprint does not describe. That check is new
  * to this path: `provisionScratchSchema` used to stamp the fingerprint
@@ -65,8 +65,8 @@ function cachePath(): string {
 }
 
 /**
- * `SCHEMA_FINGERPRINT` covers the public statements and pg-boss's together, so
- * verifying the DDL means hashing it alongside the job statements exactly as
+ * `SCHEMA_FINGERPRINT` covers the public statements and the job schema's
+ * together, so verifying the DDL means hashing both exactly as
  * `computeSchemaFingerprint` does. The job statements are rendered here rather
  * than read from `scripts/apply.ts` because they need no drizzle-kit, and the
  * cache exists to keep that module graph out of a hit.

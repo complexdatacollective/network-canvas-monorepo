@@ -8,6 +8,8 @@ import {
   Exit,
   Fiber,
   Layer,
+  type LogLevel,
+  Logger,
   Option,
   Random,
 } from 'effect';
@@ -669,6 +671,60 @@ describe.skipIf(!db)('the native queue', () => {
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'completed');
         assert.strictEqual(row?.outcome, 'uncertain');
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('says which attempts an operator has to act on', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const recorded: { level: LogLevel.LogLevel; message: string }[] = [];
+        const recordingLogger = Logger.layer([
+          Logger.make<unknown, void>(({ logLevel, message }) => {
+            recorded.push({
+              level: logLevel,
+              message: Array.isArray(message)
+                ? message.map(String).join(' ')
+                : String(message),
+            });
+          }),
+        ]);
+        const refused = () =>
+          Effect.fail(new Error('SMTP refused the recipient'));
+
+        const retried = yield* enqueueDelivery(
+          'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+        );
+        const retrying = yield* withWorker(refused, (worker) =>
+          worker.drainOnce('invitation-delivery'),
+        ).pipe(Effect.provide(recordingLogger));
+        assert.strictEqual(retrying._tag, 'retrying');
+
+        // The same failure on a job with no retries left. One line per job,
+        // and the only difference between them is what is left to happen.
+        yield* clear;
+        const lost = yield* enqueueDelivery(
+          'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+        );
+        yield* updateJob(lost, 'retry_limit = 0');
+        const failed = yield* withWorker(refused, (worker) =>
+          worker.drainOnce('invitation-delivery'),
+        ).pipe(Effect.provide(recordingLogger));
+        assert.strictEqual(failed._tag, 'failed');
+
+        // Which level the line is written at is the difference between an
+        // operator noticing mail that will never be sent and not noticing it:
+        // an attempt that will run again is the queue working, and one that
+        // will not is a delivery someone has to re-send by hand (#1307).
+        assert.deepStrictEqual(recorded, [
+          {
+            level: 'Warn',
+            message: `job invitation-delivery ${retried} retrying after attempt 1: SMTP refused the recipient`,
+          },
+          {
+            level: 'Error',
+            message: `job invitation-delivery ${lost} failed on attempt 1: SMTP refused the recipient`,
+          },
+        ]);
       }).pipe(Effect.provide(jobsLayer)),
     );
 

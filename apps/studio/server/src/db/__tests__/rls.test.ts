@@ -17,17 +17,10 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
-import { GcRoleError, gcProtocolStore } from '../../protocol/gc.ts';
 import { AUTH_TABLES } from '../auth-schema.ts';
 import { SCHEMA } from '../schema.ts';
 
 const db = await reachableDb();
-
-const GC_OPTS = {
-  retainManifestsPerDraft: 0,
-  sectionGraceMs: 60_000,
-  commandRetryHorizonMs: 0,
-};
 
 describe.skipIf(!db)('row-level security', () => {
   let pool: pg.Pool;
@@ -240,13 +233,10 @@ describe.skipIf(!db)('row-level security', () => {
     expect(teams.rows).toEqual([{ id: 'team-a' }, { id: 'team-b' }]);
   });
 
-  it('refuses to garbage-collect as any role but maintenance', async () => {
-    await expect(gcProtocolStore(app, GC_OPTS)).rejects.toThrow(GcRoleError);
-    await expect(gcProtocolStore(pool, GC_OPTS)).rejects.toThrow(GcRoleError);
-    await expect(gcProtocolStore(maintenance, GC_OPTS)).resolves.toEqual({
-      manifestsDeleted: 0,
-      sectionsDeleted: 0,
-      commandLogDeleted: 0,
-    });
-  });
+  // "Refuses to garbage-collect as any role but maintenance" lived here while
+  // the sweep was node-postgres over a pool this suite already had. The sweep
+  // is an Effect over a `Database` now, so the claim moved to the suite that
+  // builds one: `src/jobs/effect/handlers/__tests__/protocol-store-gc.test.ts`
+  // refuses the application identity, and refuses a login that may not assume
+  // the role at all — which this case never covered.
 });

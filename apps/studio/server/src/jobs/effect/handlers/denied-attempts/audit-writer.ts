@@ -64,6 +64,14 @@ export class DeniedAuditSummaryWriter extends Context.Service<
    * Today's writer over the maintenance pool. The pool is the stage-3/4 seam:
    * stage 3 passes the one it already has, stage 4 replaces this layer with
    * one over an Effect audit store and the pool stops crossing the boundary.
+   *
+   * The pool this is handed must reach the same database, as the same
+   * maintenance role, with the same `search_path`, as the `Database` the
+   * worker runs the handler on. The handler's idempotency check
+   * (`summaryAlreadyWritten`) reads `audit_events` through that `Database`
+   * while the row is written through this pool, so two pools pointed at
+   * different schemas would make every already-written summary read as
+   * missing — and the second copy of an immutable audit event is permanent.
    */
   static readonly layer = (
     maintenancePool: pg.Pool,

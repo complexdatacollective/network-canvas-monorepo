@@ -13,11 +13,10 @@ import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // The protocol store's hourly sweep, and the whole of the handler that runs it
-// (#1895). `src/protocol/gc.ts` and `src/jobs/handlers/protocol-store-gc.ts`
-// are the two halves this file joins: the sweep is nine statements of
-// node-postgres over a maintenance pool and a `createTenantDb` per tenant,
-// which become `sql` over `withTransaction` and `withTenantTransaction` on the
-// maintenance `Database`.
+// (#1895). It joins the two halves that used to be `src/protocol/gc.ts` and
+// the pg-boss handler beside it: nine statements of node-postgres over a
+// maintenance pool and a `createTenantDb` per tenant became `sql` over
+// `withTransaction` and `withTenantTransaction` on the maintenance `Database`.
 //
 // What the port did not change: which rows are eligible. Every predicate below
 // is the one `gc.ts` runs, text for text — the `referenced` expression above

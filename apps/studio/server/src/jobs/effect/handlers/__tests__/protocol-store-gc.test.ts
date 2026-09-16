@@ -23,28 +23,21 @@ import {
   protocolStoreGc,
 } from '../protocol-store-gc.ts';
 
-// The protocol store's sweep, ported from `src/protocol/gc.ts` and driven the
-// way `src/jobs/__tests__/protocol-store-gc.test.ts` drives it: what the
-// deployment's bounds are, that a role which could not see the tenants is
-// refused rather than reported as a clean pass, and that one job on the queue
-// is one real sweep.
+// The protocol store's sweep, and the only suite it has: this replaced both
+// `src/protocol/gc.ts`'s own suite and the pg-boss-era
+// `src/jobs/__tests__/protocol-store-gc.test.ts`, which went with the modules
+// they tested. What is here is what the deployment's bounds are, that a role
+// which could not see the tenants is refused rather than reported as a clean
+// pass, that one job on the queue is one real sweep, and what the rewritten
+// statements decide — the two windows, the lease, the referenced predicate and
+// the marking.
 //
-// Four of that file's cases are not here and none of them for a sweep reason:
-// "registers the sweep once however many workers boot", "drops a schedule this
-// build no longer declares" and "creates one job for a minute boundary across
-// two workers" are the cron's, and `__tests__/cron.test.ts` holds them on this
-// queue; "never runs a second sweep while one is running" is the singleton
-// policy's, which `__tests__/queue.test.ts` holds.
-//
-// Beyond that port, the cases below cover what the rewritten statements decide
-// — the two windows, the lease, the referenced predicate and the marking — for
-// which the Promise sweep's own suite (`src/protocol/__tests__/gc.test.ts`,
-// untouched) is no longer evidence: not one line of that SQL is shared. Two of
-// that suite's cases are ported here for the same reason, because nothing else
-// held them: "keeps a section held only by a published template version", the
-// only cover the `template_version_sections` arm of the referenced predicate
-// has, and "the retained window keeps recent manifests and their sections",
-// the only case in which `retainManifestsPerDraft` retains anything.
+// Four of the queue suite's cases are not here and none of them for a sweep
+// reason: "registers the sweep once however many workers boot", "drops a
+// schedule this build no longer declares" and "creates one job for a minute
+// boundary across two workers" are the cron's, and `__tests__/cron.test.ts`
+// holds them on this queue; "never runs a second sweep while one is running"
+// is the singleton policy's, which `__tests__/queue.test.ts` holds.
 //
 // Every tenant table is FORCEd under row-level security, so the fixtures below
 // seed through the maintenance pool — the identity whose policy clause admits
@@ -719,6 +712,37 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           // section only manifest 1 named lost its last reference.
           assert.strictEqual(yield* marked(dropped), true);
         }),
+    );
+
+    it.effect('refuses an update to a stored section document', () =>
+      Effect.gen(function* () {
+        yield* clearStore;
+        const hash = yield* seedSection({ teamId: `gc-team-${randomUUID()}` });
+
+        // The premise the whole sweep rests on: a section is addressed by the
+        // hash of its document, so deciding by hash that a document is no
+        // longer referenced is only safe while the document behind a hash can
+        // never change. `sections_immutable` (packages/studio-sync/src/schema.ts)
+        // is what makes that true, and this is the only case that asks it to.
+        // It is here rather than beside the sweep's own statements because the
+        // suite that used to hold it was the Promise sweep's.
+        const { scratch } = yield* DeliveryHarness;
+        const refused = yield* Effect.promise(() =>
+          scratch.maintenance
+            .query(
+              // A different document, because the trigger's `WHEN` clause
+              // fires on a changed `doc` — rewriting a row with what it
+              // already holds changes nothing and is allowed.
+              `UPDATE sections SET doc = '{"rewritten":true}'::jsonb WHERE hash = $1`,
+              [hash],
+            )
+            .then(
+              () => 'the update was allowed',
+              (error: unknown) => String(error),
+            ),
+        );
+        assert.include(refused, 'section documents are immutable');
+      }),
     );
   });
 });

@@ -1,4 +1,4 @@
-import { DateTime, Effect } from 'effect';
+import { Cause, DateTime, Effect, Ref } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
 import {
@@ -19,7 +19,7 @@ import {
   withTenantTransaction,
   withTransaction,
 } from '../database.ts';
-import { deepestMessage } from '../errors.ts';
+import { causeError, deepestMessage } from '../errors.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 import {
   DeniedAuditSummaryWriter,
@@ -208,15 +208,23 @@ export const deniedAttemptsSummary = (
   /**
    * One claimed window: its actor, its idempotency check, its event, and then
    * — only then — the claim given up. Until the event is in the log, the claim
-   * is the only copy of what was suppressed. Answers how many events it wrote.
+   * is the only copy of what was suppressed.
+   *
+   * The count is a `Ref` the caller owns rather than this function's answer,
+   * because the increment has to survive a failure of the discard that follows
+   * it: the event is in the log by then, and a run that reported zero for a
+   * summary it wrote would say the opposite of what happened. This is the
+   * order the original had, where `written += 1` sat above the `del` inside
+   * one `try`.
    */
   const writeWindow = Effect.fnUntraced(function* (
     window: DeniedAuditWindow,
     operation: DeniedAuditOperation,
     claimKey: string,
     summary: DeniedAuditSummary,
+    written: Ref.Ref<number>,
   ): Effect.fn.Return<
-    number,
+    void,
     | SqlError.SqlError
     | DeniedAttemptsStoreFailed
     | DeniedAuditSummaryWriteFailed,
@@ -233,7 +241,7 @@ export const deniedAttemptsSummary = (
         `${QUEUE}: discarding a summary for a user that no longer exists (team ${window.teamId}).`,
       );
       yield* store.discardClaim(claimKey);
-      return 0;
+      return;
     }
 
     // At-least-once delivery of the claim, exactly-once in the log.
@@ -249,9 +257,9 @@ export const deniedAttemptsSummary = (
         actor,
         summary,
       });
+      yield* Ref.update(written, (count) => count + 1);
     }
     yield* store.discardClaim(claimKey);
-    return already ? 0 : 1;
   });
 
   const summariseWindows = Effect.fnUntraced(function* (): Effect.fn.Return<
@@ -262,7 +270,7 @@ export const deniedAttemptsSummary = (
     const store = yield* DeniedAttemptsStore;
     const closedBefore =
       DateTime.toEpochMillis(yield* DateTime.now) - CLOSE_MARGIN_MS;
-    let written = 0;
+    const written = yield* Ref.make(0);
     for (const key of yield* store.scanWindowKeys(prefix)) {
       const window = parseDenialWindowKey(key, prefix);
       if (!window) continue;
@@ -300,32 +308,45 @@ export const deniedAttemptsSummary = (
         continue;
       }
 
-      written += yield* writeWindow(
+      yield* writeWindow(
         window,
         window.operation,
         claimKey,
         summary,
+        written,
       ).pipe(
+        // The whole cause, not the typed failure alone: the original's
+        // `try`/`catch` skipped one window whatever went wrong inside it, and
+        // a `catch` over the error channel would let a defect — an invalid
+        // search path, a bug in the writer — abandon every window still to
+        // come. An interruption is not a window's problem and is re-raised:
+        // the worker interrupts a handler that outstays the stop window, and
+        // swallowing that would turn a stopped run into a completed one.
+        //
         // The claim is still there, so a later run takes this window again.
         // The signal is the one the shutdown flush this replaces emitted.
-        Effect.catch((error) =>
-          Effect.as(
-            Effect.logWarning(
-              `${QUEUE}: a summary could not be appended to the audit log; it stays claimed for a later run.`,
-            ).pipe(
-              Effect.annotateLogs({
-                teamId: window.teamId,
-                operation: window.operation,
-                suppressedCount: summary.suppressedCount,
-                cause: deepestMessage(error) ?? String(error),
-              }),
-            ),
-            0,
-          ),
+        Effect.catchCause((cause) =>
+          Cause.hasInterrupts(cause)
+            ? Effect.interrupt
+            : Effect.logWarning(
+                `${QUEUE}: a summary could not be appended to the audit log; it stays claimed for a later run.`,
+              ).pipe(
+                Effect.annotateLogs({
+                  teamId: window.teamId,
+                  operation: window.operation,
+                  suppressedCount: summary.suppressedCount,
+                  cause:
+                    deepestMessage(causeError(cause)) ?? Cause.pretty(cause),
+                  // A defect is a bug in this process rather than the audit
+                  // log being briefly unavailable, and the two want different
+                  // attention from whoever reads the line.
+                  defect: Cause.hasDies(cause),
+                }),
+              ),
         ),
       );
     }
-    return written;
+    return yield* Ref.get(written);
   });
 
   const summariseScopes = Effect.fnUntraced(function* () {
@@ -347,10 +368,13 @@ export const deniedAttemptsSummary = (
     Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
   > {
     const store = yield* DeniedAttemptsStore;
+    // The attempt rides on both lines the way the original's `logJobOutcome`
+    // carried it. The worker names it too, but only on its `logDebug` success
+    // line, so at an ordinary log level this is the only place a completed run
+    // says which attempt it was.
+    const label = `${QUEUE} ${job.id} attempt ${job.attempt}`;
     if (!store.configured) {
-      yield* Effect.logInfo(
-        `${QUEUE} ${job.id}: no rate limit store is configured`,
-      );
+      yield* Effect.logInfo(`${label}: no rate limit store is configured`);
       return 'completed';
     }
     // Nothing retries a failure here: the queue declares no retries at all,
@@ -359,7 +383,7 @@ export const deniedAttemptsSummary = (
     const events = yield* summariseWindows();
     const scopes = yield* summariseScopes();
     yield* Effect.logInfo(
-      `${QUEUE} ${job.id}: summary events ${events}, limiter scopes ${scopes}`,
+      `${label}: summary events ${events}, limiter scopes ${scopes}`,
     );
     return 'completed';
   });

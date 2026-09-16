@@ -6,9 +6,9 @@
 // outright — SQLSTATE 42601, "cannot insert multiple commands into a prepared
 // statement". Everything Studio applies its schema from is a multi-command
 // string: drizzle-kit's rendered DDL, the nineteen sidecars in src/db/schema.ts,
-// pg-boss's construction plan, and the job grants in packages/studio-sync. The
-// plan alone is ~17 KB of dollar-quoted plpgsql, so splitting on `;` would cut
-// function bodies in half.
+// and the job queue's schema and grants (src/jobs/effect/schema.ts). Several of
+// those carry dollar-quoted plpgsql function bodies of their own, so splitting
+// on `;` would cut a function in half.
 //
 // Splitting happens at execution time only. The schema fingerprint is computed
 // over the unsplit strings, so nothing here can move it.
@@ -42,8 +42,8 @@ function isNameCharacter(character: string | undefined): boolean {
 /**
  * The index just past the opening delimiter of a dollar-quoted string starting
  * at `open`, or -1 when `open` is an ordinary `$` — a positional parameter
- * (`$1`, `$2::jsonb`) is the case that matters, and pg-boss's plan passes
- * those to its plpgsql functions.
+ * (`$1`, `$2::jsonb`) is the case that matters, since the statements a driver
+ * sends carry those beside dollar-quoted bodies.
  */
 function dollarQuoteBodyStart(script: string, open: number): number {
   let index = open + 1;

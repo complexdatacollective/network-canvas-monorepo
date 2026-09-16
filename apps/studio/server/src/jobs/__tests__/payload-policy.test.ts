@@ -1,11 +1,11 @@
-// What a job is allowed to carry, and what pg-boss is allowed to be told
-// about a queue. The job table is one table for every team, outside row-level
-// security's reach, so a payload that named a participant, an address or
-// protocol content would put tenant data where nothing isolates it — the
-// objection that kept Studio off a queue library until #1895.
+// What a job is allowed to carry, and what a queue may declare about itself.
+// The job table is one table for every team, outside row-level security's
+// reach, so a payload that named a participant, an address or protocol content
+// would put tenant data where nothing isolates it — the objection that kept
+// Studio off a queue library until #1895.
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, expectTypeOf, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
 import {
@@ -15,8 +15,6 @@ import {
   JOB_SCHEDULES,
   type JobQueueName,
 } from '@codaco/studio-sync/jobs';
-
-import { jobQueueDefinitions, type JobQueueOptionDrift } from '../queues.ts';
 
 const QUEUE_NAMES = JOB_QUEUES.map(({ name }) => name);
 
@@ -41,9 +39,12 @@ describe('job queue declarations', () => {
   it('declares every dead-letter target before the queue that names it', () => {
     // A queue's dead letter is a foreign key to another queue's name, so the
     // order the declarations are created in is load-bearing.
-    for (const [index, { name, options }] of jobQueueDefinitions().entries()) {
+    for (const [index, { name, options }] of JOB_QUEUES.entries()) {
+      // Read off the declarations themselves rather than through a resolver:
+      // only the queues that name one carry the field at all, which is why it
+      // is narrowed rather than read and compared to `undefined`.
+      if (!('deadLetter' in options)) continue;
       const deadLetter = options.deadLetter;
-      if (deadLetter === undefined) continue;
       expect(
         QUEUE_NAMES.indexOf(deadLetter),
         `${name} names a dead letter that is not declared before it`,
@@ -58,12 +59,11 @@ describe('job queue declarations', () => {
     }
   });
 
-  // studio-sync declares the options without importing pg-boss; this is where
-  // an option pg-boss renamed or retyped is caught, at typecheck rather than
-  // at createQueue time in a deployment.
-  it('declares options pg-boss still has', () => {
-    expectTypeOf<JobQueueOptionDrift>().toEqualTypeOf<never>();
-  });
+  // The case that checked the declarations against pg-boss's own option types
+  // went with pg-boss (#1957). There is no library to drift from now: the
+  // options are resolved against `QUEUE_DEFAULTS` in
+  // `src/jobs/effect/queues.ts`, in this repository, where a renamed field is
+  // a typecheck failure at the use site rather than a runtime surprise.
 });
 
 describe('job payload policy', () => {

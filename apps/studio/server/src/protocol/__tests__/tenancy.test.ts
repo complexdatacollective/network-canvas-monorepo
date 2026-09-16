@@ -3,6 +3,7 @@
 // another's rows.
 import { randomUUID } from 'node:crypto';
 
+import { Effect } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -14,7 +15,8 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { seedTeam } from '../../__tests__/support/postgres.ts';
 import { testCipher } from '../../__tests__/support/secrets.ts';
-import { gcProtocolStore } from '../gc.ts';
+import { Database } from '../../jobs/effect/database.ts';
+import { gcProtocolStore } from '../../jobs/effect/handlers/protocol-store-gc.ts';
 import { ProtocolStore, ProtocolStoreError } from '../store.ts';
 import {
   GC_OPTS,
@@ -29,15 +31,39 @@ import {
 describe.skipIf(!storeDb)('team isolation', () => {
   let db: pg.Pool;
   let app: pg.Pool;
-  let maintenance: pg.Pool;
+  let schema: string;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
   let tenantB: TenantDb;
   let storeA: ProtocolStore;
   let storeB: ProtocolStore;
 
+  /**
+   * The sweep. It is an Effect over its own maintenance client now
+   * (`src/jobs/effect/handlers/protocol-store-gc.ts`), so the scratch schema
+   * goes in as a `search_path` rather than as a pool. Built per call —
+   * `local: true` — because a shared layer's pool would outlive the suite.
+   */
+  const sweep = () =>
+    Effect.runPromise(
+      Effect.provide(
+        gcProtocolStore(GC_OPTS),
+        Database.layer('maintenance', {
+          url: storeDb!.url,
+          maxConnections: 2,
+          applicationName: 'studio-tenancy-gc',
+          searchPath: schema,
+        }),
+        { local: true },
+      ),
+    );
+
   beforeAll(async () => {
-    ({ db, app, maintenance, dispose } = await makeStoreSchema());
+    ({ db, app, dispose } = await makeStoreSchema());
+    const current = await db.query<{ schema: string }>(
+      'select current_schema() as schema',
+    );
+    schema = current.rows[0]!.schema;
     await seedTeam(db, 'team-a');
     await seedTeam(db, 'team-b');
     tenantA = createTenantDb(app, 'team-a');
@@ -121,9 +147,9 @@ describe.skipIf(!storeDb)('team isolation', () => {
       .sectionHashes.settings!;
 
     await storeA.discardDraft(a.draftId);
-    await gcProtocolStore(maintenance, GC_OPTS);
+    await sweep();
     await ageQuarantine(db, 'team-a');
-    await gcProtocolStore(maintenance, GC_OPTS);
+    await sweep();
 
     const survivors = await db.query(
       `SELECT team_id FROM sections WHERE hash = $1`,
@@ -158,7 +184,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
     await expireLease(ghost, draftId, 'settings');
 
     // Reached through `drafts`: the superseded manifest is collectable.
-    await gcProtocolStore(maintenance, GC_OPTS);
+    await sweep();
     const manifests = await db.query(
       `SELECT seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
       [draftId],
@@ -168,9 +194,9 @@ describe.skipIf(!storeDb)('team isolation', () => {
     // Discarding the draft leaves the team present only in `sections`, the
     // other half of the enumeration.
     await new ProtocolStore(ghost, testCipher()).discardDraft(draftId);
-    await gcProtocolStore(maintenance, GC_OPTS);
+    await sweep();
     await ageQuarantine(db, 'team-ghost');
-    await gcProtocolStore(maintenance, GC_OPTS);
+    await sweep();
     const orphaned = await db.query(
       `SELECT count(*)::int AS remaining FROM sections WHERE team_id = $1`,
       ['team-ghost'],

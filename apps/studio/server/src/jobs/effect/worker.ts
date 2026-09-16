@@ -160,12 +160,15 @@ const DEFAULTS = {
 } as const;
 
 /**
- * One key for the whole cron tick. Taken with `pg_try_advisory_xact_lock`,
- * which the commit releases — a session lock held by a replica that died
- * mid-tick would otherwise stop every other replica until the connection was
- * reaped.
+ * The cron tick's advisory lock, in Postgres's two-key form: this constant
+ * class and `hashtext(<schema>)`, so two job schemas in one database (every
+ * suite's scratch schema, and production's `studio_jobs` beside them on a
+ * shared cluster) never contend for one another's tick. Taken with
+ * `pg_try_advisory_xact_lock`, which the commit releases — a session lock held
+ * by a replica that died mid-tick would otherwise stop every other replica
+ * until the connection was reaped.
  */
-const CRON_LOCK_KEY = 4021775688147131;
+const CRON_LOCK_CLASS = 402177;
 
 /** What is written to `last_error`; a longer message is cut. */
 const MAX_ERROR_LENGTH = 1_000;
@@ -860,7 +863,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         const held = yield* sql<{ locked: boolean }>`
-          SELECT pg_try_advisory_xact_lock(${CRON_LOCK_KEY}) AS locked`;
+          SELECT pg_try_advisory_xact_lock(${CRON_LOCK_CLASS}, hashtext(${schema})) AS locked`;
         // One replica ticks; the commit releases the lock.
         if (held[0]?.locked !== true) return false;
 

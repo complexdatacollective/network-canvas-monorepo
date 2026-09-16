@@ -821,7 +821,8 @@ describe.skipIf(!db)('asset schema', () => {
       const orphan = await newAsset();
       await newReference(pinned);
 
-      // The mark phase, as protocol/gc.ts writes it.
+      // The mark phase, as the protocol store's sweep writes it
+      // (src/jobs/effect/handlers/protocol-store-gc.ts).
       const marked = await pool.query<{ hash: string }>(
         `UPDATE assets a SET unreferenced_at = clock_timestamp()
          WHERE a.team_id = $1

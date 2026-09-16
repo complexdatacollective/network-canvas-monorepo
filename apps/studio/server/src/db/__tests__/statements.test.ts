@@ -1,8 +1,6 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { JOB_SCHEMA, jobGrantsSql } from '@codaco/studio-sync/jobs';
-
 import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
 import {
   createScratchSchema,
@@ -11,14 +9,14 @@ import {
   sqlState,
 } from '../../__tests__/support/postgres.ts';
 import { scratchSchemaDdl } from '../../__tests__/support/schema-ddl.ts';
-import { JOB_SCHEMA_VERSION, renderJobStatements } from '../../jobs/queues.ts';
+import { jobSchemaGrantsSql, jobSchemaSql } from '../../jobs/effect/schema.ts';
 import { SIDECARS } from '../schema.ts';
 import { splitStatements } from '../statements.ts';
 
 // The scanner is proved twice: on scripts written here, where the awkward case
-// is visible in the test, and on the three corpora Studio actually applies —
-// where a cut in the wrong place is a syntax error at deployment time rather
-// than a failing unit case.
+// is visible in the test, and on the corpora Studio actually applies — where a
+// cut in the wrong place is a syntax error at deployment time rather than a
+// failing unit case.
 
 const db = await reachableDb();
 
@@ -118,10 +116,8 @@ $body$ LANGUAGE plpgsql;`;
   it('reads a positional parameter as ordinary text', () => {
     // `$1` is not a dollar-quote opener; treating it as one would swallow the
     // rest of the script into a string that never closes.
-    const script = `select ${JOB_SCHEMA}.create_queue($1, $2::jsonb);`;
-    expect(splitStatements(script)).toEqual([
-      `select ${JOB_SCHEMA}.create_queue($1, $2::jsonb)`,
-    ]);
+    const script = `select pg_notify($1, $2::text);`;
+    expect(splitStatements(script)).toEqual(['select pg_notify($1, $2::text)']);
   });
 
   it('returns an unterminated construct with the last statement', () => {
@@ -139,9 +135,9 @@ $body$ LANGUAGE plpgsql;`;
   });
 
   it('cuts the job grants into one GRANT each', () => {
-    const grants = splitStatements(jobGrantsSql(JOB_SCHEMA));
+    const grants = splitStatements(jobSchemaGrantsSql('studio_jobs'));
 
-    expect(grants).toHaveLength(7);
+    expect(grants).toHaveLength(5);
     expect(grants.every((statement) => statement.startsWith('GRANT'))).toBe(
       true,
     );
@@ -149,58 +145,11 @@ $body$ LANGUAGE plpgsql;`;
     // own lines: the grants are single-line by construction, so a splitter
     // that merged two or dropped one shows up here as a different list.
     expect(grants).toEqual(
-      jobGrantsSql(JOB_SCHEMA)
+      jobSchemaGrantsSql('studio_jobs')
         .split('\n')
         .map((line) => line.replace(/;$/, '')),
     );
-    expect(grants[0]).toMatch(
-      new RegExp(`^GRANT USAGE ON SCHEMA ${JOB_SCHEMA} TO `),
-    );
-  });
-
-  it("cuts pg-boss's construction plan into its own commands", () => {
-    // Observed on pg-boss 12.31.1, whose plan is schema version 41. An upgrade
-    // that changes the plan changes this number, and the schema fingerprint
-    // beside it — which is the point at which someone looks at both.
-    const PLAN_STATEMENTS = 43;
-
-    const [plan] = renderJobStatements();
-    const statements = splitStatements(plan!);
-
-    expect(statements).toHaveLength(PLAN_STATEMENTS);
-    // The plan's own transaction control, which src/jobs/install.ts strips.
-    expect(statements[0]).toBe('BEGIN');
-    expect(statements.at(-1)).toBe('COMMIT');
-    expect(statements.every((statement) => statement.length > 0)).toBe(true);
-
-    // The version stamp is the last thing the plan writes, and `installJobSchema`
-    // reads it back to decide whether this schema is the one this build ships.
-    expect(statements.at(-2)).toBe(
-      `INSERT INTO ${JOB_SCHEMA}.version(version) VALUES ('${JOB_SCHEMA_VERSION}')`,
-    );
-
-    // The two constructs a naive split gets wrong, both present here: a
-    // plpgsql body full of semicolons, and DDL passed as a `$cmd$`-tagged
-    // string to a function.
-    const createQueue = statements.filter((statement) =>
-      statement.startsWith(`CREATE FUNCTION ${JOB_SCHEMA}.create_queue(`),
-    );
-    expect(createQueue).toHaveLength(1);
-    expect((createQueue[0]!.match(/;/g) ?? []).length).toBeGreaterThan(20);
-    const tagged = statements.filter((statement) =>
-      statement.startsWith(`SELECT ${JOB_SCHEMA}.job_table_run($cmd$`),
-    );
-    expect(tagged).toHaveLength(14);
-    expect(
-      tagged.every(
-        (statement) =>
-          (statement.match(/\$cmd\$/g) ?? []).length === 2 &&
-          statement.endsWith(`, 'job_common')`),
-      ),
-    ).toBe(true);
-    // And fourteen more `$cmd$` pairs sit inside create_queue's own `$$`
-    // body, where they are text: a tag is closed by its own tag alone.
-    expect((createQueue[0]!.match(/\$cmd\$/g) ?? []).length).toBe(28);
+    expect(grants[0]).toMatch(/^GRANT USAGE ON SCHEMA studio_jobs TO /);
   });
 
   it(
@@ -327,14 +276,14 @@ describe.skipIf(!db)('splitStatements against Postgres', () => {
   let whole: ScratchSchema;
   /** Provisioned by executing the split statements, one query each. */
   let split: ScratchSchema;
-  /** pg-boss's schema, installed statement by statement beside `split`. */
+  /** A job schema, installed statement by statement beside `split`. */
   let jobSchema: string;
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     whole = await createScratchSchema(db);
     split = await createScratchSchema(db);
-    jobSchema = `${split.jobSchema}_split`;
+    jobSchema = `${split.nativeJobSchema}_split`;
 
     const ddl = await scratchSchemaDdl();
     await whole.pool.query(ddl);
@@ -382,33 +331,24 @@ describe.skipIf(!db)('splitStatements against Postgres', () => {
     expect((await prepare(whole.pool, second!)).rows).toEqual([{ b: 2 }]);
   });
 
-  it("installs pg-boss's plan one statement at a time", async () => {
-    const [plan] = renderJobStatements();
-    // The plan is rendered for JOB_SCHEMA; this installs a sibling of the
-    // scratch schema instead, so the run cannot touch the developer's own
-    // pgboss schema. Every occurrence of the name in the plan is a reference
-    // to the schema it installs — including the advisory-lock key it hashes.
-    const retargeted = plan!.replaceAll(JOB_SCHEMA, jobSchema);
-    const statements = splitStatements(retargeted).filter(
-      (statement) => statement !== 'BEGIN' && statement !== 'COMMIT',
-    );
-
-    // The plan's own BEGIN…COMMIT is dropped and the transaction is the
-    // caller's, exactly as src/jobs/install.ts does it and for the reason
-    // documented there: run as-is inside an open transaction, that COMMIT
-    // commits the caller's.
-    expect(statements).toHaveLength(splitStatements(retargeted).length - 2);
+  it('installs the job schema one statement at a time', async () => {
+    // The corpus this module exists for: the queue's DDL carries a
+    // dollar-quoted plpgsql trigger body full of semicolons, and every
+    // statement of it has to reach the server through Parse/Bind/Execute,
+    // which is the only path `@effect/sql-pg` has. Installed into a sibling of
+    // the scratch schema rather than into `studio_jobs`, so the run cannot
+    // touch the developer's own queue.
+    const statements = [
+      ...splitStatements(jobSchemaSql(jobSchema)),
+      ...splitStatements(jobSchemaGrantsSql(jobSchema)),
+    ];
+    expect(statements.length).toBeGreaterThan(5);
 
     const client = await split.pool.connect();
     try {
       await client.query('begin');
       for (const statement of statements) {
         await prepare(client, statement);
-      }
-      // The grants belong to the same install, and this is the only place
-      // they reach a server rather than a string comparison.
-      for (const grant of splitStatements(jobGrantsSql(jobSchema))) {
-        await prepare(client, grant);
       }
       await client.query('commit');
     } catch (error) {
@@ -418,19 +358,23 @@ describe.skipIf(!db)('splitStatements against Postgres', () => {
       client.release();
     }
 
-    const version = await split.pool.query<{ version: number }>(
-      `select version from "${jobSchema}".version`,
-    );
-    expect(version.rows[0]?.version).toBe(JOB_SCHEMA_VERSION);
-
-    // The functions are what a cut through a plpgsql body would have cost:
-    // the tables would still be there, and nothing could queue a job.
-    const functions = await split.pool.query<{ count: number }>(
-      `select count(*)::int as count
+    // The trigger function is what a cut through a plpgsql body would have
+    // cost: the tables would still be there, and nothing would wake a worker.
+    const functions = await split.pool.query<{ proname: string }>(
+      `select p.proname
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = $1`,
       [jobSchema],
     );
-    expect(functions.rows[0]!.count).toBeGreaterThan(0);
+    expect(functions.rows.map((row) => row.proname)).toEqual(['notify_job']);
+
+    const tables = await split.pool.query<{ tablename: string }>(
+      `select tablename from pg_tables where schemaname = $1 order by 1`,
+      [jobSchema],
+    );
+    expect(tables.rows.map((row) => row.tablename)).toEqual([
+      'job_schedules',
+      'jobs',
+    ]);
   });
 });

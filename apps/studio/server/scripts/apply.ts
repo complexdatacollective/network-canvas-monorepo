@@ -8,8 +8,6 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
-import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
-
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
   SCHEMA,
@@ -19,20 +17,18 @@ import {
 } from '../src/db/schema.ts';
 import { seed, type SeedOptions } from '../src/db/seed.ts';
 import { installNativeJobSchema } from '../src/jobs/effect/install.ts';
-import { installJobSchema, syncJobQueues } from '../src/jobs/install.ts';
 import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach the
 // image's bundles. `studio-api migrate` applies the same schema from the DDL
 // this file renders at build time — see src/db/migrate.ts.
 
-// Rendering the job statements needs pg-boss but not drizzle-kit, and the test
-// support has to hash them without paying for drizzle-kit's module graph, so
-// they are rendered in src/jobs/queues.ts and re-exported here — this file
-// stays the one place that describes what a schema application consists of.
-// Installing pg-boss's schema and reconciling the queues moved to
-// src/jobs/install.ts for the same reason: `studio-api migrate` in the image
-// does exactly what the two calls below do, and nothing in src/ may import
+// The test support has to hash the job statements without paying for
+// drizzle-kit's module graph, so they are rendered in src/jobs/queues.ts and
+// re-exported here — this file stays the one place that describes what a
+// schema application consists of. Installing the job schema lives in
+// src/jobs/effect/install.ts for the same reason: `studio-api migrate` in the
+// image does exactly what the call below does, and nothing in src/ may import
 // drizzle-kit.
 export { renderJobStatements };
 
@@ -52,10 +48,10 @@ export async function renderSchemaStatements(): Promise<string[]> {
 }
 
 /**
- * The public schema and pg-boss's, hashed together: a pg-boss upgrade, a
- * change to the job grants and a change to a queue's retry or expiry are each
- * a schema change like any other, applied once here and refused at boot by
- * every process until they have been.
+ * The public schema and the job queue's, hashed together: a change to either —
+ * a column on `studio_jobs.jobs`, a job grant — is a schema change like any
+ * other, applied once here and refused at boot by every process until it has
+ * been.
  *
  * `renderSchemaStatements` deliberately stays the public statements alone —
  * they are the DDL the suites execute into a scratch schema, and the job
@@ -105,8 +101,8 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     }
     // Confined to `public`: without a schema filter, push introspects every
     // schema in the database and reconciles it against the Drizzle schema,
-    // which now means dropping pg-boss's tables as unmanaged. `public` is the
-    // only schema Studio itself declares.
+    // which would mean dropping the job tables as unmanaged. `public` is the
+    // only schema Drizzle declares.
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }), {
       schemas: ['public'],
       tables: undefined,
@@ -115,9 +111,9 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     });
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
-    // One transaction for everything after the push: `installJobSchema` runs
-    // pg-boss's construction plan with the plan's own transaction control
-    // removed, so it needs the caller's — and the stamp belongs with what it
+    // One transaction for everything after the push: `installNativeJobSchema`
+    // applies its statements one at a time, so a failure part-way needs the
+    // caller's transaction to undo it — and the stamp belongs with what it
     // vouches for either way. The push above stays outside it; drizzle-kit
     // manages its own statements and this function has never been atomic
     // across it (see the note above).
@@ -126,11 +122,6 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
       // After the sidecars, because the grants name the roles the sync sidecar
       // creates, and before the stamp, because a stamped database has to be
       // one where a process can already enqueue.
-      await installJobSchema(lock, JOB_SCHEMA);
-      await syncJobQueues(lock, JOB_SCHEMA);
-      // The Effect-native queue's schema, beside pg-boss's; nothing reads it
-      // until stage 3 (#1927), but it is inside the fingerprint, so a stamped
-      // database has to carry it.
       await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
       await stampFingerprint(lock, fingerprint);
       await lock.query('commit');
@@ -171,11 +162,12 @@ export async function resetSchemaAndSeed(
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
-  // pg-boss's schema is Studio's too, and a reset that left it behind would
-  // keep jobs naming rows the reset had just removed. The native queue's
-  // schema goes for the same reason.
-  await pool.query(`drop schema if exists ${JOB_SCHEMA} cascade`);
+  // The job schema is Studio's too, and a reset that left it behind would keep
+  // jobs naming rows the reset had just removed. `pgboss` goes with it for as
+  // long as databases created before #1957 are still around: it is nothing
+  // this build installs, reads or recreates.
   await pool.query(`drop schema if exists ${NATIVE_JOB_SCHEMA} cascade`);
+  await pool.query('drop schema if exists pgboss cascade');
 
   if (options.sweepScratch) await sweepScratch(pool);
 

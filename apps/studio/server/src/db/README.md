@@ -5,10 +5,10 @@ columns, indexes, CHECK constraints, foreign keys and row-level security
 policies. Everything else Postgres needs — the roles the application runs as,
 `FORCE ROW LEVEL SECURITY`, the `GRANT`/`REVOKE` pairs, and the plpgsql trigger
 functions that enforce transitions — is written as raw SQL in **sidecars**. The
-third part is not Studio's to define: pg-boss owns the `pgboss` schema, which
-`scripts/apply.ts` installs from pg-boss's own construction plan, with a grants
-sidecar and the queue declarations beside it in `@codaco/studio-sync/jobs`
-(#1895).
+third part is the background queue's own schema, `studio_jobs`: two tables,
+their indexes, a notify trigger and their grants, installed by
+`scripts/apply.ts` from `src/jobs/effect/schema.ts`, with the queue
+declarations beside them in `@codaco/studio-sync/jobs` (#1895, #1927).
 
 All three are hashed into one fingerprint and applied together. A sidecar is
 not a migration, an afterthought, or an escape hatch: it is the part of the
@@ -128,57 +128,51 @@ verifies.
 
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
-- `renderJobStatements()` = pg-boss's construction plan for the `pgboss`
-  schema, the job grants from `@codaco/studio-sync/jobs`, and the queue
-  declarations, followed by the Effect-native queue's own DDL and grants for
-  the `studio_jobs` schema (`src/jobs/effect/schema.ts`). They are rendered
+- `renderJobStatements()` = the job queue's DDL and grants for the
+  `studio_jobs` schema (`src/jobs/effect/schema.ts`). They are rendered
   separately from the public statements because that list is the DDL the
   suites execute into a scratch schema by setting `search_path`, and these
   statements name a schema of their own instead.
 - `computeSchemaFingerprint()` is a SHA-256 over both lists joined.
   **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
   changes the fingerprint, which is why every sidecar change needs
-  `pnpm --filter @codaco/studio-server sync-fingerprint`. So is pg-boss's plan:
-  upgrading the dependency, changing a grant, or changing a queue's retry,
-  expiry or dead-letter settings moves the fingerprint too, and every process
-  refuses the database until `apply-schema` has been run against it.
+  `pnpm --filter @codaco/studio-server sync-fingerprint`. So is the job
+  schema: a column on `studio_jobs.jobs`, an index, the notify trigger or a
+  job grant moves the fingerprint too, and every process refuses the database
+  until `apply-schema` has been run against it.
 - `applySchema()` takes an advisory lock, clears the stamp (so a failure
   part-way cannot leave a drifted database reading as current), runs
-  `drizzle-kit push`, executes the sidecars, installs the `pgboss` schema and
-  re-runs its grants, reconciles every declared queue, installs the
-  `studio_jobs` schema, and stamps the fingerprint. A database whose installed
-  pg-boss version is not this build's is dropped and reinstalled rather than
-  migrated — the same pre-release posture the public schema takes, and it
-  discards whatever was queued, which is why the count is logged first. No
-  process migrates pg-boss at start.
+  `drizzle-kit push`, executes the sidecars, installs the `studio_jobs` schema,
+  and stamps the fingerprint. The job DDL is idempotent (`IF NOT EXISTS`,
+  `OR REPLACE`), so reapplying it leaves the queued jobs where they are; a
+  database whose job schema is a different shape from this build's is refused
+  by the fingerprint, not reconciled — the same pre-release posture the public
+  schema takes.
 - `migrateDatabase()` (`src/db/migrate.ts`) is what `studio-api migrate` runs
   in the image, where drizzle-kit does not exist. The build renders the same
   statements into `dist/schema-ddl.json` (`scripts/render-schema-ddl.ts`) and
-  this executes them in one transaction, then installs pg-boss's schema and
-  reconciles the queues through the same `src/jobs/install.ts` that
-  `applySchema` calls, installs `studio_jobs` through the same
-  `src/jobs/effect/install.ts`, and stamps the fingerprint. It refuses a
+  this executes them in one transaction, then installs `studio_jobs` through
+  the same `src/jobs/effect/install.ts` that `applySchema` calls, and stamps
+  the fingerprint. It refuses a
   document whose statements do not hash to the fingerprint beside them, and —
   pre-release — it refuses a database another build created rather than
   reconciling it (#1901).
 
 ### The `studio_jobs` schema
 
-The Effect-native job queue of #1927 installs two tables of its own, beside
-pg-boss's and outside `public` for the same reason pg-boss's are: `applySchema`
-pushes `public` with drizzle-kit, which reconciles everything it introspects
-there against what Drizzle declares, and would drop an undeclared jobs table on
-the next push. The DDL and grants live in `src/jobs/effect/schema.ts`, the
-install in `src/jobs/effect/install.ts` (a node-postgres function for the two
-callers that apply a schema today, and an Effect twin over an open
-`Transaction` for the worker of stage 3), and the schema name in
-`src/jobs/queues.ts` beside pg-boss's.
+The job queue (#1927) installs two tables of its own, outside `public`:
+`applySchema` pushes `public` with drizzle-kit, which reconciles everything it
+introspects there against what Drizzle declares, and would drop an undeclared
+jobs table on the next push. The DDL and grants live in
+`src/jobs/effect/schema.ts`, the install in `src/jobs/effect/install.ts` (a
+node-postgres function for the two callers that apply a schema, and an Effect
+twin over an open `Transaction` for a caller that already owns a `Database`),
+and the schema name in `src/jobs/queues.ts`.
 
-Until stage 3 switches the callers over, pg-boss keeps running the queues and
-nothing in the image reads `studio_jobs`. It is applied and fingerprinted from
-now on anyway, because the fingerprint is the only thing that would notice its
-shape changing: a worker that claimed a job from a table missing a column this
-build expects would fail at the claim rather than at boot.
+It is fingerprinted like everything else, because the fingerprint is the only
+thing that would notice its shape changing: a worker that claimed a job from a
+table missing a column this build expects would fail at the claim rather than
+at boot.
 
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
   `mismatch` or `unstamped`). A database carrying the tables with no

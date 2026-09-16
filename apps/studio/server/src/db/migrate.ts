@@ -2,10 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type pg from 'pg';
 
-import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
-
 import { installNativeJobSchema } from '../jobs/effect/install.ts';
-import { installJobSchema, syncJobQueues } from '../jobs/install.ts';
 import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import {
@@ -39,12 +36,10 @@ export type SchemaDdl = {
   /** The public schema: drizzle's create statements, then the sidecars. */
   statements: string[];
   /**
-   * pg-boss's construction plan, its grants and the queue declarations,
-   * followed by the native queue's schema and grants. Hashed rather than
-   * executed from here: both schemas are installed through the modules that
-   * own them (`src/jobs/install.ts`, `src/jobs/effect/install.ts`), which are
-   * in the image, so what this document carries is what the fingerprint
-   * covers.
+   * The job queue's schema and its grants. Hashed rather than executed from
+   * here: the schema is installed through the module that owns it
+   * (`src/jobs/effect/install.ts`), which is in the image, so what this
+   * document carries is what the fingerprint covers.
    */
   jobStatements: string[];
 };
@@ -108,8 +103,8 @@ export type MigrateOptions = {
  *
  * All or nothing. One client holds the advisory lock for the whole run — it is
  * session-scoped, so releasing the client would release the lock — and every
- * write goes through that one client inside one transaction, pg-boss's queue
- * reconciliation included. A partial application would be worse here than
+ * write goes through that one client inside one transaction, the job schema
+ * included. A partial application would be worse here than
  * anywhere else: the next run reads a database with tables and no fingerprint
  * as `stale` and refuses it, so an operator whose first migrate died halfway
  * would be told to recreate a database that has never worked. Rolling back to
@@ -139,10 +134,10 @@ export async function migrateDatabase(
       throw new StaleDatabase(staleDatabaseMessage(state));
     }
 
-    // Postgres runs DDL transactionally, and pg-boss's construction plan uses
-    // nothing that cannot run in a transaction, so the whole application is
-    // one. The suites have executed the public statements as a single
-    // multi-statement query into a scratch schema since #1247.
+    // Postgres runs DDL transactionally, and nothing applied here needs a
+    // transaction of its own, so the whole application is one. The suites have
+    // executed the public statements as a single multi-statement query into a
+    // scratch schema since #1247.
     await lock.query('begin');
     try {
       log(`Applying ${ddl.statements.length} schema statement(s).`);
@@ -152,16 +147,6 @@ export async function migrateDatabase(
       // creates, and before the stamp, because a stamped database has to be
       // one where a process can already enqueue — the order `applySchema`
       // runs in.
-      log(`Installing the ${JOB_SCHEMA} schema.`);
-      await installJobSchema(lock, JOB_SCHEMA);
-      log('Reconciling the job queues.');
-      await syncJobQueues(lock, JOB_SCHEMA);
-
-      // The Effect-native queue's schema, installed beside pg-boss's and read
-      // by nothing in the image until stage 3 switches the callers onto it
-      // (#1927). Here rather than in a later migration because the DDL is in
-      // `SCHEMA_FINGERPRINT` already: a database this build stamped has to be
-      // one that carries everything the fingerprint describes.
       log(`Installing the ${NATIVE_JOB_SCHEMA} schema.`);
       await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
 

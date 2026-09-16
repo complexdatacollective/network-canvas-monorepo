@@ -227,6 +227,9 @@ const live = (store: RateLimitStore): DeniedAttemptsStore['Service'] => {
     yield* run('del', () => store.run((redis) => redis.del(claimKey)));
   });
 
+  // A span like its three siblings have: this is the fourth destructive
+  // operation on the store, and a trace that shows the claim and the discard
+  // but not the drain hides the one that empties the scope counts.
   const drainScopeCounts = Effect.gen(function* () {
     const reply = yield* run('drain', () =>
       store.run((redis) =>
@@ -234,7 +237,7 @@ const live = (store: RateLimitStore): DeniedAttemptsStore['Service'] => {
       ),
     );
     return readHash(reply) ?? NOTHING;
-  });
+  }).pipe(Effect.withSpan('DeniedAttemptsStore.drainScopeCounts'));
 
   return DeniedAttemptsStore.of({
     configured: true,

@@ -12,7 +12,7 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 // settle and nothing to record, because the magic link exists only in the
 // payload and better-auth already decided the person may have one.
 //
-// What the port of src/jobs/handlers/sign-in-email.ts dropped, and why:
+// What the port of the pg-boss handler dropped, and why:
 //
 //  - The parse. `JobWorker.work` decodes the row against the queue's schema
 //    before a handler sees it (#1927 §11), so a payload an older release or a
@@ -28,11 +28,11 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //
 // Both of the transport's failures are left to the queue: `MailFailed` is a
 // transport that refused, and `MailNotConfigured` is a deployment with no
-// transport at all. The second is not a state this handler should be in — the
-// registration is what decides not to work the mail queues without a transport
-// (#1895's ruling), rather than burning the two retries while an operator is
-// still setting SMTP up — but that decision is stage 3's wiring, and until it
-// lands a send attempted anyway fails the attempt and says why on the row.
+// transport at all. The second is not a state this handler is reached in —
+// `registrations.ts` leaves this queue unregistered without a transport
+// (#1895's ruling), so its jobs wait rather than burning their two retries
+// while an operator is still setting SMTP up — and a send attempted anyway
+// fails the attempt and says why on the row.
 export const signInEmail = Effect.fn('job.sign-in-email')(function* (
   job: HandledJob<'sign-in-email'>,
 ): Effect.fn.Return<JobOutcome, MailFailed | MailNotConfigured, Mailer> {

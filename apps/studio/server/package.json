@@ -56,7 +56,6 @@
     "ioredis": "6.0.0",
     "nodemailer": "10.0.9",
     "pg": "^8.23.0",
-    "pg-boss": "12.31.1",
     "pg-connection-string": "^2.14.0",
     "zod": "catalog:"
   },

@@ -402,9 +402,9 @@ with their owners, plus the queue declarations beside them:
 - durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
 - the background queues — `packages/studio-sync/src/jobs.ts`: every queue
   Studio declares and how each one retries and expires, the cron schedules the
-  worker registers, what a job on each queue may carry, and what the two
-  database roles may do with pg-boss's tables. Declarations rather than Drizzle
-  tables — pg-boss owns the tables (see [Background work](#background-work))
+  worker registers, and what a job on each queue may carry. Declarations rather
+  than Drizzle tables — the queue's own two tables are raw SQL in
+  `server/src/jobs/effect/schema.ts` (see [Background work](#background-work))
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
@@ -424,28 +424,15 @@ The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
 
-pg-boss's own schema, `pgboss`, is part of what a schema application installs.
-`apply-schema` runs pg-boss's construction plan, applies the grants that sit
-beside the queue declarations, and creates or updates every declared queue. No
-process migrates pg-boss at start. That plan's SQL, those grants and the queue
-declarations are all hashed into the fingerprint, so a pg-boss upgrade or a
-change to a queue's retry, expiry or dead-letter settings is a schema change
-like any other: applied once by `apply-schema`, and refused at boot by every
-process until it has been. Pre-release, a version difference is resolved the
-way the rest of the schema is — by replacement rather than migration. A
-database whose installed pg-boss schema is not this build's version is dropped
-and reinstalled, which discards every job that was queued in it; `apply-schema`
-logs how many that was before it does it.
-
-A second job schema, `studio_jobs`, is installed beside it. It belongs to the
-Effect-native queue that replaces pg-boss (#1927): two tables of its own, with
-the same division of labour between the two roles — the application may create
-a job and read back its id, the worker runs as maintenance and owns the tables.
-Its DDL and grants are hashed into the fingerprint like everything else, so the
-shape of the queue is something a database is refused at boot for, rather than
-something a worker discovers at its first claim. Until the callers are switched
-over, pg-boss still runs every queue and nothing in the image reads
-`studio_jobs`.
+The background queue's own schema, `studio_jobs`, is part of what a schema
+application installs: two tables, their indexes, a notify trigger and the
+grants that divide them between the two roles — the application may create a
+job and read back its id, the worker runs as maintenance and owns the tables.
+Its DDL and grants are hashed into the fingerprint like everything else, so a
+column added to `studio_jobs.jobs` or a widened grant is a schema change like
+any other: applied once by `apply-schema`, and refused at boot by every process
+until it has been, rather than discovered by a worker at its first claim. The
+DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 <!-- generated:schema-docs start -->
 
@@ -457,7 +444,7 @@ over, pg-boss still runs every queue and nothing in the image reads
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `8c2505620b128c48828d48c316e7e7e8b330b3b7ac164961ae661705ab247204`.
+Schema fingerprint: `38a5f483aaf9ad88fba8d4c4baefdcbdb1410836a7ea8a37678f458c4e5367e0`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -634,12 +621,11 @@ from the swept tables, sweeps each under that team's `TenantDb`, and refuses
 any other role, under which it would report a clean sweep without having
 visited anyone. Every background job runs that way: the worker process
 (see [Background work](#background-work)) runs protocol-store garbage
-collection, which pg-boss's cron starts hourly, and invitation and sign-in
+collection, which the queue's cron starts hourly, and invitation and sign-in
 mail, all as `studio_maintenance`. The application role may create a job and
-nothing else with it — INSERT on the job table, SELECT on the queue and version
-tables, and a column-level SELECT on the two columns its insert reads back — so
-queued work is invisible to the role that serves requests, and one team cannot
-learn what another has queued. Job payloads carry row identifiers only; the
+nothing else with it — INSERT on the job table and a column-level SELECT on the
+`id` its insert reads back — so queued work is invisible to the role that
+serves requests, and one team cannot learn what another has queued. Job payloads carry row identifiers only; the
 handler loads what it needs under its own role. There is one documented
 exception, declared where the policy is (`JOB_PAYLOAD_POLICY` in
 `packages/studio-sync/src/jobs.ts`, where a test refuses any other): a sign-in
@@ -760,27 +746,34 @@ process runs it (#1895). One image, two processes: `node dist/index.js` is the
 web process, which serves HTTP, the RPC surface and the WebSocket endpoint and
 may only create jobs, and `node dist/worker.js` is the worker, which runs the
 jobs and the cron schedules and binds no port. Neither can do the other's work
-— the web process constructs pg-boss with supervision, scheduling and migration
-off, and the worker imports neither the HTTP app nor the RPC router, which a
-source test holds it to. `pnpm dev` runs both.
+— the web process reaches only the enqueue client, and the worker imports
+neither the HTTP app nor the RPC router, which a source test holds it to.
+`pnpm dev` runs both.
+
+The queue is Studio's own, written on Effect over two Postgres tables
+(`server/src/jobs/effect/`, whose README is its reference). It replaced
+pg-boss on 16 September 2026 (#1957) and keeps pg-boss's semantics where they
+were worth keeping — the retry ladder and its backoff, per-queue singletons,
+dead-letter copies, retention and deletion — with the differences, and the
+rulings behind them, tabulated in §2 of that README.
 
 A job is created inside the transaction that caused it. The command hands its
-own database client to pg-boss through pg-boss's Drizzle adapter, so the job is
-inserted on that connection, inside that transaction, alongside the domain row
-and its audit event: a command that rolls back leaves no job, and a command
-that commits always leaves exactly one. Nothing enqueues after a commit, and
-`server/src/jobs/enqueue.ts` is the only module that creates a job at all —
-another source test holds the codebase to that, because an enqueue on its own
-connection reopens both windows this closes.
+own database client to the enqueue, so the job is inserted on that connection,
+inside that transaction, alongside the domain row and its audit event: a
+command that rolls back leaves no job, and a command that commits always leaves
+exactly one. Nothing enqueues after a commit, and `server/src/jobs/client.ts`
+and `server/src/jobs/effect/jobs.ts` are the only modules that create a job at
+all — another source test holds the codebase to that, because an enqueue on its
+own connection reopens both windows this closes.
 
-Queues are schema rather than configuration. A queue is declared in
-`JOB_QUEUES` in `packages/studio-sync/src/jobs.ts` — after any queue it names
-as its dead letter, because the target has to exist before the queue that
-points at it — and `pnpm --filter @codaco/studio-server sync-fingerprint` then
-folds it into the fingerprint every process verifies at boot. `apply-schema`
-creates or updates it (see [Changing the schema](#changing-the-schema)).
-Nothing creates a queue at run time. What each database role may do with the
-job tables is in [Tenancy](#tenancy).
+Queues are declarations, not configuration and not rows. A queue is declared in
+`JOB_QUEUES` in `packages/studio-sync/src/jobs.ts`, and a `deadLetter` has to
+name another queue in that list or the server refuses the whole list at start.
+Nothing creates a queue anywhere: a job carries its queue's name, and the retry
+and expiry that queue resolved to, on the job row itself — frozen at enqueue, so
+a redeploy that changes a queue's options does not change how a job already in
+flight retries. What each database role may do with the job tables is in
+[Tenancy](#tenancy).
 
 | Queue                             | What runs on it                                                  | Retries                                            | Attempt expiry | When attempts run out                             |
 | --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
@@ -804,14 +797,15 @@ failure, and `uncertain` — the send may have happened and Studio could not
 record that it did, so a person decides rather than a retry duplicating
 someone's mail (#1305, #1307).
 
-On SIGTERM the worker stops pg-boss gracefully with a 25-second timeout, so a
-send already in flight finishes inside the container's stop window. A job that
-outlives it fails and is retried by the next worker.
+On SIGTERM the worker stops gracefully with a 25-second timeout, so a send
+already in flight finishes inside the container's stop window. A job that
+outlives it is left to its lease: the next worker's expiry pass returns it and
+walks the retry ladder for it.
 
 What is deliberately absent: there is no admin surface, no dashboard, and no
 job priorities. A delivery state researchers can see, and a manual re-send, is
-#1307; structured logging, metrics, and whether to mount pg-boss's own
-dashboard belong to the observability aspect of #1243.
+#1307; structured logging and metrics belong to the observability aspect of
+#1243.
 
 ## Environment
 
@@ -854,9 +848,9 @@ these variables are credentials and a boot failure is written to the log of
 every container that restarts.
 
 `src/env.ts` also exports an `Environment` service (an Effect `Context.Service`
-and a `Layer` that decodes and resolves once). Nothing consumes it yet — the server
-is a Hono app and a pg-boss worker, neither of which runs under Effect — but it
-is the sanctioned way in for the first module that does.
+and a `Layer` that decodes and resolves once). The worker program provides it —
+the job queue's layers are built over it — and it is the sanctioned way in for
+anything else that runs under Effect.
 
 Three files carry values, and the dev script loads them in this order, so a
 later one wins:
@@ -1048,10 +1042,10 @@ which process runs, and a check that suited `serve` would be wrong for `worker`
 and meaningless for `migrate`. The check belongs to the service, and this is
 the contract each process offers.
 
-| Process  | Check                                           | What it means                                                                                                           |
-| -------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `serve`  | `GET /healthz` on `PORT`                        | Liveness. It consults nothing, so a container runtime does not restart a healthy process because Postgres is down       |
-| `worker` | `GET /readyz` on `127.0.0.1:WORKER_HEALTH_PORT` | Readiness, including the pg-boss connection — the one thing a process that answers no request cannot otherwise be asked |
+| Process  | Check                                           | What it means                                                                                                                        |
+| -------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `serve`  | `GET /healthz` on `PORT`                        | Liveness. It consults nothing, so a container runtime does not restart a healthy process because Postgres is down                    |
+| `worker` | `GET /readyz` on `127.0.0.1:WORKER_HEALTH_PORT` | Readiness, including whether the worker is claiming jobs — the one thing a process that answers no request cannot otherwise be asked |
 
 Both processes serve both routes. `/readyz` runs each of the process's checks
 under a one-second bound and answers with the verdict per check:
@@ -1063,7 +1057,7 @@ under a one-second bound and answers with the verdict per check:
 `status` is `ok`, `degraded` or `failing`, and only `failing` answers 503 — a
 degraded process still serves. The web process checks its application pool, the
 schema fingerprint, and the object store where one is configured; the worker
-checks its maintenance pool, the schema, and whether pg-boss is connected. A
+checks its maintenance pool, the schema, and whether its queue is working. A
 surface this deployment has not configured is left out rather than reported
 failed: it refuses by design, and a check for it would make an instance that
 never wanted one permanently unready.
@@ -1260,8 +1254,8 @@ did: the sync leases it holds are per-process state (#1247). The audit
 denial-rate window used to be a second reason and is not one any more — it
 counts in Valkey now, like every other limit (#1909) — so what a second replica
 still needs is somewhere shared for the sync leases to live. Workers have no
-such state and may be scaled — pg-boss hands each job, and each firing of a
-cron schedule, to exactly one of them (see
+such state and may be scaled — a job is claimed by exactly one worker, and one
+replica ticks the cron schedules per pass (see
 [Background work](#background-work)).
 
 The platform that runs it — the host, image publishing, the deploy workflows

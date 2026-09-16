@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Deferred, Effect, Exit, Fiber, Layer } from 'effect';
+import { Deferred, Effect, Exit, Fiber, Layer, Predicate } from 'effect';
 import type pg from 'pg';
 
+import { createTenantDb } from '@codaco/studio-sync/tenant';
+
 import { reachableDb } from '../../../../__tests__/support/postgres.ts';
+import type { SessionPrincipal } from '../../../../auth/service.ts';
 import { MailFailed, type MailNotConfigured } from '../../../../mail/mailer.ts';
+import {
+  cancelTeamInvitation,
+  createTeamInvitation,
+} from '../../../../team/commands.ts';
+import { createJobClient } from '../../../client.ts';
 import {
   DeliveryHarness,
   layerDeliveryHarness,
@@ -32,15 +40,10 @@ import {
 } from '../invitation-delivery.ts';
 import { layerRecordingMailer, RecordedMail } from './support.ts';
 
-// `src/team/__tests__/invitation-delivery.test.ts`, ported to the native queue.
-// The original file is untouched; this is a sibling, and the numbering below
-// is its case order so the two can be compared row by row.
-//
-// Seventeen of its twenty cases are here. The three that are not are named at
-// the bottom of this file with the reason, which is the same reason in each:
-// they drive `createTeamInvitation` / `cancelTeamInvitation`, which are
-// Promise-and-drizzle commands that stages 3 and 4 of #1927 port, not the
-// queue. Nothing about the queue stopped them.
+// `src/team/__tests__/invitation-delivery.test.ts`, ported to the native queue
+// and now the only copy: the original went with pg-boss. The numbering below
+// is that file's case order, all twenty of them, so a claim can still be
+// traced to the case it came from.
 
 const db = await reachableDb();
 
@@ -48,6 +51,17 @@ const TEAM_ID = 'effect-invitation-delivery-team';
 const INVITER_ID = 'effect-invitation-delivery-inviter';
 const INVITER_MEMBER_ID = 'effect-invitation-delivery-inviter-member';
 const PUBLIC_BASE_URL = 'https://studio.example.test';
+
+/** Who the two command cases below run as: the team's owner. */
+const PRINCIPAL: SessionPrincipal = {
+  kind: 'user',
+  userId: INVITER_ID,
+  email: 'inviter@example.com',
+  emailVerified: true,
+  name: 'Inviting Researcher',
+  locale: null,
+  sessionId: 'effect-invitation-delivery-session',
+};
 
 const DELIVERY = resolvedQueue('invitation-delivery');
 /** What the queue declares: eight attempts in all. */
@@ -1000,20 +1014,158 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // Not ported, and none of them for a queue reason:
-    //
-    //  3. 'creates the invitation, the delivery and one job in one command'
-    //  4. 'refuses to create an invitation it cannot queue'
-    // 15. 'refuses and audits cancellation after delivery has begun'
-    //
-    // All three drive `createTeamInvitation` / `cancelTeamInvitation`, which
-    // are Promise-and-drizzle commands over `createTenantDb`, with the audit
-    // trail attached. Porting them is stage 3 and stage 4 of #1927, not this
-    // spike. Case 4 is additionally superseded: the command's optional `jobs`
-    // dependency and its runtime "invitation delivery needs a job client"
-    // throw are exactly what `Jobs` as a service requirement removes — a
-    // command that cannot reach the queue will not compile, so there is no
-    // longer a runtime case to test.
+    // The last three drive `createTeamInvitation` / `cancelTeamInvitation`,
+    // which are still Promise-and-drizzle commands over `createTenantDb` with
+    // the audit trail attached: the web process enqueues through
+    // `src/jobs/client.ts`, a node-postgres twin of `Jobs.enqueue` that takes
+    // the command's own transaction client, so the command keeps an optional
+    // `jobs` dependency and the runtime refusal that goes with it. They are
+    // here, in Promise form inside an Effect body, because the file they came
+    // from is gone and nothing else holds them.
+
+    // ---------------------------------------------------------------- 3 ----
+    it.effect('creates the invitation, the delivery and one job in one', () =>
+      Effect.gen(function* () {
+        yield* clearQueue();
+        yield* seedTeam();
+        const harness = yield* DeliveryHarness;
+        const jobs = createJobClient({ schema: harness.schema });
+        const email = `${randomUUID()}@example.com`;
+
+        const created = yield* Effect.promise(() =>
+          createTeamInvitation(
+            {
+              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
+              principal: PRINCIPAL,
+              requestId: randomUUID(),
+              jobs,
+            },
+            { email, role: 'member' },
+          ),
+        );
+
+        const deliveryId = yield* Effect.promise(async () => {
+          const { rows } = await harness.scratch.pool.query<{ id: string }>(
+            `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
+            [created.invitationId],
+          );
+          return rows[0]?.id;
+        });
+        assert.isString(deliveryId);
+        // One command, one job: the invitation, its delivery row and the job
+        // that sends it are written by the same transaction.
+        const queued = yield* readJobs('invitation-delivery');
+        assert.strictEqual(queued.length, 1);
+        assert.strictEqual(queued[0]?.state, 'created');
+        assert.deepStrictEqual(queued[0]?.payload, { deliveryId });
+      }),
+    );
+
+    // ---------------------------------------------------------------- 4 ----
+    it.effect('refuses to create an invitation it cannot queue', () =>
+      Effect.gen(function* () {
+        yield* clearQueue();
+        yield* seedTeam();
+        const harness = yield* DeliveryHarness;
+        const email = `${randomUUID()}@example.com`;
+
+        // No job client at all is a wiring fault, and committing the
+        // invitation anyway would leave a researcher waiting on mail nothing
+        // will send.
+        const refusal = yield* Effect.promise(() =>
+          createTeamInvitation(
+            {
+              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
+              principal: PRINCIPAL,
+              requestId: randomUUID(),
+            },
+            { email, role: 'member' },
+          ).then(
+            () => undefined,
+            (error: unknown) => error,
+          ),
+        );
+        assert.strictEqual(
+          refusal instanceof Error ? refusal.message : String(refusal),
+          'invitation delivery needs a job client',
+        );
+
+        const invitations = yield* Effect.promise(async () => {
+          const { rowCount } = await harness.scratch.pool.query(
+            `SELECT id FROM team_invitations WHERE team_id = $1 AND email = $2`,
+            [TEAM_ID, email],
+          );
+          return rowCount;
+        });
+        assert.strictEqual(invitations, 0);
+        assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
+      }),
+    );
+
+    // --------------------------------------------------------------- 15 ----
+    it.effect('refuses and audits cancellation after delivery has begun', () =>
+      Effect.gen(function* () {
+        yield* clearQueue();
+        const invitation = yield* seedInvitation();
+        const harness = yield* DeliveryHarness;
+        // Held the way an attempt inside its SMTP call holds it: the command
+        // asks for the row `NOWAIT` rather than wait out a send behind the
+        // team's audit lock, so a held row is what makes it refuse.
+        const held = yield* Effect.promise(() =>
+          holdInvitation(harness.scratch, invitation.invitationId),
+        );
+
+        const refusal = yield* Effect.promise(() =>
+          cancelTeamInvitation(
+            {
+              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
+              principal: PRINCIPAL,
+              requestId: randomUUID(),
+            },
+            { invitationId: invitation.invitationId },
+          )
+            .then(
+              () => undefined,
+              (error: unknown) => error,
+            )
+            .finally(held.release),
+        );
+        assert.strictEqual(
+          Predicate.hasProperty(refusal, 'code') &&
+            Predicate.isString(refusal.code)
+            ? refusal.code
+            : refusal,
+          'DELIVERY_IN_PROGRESS',
+        );
+
+        const rows = yield* Effect.promise(async () => {
+          const status = await harness.scratch.pool.query<{ status: string }>(
+            `SELECT status FROM team_invitations WHERE id = $1`,
+            [invitation.invitationId],
+          );
+          const audited = await harness.scratch.pool.query<{
+            event_type: string;
+            outcome: string;
+            details: unknown;
+          }>(
+            `SELECT event_type, outcome, details FROM audit_events
+              WHERE team_id = $1 AND subject_id = $2`,
+            [TEAM_ID, invitation.invitationId],
+          );
+          return { status: status.rows, audited: audited.rows };
+        });
+        assert.deepStrictEqual(rows.status, [{ status: 'pending' }]);
+        // The refusal is a decision the team can see, so it is audited like
+        // any other — and committed even though the command changed nothing.
+        assert.deepStrictEqual(rows.audited, [
+          {
+            event_type: 'team.invitation.cancellation_failed',
+            outcome: 'failed',
+            details: { failureCode: 'delivery_in_progress' },
+          },
+        ]);
+      }),
+    );
   });
 });
 

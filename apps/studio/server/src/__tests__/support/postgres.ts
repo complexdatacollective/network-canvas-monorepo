@@ -1,30 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect, Exit, Layer, Logger, Scope } from 'effect';
 import pg from 'pg';
-import { getConstructionPlans, type PgBoss } from 'pg-boss';
 
-import { jobGrantsSql } from '@codaco/studio-sync/jobs';
 import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
 
-import { DatabasePool } from '../../db/database-pool.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { createOwnerPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
-import {
-  type DbEnv,
-  Environment,
-  isLocalDatabase,
-  readEnv,
-  type StudioEnv,
-} from '../../env.ts';
+import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 import { createJobClient, type JobClient } from '../../jobs/client.ts';
 import { installNativeJobSchema } from '../../jobs/effect/install.ts';
-import { jobQueueDefinitions } from '../../jobs/queues.ts';
-import { JobHandlersLive } from '../../jobs/registrations.ts';
-import { JobWorker, type JobWorkerConfig } from '../../jobs/worker.ts';
-import { MailFailed, Mailer, type StudioMailer } from '../../mail/mailer.ts';
-import { SchemaStatus } from '../../platform/schema-gate.ts';
 import { CI } from './env.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
 
@@ -73,19 +58,11 @@ export async function reachableDb(): Promise<DbEnv | null> {
 }
 
 /**
- * pg-boss installs into a schema of its own rather than the one under test, so
- * every scratch schema gets a sibling. Named from the scratch schema so the
- * `studio_test_%` sweep in scripts/apply.ts reclaims both after a crashed run.
- */
-function jobSchemaFor(schema: string): string {
-  return `${schema}_jobs`;
-}
-
-/**
- * The Effect-native queue's sibling, beside pg-boss's (#1927). Named from the
- * scratch schema for the same reason, and named after the production schema
- * (`studio_jobs`) so that a suite reading the name can see which of the two
- * queues it is looking at.
+ * The job queue installs into a schema of its own rather than the one under
+ * test, so every scratch schema gets a sibling. Named from the scratch schema
+ * so the `studio_test_%` sweep in scripts/apply.ts reclaims it after a crashed
+ * run, and after the production schema (`studio_jobs`) so a suite reading the
+ * name can see what it is looking at.
  */
 function nativeJobSchemaFor(schema: string): string {
   return `${schema}_studio_jobs`;
@@ -98,161 +75,18 @@ export type ScratchSchema = {
   app: pg.Pool;
   /** What garbage collection runs as. */
   maintenance: pg.Pool;
-  /** This scratch schema's pg-boss schema, once provisioned. */
-  jobSchema: string;
-  /**
-   * This scratch schema's Effect-native job schema, once provisioned — what a
-   * suite builds a `Database` against to drive the queue of #1927.
-   */
+  /** This scratch schema's job schema, once provisioned. */
   nativeJobSchema: string;
   /**
-   * The web process's enqueue-only pg-boss, against this scratch job schema
-   * and on a pool of its own pinned to the application role — the production
-   * construction, with only the schema changed.
-   *
-   * Started by default, because a case that enqueues wants the connection
-   * failure of a broken client at its `beforeAll` rather than inside its
-   * first assertion. `{ start: false }` leaves the queue cache cold, which is
-   * what the lazy start and the cold-cache enqueue are about.
+   * The web process's enqueue-only job client, against this scratch job
+   * schema — the production construction with only the schema changed. It
+   * holds no pool and opens no connection, so there is nothing to start and
+   * nothing to stop; it is `async` only so the suites that build one in a
+   * `beforeAll` need not change shape.
    */
-  createJobClient: (options?: { start?: boolean }) => Promise<JobClient>;
-  /**
-   * A worker pinned to the maintenance role, on this scratch job schema, with
-   * every background cadence turned down so a test observes a pass rather than
-   * waiting one out. Started and stopped by the caller; `dispose` stops
-   * whatever a failing case left running.
-   */
-  createJobWorker: (overrides?: ScratchJobWorkerOverrides) => ScratchJobWorker;
+  createJobClient: () => Promise<JobClient>;
   dispose: () => Promise<void>;
 };
-
-/**
- * What a suite varies about a scratch worker. The rest of the environment the
- * worker layers read is fixed below, because a test that changed it would be
- * testing a deployment this build cannot have.
- */
-export type ScratchJobWorkerOverrides = {
-  /**
-   * Absent means no transport is configured, which is the `refuse` environment
-   * a worker reads when SMTP_URL is unset: the mail queues go unworked.
-   */
-  mailer?: StudioMailer;
-  /** The browser-facing origin the invitation handler mints links against. */
-  publicBaseUrl?: string;
-  /**
-   * What the registered handlers poll at. A suite that has to prove delivery
-   * came from LISTEN/NOTIFY rather than from a poll turns it up so that polling
-   * could not have been what delivered the job.
-   */
-  workPollingIntervalSeconds?: number;
-};
-
-/**
- * The Promise-shaped handle the job suites drive. The worker is a layer now
- * (src/jobs/worker.ts, src/jobs/registrations.ts); `start` builds it into a
- * scope of this handle's own and `stop` closes that scope, which is what runs
- * pg-boss's graceful shutdown.
- */
-export type ScratchJobWorker = {
-  /** The instance, for cases that observe pg-boss rather than drive it. */
-  readonly boss: PgBoss;
-  /** What pg-boss was constructed with; pg-boss keeps its own copy private. */
-  readonly config: JobWorkerConfig;
-  start: () => Promise<void>;
-  stop: () => Promise<void>;
-};
-
-/**
- * The graceful window a scratch worker's `stop()` waits out. Production gives
- * a handler 25 seconds, which is most of a container's stop window and nearly
- * all of this suite's 30-second hook timeout: a case whose handler is
- * deliberately slow, or one that fails while a job is in flight, would have
- * `dispose()` sit out the whole window and fail the file at its teardown
- * rather than at the assertion that went wrong.
- */
-const SCRATCH_STOP_TIMEOUT_MS = 2000;
-
-// Enough that pg-boss's own polling floor (500ms) is what a test waits on.
-const SCRATCH_WORKER_INTERVALS = {
-  superviseIntervalSeconds: 1,
-  maintenanceIntervalSeconds: 1,
-  monitorIntervalSeconds: 1,
-  queueCacheIntervalSeconds: 1,
-  cronMonitorIntervalSeconds: 1,
-  cronWorkerIntervalSeconds: 1,
-  clockMonitorIntervalSeconds: 1,
-};
-
-/**
- * The suites read what a worker says through `console.log`/`console.error`
- * spies, because that is where the lines the handlers themselves write land. A
- * deployment renders one JSON object per line instead (src/platform/logger.ts),
- * which would put the message in a field rather than in the first argument, so
- * the scratch stack logs the message alone and leaves the level to the console
- * method — `Effect.logError` to `console.error`, everything else to its own.
- */
-const scratchLogger = Logger.withLeveledConsole(
-  Logger.make(({ message }: Logger.Options<unknown>) =>
-    (Array.isArray(message) ? message : [message]).map(String).join(' '),
-  ),
-);
-
-/**
- * The environment a scratch worker's layers read. Fixed apart from the three
- * things a suite varies, and deliberately without a rate-limit store: the
- * committed `.env.development` this suite runs under has one, and a worker that
- * picked it up would open a Valkey connection per case.
- */
-function scratchWorkerEnv(
-  db: DbEnv,
-  overrides: ScratchJobWorkerOverrides,
-): StudioEnv {
-  return {
-    port: 3000,
-    host: '127.0.0.1',
-    workerHealthPort: 3001,
-    s3: undefined,
-    db,
-    auth: {
-      secret: 'scratch-worker-signing-secret',
-      baseUrl: overrides.publicBaseUrl ?? 'http://localhost:3000',
-      trustedProxies: undefined,
-      socialProviders: {},
-    },
-    // What `resolve` produces for a worker with and without SMTP_URL set: the
-    // transport itself is provided as the Mailer layer below, and this is what
-    // the registrations read to decide whether to work the mail queues.
-    mail: overrides.mailer ? { kind: 'console' } : { kind: 'refuse' },
-    secrets: undefined,
-    redis: undefined,
-    trustedProxies: undefined,
-    devDefaults: true,
-    telemetry: false,
-    telemetryEndpoint: undefined,
-    deploymentMode: 'self-hosted',
-    seedAdminPassword: undefined,
-  };
-}
-
-/** A suite's Promise-shaped transport, seen as the service the layers take. */
-function mailerLayer(mailer: StudioMailer | undefined): Layer.Layer<Mailer> {
-  if (!mailer) return Mailer.layerRefuse;
-  return Layer.succeed(
-    Mailer,
-    Mailer.of({
-      sendMagicLink: (input) =>
-        Effect.tryPromise({
-          try: () => mailer.sendMagicLink(input),
-          catch: (cause) => new MailFailed({ cause }),
-        }),
-      sendTeamInvitation: (input) =>
-        Effect.tryPromise({
-          try: () => mailer.sendTeamInvitation(input),
-          catch: (cause) => new MailFailed({ cause }),
-        }),
-    }),
-  );
-}
 
 /**
  * An isolated Postgres schema with its own pools. Suites that write a
@@ -284,118 +118,22 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
   const pool = connect();
   const app = connect(TENANT_ROLES.app);
   const maintenance = connect(TENANT_ROLES.maintenance);
-  const jobSchema = jobSchemaFor(name);
   const nativeJobSchema = nativeJobSchemaFor(name);
-
-  // A pg-boss instance polls on a timer, so one left running would keep
-  // querying a schema the drop below has removed — and its `error` listener
-  // would report that as a test failure in whichever file ran next.
-  const running: { stop: () => Promise<void> }[] = [];
 
   return {
     pool,
     app,
     maintenance,
-    jobSchema,
     nativeJobSchema,
-    createJobClient: async ({ start = true } = {}) => {
-      // The client builds its own application-role pool from `db`; the search
-      // path the scratch pools carry is not one of its concerns, because every
-      // statement it runs names its schema.
-      const client = createJobClient(db, { schema: jobSchema });
-      running.push(client);
-      if (start) await client.start();
-      return client;
-    },
-    createJobWorker: (overrides = {}) => {
-      // The deployment's composition with only the schema, the cadences and the
-      // stop window changed: the registrations over the worker, both provided
-      // the environment, the schema verdict, the maintenance pool and the
-      // transport a suite handed in.
-      const layer = JobHandlersLive({
-        workPollingIntervalSeconds: overrides.workPollingIntervalSeconds,
-      }).pipe(
-        Layer.provideMerge(
-          JobWorker.layerPgBoss({
-            schema: jobSchema,
-            intervals: SCRATCH_WORKER_INTERVALS,
-            stopTimeoutMs: SCRATCH_STOP_TIMEOUT_MS,
-          }),
-        ),
-        Layer.provide([
-          Layer.succeed(Environment, scratchWorkerEnv(db, overrides)),
-          // The suites provision the schema themselves, so there is nothing to
-          // wait for; what the gate does with a stale one is its own suite's.
-          SchemaStatus.layerCurrent,
-          Layer.succeed(DatabasePool, {
-            identity: 'maintenance',
-            pool: maintenance,
-          }),
-          mailerLayer(overrides.mailer),
-          Logger.layer([scratchLogger]),
-        ]),
-      );
-
-      let scope: Scope.Closeable | undefined;
-      let built: Context.Context<JobWorker> | undefined;
-      let starting: Promise<void> | undefined;
-      let stopping: Promise<void> | undefined;
-
-      const service = (): JobWorker['Service'] => {
-        if (!built) {
-          throw new Error(
-            'this scratch worker has not been started: call start() before reading boss or config',
-          );
-        }
-        return Context.get(built, JobWorker);
-      };
-
-      const worker: ScratchJobWorker = {
-        get boss() {
-          return service().boss;
-        },
-        get config() {
-          return service().config;
-        },
-        start: () => {
-          starting ??= (async () => {
-            const opened = Effect.runSync(Scope.make());
-            scope = opened;
-            try {
-              built = await Effect.runPromise(
-                Layer.buildWithScope(layer, opened),
-              );
-            } catch (error) {
-              // A build that failed part-way still acquired whatever came
-              // before it — pg-boss's own pool among them.
-              await Effect.runPromise(Scope.close(opened, Exit.void));
-              scope = undefined;
-              throw error;
-            }
-          })();
-          return starting;
-        },
-        // Closing the scope is what runs pg-boss's graceful stop. Memoised
-        // because a scope closes once, and `dispose()` stops whatever a failing
-        // case left running — possibly after the case stopped it itself.
-        stop: () => {
-          stopping ??= (async () => {
-            const opened = scope;
-            if (!opened) return;
-            await Effect.runPromise(Scope.close(opened, Exit.void));
-          })();
-          return stopping;
-        },
-      };
-      running.push(worker);
-      return worker;
-    },
+    createJobClient: () =>
+      // The search path the scratch pools carry is not the client's concern:
+      // every statement it runs names its schema, and it runs them on the
+      // connection its caller hands it.
+      Promise.resolve(createJobClient({ schema: nativeJobSchema })),
     dispose: async () => {
-      await Promise.allSettled(running.map((instance) => instance.stop()));
       await Promise.all([app.end(), maintenance.end(), pool.end()]);
       const cleanup = createOwnerPool(db);
       try {
-        await cleanup.query(`drop schema if exists "${jobSchema}" cascade`);
         await cleanup.query(
           `drop schema if exists "${nativeJobSchema}" cascade`,
         );
@@ -424,14 +162,13 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
     'select current_schema() as schema',
   );
   const schema = current.rows[0]!.schema;
-  await provisionScratchJobSchema(pool, jobSchemaFor(schema));
   await provisionScratchNativeJobSchema(pool, nativeJobSchemaFor(schema));
 }
 
 /**
- * The Effect-native queue's schema, in a second sibling — everything a schema
- * application installs outside `public`, so a scratch schema is the same shape
- * as a deployed database (#1927). Through the very function `applySchema` and
+ * The job queue's schema, in a sibling — everything a schema application
+ * installs outside `public`, so a scratch schema is the same shape as a
+ * deployed database (#1927). Through the very function `applySchema` and
  * `studio-api migrate` call, so the suites cannot be provisioned by a
  * different set of statements from the one a deployment gets.
  *
@@ -453,31 +190,6 @@ async function provisionScratchNativeJobSchema(
     throw error;
   } finally {
     client.release();
-  }
-}
-
-/**
- * pg-boss's half of what `applySchema` installs, against this scratch schema's
- * sibling. The schema name is derived from `current_schema()` by the caller
- * rather than passed in from a suite, so the forty or so suites that provision
- * a scratch schema all get a working queue without naming one.
- *
- * Queues are created through pg-boss's own plpgsql function — one statement
- * each, and the same one `createQueue` runs — rather than by starting a
- * PgBoss instance per scratch schema, which would cost a connection and a
- * round of queue-cache reads for something every suite pays for.
- */
-async function provisionScratchJobSchema(
-  pool: pg.Pool,
-  schema: string,
-): Promise<void> {
-  await pool.query(getConstructionPlans(schema));
-  await pool.query(jobGrantsSql(schema));
-  for (const { name, options } of jobQueueDefinitions()) {
-    await pool.query(`select ${schema}.create_queue($1, $2::jsonb)`, [
-      name,
-      JSON.stringify({ policy: 'standard', ...options }),
-    ]);
   }
 }
 
@@ -528,11 +240,10 @@ export async function dumpSchemaRows(
 }
 
 /**
- * The SQLSTATE a failure carries, wherever it ended up. Drizzle wraps a driver
- * error, so the code can be a cause or two down, and pg-boss re-emits one from
- * a worker as a plain object rather than an Error. Read through the chain
- * rather than off the top: a missing `code` would otherwise read the same as a
- * privilege error that never happened.
+ * The SQLSTATE a failure carries, wherever it ended up. Drizzle and
+ * `@effect/sql-pg` both wrap a driver error, so the code can be a cause or two
+ * down. Read through the chain rather than off the top: a missing `code` would
+ * otherwise read the same as a privilege error that never happened.
  */
 export function sqlState(error: unknown): string | undefined {
   let current: unknown = error;

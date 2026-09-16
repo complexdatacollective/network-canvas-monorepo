@@ -4,10 +4,11 @@ import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { JobClock, type JobClockShape } from './clock.ts';
 import { Transaction } from './database.ts';
-import { type JobPayload, payloadCodec, resolvedQueue } from './queues.ts';
+import { insertJobStatement } from './insert.ts';
+import { type JobPayload, payloadCodec } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
-// The only module that creates a job (#1927 §4, the `Jobs` row). One statement
+// The Effect half of creating a job (#1927 §4, the `Jobs` row). One statement
 // on the transaction's own connection, which is the whole of the transaction
 // guarantee: `enqueue` requires `Transaction`, nothing but `withTransaction`
 // provides it, and a statement issued inside a transaction runs on that
@@ -15,6 +16,12 @@ import { assertSchemaName } from './schema.ts';
 // `TransactionConnection` service (SqlClient.ts `makeWithTransaction`). There
 // is no second connection an enqueue could reach for, so a domain row and its
 // job commit together or not at all.
+//
+// The statement itself is `insertJobStatement` (insert.ts), and it is shared: the web
+// process still runs its commands on node-postgres, so `src/jobs/client.ts`
+// enqueues through the same renderer on the caller's `pg.PoolClient`. Two hand-
+// written inserts would drift — the frozen retry columns are the whole reason a
+// job in flight keeps the policy it was enqueued under — so there is one.
 
 /** The `jobs.id` a successful enqueue reads back. */
 export type JobId = string;
@@ -164,43 +171,28 @@ const makeEnqueue = (config: JobsConfig, clock: JobClockShape) => {
     payload: JobPayload<Queue>,
     options?: EnqueueOptions,
   ) {
-    const declaration = resolvedQueue(queue);
     const encoded = yield* decodePayload(queue, payload);
     const { sql } = yield* Transaction;
+    // The corrected clock rather than the database's `now()`: every other
+    // instant this queue compares against — a claim's `run_at <= now`, the
+    // reaper's `locked_until`, a `TestClock`-driven suite — comes from here.
     const now = yield* clock.now;
-    const runAt = options?.startAfter ?? now;
-    const singletonKey = options?.singletonKey ?? null;
-    const keepUntil = DateTime.addDuration(
-      runAt,
-      `${declaration.retentionSeconds} seconds`,
-    );
+    const statement = insertJobStatement({
+      schema,
+      queue,
+      payload: encoded,
+      singletonKey: options?.singletonKey ?? null,
+      now: DateTime.toDate(now),
+      startAfter:
+        options?.startAfter === undefined
+          ? null
+          : DateTime.toDate(options.startAfter),
+    });
 
     // A failure here is not the caller's to recover: the transaction is
     // already aborted, so anything it might do instead would fail too.
     const rows = yield* Effect.orDie(
-      sql<{ id: string }>`
-        INSERT INTO ${sql(schema)}.jobs
-          (queue, payload, state, policy, attempts, singleton_key,
-           retry_limit, retry_delay, retry_backoff, retry_delay_max,
-           expire_in_seconds, run_at, keep_until, created_at)
-        VALUES (
-          ${queue},
-          ${JSON.stringify(encoded)}::jsonb,
-          'created',
-          ${declaration.policy},
-          0,
-          ${singletonKey},
-          ${declaration.retryLimit},
-          ${declaration.retryDelay},
-          ${declaration.retryBackoff},
-          ${declaration.retryDelayMax},
-          ${declaration.expireInSeconds},
-          ${DateTime.toDate(runAt)},
-          ${DateTime.toDate(keepUntil)},
-          ${DateTime.toDate(now)}
-        )
-        ON CONFLICT DO NOTHING
-        RETURNING id`,
+      sql.unsafe<{ id: string }>(statement.text, statement.values),
     );
 
     const inserted = rows[0];

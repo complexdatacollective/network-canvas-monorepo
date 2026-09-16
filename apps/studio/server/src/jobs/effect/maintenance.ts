@@ -48,6 +48,17 @@ export class MaintenanceState extends Context.Service<
         read: Effect.sync(() => ({ maintenance: MutableRef.get(ref) })),
       }),
     );
+
+  /**
+   * Never in maintenance, which is what the worker program provides: Studio has
+   * no maintenance mode yet. The stage that introduces one replaces this with a
+   * read of `deployment_state` and nothing else about the gate changes — which
+   * is why the gate is mounted now rather than left out, so the wiring is not a
+   * second thing that stage has to get right.
+   */
+  static readonly layerOff: Layer.Layer<MaintenanceState> = Layer.succeed(
+    MaintenanceState,
+  )(MaintenanceState.of({ read: Effect.succeed({ maintenance: false }) }));
 }
 
 /** How often the gate asks; a second, as the deployment gate polls. */

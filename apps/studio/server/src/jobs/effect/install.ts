@@ -5,24 +5,19 @@ import { splitStatements } from '../../db/statements.ts';
 import { Transaction } from './database.ts';
 import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 
-// Installing the native queue's schema, in both shapes a caller can need it.
+// Installing the queue's schema, in both shapes a caller can need it.
 //
-// This is the counterpart of src/jobs/install.ts, which installs pg-boss's
-// half. The two schemas sit side by side until stage 3 switches the callers
-// over (#1927): `studio_jobs` is created by every schema application from now
-// on, and nothing reads or writes it in the image yet.
-//
-// A dedicated schema rather than `public` because `scripts/apply.ts` pushes
-// `public` with drizzle-kit, which reconciles what it introspects against what
-// Drizzle declares — a jobs table in `public` would be dropped as unmanaged on
-// the next push, exactly as pg-boss's would be.
+// A dedicated schema (`studio_jobs`) rather than `public` because
+// `scripts/apply.ts` pushes `public` with drizzle-kit, which reconciles what it
+// introspects against what Drizzle declares — a jobs table in `public` would
+// be dropped as unmanaged on the next push.
 //
 // Two functions because two drivers do the same work for two lifetimes. The
-// node-postgres one is what `applySchema` and `studio-api migrate` call today:
-// both already hold one client inside one transaction and apply everything
-// through it. The Effect one is stage 3's, for a worker that owns its own
-// `Database` and creates the schema through `withTransaction`. They share the
-// statements, so the bytes cannot drift between the path that installs a
+// node-postgres one is what `applySchema` and `studio-api migrate` call: both
+// already hold one client inside one transaction and apply everything through
+// it. The Effect one is for a program that owns its own `Database` and creates
+// the schema through `withTransaction` (the suites' harness does). They share
+// the statements, so the bytes cannot drift between the path that installs a
 // deployment and the path that installs a suite's scratch schema.
 
 /**
@@ -43,9 +38,9 @@ function nativeJobSchemaStatements(schema: string): readonly string[] {
 }
 
 /**
- * Installs the native queue's schema through node-postgres.
+ * Installs the queue's schema through node-postgres.
  *
- * **Call inside a transaction**, as `installJobSchema` beside it must be: the
+ * **Call inside a transaction**: the
  * statements are applied one at a time, so a failure part-way would otherwise
  * leave a schema with some of its tables.
  *
