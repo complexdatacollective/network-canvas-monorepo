@@ -1,12 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
+import { createRouterClient } from '@orpc/server';
+import { Cause, Exit } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import {
+  DraftId,
+  ProtocolId,
+  StageId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+
+import { createStudio, type Studio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
+import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -15,10 +26,37 @@ import {
   seedTeam,
   uniqueTeamId,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
 const db = await reachableDb();
-const TEAM_ID = uniqueTeamId('rpc-audit-protocol-team');
+const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-protocol-team'));
+
+/**
+ * The protocol-builder host beside the rpc plane. It is still an oRPC router
+ * served over `/ws` until stage 8, so this file drives it in process — the
+ * same `Studio` behind both, so an edit made through one is the edit the other
+ * reads back.
+ */
+function builderClientFor(studio: Studio, who: SessionPrincipal) {
+  return createRouterClient(
+    createRpcRouter({
+      ...studio.rpc,
+      protocolBuilder: createProtocolBuilderRuntime(),
+    }),
+    {
+      context: {
+        principal: who,
+        requestId: randomUUID(),
+        connectionId: `${who.userId}-connection`,
+        clientSessionId: `${who.userId}-tab`,
+      },
+    },
+  );
+}
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -34,7 +72,9 @@ describe.skipIf(!db)('audited protocol RPC', () => {
   let pool: pg.Pool;
   let appPool: pg.Pool;
   let dispose: () => Promise<void>;
-  let client: ReturnType<typeof createRpcClient>;
+  let client: RpcTestClient;
+  let builder: ReturnType<typeof builderClientFor>;
+  let extraClients: RpcTestClient[];
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -64,22 +104,29 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       listMemberships: () =>
         Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
     });
-    client = createRpcClient(createApp(readEnv(), { auth, pool: appPool }));
+    const studio = createStudio(readEnv(), { auth, pool: appPool });
+    client = await createRpcClient(studio);
+    builder = builderClientFor(studio, PRINCIPAL);
+    extraClients = [];
   });
 
   afterAll(async () => {
+    await client.dispose();
+    for (const extra of extraClients) await extra.dispose();
     await dispose();
   });
 
   it('records each current protocol mutation once without command contents', async () => {
-    const protocolId = randomUUID();
-    const draftId = randomUUID();
-    const stageA = randomUUID();
-    const stageB = randomUUID();
+    const protocolId = ProtocolId.make(randomUUID());
+    const draftId = DraftId.make(randomUUID());
+    const stageA = StageId.make(randomUUID());
+    const stageB = StageId.make(randomUUID());
     const scope = { teamId: TEAM_ID, protocolId, draftId };
     const createInput = { ...scope, name: 'Audited protocol' };
 
-    await expect(client.protocols.create(createInput)).resolves.toEqual({
+    await expect(
+      client.call(client.rpc('protocols.create', createInput)),
+    ).resolves.toEqual({
       protocolId,
       draftId,
     });
@@ -92,41 +139,63 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     ).toHaveProperty('rows', [{ event_type: 'protocol.created' }]);
     // The caller may retry after losing the first response. Returning the
     // existing identity is not a second creation and must not add an event.
-    await expect(client.protocols.create(createInput)).resolves.toEqual({
+    await expect(
+      client.call(client.rpc('protocols.create', createInput)),
+    ).resolves.toEqual({
       protocolId,
       draftId,
     });
 
-    await client.protocols.addInformationStage({ ...scope, stageId: stageA });
-    await client.protocols.addInformationStage({ ...scope, stageId: stageB });
-    const beforeMove = await client.protocols.draft(scope);
-    const moved = await client.protocols.moveStage({
-      ...scope,
-      stageId: stageB,
-      toIndex: 0,
-      expectedRevision: beforeMove.revision.sequence,
-    });
-    // A move to the current index is a successful no-op, not another commit.
-    await expect(
-      client.protocols.moveStage({
+    await client.call(
+      client.rpc('protocols.addInformationStage', {
+        ...scope,
+        stageId: stageA,
+      }),
+    );
+    await client.call(
+      client.rpc('protocols.addInformationStage', {
+        ...scope,
+        stageId: stageB,
+      }),
+    );
+    const beforeMove = await client.call(client.rpc('protocols.draft', scope));
+    const moved = await client.call(
+      client.rpc('protocols.moveStage', {
         ...scope,
         stageId: stageB,
         toIndex: 0,
-        expectedRevision: moved.sequence,
+        expectedRevision: beforeMove.revision.sequence,
       }),
+    );
+    // A move to the current index is a successful no-op, not another commit.
+    await expect(
+      client.call(
+        client.rpc('protocols.moveStage', {
+          ...scope,
+          stageId: stageB,
+          toIndex: 0,
+          expectedRevision: moved.sequence,
+        }),
+      ),
     ).resolves.toEqual(moved);
-    const staleMove = await safe(
-      client.protocols.moveStage({
+    // A stale revision is a store fault rather than a declared refusal, here
+    // as it was before the move to the rpc plane: the oRPC router answered it
+    // as an internal error, so on the Effect plane the call dies.
+    const staleMove = await client.callExit(
+      client.rpc('protocols.moveStage', {
         ...scope,
         stageId: stageA,
         toIndex: 0,
         expectedRevision: beforeMove.revision.sequence,
       }),
     );
-    expect(staleMove.error).not.toBeNull();
+    expect(Exit.isFailure(staleMove)).toBe(true);
+    if (Exit.isFailure(staleMove)) {
+      expect(Cause.hasDies(staleMove.cause)).toBe(true);
+    }
 
     const sectionId = `stage:${stageA}`;
-    const held = await client.protocolBuilder.acquireLock({
+    const held = await builder.protocolBuilder.acquireLock({
       protocolId,
       sectionId,
     });
@@ -138,10 +207,10 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       document: { ...held.document, label: 'Secret value' },
       revision: held.revision,
     };
-    const committed = await client.protocolBuilder.submit(submitInput);
+    const committed = await builder.protocolBuilder.submit(submitInput);
     // The same request id: a client whose answer was lost. It must be answered
     // with what the first attempt wrote, and add no second event.
-    await expect(client.protocolBuilder.submit(submitInput)).resolves.toEqual(
+    await expect(builder.protocolBuilder.submit(submitInput)).resolves.toEqual(
       committed,
     );
 
@@ -233,15 +302,19 @@ describe.skipIf(!db)('audited protocol RPC', () => {
   });
 
   it('rolls protocol state back when its audit insert fails', async () => {
-    const protocolId = randomUUID();
-    const draftId = randomUUID();
-    const stageId = randomUUID();
+    const protocolId = ProtocolId.make(randomUUID());
+    const draftId = DraftId.make(randomUUID());
+    const stageId = StageId.make(randomUUID());
     const scope = { teamId: TEAM_ID, protocolId, draftId };
-    await client.protocols.create({ ...scope, name: 'Rollback protocol' });
-    await client.protocols.addInformationStage({ ...scope, stageId });
-    const before = await client.protocols.draft(scope);
+    await client.call(
+      client.rpc('protocols.create', { ...scope, name: 'Rollback protocol' }),
+    );
+    await client.call(
+      client.rpc('protocols.addInformationStage', { ...scope, stageId }),
+    );
+    const before = await client.call(client.rpc('protocols.draft', scope));
     const sectionId = `stage:${stageId}`;
-    const held = await client.protocolBuilder.acquireLock({
+    const held = await builder.protocolBuilder.acquireLock({
       protocolId,
       sectionId,
     });
@@ -265,7 +338,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       revision: held.revision,
     };
     try {
-      const { error } = await safe(client.protocolBuilder.submit(submitInput));
+      const { error } = await safe(builder.protocolBuilder.submit(submitInput));
       expect(error).not.toBeNull();
     } finally {
       await pool.query(`
@@ -274,7 +347,9 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       `);
     }
 
-    const afterFailure = await client.protocols.draft(scope);
+    const afterFailure = await client.call(
+      client.rpc('protocols.draft', scope),
+    );
     expect(afterFailure.revision).toEqual(before.revision);
     expect(afterFailure.sections[sectionId]).not.toMatchObject({
       label: 'Must roll back',
@@ -289,7 +364,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     // The write receipt rolled back too, so a retry carrying the same request
     // id is a real first write rather than a replay of one that never
     // happened — which is what would otherwise hide the missing audit event.
-    await expect(client.protocolBuilder.submit(submitInput)).resolves.toEqual({
+    await expect(builder.protocolBuilder.submit(submitInput)).resolves.toEqual({
       revision: {
         sequence: BigInt(before.revision.sequence) + 1n,
         contentHash: expect.any(String),
@@ -333,8 +408,8 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     const middlewareAuthorized = new Promise<void>((resolve) => {
       reportMiddlewareAuthorization = resolve;
     });
-    const revokedClient = createRpcClient(
-      createApp(readEnv(), {
+    const revokedClient = await createRpcClient(
+      createStudio(readEnv(), {
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(actor),
@@ -345,8 +420,9 @@ describe.skipIf(!db)('audited protocol RPC', () => {
         }),
       }),
     );
-    const protocolId = randomUUID();
-    const draftId = randomUUID();
+    extraClients.push(revokedClient);
+    const protocolId = ProtocolId.make(randomUUID());
+    const draftId = DraftId.make(randomUUID());
     const holder = await pool.connect();
     try {
       await holder.query('BEGIN');
@@ -354,8 +430,8 @@ describe.skipIf(!db)('audited protocol RPC', () => {
         TEAM_ID,
       ]);
 
-      const request = safe(
-        revokedClient.protocols.create({
+      const request = revokedClient.callExit(
+        revokedClient.rpc('protocols.create', {
           teamId: TEAM_ID,
           protocolId,
           draftId,
@@ -366,8 +442,10 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       await holder.query(`DELETE FROM team_members WHERE id = $1`, [memberId]);
       await holder.query('COMMIT');
 
-      const { error } = await request;
-      expect(error).toMatchObject({ code: 'FORBIDDEN' });
+      // The protocol tier's own refusal for a membership that lost its role
+      // under the lock, which is what the oRPC plane flattened into
+      // `FORBIDDEN`.
+      await expectRpcFailure(request, 'ProtocolAuthorizationError');
       expect(
         await pool.query(`SELECT id FROM protocols WHERE id = $1`, [
           protocolId,

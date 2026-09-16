@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
+import { Exit } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
+
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -15,12 +17,17 @@ import {
   seedTeam,
   uniqueTeamId,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectPayloadRejected,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM = uniqueTeamId('audit-list-team');
-const OTHER_TEAM = uniqueTeamId('audit-list-other');
+const TEAM = TeamId.make(uniqueTeamId('audit-list-team'));
+const OTHER_TEAM = TeamId.make(uniqueTeamId('audit-list-other'));
 const T0 = '2026-08-30T10:00:00.000Z';
 const T1 = '2026-08-30T11:00:00.000Z';
 const T2 = '2026-08-30T12:00:00.000Z';
@@ -63,8 +70,8 @@ async function insertEvent(
   pool: pg.Pool,
   teamId: string,
   event: SeededEvent,
-): Promise<string> {
-  const id = randomUUID();
+): Promise<AuditEventId> {
+  const id = AuditEventId.make(randomUUID());
   await pool.query(
     `INSERT INTO audit_events (
        id, team_id, team_label, sequence, occurred_at, event_type,
@@ -156,9 +163,19 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   let dispose: () => Promise<void>;
   let currentPrincipal: SessionPrincipal;
   let memberships: Record<string, string | undefined>;
-  let client: ReturnType<typeof createRpcClient>;
-  let eventIds: Record<number, string>;
-  let otherTeamEventId: string;
+  let client: RpcTestClient;
+  let extraClients: RpcTestClient[];
+  let eventIds: Record<number, AuditEventId>;
+  let otherTeamEventId: AuditEventId;
+
+  /** A seeded event's id, so a missing fixture fails as one. */
+  const eventId = (sequence: number): AuditEventId => {
+    const id = eventIds[sequence];
+    if (id === undefined) {
+      throw new Error(`no seeded audit event at sequence ${sequence}`);
+    }
+    return id;
+  };
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -201,12 +218,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         return Promise.resolve(role ? { role } : null);
       },
     });
-    client = createRpcClient(
-      createApp(readEnv(), {
+    client = await createRpcClient(
+      createStudio(readEnv(), {
         auth,
         pool: appPool,
       }),
     );
+    extraClients = [];
 
     // Deterministic seeds: sequences 1–5 share one wall-clock timestamp so
     // ordering can only come from the sequence; 6 is a future
@@ -318,11 +336,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   });
 
   afterAll(async () => {
+    await client.dispose();
+    for (const extra of extraClients) await extra.dispose();
     await dispose();
   });
 
   it('lists newest-first with registry titles and a generic unknown-pair row', async () => {
-    const page = await client.audit.list({ teamId: TEAM });
+    const page = await client.call(client.rpc('audit.list', { teamId: TEAM }));
     expect(page.items.map((item) => item.sequence)).toEqual([
       '6',
       '5',
@@ -360,7 +380,9 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   });
 
   it('pages by sequence cursor without duplicating or dropping rows', async () => {
-    const first = await client.audit.list({ teamId: TEAM, limit: 2 });
+    const first = await client.call(
+      client.rpc('audit.list', { teamId: TEAM, limit: 2 }),
+    );
     expect(first.items.map((item) => item.sequence)).toEqual(['6', '5']);
     expect(first.nextCursor).toBe('5');
 
@@ -383,68 +405,86 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       details: { role: 'member' },
     });
 
-    const second = await client.audit.list({
-      teamId: TEAM,
-      limit: 2,
-      cursor: first.nextCursor ?? undefined,
-    });
+    const second = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        limit: 2,
+        cursor: first.nextCursor ?? undefined,
+      }),
+    );
     expect(second.items.map((item) => item.sequence)).toEqual(['4', '3']);
-    const third = await client.audit.list({
-      teamId: TEAM,
-      limit: 2,
-      cursor: second.nextCursor ?? undefined,
-    });
+    const third = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        limit: 2,
+        cursor: second.nextCursor ?? undefined,
+      }),
+    );
     expect(third.items.map((item) => item.sequence)).toEqual(['2', '1']);
     // A full final page still reports a cursor; the follow-up page is empty.
     expect(third.nextCursor).toBe('1');
-    const fourth = await client.audit.list({
-      teamId: TEAM,
-      limit: 2,
-      cursor: third.nextCursor ?? undefined,
-    });
+    const fourth = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        limit: 2,
+        cursor: third.nextCursor ?? undefined,
+      }),
+    );
     expect(fourth.items).toEqual([]);
     expect(fourth.nextCursor).toBeNull();
   });
 
   it('filters by category, action, actor, outcome, and date range', async () => {
-    const byCategory = await client.audit.list({
-      teamId: TEAM,
-      categories: ['protocol'],
-    });
+    const byCategory = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        categories: ['protocol'],
+      }),
+    );
     expect(byCategory.items.map((item) => item.sequence)).toEqual(['3']);
 
-    const byOutcome = await client.audit.list({
-      teamId: TEAM,
-      outcomes: ['denied'],
-    });
+    const byOutcome = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        outcomes: ['denied'],
+      }),
+    );
     expect(byOutcome.items.map((item) => item.sequence)).toEqual(['4']);
 
-    const byType = await client.audit.list({
-      teamId: TEAM,
-      eventTypes: ['team.invitation.created'],
-    });
+    const byType = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        eventTypes: ['team.invitation.created'],
+      }),
+    );
     expect(byType.items.map((item) => item.sequence)).toEqual(['7', '2']);
 
-    const byActor = await client.audit.list({
-      teamId: TEAM,
-      actor: { kind: 'user', id: ADMIN.userId },
-    });
+    const byActor = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        actor: { kind: 'user', id: ADMIN.userId },
+      }),
+    );
     expect(byActor.items.map((item) => item.sequence)).toEqual(['4', '3']);
 
-    const fromLater = await client.audit.list({
-      teamId: TEAM,
-      from: new Date(T1),
-    });
+    const fromLater = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        from: new Date(T1),
+      }),
+    );
     expect(fromLater.items.map((item) => item.sequence)).toEqual(['7', '6']);
 
     // `to` is exclusive, so the bound that selects everything at T0 is the
     // start of the next period — the convention AuditListInputSchema
     // documents, because `occurred_at` has microsecond resolution and no
     // millisecond-precision `Date` can name a period's true last instant.
-    const toEarlier = await client.audit.list({
-      teamId: TEAM,
-      to: new Date(T1),
-    });
+    const toEarlier = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        to: new Date(T1),
+      }),
+    );
     expect(toEarlier.items.map((item) => item.sequence)).toEqual([
       '5',
       '4',
@@ -453,11 +493,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       '1',
     ]);
 
-    const combined = await client.audit.list({
-      teamId: TEAM,
-      categories: ['team_access'],
-      outcomes: ['succeeded'],
-    });
+    const combined = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        categories: ['team_access'],
+        outcomes: ['succeeded'],
+      }),
+    );
     expect(combined.items.map((item) => item.sequence)).toEqual([
       '7',
       '5',
@@ -467,10 +509,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   });
 
   it('returns per-version filtered details for one event', async () => {
-    const roleChange = await client.audit.get({
-      teamId: TEAM,
-      eventId: eventIds[1] ?? '',
-    });
+    const roleChange = await client.call(
+      client.rpc('audit.get', {
+        teamId: TEAM,
+        eventId: eventId(1),
+      }),
+    );
     expect(roleChange).toMatchObject({
       title: 'Member role changed',
       rendered: true,
@@ -480,33 +524,43 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     expect(roleChange.occurredAt.toISOString()).toBe(T0);
     expect(roleChange.requestId).toMatch(/^[0-9a-f-]{36}$/);
 
-    const cancelledV2 = await client.audit.get({
-      teamId: TEAM,
-      eventId: eventIds[5] ?? '',
-    });
+    const cancelledV2 = await client.call(
+      client.rpc('audit.get', {
+        teamId: TEAM,
+        eventId: eventId(5),
+      }),
+    );
     expect(cancelledV2.details).toEqual({ roles: ['admin', 'member'] });
 
     // Unknown pairs disclose nothing beyond the machine identity.
-    const future = await client.audit.get({
-      teamId: TEAM,
-      eventId: eventIds[6] ?? '',
-    });
+    const future = await client.call(
+      client.rpc('audit.get', {
+        teamId: TEAM,
+        eventId: eventId(6),
+      }),
+    );
     expect(future).toMatchObject({ rendered: false, details: {} });
   });
 
   it('works for admins and denies members with a committed denial event', async () => {
     currentPrincipal = ADMIN;
-    await expect(client.audit.list({ teamId: TEAM })).resolves.toMatchObject({
+    await expect(
+      client.call(client.rpc('audit.list', { teamId: TEAM })),
+    ).resolves.toMatchObject({
       nextCursor: null,
     });
 
     currentPrincipal = MEMBER;
-    const list = await safe(client.audit.list({ teamId: TEAM }));
-    expect(list.error).toMatchObject({ code: 'FORBIDDEN' });
-    const get = await safe(
-      client.audit.get({ teamId: TEAM, eventId: eventIds[1] ?? '' }),
+    await expectRpcFailure(
+      client.callExit(client.rpc('audit.list', { teamId: TEAM })),
+      'Forbidden',
     );
-    expect(get.error).toMatchObject({ code: 'FORBIDDEN' });
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('audit.get', { teamId: TEAM, eventId: eventId(1) }),
+      ),
+      'Forbidden',
+    );
 
     const denials = await pool.query<{ details: { procedure: string } }>(
       `SELECT details FROM audit_events
@@ -524,10 +578,16 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
   it('refuses non-members and unknown teams identically, with no event', async () => {
     currentPrincipal = principal('audit-outsider', 'Outsider');
-    const known = await safe(client.audit.list({ teamId: TEAM }));
-    expect(known.error).toMatchObject({ code: 'FORBIDDEN' });
-    const unknown = await safe(client.audit.list({ teamId: 'unknown-team' }));
-    expect(unknown.error).toMatchObject({ code: 'FORBIDDEN' });
+    await expectRpcFailure(
+      client.callExit(client.rpc('audit.list', { teamId: TEAM })),
+      'Forbidden',
+    );
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('audit.list', { teamId: TeamId.make('unknown-team') }),
+      ),
+      'Forbidden',
+    );
 
     const rows = await pool.query(
       `SELECT 1 FROM audit_events WHERE actor_id = 'audit-outsider'
@@ -560,10 +620,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       details: {},
     });
 
-    const systemOnly = await client.audit.list({
-      teamId: TEAM,
-      actor: { kind: 'system', id: null },
-    });
+    const systemOnly = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        actor: { kind: 'system', id: null },
+      }),
+    );
     expect(systemOnly.items.map((item) => item.sequence)).toEqual([
       String(systemSequence),
     ]);
@@ -575,23 +637,29 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
     // The pair is the identity: the same kind with an id it does not have
     // matches nothing, and a user filter never picks the system row up.
-    const wrongPair = await client.audit.list({
-      teamId: TEAM,
-      actor: { kind: 'user', id: OWNER.userId },
-    });
+    const wrongPair = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        actor: { kind: 'user', id: OWNER.userId },
+      }),
+    );
     expect(wrongPair.items.map((item) => item.sequence)).not.toContain(
       String(systemSequence),
     );
   });
 
   it('does not leak another team through get or list', async () => {
-    const crossTeam = await safe(
-      client.audit.get({ teamId: TEAM, eventId: otherTeamEventId }),
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('audit.get', { teamId: TEAM, eventId: otherTeamEventId }),
+      ),
+      'NotFound',
     );
-    expect(crossTeam.error).toMatchObject({ code: 'NOT_FOUND' });
 
-    const otherList = await safe(client.audit.list({ teamId: OTHER_TEAM }));
-    expect(otherList.error).toMatchObject({ code: 'FORBIDDEN' });
+    await expectRpcFailure(
+      client.callExit(client.rpc('audit.list', { teamId: OTHER_TEAM })),
+      'Forbidden',
+    );
   });
 
   // The activity screen's filters must offer values from the team's whole
@@ -603,12 +671,19 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   // row the cursor test inserts: this suite seeds forward through one shared
   // team, in declaration order.
   it('offers filter values from beyond the first loaded page', async () => {
-    const firstPage = await client.audit.list({ teamId: TEAM, limit: 2 });
+    const firstPage = await client.call(
+      client.rpc('audit.list', {
+        teamId: TEAM,
+        limit: 2,
+      }),
+    );
     expect(firstPage.items.map((item) => item.eventType)).not.toContain(
       'team.member.role_changed',
     );
 
-    const options = await client.audit.filterOptions({ teamId: TEAM });
+    const options = await client.call(
+      client.rpc('audit.filterOptions', { teamId: TEAM }),
+    );
     expect(options.actions).toContainEqual({
       eventType: 'team.member.role_changed',
       title: 'Member role changed',
@@ -634,8 +709,10 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
   it('denies filter options to members, naming the procedure in the event', async () => {
     currentPrincipal = MEMBER;
-    const denied = await safe(client.audit.filterOptions({ teamId: TEAM }));
-    expect(denied.error).toMatchObject({ code: 'FORBIDDEN' });
+    await expectRpcFailure(
+      client.callExit(client.rpc('audit.filterOptions', { teamId: TEAM })),
+      'Forbidden',
+    );
 
     const denials = await pool.query<{ details: { procedure: string } }>(
       `SELECT details FROM audit_events
@@ -648,18 +725,27 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   });
 
   it('rejects invalid limits, cursors, filters, and event ids', async () => {
-    const overLimit = await safe(
-      client.audit.list({ teamId: TEAM, limit: 101 }),
+    expectPayloadRejected(
+      await client.callExit(
+        client.rpc('audit.list', { teamId: TEAM, limit: 101 }),
+      ),
     );
-    expect(overLimit.error).toMatchObject({ code: 'BAD_REQUEST' });
-    const badCursor = await safe(
-      client.audit.list({ teamId: TEAM, cursor: 'not-a-sequence' }),
+    expectPayloadRejected(
+      await client.callExit(
+        client.rpc('audit.list', { teamId: TEAM, cursor: 'not-a-sequence' }),
+      ),
     );
-    expect(badCursor.error).toMatchObject({ code: 'BAD_REQUEST' });
-    const badId = await safe(
-      client.audit.get({ teamId: TEAM, eventId: 'not-a-uuid' }),
+    expectPayloadRejected(
+      await client.callExit(
+        client.rpc('audit.get', {
+          teamId: TEAM,
+          // The branded id is what the contract asks for, so a value it
+          // refuses can only be presented by going round the type — which is
+          // the point: the boundary, not the caller, has to refuse it.
+          eventId: 'not-a-uuid' as unknown as AuditEventId,
+        }),
+      ),
     );
-    expect(badId.error).toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   it('rejects a cursor outside the PostgreSQL bigint range', async () => {
@@ -668,22 +754,30 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     // the cursor with `::bigint`. Unbounded, this reaches Postgres and raises
     // numeric_value_out_of_range (SQLSTATE 22003), surfacing as a 500 rather
     // than a rejected input.
-    const overRange = await safe(
-      client.audit.list({ teamId: TEAM, cursor: '99999999999999999999' }),
+    expectPayloadRejected(
+      await client.callExit(
+        client.rpc('audit.list', {
+          teamId: TEAM,
+          cursor: '99999999999999999999',
+        }),
+      ),
     );
-    expect(overRange.error).toMatchObject({ code: 'BAD_REQUEST' });
 
     // One past bigint's maximum, at the same digit count as the maximum.
-    const justOverMax = await safe(
-      client.audit.list({ teamId: TEAM, cursor: '9223372036854775808' }),
+    expectPayloadRejected(
+      await client.callExit(
+        client.rpc('audit.list', {
+          teamId: TEAM,
+          cursor: '9223372036854775808',
+        }),
+      ),
     );
-    expect(justOverMax.error).toMatchObject({ code: 'BAD_REQUEST' });
 
     // The maximum itself stays a valid cursor: it is a representable sequence.
-    const atMax = await safe(
-      client.audit.list({ teamId: TEAM, cursor: '9223372036854775807' }),
+    const atMax = await client.callExit(
+      client.rpc('audit.list', { teamId: TEAM, cursor: '9223372036854775807' }),
     );
-    expect(atMax.error).toBeNull();
+    expect(Exit.isSuccess(atMax)).toBe(true);
   });
 
   it('re-authorizes the caller role inside the read transaction', async () => {
@@ -708,8 +802,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const middlewareAuthorized = new Promise<void>((resolve) => {
       reportMiddlewareAuthorization = resolve;
     });
-    const demotedClient = createRpcClient(
-      createApp(readEnv(), {
+    const demotedClient = await createRpcClient(
+      createStudio(readEnv(), {
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(demoted),
@@ -721,6 +815,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         }),
       }),
     );
+    extraClients.push(demotedClient);
 
     const holder = await pool.connect();
     try {
@@ -732,7 +827,9 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         [memberId],
       );
 
-      const request = safe(demotedClient.audit.list({ teamId: TEAM }));
+      const request = demotedClient.callExit(
+        demotedClient.rpc('audit.list', { teamId: TEAM }),
+      );
       await middlewareAuthorized;
       await holder.query(
         `UPDATE team_members SET role = 'member' WHERE id = $1`,
@@ -740,9 +837,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       );
       await holder.query('COMMIT');
 
-      const { error, data } = await request;
-      expect(error).toMatchObject({ code: 'FORBIDDEN' });
-      expect(data).toBeUndefined();
+      await expectRpcFailure(request, 'Forbidden');
     } catch (error) {
       await holder.query('ROLLBACK').catch(() => undefined);
       throw error;
@@ -784,8 +879,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const middlewareAuthorized = new Promise<void>((resolve) => {
       reportMiddlewareAuthorization = resolve;
     });
-    const promotedClient = createRpcClient(
-      createApp(readEnv(), {
+    const promotedClient = await createRpcClient(
+      createStudio(readEnv(), {
         pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(promoted),
@@ -797,6 +892,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         }),
       }),
     );
+    extraClients.push(promotedClient);
 
     const holder = await pool.connect();
     try {
@@ -808,7 +904,9 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         [memberId],
       );
 
-      const request = safe(promotedClient.audit.list({ teamId: TEAM }));
+      const request = promotedClient.call(
+        promotedClient.rpc('audit.list', { teamId: TEAM }),
+      );
       await middlewareAuthorized;
       await holder.query(
         `UPDATE team_members SET role = 'owner' WHERE id = $1`,
@@ -816,9 +914,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       );
       await holder.query('COMMIT');
 
-      const { error, data } = await request;
-      expect(error).toBeNull();
-      expect(data?.items.length).toBeGreaterThan(0);
+      const data = await request;
+      expect(data.items.length).toBeGreaterThan(0);
     } catch (error) {
       await holder.query('ROLLBACK').catch(() => undefined);
       throw error;
@@ -858,8 +955,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const warning = vi
       .spyOn(process, 'emitWarning')
       .mockImplementation(() => undefined);
-    const unrecordedClient = createRpcClient(
-      createApp(readEnv(), {
+    const unrecordedClient = await createRpcClient(
+      createStudio(readEnv(), {
         // One client for the transaction that decides the denial; the append
         // that must record it then cannot acquire one.
         pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),
@@ -869,11 +966,16 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         }),
       }),
     );
+    extraClients.push(unrecordedClient);
 
     let calls: (typeof warning)['mock']['calls'];
     try {
-      const denied = await safe(unrecordedClient.audit.list({ teamId: TEAM }));
-      expect(denied.error).toMatchObject({ code: 'FORBIDDEN' });
+      await expectRpcFailure(
+        unrecordedClient.callExit(
+          unrecordedClient.rpc('audit.list', { teamId: TEAM }),
+        ),
+        'Forbidden',
+      );
       calls = [...warning.mock.calls];
     } finally {
       warning.mockRestore();

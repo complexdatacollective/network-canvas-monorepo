@@ -1,12 +1,33 @@
 import { describe, expect, it } from 'vitest';
 
-import { createApp, createStudio } from '../app.ts';
+import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
+
+import { createStudio } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
-function appWithFakeAuth() {
-  return createApp(readEnv(), { auth: stubAuthService() });
+/**
+ * One unsafe request at `POST /rpc` through the composed Effect router.
+ *
+ * `/rpc` belongs to the Effect shell now, so the gate under test is the
+ * route-scoped `SameOrigin` middleware rather than Hono's
+ * `requireSameOrigin('/rpc/*')` — the same decision, in the place it moved to.
+ * The body is empty on purpose: the gate answers before the rpc server reads
+ * a frame, so a refusal needs no payload, and a request the gate lets through
+ * only has to prove it was not refused.
+ */
+async function postRpc(headers: Record<string, string> = {}) {
+  const env = readEnv();
+  const stack = composeStudio(
+    env,
+    createStudio(env, { auth: stubAuthService() }),
+  );
+  try {
+    return await stack.request(RPC_PATH, { method: 'POST', headers });
+  } finally {
+    await stack.dispose();
+  }
 }
 
 /**
@@ -21,11 +42,7 @@ function serverWithFakeAuth() {
 
 describe('cookie-plane CSRF', () => {
   it('refuses cross-origin unsafe methods on /rpc', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/rpc/status', {
-      method: 'POST',
-      headers: { origin: 'https://evil.example' },
-    });
+    const res = await postRpc({ origin: 'https://evil.example' });
     expect(res.status).toBe(403);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
@@ -33,40 +50,27 @@ describe('cookie-plane CSRF', () => {
   });
 
   it('refuses unsafe methods that assert a cross-site fetch', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/rpc/status', {
-      method: 'POST',
-      headers: {
-        'sec-fetch-site': 'cross-site',
-        // Sec-Fetch-Site wins even when Origin looks right: a browser that
-        // says cross-site is cross-site.
-        'origin': 'http://localhost:5173',
-      },
+    const res = await postRpc({
+      'sec-fetch-site': 'cross-site',
+      // Sec-Fetch-Site wins even when Origin looks right: a browser that
+      // says cross-site is cross-site.
+      'origin': 'http://localhost:5173',
     });
     expect(res.status).toBe(403);
   });
 
   it('refuses unsafe methods carrying no origin evidence at all', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/rpc/status', { method: 'POST' });
+    const res = await postRpc();
     expect(res.status).toBe(403);
   });
 
   it('passes same-origin unsafe methods through', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/rpc/status', {
-      method: 'POST',
-      headers: { 'sec-fetch-site': 'same-origin' },
-    });
+    const res = await postRpc({ 'sec-fetch-site': 'same-origin' });
     expect(res.status).not.toBe(403);
   });
 
   it('passes unsafe methods with a matching Origin header', async () => {
-    const app = appWithFakeAuth();
-    const res = await app.request('/rpc/status', {
-      method: 'POST',
-      headers: { origin: 'http://localhost:5173' },
-    });
+    const res = await postRpc({ origin: 'http://localhost:5173' });
     expect(res.status).not.toBe(403);
   });
 

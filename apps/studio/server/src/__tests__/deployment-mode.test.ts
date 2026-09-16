@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
-import { createApp } from '../app.ts';
+import { createStudio, type Studio } from '../app.ts';
 import { resolve } from '../env/resolve.ts';
 import { createRpcClient } from './support/rpc.ts';
 
@@ -22,17 +22,31 @@ import { createRpcClient } from './support/rpc.ts';
 // No database: this drives `app.request()` against an env with no DATABASE_URL,
 // so it runs in every lane.
 
-function appFor(deploymentMode: DeploymentMode) {
-  return createApp(
+function studioFor(deploymentMode: DeploymentMode) {
+  return createStudio(
     resolve({ NODE_ENV: 'test', STUDIO_DEPLOYMENT_MODE: deploymentMode }),
   );
+}
+
+function appFor(deploymentMode: DeploymentMode) {
+  return studioFor(deploymentMode).app;
+}
+
+/** The instance descriptor over the rpc plane, harness disposed either way. */
+async function statusOver(studio: Studio) {
+  const client = await createRpcClient(studio);
+  try {
+    return await client.call(client.rpc('status', undefined));
+  } finally {
+    await client.dispose();
+  }
 }
 
 describe('the deployment mode over RPC', () => {
   it.each(['self-hosted', 'managed'] as const)(
     'reports %s as configured',
     async (mode) => {
-      const status = await createRpcClient(appFor(mode)).status();
+      const status = await statusOver(studioFor(mode));
       expect(status.deployment).toEqual({ mode, billing: false });
     },
   );
@@ -42,9 +56,9 @@ describe('the deployment mode over RPC', () => {
     // default: a managed deployment that forgets the variable 404s its own
     // pricing page on the first smoke request, where the opposite default
     // would have an institution's instance quietly publishing one.
-    const status = await createRpcClient(
-      createApp(resolve({ NODE_ENV: 'test' })),
-    ).status();
+    const status = await statusOver(
+      createStudio(resolve({ NODE_ENV: 'test' })),
+    );
     expect(status.deployment).toEqual({ mode: 'self-hosted', billing: false });
   });
 

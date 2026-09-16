@@ -1,8 +1,13 @@
-import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import {
+  MemberId,
+  TeamId,
+  TeamInvitationId,
+} from '@codaco/studio-contract/schema/ids';
+
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -13,9 +18,13 @@ import {
   seedTeam,
   uniqueTeamId,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
-const TEAM_ID = uniqueTeamId('rpc-audit-team');
+const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-team'));
 
 const db = await reachableDb();
 
@@ -34,7 +43,8 @@ describe.skipIf(!db)('audited team RPC', () => {
   let jobSchema: string;
   let dispose: () => Promise<void>;
   let membershipRole: string;
-  let client: ReturnType<typeof createRpcClient>;
+  let client: RpcTestClient;
+  let inviteeClients: RpcTestClient[];
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -62,8 +72,9 @@ describe.skipIf(!db)('audited team RPC', () => {
       getMembership: (_userId, teamId) =>
         Promise.resolve(teamId === TEAM_ID ? { role: membershipRole } : null),
     });
-    client = createRpcClient(
-      createApp(readEnv(), {
+    inviteeClients = [];
+    client = await createRpcClient(
+      createStudio(readEnv(), {
         auth,
         pool: scratch.app,
         // What the web process hands the router: creating an invitation queues
@@ -74,35 +85,43 @@ describe.skipIf(!db)('audited team RPC', () => {
   });
 
   afterAll(async () => {
+    await client.dispose();
+    for (const invitee of inviteeClients) await invitee.dispose();
     await dispose();
   });
 
   it('routes role and invitation mutations through typed audited commands', async () => {
     await expect(
-      client.team.updateMemberRole({
-        teamId: TEAM_ID,
-        memberId: 'rpc-audit-target-member',
-        role: 'admin',
-      }),
+      client.call(
+        client.rpc('team.updateMemberRole', {
+          teamId: TEAM_ID,
+          memberId: MemberId.make('rpc-audit-target-member'),
+          role: 'admin',
+        }),
+      ),
     ).resolves.toEqual({
       memberId: 'rpc-audit-target-member',
       role: 'admin',
     });
-    const invitation = await client.team.createInvitation({
-      teamId: TEAM_ID,
-      email: 'rpc-invitee@example.com',
-      role: 'member',
-    });
+    const invitation = await client.call(
+      client.rpc('team.createInvitation', {
+        teamId: TEAM_ID,
+        email: 'rpc-invitee@example.com',
+        role: 'member',
+      }),
+    );
     expect(invitation).toMatchObject({
       email: 'rpc-invitee@example.com',
       role: 'member',
       status: 'pending',
     });
     await expect(
-      client.team.cancelInvitation({
-        teamId: TEAM_ID,
-        invitationId: invitation.invitationId,
-      }),
+      client.call(
+        client.rpc('team.cancelInvitation', {
+          teamId: TEAM_ID,
+          invitationId: invitation.invitationId,
+        }),
+      ),
     ).resolves.toEqual({
       invitationId: invitation.invitationId,
       status: 'canceled',
@@ -144,18 +163,20 @@ describe.skipIf(!db)('audited team RPC', () => {
   });
 
   it('still refuses a non-member before opening a team transaction', async () => {
-    const { error } = await safe(
-      client.team.createInvitation({
-        teamId: 'unknown-team',
-        email: 'blocked@example.com',
-        role: 'member',
-      }),
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('team.createInvitation', {
+          teamId: TeamId.make('unknown-team'),
+          email: 'blocked@example.com',
+          role: 'member',
+        }),
+      ),
+      'Forbidden',
     );
-    expect(error).toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('lets the authenticated invitee accept without an existing membership', async () => {
-    const invitationId = 'rpc-audit-accept-invitation';
+    const invitationId = TeamInvitationId.make('rpc-audit-accept-invitation');
     const invitee: SessionPrincipal = {
       kind: 'user',
       userId: 'rpc-audit-invitee-user',
@@ -181,12 +202,15 @@ describe.skipIf(!db)('audited team RPC', () => {
       getSession: () => Promise.resolve(invitee),
       getMembership: () => Promise.resolve(null),
     });
-    const inviteeClient = createRpcClient(
-      createApp(readEnv(), { auth: inviteeAuth, pool }),
+    const inviteeClient = await createRpcClient(
+      createStudio(readEnv(), { auth: inviteeAuth, pool }),
     );
+    inviteeClients.push(inviteeClient);
 
     await expect(
-      inviteeClient.team.acceptInvitation({ invitationId }),
+      inviteeClient.call(
+        inviteeClient.rpc('team.acceptInvitation', { invitationId }),
+      ),
     ).resolves.toMatchObject({
       invitationId,
       teamId: TEAM_ID,

@@ -7,6 +7,8 @@ import { networkInterfaces } from 'node:os';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
+
 import { applySchema } from '../../scripts/apply.ts';
 import { createJobClient } from '../jobs/client.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
@@ -206,9 +208,9 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         { timeout: READINESS_WAIT_MS, interval: 100 },
       );
 
-      // No Studio surface behind it: the RPC path the web process serves is
-      // not mounted here.
-      const rpc = await fetch(`http://127.0.0.1:${healthPort}/rpc/status`, {
+      // No Studio surface behind it: the RPC path the web process serves —
+      // `POST /rpc`, the rpc plane's single mount — is not mounted here.
+      const rpc = await fetch(`http://127.0.0.1:${healthPort}${RPC_PATH}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
