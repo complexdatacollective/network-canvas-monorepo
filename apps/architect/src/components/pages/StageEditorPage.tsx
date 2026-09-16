@@ -299,14 +299,13 @@ const StageEditorPage = () => {
        *
        * Focus lands HERE, never on the name input: opening an edit the
        * researcher did not ask for is worse than a silent arrival. The
-       * new-stage flow is the deliberate exception — the editor autofocuses
+       * new-stage flow is the deliberate exception — the title autofocuses
        * the name because naming the stage IS the next step, and RouteFocus
        * leaves any destination that has already claimed focus alone.
        *
-       * Above the two columns rather than inside them, so it is neither a
-       * grid item of its own nor behind the section list: the first Tab
-       * after arriving here has to reach that list, which means the list
-       * must come after this heading in the document.
+       * Above everything else the route draws, so the reading order is the
+       * order on screen: this heading, then the stage's title, then the list
+       * of the stage's sections, then the form.
        */}
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {stageName}
