@@ -14,6 +14,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 import { MobileNavDrawer } from './MobileNavDrawer';
 import UserMenu from './UserMenu';
@@ -77,6 +78,9 @@ const itemVariants: Variants = {
   },
 };
 
+const navItemClassName =
+  'focusable relative rounded-full font-semibold outline-offset-10!';
+
 const NavButton = ({
   label,
   href,
@@ -94,10 +98,7 @@ const NavButton = ({
     >
       <Link
         href={href}
-        className={cx(
-          'focusable relative rounded-full font-semibold outline-offset-10!',
-          !isActive && 'hover:text-sea-green',
-        )}
+        className={cx(navItemClassName, !isActive && 'hover:text-sea-green')}
       >
         {isActive && (
           <motion.div
@@ -162,27 +163,48 @@ export function NavigationBar() {
             isActive={pathname === '/dashboard/interviews'}
           />
         </ul>
-        <div className="tablet-landscape:flex hidden items-center gap-6">
-          <NavButton
-            label={
-              <div className="flex items-center gap-2">
-                <Settings className="inline-block" />
-                <span className="laptop:inline hidden">
-                  {intl.formatMessage(messages.settings)}
-                </span>
-              </div>
-            }
-            href="/dashboard/settings"
-            isActive={pathname === '/dashboard/settings'}
-          />
+        <div className="tablet-landscape:gap-6 flex items-center gap-2">
+          <motion.div variants={itemVariants} className="flex">
+            <FrescoLocaleSwitcher
+              renderTrigger={
+                // Named by the switcher, which sets the language on it at runtime.
+                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                <button
+                  type="button"
+                  className={cx(
+                    navItemClassName,
+                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                  )}
+                />
+              }
+            />
+          </motion.div>
 
-          <motion.div variants={itemVariants}>
+          <div className="tablet-landscape:flex hidden">
+            <NavButton
+              label={
+                <div className="flex items-center gap-2">
+                  <Settings className="inline-block" />
+                  <span className="laptop:inline hidden">
+                    {intl.formatMessage(messages.settings)}
+                  </span>
+                </div>
+              }
+              href="/dashboard/settings"
+              isActive={pathname === '/dashboard/settings'}
+            />
+          </div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:block hidden"
+          >
             <UserMenu />
           </motion.div>
-        </div>
 
-        <div className="tablet-landscape:hidden">
-          <MobileNavDrawer />
+          <div className="tablet-landscape:hidden">
+            <MobileNavDrawer />
+          </div>
         </div>
       </MotionSurface>
     </div>
