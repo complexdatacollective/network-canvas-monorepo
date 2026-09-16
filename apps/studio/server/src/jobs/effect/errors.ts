@@ -20,6 +20,9 @@ export const INSUFFICIENT_PRIVILEGE = '42501';
 /** `foreign_key_violation`. */
 export const FOREIGN_KEY_VIOLATION = '23503';
 
+/** `unique_violation`. */
+const UNIQUE_VIOLATION = '23505';
+
 /**
  * The SQLSTATE a value carries, wherever in its cause chain it sits. Read
  * through the chain rather than off the top: a missing `code` would otherwise
@@ -76,6 +79,20 @@ export function deepestMessage(value: unknown): string | undefined {
     current = current.cause;
   }
   return deepest;
+}
+
+/**
+ * True when a `Cause` carries a unique-index violation.
+ *
+ * The claim's singleton guard is two things at once: a `NOT EXISTS` that keeps
+ * the claim from trying, and the partial unique index that makes it impossible
+ * when two workers pass the `NOT EXISTS` together. The index is what raises,
+ * and the loser has to read that as "nothing to claim" rather than as an error
+ * — exactly as pg-boss's `fetch` tolerates `23505` from its own policy indexes
+ * and returns an empty fetch (12.31.1 `dist/manager.js:1131-1141`).
+ */
+export function isUniqueViolationCause(cause: Cause.Cause<unknown>): boolean {
+  return sqlState(causeError(cause)) === UNIQUE_VIOLATION;
 }
 
 /** True when the statement asked not to wait for a lock and would have. */

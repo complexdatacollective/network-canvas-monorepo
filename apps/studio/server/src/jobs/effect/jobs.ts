@@ -2,13 +2,9 @@ import { Context, DateTime, Effect, Layer, Schema } from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { JobClock, type JobClockShape } from './clock.ts';
 import { Transaction } from './database.ts';
-import {
-  type JobPayload,
-  payloadCodec,
-  resolvedQueue,
-  SINGLETON_QUEUE_KEY,
-} from './queues.ts';
+import { type JobPayload, payloadCodec, resolvedQueue } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
 // The only module that creates a job (#1927 §4, the `Jobs` row). One statement
@@ -24,8 +20,11 @@ import { assertSchemaName } from './schema.ts';
 export type JobId = string;
 
 /**
- * The queue would not take the job. Today that is one thing: a singleton
- * collision — a job on this queue and key is already `created` or `active`.
+ * The queue would not take the job. Today that is one thing: a collision on a
+ * per-enqueue `singletonKey` — a job on this queue and key is already
+ * `created` or `active`. A queue's `singleton` *policy* never refuses an
+ * enqueue; it only keeps the second job `created` until the first stops being
+ * `active`.
  *
  * Decided for the spike: a collision is a typed failure, not a silent no-op.
  * The insert is `ON CONFLICT DO NOTHING` rather than letting the unique index
@@ -44,9 +43,14 @@ export type EnqueueOptions = {
   /** Not before this instant; defaults to now. */
   readonly startAfter?: DateTime.Utc | undefined;
   /**
-   * Makes this job a singleton under its own key. A `singleton` queue gets
-   * `SINGLETON_QUEUE_KEY` when the caller names none, so the queue-level
-   * policy and the per-call option arbitrate through one index.
+   * Makes this job a singleton under its own key: one job per (queue, key)
+   * among `created` and `active`, and a second is refused.
+   *
+   * This is pg-boss's per-send `singletonKey` and has nothing to do with the
+   * queue-level `singleton` *policy*, which limits how many jobs may be
+   * `active` at once and lets the rest wait. A caller wanting "do not queue a
+   * second one of these at all" names a key; a queue wanting "never run two of
+   * these at once" declares the policy.
    */
   readonly singletonKey?: string | undefined;
 };
@@ -65,8 +69,19 @@ export class Jobs extends Context.Service<
     ) => Effect.Effect<JobId, JobRefused, Transaction>;
   }
 >()('@studio/jobs/effect/Jobs') {
+  /**
+   * The clock is read once, here, rather than inside `enqueue`: reading it per
+   * call would put `JobClock` into `enqueue`'s requirements, and `Transaction`
+   * being the whole of that set is what makes "this job commits with the
+   * caller's work" a type-level guarantee rather than a convention.
+   */
   static readonly layer = (config: JobsConfig): Layer.Layer<Jobs> =>
-    Layer.succeed(Jobs)(Jobs.of({ enqueue: makeEnqueue(config) }));
+    Layer.effect(
+      Jobs,
+      Effect.map(JobClock, (clock) =>
+        Jobs.of({ enqueue: makeEnqueue(config, clock) }),
+      ),
+    );
 
   /**
    * What the domain suites use instead of a database: the same signature and
@@ -141,7 +156,7 @@ const decodePayload = <Queue extends JobQueueName>(
 ): Effect.Effect<JobPayload<Queue>> =>
   Effect.orDie(payloadCodec(queue).decode(payload));
 
-const makeEnqueue = (config: JobsConfig) => {
+const makeEnqueue = (config: JobsConfig, clock: JobClockShape) => {
   const schema = assertSchemaName(config.schema);
 
   return Effect.fnUntraced(function* <Queue extends JobQueueName>(
@@ -152,11 +167,9 @@ const makeEnqueue = (config: JobsConfig) => {
     const declaration = resolvedQueue(queue);
     const encoded = yield* decodePayload(queue, payload);
     const { sql } = yield* Transaction;
-    const now = yield* DateTime.now;
+    const now = yield* clock.now;
     const runAt = options?.startAfter ?? now;
-    const singletonKey =
-      options?.singletonKey ??
-      (declaration.policy === 'singleton' ? SINGLETON_QUEUE_KEY : null);
+    const singletonKey = options?.singletonKey ?? null;
     const keepUntil = DateTime.addDuration(
       runAt,
       `${declaration.retentionSeconds} seconds`,
@@ -167,14 +180,21 @@ const makeEnqueue = (config: JobsConfig) => {
     const rows = yield* Effect.orDie(
       sql<{ id: string }>`
         INSERT INTO ${sql(schema)}.jobs
-          (queue, payload, state, attempts, singleton_key,
-           run_at, keep_until, created_at)
+          (queue, payload, state, policy, attempts, singleton_key,
+           retry_limit, retry_delay, retry_backoff, retry_delay_max,
+           expire_in_seconds, run_at, keep_until, created_at)
         VALUES (
           ${queue},
           ${JSON.stringify(encoded)}::jsonb,
           'created',
+          ${declaration.policy},
           0,
           ${singletonKey},
+          ${declaration.retryLimit},
+          ${declaration.retryDelay},
+          ${declaration.retryBackoff},
+          ${declaration.retryDelayMax},
+          ${declaration.expireInSeconds},
           ${DateTime.toDate(runAt)},
           ${DateTime.toDate(keepUntil)},
           ${DateTime.toDate(now)}

@@ -4,30 +4,33 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Deferred, Effect, Exit, Fiber, Layer } from 'effect';
 import type pg from 'pg';
 
-import { reachableDb } from '../../../__tests__/support/postgres.ts';
-import { Database, Transaction, withTenantTransaction } from '../database.ts';
-import {
-  exitSqlState,
-  FOREIGN_KEY_VIOLATION,
-  INSUFFICIENT_PRIVILEGE,
-} from '../errors.ts';
-import {
-  invitationDelivery,
-  LOCK_HELD_ELSEWHERE,
-  LOCK_HELD_ON_LAST_ATTEMPT,
-  MailFailed,
-  Mailer,
-  RecordedMail,
-} from '../handlers.ts';
-import { Jobs } from '../jobs.ts';
-import { resolvedQueue } from '../queues.ts';
-import { JobWorker, type JobStep } from '../worker.ts';
+import { reachableDb } from '../../../../__tests__/support/postgres.ts';
+import { MailFailed, type MailNotConfigured } from '../../../../mail/mailer.ts';
 import {
   DeliveryHarness,
   layerDeliveryHarness,
   layerWorker,
   readJobs,
-} from './support.ts';
+} from '../../__tests__/support.ts';
+import {
+  Database,
+  Transaction,
+  withTenantTransaction,
+} from '../../database.ts';
+import {
+  exitSqlState,
+  FOREIGN_KEY_VIOLATION,
+  INSUFFICIENT_PRIVILEGE,
+} from '../../errors.ts';
+import { Jobs } from '../../jobs.ts';
+import { resolvedQueue } from '../../queues.ts';
+import { JobWorker, type JobStep } from '../../worker.ts';
+import {
+  invitationDelivery,
+  LOCK_HELD_ELSEWHERE,
+  LOCK_HELD_ON_LAST_ATTEMPT,
+} from '../invitation-delivery.ts';
+import { layerRecordingMailer, RecordedMail } from './support.ts';
 
 // `src/team/__tests__/invitation-delivery.test.ts`, ported to the native queue.
 // The original file is untouched; this is a sibling, and the numbering below
@@ -66,7 +69,7 @@ const suiteLayer = Layer.mergeAll(
       Jobs.layer({ schema: harness.schema }),
     ),
   ),
-  Mailer.layerRecording,
+  layerRecordingMailer,
 ).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
 
 describe.skipIf(!db)('invitation delivery on the native queue', () => {
@@ -212,13 +215,15 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
      */
     const runDelivery = (
       deliveryId: string,
-      behaviour: (call: number) => Effect.Effect<void, MailFailed>,
+      behaviour: (
+        call: number,
+      ) => Effect.Effect<void, MailFailed | MailNotConfigured>,
       options: { attemptsBefore?: number } = {},
     ) =>
       Effect.gen(function* () {
         const worker = yield* JobWorker;
         const mail = yield* RecordedMail;
-        yield* mail.setBehaviour((_message, call) => behaviour(call));
+        yield* mail.setInvitationBehaviour((_message, call) => behaviour(call));
         yield* worker.work(
           'invitation-delivery',
           invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
@@ -247,8 +252,10 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
       }).pipe(Effect.provide(layerWorker()));
 
     const succeeds = () => Effect.void;
+    // Stage 1's `MailFailed` carries the transport's own error rather than a
+    // message field; the message an operator reads off the row is that error's.
     const failsWith = (message: string) => () =>
-      Effect.fail(new MailFailed({ message }));
+      Effect.fail(new MailFailed({ cause: new Error(message) }));
 
     // ---------------------------------------------------------------- 1 ----
     it.effect('creates the delivery and its job only when it commits', () =>
@@ -356,12 +363,12 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
           yield* clearQueue();
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
           const second = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(second._tag, 'settled');
           // The labels are the ones the command snapshotted, not the renamed
           // team and inviter: the invitation says what it said when it was sent.
-          assert.deepStrictEqual(mail.sent.at(-1), {
+          assert.deepStrictEqual(mail.invitations.at(-1), {
             email: invitation.email,
             expiresAt: invitation.expiresAt,
             invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
@@ -429,10 +436,10 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
           yield* clearQueue();
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
           const again = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(again._tag, 'settled');
-          assert.strictEqual(mail.sent.length, 0);
+          assert.strictEqual(mail.invitations.length, 0);
           // Not even the attempt counter moves: an uncertain delivery is done.
           const unchanged = yield* deliveryState(deliveryId);
           assert.strictEqual(unchanged.attempt_count, 1);
@@ -471,8 +478,11 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         const deliveryId = yield* enqueueDeliveryRow(invitation);
         const { scratch } = yield* DeliveryHarness;
         const mailBefore = yield* RecordedMail;
-        mailBefore.sent.length = 0;
-        const sending = yield* Deferred.make<void, MailFailed>();
+        mailBefore.invitations.length = 0;
+        const sending = yield* Deferred.make<
+          void,
+          MailFailed | MailNotConfigured
+        >();
 
         const attempt = yield* Effect.forkChild(
           runDelivery(deliveryId, () => Deferred.await(sending), {
@@ -480,7 +490,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           }),
         );
         const mail = yield* RecordedMail;
-        yield* waitFor(() => mail.sent.length === 1);
+        yield* waitFor(() => mail.invitations.length === 1);
 
         // Whoever is next in line for the invitation, as one statement:
         // taking the lock and settling the row cannot be interleaved from
@@ -525,7 +535,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
         yield* Deferred.fail(
           sending,
-          new MailFailed({ message: 'permanent SMTP failure' }),
+          new MailFailed({ cause: new Error('permanent SMTP failure') }),
         );
         const step = yield* Fiber.join(attempt);
         assert.strictEqual(step._tag, 'failed');
@@ -585,7 +595,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const cancelledDelivery = yield* enqueueDeliveryRow(cancelled);
           const expiredDelivery = yield* enqueueDeliveryRow(expired);
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
 
           const first = yield* runDelivery(cancelledDelivery, succeeds);
           yield* clearQueue();
@@ -599,7 +609,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             second._tag === 'settled' ? second.outcome : undefined,
             'suppressed',
           );
-          assert.strictEqual(mail.sent.length, 0);
+          assert.strictEqual(mail.invitations.length, 0);
           const cancelledRow = yield* deliveryState(cancelledDelivery);
           assert.strictEqual(
             cancelledRow.last_error,
@@ -619,9 +629,12 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         const invitation = yield* seedInvitation();
         const { deliveryId } = yield* seedQueuedDelivery(invitation);
         const mail = yield* RecordedMail;
-        mail.sent.length = 0;
-        const sending = yield* Deferred.make<void, MailFailed>();
-        yield* mail.setBehaviour(() => Deferred.await(sending));
+        mail.invitations.length = 0;
+        const sending = yield* Deferred.make<
+          void,
+          MailFailed | MailNotConfigured
+        >();
+        yield* mail.setInvitationBehaviour(() => Deferred.await(sending));
 
         // Two workers on one schema, exactly as two replicas are, racing for
         // the same job.
@@ -646,19 +659,19 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
                 { concurrency: 2 },
               ),
             );
-            yield* waitFor(() => mail.sent.length === 1);
+            yield* waitFor(() => mail.invitations.length === 1);
             // The winner holds the job active and the invitation locked; this
             // is the window in which the loser would send a second copy.
             // The window in which the loser would send a second copy: real
             // time, because the loser's claim is a real round trip.
             yield* realSleep(300);
-            assert.strictEqual(mail.sent.length, 1);
+            assert.strictEqual(mail.invitations.length, 1);
             yield* Deferred.succeed(sending, undefined);
             return yield* Fiber.join(racing);
           }).pipe(Effect.provide(layerWorker()));
         }).pipe(Effect.provide(layerWorker()));
 
-        assert.strictEqual(mail.sent.length, 1);
+        assert.strictEqual(mail.invitations.length, 1);
         assert.deepStrictEqual(steps.map((step) => step._tag).sort(), [
           'idle',
           'settled',
@@ -677,15 +690,18 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const invitation = yield* seedInvitation();
           const deliveryId = yield* enqueueDeliveryRow(invitation);
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
-          const sending = yield* Deferred.make<void, MailFailed>();
+          mail.invitations.length = 0;
+          const sending = yield* Deferred.make<
+            void,
+            MailFailed | MailNotConfigured
+          >();
 
           const first = yield* Effect.forkChild(
             runDelivery(deliveryId, (call) =>
               call === 1 ? Deferred.await(sending) : Effect.void,
             ),
           );
-          yield* waitFor(() => mail.sent.length === 1);
+          yield* waitFor(() => mail.invitations.length === 1);
 
           // The expiry of the first attempt would make the queue hand the job to
           // a second worker while the first is still inside its SMTP call.
@@ -693,7 +709,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             attemptsBefore: 1,
           });
           assert.strictEqual(second._tag, 'retrying');
-          assert.strictEqual(mail.sent.length, 1);
+          assert.strictEqual(mail.invitations.length, 1);
           // The refusal counted nothing: an attempt that never got the lock did
           // no work.
           const during = yield* deliveryState(deliveryId);
@@ -723,7 +739,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const deliveryId = yield* enqueueDeliveryRow(invitation);
           const { scratch } = yield* DeliveryHarness;
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
 
           const holder = yield* Effect.promise(() =>
             holdInvitation(scratch, invitation.invitationId),
@@ -734,7 +750,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           );
 
           assert.strictEqual(step._tag, 'failed');
-          assert.strictEqual(mail.sent.length, 0);
+          assert.strictEqual(mail.invitations.length, 0);
           const rows = yield* readJobs('invitation-delivery');
           assert.strictEqual(
             rows.find((row) => row.state === 'failed')?.last_error,
@@ -763,7 +779,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const deliveryId = yield* enqueueDeliveryRow(invitation);
           const { scratch, schema } = yield* DeliveryHarness;
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
 
           // Nothing this server enqueues looks like either of these — the
           // enqueue validates on the way in — so what they stand for is a row
@@ -797,7 +813,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             yield* clearQueue();
           }
 
-          assert.strictEqual(mail.sent.length, 0);
+          assert.strictEqual(mail.invitations.length, 0);
           assert.deepStrictEqual(yield* deliveryState(deliveryId), {
             attempt_count: 0,
             failed_at: null,
@@ -819,7 +835,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const deliveryId = yield* enqueueDeliveryRow(invitation);
           const { scratch } = yield* DeliveryHarness;
           const mail = yield* RecordedMail;
-          mail.sent.length = 0;
+          mail.invitations.length = 0;
 
           const holder = yield* Effect.promise(() =>
             holdInvitation(scratch, invitation.invitationId),
@@ -843,7 +859,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             after._tag === 'settled' ? after.outcome : undefined,
             'suppressed',
           );
-          assert.strictEqual(mail.sent.length, 0);
+          assert.strictEqual(mail.invitations.length, 0);
           assert.instanceOf(
             (yield* deliveryState(deliveryId)).suppressed_at,
             Date,
@@ -954,8 +970,8 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         yield* clearQueue();
         const invitation = yield* seedInvitation();
         const mail = yield* RecordedMail;
-        mail.sent.length = 0;
-        yield* mail.setBehaviour(() => Effect.void);
+        mail.invitations.length = 0;
+        yield* mail.setInvitationBehaviour(() => Effect.void);
 
         const { deliveryId } = yield* seedQueuedDelivery(invitation);
         const step = yield* Effect.gen(function* () {
@@ -969,12 +985,15 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
         assert.strictEqual(step._tag, 'settled');
         assert.instanceOf((yield* deliveryState(deliveryId)).sent_at, Date);
-        assert.deepStrictEqual(mail.sent.at(-1)?.email, invitation.email);
+        assert.deepStrictEqual(
+          mail.invitations.at(-1)?.email,
+          invitation.email,
+        );
         assert.strictEqual(
-          mail.sent.at(-1)?.invitationUrl,
+          mail.invitations.at(-1)?.invitationUrl,
           `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
         );
-        assert.strictEqual(mail.sent.at(-1)?.role, 'member');
+        assert.strictEqual(mail.invitations.at(-1)?.role, 'member');
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'completed');
         assert.strictEqual(row?.outcome, 'completed');

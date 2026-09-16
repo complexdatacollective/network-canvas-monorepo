@@ -12,6 +12,8 @@ import {
   type JobQueueOptions,
 } from '@codaco/studio-sync/jobs';
 
+import { jobSchemaGrantsSql, jobSchemaSql } from './effect/schema.ts';
+
 // The pg-boss-facing view of the queue declarations. studio-sync holds them as
 // plain data so it never imports pg-boss; the two types are reconciled here,
 // and this module is also where the schema's installable SQL is rendered.
@@ -91,21 +93,46 @@ function schemaVersionOf(plan: string): number {
 }
 
 /**
- * Everything the `pgboss` schema is made of, hashed into the schema
- * fingerprint beside the public statements: the tables and functions, the
- * grants, and the queue definitions. A pg-boss upgrade changes the first, a
- * grant change the second, and a queue change the third, so any of the three
- * is a stale database that every process refuses at boot.
+ * The schema the Effect-native queue installs beside pg-boss's (#1927).
+ *
+ * Its own schema rather than `public` for the reason pg-boss has one:
+ * `applySchema` pushes `public` with drizzle-kit, which reconciles everything
+ * it introspects there against what Drizzle declares — a jobs table in
+ * `public` would be dropped as unmanaged by the next push.
+ *
+ * Declared here rather than beside the DDL so that neither module has to
+ * import the other: `src/jobs/effect/install.ts` reaches `@effect/sql-pg` for
+ * its Effect half, and this module is in the web process's graph.
+ */
+export const NATIVE_JOB_SCHEMA = 'studio_jobs';
+
+/**
+ * Everything outside the public schema that a schema application installs,
+ * hashed into the schema fingerprint beside the public statements.
+ *
+ * pg-boss's half comes first: the tables and functions its construction plan
+ * creates, the grants, and the queue definitions. A pg-boss upgrade changes
+ * the first, a grant change the second, and a queue change the third, so any
+ * of the three is a stale database that every process refuses at boot.
  *
  * The queue line is a comment rather than SQL because queues are reconciled
  * through pg-boss's own create/update calls, which need a connection; what
  * matters for the fingerprint is that their declared shape is covered.
+ *
+ * Then the native queue's own schema and grants, which every application
+ * installs from now on and nothing in the image reads until stage 3 switches
+ * the callers over. They are in the fingerprint for the same reason pg-boss's
+ * are: a column added to `studio_jobs.jobs` is a database this build's worker
+ * could not run against, and must be refused at boot rather than discovered
+ * at the first claim.
  */
 export function renderJobStatements(): string[] {
   return [
     getConstructionPlans(JOB_SCHEMA),
     jobGrantsSql(JOB_SCHEMA),
     `-- queues ${JSON.stringify(JOB_QUEUES)}`,
+    jobSchemaSql(NATIVE_JOB_SCHEMA),
+    jobSchemaGrantsSql(NATIVE_JOB_SCHEMA),
   ];
 }
 

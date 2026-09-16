@@ -437,6 +437,16 @@ database whose installed pg-boss schema is not this build's version is dropped
 and reinstalled, which discards every job that was queued in it; `apply-schema`
 logs how many that was before it does it.
 
+A second job schema, `studio_jobs`, is installed beside it. It belongs to the
+Effect-native queue that replaces pg-boss (#1927): two tables of its own, with
+the same division of labour between the two roles — the application may create
+a job and read back its id, the worker runs as maintenance and owns the tables.
+Its DDL and grants are hashed into the fingerprint like everything else, so the
+shape of the queue is something a database is refused at boot for, rather than
+something a worker discovers at its first claim. Until the callers are switched
+over, pg-boss still runs every queue and nothing in the image reads
+`studio_jobs`.
+
 <!-- generated:schema-docs start -->
 
 #### Generated entity-relationship diagram
@@ -447,7 +457,7 @@ logs how many that was before it does it.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `1f6a03b55c7fb8dcf75c5fd6413cf4770bbb97da38fc8f4d61006f615ccdd4bf`.
+Schema fingerprint: `8c2505620b128c48828d48c316e7e7e8b330b3b7ac164961ae661705ab247204`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 

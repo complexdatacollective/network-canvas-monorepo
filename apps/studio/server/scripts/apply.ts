@@ -18,8 +18,9 @@ import {
   stampFingerprint,
 } from '../src/db/schema.ts';
 import { seed, type SeedOptions } from '../src/db/seed.ts';
+import { installNativeJobSchema } from '../src/jobs/effect/install.ts';
 import { installJobSchema, syncJobQueues } from '../src/jobs/install.ts';
-import { renderJobStatements } from '../src/jobs/queues.ts';
+import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach the
 // image's bundles. `studio-api migrate` applies the same schema from the DDL
@@ -127,6 +128,10 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
       // one where a process can already enqueue.
       await installJobSchema(lock, JOB_SCHEMA);
       await syncJobQueues(lock, JOB_SCHEMA);
+      // The Effect-native queue's schema, beside pg-boss's; nothing reads it
+      // until stage 3 (#1927), but it is inside the fingerprint, so a stamped
+      // database has to carry it.
+      await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
       await stampFingerprint(lock, fingerprint);
       await lock.query('commit');
     } catch (error) {
@@ -167,8 +172,10 @@ export async function resetSchemaAndSeed(
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
   // pg-boss's schema is Studio's too, and a reset that left it behind would
-  // keep jobs naming rows the reset had just removed.
+  // keep jobs naming rows the reset had just removed. The native queue's
+  // schema goes for the same reason.
   await pool.query(`drop schema if exists ${JOB_SCHEMA} cascade`);
+  await pool.query(`drop schema if exists ${NATIVE_JOB_SCHEMA} cascade`);
 
   if (options.sweepScratch) await sweepScratch(pool);
 

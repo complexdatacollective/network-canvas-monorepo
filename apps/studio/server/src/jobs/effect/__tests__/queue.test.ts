@@ -14,6 +14,7 @@ import {
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { JobClock } from '../clock.ts';
 import { Database, Transaction, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
 import { resolvedQueue } from '../queues.ts';
@@ -25,6 +26,7 @@ import {
 } from '../worker.ts';
 import {
   asApp,
+  asMaintenance,
   asOwner,
   layerQueueHarness,
   layerWorker,
@@ -89,6 +91,194 @@ describe.skipIf(!db)('the native queue', () => {
         );
         return yield* body(worker);
       }).pipe(Effect.provide(layerWorker()));
+
+    /** An owner-side edit of a job row; the suites' stand-in for a redeploy. */
+    const updateJob = (jobId: string, assignment: string) =>
+      Effect.gen(function* () {
+        const { schema } = yield* QueueHarness;
+        yield* asOwner(
+          Effect.flatMap(Database, ({ sql }) =>
+            sql.unsafe(
+              `UPDATE ${schema}.jobs SET ${assignment} WHERE id = '${jobId}'`,
+            ),
+          ),
+        );
+      });
+
+    /** A replica whose clock runs five minutes fast. */
+    const SKEW = Duration.minutes(5);
+
+    const skewedJobs = Layer.unwrap(
+      Effect.map(QueueHarness, (harness) =>
+        Jobs.layer({ schema: harness.schema }).pipe(
+          Layer.provide(JobClock.layerOffset(SKEW)),
+        ),
+      ),
+    );
+
+    it.effect(
+      'leaves a skewed replica’s job unclaimable by an unskewed one',
+      () =>
+        Effect.gen(function* () {
+          yield* clear;
+          // Enqueued "now" by a process whose clock is five minutes fast, so the
+          // row's `run_at` is five minutes ahead of everyone else's now. This is
+          // the hazard an app-clock queue has and pg-boss's database-clock one
+          // does not, and the reason `JobClock.layer` exists.
+          yield* Effect.provide(
+            Effect.flatMap(Jobs, (jobs) =>
+              asApp(
+                withTransaction(
+                  jobs.enqueue('invitation-delivery', {
+                    deliveryId: DELIVERY_ID,
+                  }),
+                ),
+              ),
+            ),
+            skewedJobs,
+          );
+
+          const unskewed = yield* withWorker(
+            () => Effect.succeed<JobOutcome>('completed'),
+            (worker) => worker.drainOnce('invitation-delivery'),
+          );
+          assert.strictEqual(unskewed._tag, 'idle');
+
+          // The positive half: a worker reading the *same* clock claims it at
+          // once, which is what a measured correction buys — both processes
+          // agree on what "now" is, whatever their hardware clocks say.
+          const agreeing = yield* Effect.gen(function* () {
+            const worker = yield* JobWorker;
+            yield* worker.work('invitation-delivery', () =>
+              Effect.succeed<JobOutcome>('completed'),
+            );
+            return yield* worker.drainOnce('invitation-delivery');
+          }).pipe(Effect.provide(layerWorker({}, JobClock.layerOffset(SKEW))));
+          assert.strictEqual(agreeing._tag, 'settled');
+        }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('corrects the clock against the database’s own now()', () =>
+      Effect.gen(function* () {
+        // Virtual time starts at the epoch, so an uncorrected clock is fifty-odd
+        // years behind the database. `JobClock.layer` measures that difference
+        // at build and adds it back, which is the whole of the correction.
+        const virtual = yield* DateTime.now;
+        assert.isBelow(DateTime.toEpochMillis(virtual), 1000);
+
+        const corrected = yield* asMaintenance(
+          Effect.provide(
+            Effect.flatMap(JobClock, (clock) => clock.now),
+            JobClock.layer({ clockMonitorInterval: Duration.hours(1) }),
+          ),
+        );
+        // Against the real wall clock, which is what the database's is.
+        assert.isBelow(
+          Math.abs(DateTime.toEpochMillis(corrected) - Date.now()),
+          5_000,
+        );
+      }),
+    );
+
+    it.effect('freezes the queue’s retry policy onto the row at enqueue', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        yield* enqueueDelivery();
+        const [row] = yield* readJobs('invitation-delivery');
+        assert.deepStrictEqual(
+          {
+            policy: row?.policy,
+            retry_limit: row?.retry_limit,
+            retry_delay: row?.retry_delay,
+            retry_backoff: row?.retry_backoff,
+            retry_delay_max: row?.retry_delay_max,
+            expire_in_seconds: row?.expire_in_seconds,
+          },
+          {
+            policy: DELIVERY.policy,
+            retry_limit: DELIVERY.retryLimit,
+            retry_delay: DELIVERY.retryDelay,
+            retry_backoff: DELIVERY.retryBackoff,
+            retry_delay_max: DELIVERY.retryDelayMax,
+            expire_in_seconds: DELIVERY.expireInSeconds,
+          },
+        );
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('settles by the row’s retry policy, not the declaration’s', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const jobId = yield* enqueueDelivery();
+        // What a redeploy that narrowed the queue's `retryLimit` to zero would
+        // leave behind — except that it would leave the *old* value on the row
+        // and the new one in the declaration, which is the direction that
+        // matters: the declaration says seven, the row says none.
+        yield* updateJob(jobId, 'retry_limit = 0');
+        assert.strictEqual(DELIVERY.retryLimit, 7);
+
+        const step = yield* withWorker(
+          () => Effect.fail(new Error('SMTP temporarily unavailable')),
+          (worker) => worker.drainOnce('invitation-delivery'),
+        );
+
+        // A queue that read its declaration here would have retried.
+        assert.strictEqual(step._tag, 'failed');
+        const rows = yield* readJobs();
+        assert.strictEqual(
+          rows.find((row) => row.id === jobId)?.state,
+          'failed',
+        );
+        // And the dead-letter copy carries the *target* queue's policy, frozen
+        // at copy time.
+        const dead = resolvedQueue('invitation-delivery-dead-letter');
+        const copy = rows.find(
+          (row) => row.queue === 'invitation-delivery-dead-letter',
+        );
+        assert.strictEqual(copy?.retry_limit, dead.retryLimit);
+        assert.strictEqual(copy?.expire_in_seconds, dead.expireInSeconds);
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('leases an attempt for the row’s own expiry', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const jobId = yield* enqueueDelivery();
+        yield* updateJob(jobId, 'expire_in_seconds = 7');
+        assert.notStrictEqual(DELIVERY.expireInSeconds, 7);
+
+        const held = yield* Deferred.make<void>();
+        const started = yield* Deferred.make<void>();
+
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          yield* worker.work('invitation-delivery', () =>
+            Effect.gen(function* () {
+              yield* Deferred.succeed(started, undefined);
+              yield* Deferred.await(held);
+              return 'completed' as const;
+            }),
+          );
+          // Forked and held open, because the settle nulls `locked_until`:
+          // the lease only exists while the attempt is running.
+          const running = yield* Effect.forkChild(
+            worker.drainOnce('invitation-delivery'),
+          );
+          yield* Deferred.await(started);
+
+          const now = yield* DateTime.now;
+          const [row] = yield* readJobs('invitation-delivery');
+          assert.strictEqual(row?.state, 'active');
+          assert.strictEqual(
+            row?.locked_until,
+            DateTime.toDate(DateTime.addDuration(now, '7 seconds')).getTime(),
+          );
+
+          yield* Deferred.succeed(held, undefined);
+          yield* Fiber.join(running);
+        }).pipe(Effect.provide(layerWorker()));
+      }).pipe(Effect.provide(jobsLayer)),
+    );
 
     it.effect('moves run_at by exactly pg-boss’s backoff formula', () =>
       Effect.gen(function* () {
@@ -180,19 +370,111 @@ describe.skipIf(!db)('the native queue', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect('refuses a second singleton job while one is live', () =>
+    it.effect('lets a job on a singleton queue wait for the active one', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const jobs = yield* Jobs;
+        // `singleton` is a limit on how many may be *active*, not on how many
+        // may exist: pg-boss's own `job_i2` indexes `WHERE state = 'active'`
+        // and its `send` inserts a second `created` row happily. Both are
+        // accepted here too.
+        const first = yield* asApp(
+          withTransaction(jobs.enqueue('denied-attempts-summary', {})),
+        );
+        const second = yield* asApp(
+          withTransaction(jobs.enqueue('denied-attempts-summary', {})),
+        );
+        assert.notStrictEqual(first, second);
+        const queued = yield* readJobs('denied-attempts-summary');
+        assert.strictEqual(queued.length, 2);
+        // The marker the partial index arbitrates over is on the row, because
+        // an index cannot read a declaration.
+        assert.deepStrictEqual(
+          queued.map((row) => row.policy),
+          ['singleton', 'singleton'],
+        );
+
+        const held = yield* Deferred.make<void>();
+        const started = yield* Deferred.make<void>();
+
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          yield* worker.work('denied-attempts-summary', () =>
+            Effect.gen(function* () {
+              yield* Deferred.succeed(started, undefined);
+              yield* Deferred.await(held);
+              return 'completed' as const;
+            }),
+          );
+
+          const running = yield* Effect.forkChild(
+            worker.drainOnce('denied-attempts-summary'),
+          );
+          yield* Deferred.await(started);
+
+          const live = yield* readJobs('denied-attempts-summary');
+          assert.deepStrictEqual(live.map((row) => row.state).sort(), [
+            'active',
+            'created',
+          ]);
+
+          // And the waiting one is not claimable while the first is active —
+          // asked of a second worker with an instant handler, as a second
+          // replica is, so a guard that failed to hold would answer `settled`
+          // rather than hanging on this suite's held one.
+          const blocked = yield* Effect.gen(function* () {
+            const other = yield* JobWorker;
+            yield* other.work('denied-attempts-summary', () =>
+              Effect.succeed<JobOutcome>('completed'),
+            );
+            return yield* other.drainOnce('denied-attempts-summary');
+          }).pipe(Effect.provide(layerWorker()));
+          assert.strictEqual(blocked._tag, 'idle');
+
+          yield* Deferred.succeed(held, undefined);
+          const settled = yield* Fiber.join(running);
+          assert.strictEqual(settled._tag, 'settled');
+
+          // Now it is: the limit was on the active row, not on the queue.
+          const next = yield* worker.drainOnce('denied-attempts-summary');
+          assert.strictEqual(next._tag, 'settled');
+        }).pipe(Effect.provide(layerWorker()));
+
+        const done = yield* readJobs('denied-attempts-summary');
+        assert.deepStrictEqual(
+          done.map((row) => row.state),
+          ['completed', 'completed'],
+        );
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('refuses a second job on the same singleton key', () =>
       Effect.gen(function* () {
         yield* clear;
         const jobs = yield* Jobs;
         const first = yield* asApp(
-          withTransaction(jobs.enqueue('denied-attempts-summary', {})),
+          withTransaction(
+            jobs.enqueue(
+              'denied-attempts-summary',
+              {},
+              { singletonKey: 'the-sweep' },
+            ),
+          ),
         );
         assert.isString(first);
 
         // Refused, not a no-op and not a unique violation: the caller's
         // transaction survives and the failure is typed.
         const second = yield* Effect.exit(
-          asApp(withTransaction(jobs.enqueue('denied-attempts-summary', {}))),
+          asApp(
+            withTransaction(
+              jobs.enqueue(
+                'denied-attempts-summary',
+                {},
+                { singletonKey: 'the-sweep' },
+              ),
+            ),
+          ),
         );
         assert.isTrue(Exit.isFailure(second));
         const error = Option.getOrUndefined(
@@ -211,7 +493,11 @@ describe.skipIf(!db)('the native queue', () => {
           withTransaction(
             Effect.gen(function* () {
               const outcome = yield* Effect.exit(
-                jobs.enqueue('denied-attempts-summary', {}),
+                jobs.enqueue(
+                  'denied-attempts-summary',
+                  {},
+                  { singletonKey: 'the-sweep' },
+                ),
               );
               const { sql } = yield* Transaction;
               const rows = yield* sql<{ ok: number }>`SELECT 1 AS ok`;

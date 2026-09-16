@@ -83,14 +83,6 @@ export function resolvedQueue(name: JobQueueName): ResolvedQueue {
   return queue;
 }
 
-/**
- * `singleton` is a queue-level policy but a row-level constraint, so the
- * enqueue writes the marker the partial unique index arbitrates over. An empty
- * string rather than the queue name: the index is on `(queue, singleton_key)`
- * already, and `NULL` would disable it.
- */
-export const SINGLETON_QUEUE_KEY = '';
-
 const InvitationDeliveryPayload = Schema.Struct({
   deliveryId: Schema.String.check(Schema.isUUID()),
 });

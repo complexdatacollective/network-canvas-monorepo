@@ -8,7 +8,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { installJobSchema } from '../../jobs/install.ts';
-import { renderJobStatements } from '../../jobs/queues.ts';
+import { NATIVE_JOB_SCHEMA, renderJobStatements } from '../../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
@@ -132,6 +132,73 @@ describe.skipIf(!db)('migrate', () => {
         'studio_app',
         'studio_maintenance',
       ]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'creates the native job schema with its grants',
+    async () => {
+      // The Effect-native queue (#1927) is installed by `migrate` from now on
+      // and worked by nothing in the image until stage 3 switches the callers
+      // onto it. It is in `SCHEMA_FINGERPRINT`, so a database this build
+      // stamped has to carry it — which makes the stamp, and not a later
+      // migration, what this case is really about.
+      const scratch = await emptyDatabase();
+      const lines: string[] = [];
+      await migrateDatabase(scratch.pool, ddl, {
+        log: (line) => lines.push(line),
+      });
+
+      expect(lines).toContain(`Installing the ${NATIVE_JOB_SCHEMA} schema.`);
+
+      const tables = await scratch.pool.query<{ table_name: string }>(
+        `select table_name from information_schema.tables
+          where table_schema = $1 order by 1`,
+        [NATIVE_JOB_SCHEMA],
+      );
+      const names = tables.rows.map((row) => row.table_name);
+      expect(names).toContain('jobs');
+      expect(names).toContain('job_schedules');
+
+      // The grants are the half a `CREATE TABLE` cannot imply, and the half
+      // that decides what a compromised web process could read: the
+      // application may insert a job and read back the id its insert returns,
+      // and may not see a payload, a queue name, or anything it could claim,
+      // retry or delete a job with. The worker runs as maintenance and owns
+      // both tables.
+      const privileges = await scratch.pool.query<Record<string, boolean>>(
+        `select
+           has_schema_privilege('studio_app', $1, 'USAGE') as app_schema,
+           has_table_privilege('studio_app', $1 || '.jobs', 'INSERT') as app_insert,
+           has_column_privilege('studio_app', $1 || '.jobs', 'id', 'SELECT') as app_id,
+           has_column_privilege('studio_app', $1 || '.jobs', 'payload', 'SELECT') as app_payload,
+           has_column_privilege('studio_app', $1 || '.jobs', 'queue', 'SELECT') as app_queue,
+           has_table_privilege('studio_app', $1 || '.jobs', 'UPDATE') as app_update,
+           has_table_privilege('studio_app', $1 || '.jobs', 'DELETE') as app_delete,
+           has_table_privilege('studio_app', $1 || '.job_schedules', 'SELECT') as app_schedules,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'SELECT') as maintenance_select,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'INSERT') as maintenance_insert,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'UPDATE') as maintenance_update,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'DELETE') as maintenance_delete,
+           has_table_privilege('studio_maintenance', $1 || '.job_schedules', 'INSERT') as maintenance_schedules`,
+        [NATIVE_JOB_SCHEMA],
+      );
+      expect(privileges.rows[0]).toEqual({
+        app_schema: true,
+        app_insert: true,
+        app_id: true,
+        app_payload: false,
+        app_queue: false,
+        app_update: false,
+        app_delete: false,
+        app_schedules: false,
+        maintenance_select: true,
+        maintenance_insert: true,
+        maintenance_update: true,
+        maintenance_delete: true,
+        maintenance_schedules: true,
+      });
     },
     CASE_TIMEOUT_MS,
   );
@@ -279,6 +346,15 @@ describe.skipIf(!db)('migrate', () => {
         `select count(*)::text from pg_tables where schemaname = 'public'`,
       );
       expect(relations.rows[0]?.count).toBe('0');
+
+      // The native job schema is created inside the same transaction, after
+      // the step that failed here — so "nothing survives" has to cover a
+      // schema outside `public` that `checkSchema` does not look at.
+      const nativeJobs = await scratch.pool.query<{ present: boolean }>(
+        `select exists (select 1 from pg_namespace where nspname = $1) as present`,
+        [NATIVE_JOB_SCHEMA],
+      );
+      expect(nativeJobs.rows[0]?.present).toBe(false);
 
       // And with the conflict removed — the remedy `syncJobQueues` names —
       // the same database applies cleanly.

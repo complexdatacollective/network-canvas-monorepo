@@ -130,8 +130,10 @@ verifies.
   followed by `SIDECARS`.
 - `renderJobStatements()` = pg-boss's construction plan for the `pgboss`
   schema, the job grants from `@codaco/studio-sync/jobs`, and the queue
-  declarations. They are rendered separately because the first list is the DDL
-  the suites execute into a scratch schema by setting `search_path`, and these
+  declarations, followed by the Effect-native queue's own DDL and grants for
+  the `studio_jobs` schema (`src/jobs/effect/schema.ts`). They are rendered
+  separately from the public statements because that list is the DDL the
+  suites execute into a scratch schema by setting `search_path`, and these
   statements name a schema of their own instead.
 - `computeSchemaFingerprint()` is a SHA-256 over both lists joined.
   **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
@@ -143,19 +145,41 @@ verifies.
 - `applySchema()` takes an advisory lock, clears the stamp (so a failure
   part-way cannot leave a drifted database reading as current), runs
   `drizzle-kit push`, executes the sidecars, installs the `pgboss` schema and
-  re-runs its grants, reconciles every declared queue, and stamps the
-  fingerprint. A database whose installed pg-boss version is not this build's
-  is dropped and reinstalled rather than migrated — the same pre-release
-  posture the public schema takes, and it discards whatever was queued, which
-  is why the count is logged first. No process migrates pg-boss at start.
+  re-runs its grants, reconciles every declared queue, installs the
+  `studio_jobs` schema, and stamps the fingerprint. A database whose installed
+  pg-boss version is not this build's is dropped and reinstalled rather than
+  migrated — the same pre-release posture the public schema takes, and it
+  discards whatever was queued, which is why the count is logged first. No
+  process migrates pg-boss at start.
 - `migrateDatabase()` (`src/db/migrate.ts`) is what `studio-api migrate` runs
   in the image, where drizzle-kit does not exist. The build renders the same
   statements into `dist/schema-ddl.json` (`scripts/render-schema-ddl.ts`) and
   this executes them in one transaction, then installs pg-boss's schema and
   reconciles the queues through the same `src/jobs/install.ts` that
-  `applySchema` calls, and stamps the fingerprint. It refuses a document whose
-  statements do not hash to the fingerprint beside them, and — pre-release — it
-  refuses a database another build created rather than reconciling it (#1901).
+  `applySchema` calls, installs `studio_jobs` through the same
+  `src/jobs/effect/install.ts`, and stamps the fingerprint. It refuses a
+  document whose statements do not hash to the fingerprint beside them, and —
+  pre-release — it refuses a database another build created rather than
+  reconciling it (#1901).
+
+### The `studio_jobs` schema
+
+The Effect-native job queue of #1927 installs two tables of its own, beside
+pg-boss's and outside `public` for the same reason pg-boss's are: `applySchema`
+pushes `public` with drizzle-kit, which reconciles everything it introspects
+there against what Drizzle declares, and would drop an undeclared jobs table on
+the next push. The DDL and grants live in `src/jobs/effect/schema.ts`, the
+install in `src/jobs/effect/install.ts` (a node-postgres function for the two
+callers that apply a schema today, and an Effect twin over an open
+`Transaction` for the worker of stage 3), and the schema name in
+`src/jobs/queues.ts` beside pg-boss's.
+
+Until stage 3 switches the callers over, pg-boss keeps running the queues and
+nothing in the image reads `studio_jobs`. It is applied and fingerprinted from
+now on anyway, because the fingerprint is the only thing that would notice its
+shape changing: a worker that claimed a job from a table missing a column this
+build expects would fail at the claim rather than at boot.
+
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
   `mismatch` or `unstamped`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.

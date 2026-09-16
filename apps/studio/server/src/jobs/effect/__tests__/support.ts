@@ -7,7 +7,9 @@ import {
   provisionScratchSchema,
   type ScratchSchema,
 } from '../../../__tests__/support/postgres.ts';
+import { splitStatements } from '../../../db/statements.ts';
 import type { DbEnv } from '../../../env.ts';
+import { JobClock } from '../clock.ts';
 import { Database, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
 import {
@@ -38,17 +40,19 @@ export class QueueHarness extends Context.Service<
 
 /**
  * `@effect/sql-pg` refuses every multi-command string with `42601`, so the
- * sidecar is split before it is sent. Stage 2a's dollar-quote-aware
- * `splitStatements` is the production answer; the queue's DDL contains no
- * dollar-quoted body and no semicolon inside a literal, which is deliberate —
- * the spike does not want to depend on that splitter existing yet.
+ * sidecar is split before it is sent — with stage 2a's dollar-quote-aware
+ * splitter, which the `notify_job` trigger's plpgsql body now requires:
+ * splitting on `;` would cut it in half.
  */
-function splitPlainStatements(sql: string): readonly string[] {
-  return sql
-    .split(';')
-    .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
-}
+const installSchema = Effect.fnUntraced(function* (schema: string) {
+  const { sql } = yield* Database;
+  for (const statement of [
+    ...splitStatements(jobSchemaSql(schema)),
+    ...splitStatements(jobSchemaGrantsSql(schema)),
+  ]) {
+    yield* sql.unsafe(statement);
+  }
+});
 
 const client = (identity: 'app' | 'maintenance' | 'owner', db: DbEnv) =>
   Database.layer(identity, {
@@ -79,21 +83,7 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
       const asOwner = <A, E>(effect: Effect.Effect<A, E, Database>) =>
         Effect.provideService(effect, Database, owner);
 
-      yield* Effect.orDie(
-        asOwner(
-          withTransaction(
-            Effect.gen(function* () {
-              const { sql } = yield* Database;
-              for (const statement of [
-                ...splitPlainStatements(jobSchemaSql(schema)),
-                ...splitPlainStatements(jobSchemaGrantsSql(schema)),
-              ]) {
-                yield* sql.unsafe(statement);
-              }
-            }),
-          ),
-        ),
-      );
+      yield* Effect.orDie(asOwner(withTransaction(installSchema(schema))));
 
       yield* Effect.addFinalizer(() =>
         Effect.orDie(
@@ -147,6 +137,12 @@ const layerMaintenanceDatabase: Layer.Layer<Database, never, QueueHarness> =
  */
 export const layerWorker = (
   config: Omit<JobWorkerConfig, 'schema'> = {},
+  /**
+   * The clock the worker and its enqueues share. Defaults to the uncorrected
+   * one `TestClock` drives; a case that wants to *be* a skewed replica passes
+   * `JobClock.layerOffset(…)`.
+   */
+  clock: Layer.Layer<never> = JobClock.layerTest,
 ): Layer.Layer<JobWorker | Jobs | Database, never, QueueHarness> =>
   Layer.unwrap(
     Effect.map(QueueHarness, (harness) =>
@@ -157,6 +153,7 @@ export const layerWorker = (
       }).pipe(
         Layer.provideMerge(Jobs.layer({ schema: harness.schema })),
         Layer.provideMerge(layerMaintenanceDatabase),
+        Layer.provide(clock),
       ),
     ),
   );
@@ -166,9 +163,16 @@ export type JobRow = {
   readonly id: string;
   readonly queue: string;
   readonly state: string;
+  readonly policy: string;
   readonly attempts: number;
   readonly payload: unknown;
   readonly singleton_key: string | null;
+  /** The retry policy as it was frozen onto the row at enqueue. */
+  readonly retry_limit: number;
+  readonly retry_delay: number;
+  readonly retry_backoff: boolean;
+  readonly retry_delay_max: number | null;
+  readonly expire_in_seconds: number;
   readonly last_error: string | null;
   readonly outcome: string | null;
   readonly dead_letter_of: string | null;
@@ -186,7 +190,9 @@ export const readJobs = Effect.fnUntraced(function* (queue?: string) {
       Database,
       ({ sql }) =>
         sql<JobRow>`
-          SELECT id, queue, state, attempts, payload, singleton_key, last_error,
+          SELECT id, queue, state, policy, attempts, payload, singleton_key,
+                 retry_limit, retry_delay, retry_backoff, retry_delay_max,
+                 expire_in_seconds, last_error,
                  outcome, dead_letter_of, run_at, keep_until, locked_until,
                  completed_at
             FROM ${sql(schema)}.jobs
@@ -254,17 +260,7 @@ export const layerDeliveryHarness = (
 
       yield* Effect.orDie(
         Effect.provideService(
-          withTransaction(
-            Effect.gen(function* () {
-              const { sql } = yield* Database;
-              for (const statement of [
-                ...splitPlainStatements(jobSchemaSql(schema)),
-                ...splitPlainStatements(jobSchemaGrantsSql(schema)),
-              ]) {
-                yield* sql.unsafe(statement);
-              }
-            }),
-          ),
+          withTransaction(installSchema(schema)),
           Database,
           owner,
         ),

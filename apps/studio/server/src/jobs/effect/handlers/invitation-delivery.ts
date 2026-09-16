@@ -1,21 +1,28 @@
 import type { Cause } from 'effect';
-import { Context, DateTime, Effect, Exit, Layer, Schema } from 'effect';
+import { DateTime, Effect, Exit, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
-import { type Database, Transaction, withTransaction } from './database.ts';
+import { Mailer } from '../../../mail/mailer.ts';
+import { type Database, Transaction, withTransaction } from '../database.ts';
 import {
   causeError,
   deepestMessage,
   isLockUnavailableCause,
-} from './errors.ts';
-import type { HandledJob, JobOutcome } from './worker.ts';
+} from '../errors.ts';
+import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // `invitation-delivery` as an Effect (#1927 §11): the same state machine
 // src/jobs/handlers/invitation-delivery.ts runs today, with pg-boss's job
 // metadata replaced by `HandledJob` and its two pool transactions replaced by
 // two `withTransaction` calls on the maintenance `Database`.
+//
+// The transport is stage 1's `Mailer` (src/mail/mailer.ts), the one every
+// other sender already uses: `sendTeamInvitation` fails with `MailFailed` when
+// a transport refused the message and with `MailNotConfigured` when there is
+// no transport at all. Neither is distinguished here — both mean this attempt
+// did not send, and both carry a message an operator reads off the row.
 //
 // What the port did not change: the delivery row is still the record; the
 // invitation is still locked `FOR UPDATE … NOWAIT` for the length of the send,
@@ -65,85 +72,11 @@ const STILL_PENDING = `sent_at IS NULL
      AND suppressed_at IS NULL
      AND uncertain_at IS NULL`;
 
-export type InvitationMessage = {
-  readonly email: string;
-  readonly expiresAt: Date;
-  readonly invitationUrl: string;
-  readonly inviterLabel: string;
-  readonly messageId: string;
-  readonly role: TeamRole;
-  readonly teamLabel: string;
-};
-
-/** What a transport that would not take the message reports. */
-export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
-  message: Schema.String,
-}) {}
-
 /** The delivery attempt itself failed and the queue should decide. */
 export class DeliveryAttemptFailed extends Schema.TaggedError<DeliveryAttemptFailed>()(
   'DeliveryAttemptFailed',
   { message: Schema.String },
 ) {}
-
-export class Mailer extends Context.Service<
-  Mailer,
-  {
-    readonly sendTeamInvitation: (
-      message: InvitationMessage,
-    ) => Effect.Effect<void, MailFailed>;
-  }
->()('@studio/jobs/effect/Mailer') {
-  /**
-   * A transport that records and answers however a case tells it to. The
-   * behaviour is settable so a case can make one send hang while the next
-   * succeeds, which is what the duplicate-send cases need.
-   */
-  static readonly layerRecording: Layer.Layer<Mailer | RecordedMail> =
-    Layer.effectContext(
-      Effect.sync(() => {
-        const sent: InvitationMessage[] = [];
-        let behaviour: (
-          message: InvitationMessage,
-          call: number,
-        ) => Effect.Effect<void, MailFailed> = () => Effect.void;
-        return Context.make(
-          Mailer,
-          Mailer.of({
-            sendTeamInvitation: (message) =>
-              Effect.suspend(() => {
-                sent.push(message);
-                return behaviour(message, sent.length);
-              }),
-          }),
-        ).pipe(
-          Context.add(
-            RecordedMail,
-            RecordedMail.of({
-              sent,
-              setBehaviour: (next) =>
-                Effect.sync(() => {
-                  behaviour = next;
-                }),
-            }),
-          ),
-        );
-      }),
-    );
-}
-
-export class RecordedMail extends Context.Service<
-  RecordedMail,
-  {
-    readonly sent: InvitationMessage[];
-    readonly setBehaviour: (
-      behaviour: (
-        message: InvitationMessage,
-        call: number,
-      ) => Effect.Effect<void, MailFailed>,
-    ) => Effect.Effect<void>;
-  }
->()('@studio/jobs/effect/RecordedMail') {}
 
 export type InvitationDeliveryDeps = {
   /** The browser-facing origin the invitation link is minted against. */

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { Effect } from 'effect';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
@@ -30,7 +31,10 @@ import {
 } from '../db/schema.ts';
 import type { DbEnv } from '../env.ts';
 import { createJobClient } from '../jobs/client.ts';
-import { JOB_SCHEMA_VERSION } from '../jobs/queues.ts';
+import { Database, withTransaction } from '../jobs/effect/database.ts';
+import { installNativeJobSchemaEffect } from '../jobs/effect/install.ts';
+import { jobSchemaGrantsSql, jobSchemaSql } from '../jobs/effect/schema.ts';
+import { JOB_SCHEMA_VERSION, NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
 import {
   declaredQueueRows,
   installedQueueRows,
@@ -75,6 +79,31 @@ describe('fingerprint constant', () => {
       .update((await renderSchemaStatements()).join('\n'))
       .digest('hex');
     expect(await computeSchemaFingerprint()).not.toBe(publicOnly);
+  });
+
+  // The Effect-native queue's schema is installed by every schema application
+  // from now on and read by nothing in the image until stage 3 (#1927), so
+  // until then the fingerprint is the only thing that would notice a column
+  // added to it — and the boot check is what keeps a worker off a database
+  // whose queue is not the shape this build claims.
+  it('covers the native job schema and its grants', async () => {
+    const jobStatements = renderJobStatements();
+    expect(jobStatements).toContain(jobSchemaSql(NATIVE_JOB_SCHEMA));
+    expect(jobStatements).toContain(jobSchemaGrantsSql(NATIVE_JOB_SCHEMA));
+
+    // And they are inside the hash rather than merely rendered beside it: the
+    // same fingerprint computed over the other statements alone differs.
+    const withoutNative = createHash('sha256')
+      .update(
+        [
+          ...(await renderSchemaStatements()),
+          ...jobStatements.filter(
+            (statement) => !statement.includes(NATIVE_JOB_SCHEMA),
+          ),
+        ].join('\n'),
+      )
+      .digest('hex');
+    expect(await computeSchemaFingerprint()).not.toBe(withoutNative);
   });
 
   it('applies audit immutability after every general privilege grant', () => {
@@ -416,6 +445,36 @@ async function withScratch<
   }
 }
 
+/**
+ * Everything one schema holds, by kind and name: tables and indexes, the
+ * functions, and the triggers that are not a constraint's own. Enough to tell
+ * two installations of the same DDL apart, and named rather than counted so a
+ * difference reads as which object is missing.
+ */
+async function nativeSchemaCatalogue(
+  pool: pg.Pool,
+  schema: string,
+): Promise<{ kind: string; name: string }[]> {
+  const rows = await pool.query<{ kind: string; name: string }>(
+    `select 'relation' as kind, c.relname as name
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = $1 and c.relkind in ('r', 'i')
+     union all
+     select 'function', p.proname
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = $1
+     union all
+     select 'trigger', t.tgname
+       from pg_trigger t
+       join pg_class c on c.oid = t.tgrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = $1 and not t.tgisinternal
+      order by 1, 2`,
+    [schema],
+  );
+  return rows.rows;
+}
+
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
@@ -529,6 +588,62 @@ describe.skipIf(!db)('schema verification', () => {
             ).toBe(false);
           }
         }
+      }
+    });
+  });
+
+  // A scratch schema is what forty or so suites take for a deployed database,
+  // so everything a schema application installs outside `public` has to be
+  // there too — pg-boss's sibling, and now the native queue's (#1927). Read
+  // through `nativeJobSchema` rather than by rebuilding the name here, because
+  // that field is what a suite builds a `Database` against.
+  it('provisions the native job schema beside the scratch schema', async () => {
+    await withScratch(createScratchSchema, async (pool, scratch) => {
+      await provisionScratchSchema(pool);
+
+      const tables = await pool.query<{ table_name: string }>(
+        `select table_name from information_schema.tables
+          where table_schema = $1 order by 1`,
+        [scratch.nativeJobSchema],
+      );
+      const names = tables.rows.map((row) => row.table_name);
+      expect(names).toContain('jobs');
+      expect(names).toContain('job_schedules');
+    });
+  });
+
+  // Two drivers install that schema — node-postgres for the two callers that
+  // apply a schema today, `@effect/sql-pg` for the worker of stage 3 — and the
+  // only thing keeping them the same schema is that they send the same split
+  // statements. Proved by installing through the Effect path into a sibling
+  // and comparing the catalogue, because a difference here would not surface
+  // until a worker claimed a job against a table it had created itself.
+  it('installs the same schema through the Effect path', async () => {
+    await withScratch(createScratchSchema, async (pool, scratch) => {
+      await provisionScratchSchema(pool);
+      const throughNodePostgres = await nativeSchemaCatalogue(
+        pool,
+        scratch.nativeJobSchema,
+      );
+      // Not merely equal: both non-empty, so a catalogue query that returned
+      // nothing would not read as agreement.
+      expect(throughNodePostgres.length).toBeGreaterThan(0);
+
+      const sibling = `${scratch.nativeJobSchema}_effect`;
+      try {
+        await Effect.runPromise(
+          withTransaction(installNativeJobSchemaEffect(sibling)).pipe(
+            Effect.provide(
+              Database.layer('owner', { url: db!.url, maxConnections: 2 }),
+            ),
+            Effect.orDie,
+          ),
+        );
+        expect(await nativeSchemaCatalogue(pool, sibling)).toEqual(
+          throughNodePostgres,
+        );
+      } finally {
+        await pool.query(`drop schema if exists "${sibling}" cascade`);
       }
     });
   });
@@ -892,6 +1007,56 @@ describe.skipIf(!db)('schema application', () => {
         app_delete: false,
         maintenance_update: true,
         maintenance_schedule: true,
+      });
+    });
+  });
+
+  it('installs the native job schema beside pg-boss’s', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+
+      const tables = await pool.query<{ table_name: string }>(
+        `select table_name from information_schema.tables
+          where table_schema = $1 order by 1`,
+        [NATIVE_JOB_SCHEMA],
+      );
+      const names = tables.rows.map((row) => row.table_name);
+      expect(names).toContain('jobs');
+      expect(names).toContain('job_schedules');
+
+      // The same division of labour pg-boss's grants make, on the queue this
+      // build will switch to: the application may create a job and read back
+      // the id its insert returns, and nothing else — not a payload, not a
+      // queue name, and nothing that would let it claim, retry or delete one.
+      const privileges = await pool.query<Record<string, boolean>>(
+        `select
+           has_schema_privilege('studio_app', $1, 'USAGE') as app_schema,
+           has_table_privilege('studio_app', $1 || '.jobs', 'INSERT') as app_insert,
+           has_column_privilege('studio_app', $1 || '.jobs', 'id', 'SELECT') as app_id,
+           has_column_privilege('studio_app', $1 || '.jobs', 'payload', 'SELECT') as app_payload,
+           has_column_privilege('studio_app', $1 || '.jobs', 'queue', 'SELECT') as app_queue,
+           has_table_privilege('studio_app', $1 || '.jobs', 'UPDATE') as app_update,
+           has_table_privilege('studio_app', $1 || '.jobs', 'DELETE') as app_delete,
+           has_table_privilege('studio_app', $1 || '.job_schedules', 'SELECT') as app_schedules,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'SELECT') as maintenance_select,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'UPDATE') as maintenance_update,
+           has_table_privilege('studio_maintenance', $1 || '.jobs', 'DELETE') as maintenance_delete,
+           has_table_privilege('studio_maintenance', $1 || '.job_schedules', 'INSERT') as maintenance_schedules`,
+        [NATIVE_JOB_SCHEMA],
+      );
+      expect(privileges.rows[0]).toEqual({
+        app_schema: true,
+        app_insert: true,
+        app_id: true,
+        app_payload: false,
+        app_queue: false,
+        app_update: false,
+        app_delete: false,
+        app_schedules: false,
+        maintenance_select: true,
+        maintenance_update: true,
+        maintenance_delete: true,
+        maintenance_schedules: true,
       });
     });
   });

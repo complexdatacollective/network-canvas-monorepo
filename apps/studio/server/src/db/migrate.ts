@@ -4,7 +4,9 @@ import type pg from 'pg';
 
 import { JOB_SCHEMA } from '@codaco/studio-sync/jobs';
 
+import { installNativeJobSchema } from '../jobs/effect/install.ts';
 import { installJobSchema, syncJobQueues } from '../jobs/install.ts';
+import { NATIVE_JOB_SCHEMA } from '../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import {
   checkSchema,
@@ -36,7 +38,14 @@ export type SchemaDdl = {
   fingerprint: string;
   /** The public schema: drizzle's create statements, then the sidecars. */
   statements: string[];
-  /** pg-boss's construction plan, its grants, and the queue declarations. */
+  /**
+   * pg-boss's construction plan, its grants and the queue declarations,
+   * followed by the native queue's schema and grants. Hashed rather than
+   * executed from here: both schemas are installed through the modules that
+   * own them (`src/jobs/install.ts`, `src/jobs/effect/install.ts`), which are
+   * in the image, so what this document carries is what the fingerprint
+   * covers.
+   */
   jobStatements: string[];
 };
 
@@ -147,6 +156,14 @@ export async function migrateDatabase(
       await installJobSchema(lock, JOB_SCHEMA);
       log('Reconciling the job queues.');
       await syncJobQueues(lock, JOB_SCHEMA);
+
+      // The Effect-native queue's schema, installed beside pg-boss's and read
+      // by nothing in the image until stage 3 switches the callers onto it
+      // (#1927). Here rather than in a later migration because the DDL is in
+      // `SCHEMA_FINGERPRINT` already: a database this build stamped has to be
+      // one that carries everything the fingerprint describes.
+      log(`Installing the ${NATIVE_JOB_SCHEMA} schema.`);
+      await installNativeJobSchema(lock, NATIVE_JOB_SCHEMA);
 
       // The first-run bootstrap token is issued by the entry (src/migrate.ts)
       // once this has returned: the installation table it writes exists only

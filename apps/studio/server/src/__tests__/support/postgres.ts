@@ -19,6 +19,7 @@ import {
   type StudioEnv,
 } from '../../env.ts';
 import { createJobClient, type JobClient } from '../../jobs/client.ts';
+import { installNativeJobSchema } from '../../jobs/effect/install.ts';
 import { jobQueueDefinitions } from '../../jobs/queues.ts';
 import { JobHandlersLive } from '../../jobs/registrations.ts';
 import { JobWorker, type JobWorkerConfig } from '../../jobs/worker.ts';
@@ -80,6 +81,16 @@ function jobSchemaFor(schema: string): string {
   return `${schema}_jobs`;
 }
 
+/**
+ * The Effect-native queue's sibling, beside pg-boss's (#1927). Named from the
+ * scratch schema for the same reason, and named after the production schema
+ * (`studio_jobs`) so that a suite reading the name can see which of the two
+ * queues it is looking at.
+ */
+function nativeJobSchemaFor(schema: string): string {
+  return `${schema}_studio_jobs`;
+}
+
 export type ScratchSchema = {
   /** The connecting login: provisioning, fixtures, and cross-team oracles. */
   pool: pg.Pool;
@@ -89,6 +100,11 @@ export type ScratchSchema = {
   maintenance: pg.Pool;
   /** This scratch schema's pg-boss schema, once provisioned. */
   jobSchema: string;
+  /**
+   * This scratch schema's Effect-native job schema, once provisioned — what a
+   * suite builds a `Database` against to drive the queue of #1927.
+   */
+  nativeJobSchema: string;
   /**
    * The web process's enqueue-only pg-boss, against this scratch job schema
    * and on a pool of its own pinned to the application role — the production
@@ -269,6 +285,7 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
   const app = connect(TENANT_ROLES.app);
   const maintenance = connect(TENANT_ROLES.maintenance);
   const jobSchema = jobSchemaFor(name);
+  const nativeJobSchema = nativeJobSchemaFor(name);
 
   // A pg-boss instance polls on a timer, so one left running would keep
   // querying a schema the drop below has removed — and its `error` listener
@@ -280,6 +297,7 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
     app,
     maintenance,
     jobSchema,
+    nativeJobSchema,
     createJobClient: async ({ start = true } = {}) => {
       // The client builds its own application-role pool from `db`; the search
       // path the scratch pools carry is not one of its concerns, because every
@@ -378,6 +396,9 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
       const cleanup = createOwnerPool(db);
       try {
         await cleanup.query(`drop schema if exists "${jobSchema}" cascade`);
+        await cleanup.query(
+          `drop schema if exists "${nativeJobSchema}" cascade`,
+        );
         await cleanup.query(`drop schema if exists "${name}" cascade`);
       } finally {
         await cleanup.end();
@@ -399,26 +420,57 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await pool.query(await scratchSchemaDdl());
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
-  await provisionScratchJobSchema(pool);
+  const current = await pool.query<{ schema: string }>(
+    'select current_schema() as schema',
+  );
+  const schema = current.rows[0]!.schema;
+  await provisionScratchJobSchema(pool, jobSchemaFor(schema));
+  await provisionScratchNativeJobSchema(pool, nativeJobSchemaFor(schema));
+}
+
+/**
+ * The Effect-native queue's schema, in a second sibling — everything a schema
+ * application installs outside `public`, so a scratch schema is the same shape
+ * as a deployed database (#1927). Through the very function `applySchema` and
+ * `studio-api migrate` call, so the suites cannot be provisioned by a
+ * different set of statements from the one a deployment gets.
+ *
+ * On a client of its own rather than the pool, because `installNativeJobSchema`
+ * applies the DDL one statement at a time and must not have them land on
+ * different connections.
+ */
+async function provisionScratchNativeJobSchema(
+  pool: pg.Pool,
+  schema: string,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await installNativeJobSchema(client, schema);
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
  * pg-boss's half of what `applySchema` installs, against this scratch schema's
- * sibling. Derived from `current_schema()` rather than passed in, so the forty
- * or so suites that provision a scratch schema all get a working queue without
- * naming one.
+ * sibling. The schema name is derived from `current_schema()` by the caller
+ * rather than passed in from a suite, so the forty or so suites that provision
+ * a scratch schema all get a working queue without naming one.
  *
  * Queues are created through pg-boss's own plpgsql function — one statement
  * each, and the same one `createQueue` runs — rather than by starting a
  * PgBoss instance per scratch schema, which would cost a connection and a
  * round of queue-cache reads for something every suite pays for.
  */
-async function provisionScratchJobSchema(pool: pg.Pool): Promise<void> {
-  const current = await pool.query<{ schema: string }>(
-    'select current_schema() as schema',
-  );
-  const schema = jobSchemaFor(current.rows[0]!.schema);
-
+async function provisionScratchJobSchema(
+  pool: pg.Pool,
+  schema: string,
+): Promise<void> {
   await pool.query(getConstructionPlans(schema));
   await pool.query(jobGrantsSql(schema));
   for (const { name, options } of jobQueueDefinitions()) {
