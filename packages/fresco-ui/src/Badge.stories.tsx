@@ -1,47 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
-import { Badge, type BadgeColor } from './Badge';
+import { Badge, BADGE_COLORS } from './Badge';
 import Surface from './layout/Surface';
 
-const themeColors = [
-  'white',
-  'black',
-  'neon-coral',
-  'neon-coral-dark',
-  'sea-green',
-  'sea-green-dark',
-  'slate-blue',
-  'slate-blue-dark',
-  'navy-taupe',
-  'navy-taupe-dark',
-  'cyber-grape',
-  'cyber-grape-dark',
-  'mustard',
-  'mustard-dark',
-  'rich-black',
-  'rich-black-dark',
-  'charcoal',
-  'charcoal-dark',
-  'platinum',
-  'platinum-dark',
-  'sea-serpent',
-  'sea-serpent-dark',
-  'paradise-pink',
-  'paradise-pink-dark',
-  'cerulean-blue',
-  'cerulean-blue-dark',
-  'neon-carrot',
-  'neon-carrot-dark',
-  'kiwi',
-  'kiwi-dark',
-  'tomato',
-  'tomato-dark',
-  'purple-pizazz',
-  'purple-pizazz-dark',
-  'barbie-pink',
-  'barbie-pink-dark',
-] satisfies BadgeColor[];
+/**
+ * Every colour a badge can be, read from the palette itself rather than
+ * relisted here: the stories below say something about each one — that its
+ * label clears WCAG AA, among other things — and a hand-kept copy would let a
+ * newly added colour go unchecked.
+ */
+const themeColors = BADGE_COLORS;
 
 const meta = {
   title: 'Components/Badge',
@@ -85,6 +54,17 @@ export const Variants: Story = {
   ),
 };
 
+/**
+ * Every colour as a filled badge, which is how a coloured badge is drawn
+ * unless it is asked for an outline.
+ *
+ * The play function is what keeps the palette honest. `Badge` picks the label
+ * colour by lightness threshold rather than carrying a written-down ink per
+ * colour, and the threshold that works sits in a narrow window: purple pizazz
+ * dark needs white, cerulean blue seven thousandths lighter needs black.
+ * Moving any palette entry's lightness, or adding a colour that lands between
+ * them, can put a label below WCAG AA — which this measures, colour by colour.
+ */
 export const ThemeColors: Story = {
   render: () => (
     <div className="flex flex-wrap gap-3">
@@ -95,6 +75,49 @@ export const ThemeColors: Story = {
       ))}
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The palette is the test's input; an empty one would assert nothing.
+    await expect(themeColors.length).toBeGreaterThan(0);
+
+    for (const color of themeColors) {
+      const badge = await canvas.findByText(color);
+      const style = getComputedStyle(badge);
+      const ink = flatten([style.color]);
+      const fill = flatten([style.backgroundColor]);
+
+      // The label is read against the fill alone only while the fill is
+      // opaque. A translucent one would let the page behind it in.
+      await expect(flatten(['rgb(0, 0, 0)', style.backgroundColor])).toEqual(
+        fill,
+      );
+
+      // Black or white and nothing else. Were the browser to drop the
+      // relative-colour declaration it would inherit the page's ink instead,
+      // which on a light page is dark enough to pass the ratio check below on
+      // most of the palette while the mechanism under test did nothing.
+      await expect({
+        color,
+        ink: ink.join(),
+      }).toEqual({
+        color,
+        ink: ink[0] < 128 ? '0,0,0' : '255,255,255',
+      });
+
+      const ratio = contrastRatio(ink, fill);
+      // Named in the assertion so a failure says which colour, at what ratio.
+      await expect({
+        color,
+        ratio: Number(ratio.toFixed(2)),
+        clearsAA: ratio >= AA_NORMAL_TEXT,
+      }).toEqual({
+        color,
+        ratio: Number(ratio.toFixed(2)),
+        clearsAA: true,
+      });
+    }
+  },
 };
 
 export const ThemeColorOutlines: Story = {
