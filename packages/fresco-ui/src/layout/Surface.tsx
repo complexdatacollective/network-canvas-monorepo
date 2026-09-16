@@ -38,106 +38,108 @@ export const surfaceSpacingVariants = cva({
   },
 });
 
+const surfaceOwnVariants = cva({
+  // `overflow-clip` (not `overflow-hidden`) so Surface never becomes a
+  // programmatic scroll container. `overflow-hidden` still allows
+  // `scrollIntoView`/focus auto-scroll to move a descendant into view by
+  // scrolling the Surface itself, which in dialogs pushes the header off
+  // screen when content exceeds the clipped area.
+  //
+  // Padding (`spacing`) and shadow (`shadow`) are intentionally separate
+  // axes: a Combobox popup wants compact padding but a heavy shadow when
+  // stacked on top of another popover, and a floating bar wants subtle
+  // padding with a strong shadow cue. Named `shadow` (not `elevation`) to
+  // avoid clashing with the `elevation-*` Tailwind plugin utilities.
+  base: 'publish-colors relative min-h-0 overflow-clip rounded',
+  variants: {
+    // `depth` is derived from nesting by the Surface component and is not
+    // part of its public props; there is deliberately no default so that
+    // class-level consumers (which only ever use `floating`) don't pick up
+    // a surface background by accident.
+    depth: {
+      0: '[--surface-depth:0]',
+      1: '[--surface-depth:1]',
+      2: '[--surface-depth:2]',
+      3: '[--surface-depth:3]',
+      4: '[--surface-depth:4]',
+    },
+    series: {
+      default: '',
+      accent: '',
+    },
+    floating: {
+      true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
+    },
+    shadow: {
+      none: '',
+      xs: 'shadow',
+      sm: 'shadow-md',
+      md: 'shadow-lg',
+      lg: 'shadow-xl',
+      xl: 'shadow-2xl',
+    },
+  },
+  compoundVariants: [
+    {
+      depth: 0,
+      series: 'default',
+      class: 'text-surface-contrast bg-surface',
+    },
+    {
+      depth: 1,
+      series: 'default',
+      class: 'text-surface-1-contrast bg-surface-1',
+    },
+    {
+      depth: 2,
+      series: 'default',
+      class: 'text-surface-2-contrast bg-surface-2',
+    },
+    {
+      depth: 3,
+      series: 'default',
+      class: 'text-surface-3-contrast bg-surface-3',
+    },
+    {
+      depth: 4,
+      series: 'default',
+      class: 'text-surface-4-contrast bg-surface-4',
+    },
+    {
+      depth: 0,
+      series: 'accent',
+      class: 'text-surface-accent-contrast bg-surface-accent',
+    },
+    {
+      depth: 1,
+      series: 'accent',
+      class: 'text-surface-accent-1-contrast bg-surface-accent-1',
+    },
+    {
+      depth: 2,
+      series: 'accent',
+      class: 'text-surface-accent-2-contrast bg-surface-accent-2',
+    },
+    {
+      depth: 3,
+      series: 'accent',
+      class: 'text-surface-accent-3-contrast bg-surface-accent-3',
+    },
+    {
+      depth: 4,
+      series: 'accent',
+      class: 'text-surface-accent-4-contrast bg-surface-accent-4',
+    },
+  ],
+  defaultVariants: {
+    series: 'default',
+    shadow: 'md',
+  },
+});
+
 export const surfaceVariants = compose(
   surfaceSpacingVariants,
-  cva({
-    // `overflow-clip` (not `overflow-hidden`) so Surface never becomes a
-    // programmatic scroll container. `overflow-hidden` still allows
-    // `scrollIntoView`/focus auto-scroll to move a descendant into view by
-    // scrolling the Surface itself, which in dialogs pushes the header off
-    // screen when content exceeds the clipped area.
-    //
-    // Padding (`spacing`) and shadow (`shadow`) are intentionally separate
-    // axes: a Combobox popup wants compact padding but a heavy shadow when
-    // stacked on top of another popover, and a floating bar wants subtle
-    // padding with a strong shadow cue. Named `shadow` (not `elevation`) to
-    // avoid clashing with the `elevation-*` Tailwind plugin utilities.
-    base: 'publish-colors relative min-h-0 overflow-clip rounded',
-    variants: {
-      // `depth` is derived from nesting by the Surface component and is not
-      // part of its public props; there is deliberately no default so that
-      // class-level consumers (which only ever use `floating`) don't pick up
-      // a surface background by accident.
-      depth: {
-        0: '[--surface-depth:0]',
-        1: '[--surface-depth:1]',
-        2: '[--surface-depth:2]',
-        3: '[--surface-depth:3]',
-        4: '[--surface-depth:4]',
-      },
-      series: {
-        default: '',
-        accent: '',
-      },
-      floating: {
-        true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
-      },
-      shadow: {
-        none: '',
-        xs: 'shadow',
-        sm: 'shadow-md',
-        md: 'shadow-lg',
-        lg: 'shadow-xl',
-        xl: 'shadow-2xl',
-      },
-    },
-    compoundVariants: [
-      {
-        depth: 0,
-        series: 'default',
-        class: 'text-surface-contrast bg-surface',
-      },
-      {
-        depth: 1,
-        series: 'default',
-        class: 'text-surface-1-contrast bg-surface-1',
-      },
-      {
-        depth: 2,
-        series: 'default',
-        class: 'text-surface-2-contrast bg-surface-2',
-      },
-      {
-        depth: 3,
-        series: 'default',
-        class: 'text-surface-3-contrast bg-surface-3',
-      },
-      {
-        depth: 4,
-        series: 'default',
-        class: 'text-surface-4-contrast bg-surface-4',
-      },
-      {
-        depth: 0,
-        series: 'accent',
-        class: 'text-surface-accent-contrast bg-surface-accent',
-      },
-      {
-        depth: 1,
-        series: 'accent',
-        class: 'text-surface-accent-1-contrast bg-surface-accent-1',
-      },
-      {
-        depth: 2,
-        series: 'accent',
-        class: 'text-surface-accent-2-contrast bg-surface-accent-2',
-      },
-      {
-        depth: 3,
-        series: 'accent',
-        class: 'text-surface-accent-3-contrast bg-surface-accent-3',
-      },
-      {
-        depth: 4,
-        series: 'accent',
-        class: 'text-surface-accent-4-contrast bg-surface-accent-4',
-      },
-    ],
-    defaultVariants: {
-      series: 'default',
-      shadow: 'md',
-    },
-  }),
+  surfaceOwnVariants,
 );
 
 const MAX_SURFACE_DEPTH = 4;
