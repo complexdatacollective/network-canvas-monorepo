@@ -16,13 +16,23 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { StudyParticipationMode, StudyState } from '@codaco/studio-rpc';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  type TeamId,
+} from '@codaco/studio-contract/schema/ids';
+import type {
+  StudyParticipationMode,
+  StudyState,
+} from '@codaco/studio-contract/schema/study';
 
-import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
+import { toTeamId } from '../lib/ids.ts';
 import { STUDY_STATE_MESSAGES, studyCountMessages } from '../lib/studyState.ts';
 import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
+import { rpcKey, rpcMutation, rpcQuery } from '../runtime/rpc.ts';
 
 /**
  * The team's studies, at `/team/$teamId` (§5.2, #1262).
@@ -58,11 +68,11 @@ import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
  * rather than duplicated.
  */
 type StudyCreationAttempt = {
-  teamId: string;
+  teamId: TeamId;
   name: string;
-  studyId: string;
-  protocolId: string;
-  draftId: string;
+  studyId: StudyId;
+  protocolId: ProtocolId;
+  draftId: DraftId;
 };
 
 const messages = defineMessages({
@@ -169,8 +179,9 @@ function stateVariant(state: StudyState): 'default' | 'secondary' | 'outline' {
   return 'outline';
 }
 
-export default function TeamStudies({ teamId }: { teamId: string }) {
+export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
   const intl = useAppIntl();
+  const teamId = toTeamId(teamParam);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const router = useRouter();
@@ -178,9 +189,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
   // A creation whose response was lost keeps its identifiers, so retrying the
   // same name cannot leave two studies behind.
   const creationAttempt = useRef<StudyCreationAttempt | undefined>(undefined);
-  const studies = useQuery(
-    orpc.studies.list.queryOptions({ input: { teamId } }),
-  );
+  const studies = useQuery(rpcQuery('studies.list', { teamId }));
   const activeMember = authClient.useActiveMember();
   // Creating a study is a team Admin or Owner action (#1257), so a Member is
   // told that rather than offered a form the procedure refuses. The role is
@@ -194,7 +203,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
   // team the header had switched to by the time the response landed, not the
   // team the study was created in. The continuation belongs to the submit
   // handler below, whose closure is the one that started the request.
-  const createStudy = useMutation(orpc.studies.create.mutationOptions());
+  const createStudy = useMutation(rpcMutation('studies.create'));
 
   return (
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
@@ -311,9 +320,12 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                     : {
                         teamId,
                         name,
-                        studyId: createUuid(),
-                        protocolId: createUuid(),
-                        draftId: createUuid(),
+                        // Checked rather than merely branded: an identifier
+                        // this screen mints and the schema then refuses is a
+                        // defect, not a refusal.
+                        studyId: StudyId.make(createUuid()),
+                        protocolId: ProtocolId.make(createUuid()),
+                        draftId: DraftId.make(createUuid()),
                       };
                 creationAttempt.current = attempt;
                 setCreating(true);
@@ -359,7 +371,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                     creationAttempt.current = undefined;
                   }
                   await queryClient.invalidateQueries({
-                    queryKey: orpc.studies.list.key({ input: { teamId } }),
+                    queryKey: rpcKey('studies.list', { teamId }),
                   });
                   // Straight into the editor: a new study's first act is
                   // designing its protocol, and an empty overview would be a
