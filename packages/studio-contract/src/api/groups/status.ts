@@ -11,9 +11,11 @@ import { PublicInstanceStatus } from '../../schema/status.ts';
  * and `setup` from the third-party surface, rather than a handler remembering
  * to delete them.
  *
- * `NotFoundResponse` is declared because a deployment can be configured
- * without the public API, and a request that reaches the router anyway has to
- * answer in the same problem+json shape as every other refusal.
+ * `NotFoundResponse` is the endpoint's declared error so the published
+ * document carries the RFC 9457 problem shape every `/api/v1` refusal uses,
+ * with `application/problem+json` as its media type. The status handler has
+ * no refusal of its own today; stage 7 mounts the surface and decides what,
+ * beyond the shape, this endpoint can answer with.
  */
 export const StatusApiGroup = HttpApiGroup.make('status').add(
   HttpApiEndpoint.get('get', '/status', {

@@ -1,6 +1,8 @@
-import { Schema } from 'effect';
+import { Schema, SchemaAST } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { ParticipantRpcs } from '../rpc/participant.ts';
+import { StudioRpcs } from '../rpc/studio.ts';
 import {
   Conflict,
   Forbidden,
@@ -10,6 +12,14 @@ import {
   RateLimited,
   Unauthorized,
 } from '../schema/errors.ts';
+import {
+  LinkUnavailable,
+  SessionEnded,
+  SessionTakenOver,
+} from '../schema/participant.ts';
+import { ProtocolAuthorizationError } from '../schema/protocol.ts';
+import { StudyCommandError } from '../schema/study.ts';
+import { TeamCommandError } from '../schema/team.ts';
 
 // `Schema.toCodecJson` is the codec the rpc transport derives for a payload or
 // error (`RpcServer`'s `codecFor`), so encoding through it is what actually
@@ -178,5 +188,194 @@ describe('the HttpApi view', () => {
     );
 
     expect(encoding.contentType).toBe('application/problem+json');
+  });
+});
+
+// Every error a procedure declares, round-tripped through that procedure's own
+// codec. The point is the whole declared union, not the class in isolation: a
+// member only reaches a client if the union it sits in can encode it AND can
+// pick it out again on the way back, and the second half is what a shared
+// four-key problem shape puts at risk.
+
+type ErrorSample = {
+  /**
+   * A thunk, not a shared instance: a case that mutated a shared one would
+   * change what every later case round-trips.
+   */
+  readonly make: () => unknown;
+  /**
+   * Closes over the class, so the decoded value is checked against the real
+   * constructor rather than against a tag string that any object could carry.
+   */
+  readonly isInstance: (value: unknown) => boolean;
+};
+
+const SAMPLES = new Map<string, ErrorSample>([
+  [
+    'Unauthorized',
+    {
+      make: () => new Unauthorized({}),
+      isInstance: (value) => value instanceof Unauthorized,
+    },
+  ],
+  [
+    'Forbidden',
+    {
+      make: () => new Forbidden({}),
+      isInstance: (value) => value instanceof Forbidden,
+    },
+  ],
+  [
+    'NotFound',
+    {
+      make: () => new NotFound({}),
+      isInstance: (value) => value instanceof NotFound,
+    },
+  ],
+  [
+    'Conflict',
+    {
+      make: () => new Conflict({}),
+      isInstance: (value) => value instanceof Conflict,
+    },
+  ],
+  [
+    'RateLimited',
+    {
+      make: () => new RateLimited({ retryAfterSeconds: 1 }),
+      isInstance: (value) => value instanceof RateLimited,
+    },
+  ],
+  [
+    'TeamCommandError',
+    {
+      make: () => new TeamCommandError({ code: 'DELIVERY_IN_PROGRESS' }),
+      isInstance: (value) => value instanceof TeamCommandError,
+    },
+  ],
+  [
+    'StudyCommandError',
+    {
+      make: () => new StudyCommandError({ code: 'CONFLICT' }),
+      isInstance: (value) => value instanceof StudyCommandError,
+    },
+  ],
+  [
+    'ProtocolAuthorizationError',
+    {
+      make: () => new ProtocolAuthorizationError({}),
+      isInstance: (value) => value instanceof ProtocolAuthorizationError,
+    },
+  ],
+  [
+    'SessionEnded',
+    {
+      make: () => new SessionEnded({ state: 'expired' }),
+      isInstance: (value) => value instanceof SessionEnded,
+    },
+  ],
+  [
+    'SessionTakenOver',
+    {
+      make: () => new SessionTakenOver({ holderEpoch: 2 }),
+      isInstance: (value) => value instanceof SessionTakenOver,
+    },
+  ],
+  [
+    'LinkUnavailable',
+    {
+      make: () => new LinkUnavailable({ state: 'revoked' }),
+      isInstance: (value) => value instanceof LinkUnavailable,
+    },
+  ],
+]);
+
+const isUnionSchema = (
+  schema: Schema.Top,
+): schema is Schema.Union<ReadonlyArray<Schema.Top>> =>
+  SchemaAST.isUnion(schema.ast);
+
+/**
+ * The leaves of a procedure's error channel. `Rpc.make` stores `Schema.Never`
+ * for a procedure that declares no error, which has no members at all; a lone
+ * class is its own single member. The recursion is for a union built out of
+ * other unions, which the contract does not do today but which would otherwise
+ * hide members from this walk.
+ */
+const errorMembers = (schema: Schema.Top): ReadonlyArray<Schema.Top> => {
+  if (SchemaAST.isNever(schema.ast)) {
+    return [];
+  }
+
+  return isUnionSchema(schema)
+    ? schema.members.flatMap(errorMembers)
+    : [schema];
+};
+
+/**
+ * `Schema.Top` is too wide to decode through: its decoding and encoding
+ * service channels are `unknown`, and the sync codecs only accept a schema
+ * that needs no services. Every error schema the contract declares needs none,
+ * which is exactly what the rpc transport requires of them.
+ */
+type ServicelessSchema = Schema.Codec<unknown, unknown>;
+
+type ErrorCase = {
+  readonly procedure: string;
+  readonly memberTag: string | undefined;
+  readonly errorSchema: ServicelessSchema;
+};
+
+// Enumerated at collection time so each member gets its own reported test, but
+// nothing is encoded here: the documents are built in the test bodies, where a
+// bad one fails its own case instead of the whole file's collection.
+const errorCases: ReadonlyArray<ErrorCase> = [
+  ...StudioRpcs.requests,
+  ...ParticipantRpcs.requests,
+].flatMap(([procedure, rpc]) =>
+  errorMembers(rpc.errorSchema).map((member) => ({
+    procedure,
+    memberTag: Schema.resolveAnnotations(member)?.identifier,
+    errorSchema: rpc.errorSchema,
+  })),
+);
+
+const roundTrip = (errorSchema: ServicelessSchema, error: unknown): unknown => {
+  const codec = Schema.toCodecJson(errorSchema);
+
+  return Schema.decodeUnknownSync(codec)(
+    Schema.encodeUnknownSync(codec)(error),
+  );
+};
+
+describe('every error a procedure declares', () => {
+  it.each(errorCases)(
+    'round-trips $memberTag through the codec of $procedure',
+    ({ memberTag, errorSchema }) => {
+      if (memberTag === undefined) {
+        throw new Error(
+          'A declared error member carries no `identifier` annotation, so no sample can be keyed to it.',
+        );
+      }
+
+      const sample = SAMPLES.get(memberTag);
+      if (sample === undefined) {
+        throw new Error(
+          `No sample for the declared error \`${memberTag}\`. Add one to SAMPLES so the new class gets a round-trip case.`,
+        );
+      }
+
+      const decoded = roundTrip(errorSchema, sample.make());
+
+      expect(decoded).toMatchObject({ _tag: memberTag });
+      expect(sample.isInstance(decoded)).toBe(true);
+    },
+  );
+
+  it('is walked over both groups, and leaves no sample unused', () => {
+    expect(errorCases.length).toBeGreaterThan(0);
+    expect(new Set(errorCases.map((errorCase) => errorCase.memberTag))).toEqual(
+      new Set(SAMPLES.keys()),
+    );
   });
 });
