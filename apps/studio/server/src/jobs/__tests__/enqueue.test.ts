@@ -25,6 +25,7 @@ import { createJobClient, type JobClient } from '../client.ts';
 import { Database, withTransaction } from '../database.ts';
 import { type EnqueueOptions, Jobs } from '../jobs.ts';
 import { type JobPayload, resolvedQueue } from '../queues.ts';
+import { payloadFor } from './support.ts';
 
 const db = await reachableDb();
 
@@ -41,21 +42,6 @@ function refusingClient(): pg.PoolClient {
     },
     release: () => undefined,
   } as unknown as pg.PoolClient;
-}
-
-/** A valid payload per queue, so every declaration is exercised below. */
-function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
-  if (queue === 'sign-in-email') {
-    return {
-      email: 'researcher@example.org',
-      url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
-    };
-  }
-  if (queue.startsWith('invitation-delivery')) {
-    return { deliveryId: randomUUID() };
-  }
-  // The two scheduled sweeps visit everything there is; nothing addresses them.
-  return {};
 }
 
 /**
@@ -159,33 +145,33 @@ describe.skipIf(!db)('the web process enqueue', () => {
     await scratch.dispose();
   });
 
-  it('leaves no job behind when the transaction rolls back', async () => {
-    const client = await scratch.app.connect();
+  it('leaves no job behind when it rolls back, and one when it commits', async () => {
+    // The two halves are one case because neither is worth anything alone: a
+    // rollback that leaves no row proves nothing about an enqueue that never
+    // wrote one, and a commit that leaves one proves nothing about where the
+    // write went.
+    const rolledBack = await scratch.app.connect();
     try {
-      await client.query('BEGIN');
-      const jobId = await jobs.enqueue(client, 'invitation-delivery', {
+      await rolledBack.query('BEGIN');
+      const jobId = await jobs.enqueue(rolledBack, 'invitation-delivery', {
         deliveryId: randomUUID(),
       });
       expect(jobId).toEqual(expect.any(String));
-      await client.query('ROLLBACK');
+      await rolledBack.query('ROLLBACK');
     } finally {
-      client.release();
+      rolledBack.release();
     }
-
     expect(await jobRows()).toEqual([]);
-  });
 
-  it('leaves exactly one job when the transaction commits', async () => {
     const deliveryId = randomUUID();
-    const client = await scratch.app.connect();
+    const committed = await scratch.app.connect();
     try {
-      await client.query('BEGIN');
-      await jobs.enqueue(client, 'invitation-delivery', { deliveryId });
-      await client.query('COMMIT');
+      await committed.query('BEGIN');
+      await jobs.enqueue(committed, 'invitation-delivery', { deliveryId });
+      await committed.query('COMMIT');
     } finally {
-      client.release();
+      committed.release();
     }
-
     expect(await jobRows()).toMatchObject([
       {
         queue: 'invitation-delivery',

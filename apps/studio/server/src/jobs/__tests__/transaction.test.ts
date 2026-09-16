@@ -1,5 +1,5 @@
 import { assert, describe, it, layer } from '@effect/vitest';
-import { Effect, Exit, Layer } from 'effect';
+import { Effect, Exit } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { Database, Transaction, withTransaction } from '../database.ts';
@@ -7,6 +7,7 @@ import { Jobs, RecordedJobs } from '../jobs.ts';
 import {
   asApp,
   asOwner,
+  layerJobs,
   layerQueueHarness,
   QueueHarness,
   readJobs,
@@ -34,13 +35,6 @@ import {
 const db = await reachableDb();
 
 /**
- * A payload with a field the queue forbids, built without a cast. TypeScript's
- * excess-property check only fires on a fresh object literal, so a value that
- * reached the call through a variable carries the extra field happily — which
- * is exactly the shape a row written by an older release would have, and the
- * reason `onExcessProperty: 'error'` exists at all.
- */
-/**
  * The recording layer never issues a statement, so the `Transaction` it is
  * handed carries a client nothing calls. Reaching for it throws, which is the
  * honest shape: a recorded enqueue that ran SQL would not be recording.
@@ -57,6 +51,13 @@ const NO_SQL: Transaction['Service']['sql'] = new Proxy(
   },
 );
 
+/**
+ * A payload with a field the queue forbids, built without a cast. TypeScript's
+ * excess-property check only fires on a fresh object literal, so a value that
+ * reached the call through a variable carries the extra field happily — which
+ * is exactly the shape a row written by an older release would have, and the
+ * reason `onExcessProperty: 'error'` exists at all.
+ */
 const withExcessField = Object.assign(
   { deliveryId: '44444444-4444-4444-8444-444444444444' },
   { teamId: 'a-team' },
@@ -109,11 +110,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       return rows[0]?.count ?? 0;
     });
 
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
+    const jobsLayer = layerJobs;
 
     suite.effect(
       'commits a domain row and its job together, or neither',
@@ -163,7 +160,11 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       'hides the job from every other connection until the commit',
       () =>
         Effect.gen(function* () {
-          const schema = yield* withDomainTable;
+          // The domain table is set up for the symmetry with the case above
+          // rather than written to: what this case is about is where the job
+          // insert went, and a domain row would only be a second thing to
+          // clear between cases.
+          yield* withDomainTable;
           const jobs = yield* Jobs;
           const deliveryId = '22222222-2222-4222-8222-222222222222';
 
@@ -186,7 +187,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const afterCommit = yield* readJobs();
           assert.strictEqual(afterCommit.length, 1);
           assert.deepStrictEqual(afterCommit[0]?.payload, { deliveryId });
-          void schema;
         }).pipe(Effect.provide(jobsLayer)),
       { timeout: 30_000 },
     );
