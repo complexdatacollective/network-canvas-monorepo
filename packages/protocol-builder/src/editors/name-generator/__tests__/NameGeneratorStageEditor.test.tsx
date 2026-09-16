@@ -183,9 +183,8 @@ describe('the name generator editor', () => {
   it('asks its questions in the order a researcher answers them', async () => {
     const harness = mountFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
       'Node setup',
       'Form configuration',
       'Prompt collection',
@@ -270,10 +269,11 @@ describe('the name generator editor', () => {
    * that: a name generator offering the people named so far is a different
    * stage from one that offers nothing.
    *
-   * The rule is Architect's, unchanged. `resolveStageQualifier` — which
-   * `apps/architect/src/components/StageEditor/autoStageName/useAutoStageName.ts`
-   * calls, and which this package already owns — turns panels that all draw on
-   * the interview's own network into "with Network Panels".
+   * The rule is Architect's, unchanged: `resolveStageQualifier` turns panels
+   * that all draw on the interview's own network into "with Network Panels".
+   * Read from the draft by `useStageName` rather than handed in by the editor,
+   * so this proves the path a researcher actually takes — the panel row is
+   * created in the editor and the name follows it.
    */
   it('qualifies the proposed name of a new stage with the panels beside it', async () => {
     const harness = renderStageEditor(createFixture());

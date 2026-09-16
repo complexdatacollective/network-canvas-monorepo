@@ -1,6 +1,5 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { atRiskStatuses } from './sections/atRiskStatuses.tsx';
 import { diseases } from './sections/diseases.tsx';
@@ -28,7 +27,6 @@ import { sourcePedigree } from './sections/sourcePedigree.tsx';
 export const narrativePedigreeStageEditor = defineStageEditor(
   'NarrativePedigree',
   [
-    stageHeading({ documentation: 'narrative-pedigree' }),
     sourcePedigree(),
     diseases(),
     atRiskStatuses(),

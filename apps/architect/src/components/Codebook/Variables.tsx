@@ -108,7 +108,7 @@ const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
 };
 
 const NameCell = ({ row }: CellContext<Variable, unknown>) => (
-  <ConnectedVariablePill animated editable uuid={row.original.id} />
+  <ConnectedVariablePill editable uuid={row.original.id} />
 );
 
 const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {

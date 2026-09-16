@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -81,7 +80,7 @@ describe('the interface a named editor is opened over', () => {
 
     const harness = renderStageEditor({
       stageId: computed,
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     expect(harness.seeded.type).toBe('Geospatial');

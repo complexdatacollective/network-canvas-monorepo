@@ -94,6 +94,10 @@ export type VariablePillProps = {
   className?: string;
   label: string;
   type: VariableType;
+  /**
+   * Swaps the static type-coloured border for the orbiting gradient. For the
+   * attribute picker's held value only, never for a pill that is merely listed.
+   */
   animated?: boolean;
   editable?: boolean;
   onLabelChange?: (label: string) => void;

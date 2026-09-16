@@ -9,7 +9,6 @@ import {
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
-  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
@@ -41,17 +40,6 @@ describe('the narrative stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Narrative');
-  });
-
-  /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here because this editor composes the shared
-   * heading itself, so dropping it would leave every other case passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('narrative-1');
   });
 
   /**
@@ -135,7 +123,7 @@ describe('the narrative stage editor', () => {
    */
   it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
 
     expect(
       screen.queryByRole('listbox', { name: 'Layout mode' }),

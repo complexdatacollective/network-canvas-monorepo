@@ -252,7 +252,7 @@ describe('the secret resource picker', () => {
     expect(submits()).toBe(0);
   });
 
-  it('shows the key by the name it was given, and offers no download', async () => {
+  it('shows the key by the name it was given, and offers only the undo of adding it', async () => {
     const user = userEvent.setup();
     renderKeyPicker(keyRecorder());
 
@@ -261,8 +261,8 @@ describe('the secret resource picker', () => {
     expect(await screen.findByText('Mapbox key')).toBeVisible();
     // Secret material has no content an editor may hand back to anyone.
     expect(
-      screen.queryByRole('button', { name: 'Download this resource' }),
-    ).toBeNull();
+      screen.getByRole('button', { name: 'Discard this resource' }),
+    ).toBeEnabled();
   });
 
   it('reports a refused key and adds it once the retry succeeds', async () => {

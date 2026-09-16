@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import StageNameSection from '../stage-heading/StageNameSection.tsx';
 import {
   dropUnusedAssignments,
   ExplodingRowEditor,
@@ -23,12 +22,7 @@ const prompts = (
 
 const openEditor = () => ({
   stageId: 'name-generator-1',
-  sections: (
-    <>
-      <StageNameSection />
-      {prompts}
-    </>
-  ),
+  sections: <>{prompts}</>,
 });
 
 const promptIds = (stage: Record<string, unknown>): unknown[] => {
@@ -42,9 +36,8 @@ describe('the prompt list a stage owns', () => {
   it('sits where the editor put it, and reports what it holds', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()).toEqual([
-      { title: 'Stage name', state: 'Finished' },
       { title: 'Prompt collection', state: 'Finished' },
     ]);
     expect(
@@ -227,7 +220,6 @@ describe('the prompt list a stage owns', () => {
       stageId: 'name-generator-1',
       sections: (
         <>
-          <StageNameSection />
           <PromptsSection
             PromptEditor={TestPromptEditor}
             PromptPreview={TestPromptPreview}
@@ -347,7 +339,6 @@ describe('a row editor with a defect in it', () => {
         stageId: 'name-generator-1',
         sections: (
           <>
-            <StageNameSection />
             <PromptsSection
               PromptEditor={ExplodingRowEditor}
               PromptPreview={TestPromptPreview}
@@ -379,7 +370,6 @@ describe('a row editor with a defect in it', () => {
         screen.getByText('Who are the people you know?'),
       ).toBeInTheDocument();
       expect(harness.outline().map((section) => section.title)).toEqual([
-        'Stage name',
         'Prompt collection',
       ]);
       await harness.roundTrip({ unowned: ['subject', 'form'] });

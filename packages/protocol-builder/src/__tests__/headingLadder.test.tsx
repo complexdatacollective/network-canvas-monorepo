@@ -27,7 +27,6 @@ import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
-import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
@@ -271,7 +270,6 @@ describe('the stage editor shell', () => {
         <ResourceClientProvider>
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
             <StageEditorShell actions={actions}>
-              <StageNameSection />
               {/* The production pairing, not a hand-mount of its parts: what a
                   block editor is paired with is `contentBlocks`' business. */}
               {contentBlocks()()}
@@ -283,43 +281,62 @@ describe('the stage editor shell', () => {
   );
 
   /**
-   * The stage's name is the page's heading, and every section configures part
-   * of the stage that name belongs to — so a section is one below it, not
-   * beside it. Nothing on screen can carry that heading (the visible one is
-   * the name field, which is a control), so the section states it invisibly
-   * and the shell says what it is.
+   * The ladder a host actually produces, spelt out end to end.
+   *
+   * The editor states no level of its own any more: the stage's TITLE is the
+   * host's — it draws one from `useStageName` wherever its page has room — so
+   * the host is the only thing that knows what heading the sections sit under,
+   * and it says so. This is Architect's arrangement: the route's own `h1` is
+   * the stage's name, the title it draws writes the `h2` the name field is
+   * labelled by, and every section of the editor is a subsection of that.
+   *
+   * A whole page rather than the editor on its own, because a ladder is only
+   * ever right relative to what is above it — and "the editor alone writes one
+   * heading" is a claim that cannot fail.
    */
-  it('opens at the stage name, with each section one below it', async () => {
-    render(editor);
+  it('puts every section one below the heading its host states', async () => {
+    render(
+      <div>
+        <h1>Who you turn to</h1>
+        <h2>Stage name</h2>
+        <EnclosingHeadingLevel level="h2">{editor}</EnclosingHeadingLevel>
+      </div>,
+    );
     // The host answers the acquire over a promise, so the form is drawn a turn
     // after the story mounts.
     await screen.findByRole('heading', { name: 'Page content' });
 
-    expect(headingLadder()).toEqual(['h2: Stage name', 'h3: Page content']);
-    await expectHeadingOrder(2);
+    expect(headingLadder()).toEqual([
+      'h1: Who you turn to',
+      'h2: Stage name',
+      'h3: Page content',
+    ]);
+    await expectHeadingOrder(3);
   });
 
   /**
-   * The whole ladder moves down together when a host mounts the editor under
-   * a heading of its own. Read from the host's statement rather than fixed, so
-   * the sections are subsections of the stage rather than peers of whatever
-   * the host's page calls itself.
+   * And the whole ladder moves with that statement rather than being fixed:
+   * an editor opened inside a surface of its own — a panel titled by the host,
+   * an editor embedded in a longer page — has its sections counted from there.
    */
-  it('counts from a heading the host states, when there is one', async () => {
+  it('counts from wherever the host says the editor sits', async () => {
     render(
       <div>
-        <h2>Prompt configuration</h2>
-        <EnclosingHeadingLevel level="h2">{editor}</EnclosingHeadingLevel>
+        <h1>Interview</h1>
+        <h2>Who you turn to</h2>
+        <h3>Prompt configuration</h3>
+        <EnclosingHeadingLevel level="h3">{editor}</EnclosingHeadingLevel>
       </div>,
     );
     await screen.findByRole('heading', { name: 'Page content' });
 
     expect(headingLadder()).toEqual([
-      'h2: Prompt configuration',
-      'h3: Stage name',
+      'h1: Interview',
+      'h2: Who you turn to',
+      'h3: Prompt configuration',
       'h4: Page content',
     ]);
-    await expectHeadingOrder(3);
+    await expectHeadingOrder(4);
   });
 });
 
@@ -353,14 +370,12 @@ describe('a row of a stage editor list, opened in its dialog', () => {
       await screen.findByRole('button', { name: 'Add new panel' }),
     );
 
-    // The title and source render bare, as Architect's panel row does, so the
-    // filter is the only section under the dialog title — two headings, which
-    // is what axe is then asked to have judged.
     expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
       'h2: Create panel',
+      'h3: Configuration',
       'h3: Panel filter',
     ]);
-    await expectHeadingOrder(2);
+    await expectHeadingOrder(3);
   });
 
   it('puts a prompt row’s sections under the dialog title', async () => {

@@ -155,11 +155,11 @@ test('the stage editor lists its sections beside the form at desktop width', asy
   await architectPage.goto(`/protocol/stage/${stage.id}`);
 
   const { outline, form } = await stageEditorColumns(architectPage);
-  // Beside, not above: the list ends where the form's column begins, and the
-  // two share the same band of the page.
+  // Asked horizontally, because that is what two columns MEANS: the editor
+  // draws its title above the form element, so how far down the page the form
+  // begins is a fact about the title's height.
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
-  expect(outline.top).toBeLessThan(form.bottom);
-  expect(form.top).toBeLessThan(outline.bottom);
+  expect(outline.top).toBeLessThanOrEqual(form.top);
 
   // The whole of its column, with nothing inset inside it. The track is
   // `16rem`, and the list's titles are `truncate`d — so every pixel a gutter
@@ -279,9 +279,10 @@ test('the stage editor splits into two columns on the room the researcher can se
   // Polled rather than read once: a viewport change re-runs the container
   // query on the next frame, and this reads the frame after the resize is
   // settled rather than racing it.
+  // Horizontal, for the reason the case above gives.
   const arrangement = async () => {
     const { outline, form } = await stageEditorColumns(architectPage);
-    return outline.bottom <= form.top + 1 ? 'stacked' : 'beside';
+    return outline.right <= form.left + 1 ? 'beside' : 'stacked';
   };
 
   await expect.poll(arrangement).toBe('stacked');
@@ -291,7 +292,7 @@ test('the stage editor splits into two columns on the room the researcher can se
 
   const { outline, form } = await stageEditorColumns(architectPage);
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
-  expect(outline.top).toBeLessThan(form.bottom);
+  expect(outline.top).toBeLessThanOrEqual(form.top);
 });
 
 for (const page of [

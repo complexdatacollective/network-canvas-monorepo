@@ -87,24 +87,23 @@ export async function addFormField(
  * place for the two to disagree.
  *
  * Keys are the researcher-facing control names (`collectableTypes.ts`'s
- * `CONTROL_LABELS`); values are the type names the "Kind of answer" control
- * offers (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`). `layout` and
- * `location` are absent from both: they hold a position rather than an answer
- * and no form can ask for one.
+ * `CONTROL_LABELS`); values are the type names the dialog uses
+ * (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`). `layout` and `location`
+ * are absent from both: they hold a position rather than an answer.
  */
 const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
-  'Text input': 'Text',
-  'Text area': 'Text',
-  'Number input': 'Number',
-  'Yes or no buttons': 'Boolean',
+  'Text Input': 'Text',
+  'Text Area': 'Text',
+  'Number Input': 'Number',
+  'Boolean Choice': 'Boolean',
   'Toggle': 'Boolean',
-  'Radio group': 'Ordinal',
-  'Likert scale': 'Ordinal',
-  'Checkbox group': 'Categorical',
-  'Toggle button group': 'Categorical',
-  'Visual analogue scale': 'Scalar',
-  'Date picker': 'Date',
-  'Relative date picker': 'Date',
+  'Radio Group': 'Ordinal',
+  'Likert Scale': 'Ordinal',
+  'Checkbox Group': 'Categorical',
+  'Toggle Button Group': 'Categorical',
+  'Visual Analog Scale': 'Scalar',
+  'Date Picker': 'Date',
+  'Relative Date Picker': 'Date',
 };
 
 /**
@@ -147,32 +146,24 @@ export type InventAttributeOptions = {
  * inventing one here is the window's own create row, taken on the name typed
  * into its search box. The row decides nothing and promises everything: it
  * writes the name onto the field row and closes the window, and what is left
- * to ask appears underneath:
+ * to ask appears underneath.
  *
- * - "Kind of answer" — the codebook type, asked next because it decides what
- *   else the attribute needs; and, for a kind a name cannot finish, the
- *   codebook editor's own button.
- *
- * There is no "Attribute name" box on the row at all any more: the name was
- * taken in the window, and the editor — where one opens — arrives already
- * holding it.
- *
- * "Input control" lists only the controls that type allows and arrives already
- * showing the first of them, so selecting it says which one is meant rather
- * than supplying a value the field would otherwise lack.
+ * The dialog asks for no kind of answer: "Input control" is the only question,
+ * and the kind follows from it. It opens on its placeholder, so it is always
+ * selected here rather than merely confirmed.
  *
  * Nothing reaches the codebook until something is submitted: for a kind a name
- * finishes, the row carries `_newVariableType`/`_newVariableName`/`_component`
- * and `useCommitFormField` turns them into the attribute when the ROW is
- * saved; for the others, the editor's own "Create attribute" writes it and the
- * row is then pointed at what it made.
+ * finishes, the row carries `_newVariableName`/`_component` and
+ * `useCommitFormField` turns them into the attribute when the ROW is saved;
+ * for the others, the editor's own "Create attribute" writes it and the row is
+ * then pointed at what it made.
  */
 export async function inventAttributeInFieldDialog(
   dialog: Locator,
   opts: InventAttributeOptions,
 ): Promise<void> {
   const page = dialog.page();
-  const inputControl = opts.inputControl ?? 'Text input';
+  const inputControl = opts.inputControl ?? 'Text Input';
   const variableType =
     opts.variableType ?? VARIABLE_TYPE_FOR_CONTROL[inputControl];
   if (variableType === undefined) {
@@ -193,9 +184,13 @@ export async function inventAttributeInFieldDialog(
     dialog.locator('[data-field-name="variable"]'),
     opts.variableName,
   );
-  await dialog
-    .getByRole('combobox', { name: 'Kind of answer', exact: true })
-    .selectOption({ label: variableType });
+  // Answered first: it is what tells the row which kind of answer the
+  // attribute holds, and so whether the codebook's own editor has to author it.
+  const control = dialog.getByRole('combobox', {
+    name: 'Input control',
+    exact: true,
+  });
+  await control.selectOption({ label: inputControl });
 
   if (NEEDS_CODEBOOK_EDITOR.has(variableType)) {
     const openLabel = createInEditorLabel(variableType);
@@ -216,13 +211,10 @@ export async function inventAttributeInFieldDialog(
     await editor
       .getByRole('button', { name: 'Create attribute', exact: true })
       .click();
-    // The attribute has to EXIST before the row's own controls are driven:
-    // "Input control" is derived from the attribute the row now points at,
-    // and it is not on screen at all while one is still being invented.
+    // Answered again only once the attribute exists: the row is bound to it
+    // now, so the control has narrowed to that kind's and been re-seeded from
+    // what the codebook editor gave it.
     await editor.waitFor({ state: 'detached' });
+    await control.selectOption({ label: inputControl });
   }
-
-  await dialog
-    .getByRole('combobox', { name: 'Input control', exact: true })
-    .selectOption({ label: inputControl });
 }

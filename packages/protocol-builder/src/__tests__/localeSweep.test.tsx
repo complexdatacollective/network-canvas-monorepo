@@ -20,7 +20,6 @@ import NetworkFilterSection from '../sections/network-filter/NetworkFilterSectio
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
-import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
 import { attributeField } from '../testing/attributePicker.ts';
 import {
@@ -101,7 +100,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <IntroductionSection />
           <SubjectSection entity="node" />
           <PromptsSection
@@ -126,7 +124,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <FormFieldsSection subject="node" hasTitle />
         </>
       ),
@@ -142,7 +139,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <PageContentSection
             ItemEditor={TestItemEditor}
             ItemPreview={TestItemPreview}
@@ -309,13 +305,13 @@ describe('the row dialogs under es', () => {
 
     // Nothing matches what was typed, so the first row offers to make it —
     // and taking that row is what draws the half-a-codebook-variable surface
-    // below.
+    // below, whose input control is how this knows the surface is up.
     await harness.user.click(
       within(picker).getByRole('option', {
         name: 'Crear un atributo nuevo llamado “apodo”.',
       }),
     );
-    await screen.findByRole('combobox', { name: 'Tipo de respuesta' });
+    await screen.findByRole('combobox', { name: 'Control de entrada' });
 
     expectNoLocaleLeaks(
       'the form-field dialog inventing an attribute',

@@ -106,7 +106,7 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background'],
+      unowned: ['subject', 'background'],
     });
     // Read back as well as compared: a round trip that agreed about an empty
     // document would otherwise pass.
@@ -867,18 +867,18 @@ describe('what a network composer lets the participant build', () => {
         .map((option) => option.textContent),
     ).toEqual([
       'Select an option…',
-      'Text input',
-      'Text area',
-      'Number input',
-      'Yes or no buttons',
+      'Text Input',
+      'Text Area',
+      'Number Input',
+      'Boolean Choice',
       'Toggle',
-      'Radio group',
-      'Likert scale',
-      'Checkbox group',
-      'Toggle button group',
-      'Visual analogue scale',
-      'Date picker',
-      'Relative date picker',
+      'Radio Group',
+      'Likert Scale',
+      'Checkbox Group',
+      'Toggle Button Group',
+      'Visual Analog Scale',
+      'Date Picker',
+      'Relative Date Picker',
     ]);
     // Unanswered, because the control is the question this row asks: seeded
     // with one, the researcher would have made a choice they were never
@@ -1599,9 +1599,9 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     // is refused by nothing, which is the defect this test exists for. What
     // arrives is the list of controls a text attribute may be asked with — the
     // row's own `Number` is not among them, so the select has nothing to show.
-    await within(control).findByRole('option', { name: 'Text input' });
+    await within(control).findByRole('option', { name: 'Text Input' });
     expect(
-      within(control).queryByRole('option', { name: 'Number input' }),
+      within(control).queryByRole('option', { name: 'Number Input' }),
     ).toBeNull();
 
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
@@ -1728,7 +1728,7 @@ describe('what a composer field’s control accepts', () => {
     await screen.findByText(DATE_ATTRIBUTE);
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background', 'quickAdd', 'layoutVariable'],
+      unowned: ['subject', 'background'],
     });
     expect(nodeFormFieldsOf(saved.stageDocument)[0]).toMatchObject({
       parameters: { type: 'full', min: '2020-01-01' },

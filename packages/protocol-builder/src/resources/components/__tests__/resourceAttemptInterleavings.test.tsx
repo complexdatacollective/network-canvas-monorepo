@@ -893,16 +893,16 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the throw is told as a failure and the control stops waiting',
     check: async () => {
       const user = userEvent.setup();
-      // A map layer rather than an image, so the only call resolving a URL is
-      // the download the researcher asked for: an image would have a preview
-      // beside it asking the same throwing procedure.
+      // A map layer rather than an image, so the throwing procedure is asked
+      // only by the discard: an image would have a preview beside it, whose
+      // own failure would put a second notice on screen.
       renderResourceEditor({
         // Thrown synchronously, which is the shape a `.catch()` chained onto
         // the call itself cannot see: the throw happens before there is a
         // promise to chain onto.
         client: (host) =>
           withResourceProcedures(host.client, {
-            preview: () => {
+            discard: () => {
               throw new Error('the host threw');
             },
           }),
@@ -919,14 +919,14 @@ const INTERLEAVINGS: readonly Interleaving[] = [
         ),
       );
       await user.click(
-        await screen.findByRole('button', { name: 'Download this resource' }),
+        await screen.findByRole('button', { name: 'Discard this resource' }),
       );
 
       expect(await screen.findByText(UNREACHABLE)).toBeVisible();
       // Still waiting would be a control the researcher can never use again,
       // with nothing on screen saying why.
       expect(
-        screen.getByRole('button', { name: 'Download this resource' }),
+        screen.getByRole('button', { name: 'Discard this resource' }),
       ).toBeEnabled();
     },
   },

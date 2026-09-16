@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -43,7 +43,7 @@ describe('the harness mounting modes', () => {
       options: {
         stageId: 'information-1',
         editor: InformationEditor,
-        sections: <StageNameSection />,
+        sections: <></>,
       },
       named: ['`editor`', '`sections`'],
     },
@@ -60,7 +60,7 @@ describe('the harness mounting modes', () => {
       combination: '`sections` and `registry`',
       options: {
         stageId: 'information-1',
-        sections: <StageNameSection />,
+        sections: <></>,
         registry: { Information: InformationEditor },
       },
       named: ['`sections`', '`registry`'],
@@ -89,7 +89,7 @@ describe('the harness mounting modes', () => {
     const editorAndSections: RenderStageEditorOptions<'Information'> = {
       stageId: 'information-1',
       editor: InformationEditor,
-      sections: <StageNameSection />,
+      sections: <></>,
     };
     // @ts-expect-error `editor` and `registry` are alternatives
     const editorAndRegistry: RenderStageEditorOptions<'Information'> = {
@@ -100,7 +100,7 @@ describe('the harness mounting modes', () => {
     // @ts-expect-error `sections` and `registry` are alternatives
     const sectionsAndRegistry: RenderStageEditorOptions<'Information'> = {
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <></>,
       registry: { Information: InformationEditor },
     };
 
@@ -126,11 +126,14 @@ describe('the harness mounting modes', () => {
   it('mounts sections a call gives on their own in the shared shell', async () => {
     renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <InterviewerGuidanceSection />,
     });
 
+    // Something only the SECTION draws. The stage's name is drawn by the
+    // harness's own host chrome on every path, so asking for that would pass
+    // whether or not the sections were mounted at all.
     expect(
-      await screen.findByRole('textbox', { name: 'Stage name' }),
+      await screen.findByRole('heading', { name: 'Interviewer guidance' }),
     ).toBeInTheDocument();
   });
 

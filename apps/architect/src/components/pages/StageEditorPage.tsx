@@ -12,6 +12,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
@@ -26,7 +27,9 @@ import {
   useStageDraft,
 } from '~/components/StageEditor/stageDraftBeacon';
 import StageDraftConflictDialog from '~/components/StageEditor/StageDraftConflictDialog';
-import StageEditorChrome from '~/components/StageEditor/StageEditorChrome';
+import StageEditorChrome, {
+  StageEditorHeader,
+} from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/store';
@@ -253,11 +256,12 @@ const StageEditorPage = () => {
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(
-    ({ formId, readOnly, sections }: StageEditorActionContext) => (
+    ({ formId, readOnly, sections, problems }: StageEditorActionContext) => (
       <StageEditorChrome
         formId={formId}
         readOnly={readOnly}
         sections={sections}
+        problems={problems}
         outlineHost={outlineHost}
         stageId={stageId}
         {...(insertAtIndex === undefined ? {} : { insertAtIndex })}
@@ -265,6 +269,11 @@ const StageEditorPage = () => {
       />
     ),
     [handleCancel, insertAtIndex, outlineHost, stageId],
+  );
+
+  const renderHeader = useCallback(
+    () => <StageEditorHeader stageId={stageId} />,
+    [stageId],
   );
 
   const handleSaved = useCallback(() => {
@@ -289,21 +298,14 @@ const StageEditorPage = () => {
         insertAtIndex={insertAtIndex}
       />
       {/*
-       * The editor's visible hero heading is the stage-name INPUT, which is
-       * a control rather than a heading — so this is the route's real
-       * heading and RouteFocus's landing point, and it is `sr-only`
-       * because the input already shows the same text at hero size.
+       * The route's real heading and `RouteFocus`'s landing point, `sr-only`
+       * because the editor's visible hero heading is the stage-name INPUT —
+       * which is a control and cannot be a heading. Focus lands here on every
+       * arrival, this stage included: nothing the editor draws claims it.
        *
-       * Focus lands HERE, never on the name input: opening an edit the
-       * researcher did not ask for is worse than a silent arrival. The
-       * new-stage flow is the deliberate exception — the editor autofocuses
-       * the name because naming the stage IS the next step, and RouteFocus
-       * leaves any destination that has already claimed focus alone.
-       *
-       * Above the two columns rather than inside them, so it is neither a
-       * grid item of its own nor behind the section list: the first Tab
-       * after arriving here has to reach that list, which means the list
-       * must come after this heading in the document.
+       * Above everything else the route draws, so the reading order starts
+       * here: this heading, the section list beside the editor, then the
+       * editor — whose first thing is the stage's title.
        */}
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {stageName}
@@ -345,19 +347,22 @@ const StageEditorPage = () => {
               to leave off. Applying both indents the form twice: 32px at
               phone width, 48px above it.
 
-              No `EnclosingHeadingLevel` around the editor: the heading above
-              it is this page's `h1`, which is the top of the ladder and what
-              the editor already assumes when nothing states otherwise — its
-              own stage title lands on `h2` and every section one below that.
+              The ladder is this route's, not the editor's: the page's `h1` is
+              the stage's name, the title's `h2` is what the name field is
+              labelled by, and every section is a subsection of that. The
+              package states nothing of its own.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
               <ProtocolBuilder client={client} protocolId={activeProtocolId}>
-                <StageEditor
-                  target={target}
-                  formId={STAGE_FORM_ID}
-                  actions={renderChrome}
-                  onSaved={handleSaved}
-                />
+                <EnclosingHeadingLevel level="h2">
+                  <StageEditor
+                    target={target}
+                    formId={STAGE_FORM_ID}
+                    actions={renderChrome}
+                    header={renderHeader}
+                    onSaved={handleSaved}
+                  />
+                </EnclosingHeadingLevel>
               </ProtocolBuilder>
             </div>
           </div>

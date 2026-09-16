@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { focusStageSection } from '@codaco/protocol-builder/form/stageSections';
 import type {
@@ -137,20 +138,41 @@ export default function StageSectionOutline({
       // anything to scroll, while the page does.
       //
       // It sticks to the bottom of Architect's navigation bar rather than to
-      // the top of the viewport, and takes its height from what the bar leaves:
-      // the bar is sticky too and paints above this, so a list stuck at `top-0`
-      // loses its first rows behind it, and one measured against the whole
-      // viewport runs its scroll off the bottom of the screen by the same
-      // amount. `NavShell` measures the bar and publishes the height.
-      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto @min-[60rem]:pt-2 @min-[60rem]:pb-14"
+      // the top of the viewport: the bar is sticky too and paints above this,
+      // so a list stuck at `top-0` loses its first rows behind it. `NavShell`
+      // measures the bar and publishes the height.
+      //
+      // The list starts at the top of ITS column — level with the editor's
+      // column, not with the editor's first section card. The editor draws its
+      // own title above those cards, and a read-only alert and a refused
+      // save's errors in the states that have them, so the first card sits
+      // lower than the first row here. Deliberate: aligning them means
+      // measuring a block whose height moves with a name that wraps, a badge
+      // row that wraps and an error list that appears on a failed save.
+      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height)"
     >
-      <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
-        {entries.map((section) => (
-          <li key={section.id} className="shrink-0">
-            <StageSectionOutlineItem section={section} />
-          </li>
-        ))}
-      </ol>
+      {/*
+        `contents` below the two-column breakpoint, so the row of chips above
+        the form keeps the layout and background it has always had.
+
+        `noContainer`: the wrapper Surface renders by default declares
+        `@container`, and the `@min-[60rem]` breakpoints here are asked of the
+        route's column, not of this 16rem card.
+      */}
+      <Surface
+        noContainer
+        spacing="xs"
+        shadow="sm"
+        className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
+      >
+        <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
+          {entries.map((section) => (
+            <li key={section.id} className="shrink-0">
+              <StageSectionOutlineItem section={section} />
+            </li>
+          ))}
+        </ol>
+      </Surface>
     </nav>
   );
 }

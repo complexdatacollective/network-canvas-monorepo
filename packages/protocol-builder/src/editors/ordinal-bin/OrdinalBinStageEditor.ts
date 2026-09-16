@@ -1,6 +1,5 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { ordinalBinPrompts } from './sections/ordinalBinPrompts.tsx';
@@ -14,7 +13,6 @@ import { ordinalBinPrompts } from './sections/ordinalBinPrompts.tsx';
  * `introductionPanel` for one to be written into.
  */
 export const ordinalBinStageEditor = defineStageEditor('OrdinalBin', [
-  stageHeading({ documentation: 'ordinal-bin' }),
   subjectPicker({ entity: 'node', filter: true }),
   ordinalBinPrompts(),
   skipLogic(),

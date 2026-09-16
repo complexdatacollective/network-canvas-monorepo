@@ -50,13 +50,10 @@ export type BadgedAttribute = Readonly<{
  * (audit candidate 25) and is not touched here, so this stays inside the
  * package until the second caller arrives.
  *
- * The colour is the badge's outline rather than its fill. Filled is what
- * Architect released, and white on the released fill for a text attribute is
- * 4.43:1 — under the 4.5:1 a researcher is owed for text this size, and the
- * palette has several more that sit the same way. Outlined, the type colour is
- * the border and a wash of the surface behind it, and the sentence is read in
- * the surface's own text colour, which the theme already guarantees against
- * that surface.
+ * The colour is the badge's fill, as Architect marks an attribute's type, and
+ * the sentence is read in the ink that fill contrasts with. `Badge` fills a
+ * coloured badge unless asked for an outline, so the fill is the absent
+ * `variant`.
  */
 export default function AttributeControlBadge({
   attribute,
@@ -69,7 +66,7 @@ export default function AttributeControlBadge({
   const controlDescriptor = controlLabel(attribute?.component);
 
   return (
-    <Badge color={variableTypeBadgeColor(attribute?.type)} variant="outline">
+    <Badge color={variableTypeBadgeColor(attribute?.type)}>
       {attribute === undefined ? (
         intl.formatMessage(messages.previewMissing)
       ) : (

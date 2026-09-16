@@ -199,14 +199,21 @@ const itemVariants = cva({
 });
 
 /**
- * Returns animation props for array field items.
- * When hasMounted is false, initial is set to false to prevent mount animations.
- * This avoids flickering when ArrayField is rendered inside animated containers like dialogs.
+ * Enter and exit animations for the list's rows and its empty state.
+ *
+ * `initial` is resolved from `hasOpened` (see `hasOpenedRef`): rows that
+ * arrive with the field's value are simply there, and only what the researcher
+ * makes appear animates in.
+ *
+ * `exit` is deliberately NOT gated the same way. An exit that finishes in the
+ * frame it starts leaves the surviving rows projected against the box the
+ * empty state still occupied, and they keep a residual vertical stretch
+ * (~1.12) for as long as they are on screen.
  */
 const getItemAnimationProps = {
-  initial: (hasMounted: boolean) => ({
-    opacity: hasMounted ? 0 : 1,
-    scale: hasMounted ? 0.6 : 1,
+  initial: (hasOpened: boolean) => ({
+    opacity: hasOpened ? 0 : 1,
+    scale: hasOpened ? 0.6 : 1,
   }),
   animate: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.6 },
@@ -574,7 +581,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   isSortable: boolean;
   isBeingEdited: boolean;
   isNewItem: boolean;
-  hasMounted: boolean;
+  hasOpened: boolean;
   onCancel: () => void;
   onChange?: (value: T) => void;
   // Answers the same way `onMoveItem` below does, and for the same reason: a
@@ -617,7 +624,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     isSortable,
     isBeingEdited,
     isNewItem,
-    hasMounted,
+    hasOpened,
     onDeleteItem,
     onEditItem,
     onMoveItem,
@@ -693,7 +700,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       className={cx(itemVariants(), resolvedItemClasses)}
       aria-hidden={isPresent ? undefined : true}
       inert={!isPresent}
-      custom={hasMounted}
+      custom={hasOpened}
       layout
       layoutId={item._internalId}
       variants={getItemAnimationProps}
@@ -769,12 +776,19 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // renders, which `useArrayFieldItems`' external-value sync depends on.
   const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
-  // Track mount state to prevent initial animations when rendered inside
-  // animated containers (e.g., dialogs with layoutId animations).
-  // Using a ref instead of state to avoid triggering an extra render.
-  const hasMountedRef = useRef(false);
-  useEffect(() => {
-    hasMountedRef.current = true;
+  // Whether this list has opened: it has once it has rendered rows, or once
+  // the researcher has asked it for a new one.
+  //
+  // Not mount, which is too early — a host form hands the field `[]` on its
+  // first render and the real rows a render later, so a flag flipped by a
+  // mount effect is already `true` when those rows arrive and every one of
+  // them animates in.
+  //
+  // A ref rather than state: it only selects between two variants of an
+  // animation that has not started yet, so no render has to be corrected.
+  const hasOpenedRef = useRef(false);
+  const openList = useCallback(() => {
+    hasOpenedRef.current = true;
   }, []);
 
   const { confirm } = useDialog();
@@ -1168,6 +1182,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
     [EditorComponent, items],
   );
 
+  // After every render, not just the first: the render that brings the list
+  // its rows must still see `hasOpenedRef` as `false`.
+  const hasRenderableItems = renderableItems.length > 0;
+  useEffect(() => {
+    if (hasRenderableItems) openList();
+  }, [hasRenderableItems, openList]);
+
   const id = useId();
   const isAtCapacity =
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
@@ -1232,7 +1253,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 layout
                 key="no-items"
                 className="m-10 text-sm text-current/70"
-                custom={hasMountedRef.current}
+                custom={hasOpenedRef.current}
                 variants={getItemAnimationProps}
                 initial="initial"
                 animate="animate"
@@ -1255,7 +1276,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
-                  hasMounted={hasMountedRef.current}
+                  hasOpened={hasOpenedRef.current}
                   onDeleteItem={
                     isInteractionDisabled ? undefined : requestDelete
                   }
@@ -1288,6 +1309,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
             key="add-button"
             color="primary"
             onClick={() => {
+              // The one route by which a row reaches a list that has never
+              // rendered one. Set before the add, so the render it schedules
+              // already sees an opened list.
+              openList();
               if (immediateAdd) {
                 addItem(itemTemplate() as T);
                 announce(

@@ -366,7 +366,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Yes or no buttons',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: both options carry explicit `negative` booleans.
         positive: {
@@ -402,42 +402,42 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'first_name',
       promptText: prompt(0),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'last_name',
       promptText: prompt(1),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'dob',
       promptText: prompt(2),
-      inputControl: 'Date picker',
+      inputControl: 'Date Picker',
     });
     await addConfiguredFormField(form, {
       variableName: 'languages_spoken',
       promptText: prompt(3),
-      inputControl: 'Toggle button group',
+      inputControl: 'Toggle Button Group',
       options: optionRows(...EGO, V_LANGUAGES, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'existing_software',
       promptText: prompt(4),
-      inputControl: 'Radio group',
+      inputControl: 'Radio Group',
       options: optionRows(...EGO, V_EXISTING_SOFTWARE, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'research_support',
       promptText: prompt(5),
-      inputControl: 'Likert scale',
+      inputControl: 'Likert Scale',
       options: optionRows(...EGO, V_RESEARCH_SUPPORT, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'operation_pain',
       promptText: prompt(6),
-      inputControl: 'Visual analogue scale',
+      inputControl: 'Visual Analog Scale',
       scalarParameters: {
         minLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'minLabel'),
         maxLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'maxLabel'),
@@ -446,13 +446,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'preferred_contact_method',
       promptText: prompt(7),
-      inputControl: 'Checkbox group',
+      inputControl: 'Checkbox Group',
       options: optionRows(...EGO, V_PREFERRED_CONTACT, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'other_info',
       promptText: prompt(8),
-      inputControl: 'Text area',
+      inputControl: 'Text Area',
     });
 
     await configureSkipLogic(editor, page, {
@@ -582,13 +582,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'name',
       promptText: s('stages', 10, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'last_visit',
       promptText: s('stages', 10, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'Date picker',
+      inputControl: 'Date Picker',
       dateMin: s(
         'codebook',
         'node',
@@ -602,7 +602,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'visit_purpose',
       promptText: s('stages', 10, 'form', 'fields', 2, 'prompt').trim(),
-      inputControl: 'Text area',
+      inputControl: 'Text Area',
     });
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
@@ -699,7 +699,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Yes or no buttons',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: option one has NO negative key; option two carries an
         // explicit `negative: false`.
@@ -734,7 +734,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'overall_review',
       promptText: s('stages', 14, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'Likert scale',
+      inputControl: 'Likert Scale',
       options: optionRows(
         'codebook',
         'node',

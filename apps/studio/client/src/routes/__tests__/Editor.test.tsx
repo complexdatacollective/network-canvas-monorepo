@@ -505,8 +505,17 @@ function stageNameField() {
   return screen.getByRole('textbox', { name: 'Stage name' });
 }
 
-function findStageNameField() {
-  return screen.findByRole('textbox', { name: 'Stage name' });
+/**
+ * The same control, once the editor may actually write to it.
+ *
+ * The editor is drawn before the section lock is acquired, and every field is
+ * disabled until it is — so a test that typed as soon as the control appeared
+ * was racing the acquire, and the value it typed was refused.
+ */
+async function findStageNameField() {
+  const field = await screen.findByRole('textbox', { name: 'Stage name' });
+  await waitFor(() => expect(field).toBeEnabled());
+  return field;
 }
 
 /**
@@ -627,12 +636,18 @@ describe('Studio editor shell', () => {
     ).toBeNull();
 
     // Studio's own save control, rendered through the editor's action slot and
-    // pointed at the form the package owns.
-    const form = stageNameField().closest('form');
-    expect(form).not.toBeNull();
+    // pointed at the form the package owns — the same form the name field
+    // belongs to. Read off the `form` attribute rather than an ancestor,
+    // because Studio draws the title in the editor's header slot, which is
+    // outside the `<form>` element.
+    const formId = stageNameField().getAttribute('form');
+    expect(formId).not.toBeNull();
+    expect(document.getElementById(formId ?? '')).toBeInstanceOf(
+      HTMLFormElement,
+    );
     expect(screen.getByRole('button', { name: 'Save screen' })).toHaveAttribute(
       'form',
-      form?.id,
+      formId,
     );
   });
 

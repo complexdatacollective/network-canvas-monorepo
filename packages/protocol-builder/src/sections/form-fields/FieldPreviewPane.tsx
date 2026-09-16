@@ -99,7 +99,7 @@ const messages = defineMessages({
  * The union of both families' keys, and one list rather than two: a key the
  * family on screen never registers simply never has a live value, and asking
  * for it costs one `hasValue` read. The dialog-only spellings
- * (`_newVariableName`, `_newVariableType`, `_component`) are written out here
+ * (`_newVariableName`, `_component`) are written out here
  * rather than imported from `FormFieldsSection`, which imports this module —
  * the same rule its own test follows, so a key that moves has to move in both
  * places.
@@ -107,7 +107,6 @@ const messages = defineMessages({
 const PREVIEW_DRAFT_FIELDS = [
   'variable',
   '_newVariableName',
-  '_newVariableType',
   '_component',
   'component',
   'parameters',
@@ -257,14 +256,11 @@ export default function FieldPreviewPane({
     ? codebookControl
     : undefined;
 
-  // An attribute nobody has created yet has no type of its own, so the kind of
-  // answer the researcher has said they want stands in — and failing that, the
-  // one the chosen control implies, which is unambiguous. The network
-  // composer's row only ever says the second: its input control is the
-  // question, and nothing asks it for a kind of answer.
+  // An attribute nobody has created yet has no type of its own, so the kind
+  // the chosen control implies stands in.
   //
-  // Both readings belong to a row that is INVENTING, and a row that is not
-  // gets neither. A row naming an attribute the codebook does not hold —
+  // That reading belongs to a row that is INVENTING, and a row that is not
+  // gets none. A row naming an attribute the codebook does not hold —
   // deleted from under it, or absent from an imported codebook — is not a
   // field the interview would render at all (`createFieldMetadata` throws on
   // it), so it previews nothing rather than a working field assembled from the
@@ -275,11 +271,8 @@ export default function FieldPreviewPane({
   const inventing = variableId === NEW_VARIABLE;
   const variableType: string | undefined =
     codebookVariable?.type ??
-    (inventing
-      ? (asText(draft._newVariableType) ??
-        (draftControl === undefined
-          ? undefined
-          : variableTypeForComponent(draftControl)))
+    (inventing && draftControl !== undefined
+      ? variableTypeForComponent(draftControl)
       : undefined);
 
   // The control has to be one this kind of answer allows. A row being rebound
