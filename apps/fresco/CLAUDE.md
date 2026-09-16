@@ -223,15 +223,75 @@ then runs two Docker stacks via
   diffs pre- vs post-upgrade exports (`release-test/scripts/diff-exports.mjs`)
   for unanticipated differences.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
-  process of the pending image end-to-end.
+  process of the pending image end-to-end, and then runs the script-driven
+  checks on that instance — a whole interview conducted from the first stage to
+  the finish screen and out through an export, what `/api/health` tells an
+  anonymous caller, and the researcher interface in another language.
+- **Analytics lane** (ports 3212/5535/9312): the one deployment in the run with
+  analytics **enabled**, against a sink that terminates TLS and records every
+  request. It also imports the damaged protocol fixtures, because "opening a
+  damaged file is no longer recorded as an application error" is a claim about
+  what is sent.
+- **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
+  `REQUIRE_TWO_FACTOR`.
+
+Both configured lanes are started and torn down around their own checks, so a
+run holds four stacks only as long as it has to.
+
+#### The script-driven lanes
+
+Those last three lanes are driven by deterministic scripts under
+`release-test/scripts/` rather than by an agent reading a checklist:
+`interview-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
+`analytics-lane.mjs` and `two-factor-lane.mjs`, over a shared Playwright driver
+(`fresco-driver.mjs`) and a lane table (`lanes.mjs`) that
+`scripts/release-test/fresco-release-test-workflow.test.mjs` binds to `up.sh`.
+What they check has a fixed answer — which payload was sent, which page was
+served, whether a request was refused — and an assertion in code is the same
+assertion on every run, can be made to fail on purpose in CI, and does not
+spend a model's attention rediscovering how to click a wizard. The agent that
+runs one is a courier: it runs the script and returns its JSON verbatim.
+
+Each script prints one line of `{ ok, checks: [{ id, status, detail }] }`, and
+the workflow holds every lane to the exact SET of check ids it expects
+(`expectedScriptChecks`). A missing id is a check that stopped running, an
+unknown one is a report the workflow cannot account for, and both fail the run
+rather than reading as coverage. `up.sh` reports the deployment configuration
+it started each lane in (`analytics`, `requireTwoFactor`) and the workflow
+refuses a lane that came up as the wrong deployment — an analytics lane with
+analytics disabled would send nothing at all, and every payload assertion in it
+would pass over an empty file.
+
+The judgment in those lanes lives in pure modules —
+`relay-payload-protocol.mjs` (what an enabled deployment may send),
+`localization-contract.mjs` (whether a page actually changed language) and
+`interview-export-contract.mjs` (whether an export carries the answers that
+were given) — so each oracle is exercised on synthetic input in
+`scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
+also shown failing on input that breaks the behaviour it guards. Lists those
+contracts are written against are bound to the application's own: the element
+events and properties to `lib/posthog-client.ts`, the entity-id properties to
+`@codaco/interview`, and the import-failure vocabulary to
+`@codaco/protocol-validation`.
+
+The protocol fixtures are built rather than committed
+(`release-test/scripts/make-fixtures.mjs`, from
+`packages/protocols/e2e/fresco-release-test`): the protocol an interview is
+conducted with, and the damaged ones — a missing resource, a damaged archive, a
+protocol that inflates past the shared limit, and the pair of filters that
+shows a fractional comparison value accepted and a fractional COUNT refused. A
+repository is the wrong place for a deliberately corrupt archive and an entry
+that expands to more than a gigabyte.
 
 Harness scripts live in `apps/fresco/release-test/` (`build-image.sh`,
-`up.sh --lane upgrade|fresh --image <ref> [--keep-data]`, `down.sh`,
+`up.sh --lane upgrade|fresh|analytics|twofactor --image <ref> [--keep-data]`,
+`down.sh`,
 `stage-fixture.sh` and `enable-captures.sh` for browser-driven uploads and
 download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
-wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
+wizard, not env vars, matching real bundled-MinIO deployments. Every stack but
+the analytics lane sets
 `DISABLE_ANALYTICS`, and a deployment with analytics disabled sends nothing
 off-box from the browser: posthog-js is loaded only once the server has
 confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
@@ -285,7 +345,12 @@ The sink records connection attempts and never terminates TLS. posthog-node
 speaks https, so parsing requests would mean minting a certificate for the
 relay's name and trusting it inside the image under test — a container
 configured differently from the one that ships, handed a relay that appears to
-work. It would also buy nothing the gate uses: what it asks is whether the
+work. (The analytics lane does exactly that, deliberately and only there: its
+sink terminates TLS with a certificate `up.sh` mints for the run and that
+lane's container sets `NODE_TLS_REJECT_UNAUTHORIZED=0`, because the question
+that lane asks can only be answered by reading the payloads. It changes whether
+the container VERIFIES the relay, never what it sends — and no lane that
+asserts silence sets it.) It would also buy nothing the gate uses: what it asks is whether the
 container reached off-box for analytics at all, and a connection attempt
 answers that completely while being recorded before any handshake can fail.
 Its positive control is the same idea as `networkLogEntries`, one step
@@ -352,9 +417,22 @@ changesets shipping Fresco-facing behaviour no check exercised — a statement
 about the evidence rather than the build, so it caps certification through
 `coverageGaps` instead of failing the run. Either extend the checklists to
 cover them or read the list and decide. Every pending changeset has to be
-classified as covered, untested or unrelated, and a library changeset counts
-as Fresco-facing: the harness bundles the pending `@codaco/*` packages into
-the image, so their behaviour ships inside the build under test.
+classified as covered, untested, unrelated or presentation-only, and a library
+changeset counts as Fresco-facing: the harness bundles the pending `@codaco/*`
+packages into the image, so their behaviour ships inside the build under test.
+
+`presentationOnlyChanges` is the fourth classification and the only one that
+takes a changeset out of the coverage tally without a check having run: a
+changeset whose entire Fresco-facing content is `@codaco/fresco-ui` component
+behaviour — how a field, a dialog or a picker looks and behaves in isolation —
+which its own Storybook interaction tests verify on every change to it. A
+release test that drives whole deployments is the wrong instrument for it, and
+counting those as untested only inflated the number until it stopped being
+read. The claim is checked rather than accepted: the artifact audit reports the
+packages each changeset bumps, and a changeset that also bumps `fresco`,
+`@codaco/interview`, `@codaco/protocol-validation`, `@codaco/network-exporters`,
+`@codaco/shared-consts` or `@codaco/app-i18n` — or any package the workflow has
+not classified — cannot be set aside.
 
 The verdict is computed in the workflow, not by an agent. Every checklist
 prompt numbers its items and synthesis binds the returned checks to that

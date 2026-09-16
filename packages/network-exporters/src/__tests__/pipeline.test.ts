@@ -1,4 +1,4 @@
-import { Effect, Layer, Queue } from 'effect';
+import { type Cause, Effect, Layer, Queue, Result } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -78,7 +78,7 @@ describe('exportPipeline', () => {
         defaultExportOptions,
         queue,
       ).pipe(
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.succeed({
             status: 'error' as const,
             error: describeExportError(error, 'fetching interviews'),
@@ -118,21 +118,25 @@ describe('exportPipeline', () => {
     const layer = Layer.mergeAll(MockRepo, MockProtocols, Out);
 
     const { result, events } = await Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<ExportEvent>();
+      const queue = yield* Queue.unbounded<ExportEvent, Cause.Done>();
       const pipelineResult = yield* exportPipeline(
         ['test-interview-1'],
         defaultExportOptions,
         queue,
       ).pipe(
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.succeed({
             status: 'error' as const,
             error: describeExportError(error),
           }),
         ),
       );
-      const allEvents = yield* Queue.takeAll(queue);
-      return { result: pipelineResult, events: [...allEvents] };
+      yield* Queue.end(queue);
+      const drained = yield* Effect.result(Queue.takeAll(queue));
+      const allEvents: ExportEvent[] = Result.isSuccess(drained)
+        ? [...drained.success]
+        : [];
+      return { result: pipelineResult, events: allEvents };
     }).pipe(Effect.provide(layer), Effect.runPromise);
 
     const stageOrder = events

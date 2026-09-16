@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { it } from '@effect/vitest';
 import { Effect } from 'effect';
 import { parse as parseConnectionString } from 'pg-connection-string';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { Environment, isLocalDatabase, readEnv } from '../../env.ts';
@@ -399,9 +400,19 @@ describe('process configuration', () => {
     expect(readEnv().port).toBe(8080);
   });
 
-  it('rejects a non-numeric PORT', () => {
+  it('rejects a non-numeric PORT, saying so once', () => {
+    // It fails both of the checks `port()` builds, and every check in a list
+    // runs under `errors: 'all'`, so without the first one aborting the
+    // deployer is told the same thing twice about the same variable.
     vi.stubEnv('PORT', 'http');
-    expect(() => readEnv()).toThrow();
+    let message = '';
+    try {
+      readEnv();
+      expect.unreachable('a non-numeric PORT must be refused');
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message.match(/at \["PORT"\]/g)).toHaveLength(1);
   });
 
   it('rejects a PORT outside the valid range', () => {
@@ -470,32 +481,26 @@ describe('the refusal a bad environment gets', () => {
 // nothing in the server runs under Effect yet, so this is the sanctioned way
 // in for the first thing that does.
 describe('the Environment layer', () => {
-  it('decodes and resolves the committed development defaults', async () => {
-    const program = Effect.gen(function* () {
+  it.effect('decodes and resolves the committed development defaults', () =>
+    Effect.gen(function* () {
       const env = yield* Environment;
-      return env;
-    });
-    const env = await Effect.runPromise(
-      program.pipe(Effect.provide(Environment.layer)),
-    );
-    expect(env.db).toEqual({ url: DEV_DATABASE_URL });
-    expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
-    // Withheld from the plain layer, exactly as it is from a plain `readEnv`.
-    expect(env.mail).toBeUndefined();
-  });
+      expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+      expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
+      // Withheld from the plain layer, exactly as it is from a plain `readEnv`.
+      expect(env.mail).toBeUndefined();
+    }).pipe(Effect.provide(Environment.layer)),
+  );
 
-  it('reads the mail transport only through the worker’s layer', async () => {
-    const env = await Effect.runPromise(
-      Effect.gen(function* () {
-        return yield* Environment;
-      }).pipe(Effect.provide(Environment.layerWithMail)),
-    );
-    expect(env.mail).toEqual({
-      kind: 'smtp',
-      url: DEV_SMTP_URL,
-      from: DEV.emailFrom,
-    });
-  });
+  it.effect('reads the mail transport only through the worker’s layer', () =>
+    Effect.gen(function* () {
+      const env = yield* Environment;
+      expect(env.mail).toEqual({
+        kind: 'smtp',
+        url: DEV_SMTP_URL,
+        from: DEV.emailFrom,
+      });
+    }).pipe(Effect.provide(Environment.layerWithMail)),
+  );
 });
 
 describe('the deployment mode', () => {

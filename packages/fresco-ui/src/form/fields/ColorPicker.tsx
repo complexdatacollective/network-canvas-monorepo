@@ -254,17 +254,19 @@ type ColorPickerFieldProps = CreateFormFieldProps<
   }
 >;
 
+const colorPickerOwnVariants = cva({
+  // Overrides `controlVariants`' single-control shape: this group wraps its
+  // swatches over as many rows as it needs, and must be free to shrink with
+  // the field that holds it rather than hold a content-width floor.
+  base: 'w-full min-w-0 flex-wrap justify-start text-wrap',
+});
+
 const colorPickerVariants = compose(
   controlVariants,
   inputControlVariants,
   groupSpacingVariants,
   stateVariants,
-  cva({
-    // Overrides `controlVariants`' single-control shape: this group wraps its
-    // swatches over as many rows as it needs, and must be free to shrink with
-    // the field that holds it rather than hold a content-width floor.
-    base: 'w-full min-w-0 flex-wrap justify-start text-wrap',
-  }),
+  colorPickerOwnVariants,
 );
 
 /**

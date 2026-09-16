@@ -13,15 +13,17 @@ import {
 import { compose, cva, type VariantProps } from '../../utils/cva';
 import { getInputState } from '../utils/getInputState';
 
+const checkboxRootOwnVariants = cva({
+  base: 'focusable flex aspect-square shrink-0 items-center justify-center rounded-[0.15em]',
+});
+
 const checkboxRootVariants = compose(
   smallSizeVariants,
   controlVariants,
   inputControlVariants,
   stateVariants,
   inertReadOnlyVariants,
-  cva({
-    base: 'focusable flex aspect-square shrink-0 items-center justify-center rounded-[0.15em]',
-  }),
+  checkboxRootOwnVariants,
 );
 
 const checkboxIndicatorVariants = cva({

@@ -87,7 +87,7 @@
     "i18n:extract": "node scripts/extract-i18n.mjs",
     "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
@@ -95,7 +95,6 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@xmldom/xmldom": "^0.9.12",
-    "effect": "catalog:",
     "es-toolkit": "catalog:",
     "fflate": "^0.8.3",
     "ohash": "^2.0.11",
@@ -106,13 +105,15 @@
     "@codaco/app-i18n": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@types/node": "catalog:",
+    "effect": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@codaco/app-i18n": "workspace:^"
+    "@codaco/app-i18n": "workspace:^",
+    "effect": "^4.0.0-rc.115"
   },
   "peerDependenciesMeta": {
     "@codaco/app-i18n": {

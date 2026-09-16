@@ -1,4 +1,11 @@
-import { Either, ParseResult, Schema, SchemaAST as AST } from 'effect';
+import {
+  Predicate,
+  Result,
+  Schema,
+  type SchemaAST as AST,
+  SchemaGetter,
+  SchemaIssue,
+} from 'effect';
 
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
@@ -23,16 +30,15 @@ import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
 /**
  * What a variable carries besides its shape and Effect's own `description`,
- * as annotations on its own schema. Symbols rather than strings so nothing in
- * Effect's annotation namespace can collide with them, and `Symbol.for` so two
- * copies of this module (vitest gives each test file its own module registry)
- * still read each other's annotations.
+ * as annotations on its own schema. Effect's annotation record is keyed by
+ * string alone, so the namespace lives in the key text rather than in a
+ * symbol: that is what keeps these clear of anything Effect writes there, and
+ * a string is the same key in every module registry, which matters because
+ * vitest gives each test file its own.
  */
-const GroupAnnotationId = Symbol.for('@codaco/studio-server/env/group');
-const DeploymentAnnotationId = Symbol.for(
-  '@codaco/studio-server/env/deployment',
-);
-const ExampleAnnotationId = Symbol.for('@codaco/studio-server/env/example');
+const GroupAnnotationKey = '@codaco/studio-server/env/group';
+const DeploymentAnnotationKey = '@codaco/studio-server/env/deployment';
+const ExampleAnnotationKey = '@codaco/studio-server/env/example';
 
 export const GROUPS = [
   'Process',
@@ -75,39 +81,35 @@ type VariableDoc = {
  * combinations are allowed is `resolve.ts`'s business rather than the
  * schema's.
  *
- * `exact: true` keeps `undefined` out of the decoded type, so a variable is
+ * `optionalKey` keeps `undefined` out of the decoded type, so a variable is
  * either absent or a value. `decodeEnvironment` drops absent and empty
  * variables before decoding, which is what makes that true of a real
  * environment.
  */
-function variable<A, I>(schema: Schema.Schema<A, I>, doc: VariableDoc) {
+function variable<S extends Schema.Top>(schema: S, doc: VariableDoc) {
   const { refusal } = doc;
-  return Schema.optionalWith(
-    schema.annotations({
+  return Schema.optionalKey(
+    schema.annotate({
       description: doc.summary,
       ...(refusal === undefined ? {} : refuses(refusal)),
-      [GroupAnnotationId]: doc.group,
-      [DeploymentAnnotationId]: doc.deployment,
+      [GroupAnnotationKey]: doc.group,
+      [DeploymentAnnotationKey]: doc.deployment,
       ...(doc.example === undefined
         ? {}
-        : { [ExampleAnnotationId]: doc.example }),
+        : { [ExampleAnnotationKey]: doc.example }),
     }),
-    { exact: true },
   );
 }
 
 /**
  * A refusal that names the variable and what it must be, and never the value.
- * `override` is what stops Effect walking into the failure and printing the
- * input it rejected.
+ * A `message` annotation replaces the whole message Effect would otherwise
+ * compose, so nothing of the rejected input survives into it.
  */
-const refuses = (expectation: string) => ({
-  message: () => ({ message: expectation, override: true }),
-});
+const refuses = (expectation: string) => ({ message: expectation });
 
-const NonEmptyString = Schema.String.pipe(
-  Schema.minLength(1),
-  Schema.annotations(refuses('must not be empty')),
+const NonEmptyString = Schema.String.check(
+  Schema.isMinLength(1, refuses('must not be empty')),
 );
 
 /**
@@ -118,15 +120,14 @@ const NonEmptyString = Schema.String.pipe(
  */
 function urlWithScheme(schemes: readonly string[], expectation: string) {
   const allowed = new Set(schemes.map((scheme) => `${scheme}:`));
-  return Schema.String.pipe(
-    Schema.filter((value) => {
+  return Schema.String.check(
+    Schema.makeFilter<string>((value) => {
       try {
         return allowed.has(new URL(value).protocol);
       } catch {
         return false;
       }
-    }),
-    Schema.annotations(refuses(expectation)),
+    }, refuses(expectation)),
   );
 }
 
@@ -136,14 +137,17 @@ const HttpUrl = urlWithScheme(
 );
 
 /** A TCP port, from `min` so the worker's health listener can exclude 0. */
-const port = (min: number) =>
-  Schema.NumberFromString.pipe(
-    Schema.int(),
-    Schema.between(min, 65535),
-    Schema.annotations(
-      refuses(`must be a whole number between ${min} and 65535`),
-    ),
+const port = (min: number) => {
+  // The same refusal on both checks, and the first one aborting: every check
+  // in a list runs under `errors: 'all'`, so a value that fails both — any
+  // non-numeric one, which decodes to NaN — would otherwise be refused twice
+  // in identical words.
+  const refusal = refuses(`must be a whole number between ${min} and 65535`);
+  return Schema.NumberFromString.check(
+    Schema.isInt(refusal).abort(),
+    Schema.isBetween({ minimum: min, maximum: 65535 }, refusal),
   );
+};
 
 /**
  * A yes/no variable. The four spellings a deployer actually writes, and no
@@ -151,19 +155,23 @@ const port = (min: number) =>
  * and `enabled` and their opposites, none of which is documented anywhere or
  * written by the compose stack.
  */
-const Flag = Schema.transform(
-  Schema.Literal('true', 'false', '1', '0'),
-  Schema.Boolean,
-  {
-    strict: true,
-    decode: (value) => value === 'true' || value === '1',
-    encode: (value) => (value ? 'true' : 'false'),
-  },
-).annotations(refuses('must be true, false, 1 or 0'));
+const Flag = Schema.Literals(['true', 'false', '1', '0'])
+  // Annotated before the transform: a value the deployer wrote is refused on
+  // the encoded side, and a refusal annotated on the decoded `Boolean` would
+  // never be reached.
+  .annotate(refuses('must be true, false, 1 or 0'))
+  .pipe(
+    Schema.decodeTo(Schema.Boolean, {
+      decode: SchemaGetter.transform(
+        (value) => value === 'true' || value === '1',
+      ),
+      encode: SchemaGetter.transform((value) => (value ? 'true' : 'false')),
+    }),
+  );
 
 export const EnvironmentSchema = Schema.Struct({
   NODE_ENV: variable(
-    Schema.Literal('development', 'test', 'production').annotations(
+    Schema.Literals(['development', 'test', 'production']).annotate(
       refuses('must be development, test or production'),
     ),
     {
@@ -239,7 +247,7 @@ export const EnvironmentSchema = Schema.Struct({
    * the default cannot live here.
    */
   STUDIO_DEPLOYMENT_MODE: variable(
-    Schema.Literal(...DEPLOYMENT_MODES).annotations(
+    Schema.Literals(DEPLOYMENT_MODES).annotate(
       refuses('must be managed or self-hosted'),
     ),
     {
@@ -331,7 +339,7 @@ export const EnvironmentSchema = Schema.Struct({
    * to refuse a placeholder or truncated value at boot rather than let it
    * quietly weaken session and magic-link token signing.
    */
-  BETTER_AUTH_SECRET: variable(Schema.String.pipe(Schema.minLength(32)), {
+  BETTER_AUTH_SECRET: variable(Schema.String.check(Schema.isMinLength(32)), {
     group: 'Authentication',
     summary: 'Signing secret for sessions and magic-link tokens.',
     deployment:
@@ -409,7 +417,7 @@ export const EnvironmentSchema = Schema.Struct({
    * the one credential that opens every seeded team.
    */
   STUDIO_SEED_ADMIN_PASSWORD: variable(
-    Schema.String.pipe(Schema.minLength(12)),
+    Schema.String.check(Schema.isMinLength(12)),
     {
       group: 'Authentication',
       summary:
@@ -439,18 +447,16 @@ export const EnvironmentSchema = Schema.Struct({
   ),
 
   TRUSTED_PROXIES: variable(
-    Schema.transform(
-      Schema.String,
-      Schema.mutable(Schema.Array(Schema.String)),
-      {
-        strict: true,
-        decode: (value) =>
+    Schema.String.pipe(
+      Schema.decodeTo(Schema.mutable(Schema.Array(Schema.String)), {
+        decode: SchemaGetter.transform((value) =>
           value
             .split(',')
             .map((entry) => entry.trim())
             .filter(Boolean),
-        encode: (entries) => entries.join(','),
-      },
+        ),
+        encode: SchemaGetter.transform((entries) => entries.join(',')),
+      }),
     ),
     {
       group: 'Authentication',
@@ -461,7 +467,7 @@ export const EnvironmentSchema = Schema.Struct({
       example: '10.0.0.0/8,192.168.0.0/16',
     },
   ),
-}).annotations({ identifier: 'the Studio server environment' });
+}).annotate({ identifier: 'the Studio server environment' });
 
 /** Every variable, decoded: what `resolve.ts` turns into a `StudioEnv`. */
 export type EnvironmentVariables = typeof EnvironmentSchema.Type;
@@ -471,9 +477,27 @@ export type VariableName = keyof EnvironmentVariables;
 /** One variable's documentation, read back out of its annotations. */
 export type EnvironmentVariableDoc = VariableDoc & { name: VariableName };
 
-function annotation(ast: AST.AST, id: symbol): string | undefined {
-  const value = AST.getAnnotation<string>(ast, id);
-  return value._tag === 'Some' ? value.value : undefined;
+/**
+ * A node's annotations together with those of its checks, the node winning.
+ * Both have to be read because `annotate` puts an annotation on the last check
+ * of a schema that has any and on the node itself only when it has none — so
+ * `NODE_ENV` carries its documentation on the node and `PORT` carries its own
+ * on the range check.
+ */
+function annotationsOf(ast: AST.AST): Schema.Annotations.Annotations {
+  const fromChecks = (ast.checks ?? []).reduce(
+    (merged, check) => ({ ...merged, ...check.annotations }),
+    {},
+  );
+  return { ...fromChecks, ...ast.annotations };
+}
+
+function annotation(
+  annotations: Schema.Annotations.Annotations,
+  key: string,
+): string | undefined {
+  const value = annotations[key];
+  return Predicate.isString(value) ? value : undefined;
 }
 
 /**
@@ -484,17 +508,18 @@ function annotation(ast: AST.AST, id: symbol): string | undefined {
  * because this throws rather than emitting a half-documented entry.
  */
 export function describeEnvironment(): EnvironmentVariableDoc[] {
-  return AST.getPropertySignatures(EnvironmentSchema.ast).map((property) => {
+  return EnvironmentSchema.ast.propertySignatures.map((property) => {
     const name = String(property.name) as VariableName;
-    const group = annotation(property.type, GroupAnnotationId);
-    const summary = annotation(property.type, AST.DescriptionAnnotationId);
-    const deployment = annotation(property.type, DeploymentAnnotationId);
+    const annotations = annotationsOf(property.type);
+    const group = annotation(annotations, GroupAnnotationKey);
+    const summary = annotation(annotations, 'description');
+    const deployment = annotation(annotations, DeploymentAnnotationKey);
     if (!group || !summary || !deployment) {
       throw new Error(
         `${name} is missing its group, summary or deployment annotation in src/env/schema.ts`,
       );
     }
-    const example = annotation(property.type, ExampleAnnotationId);
+    const example = annotation(annotations, ExampleAnnotationKey);
     return {
       name,
       group: group as Group,
@@ -505,7 +530,7 @@ export function describeEnvironment(): EnvironmentVariableDoc[] {
   });
 }
 
-const decode = Schema.decodeUnknownEither(EnvironmentSchema, { errors: 'all' });
+const decode = Schema.decodeUnknownResult(EnvironmentSchema, { errors: 'all' });
 
 /**
  * Decodes a raw environment, naming every variable it refuses at once rather
@@ -526,14 +551,14 @@ export function decodeEnvironment(
   );
 
   const result = decode(configured);
-  if (Either.isRight(result)) return result.right;
+  if (Result.isSuccess(result)) return result.success;
 
-  // TreeFormatter, with every variable's own refusal message overriding what
-  // Effect would otherwise compose — so the report names each bad variable and
-  // what it should be, and never prints the value it rejected.
+  // The default formatter, with every variable's own refusal message replacing
+  // what Effect would otherwise compose — so the report names each bad variable
+  // and what it should be, and never prints the value it rejected.
   throw new Error(
-    `Studio cannot start: the environment is not valid.\n${ParseResult.TreeFormatter.formatErrorSync(
-      result.left,
+    `Studio cannot start: the environment is not valid.\n${SchemaIssue.makeFormatterDefault()(
+      result.failure.issue,
     )}`,
   );
 }
