@@ -621,7 +621,16 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     // transient failure — the same verdict the web process boots on, reached
     // through the same schema gate (src/platform/schema-gate.ts).
     const empty = await createScratchDatabase(db);
-    const worker = startWorker({ DATABASE_URL: empty.db.url });
+    // A port of its own, like every other case that starts a worker far
+    // enough to serve: this one reaches the schema gate, which is behind the
+    // health server, so on the default 3001 it refuses the *port* rather than
+    // the database and the case reads a diagnostic that is not its subject.
+    // Nothing about the verdict depends on which port it is.
+    const healthPort = await freePort();
+    const worker = startWorker({
+      DATABASE_URL: empty.db.url,
+      WORKER_HEALTH_PORT: String(healthPort),
+    });
     try {
       const { code } = await worker.exited;
       expect(code).toBe(1);

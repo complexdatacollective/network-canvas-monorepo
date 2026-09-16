@@ -3,17 +3,20 @@ import { Duration, Effect, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { readiness } from '../../http/health.ts';
-import { Database, withTransaction } from '../database.ts';
-import { Jobs } from '../jobs.ts';
+import { Database } from '../database.ts';
 import { jobsCheck } from '../readiness.ts';
 import { JobWorker } from '../worker.ts';
 import {
-  asApp,
   asOwner,
+  awaitAnswer,
+  awaitJobState,
+  clearQueue,
+  enqueueDelivery,
+  layerNotifiedWorker,
   layerQueueHarness,
-  layerWorker,
+  NOTIFY_BUDGET,
+  NOTIFY_SETTLE,
   QueueHarness,
-  readJobs,
 } from './support.ts';
 
 // What happens to the worker's one `LISTEN` when its connection dies.
@@ -33,17 +36,6 @@ import {
 
 const db = await reachableDb();
 
-const DELIVERY_ID = '44444444-4444-4444-8444-444444444444';
-
-/** An hour, so nothing but a notification can explain a prompt drain. */
-const POLL_INTERVAL = Duration.hours(1);
-
-/** What the reconnected worker must beat. */
-const BUDGET = Duration.millis(500);
-
-/** Long enough for the worker's boot drain to have left the queue idle. */
-const SETTLE = Duration.millis(150);
-
 /** How long the reconnection is given; the backoff's first step is 200 ms. */
 const RECONNECT_BUDGET = Duration.seconds(3);
 
@@ -53,14 +45,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
   layer(layerQueueHarness(db!), { excludeTestServices: true })(
     'with the queue installed',
     (it) => {
-      const clear = Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
-            sql.unsafe(`DELETE FROM ${schema}.jobs`),
-          ),
-        );
-      });
+      const clear = clearQueue;
 
       /**
        * Every backend currently listening on this suite's channel, read from
@@ -86,29 +71,11 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
         );
       });
 
-      /** Waits until `read` answers something the case accepts, or gives up. */
-      const awaitAnswer = <A, E, R>(
-        read: Effect.Effect<A, E, R>,
-        accept: (value: A) => boolean,
-        within: Duration.Duration,
-      ) =>
-        Effect.gen(function* () {
-          let answer = yield* read;
-          while (!accept(answer)) {
-            yield* Effect.sleep(Duration.millis(20));
-            answer = yield* read;
-          }
-          return answer;
-        }).pipe(Effect.timeoutOption(within));
-
-      const awaitCompleted = Effect.gen(function* () {
-        let settled = false;
-        while (!settled) {
-          const rows = yield* readJobs('invitation-delivery');
-          settled = rows[0]?.state === 'completed';
-          if (!settled) yield* Effect.sleep(Duration.millis(10));
-        }
-      }).pipe(Effect.timeoutOption(BUDGET));
+      const awaitCompleted = awaitJobState(
+        'invitation-delivery',
+        'completed',
+        NOTIFY_BUDGET,
+      );
 
       /** Kills the one backend holding this suite's `LISTEN`, and says which. */
       const terminateListener = Effect.gen(function* () {
@@ -148,7 +115,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
             yield* worker.work('invitation-delivery', () =>
               Effect.succeed('completed' as const),
             );
-            yield* Effect.sleep(SETTLE);
+            yield* Effect.sleep(NOTIFY_SETTLE);
 
             // The baseline: without it, `degraded` below could be a probe that
             // has simply never seen a listener rather than one reporting a
@@ -193,15 +160,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
               Option.isSome(recovered),
               'the probe never saw the listener come back',
             );
-          }).pipe(
-            Effect.provide(
-              layerWorker({
-                background: true,
-                pollInterval: POLL_INTERVAL,
-                listen: true,
-              }),
-            ),
-          );
+          }).pipe(Effect.provide(layerNotifiedWorker(true)));
         }),
       );
 
@@ -214,7 +173,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
             yield* worker.work('invitation-delivery', () =>
               Effect.succeed('completed' as const),
             );
-            yield* Effect.sleep(SETTLE);
+            yield* Effect.sleep(NOTIFY_SETTLE);
 
             const before = yield* awaitAnswer(
               listeners(),
@@ -252,15 +211,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
             // The same oracle notify.test.ts uses, now on the far side of a
             // reconnection: an hour-long poll interval means only a live
             // listener can explain this.
-            yield* Effect.flatMap(Jobs, (jobs) =>
-              asApp(
-                withTransaction(
-                  jobs.enqueue('invitation-delivery', {
-                    deliveryId: DELIVERY_ID,
-                  }),
-                ),
-              ),
-            );
+            yield* enqueueDelivery();
             const settled = yield* awaitCompleted;
             assert.isTrue(
               Option.isSome(settled),
@@ -272,15 +223,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
               'the job drained without a listening backend being visible',
             );
             assert.notStrictEqual(Option.getOrThrow(after)[0]!.pid, killed);
-          }).pipe(
-            Effect.provide(
-              layerWorker({
-                background: true,
-                pollInterval: POLL_INTERVAL,
-                listen: true,
-              }),
-            ),
-          );
+          }).pipe(Effect.provide(layerNotifiedWorker(true)));
         }),
       );
     },

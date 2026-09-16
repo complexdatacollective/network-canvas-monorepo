@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect, Layer } from 'effect';
+import { Context, Deferred, Duration, Effect, Layer, Option } from 'effect';
+import pg from 'pg';
+
+import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import {
   createScratchSchema,
@@ -11,13 +14,19 @@ import { splitStatements } from '../../db/statements.ts';
 import type { DbEnv } from '../../env.ts';
 import { JobClock } from '../clock.ts';
 import { Database, withTransaction } from '../database.ts';
-import { Jobs } from '../jobs.ts';
+import { type EnqueueOptions, Jobs } from '../jobs.ts';
+import { type JobPayload, resolvedQueue } from '../queues.ts';
 import {
   dropJobSchemaSql,
   jobSchemaGrantsSql,
   jobSchemaSql,
 } from '../schema.ts';
-import { JobWorker, type JobWorkerConfig } from '../worker.ts';
+import {
+  type JobHandler,
+  type JobOutcome,
+  JobWorker,
+  type JobWorkerConfig,
+} from '../worker.ts';
 
 // One scratch job schema per suite, with a client per identity. The three
 // identities are three `Database` *values* rather than three tags — today
@@ -201,6 +210,331 @@ export const readJobs = Effect.fnUntraced(function* (queue?: string) {
     ),
   );
 });
+
+// What nearly every suite in this directory needs of the queue beyond the
+// harness itself: an empty table to start from, the `Jobs` layer on the
+// suite's own schema, one job on it, an owner-side edit of a row, and the
+// schedules. They are here rather than copied per file because a suite that
+// wrote its own would be asserting against a fixture that had drifted from
+// the one the case beside it uses — and because the four constants below are
+// read by cases in six files that must mean the same job by them.
+
+/** The delivery queue's declaration, which the cases assert against. */
+export const DELIVERY = resolvedQueue('invitation-delivery');
+
+/** The one delivery every suite that needs no second one addresses. */
+export const DELIVERY_ID = '55555555-5555-4555-8555-555555555555';
+
+/** A pinned seed, so the jittered backoff has one answer. */
+export const SEED = 'studio-jobs';
+
+/** What `reapExpired` writes to `last_error` in place of a handler's. */
+export const LEASE_EXPIRED =
+  'the attempt did not finish before its lease expired';
+
+/** The `Jobs` service on the suite's own scratch schema. */
+export const layerJobs: Layer.Layer<Jobs, never, QueueHarness> = Layer.unwrap(
+  Effect.map(QueueHarness, (harness) => Jobs.layer({ schema: harness.schema })),
+);
+
+/**
+ * Both of the queue's tables emptied, as the owner — the identity neither
+ * production role may use — so a case starts from nothing whatever the case
+ * before it left behind.
+ */
+export const clearQueue = Effect.gen(function* () {
+  const { schema } = yield* QueueHarness;
+  yield* asOwner(
+    Effect.flatMap(Database, ({ sql }) =>
+      sql.unsafe(`DELETE FROM ${schema}.jobs`),
+    ),
+  );
+  yield* asOwner(
+    Effect.flatMap(Database, ({ sql }) =>
+      sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
+    ),
+  );
+});
+
+/** One job, created by the application role in a transaction of its own. */
+export const enqueue = <Queue extends JobQueueName>(
+  queue: Queue,
+  payload: JobPayload<Queue>,
+  options?: EnqueueOptions,
+) =>
+  Effect.flatMap(Jobs, (jobs) =>
+    asApp(withTransaction(jobs.enqueue(queue, payload, options))),
+  );
+
+/** One job on the delivery queue, which is the queue most cases drive. */
+export const enqueueDelivery = (
+  deliveryId: string = DELIVERY_ID,
+  options?: EnqueueOptions,
+) => enqueue('invitation-delivery', { deliveryId }, options);
+
+/** One job on the singleton sweep queue. */
+export const enqueueSweep = enqueue('denied-attempts-summary', {});
+
+/** An owner-side edit of a job row; the suites' stand-in for a redeploy. */
+export const updateJob = Effect.fnUntraced(function* (
+  jobId: string,
+  assignment: string,
+) {
+  const { schema } = yield* QueueHarness;
+  yield* asOwner(
+    Effect.flatMap(Database, ({ sql }) =>
+      sql.unsafe(
+        `UPDATE ${schema}.jobs SET ${assignment} WHERE id = '${jobId}'`,
+      ),
+    ),
+  );
+});
+
+export type ScheduleRow = {
+  readonly name: string;
+  readonly cron: string;
+  readonly queue: string;
+  readonly next_run_at: number;
+};
+
+/** Every schedule row, by name, read as the owner like `readJobs`. */
+export const readSchedules = Effect.fnUntraced(function* () {
+  const { schema } = yield* QueueHarness;
+  return yield* asOwner(
+    Effect.flatMap(
+      Database,
+      ({ sql }) => sql<ScheduleRow>`
+        SELECT name, cron, queue, next_run_at
+          FROM ${sql(schema)}.job_schedules
+         ORDER BY name`,
+    ),
+  );
+});
+
+/**
+ * Runs `body` against a worker of its own — a second replica, as far as the
+ * database is concerned, since each `layerWorker()` builds its own service
+ * with its own registry. Every case that reaches for a worker goes through
+ * this or `drainWith`, so a case that means "another replica" cannot
+ * accidentally get the same one twice.
+ */
+export const onWorker = <A, E, R>(
+  body: (worker: JobWorker['Service']) => Effect.Effect<A, E, R>,
+  config?: Omit<JobWorkerConfig, 'schema'>,
+) => Effect.flatMap(JobWorker, body).pipe(Effect.provide(layerWorker(config)));
+
+/**
+ * One claim-run-settle step on a worker of its own, with `handler` registered
+ * for the queue and nothing else — what nearly every case here means by
+ * "the worker ran this job".
+ */
+export const drainWith = <Queue extends JobQueueName, E, R>(
+  queue: Queue,
+  handler: JobHandler<Queue, E, R>,
+  config?: Omit<JobWorkerConfig, 'schema'>,
+) =>
+  onWorker(
+    (worker) =>
+      Effect.flatMap(worker.work(queue, handler), () =>
+        worker.drainOnce(queue),
+      ),
+    config,
+  );
+
+/**
+ * Claims one job on `worker` and leaves the handler blocked inside it, so the
+ * case can move virtual time past the lease while the attempt is still
+ * running. Answers the fiber running the step, so the case decides when — and
+ * whether — the handler finishes.
+ */
+export const claimAndHold = (
+  worker: JobWorker['Service'],
+  queue: JobQueueName,
+  gates: {
+    readonly started: Deferred.Deferred<void>;
+    readonly held: Deferred.Deferred<void>;
+  },
+  outcome: Effect.Effect<JobOutcome, unknown> = Effect.succeed<JobOutcome>(
+    'completed',
+  ),
+) =>
+  Effect.gen(function* () {
+    yield* worker.work(queue, () =>
+      Effect.gen(function* () {
+        yield* Deferred.succeed(gates.started, undefined);
+        yield* Deferred.await(gates.held);
+        return yield* outcome;
+      }),
+    );
+    const running = yield* Effect.forkChild(worker.drainOnce(queue));
+    yield* Deferred.await(gates.started);
+    return running;
+  });
+
+/** One statement on a held transaction, and the means to end it. */
+export type Holder = {
+  readonly query: (
+    statement: string,
+    parameters?: readonly string[],
+  ) => Effect.Effect<void>;
+  /** How many backends are waiting on a lock this transaction holds. */
+  readonly blockedByMe: Effect.Effect<number>;
+  readonly finish: (how: 'COMMIT' | 'ROLLBACK') => Effect.Effect<void>;
+};
+
+/**
+ * An open transaction on a raw `pg` connection of its own, for the length of
+ * `use`. The harness's three `Database` values share nothing with it, which is
+ * the point: a second connection is the only way to hold a row lock — or an
+ * advisory one — that the queue's own statements then have to deal with, and
+ * an Effect transaction on the calling fiber would route those statements onto
+ * the holder's connection instead.
+ *
+ * Always ended: a case that left a row locked would take every later case in
+ * its file down with it, so the release rolls back whatever the case did not
+ * finish itself.
+ */
+export const holding = <A, E, R>(
+  url: string,
+  use: (holder: Holder) => Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> =>
+  Effect.acquireUseRelease(
+    Effect.promise(async () => {
+      const pool = new pg.Pool({ connectionString: url, max: 1 });
+      // node-postgres turns an unhandled pool `error` into an uncaught
+      // exception, which would take the whole run down rather than this case.
+      pool.on('error', () => undefined);
+      const held = await pool.connect();
+      await held.query('BEGIN');
+      return { pool, held };
+    }),
+    ({ held }) =>
+      use({
+        query: (statement, parameters) =>
+          Effect.promise(async () => {
+            await held.query(statement, parameters ? [...parameters] : []);
+          }),
+        blockedByMe: Effect.promise(async () => {
+          // `pg_backend_pid()` runs on this connection, so this counts the
+          // backends blocked by *this* transaction and nothing else.
+          const { rows } = await held.query<{ blocked: number }>(
+            `SELECT count(*)::int AS blocked
+               FROM pg_stat_activity
+              WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
+          );
+          return rows[0]?.blocked ?? 0;
+        }),
+        finish: (how) =>
+          Effect.promise(async () => {
+            await held.query(how);
+          }),
+      }),
+    ({ pool, held }) =>
+      Effect.promise(async () => {
+        try {
+          await held.query('ROLLBACK');
+        } catch {
+          // The case ended the transaction itself, or the connection is gone.
+          // Either way the lock is released, which is all this is for.
+        } finally {
+          held.release();
+          await pool.end();
+        }
+      }),
+  );
+
+/** How often the waits below ask again. */
+const CONDITION_POLL = '20 millis';
+
+/**
+ * Polls `read` until it answers something `accept` takes, or answers `None`
+ * when the budget runs out. The wall-clock suites' one wait: a budget that
+ * expires is the oracle in every one of them, so a wait that threw would turn
+ * a failing assertion into a failing run with no verdict.
+ */
+export const awaitAnswer = <A, E, R>(
+  read: Effect.Effect<A, E, R>,
+  accept: (value: A) => boolean,
+  within: Duration.Duration,
+  poll: Duration.Input = CONDITION_POLL,
+): Effect.Effect<Option.Option<A>, E, R> =>
+  Effect.gen(function* () {
+    let answer = yield* read;
+    while (!accept(answer)) {
+      yield* Effect.sleep(poll);
+      answer = yield* read;
+    }
+    return answer;
+  }).pipe(Effect.timeoutOption(within));
+
+/** The same wait, of a condition that is already a boolean. */
+export const awaitTrue = <E, R>(
+  condition: Effect.Effect<boolean, E, R>,
+  within: Duration.Duration,
+  poll: Duration.Input = CONDITION_POLL,
+): Effect.Effect<Option.Option<void>, E, R> =>
+  Effect.map(
+    awaitAnswer(condition, (met) => met, within, poll),
+    (answer) => Option.map(answer, () => undefined),
+  );
+
+/** Waits for the one job on a queue to reach a state, inside a budget. */
+export const awaitJobState = (
+  queue: JobQueueName,
+  state: string,
+  within: Duration.Duration,
+) =>
+  awaitAnswer(
+    readJobs(queue),
+    (rows) => rows[0]?.state === state,
+    within,
+    '10 millis',
+  );
+
+// What `notify.test.ts` and `listener.test.ts` measure the listener with.
+// They are here rather than in each file because the second's oracle *is* the
+// first's — a job settling inside the budget while the poll interval is an
+// hour away — and two budgets that drifted apart would stop being one claim.
+
+/** An hour, so nothing but a notification can explain a prompt drain. */
+const NOTIFY_POLL_INTERVAL = Duration.hours(1);
+
+/** What the notified worker must beat, and the unnotified one must not. */
+export const NOTIFY_BUDGET = Duration.millis(500);
+
+/**
+ * Long enough for the worker's first poll pass — the wake latch starts open,
+ * so a worker drains once at boot — to have happened and left the queue idle
+ * before anything is enqueued. Without it a positive half could be a boot
+ * drain rather than a notification, and a negative half could lose a race.
+ */
+export const NOTIFY_SETTLE = Duration.millis(150);
+
+/** A forked worker that can only be woken promptly by a notification. */
+export const layerNotifiedWorker = (listen: boolean) =>
+  layerWorker({
+    background: true,
+    pollInterval: NOTIFY_POLL_INTERVAL,
+    listen,
+  });
+
+/**
+ * A valid payload per queue, so a case that visits every declaration has one
+ * for each. The two scheduled sweeps visit everything there is; nothing
+ * addresses them.
+ */
+export function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
+  if (queue === 'sign-in-email') {
+    return {
+      email: 'researcher@example.org',
+      url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+    };
+  }
+  if (queue.startsWith('invitation-delivery')) {
+    return { deliveryId: randomUUID() };
+  }
+  return {};
+}
 
 // The delivery suite needs Studio's own schema as well as the queue's, so it
 // reuses the pg-based scratch-schema helpers every other Studio suite uses and

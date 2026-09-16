@@ -7,7 +7,7 @@ import {
   it as vitestIt,
   layer,
 } from '@effect/vitest';
-import { DateTime, Duration, Effect, Exit, Layer, Logger } from 'effect';
+import { DateTime, Duration, Effect, Exit, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
@@ -18,6 +18,7 @@ import {
   CLAIMED_SUFFIX,
   DeniedAuditRateLimiter,
 } from '../../../audit/denial-rate-limit.ts';
+import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
 import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
 import {
   createRateLimitStore,
@@ -26,13 +27,14 @@ import {
 import {
   DeliveryHarness,
   layerDeliveryHarness,
-  layerWorker,
+  layerJobs,
+  onWorker,
 } from '../../__tests__/support.ts';
 import { Database, withTransaction } from '../../database.ts';
 import { causeError } from '../../errors.ts';
 import { Jobs } from '../../jobs.ts';
 import { resolvedQueue } from '../../queues.ts';
-import { JobWorker, type HandledJob } from '../../worker.ts';
+import type { HandledJob } from '../../worker.ts';
 import { deniedAttemptsSummary } from '../denied-attempts-summary.ts';
 import { DeniedAuditSummaryWriter } from '../denied-attempts/audit-writer.ts';
 import {
@@ -108,14 +110,6 @@ type AuditRow = {
   readonly details: Record<string, unknown>;
 };
 
-/** A logger that keeps the lines, for the cases whose subject is one. */
-const recordingLogger = (lines: string[]) =>
-  Logger.layer([
-    Logger.make<unknown, void>(({ message }) => {
-      lines.push(String(message));
-    }),
-  ]);
-
 describe('the summary queue declaration', () => {
   vitestIt('is a singleton on a one-minute schedule', () => {
     // Two runs at once would scan the same keys. The claim inside the job is
@@ -140,11 +134,7 @@ const suiteLayer = Layer.mergeAll(
       DeniedAuditSummaryWriter.layer(harness.scratch.maintenance),
     ),
   ),
-  Layer.unwrap(
-    Effect.map(DeliveryHarness, (harness) =>
-      Jobs.layer({ schema: harness.schema }),
-    ),
-  ),
+  layerJobs,
 ).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
 
 describe.skipIf(!db)(
@@ -539,17 +529,17 @@ describe.skipIf(!db)(
               storage_read: '3',
             });
 
-            const lines: string[] = [];
+            const logs = collectLogs();
             yield* runSummary(`test-summary-${randomUUID()}`).pipe(
-              Effect.provide(recordingLogger(lines)),
+              Effect.provide(logs.layer),
             );
 
             assert.include(
-              lines.join('\n'),
+              logs.messages.join('\n'),
               'Rate limit refused 7 call(s) in scope sign_in_address.',
             );
             assert.include(
-              lines.join('\n'),
+              logs.messages.join('\n'),
               'Rate limit refused 3 call(s) in scope storage_read.',
             );
             // Drained, so the next run does not report the same refusals
@@ -563,15 +553,18 @@ describe.skipIf(!db)(
       it.effect('completes and says so when no store is configured', () =>
         Effect.gen(function* () {
           yield* startCase();
-          const lines: string[] = [];
+          const logs = collectLogs();
           const outcome = yield* runSummary(
             `test-summary-${randomUUID()}`,
           ).pipe(
             Effect.provide(DeniedAttemptsStore.layerAbsent),
-            Effect.provide(recordingLogger(lines)),
+            Effect.provide(logs.layer),
           );
           assert.strictEqual(outcome, 'completed');
-          assert.include(lines.join('\n'), 'no rate limit store is configured');
+          assert.include(
+            logs.messages.join('\n'),
+            'no rate limit store is configured',
+          );
         }),
       );
 
@@ -690,10 +683,10 @@ describe.skipIf(!db)(
               windowStart: at.closedAt,
             });
 
-            const lines: string[] = [];
+            const logs = collectLogs();
             yield* memory.failOn('del');
             const outcome = yield* runSummary(keyPrefix).pipe(
-              Effect.provide(recordingLogger(lines)),
+              Effect.provide(logs.layer),
             );
             yield* memory.failOn(null);
 
@@ -702,10 +695,13 @@ describe.skipIf(!db)(
               suppressedCount: 11,
             });
             assert.include(
-              lines.join('\n'),
+              logs.messages.join('\n'),
               'attempt 1: summary events 1, limiter scopes 0',
             );
-            assert.include(lines.join('\n'), 'stays claimed for a later run');
+            assert.include(
+              logs.messages.join('\n'),
+              'stays claimed for a later run',
+            );
             // And the claim is still there, so a later run takes the window
             // again, finds the row already written, and only lets it go.
             assert.isTrue(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
@@ -745,7 +741,7 @@ describe.skipIf(!db)(
               windowStart: at.closedAt,
             });
 
-            const lines: string[] = [];
+            const logs = collectLogs();
             const recorded = yield* Effect.provide(
               Effect.gen(function* () {
                 const writer = yield* RecordedSummaries;
@@ -755,7 +751,7 @@ describe.skipIf(!db)(
                     : Effect.void,
                 );
                 const outcome = yield* runSummary(keyPrefix).pipe(
-                  Effect.provide(recordingLogger(lines)),
+                  Effect.provide(logs.layer),
                 );
                 assert.strictEqual(outcome, 'completed');
                 return writer;
@@ -778,8 +774,11 @@ describe.skipIf(!db)(
             // was written gives its claim up, and only it is counted.
             assert.isTrue(yield* memory.exists(`${dyingKey}${CLAIMED_SUFFIX}`));
             assert.isFalse(yield* memory.exists(`${nextKey}${CLAIMED_SUFFIX}`));
-            assert.include(lines.join('\n'), 'summary events 1');
-            assert.include(lines.join('\n'), 'stays claimed for a later run');
+            assert.include(logs.messages.join('\n'), 'summary events 1');
+            assert.include(
+              logs.messages.join('\n'),
+              'stays claimed for a later run',
+            );
           }),
       );
 
@@ -797,16 +796,19 @@ describe.skipIf(!db)(
             windowStart: at.closedAt,
           });
 
-          const step = yield* Effect.gen(function* () {
-            const worker = yield* JobWorker;
-            const jobs = yield* Jobs;
-            yield* worker.work(
-              'denied-attempts-summary',
-              deniedAttemptsSummary({ keyPrefix, windowMs: WINDOW_MS }),
-            );
-            yield* withTransaction(jobs.enqueue('denied-attempts-summary', {}));
-            return yield* worker.drainOnce('denied-attempts-summary');
-          }).pipe(Effect.provide(layerWorker()));
+          const step = yield* onWorker((worker) =>
+            Effect.gen(function* () {
+              const jobs = yield* Jobs;
+              yield* worker.work(
+                'denied-attempts-summary',
+                deniedAttemptsSummary({ keyPrefix, windowMs: WINDOW_MS }),
+              );
+              yield* withTransaction(
+                jobs.enqueue('denied-attempts-summary', {}),
+              );
+              return yield* worker.drainOnce('denied-attempts-summary');
+            }),
+          );
 
           assert.strictEqual(step._tag, 'settled');
           assert.deepInclude(yield* onlySummary(teamId), {

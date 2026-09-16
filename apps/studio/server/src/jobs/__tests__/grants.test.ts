@@ -1,12 +1,14 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Option, Predicate } from 'effect';
+import { Effect, Exit } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { Transaction, withTransaction } from '../database.ts';
+import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import { Jobs } from '../jobs.ts';
 import {
   asApp,
   asMaintenance,
+  layerJobs,
   layerQueueHarness,
   QueueHarness,
   readJobs,
@@ -23,36 +25,15 @@ import {
 // what these cases exercise: the grants bite because the transaction is
 // running as `studio_app`.
 
+// The SQLSTATE is read with the queue's own `exitSqlState` (errors.ts) rather
+// than a reader of this suite's own: a refusal these cases name has to be the
+// one the production code would classify, and two readers could disagree.
+
 const db = await reachableDb();
-
-/** Insufficient privilege. */
-const INSUFFICIENT_PRIVILEGE = '42501';
-
-const sqlState = (exit: Exit.Exit<unknown, unknown>): string | undefined => {
-  if (Exit.isSuccess(exit)) return undefined;
-  let current: unknown = Option.getOrUndefined(
-    Cause.findErrorOption(exit.cause),
-  );
-  while (Predicate.isObject(current)) {
-    if (
-      Predicate.hasProperty(current, 'code') &&
-      Predicate.isString(current.code)
-    ) {
-      return current.code;
-    }
-    if (!Predicate.hasProperty(current, 'cause')) return undefined;
-    current = current.cause;
-  }
-  return undefined;
-};
 
 describe.skipIf(!db)('what each role may do with a job', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
-    const jobsLayer = Layer.unwrap(
-      Effect.map(QueueHarness, (harness) =>
-        Jobs.layer({ schema: harness.schema }),
-      ),
-    );
+    const jobsLayer = layerJobs;
 
     const asAppSql = <A>(
       run: (
@@ -92,17 +73,17 @@ describe.skipIf(!db)('what each role may do with a job', () => {
         const payload = yield* asAppSql(
           (sql, schema) => sql`SELECT payload FROM ${sql(schema)}.jobs`,
         );
-        assert.strictEqual(sqlState(payload), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(payload), INSUFFICIENT_PRIVILEGE);
 
         const star = yield* asAppSql(
           (sql, schema) => sql`SELECT * FROM ${sql(schema)}.jobs`,
         );
-        assert.strictEqual(sqlState(star), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(star), INSUFFICIENT_PRIVILEGE);
 
         const state = yield* asAppSql(
           (sql, schema) => sql`SELECT state FROM ${sql(schema)}.jobs`,
         );
-        assert.strictEqual(sqlState(state), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(state), INSUFFICIENT_PRIVILEGE);
 
         // The one column it may read, so the three refusals above are not an
         // artefact of the table being unreadable altogether.
@@ -121,17 +102,17 @@ describe.skipIf(!db)('what each role may do with a job', () => {
              WHERE id = (SELECT id FROM ${sql(schema)}.jobs
                           FOR UPDATE SKIP LOCKED LIMIT 1)`,
         );
-        assert.strictEqual(sqlState(claim), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(claim), INSUFFICIENT_PRIVILEGE);
 
         const cancel = yield* asAppSql(
           (sql, schema) => sql`DELETE FROM ${sql(schema)}.jobs`,
         );
-        assert.strictEqual(sqlState(cancel), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(cancel), INSUFFICIENT_PRIVILEGE);
 
         const schedules = yield* asAppSql(
           (sql, schema) => sql`SELECT * FROM ${sql(schema)}.job_schedules`,
         );
-        assert.strictEqual(sqlState(schedules), INSUFFICIENT_PRIVILEGE);
+        assert.strictEqual(exitSqlState(schedules), INSUFFICIENT_PRIVILEGE);
       }).pipe(Effect.provide(jobsLayer)),
     );
 
