@@ -973,7 +973,10 @@ const forkBackground = Effect.fnUntraced(function* (
  */
 const forkListener = Effect.fnUntraced(function* (
   schema: string,
-  wake: ReadonlyMap<JobQueueName, Latch.Latch>,
+  // Keyed by string rather than `JobQueueName`: the payload is whatever the
+  // trigger put on the channel, and a name this build does not declare simply
+  // finds no latch.
+  wake: ReadonlyMap<string, Latch.Latch>,
 ) {
   const { sql } = yield* Database;
   const channel = jobNotifyChannel(schema);
@@ -981,7 +984,7 @@ const forkListener = Effect.fnUntraced(function* (
   yield* Effect.forkScoped(
     Effect.forever(
       Effect.flatMap(Queue.take(notifications), (notification) => {
-        const latch = wake.get(notification.payload as JobQueueName);
+        const latch = wake.get(notification.payload);
         // A queue this worker does not poll — another replica's, or one a
         // later release added. Its own listener will have had the same message.
         return latch === undefined ? Effect.void : latch.open;

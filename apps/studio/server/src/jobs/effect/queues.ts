@@ -46,6 +46,16 @@ export type ResolvedQueue = {
   readonly warningQueueSize: number | null;
 };
 
+const isDeclaredQueueName = (name: string): name is JobQueueName =>
+  JOB_QUEUES.some((declaration) => declaration.name === name);
+
+function declaredQueueName(name: string): JobQueueName {
+  if (!isDeclaredQueueName(name)) {
+    throw new Error(`no job queue is declared as ${JSON.stringify(name)}`);
+  }
+  return name;
+}
+
 const resolve = (declaration: (typeof JOB_QUEUES)[number]): ResolvedQueue => {
   const options: JobQueueOptions = declaration.options;
   return {
@@ -60,9 +70,13 @@ const resolve = (declaration: (typeof JOB_QUEUES)[number]): ResolvedQueue => {
       options.retentionSeconds ?? QUEUE_DEFAULTS.retentionSeconds,
     deleteAfterSeconds:
       options.deleteAfterSeconds ?? QUEUE_DEFAULTS.deleteAfterSeconds,
-    // Every declared dead letter names another declared queue; the `satisfies`
-    // on JOB_QUEUES is what keeps that true.
-    deadLetter: (options.deadLetter ?? null) as JobQueueName | null,
+    // Every declared dead letter must name another declared queue. Checked
+    // here, at module load, so a typo in a declaration fails the process at
+    // start rather than the first dead-lettered job.
+    deadLetter:
+      options.deadLetter === undefined
+        ? null
+        : declaredQueueName(options.deadLetter),
     warningQueueSize: options.warningQueueSize ?? null,
   };
 };
