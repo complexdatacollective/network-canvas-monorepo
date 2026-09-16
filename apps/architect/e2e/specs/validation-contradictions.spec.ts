@@ -261,11 +261,8 @@ test('the option editor rejects canonically equivalent labels', async ({
   );
   // An attribute a participant chooses an answer from IS its list of values —
   // the schema refuses fewer than two — so it is invented in the codebook's
-  // own editor rather than from a name and a control. Chosen by its CONTROL,
-  // which is the only question the dialog asks about an invention and what
-  // decides the kind of answer. Driven here rather than through forms.ts's
-  // helper because the whole point is the refusal, which that helper would
-  // wait for a successful create through.
+  // own editor rather than from a name and a control. Driven here rather than
+  // through forms.ts's helper, which would wait for a successful create.
   await fieldDialog
     .getByRole('combobox', { name: 'Input control', exact: true })
     .selectOption({ label: 'Checkbox Group' });

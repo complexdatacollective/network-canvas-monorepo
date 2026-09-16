@@ -95,11 +95,8 @@ export type VariablePillProps = {
   label: string;
   type: VariableType;
   /**
-   * Swaps the static type-coloured border for the orbiting gradient. Turned on
-   * in exactly one place: the attribute picker's held value, where it marks the
-   * single pill the picker is currently carrying. Anywhere a pill is merely
-   * listed or referenced — the codebook table, query previews, stage
-   * configuration, printable output — it stays off.
+   * Swaps the static type-coloured border for the orbiting gradient. For the
+   * attribute picker's held value only, never for a pill that is merely listed.
    */
   animated?: boolean;
   editable?: boolean;

@@ -125,11 +125,7 @@ export default function StageSectionOutline({
   host,
 }: Readonly<{
   sections: StageSectionsStore;
-  /**
-   * The column this list is drawn in, which is also what it lines itself up
-   * against: the column and the editor beside it start at the same point, so
-   * the distance from here to the first card is the offset the list needs.
-   */
+  /** The column this list is drawn in, and measures its offset against. */
   host: HTMLElement | null;
 }>) {
   const intl = useAppIntl();
@@ -139,11 +135,8 @@ export default function StageSectionOutline({
     sections.getServerSnapshot,
   );
 
-  // The first section the researcher CONFIGURES, as the editor publishes it —
-  // the stage's name and interface are a section too, and they are the heading
-  // this list is meant to start below. Asked of the published chrome rather
-  // than taken to be the second entry, so an editor that composes its sections
-  // differently still lines up.
+  // The first section the researcher configures: the stage's name and
+  // interface are a section too, and are the heading this list starts below.
   const firstCard = entries.find((entry) => entry.chrome === 'card');
   const outline = usePublishedOutlineOffset(host, firstCard?.id);
 
@@ -164,26 +157,16 @@ export default function StageSectionOutline({
       // measures the bar and publishes the height.
       //
       // Before it is stuck it starts level with the first card of the form
-      // rather than with the top of the column, which is the stage's heading:
-      // the two columns begin together, so the offset is the height of
-      // everything the editor draws above that card, measured below.
+      // rather than with the top of the column, by the offset measured below.
       className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:mt-(--architect-stage-outline-offset)"
     >
       {/*
-        The card the list is drawn on, and nothing at all below the two-column
-        breakpoint: `contents` leaves the element in the tree — the landmark
-        above it is untouched either way — while generating no box, so the row
-        of chips above the form keeps the layout, the scrolling and the page's
-        own background it has always had.
+        `contents` below the two-column breakpoint, so the row of chips above
+        the form keeps the layout and background it has always had.
 
-        `noContainer`, because the wrapper Surface renders by default declares
-        `@container` — and the breakpoint this list is written in is the
-        route's column, not this card. Inside one, `@min-[60rem]` would be
-        asked of a 16rem card and never be true again.
-
-        Its own scrollport rather than the landmark's: the card is the height
-        the bar leaves it, and a long list scrolls INSIDE it, so its top and
-        bottom edges stay where they are instead of sliding out of the column.
+        `noContainer`: the wrapper Surface renders by default declares
+        `@container`, and the `@min-[60rem]` breakpoints here are asked of the
+        route's column, not of this 16rem card.
       */}
       <Surface
         noContainer
@@ -204,37 +187,21 @@ export default function StageSectionOutline({
 }
 
 /**
- * How far below the top of its column the section list starts, as a custom
- * property on the list itself.
- *
- * Nothing about it is a constant a stylesheet could carry: the stage heading
- * it clears holds a name that wraps, a badge row that wraps, and a picture
- * whose size the type scale moves — and an alert about a read-only session, or
- * a list of what the last save refused, appears above it without asking. So it
- * is measured where both columns are drawn and read from here, exactly as the
- * navigation bar's own height is.
+ * How far below the top of its column the section list starts. Measured rather
+ * than declared: the heading it clears wraps with the window and the type
+ * scale, and alerts appear above it.
  */
 export const OUTLINE_OFFSET_VARIABLE = '--architect-stage-outline-offset';
 
 /**
- * Publishes that offset, and keeps it right.
+ * Publishes that offset: the distance between the top of this column and the
+ * top of the first card in the editor beside it, so whatever the editor draws
+ * above that card is counted without being added up.
  *
- * Measured as the distance between two things on the page — the top of this
- * column, and the top of the first card in the editor beside it — rather than
- * as a height added up from parts: whatever the editor puts above that card is
- * then already counted, and the two columns line up by construction because
- * the reading IS the difference between them.
- *
- * Watched with a `ResizeObserver` on the column (which changes with the width
- * of the window, so with everything that wraps) and on the form (which changes
- * with everything the editor draws above the first card). The reading is
- * published only when it differs from the one already there, so the layout
- * this triggers cannot feed back into another write.
- *
- * A reading of zero or less is never published: a column measured before it is
- * laid out, or in an environment that lays nothing out, would otherwise put
- * the list back level with the stage's heading, which is the fault this
- * exists to fix.
+ * Published only when it differs from the reading already there, so the layout
+ * it triggers cannot feed back into another write. A reading of zero or less
+ * is never published: a column measured before it is laid out would otherwise
+ * put the list back level with the stage's heading.
  */
 function usePublishedOutlineOffset(
   host: HTMLElement | null,
@@ -247,18 +214,16 @@ function usePublishedOutlineOffset(
     if (list === null || host === null || firstCardId === undefined) return;
 
     const publish = () => {
-      // Looked up on every reading rather than held: the editor re-renders its
-      // sections as the researcher works, and a card that has been replaced
-      // is a stale element measured where it no longer is.
+      // Looked up on every reading: a card the editor has re-rendered is a
+      // stale element measured where it no longer is.
       const card = document.getElementById(firstCardId);
       if (card === null) return;
       const offset =
         card.getBoundingClientRect().top - host.getBoundingClientRect().top;
       if (offset <= 0) return;
-      // Kept to the hundredth of a pixel rather than rounded to whole ones:
-      // the heading above the first card is as tall as its text, which is a
-      // fraction, and a rounded offset misses the card it is lining up with by
-      // up to half a pixel — visible as a hairline where the two tops meet.
+      // Kept to the hundredth of a pixel: the heading above the first card is
+      // as tall as its text, and rounding leaves a hairline where the two tops
+      // meet.
       const next = `${Math.round(offset * 100) / 100}px`;
       if (list.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE) === next) return;
       list.style.setProperty(OUTLINE_OFFSET_VARIABLE, next);
@@ -268,8 +233,6 @@ function usePublishedOutlineOffset(
 
     const observer = new ResizeObserver(publish);
     observer.observe(host);
-    // Architect's own id for the form it asked the editor to render, so this
-    // is not a package internal read off the page by shape or by class.
     const form = document.getElementById(STAGE_FORM_ID);
     if (form !== null) observer.observe(form);
 

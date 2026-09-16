@@ -87,11 +87,9 @@ export async function addFormField(
  * place for the two to disagree.
  *
  * Keys are the researcher-facing control names (`collectableTypes.ts`'s
- * `CONTROL_LABELS`); values are the type names the dialog uses when it names a
- * kind of answer (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`), which is
- * also what the control list's own group headings are built from. `layout` and
- * `location` are absent from both: they hold a position rather than an answer
- * and no form can ask for one.
+ * `CONTROL_LABELS`); values are the type names the dialog uses
+ * (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`). `layout` and `location`
+ * are absent from both: they hold a position rather than an answer.
  */
 const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
   'Text Input': 'Text',
@@ -150,16 +148,9 @@ export type InventAttributeOptions = {
  * writes the name onto the field row and closes the window, and what is left
  * to ask appears underneath.
  *
- * The dialog asks for NO kind of answer. "Input control" is the only question,
- * and the kind follows from it (`variableTypeForComponent`), which is
- * Architect's own rule (`sections/Form/withFieldsHandlers.js`'s
- * `getTypeForComponent`). While an attribute is being invented the control
- * lists every control a form can offer, grouped under the kind each group
- * collects, and opens on its placeholder — so it is always selected here
- * rather than merely confirmed.
- *
- * There is no "Attribute name" box on the row at all: the name was taken in
- * the window, and the editor — where one opens — arrives already holding it.
+ * The dialog asks for no kind of answer: "Input control" is the only question,
+ * and the kind follows from it. It opens on its placeholder, so it is always
+ * selected here rather than merely confirmed.
  *
  * Nothing reaches the codebook until something is submitted: for a kind a name
  * finishes, the row carries `_newVariableName`/`_component` and
@@ -193,9 +184,8 @@ export async function inventAttributeInFieldDialog(
     dialog.locator('[data-field-name="variable"]'),
     opts.variableName,
   );
-  // The control is the question, so it is answered first — and answering it is
-  // what tells the row which kind of answer the attribute holds, and therefore
-  // whether the codebook's own editor has to author it.
+  // Answered first: it is what tells the row which kind of answer the
+  // attribute holds, and so whether the codebook's own editor has to author it.
   const control = dialog.getByRole('combobox', {
     name: 'Input control',
     exact: true,
@@ -221,10 +211,9 @@ export async function inventAttributeInFieldDialog(
     await editor
       .getByRole('button', { name: 'Create attribute', exact: true })
       .click();
-    // The attribute has to EXIST before the control is answered again: the row
-    // is now bound to it, so "Input control" has narrowed from every control a
-    // form can offer to the ones that attribute's kind allows, and has been
-    // re-seeded from the control the codebook editor gave it.
+    // Answered again only once the attribute exists: the row is bound to it
+    // now, so the control has narrowed to that kind's and been re-seeded from
+    // what the codebook editor gave it.
     await editor.waitFor({ state: 'detached' });
     await control.selectOption({ label: inputControl });
   }

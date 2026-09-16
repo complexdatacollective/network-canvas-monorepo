@@ -14,9 +14,8 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-// The type's colour and its stand-in mark are the resource card's whole
-// vocabulary of type, and a stage field's picker shows the same card for the
-// resource it holds — so both read them from one definition.
+// One definition, shared with the card a stage field shows for the same
+// resource.
 import {
   RESOURCE_KIND_BADGE_COLORS,
   RESOURCE_KIND_ICONS,
@@ -446,14 +445,6 @@ const AssetCard = ({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
-          {/*
-            Outlined, not filled: this palette sits in the middle of the
-            lightness range, so a white label on it measures as little as
-            2.28:1 — well under the 4.5:1 a badge's small text needs. The
-            colour stays the type's own (border plus a wash of it), which is
-            what makes a resource recognisable here and in the card a stage
-            field shows for the same resource.
-          */}
           <Badge variant="outline" color={typeColor} className="shrink-0">
             {typeLabel}
           </Badge>

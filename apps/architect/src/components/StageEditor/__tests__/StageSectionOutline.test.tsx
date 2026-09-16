@@ -35,13 +35,9 @@ beforeAll(() => {
 });
 
 /**
- * A piece of the page around the list — the column it is drawn in, a section
- * of the form beside it — laid out where the test says, because jsdom lays
- * nothing out anywhere.
- *
- * Cleared after each test rather than left behind: the sections stand in for
- * the editor's own, and a leftover one is a duplicate of the id the next test
- * looks its section up by.
+ * A piece of the page around the list, laid out where the test says, because
+ * jsdom lays nothing out anywhere. Cleared after each test: a leftover section
+ * duplicates the id the next test looks its own up by.
  */
 const staged: HTMLElement[] = [];
 afterEach(() => {
@@ -71,8 +67,6 @@ const section = (
   title: string,
   status: StageSectionStatus,
   problems: readonly string[] = [],
-  // A card unless the fixture says otherwise, as the editor publishes them:
-  // only the stage's own name and interface wear the page's heading.
   chrome: StageSectionChrome = 'card',
 ): StageSection => ({ id, title, chrome, status, problems });
 
@@ -255,9 +249,8 @@ describe('the list of a stage’s sections', () => {
     );
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
-    // The card the list is drawn on is what stops where the screen does: it
-    // holds the height and the scrolling, so a long list scrolls inside it
-    // rather than sliding out from under its own top edge.
+    // The card holds the height and the scrolling, so a long list scrolls
+    // inside it rather than sliding out from under its own top edge.
     const card = screen.getByRole('list').parentElement;
 
     expect(outline.className).toContain(
@@ -274,21 +267,13 @@ describe('the list of a stage’s sections', () => {
   });
 
   /**
-   * Where the list STARTS, beside a form whose first card is not at the top of
-   * it.
-   *
-   * The two columns begin together and the editor spends the first stretch of
-   * its own on the stage's heading — a name that wraps, a badge row that
-   * wraps, an alert about a read-only session — so a list level with the top
-   * of the column is level with nothing. The offset is therefore the distance
-   * between two things measured on the page rather than a height written
-   * down, and it is the FIRST CARD that is measured: the heading is a section
-   * too, and lining up with it would be the fault itself.
+   * The two columns begin together, and the editor spends the first stretch of
+   * its own on the stage's heading — which is a section too, so lining up with
+   * it would be the fault itself.
    */
   it('starts level with the first card of the form rather than with the stage’s heading', () => {
-    // jsdom lays nothing out, so the two readings the component takes are the
-    // two stubbed here: the column starts 120px down the page, and the first
-    // card 360px down, which leaves 240px of heading between them.
+    // The column starts 120px down the page and the first card 360px down,
+    // which leaves 240px of heading between them.
     const host = onThePage('div', new DOMRect(0, 120, 256, 720));
     onThePage('section', new DOMRect(0, 140, 640, 200), 's-1'); // the heading
     onThePage('section', new DOMRect(0, 360, 640, 200), 's-2'); // first card
@@ -301,8 +286,7 @@ describe('the list of a stage’s sections', () => {
     expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).toBe(
       '240px',
     );
-    // 20px is the distance to the heading, which is the section this list
-    // starts BELOW rather than beside.
+    // 20px is the distance to the heading, which this list starts below.
     expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).not.toBe(
       '20px',
     );
@@ -315,20 +299,15 @@ describe('the list of a stage’s sections', () => {
       <StageSectionOutline sections={storeOf(EVERY_STATUS)} host={host} />,
     );
 
-    // Everything measures zero here, and a zero offset published as a real
-    // reading would put the list back level with the stage's heading — the
-    // fault this exists to fix — instead of leaving the declaration to fall
-    // back to none.
+    // Everything measures zero here, and a published zero would put the list
+    // back level with the stage's heading.
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
     expect(outline.style.getPropertyValue(OUTLINE_OFFSET_VARIABLE)).toBe('');
   });
 
   /**
-   * Below the two-column breakpoint the same list is a row of chips above the
-   * form, where there is no column to line up with and nothing for a card to
-   * be a card beside. Both the offset and the card are therefore asked for
-   * only above it: the card generates no box at all (`contents`), leaving the
-   * strip the layout, the scrolling and the page's own background it had.
+   * Below the two-column breakpoint the list is a row of chips above the form,
+   * with no column to line up with: the card generates no box at all.
    */
   it('is a bare strip again, with no offset, below the two-column breakpoint', () => {
     render(

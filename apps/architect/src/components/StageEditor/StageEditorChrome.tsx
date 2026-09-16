@@ -153,10 +153,6 @@ export default function StageEditorChrome({
       <StageDraftPublisher />
       {outlineHost !== null &&
         createPortal(
-          // The column is handed to the list as well as portalled into: where
-          // the list starts is a distance measured from the top of this
-          // column, and a portal's target is not something its content can ask
-          // for after the fact without reaching up through the page.
           <StageSectionOutline sections={sections} host={outlineHost} />,
           outlineHost,
         )}
