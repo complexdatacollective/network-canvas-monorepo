@@ -103,7 +103,6 @@
     "./dnd/useDropTarget": "./src/dnd/useDropTarget.ts",
     "./dnd/useKeyboardReorder": "./src/dnd/useKeyboardReorder.ts",
     "./dnd/utils": "./src/dnd/utils.ts",
-    "./form/Field/BaseField": "./src/form/Field/BaseField.tsx",
     "./form/Field/Field": "./src/form/Field/Field.tsx",
     "./form/Field/FieldController": "./src/form/Field/FieldController.tsx",
     "./form/Field/UnconnectedField": "./src/form/Field/UnconnectedField.tsx",
@@ -544,10 +543,6 @@
       "./dnd/utils": {
         "types": "./dist/dnd/utils.d.ts",
         "default": "./dist/dnd/utils.js"
-      },
-      "./form/Field/BaseField": {
-        "types": "./dist/form/Field/BaseField.d.ts",
-        "default": "./dist/form/Field/BaseField.js"
       },
       "./form/Field/Field": {
         "types": "./dist/form/Field/Field.d.ts",

@@ -1,6 +1,13 @@
 'use client';
 
-import { type Context, createContext, type ReactNode, useRef } from 'react';
+import {
+  type Context,
+  createContext,
+  type ReactNode,
+  useContext,
+  useId,
+  useRef,
+} from 'react';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -13,6 +20,34 @@ export { selectIsFormDirty } from './formStore';
 
 export const FormStoreContext: Context<FormStoreApi | undefined> =
   createContext<FormStoreApi | undefined>(undefined);
+
+/**
+ * Which form a field on the page belongs to.
+ *
+ * A form is React state rather than a `<form>` element, so "this form's
+ * fields" cannot be answered by DOM containment: a control rendered outside
+ * the element — a stage editor's title, drawn by its host above the page the
+ * editor sits on — is still one of them, and a control of the form BEHIND a
+ * dialog is not, however the two elements happen to nest. Every field stamps
+ * this id on its own container (`data-field-form`), so the question has one
+ * answer that does not depend on where the markup ended up.
+ *
+ * `undefined` outside a provider, which is what an `UnconnectedField` and a
+ * plain `data-field-name` marker are: they belong to no form store, and
+ * nothing scoping by form identity should claim them.
+ */
+const FormFieldScopeContext: Context<string | undefined> = createContext<
+  string | undefined
+>(undefined);
+
+/**
+ * The identity of the form this component is inside, for anything that has to
+ * pick one form's fields out of a whole document — `focusFirstError` is the
+ * caller this exists for.
+ */
+export function useFormFieldScope(): string | undefined {
+  return useContext(FormFieldScopeContext);
+}
 
 type FormStoreProviderProps = {
   /**
@@ -51,9 +86,15 @@ const FormStoreProvider = ({
     getInitialValues: () => initialValuesRef.current,
   });
 
+  // One per provider, so a dialog's form and the page's form behind it are
+  // told apart even though both render the same field paths.
+  const fieldScope = useId();
+
   return (
     <FormStoreContext.Provider value={storeRef.current}>
-      {children}
+      <FormFieldScopeContext.Provider value={fieldScope}>
+        {children}
+      </FormFieldScopeContext.Provider>
     </FormStoreContext.Provider>
   );
 };

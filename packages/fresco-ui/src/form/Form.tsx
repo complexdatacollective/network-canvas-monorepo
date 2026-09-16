@@ -6,7 +6,9 @@ import { type ComponentProps, useId, useRef } from 'react';
 import { cx } from '../utils/cva';
 import FormErrorsList from './FormErrors';
 import { useForm } from './hooks/useForm';
-import FormStoreProvider from './store/formStoreProvider';
+import FormStoreProvider, {
+  useFormFieldScope,
+} from './store/formStoreProvider';
 import type { FormSubmitHandler } from './store/types';
 import { focusFirstError } from './utils/focusFirstError';
 
@@ -35,17 +37,19 @@ type FormProps = {
 export function FormWithoutProvider(props: FormProps) {
   const { onSubmit, children, className, ...rest } = props;
 
-  // Scopes the invalid-submit search to THIS form's own markup. Two forms can
-  // be mounted at once — a dialog over the page behind it, two interview
-  // slides mid-transition — and they render the same field paths, so an
-  // unscoped search can hand the earlier form's control to the later form's
-  // failed submit.
+  // Scopes the invalid-submit search to THIS form. Two forms can be mounted at
+  // once — a dialog over the page behind it, two interview slides
+  // mid-transition — and they render the same field paths, so an unscoped
+  // search can hand the earlier form's control to the later form's failed
+  // submit. Both halves are given: the element for the markers that belong to
+  // no store, and the store's own identity for a field drawn outside it.
   const formRef = useRef<HTMLFormElement>(null);
+  const fieldScope = useFormFieldScope();
 
   const { formProps, formErrors } = useForm({
     onSubmit,
     onSubmitInvalid: (errors) => {
-      focusFirstError(errors, formRef.current);
+      focusFirstError(errors, formRef.current, fieldScope);
     },
   });
 

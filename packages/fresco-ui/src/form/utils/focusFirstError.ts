@@ -5,6 +5,12 @@ import type { FlattenedErrors } from '../store/types';
 const FIELD_CONTAINER_SELECTOR = '[data-field-path], [data-field-name]';
 
 /**
+ * The attribute every connected field stamps its own form's identity on. The
+ * one owner of the string; `useField` writes it and this reads it.
+ */
+const FIELD_FORM_ATTRIBUTE = 'data-field-form';
+
+/**
  * The field container an error key names.
  *
  * `data-field-path` is the store's own key and is unique, so it wins. A public
@@ -191,6 +197,48 @@ export const resolveFieldErrorTarget = (
   return findOperableControl(container) ?? makeContainerFocusable(container);
 };
 
+/**
+ * Every field container one form may claim, and none that another form's
+ * fields sit in.
+ *
+ * Two memberships, unioned: what the form's own markup contains, and what
+ * carries the form store's identity wherever it was drawn. De-duplicated,
+ * because a field inside the element satisfies both — and `findFieldContainer`
+ * only trusts a public `data-field-name` when exactly ONE candidate carries
+ * it, so the same element twice would silently disqualify it.
+ *
+ * Neither given is the unscoped case: the whole document, as a caller that
+ * knows there is one form on the page asks for.
+ */
+const fieldCandidates = (
+  root: ParentNode | null | undefined,
+  formId: string | undefined,
+): HTMLElement[] => {
+  const inDocument = () =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
+    );
+
+  if (!root && formId === undefined) return inDocument();
+
+  const found = new Set<HTMLElement>();
+  if (root) {
+    for (const candidate of root.querySelectorAll<HTMLElement>(
+      FIELD_CONTAINER_SELECTOR,
+    )) {
+      found.add(candidate);
+    }
+  }
+  if (formId !== undefined) {
+    for (const candidate of inDocument()) {
+      if (candidate.getAttribute(FIELD_FORM_ATTRIBUTE) === formId) {
+        found.add(candidate);
+      }
+    }
+  }
+  return [...found];
+};
+
 /** The earliest of `containers` in document order. */
 const earliestInDocument = (
   containers: HTMLElement[],
@@ -229,55 +277,42 @@ const earliestInDocument = (
  * this for a date input's segment selection even with `preventScroll` — can
  * then no longer leave the scroller somewhere other than where we put it.
  *
- * `root` scopes the search to one form's own markup. Two forms mounted at once
- * (a dialog over a page, two slides mid-transition) render the same field
- * paths, and without a scope the document-order rule would hand the earlier
- * form's control to the later form's failed submit.
+ * The search is SCOPED to one form, by two facts that are both about
+ * belonging rather than about nesting. `root` is the form's own markup; every
+ * field container a form store is behind also carries that store's identity
+ * (`data-field-form`), so `formId` reaches the fields of this form that the
+ * element does not contain. A form is React state rather than a `<form>`
+ * element, so both halves are needed and neither is sufficient: a host may
+ * draw a field outside the element — a stage editor's title, drawn above the
+ * page the editor sits on, is one — and Architect's whole-editor contradiction
+ * alert is a bare `data-field-name` marker inside the element that belongs to
+ * no store at all.
  *
- * Each errored field is looked for in the root FIRST, and only the ones the
- * root does not contain are then looked for in the whole document. A form may
- * legitimately render a field outside its own `<form>` element — the form
- * store is React state, so a control anywhere under the provider participates
- * in the submit — and a stage editor's title, drawn by its host above the page
- * it sits on, is one. Resolving per field rather than all-or-nothing is what
- * reaches it: the previous rule consulted the document only when the root held
- * NONE of the errored fields, so an outside control was skipped the moment
- * anything inside the form was wrong as well. The dialog guarantee is
- * untouched, because a field the root does contain is never looked up
- * elsewhere.
+ * Nothing outside that scope is ever a candidate, for focus OR for the scroll.
+ * Two forms mounted at once (a dialog over a page, two slides mid-transition)
+ * render the same field paths, and a search that could see both would hand the
+ * background form's control — or, worse, only its scroll position — to the
+ * dialog's failed submit.
+ *
+ * With neither given the whole document is the scope, which is what a caller
+ * that knows there is only one form on the page gets.
  */
 export const focusFirstError = (
   errors: FlattenedErrors | null,
   root?: ParentNode | null,
+  formId?: string,
 ) => {
   if (!errors) return;
 
   const fieldNames = Object.keys(errors.fieldErrors);
   if (fieldNames.length === 0) return;
 
-  const resolveEach = (
-    scope: ParentNode,
-    names: readonly string[],
-  ): Map<string, HTMLElement> => {
-    const candidates = Array.from(
-      scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
-    );
-    const found = new Map<string, HTMLElement>();
-    for (const fieldName of names) {
-      const container = findFieldContainer(candidates, fieldName);
-      if (container) found.set(fieldName, container);
-    }
-    return found;
-  };
-
-  const scoped = root
-    ? resolveEach(root, fieldNames)
-    : new Map<string, HTMLElement>();
-  const elsewhere = resolveEach(
-    document,
-    fieldNames.filter((fieldName) => !scoped.has(fieldName)),
-  );
-  const containers = [...scoped.values(), ...elsewhere.values()];
+  const candidates = fieldCandidates(root, formId);
+  const containers: HTMLElement[] = [];
+  for (const fieldName of fieldNames) {
+    const container = findFieldContainer(candidates, fieldName);
+    if (container) containers.push(container);
+  }
 
   // If no errored field is in the DOM, prevent crash.
   const scrollTarget = earliestInDocument(containers);
