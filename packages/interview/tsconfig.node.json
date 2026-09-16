@@ -14,12 +14,9 @@
     ".storybook/**/*.ts",
     ".storybook/**/*.tsx",
     "src/**/*.stories.tsx",
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "src/**/*.spec.ts",
-    "src/**/*.spec.tsx",
-    "src/**/__tests__/**/*.ts",
-    "src/**/__tests__/**/*.tsx",
+    "src/**/*.test.*",
+    "src/**/*.spec.*",
+    "src/**/__tests__/**/*",
     "src/**/*.d.ts"
   ]
 }
