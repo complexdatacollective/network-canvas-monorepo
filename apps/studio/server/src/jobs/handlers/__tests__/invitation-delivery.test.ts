@@ -15,7 +15,9 @@ import {
 } from '../../../team/commands.ts';
 import {
   DeliveryHarness,
+  drainWith,
   layerDeliveryHarness,
+  layerJobs,
   layerWorker,
   readJobs,
 } from '../../__tests__/support.ts';
@@ -77,14 +79,9 @@ type DeliveryRow = {
 };
 
 /** Studio's schema, the queue, an enqueue and a recording transport. */
-const suiteLayer = Layer.mergeAll(
-  Layer.unwrap(
-    Effect.map(DeliveryHarness, (harness) =>
-      Jobs.layer({ schema: harness.schema }),
-    ),
-  ),
-  layerRecordingMailer,
-).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
+const suiteLayer = Layer.mergeAll(layerJobs, layerRecordingMailer).pipe(
+  Layer.provideMerge(layerDeliveryHarness(db!)),
+);
 
 describe.skipIf(!db)('invitation delivery on the native queue', () => {
   layer(suiteLayer)('with Studio and the queue installed', (it) => {
@@ -271,22 +268,24 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
     const failsWith = (message: string) => () =>
       Effect.fail(new MailFailed({ cause: new Error(message) }));
 
-    // ---------------------------------------------------------------- 1 ----
-    it.effect('creates the delivery and its job only when it commits', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const abandoned = yield* seedInvitation();
-        const harness = yield* DeliveryHarness;
-        const jobs = yield* Jobs;
-        const abandonedDeliveryId = randomUUID();
+    // -------------------------------------------------------------- 1, 2 ----
+    it.effect(
+      'creates the delivery and its job only when it commits, carrying the delivery id and nothing else',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const abandoned = yield* seedInvitation();
+          const harness = yield* DeliveryHarness;
+          const jobs = yield* Jobs;
+          const abandonedDeliveryId = randomUUID();
 
-        const rolledBack = yield* Effect.exit(
-          Effect.provideService(
-            withTenantTransaction(
-              TEAM_ID,
-              Effect.gen(function* () {
-                const { sql } = yield* Transaction;
-                yield* sql`
+          const rolledBack = yield* Effect.exit(
+            Effect.provideService(
+              withTenantTransaction(
+                TEAM_ID,
+                Effect.gen(function* () {
+                  const { sql } = yield* Transaction;
+                  yield* sql`
                   INSERT INTO team_invitation_deliveries
                     (id, invitation_id, team_id, email, role, team_label,
                      inviter_label, expires_at)
@@ -294,56 +293,47 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
                           ${TEAM_ID}, ${abandoned.email}, 'member',
                           'Invitation Delivery Team', 'Inviting Researcher',
                           ${abandoned.expiresAt})`;
-                yield* jobs.enqueue('invitation-delivery', {
-                  deliveryId: abandonedDeliveryId,
-                });
-                return yield* Effect.fail('roll back command' as const);
-              }),
+                  yield* jobs.enqueue('invitation-delivery', {
+                    deliveryId: abandonedDeliveryId,
+                  });
+                  return yield* Effect.fail('roll back command' as const);
+                }),
+              ),
+              Database,
+              harness.app,
             ),
-            Database,
-            harness.app,
-          ),
-        );
-        assert.isTrue(Exit.isFailure(rolledBack));
-
-        const orphans = yield* Effect.promise(async () => {
-          const { rowCount } = await harness.scratch.pool.query(
-            `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
-            [abandoned.invitationId],
           );
-          return rowCount;
-        });
-        assert.strictEqual(orphans, 0);
-        // The job was created on the command's own connection, so the rollback
-        // took it too. A job that survived would send mail for an invitation
-        // that does not exist.
-        assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
+          assert.isTrue(Exit.isFailure(rolledBack));
 
-        const committed = yield* seedInvitation();
-        const { deliveryId, jobId } = yield* seedQueuedDelivery(committed);
-        const queued = yield* readJobs('invitation-delivery');
-        assert.strictEqual(queued.length, 1);
-        assert.strictEqual(queued[0]?.id, jobId);
-        assert.strictEqual(queued[0]?.state, 'created');
-        assert.deepStrictEqual(queued[0]?.payload, { deliveryId });
-      }),
-    );
+          const orphans = yield* Effect.promise(async () => {
+            const { rowCount } = await harness.scratch.pool.query(
+              `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
+              [abandoned.invitationId],
+            );
+            return rowCount;
+          });
+          assert.strictEqual(orphans, 0);
+          // The job was created on the command's own connection, so the rollback
+          // took it too. A job that survived would send mail for an invitation
+          // that does not exist.
+          assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
 
-    // ---------------------------------------------------------------- 2 ----
-    it.effect('carries the delivery id and nothing else in the payload', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const { deliveryId } = yield* seedQueuedDelivery(invitation);
-        const [queued] = yield* readJobs('invitation-delivery');
-        // Identifiers only (#1895): the job table is one table for every team.
-        assert.deepStrictEqual(queued?.payload, { deliveryId });
-      }),
+          const committed = yield* seedInvitation();
+          const { deliveryId, jobId } = yield* seedQueuedDelivery(committed);
+          const queued = yield* readJobs('invitation-delivery');
+          assert.strictEqual(queued.length, 1);
+          assert.strictEqual(queued[0]?.id, jobId);
+          assert.strictEqual(queued[0]?.state, 'created');
+          // Identifiers only (#1895): the job table is one table for every team,
+          // so the payload names the delivery row and carries nothing of it.
+          assert.deepStrictEqual(queued[0]?.payload, { deliveryId });
+        }),
     );
 
     // ---------------------------------------------------------------- 5 ----
+    // -------------------------------------------------------------- 5, 20 ----
     it.effect(
-      'records a failed attempt and sends the snapshot on the next',
+      'records a failed attempt and sends the snapshot, end to end, on the next',
       () =>
         Effect.gen(function* () {
           yield* clearQueue();
@@ -395,6 +385,12 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           assert.strictEqual(afterSecond.attempt_count, 1);
           assert.strictEqual(afterSecond.last_error, null);
           assert.instanceOf(afterSecond.sent_at, Date);
+          // And the job the send belonged to is `completed` with the outcome
+          // the handler answered, which is the whole of "the invitation went
+          // out" as the queue records it.
+          const [row] = yield* readJobs('invitation-delivery');
+          assert.strictEqual(row?.state, 'completed');
+          assert.strictEqual(row?.outcome, 'completed');
         }),
     );
 
@@ -458,29 +454,6 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           const unchanged = yield* deliveryState(deliveryId);
           assert.strictEqual(unchanged.attempt_count, 1);
           assert.instanceOf(unchanged.uncertain_at, Date);
-        }),
-    );
-
-    // ---------------------------------------------------------------- 7 ----
-    it.effect(
-      'records the delivery failed on the attempt nothing will retry',
-      () =>
-        Effect.gen(function* () {
-          yield* clearQueue();
-          const invitation = yield* seedInvitation();
-          const deliveryId = yield* enqueueDeliveryRow(invitation);
-
-          const step = yield* runDelivery(
-            deliveryId,
-            failsWith('permanent SMTP failure'),
-            { attemptsBefore: RETRY_LIMIT },
-          );
-          assert.strictEqual(step._tag, 'failed');
-          const row = yield* deliveryState(deliveryId);
-          assert.strictEqual(row.attempt_count, RETRY_LIMIT + 1);
-          assert.instanceOf(row.failed_at, Date);
-          assert.strictEqual(row.last_error, 'permanent SMTP failure');
-          assert.strictEqual(row.sent_at, null);
         }),
     );
 
@@ -564,36 +537,43 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // ---------------------------------------------------------------- 9 ----
-    it.effect('dead-letters a delivery whose attempts are exhausted', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const deliveryId = yield* enqueueDeliveryRow(invitation);
+    // ------------------------------------------------------------- 7, 9 ----
+    it.effect(
+      'records the delivery failed on the attempt nothing will retry, and dead-letters it',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
 
-        const step = yield* runDelivery(
-          deliveryId,
-          failsWith('permanent SMTP failure'),
-          { attemptsBefore: RETRY_LIMIT },
-        );
-        assert.strictEqual(step._tag, 'failed');
-        const failed = step as Extract<JobStep, { _tag: 'failed' }>;
-        assert.isString(failed.deadLetter);
+          const step = yield* runDelivery(
+            deliveryId,
+            failsWith('permanent SMTP failure'),
+            { attemptsBefore: RETRY_LIMIT },
+          );
+          assert.strictEqual(step._tag, 'failed');
+          const failed = step as Extract<JobStep, { _tag: 'failed' }>;
+          assert.isString(failed.deadLetter);
 
-        const rows = yield* readJobs();
-        assert.deepStrictEqual(
-          rows.map(({ queue, state }) => ({ queue, state })),
-          [
-            { queue: 'invitation-delivery', state: 'failed' },
-            // The copy #1307's manual re-send works from, naming the same
-            // delivery as the job that failed.
-            { queue: 'invitation-delivery-dead-letter', state: 'created' },
-          ],
-        );
-        const row = yield* deliveryState(deliveryId);
-        assert.instanceOf(row.failed_at, Date);
-        assert.strictEqual(row.last_error, 'permanent SMTP failure');
-      }),
+          // The delivery row is terminal: `failed_at` is what tells a
+          // researcher the invitation will not arrive on its own.
+          const row = yield* deliveryState(deliveryId);
+          assert.strictEqual(row.attempt_count, RETRY_LIMIT + 1);
+          assert.instanceOf(row.failed_at, Date);
+          assert.strictEqual(row.last_error, 'permanent SMTP failure');
+          assert.strictEqual(row.sent_at, null);
+
+          const rows = yield* readJobs();
+          assert.deepStrictEqual(
+            rows.map(({ queue, state }) => ({ queue, state })),
+            [
+              { queue: 'invitation-delivery', state: 'failed' },
+              // The copy #1307's manual re-send works from, naming the same
+              // delivery as the job that failed.
+              { queue: 'invitation-delivery-dead-letter', state: 'created' },
+            ],
+          );
+        }),
     );
 
     // --------------------------------------------------------------- 10 ----
@@ -813,14 +793,10 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
                 [payload],
               );
             });
-            const step = yield* Effect.gen(function* () {
-              const worker = yield* JobWorker;
-              yield* worker.work(
-                'invitation-delivery',
-                invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
-              );
-              return yield* worker.drainOnce('invitation-delivery');
-            }).pipe(Effect.provide(layerWorker()));
+            const step = yield* drainWith(
+              'invitation-delivery',
+              invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
+            );
             // The decode is in the worker now (#1927 §11), not the handler, so
             // the job is killed rather than retried — and the handler never ran.
             assert.strictEqual(step._tag, 'dead');
@@ -976,42 +952,6 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             FOREIGN_KEY_VIOLATION,
           );
         }),
-    );
-
-    // --------------------------------------------------------------- 20 ----
-    it.effect('sends a queued invitation end to end', () =>
-      Effect.gen(function* () {
-        yield* clearQueue();
-        const invitation = yield* seedInvitation();
-        const mail = yield* RecordedMail;
-        mail.invitations.length = 0;
-        yield* mail.setInvitationBehaviour(() => Effect.void);
-
-        const { deliveryId } = yield* seedQueuedDelivery(invitation);
-        const step = yield* Effect.gen(function* () {
-          const worker = yield* JobWorker;
-          yield* worker.work(
-            'invitation-delivery',
-            invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
-          );
-          return yield* worker.drainOnce('invitation-delivery');
-        }).pipe(Effect.provide(layerWorker()));
-
-        assert.strictEqual(step._tag, 'settled');
-        assert.instanceOf((yield* deliveryState(deliveryId)).sent_at, Date);
-        assert.deepStrictEqual(
-          mail.invitations.at(-1)?.email,
-          invitation.email,
-        );
-        assert.strictEqual(
-          mail.invitations.at(-1)?.invitationUrl,
-          `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
-        );
-        assert.strictEqual(mail.invitations.at(-1)?.role, 'member');
-        const [row] = yield* readJobs('invitation-delivery');
-        assert.strictEqual(row?.state, 'completed');
-        assert.strictEqual(row?.outcome, 'completed');
-      }),
     );
 
     // The last three drive `createTeamInvitation` / `cancelTeamInvitation`,

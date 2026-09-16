@@ -1,21 +1,22 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { DateTime, Duration, Effect, Layer, Random } from 'effect';
+import { DateTime, Effect, Layer, Random } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
 import { MailFailed, Mailer } from '../../../mail/mailer.ts';
 import {
-  asApp,
   asOwner,
+  clearQueue,
+  drainWith,
+  enqueue as enqueueJob,
+  layerJobs,
   layerQueueHarness,
-  layerWorker,
   QueueHarness,
   readJobs,
 } from '../../__tests__/support.ts';
-import { Database, withTransaction } from '../../database.ts';
-import { Jobs } from '../../jobs.ts';
+import { Database } from '../../database.ts';
 import { resolvedQueue } from '../../queues.ts';
-import { backoffSeconds, JobWorker, type JobStep } from '../../worker.ts';
+import type { JobStep } from '../../worker.ts';
 import { signInEmail } from '../sign-in-email.ts';
 import { layerRecordingMailer, RecordedMail } from './support.ts';
 
@@ -55,32 +56,16 @@ describe.skipIf(!db)('the sign-in email handler', () => {
   layer(Layer.mergeAll(layerQueueHarness(db!), layerRecordingMailer))(
     'with the queue installed',
     (it) => {
-      const clear = Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
-            sql.unsafe(`DELETE FROM ${schema}.jobs`),
-          ),
-        );
-        yield* Effect.flatMap(RecordedMail, (mail) => mail.clear);
-      });
-
-      const jobsLayer = Layer.unwrap(
-        Effect.map(QueueHarness, (harness) =>
-          Jobs.layer({ schema: harness.schema }),
-        ),
+      const clear = Effect.flatMap(clearQueue, () =>
+        Effect.flatMap(RecordedMail, (mail) => mail.clear),
       );
 
-      const enqueue = Effect.flatMap(Jobs, (jobs) =>
-        asApp(withTransaction(jobs.enqueue('sign-in-email', MAGIC_LINK))),
-      );
+      const jobsLayer = layerJobs;
+
+      const enqueue = enqueueJob('sign-in-email', MAGIC_LINK);
 
       /** One claim-run-settle step with the handler registered. */
-      const drain = Effect.gen(function* () {
-        const worker = yield* JobWorker;
-        yield* worker.work('sign-in-email', signInEmail);
-        return yield* worker.drainOnce('sign-in-email');
-      }).pipe(Effect.provide(layerWorker()));
+      const drain = drainWith('sign-in-email', signInEmail);
 
       const refuse = Effect.flatMap(RecordedMail, (mail) =>
         mail.setMagicLinkBehaviour(() =>
@@ -123,24 +108,12 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             const first = yield* drain.pipe(Random.withSeed(SEED));
             assert.strictEqual(first._tag, 'retrying');
 
-            // The same draw, from the same seed: `drainOnce` asks `Random` once.
-            const delay = yield* backoffSeconds(SIGN_IN, 1).pipe(
-              Random.withSeed(SEED),
-            );
-            // Between half and all of retryDelay * 2^1, which is the bound the
-            // formula guarantees whatever the seed — asserted beside the exact
-            // value so a changed seed cannot quietly make the exact check
-            // vacuous.
-            assert.isAtLeast(delay, SIGN_IN.retryDelay);
-            assert.isAtMost(delay, SIGN_IN.retryDelay * 2);
-            const now = yield* DateTime.now;
+            // That the delay is exactly `backoffSeconds` of the row's frozen
+            // ladder is `__tests__/queue.test.ts`'s claim, on the queue that
+            // declares no cap. What is this queue's own is the rung below: it
+            // is the one declaring a `retryDelayMax`, so it is the only place
+            // the cap is ever between the doubling and the row.
             const [afterFirst] = yield* readJobs('sign-in-email');
-            assert.strictEqual(
-              afterFirst?.run_at,
-              DateTime.toDate(
-                DateTime.addDuration(now, Duration.seconds(delay)),
-              ).getTime(),
-            );
             assert.strictEqual(afterFirst?.attempts, 1);
             assert.strictEqual(afterFirst?.last_error, REFUSAL);
 
