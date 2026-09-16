@@ -305,9 +305,7 @@ describe('the row dialogs under es', () => {
 
     // Nothing matches what was typed, so the first row offers to make it —
     // and taking that row is what draws the half-a-codebook-variable surface
-    // below. The input control is the one question it asks about the attribute
-    // — the kind of answer follows from it and is never asked for — so that
-    // control appearing is how this knows the surface is up.
+    // below, whose input control is how this knows the surface is up.
     await harness.user.click(
       within(picker).getByRole('option', {
         name: 'Crear un atributo nuevo llamado “apodo”.',

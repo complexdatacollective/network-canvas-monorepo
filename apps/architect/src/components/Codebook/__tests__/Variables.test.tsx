@@ -48,12 +48,7 @@ const renderVariables = () =>
   );
 
 describe('Codebook attribute table', () => {
-  /**
-   * The orbiting gradient border marks the one attribute an attribute picker
-   * is currently holding. A codebook row only lists attributes, so a pill here
-   * that took the animated treatment read as a picker selection that was never
-   * made.
-   */
+  /** The orbiting border marks a picker's held value, and a row holds none. */
   it('gives the name cell the static border, not the animated picker one', () => {
     renderVariables();
 

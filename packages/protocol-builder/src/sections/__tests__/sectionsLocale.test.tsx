@@ -230,19 +230,11 @@ describe('the form-fields section, read in Spanish', () => {
    * The one decision this section exists to ask, and the groups it is read
    * under.
    *
-   * The input control IS that decision — this dialog asks for no kind of
-   * answer, because every control collects exactly one kind — and its list
-   * used to be labelled with the schema's own tokens, `RelativeDatePicker` and
-   * `VisualAnalogScale`, in every language while everything else in the same
-   * dialog was translated. No guard in the package could see it: a string with
-   * no descriptor behind it is invisible to `checkFullLocale`, to the copy
-   * scan and to the sweep alike, which is why the whole list is read here
-   * rather than one entry of it.
-   *
-   * The group headings are read with it. They are the kinds of answer, named
-   * by the same descriptors the codebook editor names them by, and they are
-   * the only thing on this surface that tells a researcher what the control
-   * they are about to choose will make the attribute.
+   * The control list used to be labelled with the schema's own tokens in every
+   * language. No guard in the package could see it: a string with no
+   * descriptor behind it is invisible to `checkFullLocale`, to the copy scan
+   * and to the sweep alike, which is why the whole list is read here rather
+   * than one entry of it.
    */
   it('names every input control, under the kind of answer each one collects', async () => {
     const harness = renderStageEditor({
@@ -267,8 +259,7 @@ describe('the form-fields section, read in Spanish', () => {
     expect(control).toHaveValue('');
 
     // Real `<optgroup>`s rather than disabled rows standing in for headings,
-    // which is what makes these announced as groups rather than as seven more
-    // things a researcher could pick.
+    // which would be announced as seven more things a researcher could pick.
     const groups = within(control).getAllByRole('group');
     expect(groups.map((group) => group.getAttribute('label'))).toEqual([
       'Texto',
@@ -298,8 +289,6 @@ describe('the form-fields section, read in Spanish', () => {
     // A scale is not invented from a name and a control — its two end labels
     // are part of it — so choosing the control that collects one offers the
     // codebook editor as well, and both sentences that say so are read here.
-    // The control stays on screen: it is what the researcher would change to
-    // invent something else instead.
     await harness.user.selectOptions(control, 'VisualAnalogScale');
     expect(
       await dialog.findByRole('button', {
@@ -623,9 +612,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     // The name was given to the window's create row, in Spanish, which leaves
-    // the input control as the only thing the row is still missing — and it is
-    // the only thing it CAN still be missing, because the kind of answer
-    // follows from it rather than being asked for beside it.
+    // the input control as the only thing the row is still missing.
     await inventThroughThePicker(harness, dialog, 'apodo');
 
     expect(
@@ -653,8 +640,6 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
-    // The control is what says this is a list of answers; nothing else on the
-    // row is asked for a kind.
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'CheckboxGroup',
@@ -686,8 +671,6 @@ describe('the form-fields row dialog, read in Spanish', () => {
       'Crear nuevo campo de formulario',
     );
     await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
-    // The control is what says this is a list of answers; nothing else on the
-    // row is asked for a kind.
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'CheckboxGroup',

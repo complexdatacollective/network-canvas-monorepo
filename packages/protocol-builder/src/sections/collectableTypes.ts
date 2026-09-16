@@ -25,15 +25,9 @@ import { VARIABLE_TYPE_OPTIONS } from '../codebook/variableTypeLabels.ts';
  * `FormFieldsSection` decides what its picker offers, and a network composer's
  * field editor decides the same thing about a differently-shaped row.
  *
- * No form dialog OFFERS this list any more — the input control decides the
- * kind of answer, so neither inventing row asks for one. What is left reads
- * it: which attributes a picker may offer at all, and what the groups of
- * `allControlGroups` below are headed with.
- *
- * The label is the DESCRIPTOR the codebook editor names that type by — the
- * same list, in the same order — rather than the schema's token, so a type
- * reaches a reader in their own language wherever it is named. Formatted at
- * the call site, at the moment it is rendered.
+ * The label is the descriptor the codebook editor names that type by rather
+ * than the schema's token, so a type reaches a reader in their own language
+ * wherever it is named. Formatted at the call site.
  */
 export const TYPE_OPTIONS = VARIABLE_TYPE_OPTIONS.filter(
   ({ value }) => VARIABLE_TYPE_COMPONENTS[value].length > 0,
@@ -45,22 +39,10 @@ export const isCollectableType = (type: string): type is VariableType =>
 /**
  * What each input control is called, in the reader's language.
  *
- * Architect's own long-standing names for these controls, which is what the
- * documentation calls them, what a protocol file spells them, and what a
- * researcher moving between this tool and Architect Classic already reads
- * (`apps/architect-classic/src/config/variables.js`'s `COMPONENTS`, whose
- * `label` the classic select renders verbatim). Descriptive paraphrases were
- * tried in their place — "Yes or no buttons" for `BooleanChoice`, "Text input"
- * for `TextInput` — and they broke that correspondence: a researcher reading
- * the input-controls documentation, or a protocol someone else authored, found
- * no control by the name Architect had shown them.
- *
- * Spaced Title Case throughout, which is where this list DIVERGES from classic
- * rather than copying it: classic spaced seven of its twelve labels
- * ("Text Input", "Toggle Button Group") and left five as the bare identifier
- * ("BooleanChoice", "LikertScale", "DatePicker"), which is an inconsistency
- * rather than a decision. One rule is applied to all twelve — the control's
- * own name, with its words separated.
+ * Architect's own names for these controls, which is what the documentation
+ * calls them and what a protocol file spells them — do not replace them with
+ * descriptive paraphrases. Spaced Title Case throughout: the control's own
+ * name, with its words separated.
  */
 const CONTROL_LABELS = defineMessages({
   Text: {
@@ -172,32 +154,13 @@ export const controlsForType = (
  * Every input control a form can collect an answer with, grouped under the
  * kind of answer each group collects.
  *
- * For a row choosing a control before there is an attribute to narrow it by,
- * which is every row INVENTING one: the control is what decides the kind of
- * answer, so the whole list is offered and the groups say what each choice
- * will make the attribute. Architect does the same
- * (`apps/architect-classic/src/config/variables.js`'s
- * `formattedInputOptions`), and its groups are why the list is readable at
- * twelve entries.
+ * For a row choosing a control before there is an attribute to narrow it by:
+ * the control decides the kind of answer, so the whole list is offered and the
+ * groups say what each choice will make the attribute. Real `<optgroup>`s, not
+ * disabled separator options — a screen reader announces those as choices.
  *
- * Real `<optgroup>`s, which is the one place this DIVERGES from Architect
- * rather than reproducing it. Classic interleaved a disabled, value-less
- * option carrying "-- Boolean Types --" as its label; a screen reader
- * announces that as one more option, with the dashes inside its accessible
- * name. `SelectOptionGroup` exists to replace exactly that, and says so.
- *
- * Headed with the kind's own name — "Boolean", not "-- Boolean Types --".
- * Classic's dashes and its "Types" were there to make a fake option look like
- * a separator; a real group label is already a heading, and the codebook
- * editor names the same kinds the same way one dialog over.
- *
- * In the order the kinds of answer are offered in, which is the codebook
- * editor's own order (`VARIABLE_TYPE_OPTIONS`) rather than classic's — so the
- * two lists a researcher meets in this app read the same way round.
- *
- * Formatted here rather than at the call sites, because both inventing rows
- * need the same list and a second `map` over the same descriptors is how one
- * of them ends up ungrouped again.
+ * In the codebook editor's order (`VARIABLE_TYPE_OPTIONS`), and formatted here
+ * so both inventing rows share one grouped list.
  */
 export const allControlGroups = (
   intl: IntlShape,
@@ -244,16 +207,10 @@ export const isOptionType = (type: string): boolean =>
  * The second half is ASKED of that editor rather than listed here, so the two
  * cannot drift: a shape whose settings become required is one this refuses to
  * quick-create from that moment, and a control that stops requiring them is
- * quick-created again with nothing to change.
- *
- * Asked of the KIND rather than of the one control that decided it, even
- * though every inventing row now chooses the control first. A kind whose
- * controls disagree — one that a name finishes and one that it does not —
- * would otherwise let a researcher invent an attribute with the forgiving
- * control and then switch the codebook's copy of it to the demanding one,
- * which is a settings-less attribute reached by a route neither editor
- * refused. Every kind currently answers the same for all of its controls, so
- * this is the conservative reading of a question that has one answer today.
+ * quick-created again with nothing to change. Asked of the kind rather than of
+ * the control that decided it, so a kind whose controls disagree cannot be
+ * quick-created through its forgiving one and then switched to the demanding
+ * one.
  */
 export const needsCodebookEditorToCreate = (type: string): boolean =>
   isOptionType(type) ||

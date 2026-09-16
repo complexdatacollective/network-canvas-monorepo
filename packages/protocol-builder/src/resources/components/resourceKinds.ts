@@ -238,14 +238,8 @@ export function resourceStatusLabel(
 
 /**
  * The colour each resource type is badged in, and the mark that stands in for
- * a resource with nothing to show.
- *
- * One definition for both places a researcher meets a resource as a card — the
- * protocol's resource library in Architect and the card a stage field shows
- * for what it holds — because a picture that is sea green in one and mustard
- * in the other is not a picture of the same thing. They are the card's whole
- * vocabulary of type, so they belong beside the type's name rather than in
- * either card.
+ * a resource with nothing to show. One definition for both cards a researcher
+ * meets a resource on: Architect's resource library and a stage field's.
  */
 export const RESOURCE_KIND_BADGE_COLORS = Object.freeze({
   image: 'sea-green',

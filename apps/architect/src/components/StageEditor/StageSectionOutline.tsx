@@ -152,20 +152,12 @@ export default function StageSectionOutline({
       className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height)"
     >
       {/*
-        The card the list is drawn on, and nothing at all below the two-column
-        breakpoint: `contents` leaves the element in the tree — the landmark
-        above it is untouched either way — while generating no box, so the row
-        of chips above the form keeps the layout, the scrolling and the page's
-        own background it has always had.
+        `contents` below the two-column breakpoint, so the row of chips above
+        the form keeps the layout and background it has always had.
 
-        `noContainer`, because the wrapper Surface renders by default declares
-        `@container` — and the breakpoint this list is written in is the
-        route's column, not this card. Inside one, `@min-[60rem]` would be
-        asked of a 16rem card and never be true again.
-
-        Its own scrollport rather than the landmark's: the card is the height
-        the bar leaves it, and a long list scrolls INSIDE it, so its top and
-        bottom edges stay where they are instead of sliding out of the column.
+        `noContainer`: the wrapper Surface renders by default declares
+        `@container`, and the `@min-[60rem]` breakpoints here are asked of the
+        route's column, not of this 16rem card.
       */}
       <Surface
         noContainer

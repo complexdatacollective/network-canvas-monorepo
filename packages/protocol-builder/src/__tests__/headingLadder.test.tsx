@@ -370,9 +370,6 @@ describe('a row of a stage editor list, opened in its dialog', () => {
       await screen.findByRole('button', { name: 'Add new panel' }),
     );
 
-    // Both halves of the panel are titled groups — what it is called and who
-    // it lists, then who of them it shows — so three headings, which is what
-    // axe is then asked to have judged.
     expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
       'h2: Create panel',
       'h3: Configuration',

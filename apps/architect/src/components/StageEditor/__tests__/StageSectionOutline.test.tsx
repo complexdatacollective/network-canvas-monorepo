@@ -219,9 +219,8 @@ describe('the list of a stage’s sections', () => {
     render(<StageSectionOutline sections={storeOf(EVERY_STATUS)} />);
 
     const outline = screen.getByRole('navigation', { name: 'Stage sections' });
-    // The card the list is drawn on is what stops where the screen does: it
-    // holds the height and the scrolling, so a long list scrolls inside it
-    // rather than sliding out from under its own top edge.
+    // The card holds the height and the scrolling, so a long list scrolls
+    // inside it rather than sliding out from under its own top edge.
     const card = screen.getByRole('list').parentElement;
 
     expect(outline.className).toContain(

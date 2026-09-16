@@ -105,10 +105,8 @@ describe('the guidance under the input control', () => {
 
   /**
    * The invented attribute has no type yet, and the dialog never asks for one:
-   * the input control the researcher picks here is the whole of what fixes it
-   * — permanently, for every form that ever collects it. So the notice is the
-   * only place that decision is ever stated back to them, and picking a text
-   * control is what has to make it say Text.
+   * the control fixes it permanently, and this notice is the only place that
+   * decision is stated back to the researcher.
    */
   it('says what type the chosen control will fix a new attribute as', async () => {
     const harness = renderStageEditor(openAlterForm());

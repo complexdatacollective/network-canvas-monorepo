@@ -199,18 +199,14 @@ const itemVariants = cva({
 /**
  * Enter and exit animations for the list's rows and its empty state.
  *
- * `initial` is resolved from `hasOpened` — the list's own answer to "is this
- * row simply here, or did the researcher make it appear?" (see
- * `hasOpenedRef`). While the list has not opened it resolves to the resting
- * state, so rows that arrive with the field's value are just there; afterwards
- * it is the real enter animation, and a row the researcher adds scales up.
+ * `initial` is resolved from `hasOpened` (see `hasOpenedRef`): rows that
+ * arrive with the field's value are simply there, and only what the researcher
+ * makes appear animates in.
  *
- * `exit` is NOT gated the same way, deliberately. Suppressing it for the empty
- * state that a freshly arrived value displaces sounds right and measurably is
- * not: an exit that finishes in the frame it starts leaves the surviving rows
- * projected against the box the list had while the empty state still occupied
- * it, and they keep a residual vertical stretch (~1.12) for as long as they are
- * on screen. An exit always animates.
+ * `exit` is deliberately NOT gated the same way. An exit that finishes in the
+ * frame it starts leaves the surviving rows projected against the box the
+ * empty state still occupied, and they keep a residual vertical stretch
+ * (~1.12) for as long as they are on screen.
  */
 const getItemAnimationProps = {
   initial: (hasOpened: boolean) => ({
@@ -778,26 +774,16 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // renders, which `useArrayFieldItems`' external-value sync depends on.
   const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
-  // Has this list opened yet — that is, is there anything on screen that the
-  // researcher should see change?
+  // Whether this list has opened: it has once it has rendered rows, or once
+  // the researcher has asked it for a new one.
   //
-  // Rows that are simply THERE when a stage editor or a dialog opens must not
-  // animate: the only motion this list may show is a row morphing into its
-  // editor, a drag reordering it, and a row the researcher adds or deletes.
+  // Not mount, which is too early — a host form hands the field `[]` on its
+  // first render and the real rows a render later, so a flag flipped by a
+  // mount effect is already `true` when those rows arrive and every one of
+  // them animates in.
   //
-  // Mount is the wrong moment to answer this. A host form hands the field `[]`
-  // on its first render and the stage's real rows a render later (measured on
-  // Architect's Information editor: `array(0)` at one frame, `array(3)` at the
-  // next), so a flag flipped by a mount effect is already `true` when those
-  // rows arrive — and every one of them animated in from scale 0.6, which is
-  // the defect this replaces. The list has opened once it has actually
-  // rendered rows, or once the researcher has asked it for a new one (so that
-  // the first row added to a genuinely empty list still animates in). A list
-  // that is still waiting for its value has done neither.
-  //
-  // A ref rather than state, and read during render: the value it carries only
-  // ever selects between two variants of an animation that has not started
-  // yet, so there is nothing for an extra render to correct.
+  // A ref rather than state: it only selects between two variants of an
+  // animation that has not started yet, so no render has to be corrected.
   const hasOpenedRef = useRef(false);
   const openList = useCallback(() => {
     hasOpenedRef.current = true;
@@ -1194,10 +1180,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
     [EditorComponent, items],
   );
 
-  // Runs after every render, not just the first: the render that brings the
-  // list its rows is the one that must still see `hasOpenedRef` as `false`, so
-  // the flip has to happen behind it rather than on mount. Assigning an
-  // already-`true` ref on later renders costs nothing.
+  // After every render, not just the first: the render that brings the list
+  // its rows must still see `hasOpenedRef` as `false`.
   const hasRenderableItems = renderableItems.length > 0;
   useEffect(() => {
     if (hasRenderableItems) openList();
@@ -1323,10 +1307,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
             key="add-button"
             color="primary"
             onClick={() => {
-              // The one route by which a row reaches an EMPTY list — which has
-              // therefore never rendered a row, and would otherwise still count
-              // as unopened when that first row arrives. Set before the add so
-              // the render it schedules already sees an opened list.
+              // The one route by which a row reaches a list that has never
+              // rendered one. Set before the add, so the render it schedules
+              // already sees an opened list.
               openList();
               if (immediateAdd) {
                 addItem(itemTemplate() as T);

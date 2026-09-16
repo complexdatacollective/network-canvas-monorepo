@@ -23,11 +23,8 @@ const badgeVariants = cva({
 
 /**
  * The palette a coloured badge may be drawn in, each name mapped to the theme
- * token that paints it. The colour is the whole of the entry: the ink the
- * label is read in is computed from it (see `themedBadgeVariants`) rather than
- * assigned here, because a hand-assigned ink is a judgement that goes stale
- * the moment a palette entry's lightness moves — and seven of these thirty-six
- * were already wrong by WCAG AA when they were read as a badge's fill.
+ * token that paints it. The ink the label is read in is computed from the fill
+ * (see `themedBadgeVariants`), never written down beside it.
  */
 const themeColorStyles = {
   'white': 'var(--color-white)',
@@ -70,11 +67,7 @@ const themeColorStyles = {
 
 type BadgeColor = keyof typeof themeColorStyles;
 
-/**
- * The palette, enumerable. A story or a test that wants to say something about
- * every colour a badge can be — that its label is readable, say — has to be
- * able to reach the whole list, and a type cannot be iterated.
- */
+/** Every colour a badge can be, enumerable: a type cannot be iterated. */
 const BADGE_COLORS = Object.keys(themeColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {
@@ -92,31 +85,14 @@ const themedBadgeVariants = cva({
   variants: {
     variant: {
       /**
-       * The colour is the whole badge, and the label is read in whichever of
-       * black or white contrasts with it further — chosen by the browser from
-       * the colour itself, so the palette carries no second, hand-written ink
-       * that can disagree with the fill it is supposed to sit on.
-       *
-       * Relative colour syntax does the choosing. `clamp(0, (l - 0.58) *
-       * -1000, 1)` reads the fill's OKLCH lightness and collapses to a
-       * lightness of 1 below the threshold and 0 above it, which at zero
-       * chroma is white or black; the multiplier is only large enough to make
-       * the ramp between them narrower than any two palette entries.
-       *
-       * 0.58 is where black overtakes white across this palette, measured by
-       * compositing each colour and its two candidate inks: purple pizazz dark
-       * (L 0.575) is the lightest colour that still needs white, and cerulean
-       * blue (L 0.582) the darkest that needs black. Every one of the
-       * thirty-six then clears WCAG AA for normal text, the worst being neon
-       * coral at 4.62:1 — a margin the `ThemeColors` story measures rather
-       * than assumes, because the window between those two colours is narrow
-       * enough that a change to either one's lightness could close it.
-       *
-       * Unlike the outline variant below, the badge here is opaque, so what is
-       * underneath it does not enter the calculation.
+       * `contrast-color()` reads the label in whichever of black or white
+       * contrasts with the fill further, so no hand-written ink can disagree
+       * with the colour it sits on. Winning that comparison is not itself WCAG
+       * AA, so the `ThemeColors` story measures every colour: the worst is
+       * neon coral at 4.62:1.
        */
       filled:
-        'border-transparent bg-(--badge-color) text-[oklch(from_var(--badge-color)_clamp(0,(l-0.58)*-1000,1)_0_0)]',
+        'border-transparent bg-(--badge-color) text-[contrast-color(var(--badge-color))]',
       /**
        * The colour is the border and a wash of it behind the label; the label
        * itself is the contrast colour the surface underneath publishes.
@@ -126,21 +102,14 @@ const themedBadgeVariants = cva({
        * wash of itself nor against white — cerulean blue is 4.43:1 either way.
        *
        * `--published-text` rather than `--text`, because the page's text token
-       * is only guaranteed against the page. A `Surface` publishes the
-       * background it paints and the contrast colour that goes with it
-       * together, and a badge sitting on one is read against that background,
-       * not against the page's. Where the two differ the page token is simply
-       * the wrong ink: on Architect's accent series — the ladder every
-       * `ArrayField` row is drawn on — `--text` is cyber grape on slate blue,
-       * which measures 2.69:1, while the surface's own contrast colour is
-       * white at 5.16:1. Off a published surface the variable is unset and the
-       * declaration falls back to the inherited colour, which is what the
-       * uncoloured `outline` variant above uses.
+       * is only guaranteed against the page: on Architect's accent series
+       * `--text` measures 2.69:1 where the surface's own contrast colour is
+       * 5.16:1. Off a published surface it is unset and the inherited colour
+       * applies.
        *
        * The wash stays mixed toward `transparent` rather than toward
-       * `--published-bg`: an opaque mix would repaint 86% of the badge in the
-       * published background, which is the surface's colour only while the
-       * badge sits directly on it. Alpha compositing is right wherever it sits.
+       * `--published-bg`, which is the surface's colour only while the badge
+       * sits directly on it.
        */
       outline:
         'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
