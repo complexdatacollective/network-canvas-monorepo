@@ -325,11 +325,9 @@ describe('AssetPickerField', () => {
       name: 'Resources in this protocol',
     });
 
-    expect(
-      within(library)
-        .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['Mapbox key']);
+    const cards = within(library).getAllByRole('button');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toHaveAccessibleName('Mapbox key');
   });
 
   it('refuses a staged resource the host answered with a wrong kind for', async () => {

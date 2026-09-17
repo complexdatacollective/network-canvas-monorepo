@@ -1,3 +1,4 @@
+import { Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -7,6 +8,7 @@ import {
   formatMessageError,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient, type ResourceClient } from '../client.tsx';
@@ -123,9 +125,10 @@ export type ResourceUploadControlProps = Readonly<{
  * Imports a file into this edit, through the resource client alone.
  *
  * Two ways in, deliberately: a drop target for a pointer, and a file input
- * that is a real, labelled, focusable control rather than a visually hidden
- * one behind the drop target — dropping a file is not something a keyboard can
- * do, so the input is the operable path and the drop target is the shortcut.
+ * that keeps its own label and its place in the tab order rather than being
+ * swallowed by the drop target — dropping a file is not something a keyboard
+ * can do, so the input is the operable path and the drop target is the
+ * shortcut.
  *
  * The file is staged, not committed: it takes its asset id immediately so the
  * field can reference it, and the host holds the bytes outside the protocol
@@ -282,29 +285,54 @@ export default function ResourceUploadControl({
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         data-dragging={dragging ? '' : undefined}
-        className="border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex flex-col items-center gap-3 rounded border-2 border-dashed p-6 text-center"
+        className="bg-input text-input-contrast border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex min-h-36 flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-[border-color,background-color] duration-150"
       >
         <Paragraph margin="none">
           {intl.formatMessage(messages.dropHint)}
         </Paragraph>
-        <div className="flex flex-col items-center gap-1">
-          <label htmlFor={inputId}>
+        {/*
+          Still the real, labelled, focusable control described above, and it
+          keeps its place in the tab order: `sr-only` takes it out of the
+          browser's own rendering without taking it out of the page, because
+          that rendering — a grey button and "no file chosen" — cannot be made
+          to sit inside a drop target. The label below is what a researcher
+          aims at, and wears this input's focus ring for it.
+        */}
+        <input
+          id={inputId}
+          type="file"
+          accept={acceptedExtensions(kind).join(',')}
+          disabled={disabled || busy}
+          className="peer sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.item(0);
+            // Cleared so choosing the same file twice — after a failure the
+            // researcher has since fixed — still raises a change event.
+            event.target.value = '';
+            if (file != null) void stageFile(file);
+          }}
+        />
+        {/*
+          The input's own label, wearing Button: a `<label>` activates the
+          control it names with no script at all, which a `<button>` beside a
+          hidden input can only imitate — and imitating it would leave two tab
+          stops for one choice. `asChild` puts the button's treatment on the
+          label, and `peer-*` reads the state off the input, which is where a
+          file control's disabled and focus state actually live.
+        */}
+        <Button asChild color="primary" icon={<Upload aria-hidden="true" />}>
+          <label
+            htmlFor={inputId}
+            // `outline-primary` alongside the ring for the reason Button
+            // carries its own: a label never matches `:focus`, so Button's
+            // `focus:outline-primary` cannot fire here, and `focusable` would
+            // leave the ring at `currentColor` — this button's white text,
+            // against the white drop target it sits on.
+            className="peer-focus-visible:focus-styles peer-focus-visible:outline-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+          >
             {intl.formatMessage(messages.chooseFile)}
           </label>
-          <input
-            id={inputId}
-            type="file"
-            accept={acceptedExtensions(kind).join(',')}
-            disabled={disabled || busy}
-            onChange={(event) => {
-              const file = event.target.files?.item(0);
-              // Cleared so choosing the same file twice — after a failure the
-              // researcher has since fixed — still raises a change event.
-              event.target.value = '';
-              if (file != null) void stageFile(file);
-            }}
-          />
-        </div>
+        </Button>
       </div>
 
       {rejected !== undefined && (
