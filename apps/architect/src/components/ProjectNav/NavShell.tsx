@@ -7,7 +7,7 @@ import {
   type Variants,
 } from 'motion/react';
 import type React from 'react';
-import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -16,6 +16,7 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { cx } from '~/utils/cva';
@@ -95,58 +96,6 @@ type NavShellProps = {
   end?: React.ReactNode;
 };
 
-/**
- * Publishes the bar's own height on the document root, for everything that has
- * to stay clear of it: the stage editor's sticky section list sits directly
- * underneath it, and anything scrolled into view lands beneath it.
- *
- * Measured rather than declared, because the bar has no fixed height: its pill
- * wraps at narrow widths, what it holds changes from screen to screen, and the
- * type scale is responsive. A `ResizeObserver` rather than a mount-time
- * reading alone, because every one of those changes the height without
- * remounting anything.
- *
- * A measurement of zero is never published. A header that has not been laid
- * out yet — hidden, or measured in an environment that lays nothing out —
- * would otherwise put everything anchored to the bar back underneath it, which
- * is the fault this exists to fix; the stylesheet's starting value stands
- * until a real one arrives.
- */
-function usePublishedNavHeight(): React.RefObject<HTMLElement | null> {
-  const header = useRef<HTMLElement>(null);
-
-  useLayoutEffect(() => {
-    const element = header.current;
-    if (!element) return;
-
-    const root = document.documentElement;
-    const publish = (height: number) => {
-      if (height <= 0) return;
-      root.style.setProperty(NAV_HEIGHT_VARIABLE, `${height}px`);
-    };
-
-    publish(element.getBoundingClientRect().height);
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // The border box, not `contentRect`: the bar's own vertical padding is
-        // part of what covers the page, and the content box leaves it out.
-        publish(
-          entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height ?? 0,
-        );
-      }
-    });
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-      root.style.removeProperty(NAV_HEIGHT_VARIABLE);
-    };
-  }, []);
-
-  return header;
-}
-
 const NavShell = ({ leading, items, end }: NavShellProps) => {
   const intl = useAppIntl();
   const shouldReduceMotion = useReducedMotion();
@@ -167,7 +116,10 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
 
-  const navHeight = usePublishedNavHeight();
+  // The bar's height, published for everything that has to stay clear of it:
+  // anything scrolled into view lands beneath it, and the stage editor's
+  // section list sticks directly underneath it.
+  const navHeight = usePublishedBlockHeight(NAV_HEIGHT_VARIABLE);
 
   const isAtStart = location === '/';
   const handleReturnToStart = useCallback(

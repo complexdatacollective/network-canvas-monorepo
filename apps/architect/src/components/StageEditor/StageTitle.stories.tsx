@@ -139,6 +139,13 @@ export const Editing: Story = {
       asserted about classes — a class list is the source written out twice.
       The title is found through the relationship it declares: the element that
       names itself by the heading inside it.
+
+      Measured from where the title stops PAINTING, not from its border box:
+      2rem of that 3.5rem is the title's own bottom padding, which is inside
+      the box so that the height the title publishes carries it (see
+      `~/utils/stageHeroHeight`). The remaining 1.5rem is the shell's `gap-6`.
+      Taking the border box alone would read 1.5rem and call this a regression
+      while nothing on screen had moved.
     */
     const heading = canvas.getByRole('heading', {
       level: 2,
@@ -151,9 +158,11 @@ export const Editing: Story = {
       throw new Error('the title is not on the page');
     }
     const firstSection = canvas.getByRole('region', { name: 'Page content' });
+    const titlePaintsTo =
+      title.getBoundingClientRect().bottom -
+      Number.parseFloat(getComputedStyle(title).paddingBottom);
     await expect(
-      firstSection.getBoundingClientRect().top -
-        title.getBoundingClientRect().bottom,
+      firstSection.getBoundingClientRect().top - titlePaintsTo,
     ).toBeCloseTo(56, 0);
 
     /*

@@ -339,7 +339,22 @@ const StageEditorPage = () => {
               No gutter of its own: the route's is already outside both
               columns, and this column is the one that takes it as given.
             */}
-            <div ref={setOutlineHost} />
+            <div
+              ref={setOutlineHost}
+              // Started below the editor's TITLE rather than at the top of the
+              // column, where the list sat alone above everything — clear of
+              // the cards it is an index of. `stageHeroHeight.ts` has the rest
+              // of the account, the title's measured height included; the
+              // `1.5rem` is the `gap-6` the package's shell lays its own slots
+              // out with, and is the only thing about that shell stated here.
+              //
+              // Padding on this column rather than on the list, so the list's
+              // own `sticky` still comes to rest under the navigation bar
+              // instead of that far below it. Only above the two-column
+              // breakpoint: below it this is a strip of chips ABOVE the
+              // editor, with no title beside it to sit under.
+              className="@min-[60rem]:pt-[calc(var(--architect-stage-hero-height)+1.5rem)]"
+            />
             {/*
               The editor column gives the route's gutter back, because the
               package pads this column itself — the editor is a whole page in
