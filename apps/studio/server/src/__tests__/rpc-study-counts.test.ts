@@ -9,6 +9,7 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -19,6 +20,7 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { seed } from '../db/seed.ts';
 import { readEnv } from '../env.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -63,6 +65,12 @@ describe.skipIf(!db)('studies.counts', () => {
   let dispose: () => Promise<void>;
   let ownerPool: pg.Pool;
   let appPool: pg.Pool;
+  /**
+   * The Effect data layer over this scratch schema, which is what every
+   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
+   * than built per Studio: the clients underneath it are connection pools.
+   */
+  let services: Context.Context<StudioServices>;
   /** An Admin of the study's team: sees every study the team owns. */
   let client: RpcTestClient;
   /** A plain Member of the same team holding no study-role grant. */
@@ -79,6 +87,7 @@ describe.skipIf(!db)('studies.counts', () => {
     dispose = scratch.dispose;
     ownerPool = scratch.pool;
     appPool = scratch.app;
+    services = await scratch.services();
     await provisionScratchSchema(scratch.pool);
     await seed(scratch.pool, { secrets: testKeyring() });
 
@@ -116,13 +125,25 @@ describe.skipIf(!db)('studies.counts', () => {
           Promise.resolve([{ teamId: memberTeamId, role }]),
       });
     client = await createRpcClient(
-      createStudio(readEnv(), { auth: memberOf('admin'), pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth: memberOf('admin'),
+        pool: scratch.app,
+        services,
+      }),
     );
     ungrantedClient = await createRpcClient(
-      createStudio(readEnv(), { auth: memberOf('member'), pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth: memberOf('member'),
+        pool: scratch.app,
+        services,
+      }),
     );
     anonymousClient = await createRpcClient(
-      createStudio(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth: stubAuthService(),
+        pool: scratch.app,
+        services,
+      }),
     );
   }, SEEDING_TIMEOUT_MS);
 

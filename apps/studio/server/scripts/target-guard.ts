@@ -2,7 +2,7 @@ import process from 'node:process';
 
 import { SEED_ADMIN_PASSWORD } from '../src/db/seed/teams.ts';
 import { type DbEnv, isLocalDatabase, type StudioEnv } from '../src/env.ts';
-import type { Keyring } from '../src/secrets/keyring.ts';
+import type { KeyringApi } from '../src/secrets/keyring.ts';
 
 /**
  * The connection string is what gets destroyed, so it is what decides whether
@@ -24,7 +24,7 @@ export function confirmDestructiveTarget(
   env: StudioEnv,
   force: boolean,
   verb: string,
-): { db: DbEnv; secrets: Keyring; target: string; local: boolean } {
+): { db: DbEnv; secrets: KeyringApi; target: string; local: boolean } {
   if (!env.db) {
     console.error(`DATABASE_URL is not set; there is no database to ${verb}.`);
     process.exit(1);

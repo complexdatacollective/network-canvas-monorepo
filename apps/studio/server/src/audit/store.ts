@@ -1,10 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
+import { and, desc, eq, gte, inArray, isNull, lt, max } from 'drizzle-orm';
+import { Effect, Schema } from 'effect';
+import { type Statement, type SqlError } from 'effect/unstable/sql';
 
+import { AuditActorKind } from '@codaco/studio-contract/schema/audit';
+import { NotFound } from '@codaco/studio-contract/schema/errors';
 import type { AuditActorFilter } from '@codaco/studio-rpc';
 
+import { teams as teamsTable } from '../db/auth-schema.ts';
+import { sqlErrorsOnly, sqlErrorsOnlyBeside } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
 import { parseAuditEventInput, type AuditEventInput } from './events.ts';
+import { AUDIT_TABLES } from './schema.ts';
+
+const auditEvents = AUDIT_TABLES.auditEvents;
 
 // A stable namespace seed keeps this lock separate from the schema/bootstrap
 // locks. A hash collision only causes harmless extra serialization; the
@@ -30,16 +40,58 @@ export const AUDIT_TEAM_LOCK_KEY_SQL = `hashtextextended(current_schema() || '/'
  * transaction — keyed on the team alone, every concurrent seed queued behind
  * whichever held the lock, for the length of its whole transaction. A
  * deployment has one schema, where the two keys are the same lock.
+ *
+ * Raw rather than built: `select pg_advisory_xact_lock(…)` has no FROM clause,
+ * which the builder has no way to express.
  */
-export async function lockAuditTeam(
-  client: pg.PoolClient,
+export const lockTeam: (
   teamId: string,
-): Promise<void> {
-  await client.query(
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'audit.store.lockTeam',
+)(function* (teamId: string) {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe(
     `SELECT pg_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL})`,
     [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
   );
-}
+});
+
+/**
+ * The team's name as the event will record it, read under `FOR UPDATE`.
+ *
+ * The lock is what makes the label mean something: an event says what the team
+ * was called at the moment the command took it, so a rename committing while
+ * the command runs must not change the record. Both writers of audit events
+ * read it here — `audited`, for a request's command, and the denied-attempts
+ * summary, for the worker's — so neither can label a row differently from the
+ * other.
+ *
+ * Fails with `NotFound` when the team is gone: an access token can outlive the
+ * team it names, and a row appended for a team that no longer exists would be
+ * a record of nothing.
+ */
+export const lockedTeamLabel: (
+  teamId: string,
+) => Effect.Effect<string, NotFound | SqlError.SqlError, Transaction> =
+  Effect.fn('audit.store.lockedTeamLabel')(function* (teamId: string) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({ name: teamsTable.name })
+      .from(teamsTable)
+      .where(eq(teamsTable.id, teamId))
+      .for('update');
+    const team = rows[0];
+    if (team === undefined) {
+      return yield* new NotFound({ detail: 'team not found' });
+    }
+    const label = team.name.trim();
+    if (label.length === 0) {
+      // The schema's own `teams_name_nonblank_check` forbids this, so a blank
+      // name here is a database that stopped enforcing its own constraint.
+      return yield* Effect.die(new Error('audit command team name is empty'));
+    }
+    return label.slice(0, 320);
+  }, sqlErrorsOnlyBeside);
 
 export type AuditEvent = AuditEventInput & {
   id: string;
@@ -99,46 +151,34 @@ export type AuditFacets = {
   truncated: boolean;
 };
 
-const STORED_EVENT_COLUMNS = `
-  id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
-  occurred_at AS "occurredAt", event_type AS "eventType",
-  event_version AS "eventVersion", category, outcome,
-  actor_kind AS "actorKind", actor_id AS "actorId",
-  actor_label AS "actorLabel", subject_type AS "subjectType",
-  subject_id AS "subjectId", subject_label AS "subjectLabel",
-  resource_type AS "resourceType", resource_id AS "resourceId",
-  resource_label AS "resourceLabel", request_id AS "requestId", details`;
+type AuditEventRow = typeof auditEvents.$inferSelect;
 
-type AuditEventRow = {
-  id: string;
-  teamId: string;
-  teamLabel: string;
-  sequence: string;
-  occurredAt: Date;
-  eventType: AuditEventInput['eventType'];
-  eventVersion: AuditEventInput['eventVersion'];
-  category: AuditEventInput['category'];
-  outcome: AuditEventInput['outcome'];
-  actorKind: AuditEventInput['actorKind'];
-  actorId: AuditEventInput['actorId'];
-  actorLabel: AuditEventInput['actorLabel'];
-  subjectType: AuditEventInput['subjectType'];
-  subjectId: AuditEventInput['subjectId'];
-  subjectLabel: AuditEventInput['subjectLabel'];
-  resourceType: AuditEventInput['resourceType'];
-  resourceId: AuditEventInput['resourceId'];
-  resourceLabel: AuditEventInput['resourceLabel'];
-  requestId: AuditEventInput['requestId'];
-  details: AuditEventInput['details'];
-};
+// `details` is a `jsonb` column, which the builder hands back as `unknown`:
+// whatever the row holds, nothing has checked it. The table's
+// `audit_events_details_object_check` is what makes this decode total, and a
+// row that failed it could not have been committed — so a value that does not
+// decode is a defect, not a failure a caller could act on.
+const AuditDetails = Schema.Record(Schema.String, Schema.Unknown);
+const decodeDetails = Schema.decodeUnknownSync(AuditDetails);
 
 function storedEvent(row: AuditEventRow): AuditEvent {
   const { id, sequence, occurredAt, ...input } = row;
   return {
     ...parseAuditEventInput(input),
     id,
-    sequence,
+    sequence: sequence.toString(),
     occurredAt,
+  };
+}
+
+// `sequence` is a bigint on the wire to nobody: it is a per-team counter the
+// clients display and page on, never do arithmetic with, so it leaves this
+// module as a base-10 string exactly as `sequence::text` used to render it.
+function storedRow(row: AuditEventRow): StoredAuditEvent {
+  return {
+    ...row,
+    sequence: row.sequence.toString(),
+    details: decodeDetails(row.details),
   };
 }
 
@@ -146,97 +186,107 @@ export function clampAuditListLimit(limit?: number): number {
   return Math.min(Math.max(limit ?? 50, 1), 100);
 }
 
-export class AuditStore {
-  /**
-   * `occurredAt` defaults to the statement's own time, which is what a live
-   * command wants. A writer that is recording an operation that happened at
-   * a known moment — the synthetic-data seed, whose whole corpus is dated
-   * from one anchor — passes it, so the log agrees with the rows it describes.
-   */
-  async append(
-    client: pg.PoolClient,
-    unvalidatedEvent: AuditEventInput,
-    options: { occurredAt?: Date } = {},
-  ): Promise<AuditEvent> {
-    const event = parseAuditEventInput(unvalidatedEvent);
-    await lockAuditTeam(client, event.teamId);
-    const previous = await client.query<{ sequence: string }>(
-      `SELECT COALESCE(MAX(sequence), 0)::text AS sequence
-       FROM audit_events
-       WHERE team_id = $1`,
-      [event.teamId],
-    );
-    const sequence = (
-      BigInt(previous.rows[0]?.sequence ?? '0') + 1n
-    ).toString();
-    const inserted = await client.query<AuditEventRow>(
-      `INSERT INTO audit_events (
-         id, team_id, team_label, sequence, event_type, event_version, category, outcome,
-         actor_kind, actor_id, actor_label, subject_type, subject_id,
-         subject_label, resource_type, resource_id, resource_label,
-         request_id, details, occurred_at
-       ) VALUES (
-         $1, $2, $3, $4::bigint, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17, $18::uuid, $19::jsonb,
-         COALESCE($20, statement_timestamp())
-       )
-       RETURNING
-         id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
-         occurred_at AS "occurredAt", event_type AS "eventType",
-         event_version AS "eventVersion", category, outcome,
-         actor_kind AS "actorKind", actor_id AS "actorId",
-         actor_label AS "actorLabel", subject_type AS "subjectType",
-         subject_id AS "subjectId", subject_label AS "subjectLabel",
-         resource_type AS "resourceType", resource_id AS "resourceId",
-         resource_label AS "resourceLabel", request_id AS "requestId", details`,
-      [
-        randomUUID(),
-        event.teamId,
-        event.teamLabel,
-        sequence,
-        event.eventType,
-        event.eventVersion,
-        event.category,
-        event.outcome,
-        event.actorKind,
-        event.actorId,
-        event.actorLabel,
-        event.subjectType,
-        event.subjectId,
-        event.subjectLabel,
-        event.resourceType,
-        event.resourceId,
-        event.resourceLabel,
-        event.requestId,
-        JSON.stringify(event.details),
-        options.occurredAt ?? null,
-      ],
-    );
-    const row = inserted.rows[0];
-    if (!row) throw new Error('audit insert returned no row');
-    return storedEvent(row);
-  }
+/**
+ * The rows of a raw statement, decoded through a schema — the one place in
+ * this module where a hand-written statement's result becomes typed data.
+ * A statement the builder cannot express still answers with `unknown` columns,
+ * and naming the shape in a type would only assert it; `schema` checks it.
+ */
+export const rowsOf = <S extends Schema.ConstraintDecoder<unknown>>(
+  schema: S,
+  statement: Statement.Statement<object>,
+): Effect.Effect<ReadonlyArray<S['Type']>, SqlError.SqlError> => {
+  const decode = Schema.decodeUnknownSync(schema);
+  return Effect.map(statement, (rows) => rows.map((row) => decode(row)));
+};
 
-  async listForTeam(
-    client: pg.PoolClient,
+/**
+ * `occurredAt` defaults to the statement's own time, which is what a live
+ * command wants — the column's own `statement_timestamp()` default, reached by
+ * leaving it out of the insert. A writer that is recording an operation that
+ * happened at a known moment — the synthetic-data seed, whose whole corpus is
+ * dated from one anchor — passes it, so the log agrees with the rows it
+ * describes.
+ */
+export const append: (
+  event: AuditEventInput,
+  options?: { occurredAt?: Date },
+) => Effect.Effect<AuditEvent, SqlError.SqlError, Transaction> = Effect.fn(
+  'audit.store.append',
+)(function* (
+  unvalidatedEvent: AuditEventInput,
+  options?: { occurredAt?: Date },
+) {
+  const event = parseAuditEventInput(unvalidatedEvent);
+  const { tx } = yield* Transaction;
+  yield* lockTeam(event.teamId);
+  const [previous] = yield* tx
+    .select({ sequence: max(auditEvents.sequence) })
+    .from(auditEvents)
+    .where(eq(auditEvents.teamId, event.teamId));
+  // `max` of no rows is one row carrying null, which is the `COALESCE(…, 0)`
+  // this replaced: a team's first event is sequence 1.
+  const sequence = (previous?.sequence ?? 0n) + 1n;
+  // `.returning()` is not decoration: a write without it answers with the
+  // driver's own result object, which is typed as a row array and is not one.
+  const [row] = yield* tx
+    .insert(auditEvents)
+    .values({
+      id: randomUUID(),
+      teamId: event.teamId,
+      teamLabel: event.teamLabel,
+      sequence,
+      eventType: event.eventType,
+      eventVersion: event.eventVersion,
+      category: event.category,
+      outcome: event.outcome,
+      actorKind: event.actorKind,
+      actorId: event.actorId,
+      actorLabel: event.actorLabel,
+      subjectType: event.subjectType,
+      subjectId: event.subjectId,
+      subjectLabel: event.subjectLabel,
+      resourceType: event.resourceType,
+      resourceId: event.resourceId,
+      resourceLabel: event.resourceLabel,
+      requestId: event.requestId,
+      details: event.details,
+      ...(options?.occurredAt === undefined
+        ? {}
+        : { occurredAt: options.occurredAt }),
+    })
+    .returning();
+  if (!row) {
+    return yield* Effect.die(new Error('audit insert returned no row'));
+  }
+  return storedEvent(row);
+}, sqlErrorsOnly);
+
+export const list: (
+  teamId: string,
+  options?: {
+    beforeSequence?: string;
+    limit?: number;
+  } & AuditListFilters,
+) => Effect.Effect<StoredAuditEvent[], SqlError.SqlError, Transaction> =
+  Effect.fn('audit.store.list')(function* (
     teamId: string,
     options: {
       beforeSequence?: string;
       limit?: number;
     } & AuditListFilters = {},
-  ): Promise<StoredAuditEvent[]> {
+  ) {
+    const { tx } = yield* Transaction;
     const limit = clampAuditListLimit(options.limit);
-    const params: unknown[] = [teamId, options.beforeSequence ?? null];
-    const clauses: string[] = [];
-    const where = (value: unknown, clause: (param: string) => string) => {
-      params.push(value);
-      clauses.push(`AND ${clause(`$${params.length}`)}`);
-    };
+    const filters = [eq(auditEvents.teamId, teamId)];
+    if (options.beforeSequence !== undefined) {
+      filters.push(lt(auditEvents.sequence, BigInt(options.beforeSequence)));
+    }
     if (options.categories?.length) {
-      where(options.categories, (p) => `category = ANY(${p})`);
+      filters.push(inArray(auditEvents.category, [...options.categories]));
     }
     if (options.eventTypes?.length) {
-      where(options.eventTypes, (p) => `event_type = ANY(${p})`);
+      filters.push(inArray(auditEvents.eventType, [...options.eventTypes]));
     }
     // Actor identity is the (kind, id) pair the feed renders, and a system
     // actor may legitimately have no id. `actor_id = NULL` would silently
@@ -245,67 +295,78 @@ export class AuditStore {
     // serves directly.
     const actor = options.actor;
     if (actor !== undefined) {
-      where(actor.kind, (p) => `actor_kind = ${p}`);
-      if (actor.id === null) clauses.push('AND actor_id IS NULL');
-      else where(actor.id, (p) => `actor_id = ${p}`);
+      filters.push(eq(auditEvents.actorKind, actor.kind));
+      filters.push(
+        actor.id === null
+          ? isNull(auditEvents.actorId)
+          : eq(auditEvents.actorId, actor.id),
+      );
     }
     if (options.outcomes?.length) {
-      where(options.outcomes, (p) => `outcome = ANY(${p})`);
+      filters.push(inArray(auditEvents.outcome, [...options.outcomes]));
     }
     if (options.occurredFrom) {
-      where(options.occurredFrom, (p) => `occurred_at >= ${p}`);
+      filters.push(gte(auditEvents.occurredAt, options.occurredFrom));
     }
     if (options.occurredTo) {
-      where(options.occurredTo, (p) => `occurred_at < ${p}`);
+      filters.push(lt(auditEvents.occurredAt, options.occurredTo));
     }
-    params.push(limit);
-    const rows = await client.query<StoredAuditEvent>(
-      `SELECT ${STORED_EVENT_COLUMNS}
-       FROM audit_events
-       WHERE team_id = $1
-         AND ($2::bigint IS NULL OR sequence < $2::bigint)
-         ${clauses.join('\n         ')}
-       ORDER BY sequence DESC
-       LIMIT $${params.length}`,
-      params,
-    );
-    return rows.rows;
-  }
+    const rows = yield* tx
+      .select()
+      .from(auditEvents)
+      .where(and(...filters))
+      .orderBy(desc(auditEvents.sequence))
+      .limit(limit);
+    return rows.map(storedRow);
+  }, sqlErrorsOnly);
 
-  /**
-   * The distinct action and actor values in one team's whole history, for the
-   * activity screen's filters.
-   *
-   * Both are loose index scans (the recursive "skip scan") over the existing
-   * (team_id, event_type, sequence DESC NULLS LAST) and
-   * (team_id, actor_id, sequence DESC NULLS LAST) indexes, so the work is
-   * proportional to the number of distinct values rather than to the number of
-   * events, and `LIMIT $2` on the walk itself stops the recursion rather than
-   * only shortening its result.
-   *
-   * Two details make the plan hold:
-   *
-   * - Each step's ORDER BY must spell out `sequence DESC NULLS LAST`, matching
-   *   the index exactly. Plain `DESC` means NULLS FIRST, which the index
-   *   cannot serve, and Postgres falls back to an incremental sort that reads
-   *   every row of the actor's group: measured at 400k events in one team,
-   *   1.4ms/290 buffers with the qualifier against 575ms/405k buffers without.
-   * - Because the index carries sequence DESC beside the id, that one row is
-   *   already the actor's newest event, so the walk carries the label out with
-   *   it. A separate "newest row for this actor" lookup per actor cannot use
-   *   the same index for both the match and the ordering, and cost 184ms/24.5k
-   *   buffers on the same data.
-   *
-   * `actor_id IS NULL` sorts after every id under NULLS LAST and is therefore
-   * unreachable from the ascending walk, so the single null-actor entry — the
-   * system actor the actor_id CHECK exists for — is read separately.
-   */
-  async facetsForTeam(
-    client: pg.PoolClient,
-    teamId: string,
-    limit: number,
-  ): Promise<AuditFacets> {
-    const eventTypes = await client.query<{ eventType: string }>(
+const FacetEventType = Schema.Struct({ eventType: Schema.String });
+
+const FacetActor = Schema.Struct({
+  kind: AuditActorKind,
+  id: Schema.NullOr(Schema.String),
+  label: Schema.String,
+});
+
+/**
+ * The distinct action and actor values in one team's whole history, for the
+ * activity screen's filters.
+ *
+ * Both are loose index scans (the recursive "skip scan") over the existing
+ * (team_id, event_type, sequence DESC NULLS LAST) and
+ * (team_id, actor_id, sequence DESC NULLS LAST) indexes, so the work is
+ * proportional to the number of distinct values rather than to the number of
+ * events, and `LIMIT $2` on the walk itself stops the recursion rather than
+ * only shortening its result. `WITH RECURSIVE` is the reason these two are the
+ * only statements here the builder does not write: it has no path to one.
+ *
+ * Two details make the plan hold:
+ *
+ * - Each step's ORDER BY must spell out `sequence DESC NULLS LAST`, matching
+ *   the index exactly. Plain `DESC` means NULLS FIRST, which the index
+ *   cannot serve, and Postgres falls back to an incremental sort that reads
+ *   every row of the actor's group: measured at 400k events in one team,
+ *   1.4ms/290 buffers with the qualifier against 575ms/405k buffers without.
+ * - Because the index carries sequence DESC beside the id, that one row is
+ *   already the actor's newest event, so the walk carries the label out with
+ *   it. A separate "newest row for this actor" lookup per actor cannot use
+ *   the same index for both the match and the ordering, and cost 184ms/24.5k
+ *   buffers on the same data.
+ *
+ * `actor_id IS NULL` sorts after every id under NULLS LAST and is therefore
+ * unreachable from the ascending walk, so the single null-actor entry — the
+ * system actor the actor_id CHECK exists for — is read separately.
+ */
+export const facets: (
+  teamId: string,
+  limit: number,
+) => Effect.Effect<AuditFacets, SqlError.SqlError, Transaction> = Effect.fn(
+  'audit.store.facets',
+)(function* (teamId: string, limit: number) {
+  const { sql } = yield* Transaction;
+  const eventTypes = yield* rowsOf(
+    FacetEventType,
+    sql.unsafe(
       `WITH RECURSIVE walk AS (
          (SELECT event_type FROM audit_events
           WHERE team_id = $1
@@ -323,12 +384,11 @@ export class AuditStore {
        FROM (SELECT event_type FROM walk LIMIT $2) AS types
        ORDER BY event_type`,
       [teamId, limit + 1],
-    );
-    const actors = await client.query<{
-      kind: AuditActorFilter['kind'];
-      id: string | null;
-      label: string;
-    }>(
+    ),
+  );
+  const actors = yield* rowsOf(
+    FacetActor,
+    sql.unsafe(
       `WITH RECURSIVE walk AS (
          (SELECT actor_kind, actor_id, actor_label FROM audit_events
           WHERE team_id = $1 AND actor_id IS NOT NULL
@@ -352,29 +412,28 @@ export class AuditStore {
        ) AS actors
        ORDER BY label`,
       [teamId, limit + 1],
-    );
-    // The label comes from each actor's newest event, so a renamed user is
-    // offered under the name the newest row already shows in the feed.
-    const truncated =
-      eventTypes.rows.length > limit || actors.rows.length > limit;
-    return {
-      eventTypes: eventTypes.rows.slice(0, limit).map((row) => row.eventType),
-      actors: actors.rows.slice(0, limit),
-      truncated,
-    };
-  }
+    ),
+  );
+  // The label comes from each actor's newest event, so a renamed user is
+  // offered under the name the newest row already shows in the feed.
+  const truncated = eventTypes.length > limit || actors.length > limit;
+  return {
+    eventTypes: eventTypes.slice(0, limit).map((row) => row.eventType),
+    actors: actors.slice(0, limit),
+    truncated,
+  };
+});
 
-  async getForTeam(
-    client: pg.PoolClient,
-    teamId: string,
-    eventId: string,
-  ): Promise<StoredAuditEvent | null> {
-    const rows = await client.query<StoredAuditEvent>(
-      `SELECT ${STORED_EVENT_COLUMNS}
-       FROM audit_events
-       WHERE team_id = $1 AND id = $2::uuid`,
-      [teamId, eventId],
-    );
-    return rows.rows[0] ?? null;
-  }
-}
+export const get: (
+  teamId: string,
+  eventId: string,
+) => Effect.Effect<StoredAuditEvent | null, SqlError.SqlError, Transaction> =
+  Effect.fn('audit.store.get')(function* (teamId: string, eventId: string) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.teamId, teamId), eq(auditEvents.id, eventId)));
+    const row = rows[0];
+    return row === undefined ? null : storedRow(row);
+  }, sqlErrorsOnly);

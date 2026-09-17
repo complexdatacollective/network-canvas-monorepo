@@ -1,14 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Deferred, Effect, Exit, Fiber, Layer, Predicate } from 'effect';
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Predicate } from 'effect';
 import type pg from 'pg';
 
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { AuditSignal } from '../../../audit/signal.ts';
 import type { SessionPrincipal } from '../../../auth/service.ts';
+import { MaintenanceDatabase, Database } from '../../../db/client.ts';
+import {
+  MaintenanceScope,
+  Transaction,
+  unsafeMakeTeamAccess,
+} from '../../../db/tenant.ts';
+import { RequestId } from '../../../http/middleware/request-id.ts';
 import { MailFailed, type MailNotConfigured } from '../../../mail/mailer.ts';
+import { principalOf } from '../../../rpc/authenticated.ts';
 import {
   cancelTeamInvitation,
   createTeamInvitation,
@@ -21,19 +30,14 @@ import {
   layerWorker,
   readJobs,
 } from '../../__tests__/support.ts';
-import { createJobClient } from '../../client.ts';
-import {
-  Database,
-  Transaction,
-  withTenantTransaction,
-} from '../../database.ts';
 import {
   exitSqlState,
   FOREIGN_KEY_VIOLATION,
   INSUFFICIENT_PRIVILEGE,
 } from '../../errors.ts';
-import { Jobs } from '../../jobs.ts';
+import { JobRefused, Jobs } from '../../jobs.ts';
 import { resolvedQueue } from '../../queues.ts';
+import { maintenanceTeamAccess } from '../../team-access.ts';
 import { JobWorker, type JobStep } from '../../worker.ts';
 import {
   invitationDelivery,
@@ -150,8 +154,8 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
       const deliveryId = randomUUID();
       yield* Effect.flatMap(DeliveryHarness, (harness) =>
         Effect.provideService(
-          withTenantTransaction(
-            TEAM_ID,
+          MaintenanceScope.openTenant(
+            maintenanceTeamAccess(TEAM_ID),
             Effect.flatMap(
               Transaction,
               ({ sql }) => sql`
@@ -163,7 +167,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
                         'Inviting Researcher', ${invitation.expiresAt})`,
             ),
           ),
-          Database,
+          MaintenanceDatabase,
           harness.app,
         ),
       );
@@ -178,8 +182,8 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
       const jobs = yield* Jobs;
       const deliveryId = randomUUID();
       const jobId = yield* Effect.provideService(
-        withTenantTransaction(
-          TEAM_ID,
+        MaintenanceScope.openTenant(
+          maintenanceTeamAccess(TEAM_ID),
           Effect.gen(function* () {
             const { sql } = yield* Transaction;
             yield* sql`
@@ -192,7 +196,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
             return yield* jobs.enqueue('invitation-delivery', { deliveryId });
           }),
         ),
-        Database,
+        MaintenanceDatabase,
         harness.app,
       );
       return { deliveryId, jobId };
@@ -242,11 +246,11 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         const jobs = yield* Jobs;
         const harness = yield* DeliveryHarness;
         const jobId = yield* Effect.provideService(
-          withTenantTransaction(
-            TEAM_ID,
+          MaintenanceScope.openTenant(
+            maintenanceTeamAccess(TEAM_ID),
             jobs.enqueue('invitation-delivery', { deliveryId }),
           ),
-          Database,
+          MaintenanceDatabase,
           harness.app,
         );
         if (options.attemptsBefore !== undefined) {
@@ -281,8 +285,8 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
           const rolledBack = yield* Effect.exit(
             Effect.provideService(
-              withTenantTransaction(
-                TEAM_ID,
+              MaintenanceScope.openTenant(
+                maintenanceTeamAccess(TEAM_ID),
                 Effect.gen(function* () {
                   const { sql } = yield* Transaction;
                   yield* sql`
@@ -299,7 +303,7 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
                   return yield* Effect.fail('roll back command' as const);
                 }),
               ),
-              Database,
+              MaintenanceDatabase,
               harness.app,
             ),
           );
@@ -865,15 +869,15 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
 
         const refused = yield* Effect.exit(
           Effect.provideService(
-            withTenantTransaction(
-              TEAM_ID,
+            MaintenanceScope.openTenant(
+              maintenanceTeamAccess(TEAM_ID),
               Effect.flatMap(
                 Transaction,
                 ({ sql }) =>
                   sql`UPDATE team_invitation_deliveries SET sent_at = CURRENT_TIMESTAMP`,
               ),
             ),
-            Database,
+            MaintenanceDatabase,
             harness.app,
           ),
         );
@@ -953,14 +957,27 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // The last three drive `createTeamInvitation` / `cancelTeamInvitation`,
-    // which are still Promise-and-drizzle commands over `createTenantDb` with
-    // the audit trail attached: the web process enqueues through
-    // `src/jobs/client.ts`, a node-postgres twin of `Jobs.enqueue` that takes
-    // the command's own transaction client, so the command keeps an optional
-    // `jobs` dependency and the runtime refusal that goes with it. They are
-    // here, in Promise form inside an Effect body, because the file they came
-    // from is gone and nothing else holds them.
+    // The last three drive `createTeamInvitation` / `cancelTeamInvitation`
+    // themselves, because what they are about is the seam between a command
+    // and this queue: the invitation, its delivery row and the job that sends
+    // it are one transaction, and a cancellation that cannot get the row
+    // refuses rather than waiting behind a send.
+    //
+    // They run the real `Jobs` layer on the harness's own job schema rather
+    // than the recording one: the row in `<schema>.jobs` is what the handler
+    // above claims, so a recorded enqueue would prove the wrong half.
+
+    /** One command, as the inviting researcher, on the harness's clients. */
+    const asInviter = <A, E, R>(command: Effect.Effect<A, E, R>) =>
+      Effect.flatMap(DeliveryHarness, (harness) =>
+        command.pipe(
+          Effect.provideService(Principal, principalOf(PRINCIPAL)),
+          Effect.provideService(RequestId, RequestId.of(randomUUID())),
+          Effect.provide(Jobs.layer({ schema: harness.schema })),
+          Effect.provideService(Database, harness.app),
+          Effect.provide(AuditSignal.layer),
+        ),
+      );
 
     // ---------------------------------------------------------------- 3 ----
     it.effect('creates the invitation, the delivery and one job in one', () =>
@@ -968,19 +985,13 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
         yield* clearQueue();
         yield* seedTeam();
         const harness = yield* DeliveryHarness;
-        const jobs = createJobClient({ schema: harness.schema });
         const email = `${randomUUID()}@example.com`;
 
-        const created = yield* Effect.promise(() =>
-          createTeamInvitation(
-            {
-              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
-              principal: PRINCIPAL,
-              requestId: randomUUID(),
-              jobs,
-            },
-            { email, role: 'member' },
-          ),
+        const created = yield* asInviter(
+          createTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
+            email,
+            role: 'member',
+          }),
         );
 
         const deliveryId = yield* Effect.promise(async () => {
@@ -1001,33 +1012,45 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
     );
 
     // ---------------------------------------------------------------- 4 ----
-    it.effect('refuses to create an invitation it cannot queue', () =>
+    it.effect('leaves no invitation behind when the enqueue fails', () =>
       Effect.gen(function* () {
         yield* clearQueue();
         yield* seedTeam();
         const harness = yield* DeliveryHarness;
         const email = `${randomUUID()}@example.com`;
 
-        // No job client at all is a wiring fault, and committing the
-        // invitation anyway would leave a researcher waiting on mail nothing
-        // will send.
-        const refusal = yield* Effect.promise(() =>
-          createTeamInvitation(
-            {
-              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
-              principal: PRINCIPAL,
-              requestId: randomUUID(),
-            },
-            { email, role: 'member' },
-          ).then(
-            () => undefined,
-            (error: unknown) => error,
+        // The "no job client" refusal this case used to assert is gone with
+        // the optional dependency: `Jobs` is a service the command requires,
+        // so a process without one does not build rather than failing at the
+        // first invitation. What is still worth pinning is the other half —
+        // an enqueue that FAILS must take the invitation with it, because
+        // committing one anyway would leave a researcher waiting on mail
+        // nothing will send.
+        const refusal = yield* Effect.exit(
+          createTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
+            email,
+            role: 'member',
+          }).pipe(
+            Effect.provideService(Principal, principalOf(PRINCIPAL)),
+            Effect.provideService(RequestId, RequestId.of(randomUUID())),
+            // A queue that answers every enqueue with a failure, which is
+            // what an unreachable one looks like from inside the command.
+            Effect.provideService(
+              Jobs,
+              Jobs.of({
+                enqueue: (queue) =>
+                  Effect.flatMap(Transaction, () =>
+                    Effect.fail(
+                      new JobRefused({ queue, reason: 'the queue is gone' }),
+                    ),
+                  ),
+              }),
+            ),
+            Effect.provideService(Database, harness.app),
+            Effect.provide(AuditSignal.layer),
           ),
         );
-        assert.strictEqual(
-          refusal instanceof Error ? refusal.message : String(refusal),
-          'invitation delivery needs a job client',
-        );
+        assert.isTrue(Exit.isFailure(refusal));
 
         const invitations = yield* Effect.promise(async () => {
           const { rowCount } = await harness.scratch.pool.query(
@@ -1054,21 +1077,16 @@ describe.skipIf(!db)('invitation delivery on the native queue', () => {
           holdInvitation(harness.scratch, invitation.invitationId),
         );
 
-        const refusal = yield* Effect.promise(() =>
-          cancelTeamInvitation(
-            {
-              tenantDb: createTenantDb(harness.scratch.app, TEAM_ID),
-              principal: PRINCIPAL,
-              requestId: randomUUID(),
-            },
-            { invitationId: invitation.invitationId },
-          )
-            .then(
-              () => undefined,
-              (error: unknown) => error,
-            )
-            .finally(held.release),
-        );
+        const exit = yield* Effect.exit(
+          asInviter(
+            cancelTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
+              invitationId: invitation.invitationId,
+            }),
+          ),
+        ).pipe(Effect.ensuring(Effect.promise(() => held.release())));
+        const refusal: unknown = Exit.isFailure(exit)
+          ? Cause.squash(exit.cause)
+          : undefined;
         assert.strictEqual(
           Predicate.hasProperty(refusal, 'code') &&
             Predicate.isString(refusal.code)

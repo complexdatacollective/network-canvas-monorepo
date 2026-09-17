@@ -1,213 +1,265 @@
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
+import { Effect, Schema } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 import { z } from 'zod';
 
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import { TeamInvitationIdSchema, type TeamRole } from '@codaco/studio-rpc';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { audited, auditable, changed, unchanged } from '../audit/audited.ts';
+import type {
+  AuditableFailure,
+  AuditEventBody,
+  AuditEvents,
+} from '../audit/audited.ts';
+import { AuditContext } from '../audit/context.ts';
+import { reservedDenial } from '../audit/denial-rate-limit.ts';
+import type { DeniedAuditOperation } from '../audit/events.ts';
+import type { AuditSignal } from '../audit/signal.ts';
+import type { Database } from '../db/client.ts';
+import { isLockUnavailable } from '../db/errors.ts';
 import {
-  auditActorEventContext,
-  auditEventContext,
-  type AuditedCommandContext,
-  deniedAuditEventContext,
-  failedAuditEventContext,
-  runAuditedCommand,
-  runAuditedCommandWork,
-} from '../audit/command.ts';
-import {
-  type DeniedAuditReservation,
-  reserveDeniedAuditAttempt,
-} from '../audit/denial-rate-limit.ts';
-import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
-import { isLockUnavailableError } from '../db/lock.ts';
+  type TeamAccess,
+  UntenantedScope,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
+import type { RequestId } from '../http/middleware/request-id.ts';
+import { Jobs } from '../jobs/jobs.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { isTeamAdministrator, tryParseRoles } from './roles.ts';
-import { TeamStore, type LockedMember } from './store.ts';
+import * as store from './store.ts';
+
+// The four team commands, on `audited` (#1927 §10).
+//
+// What the combinator took over, and what that removed from here:
+//
+//   * The trusted half of every event — the team, the team's locked label, the
+//     actor, the request — is stamped by `audited` and *absent* from the
+//     `AuditEventBody` a command may write. The `assertEventContext` this file
+//     used to rely on compared exactly those fields; a mismatch is no longer
+//     refused at runtime because it can no longer be written.
+//   * The outcome is likewise the combinator's. A success is `changed(...)` or
+//     `unchanged(...)`; a denial or a bounded failure is an error carrying the
+//     `auditable` marker, and `audited` stamps `denied`/`failed` from the
+//     marker rather than from anything the command claims.
+//   * The savepoint is the combinator's too. `audited` runs the whole body in
+//     one, captures its `Exit`, and appends the events that Exit implies after
+//     the savepoint has rolled back — so a bounded failure leaves its record
+//     and none of its writes, without this file opening a nested transaction
+//     per command.
+//
+// What is still here, because it is this file's: which refusals are auditable.
+// A denial the team is entitled to see carries the marker; a conflict, a
+// no-change and a not-found do not, so they roll the whole transaction back
+// and leave nothing — an immutable log is the wrong place for "you asked for
+// something that was already true".
 
 const EmailSchema = z.email().max(320);
 const INVITATION_LIMIT = 100;
 const MEMBERSHIP_LIMIT = 100;
 
-export type TeamCommandErrorCode =
-  | 'FORBIDDEN'
-  | 'NOT_FOUND'
-  | 'CONFLICT'
-  | 'NO_CHANGE'
-  | 'LAST_OWNER'
-  | 'INVALID_ROLE'
-  | 'DELIVERY_IN_PROGRESS';
+const TeamCommandErrorCode = Schema.Literals([
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'CONFLICT',
+  'NO_CHANGE',
+  'LAST_OWNER',
+  'INVALID_ROLE',
+  'DELIVERY_IN_PROGRESS',
+]);
 
-export class TeamCommandError extends Error {
-  readonly code: TeamCommandErrorCode;
+type TeamCommandErrorCode = typeof TeamCommandErrorCode.Type;
 
-  constructor(code: TeamCommandErrorCode) {
-    super(code);
-    this.name = 'TeamCommandError';
-    this.code = code;
+export class TeamCommandError extends Schema.TaggedError<TeamCommandError>()(
+  'TeamCommandError',
+  { code: TeamCommandErrorCode },
+) {
+  override get message(): string {
+    return this.code;
   }
 }
 
-const store = new TeamStore();
+/** The fields every team-access event carries and no command varies. */
+const TEAM_EVENT = {
+  eventVersion: 1,
+  category: 'team_access',
+  resourceType: null,
+  resourceId: null,
+  resourceLabel: null,
+} as const;
 
-function parseRoles(value: string): TeamRole[] {
+const parseRoles = (
+  value: string,
+): Effect.Effect<TeamRole[], TeamCommandError> => {
   const roles = tryParseRoles(value);
-  if (!roles) throw new TeamCommandError('INVALID_ROLE');
-  return roles;
-}
+  return roles === null
+    ? Effect.fail(new TeamCommandError({ code: 'INVALID_ROLE' }))
+    : Effect.succeed(roles);
+};
 
-function canManage(member: LockedMember): boolean {
-  return isTeamAdministrator(parseRoles(member.role));
-}
+const canManage = (
+  member: store.LockedMember,
+): Effect.Effect<boolean, TeamCommandError> =>
+  Effect.map(parseRoles(member.role), isTeamAdministrator);
 
-function isOwner(member: LockedMember): boolean {
-  return parseRoles(member.role).includes('owner');
-}
+const isOwner = (
+  member: store.LockedMember,
+): Effect.Effect<boolean, TeamCommandError> =>
+  Effect.map(parseRoles(member.role), (roles) => roles.includes('owner'));
 
-function memberLabel(member: LockedMember): string {
-  return (member.name.trim() || member.email).slice(0, 320);
-}
+const memberLabel = (member: store.LockedMember): string =>
+  (member.name.trim() || member.email).slice(0, 320);
 
-type AdmittedDeniedAuditReservation = Extract<
-  DeniedAuditReservation,
-  { admitted: true }
->;
+/** What an auditable refusal is: the command's own error, carrying its event. */
+type AuditableTeamFailure = TeamCommandError & AuditableFailure;
 
-async function reserveDeniedTeamCommand(
-  context: AuditedCommandContext,
+/** A denial the team is entitled to see, as a failure `audited` can stamp. */
+const denied = (
+  events: AuditEvents,
+): Effect.Effect<never, AuditableTeamFailure> =>
+  Effect.fail(
+    auditable(new TeamCommandError({ code: 'FORBIDDEN' }), {
+      outcome: 'denied',
+      events,
+    }),
+  );
+
+/** A bounded failure, likewise: the write is undone and the record is kept. */
+const failed = (
+  code: TeamCommandErrorCode,
+  events: AuditEvents,
+): Effect.Effect<never, AuditableTeamFailure> =>
+  Effect.fail(
+    auditable(new TeamCommandError({ code }), { outcome: 'failed', events }),
+  );
+
+/**
+ * The denial window, with this tier's reading of it: only a `FORBIDDEN` is a
+ * denial, and a suppressed attempt is answered with the same `FORBIDDEN` the
+ * command would have given.
+ */
+const reserved = <A, E, R>(
   operation: DeniedAuditOperation,
-): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt({
-    actorId: context.principal.userId,
-    teamId: context.tenantDb.teamId,
-    operation,
-  });
-  // The caller is refused either way; FORBIDDEN is what the command would have
-  // answered, and answering differently once the window is spent would make
-  // the audit log's own suppression observable from outside.
-  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
-  return reservation;
-}
+  teamId: string,
+  command: Effect.Effect<A, E | TeamCommandError, R>,
+) =>
+  reservedDenial(
+    {
+      operation,
+      teamId,
+      refusal: () => new TeamCommandError({ code: 'FORBIDDEN' }),
+      isDenial: (error) =>
+        error instanceof TeamCommandError && error.code === 'FORBIDDEN',
+    },
+    command,
+  );
 
 export type UpdatedTeamMember = { memberId: string; role: TeamRole };
 
-export async function updateTeamMemberRole(
-  context: AuditedCommandContext,
+export const updateTeamMemberRole: (
+  access: TeamAccess,
   input: { memberId: string; role: TeamRole },
-): Promise<UpdatedTeamMember> {
-  const reservation = await reserveDeniedTeamCommand(
-    context,
+) => Effect.Effect<
+  UpdatedTeamMember,
+  TeamCommandError | NotFound | SqlError.SqlError,
+  Database | Principal | RequestId | AuditSignal
+> = Effect.fn('team.updateMemberRole')(function* (
+  access: TeamAccess,
+  input: { memberId: string; role: TeamRole },
+) {
+  return yield* reserved(
     'team.updateMemberRole',
-  );
-
-  try {
-    const result = await runAuditedCommand(
-      context,
-      async (client, auditContext) => {
-        const members = await store.lockActorAndTarget(client, {
-          teamId: context.tenantDb.teamId,
-          actorUserId: context.principal.userId,
+    access.teamId,
+    audited(
+      'team.updateMemberRole.audited',
+      access,
+      Effect.gen(function* () {
+        const principal = yield* Principal;
+        const members = yield* store.lockActorAndTarget({
+          teamId: access.teamId,
+          actorUserId: principal.userId,
           targetMemberId: input.memberId,
         });
         const target = members.target;
-        if (!target) throw new TeamCommandError('NOT_FOUND');
+        if (target === null) {
+          return yield* new TeamCommandError({ code: 'NOT_FOUND' });
+        }
 
-        const denied = (
+        const refuse = (
           reason: 'insufficient_permission' | 'owner_role_requires_owner',
-        ) => {
-          const event = {
-            ...deniedAuditEventContext(auditContext),
-            eventType: 'team.member.role_change_denied',
-            subjectType: 'team_member',
-            subjectId: target.id,
-            subjectLabel: memberLabel(target),
-            details: { requestedRoles: [input.role], reason },
-          } satisfies AuditEventInput;
-          return {
-            status: 'denied' as const,
-            error: new TeamCommandError('FORBIDDEN'),
-            events: [event] as const,
-          };
-        };
-
-        const actor = members.actor;
-        if (!actor || !canManage(actor)) {
-          return denied('insufficient_permission');
-        }
-
-        const actorIsOwner = isOwner(actor);
-        const targetIsOwner = isOwner(target);
-        if ((targetIsOwner || input.role === 'owner') && !actorIsOwner) {
-          return denied('owner_role_requires_owner');
-        }
-
-        const previousRoles = parseRoles(target.role);
-        if (previousRoles.length === 1 && previousRoles[0] === input.role) {
-          throw new TeamCommandError('NO_CHANGE');
-        }
-        return runAuditedCommandWork(
-          client,
-          async () => {
-            if (
-              targetIsOwner &&
-              input.role !== 'owner' &&
-              (await store.countLockedOwners(
-                client,
-                context.tenantDb.teamId,
-              )) <= 1
-            ) {
-              throw new TeamCommandError('LAST_OWNER');
-            }
-
-            await store.updateMemberRole(client, {
-              teamId: context.tenantDb.teamId,
-              memberId: target.id,
-              role: input.role,
-            });
-            const event = {
-              ...auditEventContext(auditContext),
-              eventType: 'team.member.role_changed',
+        ) =>
+          denied([
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.member.role_change_denied',
               subjectType: 'team_member',
               subjectId: target.id,
               subjectLabel: memberLabel(target),
-              details: { previousRoles, newRoles: [input.role] },
-            } satisfies AuditEventInput;
-            return {
-              result: { memberId: target.id, role: input.role },
-              events: [event],
-            };
-          },
-          (error) => {
-            if (
-              !(error instanceof TeamCommandError) ||
-              error.code !== 'LAST_OWNER'
-            ) {
-              return null;
-            }
-            const event = {
-              ...failedAuditEventContext(auditContext),
+              details: { requestedRoles: [input.role], reason },
+            },
+          ]);
+
+        // The authoritative check, and the reason it is here rather than in
+        // the middleware: `openTeam` answered about a membership that is
+        // already stale by the time this transaction opens, and the row read
+        // here is locked, so a role revoked in that window refuses the change
+        // instead of committing under the older answer.
+        const actor = members.actor;
+        if (actor === null || !(yield* canManage(actor))) {
+          return yield* refuse('insufficient_permission');
+        }
+
+        const actorIsOwner = yield* isOwner(actor);
+        const targetIsOwner = yield* isOwner(target);
+        if ((targetIsOwner || input.role === 'owner') && !actorIsOwner) {
+          return yield* refuse('owner_role_requires_owner');
+        }
+
+        const previousRoles = yield* parseRoles(target.role);
+        if (previousRoles.length === 1 && previousRoles[0] === input.role) {
+          return yield* new TeamCommandError({ code: 'NO_CHANGE' });
+        }
+
+        if (
+          targetIsOwner &&
+          input.role !== 'owner' &&
+          (yield* store.countLockedOwners(access.teamId)) <= 1
+        ) {
+          // The one failure this command records. It names no subject: the
+          // team, not the member, is what ran out of owners.
+          return yield* failed('LAST_OWNER', [
+            {
+              ...TEAM_EVENT,
               eventType: 'team.member.role_change_failed',
               subjectType: null,
               subjectId: null,
               subjectLabel: null,
               details: { failureCode: 'last_owner' },
-            } satisfies AuditEventInput;
-            return { error, events: [event] };
+            },
+          ]);
+        }
+
+        yield* store.updateMemberRole({
+          teamId: access.teamId,
+          memberId: target.id,
+          role: input.role,
+        });
+        return changed({ memberId: target.id, role: input.role }, [
+          {
+            ...TEAM_EVENT,
+            eventType: 'team.member.role_changed',
+            subjectType: 'team_member',
+            subjectId: target.id,
+            subjectLabel: memberLabel(target),
+            details: { previousRoles, newRoles: [input.role] },
           },
-        );
-      },
-    );
-    await reservation.complete('other');
-    return result;
-  } catch (error) {
-    await reservation.complete(
-      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
-        ? 'denied'
-        : 'other',
-    );
-    throw error;
-  }
-}
+        ]);
+      }),
+    ),
+  );
+});
 
 export type CreatedTeamInvitation = {
   invitationId: string;
@@ -217,254 +269,245 @@ export type CreatedTeamInvitation = {
   expiresAt: Date;
 };
 
-export async function createTeamInvitation(
-  context: AuditedCommandContext,
+export const createTeamInvitation: (
+  access: TeamAccess,
   input: { email: string; role: TeamRole },
-): Promise<CreatedTeamInvitation> {
-  const email = EmailSchema.parse(input.email.trim().toLowerCase());
-  const reservation = await reserveDeniedTeamCommand(
-    context,
-    'team.createInvitation',
+) => Effect.Effect<
+  CreatedTeamInvitation,
+  TeamCommandError | NotFound | SqlError.SqlError,
+  Database | Principal | RequestId | AuditSignal | Jobs
+> = Effect.fn('team.createInvitation')(function* (
+  access: TeamAccess,
+  input: { email: string; role: TeamRole },
+) {
+  // A malformed address is a contract violation rather than a refusal a caller
+  // could act on, and it reaches the transport as the fault it is — which is
+  // what the thrown `ZodError` did here before.
+  const email = yield* Effect.sync(() =>
+    EmailSchema.parse(input.email.trim().toLowerCase()),
   );
 
-  try {
-    const result = await runAuditedCommand<CreatedTeamInvitation>(
-      context,
-      async (client, auditContext) => {
-        const actor = await store.lockActor(
-          client,
-          context.tenantDb.teamId,
-          context.principal.userId,
-        );
-        const denied = (
+  return yield* reserved(
+    'team.createInvitation',
+    access.teamId,
+    audited(
+      'team.createInvitation.audited',
+      access,
+      Effect.gen(function* () {
+        const principal = yield* Principal;
+        const context = yield* AuditContext;
+        const jobs = yield* Jobs;
+        const actor = yield* store.lockActor(access.teamId, principal.userId);
+
+        const refuse = (
           reason: 'insufficient_permission' | 'owner_role_requires_owner',
-        ) => {
-          const event = {
-            ...deniedAuditEventContext(auditContext),
-            eventType: 'team.invitation.creation_denied',
-            subjectType: null,
-            subjectId: null,
-            subjectLabel: null,
-            details: { requestedRole: input.role, reason },
-          } satisfies AuditEventInput;
-          return {
-            status: 'denied' as const,
-            error: new TeamCommandError('FORBIDDEN'),
-            events: [event] as const,
-          };
-        };
-        if (!actor || !canManage(actor)) {
-          return denied('insufficient_permission');
+        ) =>
+          denied([
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.invitation.creation_denied',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: { requestedRole: input.role, reason },
+            },
+          ]);
+
+        if (actor === null || !(yield* canManage(actor))) {
+          return yield* refuse('insufficient_permission');
         }
-        if (input.role === 'owner' && !isOwner(actor)) {
-          return denied('owner_role_requires_owner');
-        }
-        if (
-          (await store.hasMemberWithEmail(
-            client,
-            context.tenantDb.teamId,
-            email,
-          )) ||
-          (await store.hasLivePendingInvitation(
-            client,
-            context.tenantDb.teamId,
-            email,
-          ))
-        ) {
-          throw new TeamCommandError('CONFLICT');
-        }
-        if (
-          (await store.countLivePendingInvitations(
-            client,
-            context.tenantDb.teamId,
-          )) >= INVITATION_LIMIT
-        ) {
-          throw new TeamCommandError('CONFLICT');
+        if (input.role === 'owner' && !(yield* isOwner(actor))) {
+          return yield* refuse('owner_role_requires_owner');
         }
 
-        const invitation = await store.createInvitation(client, {
+        if (
+          (yield* store.hasMemberWithEmail(access.teamId, email)) ||
+          (yield* store.hasLivePendingInvitation(access.teamId, email))
+        ) {
+          return yield* new TeamCommandError({ code: 'CONFLICT' });
+        }
+        if (
+          (yield* store.countLivePendingInvitations(access.teamId)) >=
+          INVITATION_LIMIT
+        ) {
+          return yield* new TeamCommandError({ code: 'CONFLICT' });
+        }
+
+        const invitation = yield* store.createInvitation({
           id: randomUUID(),
-          teamId: context.tenantDb.teamId,
+          teamId: access.teamId,
           email,
           role: input.role,
-          inviterId: context.principal.userId,
+          inviterId: principal.userId,
         });
-        const delivery = await enqueueInvitationDelivery(client, {
+        const delivery = yield* enqueueInvitationDelivery({
           invitationId: invitation.id,
-          teamId: context.tenantDb.teamId,
+          teamId: access.teamId,
           email: invitation.email,
           role: input.role,
-          teamLabel: auditContext.teamLabel,
-          inviterLabel: auditActorEventContext(auditContext).actorLabel,
+          // The labels the combinator locked, not ones this command chose: the
+          // email the invitee reads names the team as it was when the
+          // invitation was made.
+          teamLabel: context.teamLabel,
+          inviterLabel: context.actorLabel,
           expiresAt: invitation.expiresAt,
         });
-        // Required rather than optional here: every entrypoint that has a
-        // database has a job client, so an absent one is a wiring fault, and
-        // skipping the enqueue would commit an invitation nothing will ever
-        // send. The RPC layer answers the refusal with a 500, which is what a
-        // server misconfiguration is.
-        if (!context.jobs) {
-          throw new Error('invitation delivery needs a job client');
-        }
-        // In the command's own transaction (#1895), so a rollback takes the
-        // job with it and a commit can never leave the invitation without one.
-        await context.jobs.enqueue(client, 'invitation-delivery', {
-          deliveryId: delivery.deliveryId,
-        });
-        const event = {
-          ...auditEventContext(auditContext),
-          eventType: 'team.invitation.created',
-          subjectType: 'team_invitation',
-          subjectId: invitation.id,
-          subjectLabel: invitation.email,
-          details: { role: input.role },
-        } satisfies AuditEventInput;
-        return {
-          status: 'succeeded' as const,
-          result: {
+        // In the command's own transaction (#1895), which `Jobs.enqueue`
+        // guarantees at the type level: it requires `Transaction`, and the
+        // only thing that provides one is the scope `audited` opened. A
+        // rollback therefore takes the job with it, and a commit can never
+        // leave an invitation nothing will ever send. The optional job client
+        // this replaced could be absent, which is why it had a runtime throw;
+        // a missing service is now a wiring error the graph refuses to build.
+        yield* Effect.orDie(
+          // `JobRefused` is unreachable here and is not a refusal this command
+          // could answer with: the queue refuses only a collision on a
+          // per-enqueue `singletonKey`, and this enqueue names none. A
+          // deliveryId is minted per invitation, so there is nothing for a
+          // second job to collide with either.
+          jobs.enqueue('invitation-delivery', {
+            deliveryId: delivery.deliveryId,
+          }),
+        );
+
+        return changed(
+          {
             invitationId: invitation.id,
             email: invitation.email,
             role: input.role,
             status: 'pending' as const,
             expiresAt: invitation.expiresAt,
           },
-          events: [event] as const,
-        };
-      },
-    );
-    await reservation.complete('other');
-    return result;
-  } catch (error) {
-    await reservation.complete(
-      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
-        ? 'denied'
-        : 'other',
-    );
-    throw error;
-  }
-}
+          [
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.invitation.created',
+              subjectType: 'team_invitation',
+              subjectId: invitation.id,
+              subjectLabel: invitation.email,
+              details: { role: input.role },
+            },
+          ],
+        );
+      }),
+    ),
+  );
+});
 
 export type CancelledTeamInvitation = {
   invitationId: string;
   status: 'canceled';
 };
 
-export async function cancelTeamInvitation(
-  context: AuditedCommandContext,
+export const cancelTeamInvitation: (
+  access: TeamAccess,
   input: { invitationId: string },
-): Promise<CancelledTeamInvitation> {
-  const reservation = await reserveDeniedTeamCommand(
-    context,
+) => Effect.Effect<
+  CancelledTeamInvitation,
+  TeamCommandError | NotFound | SqlError.SqlError,
+  Database | Principal | RequestId | AuditSignal
+> = Effect.fn('team.cancelInvitation')(function* (
+  access: TeamAccess,
+  input: { invitationId: string },
+) {
+  return yield* reserved(
     'team.cancelInvitation',
-  );
-
-  try {
-    const result = await runAuditedCommand<CancelledTeamInvitation>(
-      context,
-      async (client, auditContext) => {
-        const actor = await store.lockActor(
-          client,
-          context.tenantDb.teamId,
-          context.principal.userId,
-        );
-        if (!actor || !canManage(actor)) {
-          const event = {
-            ...deniedAuditEventContext(auditContext),
-            eventType: 'team.invitation.cancellation_denied',
-            subjectType: null,
-            subjectId: null,
-            subjectLabel: null,
-            details: { reason: 'insufficient_permission' },
-          } satisfies AuditEventInput;
-          return {
-            status: 'denied' as const,
-            error: new TeamCommandError('FORBIDDEN'),
-            events: [event] as const,
-          };
+    access.teamId,
+    audited(
+      'team.cancelInvitation.audited',
+      access,
+      Effect.gen(function* () {
+        const principal = yield* Principal;
+        const actor = yield* store.lockActor(access.teamId, principal.userId);
+        if (actor === null || !(yield* canManage(actor))) {
+          return yield* denied([
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.invitation.cancellation_denied',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: { reason: 'insufficient_permission' },
+            },
+          ]);
         }
+
         // Read before contending for the row: the refusal below names the
         // invitation it could not cancel, and a lock this command never got
         // leaves nothing locked to read that label from. Unlocked is enough
         // for a label — the decision itself is made under the lock.
-        const label = await store.readInvitationLabel(
-          client,
-          context.tenantDb.teamId,
+        const label = yield* store.readInvitationLabel(
+          access.teamId,
           input.invitationId,
         );
-        if (label === null) throw new TeamCommandError('NOT_FOUND');
-        return runAuditedCommandWork(
-          client,
-          async () => {
-            // The delivery handler holds this same row for the length of its
-            // send (#1895). Waiting for it would hold the team's audit lock
-            // behind an SMTP call, so this asks not to wait and refuses.
-            const invitation = await store.lockInvitation(
-              client,
-              context.tenantDb.teamId,
-              input.invitationId,
-              { nowait: true },
-            );
-            if (!invitation) throw new TeamCommandError('NOT_FOUND');
-            if (invitation.status !== 'pending') {
-              throw new TeamCommandError('NO_CHANGE');
-            }
-            if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
-            const roles = parseRoles(invitation.role);
-            // Better Auth historically stored role arrays as comma-separated
-            // values. Cancellation stays available for those rows, while
-            // acceptance below deliberately remains limited to one role for
-            // one new membership.
-            await store.cancelInvitation(
-              client,
-              context.tenantDb.teamId,
-              invitation.id,
-            );
-            const event = {
-              ...auditEventContext(auditContext),
+        if (label === null) {
+          return yield* new TeamCommandError({ code: 'NOT_FOUND' });
+        }
+
+        // The delivery handler holds this same row for the length of its send
+        // (#1895). Waiting for it would hold the team's audit lock behind an
+        // SMTP call, so this asks not to wait; Postgres answers 55P03, and
+        // that is the one database failure here which is a decision rather
+        // than a fault.
+        const invitation = yield* store
+          .lockInvitation(access.teamId, input.invitationId, { nowait: true })
+          .pipe(
+            Effect.catch(
+              (
+                error,
+              ): Effect.Effect<
+                never,
+                AuditableTeamFailure | SqlError.SqlError
+              > =>
+                isLockUnavailable(error)
+                  ? failed('DELIVERY_IN_PROGRESS', [
+                      {
+                        ...TEAM_EVENT,
+                        eventType: 'team.invitation.cancellation_failed',
+                        subjectType: 'team_invitation',
+                        subjectId: input.invitationId,
+                        subjectLabel: label,
+                        details: { failureCode: 'delivery_in_progress' },
+                      },
+                    ])
+                  : Effect.fail(error),
+            ),
+          );
+
+        if (invitation === null) {
+          return yield* new TeamCommandError({ code: 'NOT_FOUND' });
+        }
+        if (invitation.status !== 'pending') {
+          return yield* new TeamCommandError({ code: 'NO_CHANGE' });
+        }
+        if (invitation.role === null) {
+          return yield* new TeamCommandError({ code: 'INVALID_ROLE' });
+        }
+        // Better Auth historically stored role arrays as comma-separated
+        // values. Cancellation stays available for those rows, while
+        // acceptance below deliberately remains limited to one role for one
+        // new membership.
+        const roles = yield* parseRoles(invitation.role);
+
+        yield* store.cancelInvitation(access.teamId, invitation.id);
+        return changed(
+          { invitationId: invitation.id, status: 'canceled' as const },
+          [
+            {
+              ...TEAM_EVENT,
               eventVersion: 2,
               eventType: 'team.invitation.cancelled',
               subjectType: 'team_invitation',
               subjectId: invitation.id,
               subjectLabel: invitation.email,
               details: { roles },
-            } satisfies AuditEventInput;
-            return {
-              result: {
-                invitationId: invitation.id,
-                status: 'canceled' as const,
-              },
-              events: [event],
-            };
-          },
-          (error) => {
-            if (!isLockUnavailableError(error)) return null;
-            const event = {
-              ...failedAuditEventContext(auditContext),
-              eventType: 'team.invitation.cancellation_failed',
-              subjectType: 'team_invitation',
-              subjectId: input.invitationId,
-              subjectLabel: label,
-              details: { failureCode: 'delivery_in_progress' },
-            } satisfies AuditEventInput;
-            return {
-              error: new TeamCommandError('DELIVERY_IN_PROGRESS'),
-              events: [event],
-            };
-          },
+            },
+          ],
         );
-      },
-    );
-    await reservation.complete('other');
-    return result;
-  } catch (error) {
-    await reservation.complete(
-      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
-        ? 'denied'
-        : 'other',
-    );
-    throw error;
-  }
-}
+      }),
+    ),
+  );
+});
 
 export type AcceptedTeamInvitation = {
   invitationId: string;
@@ -475,184 +518,196 @@ export type AcceptedTeamInvitation = {
   status: 'accepted';
 };
 
-export type InvitationCommandContext = {
-  pool: pg.Pool;
-  principal: AuditedCommandContext['principal'];
-  requestId: string;
-};
-
 /**
  * Invitation acceptance is the one team command whose authenticated actor is
- * not a member yet. The browser supplies only the opaque invitation id; this
- * command resolves the tenant, then locks and revalidates all invitation and
- * membership evidence inside the ordinary audited team transaction.
+ * not a member yet. The browser supplies only the opaque invitation id, so the
+ * tenant is resolved here rather than taken from the request, and every piece
+ * of invitation and membership evidence is then locked and revalidated inside
+ * the ordinary audited team transaction.
  */
-export async function acceptTeamInvitation(
-  context: InvitationCommandContext,
-  input: { invitationId: string },
-): Promise<AcceptedTeamInvitation> {
-  const invitationId = TeamInvitationIdSchema.parse(input.invitationId);
-  const teamId = await store.findInvitationTeamId(context.pool, invitationId);
-  // Unknown, expired, cancelled, and wrong-account invitations all expose the
+export const acceptTeamInvitation: (input: {
+  invitationId: string;
+}) => Effect.Effect<
+  AcceptedTeamInvitation,
+  TeamCommandError | NotFound | SqlError.SqlError,
+  Database | Principal | RequestId | AuditSignal
+> = Effect.fn('team.acceptInvitation')(function* (input: {
+  invitationId: string;
+}) {
+  const invitationId = yield* Effect.sync(() =>
+    TeamInvitationIdSchema.parse(input.invitationId),
+  );
+  // Untenanted because there is no tenant yet: `team_invitations` carries no
+  // row-level-security policy, and this lookup is what decides which team the
+  // audited transaction below will be opened on.
+  const teamId = yield* UntenantedScope.open(
+    store.findInvitationTeam(invitationId),
+  );
+  // Unknown, expired, cancelled and wrong-account invitations all expose the
   // same refusal to the caller. Only a server-resolved tenant can receive a
   // bounded immutable denial event.
-  if (!teamId) throw new TeamCommandError('FORBIDDEN');
-  const auditedContext = {
-    tenantDb: createTenantDb(context.pool, teamId),
-    principal: context.principal,
-    requestId: context.requestId,
-  } satisfies AuditedCommandContext;
-  const reservation = await reserveDeniedTeamCommand(
-    auditedContext,
-    'team.acceptInvitation',
-  );
+  if (teamId === null) {
+    return yield* new TeamCommandError({ code: 'FORBIDDEN' });
+  }
 
-  try {
-    const result = await runAuditedCommand(
-      auditedContext,
-      async (client, auditContext) => {
-        const invitation = await store.lockInvitation(
-          client,
-          teamId,
-          invitationId,
-        );
-        if (!invitation) throw new TeamCommandError('FORBIDDEN');
-        const denied = (
+  // The access this command opens its transaction on, and the one place in
+  // Studio where the token is minted for somebody who is NOT a member: the
+  // invitation row is what names the team, and the actor's right to act in it
+  // is exactly what the command is about to decide.
+  //
+  // It is minted BEFORE the row is locked, because the scope has to be open
+  // before anything can be locked inside it — so the mint is not the proof.
+  // The proof is the locked re-read below: the transaction it opens is
+  // stamped with the team the invitation named, and every decision after that
+  // comes from the invitation row under `FOR UPDATE`. A token for a team the
+  // caller has no claim on therefore buys nothing: the command denies, and the
+  // denial is the event that team is entitled to.
+  //
+  // The role carried is the invitee's prospective one and nothing is read from
+  // it; `TeamAccess.role` only ever decides ordering, never authorization.
+  const access = unsafeMakeTeamAccess(teamId, 'member');
+
+  return yield* reserved(
+    'team.acceptInvitation',
+    teamId,
+    audited(
+      'team.acceptInvitation.audited',
+      access,
+      Effect.gen(function* () {
+        const principal = yield* Principal;
+        const context = yield* AuditContext;
+        const invitation = yield* store.lockInvitation(teamId, invitationId);
+        if (invitation === null) {
+          return yield* new TeamCommandError({ code: 'FORBIDDEN' });
+        }
+
+        const refuse = (
           reason:
             | 'email_mismatch'
             | 'email_unverified'
             | 'invitation_unavailable',
-        ) => {
-          const event = {
-            ...deniedAuditEventContext(auditContext),
-            eventType: 'team.invitation.acceptance_denied',
-            subjectType: 'team_invitation',
-            subjectId: invitation.id,
-            subjectLabel: invitation.email,
-            details: { reason },
-          } satisfies AuditEventInput;
-          return {
-            status: 'denied' as const,
-            error: new TeamCommandError('FORBIDDEN'),
-            events: [event] as const,
-          };
-        };
-        if (!context.principal.emailVerified) {
-          return denied('email_unverified');
-        }
+        ) =>
+          denied([
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.invitation.acceptance_denied',
+              subjectType: 'team_invitation',
+              subjectId: invitation.id,
+              subjectLabel: invitation.email,
+              details: { reason },
+            },
+          ]);
+
+        if (!principal.emailVerified) return yield* refuse('email_unverified');
         if (
           invitation.email.toLowerCase() !==
-          context.principal.email.trim().toLowerCase()
+          principal.email.trim().toLowerCase()
         ) {
-          return denied('email_mismatch');
+          return yield* refuse('email_mismatch');
         }
+        // `isLive` is the database's own comparison against
+        // `clock_timestamp()`, so an application host running behind cannot
+        // accept an invitation Postgres considers expired.
         if (
           (invitation.status !== 'pending' &&
             invitation.status !== 'accepted') ||
           (invitation.status === 'pending' && !invitation.isLive)
         ) {
-          return denied('invitation_unavailable');
+          return yield* refuse('invitation_unavailable');
         }
-        return runAuditedCommandWork(
-          client,
-          async () => {
-            if (!invitation.role) {
-              throw new TeamCommandError('INVALID_ROLE');
-            }
-            const roles = parseRoles(invitation.role);
-            if (roles.length !== 1) {
-              throw new TeamCommandError('INVALID_ROLE');
-            }
-            const role = roles[0]!;
 
-            const memberships = await store.lockMembershipSet(
-              client,
-              teamId,
-              context.principal.userId,
-            );
-            if (invitation.status === 'accepted') {
-              if (!memberships.existing) {
-                throw new TeamCommandError('CONFLICT');
-              }
-              const existingRoles = parseRoles(memberships.existing.role);
-              if (existingRoles.length !== 1) {
-                throw new TeamCommandError('INVALID_ROLE');
-              }
-              return {
-                status: 'unchanged' as const,
-                result: {
-                  invitationId,
-                  teamId,
-                  teamName: auditContext.teamLabel,
-                  memberId: memberships.existing.id,
-                  role: existingRoles[0]!,
-                  status: 'accepted' as const,
-                },
-              };
-            }
-            if (memberships.existing || memberships.count >= MEMBERSHIP_LIMIT) {
-              throw new TeamCommandError('CONFLICT');
-            }
+        const bounded = (failureCode: 'invalid_role' | 'conflict') =>
+          [
+            {
+              ...TEAM_EVENT,
+              eventType: 'team.invitation.acceptance_failed',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: { failureCode },
+            },
+          ] satisfies AuditEvents;
 
-            const memberId = randomUUID();
-            await store.createMember(client, {
-              id: memberId,
-              teamId,
-              userId: context.principal.userId,
-              role,
-            });
-            await store.acceptInvitation(client, teamId, invitationId);
-            const event = {
-              ...auditEventContext(auditContext),
+        if (invitation.role === null) {
+          return yield* failed('INVALID_ROLE', bounded('invalid_role'));
+        }
+        const roles = tryParseRoles(invitation.role);
+        // One role for one new membership, deliberately: a legacy
+        // comma-separated value can still be cancelled, but it cannot be
+        // turned into a membership whose role nothing can name.
+        if (roles === null || roles.length !== 1) {
+          return yield* failed('INVALID_ROLE', bounded('invalid_role'));
+        }
+        const role = roles[0]!;
+
+        const memberships = yield* store.lockMembershipSet(
+          teamId,
+          principal.userId,
+        );
+
+        if (invitation.status === 'accepted') {
+          // The lost-response replay: the identities are the same and nothing
+          // changed, so this must return what the first call returned rather
+          // than invent a second acceptance event.
+          if (memberships.existing === null) {
+            return yield* failed('CONFLICT', bounded('conflict'));
+          }
+          const existingRoles = yield* Effect.orElseSucceed(
+            parseRoles(memberships.existing.role),
+            () => null,
+          );
+          if (existingRoles === null || existingRoles.length !== 1) {
+            return yield* failed('INVALID_ROLE', bounded('invalid_role'));
+          }
+          return unchanged({
+            invitationId,
+            teamId,
+            teamName: context.teamLabel,
+            memberId: memberships.existing.id,
+            role: existingRoles[0]!,
+            status: 'accepted' as const,
+          });
+        }
+
+        if (
+          memberships.existing !== null ||
+          memberships.count >= MEMBERSHIP_LIMIT
+        ) {
+          return yield* failed('CONFLICT', bounded('conflict'));
+        }
+
+        const memberId = randomUUID();
+        yield* store.createMember({
+          id: memberId,
+          teamId,
+          userId: principal.userId,
+          role,
+        });
+        yield* store.acceptInvitation(teamId, invitationId);
+        return changed(
+          {
+            invitationId,
+            teamId,
+            teamName: context.teamLabel,
+            memberId,
+            role,
+            status: 'accepted' as const,
+          },
+          [
+            {
+              ...TEAM_EVENT,
               eventType: 'team.invitation.accepted',
               subjectType: 'team_invitation',
               subjectId: invitationId,
               subjectLabel: invitation.email,
               details: { role, memberId },
-            } satisfies AuditEventInput;
-            return {
-              result: {
-                invitationId,
-                teamId,
-                teamName: auditContext.teamLabel,
-                memberId,
-                role,
-                status: 'accepted' as const,
-              },
-              events: [event],
-            };
-          },
-          (error) => {
-            if (
-              !(error instanceof TeamCommandError) ||
-              (error.code !== 'INVALID_ROLE' && error.code !== 'CONFLICT')
-            ) {
-              return null;
-            }
-            const event = {
-              ...failedAuditEventContext(auditContext),
-              eventType: 'team.invitation.acceptance_failed',
-              subjectType: null,
-              subjectId: null,
-              subjectLabel: null,
-              details: {
-                failureCode:
-                  error.code === 'INVALID_ROLE' ? 'invalid_role' : 'conflict',
-              },
-            } satisfies AuditEventInput;
-            return { error, events: [event] };
-          },
+            },
+          ],
         );
-      },
-    );
-    await reservation.complete('other');
-    return result;
-  } catch (error) {
-    await reservation.complete(
-      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
-        ? 'denied'
-        : 'other',
-    );
-    throw error;
-  }
-}
+      }),
+    ),
+  );
+});
+
+/** Exported for the suites' compile assertions; nothing in production reads it. */
+export type { AuditEventBody };

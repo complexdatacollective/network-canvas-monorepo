@@ -1,15 +1,35 @@
-import { Context, Effect, Option } from 'effect';
-import type { SqlClient, SqlError } from 'effect/unstable/sql';
+import { Effect, Option } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
+import {
+  type DrizzleTransaction,
+  type TeamAccess,
+  Transaction,
+  unsafeMakeTeamAccess,
+} from '@codaco/studio-sync/tenant';
 
 import {
   Database,
   type DatabaseService,
-  type DrizzleDatabase,
   MaintenanceDatabase,
+  OwnerDatabase,
   roleFor,
 } from './client.ts';
+
+// `Transaction`, `TeamAccess` and its constructor are **defined in
+// `@codaco/studio-sync/tenant`** and re-exported here, not declared here.
+// `SyncServer` writes inside a caller's transaction and so must require the
+// service, and that package cannot import from the app that depends on it. A
+// service tag's identity is its class, so two declarations sharing a string
+// key would still be two different services: there is one definition, and this
+// module is where the server reads it from.
+export {
+  type DrizzleTransaction,
+  type TeamAccess,
+  Transaction,
+  unsafeMakeTeamAccess,
+};
 
 // Tenancy, and the two scopes that are the only way Studio opens a transaction
 // (#1927 §9, §10).
@@ -24,62 +44,6 @@ import {
 // — which is a stronger guarantee than the coverage test the first draft of
 // the design proposed, because a coverage test cannot see a wrong id or a
 // check made too late (#1927 §21 F7).
-
-/**
- * The open transaction. Provided per transaction and never by a layer, which
- * is the whole of the job queue's transaction guarantee at the type level: an
- * effect that writes a row and enqueues a job cannot run outside a transaction,
- * because `Jobs.enqueue` requires this service and only the scopes below
- * provide it.
- *
- * `sql` and `tx` are the same connection. Routing is by fiber context rather
- * than by value — `SqlClient` reads the fiber's `TransactionConnection`
- * service, and drizzle's `transaction` delegates to `sql.withTransaction`
- * (drizzle `effect-postgres/session.js`) — so carrying them here is a
- * convenience for callers, not the mechanism.
- */
-export class Transaction extends Context.Service<
-  Transaction,
-  {
-    readonly tx: DrizzleTransaction;
-    readonly sql: SqlClient.SqlClient;
-    /** `null` in a maintenance scope, which stamps no team GUC. */
-    readonly teamId: string | null;
-  }
->()('@studio/db/Transaction') {}
-
-/** The handle drizzle hands a transaction body. */
-export type DrizzleTransaction = Parameters<
-  Parameters<DrizzleDatabase['transaction']>[0]
->[0];
-
-const TeamAccessBrand: unique symbol = Symbol.for('@studio/db/TeamAccess');
-
-/**
- * Proof that the caller may act within a team, and the only key that opens a
- * tenant transaction. It carries the membership role so a command that needs
- * the tier does not have to ask a second time — but the authoritative check for
- * an administrative action is still the locked re-read inside the command's own
- * transaction, which closes the window between the two.
- */
-export type TeamAccess = {
-  readonly teamId: string;
-  readonly role: string;
-  readonly [TeamAccessBrand]: typeof TeamAccessBrand;
-};
-
-/**
- * Mints a `TeamAccess`. **Not** a general constructor: `db/__tests__/raw-sql-policy.test.ts`
- * pins its call sites to the five modules named at the top of this file, each
- * of which has just proved a membership. Anywhere else it would be exactly the
- * hole the branded type exists to close.
- *
- * @internal
- */
-export const unsafeMakeTeamAccess = (
-  teamId: string,
-  role: string,
-): TeamAccess => ({ teamId, role, [TeamAccessBrand]: TeamAccessBrand });
 
 export type IsolationLevel = 'repeatable read' | 'serializable';
 
@@ -194,6 +158,75 @@ export const TenantScope = {
     Database | Exclude<R, Transaction>
   > => Database.use((service) => openOn(service, access.teamId, body, options)),
 } as const;
+
+/**
+ * A transaction on the **application** client with no team stamped.
+ *
+ * It exists for one read, and the comment is the reason it is named rather
+ * than folded into `TenantScope.open`: `team.acceptInvitation` has to resolve
+ * which team an invitation belongs to before anybody has proved they may act
+ * in that team, because the browser sends the opaque invitation id and nothing
+ * else (`team/store.ts` — `findInvitationTeam`).
+ *
+ * It is strictly weaker than a tenant scope rather than a way around one. The
+ * team GUC is unset, and every tenant policy reads it through
+ * `NULLIF(current_setting(…, true), '')`, so a statement here matches no team's
+ * rows at all — the tables it can reach are better-auth's, which carry no
+ * policy. What it still does is pin the role and the search path, which a bare
+ * statement outside a transaction does not (fallback A, #1927 §20 Q6).
+ */
+export const UntenantedScope = {
+  open: <A, E, R>(
+    body: Effect.Effect<A, E, R>,
+    options?: ScopeOptions,
+  ): Effect.Effect<
+    A,
+    E | SqlError.SqlError,
+    Database | Exclude<R, Transaction>
+  > => Database.use((service) => openOn(service, null, body, options)),
+} as const;
+
+/**
+ * The connecting login's scope. No team is stamped, because the owner is not a
+ * tenant identity — it is the role that applies the schema and seeds it, and
+ * every tenant policy is written to except the application roles rather than
+ * this one.
+ *
+ * It exists because two callers need a transaction as the owner and neither is
+ * a tenant: `db/migrate.ts`, which applies the schema and installs the queue's,
+ * and the suites, whose fixtures and oracles have to see across teams to be
+ * oracles at all.
+ */
+export const OwnerScope = {
+  open: <A, E, R>(
+    body: Effect.Effect<A, E, R>,
+    options?: ScopeOptions,
+  ): Effect.Effect<
+    A,
+    E | SqlError.SqlError,
+    OwnerDatabase | Exclude<R, Transaction>
+  > => OwnerDatabase.use((service) => openOn(service, null, body, options)),
+} as const;
+
+/**
+ * A nested transaction on the transaction already open: a savepoint on the
+ * same connection, taken through the handle the outer scope provided rather
+ * than through a client tag, so it cannot accidentally open a second one.
+ *
+ * `audited` is the reason this exists. It needs the body's writes to be
+ * undoable without losing the locks the outer transaction holds, and a
+ * savepoint is exactly that — a subtransaction's rollback releases only the
+ * locks taken inside it. Re-entering `TenantScope.open` would do the same
+ * thing but would re-send `set local role` and the team GUC on every audited
+ * command, two round trips that change nothing.
+ *
+ * `SqlClient` names these `effect_sql_<depth>` and emits no `RELEASE` on
+ * success, so a bulk loop must not open one per row.
+ */
+export const savepoint = <A, E, R>(
+  body: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E | SqlError.SqlError, Transaction | R> =>
+  Effect.flatMap(Transaction, (open) => open.tx.transaction(() => body));
 
 /**
  * The worker's scopes, on the **maintenance** client.

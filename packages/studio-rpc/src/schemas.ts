@@ -90,7 +90,7 @@ const DecimalSequenceSchema = z
 
 // Plain counts, not a rendered string: `NavItem` formats them in the runtime's
 // locale, and it is the one that decides a zero is left off entirely.
-export const StudyCountsSchema = z.object({
+const StudyCountsSchema = z.object({
   /** Published versions of the study's protocol line; 0 while it has none. */
   versions: z.number().int().nonnegative(),
   participants: z.number().int().nonnegative(),

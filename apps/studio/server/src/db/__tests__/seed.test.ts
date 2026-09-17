@@ -1,4 +1,5 @@
 import { verifyPassword } from 'better-auth/crypto';
+import { getTableColumns } from 'drizzle-orm';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -12,7 +13,9 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
+import { AUDIT_TABLES } from '../../audit/schema.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
+import { SEED_AUDIT_COLUMNS } from '../seed/audit.ts';
 import { sha256Hex } from '../seed/rng.ts';
 
 const db = await reachableDb();
@@ -1286,4 +1289,19 @@ describe.skipIf(!db)('seed', () => {
     },
     SEEDING_TIMEOUT_MS,
   );
+});
+
+// The seed is the one place a second writer of the append-only audit log
+// exists, because it runs on node-postgres inside its own `pg` transaction
+// while `audit/store.ts` runs on `@effect/sql-pg` (see that file's header for
+// why they cannot be the same code). This is what stops them drifting: a
+// column added to `audit_events` without being added to the seed's insert
+// fails here, rather than silently writing a row the store would not have.
+describe('the seed audit writer', () => {
+  it('writes exactly the columns audit_events declares', () => {
+    const declared = Object.values(getTableColumns(AUDIT_TABLES.auditEvents))
+      .map((column) => column.name)
+      .toSorted();
+    expect([...SEED_AUDIT_COLUMNS].toSorted()).toEqual(declared);
+  });
 });

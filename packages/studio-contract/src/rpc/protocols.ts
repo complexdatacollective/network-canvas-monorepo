@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 import { Rpc, RpcGroup } from 'effect/unstable/rpc';
 
 import { Authenticated } from '../middleware/authenticated.ts';
+import { TeamAdministration } from '../middleware/teamAdministration.ts';
 import {
   Conflict,
   Forbidden,
@@ -33,6 +34,16 @@ import { TeamScoped } from '../schema/team.ts';
 // errors in. So a refusal the middleware's schema would happily encode still has
 // to be declared here for a handler to be able to raise it.
 export const ProtocolsRpcs = RpcGroup.make(
+  // The one admin-only procedure, so the one that declares the tier gate. A
+  // line no study owns is reachable only by an Admin or Owner, so only they may
+  // make one — and `TeamAdministration` resolves that before the handler runs,
+  // handing it the `TeamAccess` it opens its transaction with.
+  //
+  // `.middleware(TeamAdministration)` comes BEFORE the group's
+  // `.middleware(Authenticated)` below, and the order is load-bearing: the
+  // middleware added last is the outermost and runs first, so `Authenticated`
+  // has to be last for the principal to exist when this gate reads it
+  // (`middleware/teamAdministration.ts`, `__tests__/ordering-probe.test.ts`).
   Rpc.make('protocols.create', {
     payload: CreateProtocolInput,
     success: CreateProtocolResult,
@@ -42,7 +53,7 @@ export const ProtocolsRpcs = RpcGroup.make(
       RateLimited,
       ProtocolAuthorizationError,
     ]),
-  }),
+  }).middleware(TeamAdministration),
   Rpc.make('protocols.draft', {
     payload: ProtocolDraftInput,
     success: ProtocolDraft,

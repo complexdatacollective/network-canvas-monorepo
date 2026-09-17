@@ -2,7 +2,8 @@ import { assert, describe, it, layer } from '@effect/vitest';
 import { Effect, Exit } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database, Transaction, withTransaction } from '../database.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { Jobs, RecordedJobs } from '../jobs.ts';
 import {
   asApp,
@@ -36,19 +37,22 @@ const db = await reachableDb();
 
 /**
  * The recording layer never issues a statement, so the `Transaction` it is
- * handed carries a client nothing calls. Reaching for it throws, which is the
- * honest shape: a recorded enqueue that ran SQL would not be recording.
+ * handed carries a statement client and a builder handle that nothing calls.
+ * Reaching for either throws, which is the honest shape: a recorded enqueue
+ * that ran SQL would not be recording.
  */
+const refuse = () => {
+  throw new Error('the recording enqueue must not issue a statement');
+};
+
 const NO_SQL: Transaction['Service']['sql'] = new Proxy(
   (() => undefined) as unknown as Transaction['Service']['sql'],
-  {
-    get() {
-      throw new Error('the recording enqueue must not issue a statement');
-    },
-    apply() {
-      throw new Error('the recording enqueue must not issue a statement');
-    },
-  },
+  { get: refuse, apply: refuse },
+);
+
+const NO_TX: Transaction['Service']['tx'] = new Proxy(
+  {} as Transaction['Service']['tx'],
+  { get: refuse },
 );
 
 /**
@@ -70,26 +74,26 @@ describe.skipIf(!db)('the transaction guarantee', () => {
     const withDomainTable = Effect.gen(function* () {
       const { schema } = yield* QueueHarness;
       yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
+        Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
           sql.unsafe(
             `CREATE TABLE IF NOT EXISTS ${schema}.${DOMAIN_TABLE} (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), note text NOT NULL)`,
           ),
         ),
       );
       yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
+        Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
           sql.unsafe(
             `GRANT INSERT, SELECT, DELETE ON ${schema}.${DOMAIN_TABLE} TO studio_app`,
           ),
         ),
       );
       yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
+        Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
           sql.unsafe(`DELETE FROM ${schema}.${DOMAIN_TABLE}`),
         ),
       );
       yield* asOwner(
-        Effect.flatMap(Database, ({ sql }) =>
+        Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
           sql.unsafe(`DELETE FROM ${schema}.jobs`),
         ),
       );
@@ -100,7 +104,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       const { schema } = yield* QueueHarness;
       const rows = yield* asOwner(
         Effect.flatMap(
-          Database,
+          MaintenanceDatabase,
           ({ sql }) =>
             sql<{
               count: number;
@@ -133,7 +137,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           // Rollback: the body fails after both writes.
           const rolledBack = yield* Effect.exit(
             asApp(
-              withTransaction(
+              MaintenanceScope.open(
                 Effect.flatMap(write('rolled back'), () =>
                   Effect.fail('roll back command' as const),
                 ),
@@ -145,7 +149,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           assert.deepStrictEqual(yield* readJobs(), []);
 
           // Commit: the same body, allowed to finish.
-          const jobId = yield* asApp(withTransaction(write('committed')));
+          const jobId = yield* asApp(MaintenanceScope.open(write('committed')));
           assert.strictEqual(yield* countDomainRows(), 1);
           const queued = yield* readJobs();
           assert.strictEqual(queued.length, 1);
@@ -174,7 +178,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           // while the first is mid-transaction is proof of where the insert
           // went. The owner client is a different pool entirely.
           const insideCount = yield* asApp(
-            withTransaction(
+            MaintenanceScope.open(
               Effect.gen(function* () {
                 yield* jobs.enqueue('invitation-delivery', { deliveryId });
                 const outside = yield* readJobs();
@@ -200,7 +204,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const deliveryId = '33333333-3333-4333-8333-333333333333';
 
           const { domainPid, enqueuePid, otherPid } = yield* asApp(
-            withTransaction(
+            MaintenanceScope.open(
               Effect.gen(function* () {
                 const { sql } = yield* Transaction;
                 const before = yield* sql<{
@@ -219,7 +223,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
                 // because one connection existed, this would equal them too.
                 const other = yield* asOwner(
                   Effect.flatMap(
-                    Database,
+                    MaintenanceDatabase,
                     ({ sql: ownerSql }) =>
                       ownerSql<{
                         pid: number;
@@ -246,8 +250,8 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       Effect.gen(function* () {
         const jobs = yield* Jobs;
         // The type-level half of the guarantee. `Effect.runSync` demands
-        // `R = never`; `enqueue` leaves `Transaction` in `R`, and nothing
-        // but `withTransaction` provides it. If this ever compiles, the
+        // `R = never`; `enqueue` leaves `Transaction` in `R`, and nothing but
+        // a scope (src/db/tenant.ts) provides it. If this ever compiles, the
         // unused `@ts-expect-error` is itself an error, so the probe cannot
         // rot into a comment.
         const outsideTransaction = () =>
@@ -265,7 +269,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const jobs = yield* Jobs;
           const refused = yield* Effect.exit(
             asApp(
-              withTransaction(
+              MaintenanceScope.open(
                 // `Schema.Struct` would strip `teamId` silently without
                 // `onExcessProperty: 'error'`, and the job would reach the
                 // table with a field the payload policy forbids.
@@ -295,7 +299,7 @@ describe('the recording enqueue', () => {
       const id = yield* Effect.provideService(
         jobs.enqueue('invitation-delivery', { deliveryId }),
         Transaction,
-        Transaction.of({ sql: NO_SQL, teamId: 'a-team' }),
+        Transaction.of({ tx: NO_TX, sql: NO_SQL, teamId: 'a-team' }),
       );
 
       assert.deepStrictEqual(store.recorded, [
@@ -320,7 +324,7 @@ describe('the recording enqueue', () => {
         Effect.provideService(
           jobs.enqueue('invitation-delivery', withExcessField),
           Transaction,
-          Transaction.of({ sql: NO_SQL, teamId: null }),
+          Transaction.of({ tx: NO_TX, sql: NO_SQL, teamId: null }),
         ),
       );
       // A defect, as under the live layer: a command that built its own

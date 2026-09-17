@@ -6,8 +6,9 @@ import {
   sealSecret,
   type SecretRandom,
   SecretUnreadableError,
+  type StoredSecret,
 } from './envelope.ts';
-import { isKeyId, type Keyring } from './keyring.ts';
+import { isKeyId, type KeyringApi } from './keyring.ts';
 
 // The whole of Studio's secret handling, as one function per place a secret is
 // stored (#1900). There is deliberately no general `encrypt`/`decrypt` export:
@@ -15,7 +16,7 @@ import { isKeyId, type Keyring } from './keyring.ts';
 // row identity is always bound into the ciphertext and a value moved to
 // another row stops opening.
 
-export type { SealedSecret } from './envelope.ts';
+export type { SealedSecret, StoredSecret } from './envelope.ts';
 
 /** `webhook_subscriptions.secret_ciphertext` / `secret_key_id`. */
 export type WebhookSecretIdentity = {
@@ -52,7 +53,14 @@ export type OAuthTokenIdentity = {
  */
 const OAUTH_PREFIX = 'studio-secret:';
 
-export type SecretsCipher = {
+/**
+ * What the cipher does, as one function per place a secret is stored. Every
+ * one of them is synchronous and none of them is typed to fail: a value that
+ * will not open under the key it names is a defect, not an outcome a caller
+ * can do anything with, and the boot gate (src/secrets/services.ts) is what
+ * turns it into a refusal to start rather than a surprise at request time.
+ */
+export type SecretsCipherApi = {
   /**
    * The id every `seal` writes under. Rotation reads it to select the rows
    * that are not current yet (src/secrets/stores.ts); nothing else needs it,
@@ -66,7 +74,7 @@ export type SecretsCipher = {
   ): SealedSecret;
   openWebhookSecret(
     identity: WebhookSecretIdentity,
-    sealed: SealedSecret,
+    sealed: StoredSecret,
   ): string;
   /** Returns `sealed` unchanged when it is already under the current key. */
   resealWebhookSecret(
@@ -75,7 +83,7 @@ export type SecretsCipher = {
   ): SealedSecret;
 
   sealAssetKey(identity: AssetKeyIdentity, value: string): SealedSecret;
-  openAssetKey(identity: AssetKeyIdentity, sealed: SealedSecret): string;
+  openAssetKey(identity: AssetKeyIdentity, sealed: StoredSecret): string;
   /** Returns `sealed` unchanged when it is already under the current key. */
   resealAssetKey(
     identity: AssetKeyIdentity,
@@ -118,9 +126,9 @@ export function parseOAuthTokenKeyId(stored: string): string | undefined {
 }
 
 export function createSecretsCipher(
-  keyring: Keyring,
+  keyring: KeyringApi,
   options: { random?: SecretRandom } = {},
-): SecretsCipher {
+): SecretsCipherApi {
   // The seed is the only caller that passes one, so its synthetic webhook
   // secrets are reproducible; everything else takes the CSPRNG.
   const random = options.random ?? randomBytes;

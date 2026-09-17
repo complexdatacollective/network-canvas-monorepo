@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
+import { Effect, Layer, ManagedRuntime, type Context } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -24,13 +25,20 @@ import {
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { SyncServer } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { createStudio } from '../app.ts';
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
+import { AuditSignal } from '../audit/signal.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { Database } from '../db/client.ts';
+import {
+  type TeamAccess,
+  TenantScope,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
+import { Jobs } from '../jobs/jobs.ts';
 import {
   createProtocolBuilderRuntime,
   IDLE_MS,
@@ -39,8 +47,10 @@ import {
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
-import { ProtocolStore } from '../protocol/store.ts';
+import { createProtocol, latestDraftId } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
+import type { StudioServices } from '../rpc/deps.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -162,6 +172,19 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let draftId: string;
   /** The team's database, as the host's own sessions reach it. */
   let tenantDb: TenantDb;
+  /**
+   * The Effect half of the same scratch schema: the router's handlers are
+   * promises, and everything under them is Effect, so the suite builds the
+   * application client the program will build and hands the router its
+   * context — exactly as `programs/serve.ts` does.
+   */
+  let services: Context.Context<StudioServices>;
+  let runEffect: <A, E>(
+    effect: Effect.Effect<A, E, StudioServices>,
+  ) => Promise<A>;
+  let disposeServices: () => Promise<void>;
+  /** The team this suite acts in, as a proved access. */
+  const access: TeamAccess = unsafeMakeTeamAccess(TEAM_ID, 'owner');
   let reference: VariableReference;
   let unstrippable: VariableReference;
   /** A protocol whose researcher has given the participant no attributes. */
@@ -269,6 +292,35 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     dispose = scratch.dispose;
     await provisionScratchSchema(scratch.pool);
     await seedTeam(scratch.pool, TEAM_ID);
+    // The scratch schema every unqualified name in this suite resolves to.
+    // `@effect/sql-pg` rc.115 cannot set it as a startup parameter, so the
+    // client carries it as `DatabaseConfig.searchPath` and `db/tenant.ts`
+    // emits `set local search_path` inside every transaction it opens.
+    const schema = (
+      await scratch.pool.query<{ schema: string }>(
+        'select current_schema() as schema',
+      )
+    ).rows[0]!.schema;
+    const effectRuntime = ManagedRuntime.make(
+      Layer.mergeAll(
+        Database.layer({
+          url: db.url,
+          searchPath: schema,
+          maxConnections: 10,
+          applicationName: 'studio-test-protocol-builder',
+        }),
+        AuditSignal.layer,
+        // Nothing on this router enqueues, and nothing here seals: the two are
+        // present because the `/rpc` route asks for the whole data layer, and
+        // the recording queue is what makes "nothing enqueued" observable
+        // rather than assumed.
+        Jobs.layerRecording,
+        Layer.succeed(SecretsCipher)(testCipher()),
+      ),
+    );
+    disposeServices = () => effectRuntime.dispose();
+    services = await effectRuntime.runPromise(Effect.context<StudioServices>());
+    runEffect = (effect) => Effect.runPromiseWith(services)(effect);
     for (const who of [ADA, GRACE]) {
       await scratch.pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
@@ -291,16 +343,27 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     reference = strippableVariable(protocol);
     unstrippable = soleVariablePrompt(protocol);
     tenantDb = createTenantDb(scratch.app, TEAM_ID);
-    const store = new ProtocolStore(tenantDb, testCipher());
-    const created = await store.createProtocol({ protocol });
+    const created = await runEffect(
+      TenantScope.open(
+        access,
+        createProtocol(TEAM_ID, testCipher(), { protocol }),
+      ),
+    );
     protocolId = created.protocolId;
     const { ego: _ego, ...codebook } = protocol.codebook;
     egolessProtocolId = (
-      await store.createProtocol({
-        protocol: { ...protocol, name: 'No ego yet', codebook },
-      })
+      await runEffect(
+        TenantScope.open(
+          access,
+          createProtocol(TEAM_ID, testCipher(), {
+            protocol: { ...protocol, name: 'No ego yet', codebook },
+          }),
+        ),
+      )
     ).protocolId;
-    const draft = await store.latestDraftId(protocolId);
+    const draft = await runEffect(
+      TenantScope.open(access, latestDraftId(TEAM_ID, protocolId)),
+    );
     if (draft === undefined) throw new Error('the new protocol has no draft');
     draftId = draft;
 
@@ -326,6 +389,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         // report".
         readInstallation: () => Promise.resolve(null),
         pool: scratch.app,
+        services,
         protocolBuilder: createProtocolBuilderRuntime(() => now),
         assetStore,
         cipher: testCipher(),
@@ -344,6 +408,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       deployment: { mode: 'self-hosted', billing: false },
       readInstallation: () => Promise.resolve(null),
       pool: scratch.app,
+      services,
       protocolBuilder: runtime,
       assetStore,
       cipher: testCipher(),
@@ -369,6 +434,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
             getMembership: membership,
           }),
           pool: scratch.app,
+          services,
         },
       ),
     );
@@ -376,6 +442,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
   afterAll(async () => {
     await adaRpc.dispose();
+    await disposeServices?.();
     await dispose?.();
   });
 
@@ -847,11 +914,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     );
     expect(sealed.rowCount).toBe(1);
     await expect(
-      openAssetKey(tenantDb, testCipher(), {
-        teamId: TEAM_ID,
-        protocolId,
-        assetId: resourceId,
-      }),
+      runEffect(
+        TenantScope.open(
+          access,
+          openAssetKey(testCipher(), {
+            teamId: TEAM_ID,
+            protocolId,
+            assetId: resourceId,
+          }),
+        ),
+      ),
     ).resolves.toBe(SECRET);
 
     // No section row anywhere holds it — not the head manifest, not the
@@ -953,11 +1025,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     }
     // And the key is still sealed and still opens under the same asset id.
     await expect(
-      openAssetKey(tenantDb, testCipher(), {
-        teamId: TEAM_ID,
-        protocolId,
-        assetId: resourceId,
-      }),
+      runEffect(
+        TenantScope.open(
+          access,
+          openAssetKey(testCipher(), {
+            teamId: TEAM_ID,
+            protocolId,
+            assetId: resourceId,
+          }),
+        ),
+      ),
     ).resolves.toBe(SECRET);
   });
 
@@ -2113,17 +2190,20 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     // Postgres briefly unreachable: the renewal is not refused, it is never
     // made. Put where the acquire above put the keeper's own sync server.
+    // The keeper holds a renewal callback rather than a sync server now — a
+    // sync operation requires an open transaction, and a timer has none to
+    // give — so the unreachable database is the callback rejecting, which is
+    // the same thing this case has always been about: a renewal that could
+    // not be MADE, told apart from one the storage answered.
     let attempts = 0;
-    const unreachable = new SyncServer(tenantDb, () => {
-      attempts += 1;
-      return Promise.reject(new Error('ECONNREFUSED'));
-    });
     runtime.leases.hold({
-      sync: unreachable,
+      renew: () => {
+        attempts += 1;
+        return Promise.reject(new Error('ECONNREFUSED'));
+      },
       draftId,
       sectionId,
       owner,
-      epoch: 1n,
     });
 
     await runtime.leases.renewDue();

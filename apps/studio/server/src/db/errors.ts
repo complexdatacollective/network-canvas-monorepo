@@ -1,4 +1,5 @@
-import { Cause, Predicate } from 'effect';
+import { EffectDrizzleQueryError } from 'drizzle-orm/effect-core';
+import { Cause, Effect, Predicate } from 'effect';
 import { SqlError } from 'effect/unstable/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -109,7 +110,7 @@ function findProperty(error: unknown, key: string): string | undefined {
       continue;
     }
     if (key in current) {
-      const value = (current as Record<string, unknown>)[key];
+      const value: unknown = Reflect.get(current, key);
       if (Predicate.isString(value)) return value;
     }
     if (!('cause' in current)) return undefined;
@@ -139,4 +140,96 @@ function errorMessages(error: unknown): string {
     current = current.cause;
   }
   return parts.join('\n');
+}
+
+/**
+ * Every failure the data layer publishes is a `SqlError`, including the ones
+ * the drizzle builder raises.
+ *
+ * The builder catches a statement's failure and re-raises it as an
+ * `EffectDrizzleQueryError` whose `cause` is an Effect `Cause` around the
+ * original `SqlError`, and **whose own message interpolates the query text and
+ * every bind parameter**. Those parameters are the rows: an audit event's
+ * labels and details, a participant's identifiers, a sealed secret's
+ * ciphertext. Anything that logs such an error — a request log line, an
+ * `ErrorReporter`, a test's failure output — would print them.
+ *
+ * Unwrapping to the `SqlError` underneath keeps the SQLSTATE that `sqlState`
+ * and the predicates above read, and leaves the parameter dump out. It is the
+ * one place that conversion happens, so no module can forget it and none can
+ * do it differently.
+ */
+const asSqlError = (
+  error: SqlError.SqlError | EffectDrizzleQueryError,
+): SqlError.SqlError => {
+  if (SqlError.isSqlError(error)) return error;
+  const failure: unknown = Cause.isCause(error.cause)
+    ? Cause.squash(error.cause)
+    : error.cause;
+  if (SqlError.isSqlError(failure)) return failure;
+  return new SqlError.SqlError({
+    reason: new SqlError.UnknownError({
+      cause: failure ?? error,
+      // Deliberately says nothing about the statement: the wrapper's own
+      // message is what this function exists to drop.
+      message: 'the query builder failed',
+    }),
+  });
+};
+
+/**
+ * Applied to any span that reaches the database through the drizzle builder,
+ * so its published error type is `SqlError` like every other.
+ */
+export const sqlErrorsOnly: <A, R>(
+  self: Effect.Effect<A, SqlError.SqlError | EffectDrizzleQueryError, R>,
+) => Effect.Effect<A, SqlError.SqlError, R> = Effect.mapError(asSqlError);
+
+/**
+ * `sqlErrorsOnly` for a span that publishes a **domain** failure beside its
+ * database ones.
+ *
+ * The conversion is the same one `asSqlError` performs; what this adds is
+ * passing the span's own typed failure through. `sqlErrorsOnly` is declared
+ * over a channel of nothing but database errors, and most spans in the domain
+ * answer with a domain failure as well — `ProtocolStoreError`,
+ * `DraftStructureError`, a section-validation refusal. Without this such a
+ * span would have to publish the drizzle wrapper unconverted, and that
+ * wrapper's message interpolates the query text and every bind parameter.
+ *
+ * Both database shapes are recognised positively, so a domain error is
+ * returned untouched rather than wrapped as an unknown query failure.
+ *
+ */
+export const sqlErrorsOnlyBeside = <A, E, R>(
+  self: Effect.Effect<A, E | SqlError.SqlError | EffectDrizzleQueryError, R>,
+): Effect.Effect<A, E | SqlError.SqlError, R> =>
+  Effect.mapError(self, (error): E | SqlError.SqlError =>
+    SqlError.isSqlError(error) || error instanceof EffectDrizzleQueryError
+      ? asSqlError(error)
+      : error,
+  );
+
+/**
+ * The most specific message in a failure's cause chain. `@effect/sql-pg` wraps
+ * the driver error in a `SqlError` whose own message is always
+ * `PgConnection: Query failed`, so the outermost `message` says nothing about
+ * what went wrong — the useful one is the Postgres error underneath it. A
+ * failure with no chain (a tagged error of our own) answers with its own.
+ */
+export function deepestMessage(value: unknown): string | undefined {
+  let current: unknown = value;
+  let deepest: string | undefined;
+  while (Predicate.isObject(current)) {
+    if (
+      Predicate.hasProperty(current, 'message') &&
+      Predicate.isString(current.message) &&
+      current.message.length > 0
+    ) {
+      deepest = current.message;
+    }
+    if (!Predicate.hasProperty(current, 'cause')) break;
+    current = current.cause;
+  }
+  return deepest;
 }

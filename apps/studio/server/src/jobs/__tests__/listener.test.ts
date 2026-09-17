@@ -2,8 +2,8 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Duration, Effect, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
 import { readiness } from '../../http/health.ts';
-import { Database } from '../database.ts';
 import { jobsCheck } from '../readiness.ts';
 import { JobWorker } from '../worker.ts';
 import {
@@ -59,7 +59,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
         const { schema } = yield* QueueHarness;
         return yield* asOwner(
           Effect.flatMap(
-            Database,
+            MaintenanceDatabase,
             ({ sql }) =>
               sql<Backend>`
                 SELECT pid
@@ -91,7 +91,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
         const pid = Option.getOrThrow(before)[0]!.pid;
         yield* asOwner(
           Effect.flatMap(
-            Database,
+            MaintenanceDatabase,
             ({ sql }) =>
               sql<{
                 terminated: boolean;
@@ -190,7 +190,7 @@ describe.skipIf(!db)('the job listener after its connection dies', () => {
             // take loop ends here with no error of its own.
             yield* asOwner(
               Effect.flatMap(
-                Database,
+                MaintenanceDatabase,
                 ({ sql }) =>
                   sql<{
                     terminated: boolean;

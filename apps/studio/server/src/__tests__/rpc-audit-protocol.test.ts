@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import { Cause, Exit } from 'effect';
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -18,6 +19,7 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../rpc.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -71,6 +73,12 @@ const PRINCIPAL: SessionPrincipal = {
 describe.skipIf(!db)('audited protocol RPC', () => {
   let pool: pg.Pool;
   let appPool: pg.Pool;
+  /**
+   * The Effect data layer over this scratch schema, which is what every
+   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
+   * than built per Studio: the clients underneath it are connection pools.
+   */
+  let services: Context.Context<StudioServices>;
   let dispose: () => Promise<void>;
   let client: RpcTestClient;
   let builder: ReturnType<typeof builderClientFor>;
@@ -81,6 +89,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
     appPool = scratch.app;
+    services = await scratch.services();
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM_ID);
@@ -104,7 +113,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       listMemberships: () =>
         Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
     });
-    const studio = createStudio(readEnv(), { auth, pool: appPool });
+    const studio = createStudio(readEnv(), { auth, pool: appPool, services });
     client = await createRpcClient(studio);
     builder = builderClientFor(studio, PRINCIPAL);
     extraClients = [];
@@ -411,6 +420,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     const revokedClient = await createRpcClient(
       createStudio(readEnv(), {
         pool: appPool,
+        services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(actor),
           getMembership: () => {

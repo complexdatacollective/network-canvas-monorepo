@@ -2,7 +2,15 @@
 // transition a single atomic conditional statement), the Replicache-style
 // idempotent commit path with per-draft serialization, and manifest-hash
 // resume — exactly as specified on #1247.
-import type pg from 'pg';
+//
+// Every operation is an Effect requiring `Transaction` (tenant.ts): the
+// caller's open, team-stamped transaction. Nothing here opens one, which is
+// how a host lands a lease change and its own rows together — it simply runs
+// these inside its own scope — and it is why the type says so rather than an
+// optional client argument saying it by convention.
+import { and, eq, gt, isNotNull, max, type SQL, sql } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
+import { Effect, Schema } from 'effect';
 
 import {
   applyCommands,
@@ -11,30 +19,76 @@ import {
   manifestHash,
   type SectionDoc,
 } from './apply.ts';
-import type { TenantDb, TenantTransactionOptions } from './tenant.ts';
+import { SYNC_TABLES } from './schema.ts';
+import { Transaction } from './tenant.ts';
 
-export class LeaseRejectedError extends Error {
-  constructor(reason: string) {
-    super(`commit rejected: ${reason}`);
+const { drafts, sections, manifests, leases, commandLog } = SYNC_TABLES;
+
+export class LeaseRejectedError extends Schema.TaggedError<LeaseRejectedError>()(
+  'LeaseRejectedError',
+  { reason: Schema.String },
+) {
+  override get message(): string {
+    return `commit rejected: ${this.reason}`;
   }
 }
 
 /** A lease was requested for a draft or section that does not exist. */
-export class UnknownSectionError extends Error {
-  constructor(draftId: string, sectionId: string) {
-    super(`no section ${sectionId} in draft ${draftId}`);
+export class UnknownSectionError extends Schema.TaggedError<UnknownSectionError>()(
+  'UnknownSectionError',
+  { draftId: Schema.String, sectionId: Schema.String },
+) {
+  override get message(): string {
+    return `no section ${this.sectionId} in draft ${this.draftId}`;
   }
 }
 
-export class UnknownDraftError extends Error {
-  constructor(draftId: string) {
-    super(`no draft ${draftId}`);
+export class UnknownDraftError extends Schema.TaggedError<UnknownDraftError>()(
+  'UnknownDraftError',
+  { draftId: Schema.String },
+) {
+  override get message(): string {
+    return `no draft ${this.draftId}`;
   }
 }
 
-export class UnknownSectionDocumentError extends Error {
-  constructor(hash: string) {
-    super(`no section document ${hash}`);
+export class UnknownSectionDocumentError extends Schema.TaggedError<UnknownSectionDocumentError>()(
+  'UnknownSectionDocumentError',
+  { hash: Schema.String },
+) {
+  override get message(): string {
+    return `no section document ${this.hash}`;
+  }
+}
+
+/**
+ * The host's `validateSection` refused the document the commands produced.
+ *
+ * The validator is a plain throwing function — it is shared with code that
+ * has no Effect around it — so its refusal is caught at the one call site and
+ * re-raised as a typed failure rather than left to travel as a defect. What it
+ * threw is preserved untouched in `cause`; a host that recognises its own
+ * error type still matches on it.
+ */
+export class SectionRejectedError extends Schema.TaggedError<SectionRejectedError>()(
+  'SectionRejectedError',
+  { sectionId: Schema.String, cause: Schema.Defect() },
+) {
+  override get message(): string {
+    const { cause } = this;
+    if (cause instanceof Error) return cause.message;
+    // Guarded, because this getter must not be the thing that fails. `String`
+    // throws `TypeError: Cannot convert object to primitive value` for an
+    // object with a null prototype or a throwing `Symbol.toPrimitive` — and an
+    // error whose `message` throws takes down whatever is trying to report it,
+    // which is exactly the moment you need the report.
+    let described: string;
+    try {
+      described = String(cause);
+    } catch {
+      described = '[unprintable]';
+    }
+    return `section ${this.sectionId} was refused: ${described}`;
   }
 }
 
@@ -42,12 +96,47 @@ export class UnknownSectionDocumentError extends Error {
 // clock_timestamp() rather than now(): now() is the transaction's start time,
 // and a transaction that waits on a row lock past the TTL would otherwise read
 // an expired lease as live.
+const clockNow = (): SQL => sql`clock_timestamp()`;
 
-/** A section is real only if the draft's head manifest lists it. Every
- * embedding statement binds $1 = draft id, $2 = section id, $3 = team. */
-const SECTION_EXISTS = `SELECT 1 FROM drafts d
-   JOIN manifests m ON m.draft_id = d.id AND m.team_id = d.team_id AND m.seq = d.head_seq
-   WHERE d.id = $1 AND d.team_id = $3 AND m.section_hashes ->> $2 IS NOT NULL`;
+/** `clock_timestamp()` plus the lease TTL, as an interval Postgres computes. */
+const expiryFromNow = (ttlMs: number): SQL =>
+  sql`clock_timestamp() + make_interval(secs => ${ttlMs}::float / 1000)`;
+
+/**
+ * A section is real only if the draft's head manifest lists it.
+ *
+ * One function, three statements: `acquire` embeds it in its CAS, `takeover`
+ * in its UPDATE's WHERE, and `assertSectionExists` runs it alone to tell "no
+ * such section" apart from "someone else holds it". Written once because the
+ * three must agree on the boundary — a section present in the draft's head
+ * manifest and nowhere else — and a second copy would be a second definition
+ * of what a section is.
+ */
+export function sectionExists(
+  draftId: string,
+  sectionId: string,
+  teamId: string,
+): SQL {
+  return new QueryBuilder()
+    .select({ present: sql`1` })
+    .from(drafts)
+    .innerJoin(
+      manifests,
+      and(
+        eq(manifests.draftId, drafts.id),
+        eq(manifests.teamId, drafts.teamId),
+        eq(manifests.seq, drafts.headSeq),
+      ),
+    )
+    .where(
+      and(
+        eq(drafts.id, draftId),
+        eq(drafts.teamId, teamId),
+        isNotNull(sql`${manifests.sectionHashes} ->> ${sectionId}`),
+      ),
+    )
+    .getSQL();
+}
 
 export type Lease = { epoch: bigint; expiresAt: Date };
 
@@ -64,67 +153,123 @@ export type CommitResult = {
   sectionHash: string;
 };
 
-export type SyncTransactionOperation =
-  | 'createDraft'
-  | 'acquire'
-  | 'takeover'
-  | 'renew'
-  | 'release'
-  | 'commit'
-  | 'resume'
-  | 'forceExpireForTest';
+export type CommitParams = {
+  draftId: string;
+  sectionId: string;
+  owner: string;
+  epoch: bigint;
+  clientSeq: bigint;
+  commands: Command[];
+};
 
-export type SyncTransactionExecutor = <T>(
-  operation: SyncTransactionOperation,
-  work: (client: pg.PoolClient) => Promise<T>,
-  opts?: TenantTransactionOptions,
-) => Promise<T>;
+export type ResumeResult = {
+  head: { seq: bigint; hash: string };
+  sectionHashes: Record<string, string>;
+  lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }>;
+};
 
-export class SyncServer {
-  private db: TenantDb;
-  private executeTransaction: SyncTransactionExecutor;
-  private ttlMs: number;
-  private validateSection: SectionValidator | undefined;
+export type ManifestChainEntry = {
+  seq: bigint;
+  hash: string;
+  parentHash: string | null;
+};
 
-  constructor(
-    db: TenantDb,
-    executeTransaction: SyncTransactionExecutor,
-    ttlMs = 30_000,
-    validateSection?: SectionValidator,
+export type SyncServerOptions = {
+  readonly ttlMs?: number | undefined;
+  readonly validateSection?: SectionValidator | undefined;
+};
+
+const DEFAULT_TTL_MS = 30_000;
+
+/**
+ * The open transaction, with its team read off it once. `teamId` is `null` in
+ * a maintenance scope, which stamps no team GUC — running the sync server
+ * there would write rows no tenant policy could ever see again, so it dies
+ * rather than guessing a team.
+ */
+const tenant = Effect.fnUntraced(function* () {
+  const open = yield* Transaction;
+  if (open.teamId === null) {
+    return yield* Effect.die(
+      new Error(
+        'the sync server may only run in a team-stamped transaction; this scope stamps no team',
+      ),
+    );
+  }
+  return { tx: open.tx, sql: open.sql, teamId: open.teamId };
+});
+
+/**
+ * Refuses a resume that is not reading from a single snapshot.
+ *
+ * `resume`'s two reads must come from ONE MVCC snapshot: read under READ
+ * COMMITTED, an in-flight commit landing between them would pair pre-commit
+ * sectionHashes with a post-commit lastApplied — the client would drop the
+ * acknowledged batch yet load the older document, leaving its base behind the
+ * server. The transaction is now the caller's, so the isolation level is the
+ * caller's too; this asks the transaction what it actually got rather than
+ * trusting that the caller remembered, because the failure it guards against
+ * is silent, rare, and corrupts the client's base.
+ *
+ * A programming error at the call site, not a condition anything recovers
+ * from, so it dies — the same treatment `TenantScope.open` gives an isolation
+ * level asked for inside an existing transaction.
+ */
+const assertSnapshotIsolation = Effect.fnUntraced(function* () {
+  const open = yield* Transaction;
+  // No FROM clause: `current_setting` is a function call, and reading it is
+  // the only way to learn the level the transaction actually began at.
+  const rows = yield* open.sql<{
+    level: string;
+  }>`select current_setting('transaction_isolation') as level`;
+  const level = rows[0]?.level;
+  if (level !== 'repeatable read' && level !== 'serializable') {
+    // Nothing after this line runs: a died fiber does not continue.
+    yield* Effect.die(
+      new Error(
+        `resume must run in a repeatable read (or serializable) transaction so its two reads share one snapshot; this one is "${level ?? 'unknown'}"`,
+      ),
+    );
+  }
+});
+
+export function makeSyncServer(options: SyncServerOptions = {}) {
+  const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+  const validateSection = options.validateSection;
+
+  /**
+   * Fails with `UnknownSectionError` unless the draft's head manifest lists
+   * the section. Only the failure paths pay for it — a lease that was not
+   * granted is either "no such section" or "someone else holds it", and this
+   * is what distinguishes them.
+   */
+  const assertSectionExists = Effect.fnUntraced(function* (
+    draftId: string,
+    sectionId: string,
   ) {
-    this.db = db;
-    this.executeTransaction = executeTransaction;
-    this.ttlMs = ttlMs;
-    this.validateSection = validateSection;
-  }
+    const { tx, teamId } = yield* tenant();
+    const known = yield* tx.execute(
+      sectionExists(draftId, sectionId, teamId),
+      'objects',
+    );
+    if (known.length === 0) {
+      yield* new UnknownSectionError({ draftId, sectionId });
+    }
+  });
 
-  async createDraft(draftId: string, sections: Record<string, SectionDoc>) {
-    const sectionHashes: Record<string, string> = {};
-    const teamId = this.db.teamId;
-    await this.executeTransaction('createDraft', async (client) => {
-      for (const [sectionId, doc] of Object.entries(sections)) {
-        const hash = contentHash(doc);
-        sectionHashes[sectionId] = hash;
-        await client.query(
-          `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
-           ON CONFLICT (team_id, hash) DO UPDATE
-           SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-          [teamId, hash, doc],
-        );
-      }
-      const mHash = manifestHash(sectionHashes, null);
-      await client.query(
-        `INSERT INTO drafts (id, team_id, head_seq, head_manifest_hash)
-         VALUES ($1, $2, 0, $3)`,
-        [draftId, teamId, mHash],
-      );
-      await client.query(
-        `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
-         VALUES ($1, $2, 0, $3, NULL, $4)`,
-        [draftId, teamId, mHash, sectionHashes],
-      );
-    });
-  }
+  /**
+   * Takes the draft-head row lock, then runs the statement. Shared by the two
+   * lease grants so that a grant and a commit cannot interleave: the commit
+   * path takes the same row FOR UPDATE.
+   */
+  const lockHead = Effect.fnUntraced(function* (draftId: string) {
+    const { tx, teamId } = yield* tenant();
+    yield* tx
+      .select({ present: sql`1` })
+      .from(drafts)
+      .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)))
+      .for('share');
+  });
 
   /**
    * Acquire a free lease or take over an expired one — one CAS. Takeover is
@@ -137,93 +282,53 @@ export class SyncServer {
    * commits.
    *
    * The statement grants a lease only for a section that the draft's head
-   * manifest actually contains, so an unknown draft or section throws instead
+   * manifest actually contains, so an unknown draft or section fails instead
    * of returning a meaningless epoch (and leaving a lease row behind) that
    * only fails later, when the client looks the absent section up.
+   *
+   * Four outcomes, and the CASE and the `setWhere` decide between them
+   * together: same owner + live keeps its epoch; same owner + expired bumps;
+   * another owner + expired takes over and bumps; another owner + live
+   * matches no `setWhere` and so updates nothing and returns no row.
    */
-  async acquire(
+  const acquire = Effect.fn('sync.acquire')(function* (
     draftId: string,
     sectionId: string,
     owner: string,
-    client?: pg.PoolClient,
-  ): Promise<Lease | null> {
-    const res = await this.lockedOnHead(
-      'acquire',
-      draftId,
-      (transactionClient) =>
-        transactionClient.query(
-          `INSERT INTO leases (draft_id, team_id, section_id, owner, epoch, expires_at)
-         SELECT $1, $3, $2, $4, 1,
-                clock_timestamp() + make_interval(secs => $5::float / 1000)
-         WHERE EXISTS (${SECTION_EXISTS})
-         ON CONFLICT (draft_id, section_id) DO UPDATE
-           SET owner = excluded.owner,
-               epoch = CASE
-                 WHEN leases.owner = excluded.owner
-                   AND leases.expires_at > clock_timestamp()
-                   THEN leases.epoch
-                 ELSE leases.epoch + 1
-               END,
-               expires_at = excluded.expires_at
-           WHERE leases.expires_at < clock_timestamp()
-              OR leases.owner = excluded.owner
-         RETURNING epoch, expires_at`,
-          [draftId, sectionId, this.db.teamId, owner, this.ttlMs],
-        ),
-      client,
-    );
-    const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
-    if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
+  ) {
+    const { tx, teamId } = yield* tenant();
+    yield* lockHead(draftId);
+    const rows = yield* tx
+      .insert(leases)
+      // A FROM-less SELECT: the row is constants plus one EXISTS, and it is a
+      // SELECT rather than VALUES precisely so the EXISTS can gate it.
+      .select(
+        sql`select ${draftId}::uuid, ${teamId}::text, ${sectionId}::text, ${owner}::text, 1::bigint, ${expiryFromNow(ttlMs)}
+            where exists (${sectionExists(draftId, sectionId, teamId)})`,
+      )
+      .onConflictDoUpdate({
+        target: [leases.draftId, leases.sectionId],
+        set: {
+          owner: sql`excluded.owner`,
+          epoch: sql`case
+            when ${leases.owner} = excluded.owner
+              and ${leases.expiresAt} > clock_timestamp()
+            then ${leases.epoch}
+            else ${leases.epoch} + 1
+          end`,
+          expiresAt: sql`excluded.expires_at`,
+        },
+        setWhere: sql`${leases.expiresAt} < clock_timestamp() or ${leases.owner} = excluded.owner`,
+      })
+      .returning({ epoch: leases.epoch, expiresAt: leases.expiresAt });
+    const row = rows[0];
+    if (row !== undefined)
+      return { epoch: row.epoch, expiresAt: row.expiresAt };
     // No row means either "another owner holds it" or "no such section" —
     // only the failure path pays for the distinction.
-    await this.assertSectionExists(draftId, sectionId, client);
+    yield* assertSectionExists(draftId, sectionId);
     return null;
-  }
-
-  /**
-   * Runs the statement under the draft-head row lock. A caller that already
-   * owns a transaction — a host that has to land the lease change and its own
-   * rows together — passes its client and keeps that transaction; everyone
-   * else gets one of their own.
-   */
-  private async lockedOnHead(
-    operation: 'acquire' | 'takeover',
-    draftId: string,
-    work: (client: pg.PoolClient) => Promise<pg.QueryResult>,
-    client?: pg.PoolClient,
-  ): Promise<pg.QueryResult> {
-    const locked = async (transactionClient: pg.PoolClient) => {
-      await transactionClient.query(
-        `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR SHARE`,
-        [draftId, this.db.teamId],
-      );
-      return work(transactionClient);
-    };
-    if (client !== undefined) return locked(client);
-    return this.executeTransaction(operation, locked);
-  }
-
-  private async assertSectionExists(
-    draftId: string,
-    sectionId: string,
-    client?: pg.PoolClient,
-  ) {
-    const known =
-      client === undefined
-        ? await this.db.query(SECTION_EXISTS, [
-            draftId,
-            sectionId,
-            this.db.teamId,
-          ])
-        : await client.query(SECTION_EXISTS, [
-            draftId,
-            sectionId,
-            this.db.teamId,
-          ]);
-    if (known.rowCount === 0) {
-      throw new UnknownSectionError(draftId, sectionId);
-    }
-  }
+  });
 
   /**
    * Explicit takeover — the duplicate-tab "take over editing" action. Unlike
@@ -232,249 +337,327 @@ export class SyncServer {
    * atomic statement, and still always bumps the epoch, so the previous
    * tab's in-flight commits are fenced out.
    */
-  async takeover(
+  const takeover = Effect.fn('sync.takeover')(function* (
     draftId: string,
     sectionId: string,
     owner: string,
-  ): Promise<Lease | null> {
-    const res = await this.lockedOnHead('takeover', draftId, (client) =>
-      client.query(
-        `UPDATE leases
-         SET owner = $4, epoch = epoch + 1,
-             expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
-         WHERE draft_id = $1 AND section_id = $2 AND team_id = $3
-           AND EXISTS (${SECTION_EXISTS})
-         RETURNING epoch, expires_at`,
-        [draftId, sectionId, this.db.teamId, owner, this.ttlMs],
-      ),
-    );
-    const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
-    if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
-    await this.assertSectionExists(draftId, sectionId);
+  ) {
+    const { tx, teamId } = yield* tenant();
+    yield* lockHead(draftId);
+    const rows = yield* tx
+      .update(leases)
+      .set({
+        owner,
+        epoch: sql`${leases.epoch} + 1`,
+        expiresAt: expiryFromNow(ttlMs),
+      })
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.sectionId, sectionId),
+          eq(leases.teamId, teamId),
+          sql`exists (${sectionExists(draftId, sectionId, teamId)})`,
+        ),
+      )
+      .returning({ epoch: leases.epoch, expiresAt: leases.expiresAt });
+    const row = rows[0];
+    if (row !== undefined)
+      return { epoch: row.epoch, expiresAt: row.expiresAt };
+    yield* assertSectionExists(draftId, sectionId);
     return null;
-  }
+  });
 
   /** Heartbeat. A late heartbeat cannot resurrect an expired lease. */
-  async renew(
+  const renew = Effect.fn('sync.renew')(function* (
     draftId: string,
     sectionId: string,
     owner: string,
     epoch: bigint,
-  ): Promise<Lease | null> {
-    const res = await this.executeTransaction('renew', (client) =>
-      client.query(
-        `UPDATE leases
-         SET expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
-         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND team_id = $6
-           AND expires_at > clock_timestamp()
-         RETURNING epoch, expires_at`,
-        [draftId, sectionId, owner, String(epoch), this.ttlMs, this.db.teamId],
-      ),
-    );
-    const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
-    return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
-  }
+  ) {
+    const { tx, teamId } = yield* tenant();
+    const rows = yield* tx
+      .update(leases)
+      .set({ expiresAt: expiryFromNow(ttlMs) })
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.sectionId, sectionId),
+          eq(leases.owner, owner),
+          eq(leases.epoch, epoch),
+          eq(leases.teamId, teamId),
+          gt(leases.expiresAt, clockNow()),
+        ),
+      )
+      .returning({ epoch: leases.epoch, expiresAt: leases.expiresAt });
+    const row = rows[0];
+    return row === undefined
+      ? null
+      : { epoch: row.epoch, expiresAt: row.expiresAt };
+  });
 
   /**
    * Clean release: expire in place. The row (and its epoch) survives so
    * epochs stay monotonic per section for the lifetime of the draft.
    */
-  async release(
+  const release = Effect.fn('sync.release')(function* (
     draftId: string,
     sectionId: string,
     owner: string,
     epoch: bigint,
-    client?: pg.PoolClient,
-  ): Promise<void> {
-    const release = (transactionClient: pg.PoolClient) =>
-      transactionClient.query(
-        `UPDATE leases SET expires_at = clock_timestamp()
-         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND team_id = $5
-           AND expires_at > clock_timestamp()`,
-        [draftId, sectionId, owner, String(epoch), this.db.teamId],
-      );
-    if (client !== undefined) {
-      await release(client);
-      return;
+  ) {
+    const { tx, teamId } = yield* tenant();
+    yield* tx
+      .update(leases)
+      .set({ expiresAt: clockNow() })
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.sectionId, sectionId),
+          eq(leases.owner, owner),
+          eq(leases.epoch, epoch),
+          eq(leases.teamId, teamId),
+          gt(leases.expiresAt, clockNow()),
+        ),
+      )
+      // Nothing branches on the outcome — releasing a lease one no longer
+      // holds is a no-op by design — but the write still says `returning`, so
+      // that what it hands back is a rows array rather than the driver's
+      // result object wearing an array's type.
+      .returning({ epoch: leases.epoch });
+  });
+
+  const createDraft = Effect.fn('sync.createDraft')(function* (
+    draftId: string,
+    sectionDocs: Record<string, SectionDoc>,
+  ) {
+    const { tx, teamId } = yield* tenant();
+    const sectionHashes: Record<string, string> = {};
+    for (const [sectionId, doc] of Object.entries(sectionDocs)) {
+      const hash = contentHash(doc);
+      sectionHashes[sectionId] = hash;
+      yield* tx
+        .insert(sections)
+        .values({ teamId, hash, doc })
+        .onConflictDoUpdate({
+          target: [sections.teamId, sections.hash],
+          set: { createdAt: clockNow(), unreferencedAt: sql`null` },
+        });
     }
-    await this.executeTransaction('release', release);
-  }
+    const mHash = manifestHash(sectionHashes, null);
+    yield* tx
+      .insert(drafts)
+      .values({ id: draftId, teamId, headSeq: 0n, headManifestHash: mHash });
+    yield* tx.insert(manifests).values({
+      draftId,
+      teamId,
+      seq: 0n,
+      hash: mHash,
+      parentHash: null,
+      sectionHashes,
+    });
+    return sectionHashes;
+  });
 
   /**
    * The commit path: lease validation (owner + epoch + expiry — the epoch
    * alone is NOT sufficient), client_seq idempotency via the log's unique
    * constraint, per-draft serialization via the draft-head row lock, and the
-   * command-log append — all in one transaction.
+   * command-log append — all in the caller's one transaction.
    */
-  async commit(
-    params: {
-      draftId: string;
-      sectionId: string;
-      owner: string;
-      epoch: bigint;
-      clientSeq: bigint;
-      commands: Command[];
-    },
-    client?: pg.PoolClient,
-  ): Promise<CommitResult> {
+  const commit = Effect.fn('sync.commit')(function* (params: CommitParams) {
     const { draftId, sectionId, owner, epoch, clientSeq, commands } = params;
-    const teamId = this.db.teamId;
-    const commit = async (transactionClient: pg.PoolClient) => {
-      // Per-draft serialization: every commit advances the head under this
-      // row lock, so concurrent section commits cannot fork the chain. Taken
-      // FIRST — the dedup and lease checks below are only meaningful at the
-      // serialization point. (Lock order is head-then-lease in every
-      // transaction, so the two locks cannot deadlock.)
-      const head = await transactionClient.query(
-        `SELECT head_seq, head_manifest_hash FROM drafts
-         WHERE id = $1 AND team_id = $2 FOR UPDATE`,
-        [draftId, teamId],
-      );
-      const headRow = head.rows[0] as
-        | { head_seq: string; head_manifest_hash: string }
-        | undefined;
-      if (headRow === undefined) {
-        throw new LeaseRejectedError(`draft ${draftId} no longer exists`);
-      }
+    const { tx, teamId } = yield* tenant();
 
-      // Idempotency BEFORE lease validation: a retransmitted client_seq
-      // returns its original recorded result even when the lease has since
-      // expired or been taken over — a commit that succeeded but lost its
-      // acknowledgement must never read as rejected, or the client rolls
-      // back state the server already persisted.
-      const dup = await transactionClient.query(
-        `SELECT manifest_seq FROM command_log
-         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND client_seq = $5 AND team_id = $6`,
-        [draftId, sectionId, owner, String(epoch), String(clientSeq), teamId],
+    // Per-draft serialization: every commit advances the head under this
+    // row lock, so concurrent section commits cannot fork the chain. Taken
+    // FIRST — the dedup and lease checks below are only meaningful at the
+    // serialization point. (Lock order is head-then-lease in every
+    // transaction, so the two locks cannot deadlock.)
+    const head = yield* tx
+      .select({
+        headSeq: drafts.headSeq,
+        headManifestHash: drafts.headManifestHash,
+      })
+      .from(drafts)
+      .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)))
+      .for('update');
+    const headRow = head[0];
+    if (headRow === undefined) {
+      return yield* new LeaseRejectedError({
+        reason: `draft ${draftId} no longer exists`,
+      });
+    }
+
+    // Idempotency BEFORE lease validation: a retransmitted client_seq
+    // returns its original recorded result even when the lease has since
+    // expired or been taken over — a commit that succeeded but lost its
+    // acknowledgement must never read as rejected, or the client rolls
+    // back state the server already persisted.
+    const dup = yield* tx
+      .select({ manifestSeq: commandLog.manifestSeq })
+      .from(commandLog)
+      .where(
+        and(
+          eq(commandLog.draftId, draftId),
+          eq(commandLog.sectionId, sectionId),
+          eq(commandLog.owner, owner),
+          eq(commandLog.epoch, epoch),
+          eq(commandLog.clientSeq, clientSeq),
+          eq(commandLog.teamId, teamId),
+        ),
       );
-      if (dup.rowCount && dup.rowCount > 0) {
-        const seq = BigInt(
-          (dup.rows[0] as { manifest_seq: string }).manifest_seq,
+    const dupRow = dup[0];
+    if (dupRow !== undefined) {
+      const seq = dupRow.manifestSeq;
+      const recorded = yield* tx
+        .select({
+          hash: manifests.hash,
+          sectionHashes: manifests.sectionHashes,
+        })
+        .from(manifests)
+        .where(
+          and(
+            eq(manifests.draftId, draftId),
+            eq(manifests.seq, seq),
+            eq(manifests.teamId, teamId),
+          ),
         );
-        const m = await transactionClient.query(
-          `SELECT hash, section_hashes FROM manifests
-           WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
-          [draftId, String(seq), teamId],
+      const row = recorded[0];
+      if (row === undefined) {
+        return yield* Effect.die(
+          new Error(
+            `command_log row for draft ${draftId} names manifest ${seq}, which does not exist`,
+          ),
         );
-        const row = m.rows[0] as {
-          hash: string;
-          section_hashes: Record<string, string>;
-        };
-        return {
-          deduped: true,
-          manifestSeq: seq,
-          manifestHash: row.hash,
-          sectionHash: row.section_hashes[sectionId] ?? '',
-        };
       }
-
-      // Commit-time lease validation at the serialization point, including
-      // the expiry check that closes the slept-laptop window. FOR UPDATE
-      // locks the lease row through the rest of the transaction: a takeover
-      // or expiry-acquire (both single-row UPDATEs) blocks behind this lock
-      // and its epoch bump linearizes AFTER this commit — without the lock, a
-      // takeover could bump the epoch between this check and the apply,
-      // and the stale owner would still write.
-      //
-      // The expiry compares against clock_timestamp(), not now(): this
-      // transaction may have waited on the draft-head lock for longer than
-      // the TTL, and now() would still report the moment it started, so a
-      // lease that expired while queueing would validate.
-      const lease = await transactionClient.query(
-        `SELECT 1 FROM leases
-         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND team_id = $5
-           AND expires_at > clock_timestamp()
-         FOR UPDATE`,
-        [draftId, sectionId, owner, String(epoch), teamId],
-      );
-      if (lease.rowCount === 0) {
-        throw new LeaseRejectedError('lease not held (owner/epoch/expiry)');
-      }
-
-      const manifest = await transactionClient.query(
-        `SELECT section_hashes FROM manifests
-         WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
-        [draftId, headRow.head_seq, teamId],
-      );
-      const sectionHashes = {
-        ...(manifest.rows[0] as { section_hashes: Record<string, string> })
-          .section_hashes,
-      };
-      const currentHash = sectionHashes[sectionId];
-      if (currentHash === undefined) {
-        throw new LeaseRejectedError(`unknown section ${sectionId}`);
-      }
-      const currentDoc = await transactionClient.query(
-        `SELECT doc FROM sections WHERE team_id = $1 AND hash = $2`,
-        [teamId, currentHash],
-      );
-
-      // The server runs the same shared apply engine as the client.
-      const newDoc = applyCommands(
-        (currentDoc.rows[0] as { doc: SectionDoc }).doc,
-        commands,
-      );
-      this.validateSection?.(sectionId, newDoc, Object.keys(sectionHashes));
-      const newSectionHash = contentHash(newDoc);
-      await transactionClient.query(
-        `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
-         ON CONFLICT (team_id, hash) DO UPDATE
-           SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-        [teamId, newSectionHash, newDoc],
-      );
-
-      sectionHashes[sectionId] = newSectionHash;
-      const newSeq = BigInt(headRow.head_seq) + 1n;
-      const newManifestHash = manifestHash(
-        sectionHashes,
-        headRow.head_manifest_hash,
-      );
-      await transactionClient.query(
-        `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          draftId,
-          teamId,
-          String(newSeq),
-          newManifestHash,
-          headRow.head_manifest_hash,
-          sectionHashes,
-        ],
-      );
-      await transactionClient.query(
-        `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3
-         WHERE id = $1 AND team_id = $4`,
-        [draftId, String(newSeq), newManifestHash, teamId],
-      );
-      await transactionClient.query(
-        `INSERT INTO command_log (draft_id, team_id, section_id, owner, epoch, client_seq, commands, manifest_seq)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          draftId,
-          teamId,
-          sectionId,
-          owner,
-          String(epoch),
-          String(clientSeq),
-          JSON.stringify(commands),
-          String(newSeq),
-        ],
-      );
-
       return {
-        deduped: false,
-        manifestSeq: newSeq,
-        manifestHash: newManifestHash,
-        sectionHash: newSectionHash,
-      };
-    };
-    if (client !== undefined) return commit(client);
-    return this.executeTransaction('commit', commit);
-  }
+        deduped: true,
+        manifestSeq: seq,
+        manifestHash: row.hash,
+        sectionHash: row.sectionHashes[sectionId] ?? '',
+      } satisfies CommitResult;
+    }
+
+    // Commit-time lease validation at the serialization point, including
+    // the expiry check that closes the slept-laptop window. FOR UPDATE
+    // locks the lease row through the rest of the transaction: a takeover
+    // or expiry-acquire (both single-row UPDATEs) blocks behind this lock
+    // and its epoch bump linearizes AFTER this commit — without the lock, a
+    // takeover could bump the epoch between this check and the apply,
+    // and the stale owner would still write.
+    //
+    // The expiry compares against clock_timestamp(), not now(): this
+    // transaction may have waited on the draft-head lock for longer than
+    // the TTL, and now() would still report the moment it started, so a
+    // lease that expired while queueing would validate.
+    const lease = yield* tx
+      .select({ present: sql`1` })
+      .from(leases)
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.sectionId, sectionId),
+          eq(leases.owner, owner),
+          eq(leases.epoch, epoch),
+          eq(leases.teamId, teamId),
+          gt(leases.expiresAt, clockNow()),
+        ),
+      )
+      .for('update');
+    if (lease.length === 0) {
+      return yield* new LeaseRejectedError({
+        reason: 'lease not held (owner/epoch/expiry)',
+      });
+    }
+
+    const manifest = yield* tx
+      .select({ sectionHashes: manifests.sectionHashes })
+      .from(manifests)
+      .where(
+        and(
+          eq(manifests.draftId, draftId),
+          eq(manifests.seq, headRow.headSeq),
+          eq(manifests.teamId, teamId),
+        ),
+      );
+    const manifestRow = manifest[0];
+    if (manifestRow === undefined) {
+      return yield* Effect.die(
+        new Error(
+          `draft ${draftId} points at manifest ${headRow.headSeq}, which does not exist`,
+        ),
+      );
+    }
+    const sectionHashes = { ...manifestRow.sectionHashes };
+    const currentHash = sectionHashes[sectionId];
+    if (currentHash === undefined) {
+      return yield* new LeaseRejectedError({
+        reason: `unknown section ${sectionId}`,
+      });
+    }
+    const current = yield* tx
+      .select({ doc: sections.doc })
+      .from(sections)
+      .where(and(eq(sections.teamId, teamId), eq(sections.hash, currentHash)));
+    const currentRow = current[0];
+    if (currentRow === undefined) {
+      return yield* new UnknownSectionDocumentError({ hash: currentHash });
+    }
+
+    // The server runs the same shared apply engine as the client.
+    const newDoc = applyCommands(currentRow.doc, commands);
+    if (validateSection !== undefined) {
+      yield* Effect.try({
+        try: () =>
+          validateSection(sectionId, newDoc, Object.keys(sectionHashes)),
+        catch: (cause) => new SectionRejectedError({ sectionId, cause }),
+      });
+    }
+    const newSectionHash = contentHash(newDoc);
+    yield* tx
+      .insert(sections)
+      .values({ teamId, hash: newSectionHash, doc: newDoc })
+      .onConflictDoUpdate({
+        target: [sections.teamId, sections.hash],
+        set: { createdAt: clockNow(), unreferencedAt: sql`null` },
+      });
+
+    sectionHashes[sectionId] = newSectionHash;
+    const newSeq = headRow.headSeq + 1n;
+    const newManifestHash = manifestHash(
+      sectionHashes,
+      headRow.headManifestHash,
+    );
+    yield* tx.insert(manifests).values({
+      draftId,
+      teamId,
+      seq: newSeq,
+      hash: newManifestHash,
+      parentHash: headRow.headManifestHash,
+      sectionHashes,
+    });
+    yield* tx
+      .update(drafts)
+      .set({ headSeq: newSeq, headManifestHash: newManifestHash })
+      .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)));
+    yield* tx.insert(commandLog).values({
+      draftId,
+      teamId,
+      sectionId,
+      owner,
+      epoch,
+      clientSeq,
+      commands,
+      manifestSeq: newSeq,
+    });
+
+    return {
+      deduped: false,
+      manifestSeq: newSeq,
+      manifestHash: newManifestHash,
+      sectionHash: newSectionHash,
+    } satisfies CommitResult;
+  });
 
   /**
    * Reconnect/resume: the client presents its manifest head; the server
@@ -482,101 +665,127 @@ export class SyncServer {
    * differs), and the last applied client_seq per (owner, section, epoch) so
    * the client knows exactly what to retransmit.
    */
-  async resume(draftId: string, owner: string) {
-    // Both reads come from ONE MVCC snapshot: read separately, an in-flight
-    // commit landing between them would pair pre-commit sectionHashes with a
-    // post-commit lastApplied — the client would drop the acknowledged batch
-    // yet load the older document, leaving its base behind the server.
-    const { head, acked } = await this.executeTransaction(
-      'resume',
-      async (client) => {
-        const headRes = await client.query(
-          `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
-           FROM drafts d
-           JOIN manifests m ON m.draft_id = d.id AND m.team_id = d.team_id AND m.seq = d.head_seq
-           WHERE d.id = $1 AND d.team_id = $2`,
-          [draftId, this.db.teamId],
-        );
-        const ackedRes = await client.query(
-          `SELECT section_id, epoch, max(client_seq) AS last_seq
-           FROM command_log
-           WHERE draft_id = $1 AND owner = $2 AND team_id = $3
-           GROUP BY section_id, epoch`,
-          [draftId, owner, this.db.teamId],
-        );
-        return { head: headRes, acked: ackedRes };
-      },
-      { isolation: 'repeatable read' },
-    );
+  const resume = Effect.fn('sync.resume')(function* (
+    draftId: string,
+    owner: string,
+  ) {
+    const { tx, teamId } = yield* tenant();
+    yield* assertSnapshotIsolation();
 
-    const row = head.rows[0] as
-      | {
-          head_seq: string;
-          head_manifest_hash: string;
-          section_hashes: Record<string, string>;
-        }
-      | undefined;
-    if (row === undefined) throw new UnknownDraftError(draftId);
+    const head = yield* tx
+      .select({
+        headSeq: drafts.headSeq,
+        headManifestHash: drafts.headManifestHash,
+        sectionHashes: manifests.sectionHashes,
+      })
+      .from(drafts)
+      .innerJoin(
+        manifests,
+        and(
+          eq(manifests.draftId, drafts.id),
+          eq(manifests.teamId, drafts.teamId),
+          eq(manifests.seq, drafts.headSeq),
+        ),
+      )
+      .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)));
+    const acked = yield* tx
+      .select({
+        sectionId: commandLog.sectionId,
+        epoch: commandLog.epoch,
+        lastSeq: max(commandLog.clientSeq),
+      })
+      .from(commandLog)
+      .where(
+        and(
+          eq(commandLog.draftId, draftId),
+          eq(commandLog.owner, owner),
+          eq(commandLog.teamId, teamId),
+        ),
+      )
+      .groupBy(commandLog.sectionId, commandLog.epoch);
+
+    const row = head[0];
+    if (row === undefined) return yield* new UnknownDraftError({ draftId });
     const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
       {};
-    for (const r of acked.rows as {
-      section_id: string;
-      epoch: string;
-      last_seq: string;
-    }[]) {
-      const existing = lastApplied[r.section_id];
-      if (!existing || BigInt(r.epoch) > existing.epoch) {
-        lastApplied[r.section_id] = {
-          epoch: BigInt(r.epoch),
-          clientSeq: BigInt(r.last_seq),
+    for (const entry of acked) {
+      if (entry.lastSeq === null) continue;
+      const existing = lastApplied[entry.sectionId];
+      if (existing === undefined || entry.epoch > existing.epoch) {
+        lastApplied[entry.sectionId] = {
+          epoch: entry.epoch,
+          clientSeq: entry.lastSeq,
         };
       }
     }
     return {
-      head: { seq: BigInt(row.head_seq), hash: row.head_manifest_hash },
-      sectionHashes: row.section_hashes,
+      head: { seq: row.headSeq, hash: row.headManifestHash },
+      sectionHashes: row.sectionHashes,
       lastApplied,
-    };
-  }
+    } satisfies ResumeResult;
+  });
 
-  async getSection(hash: string): Promise<SectionDoc> {
-    const res = await this.db.query(
-      `SELECT doc FROM sections WHERE team_id = $1 AND hash = $2`,
-      [this.db.teamId, hash],
-    );
-    const row = res.rows[0] as { doc: SectionDoc } | undefined;
-    if (row === undefined) throw new UnknownSectionDocumentError(hash);
+  const getSection = Effect.fn('sync.getSection')(function* (hash: string) {
+    const { tx, teamId } = yield* tenant();
+    const rows = yield* tx
+      .select({ doc: sections.doc })
+      .from(sections)
+      .where(and(eq(sections.teamId, teamId), eq(sections.hash, hash)));
+    const row = rows[0];
+    if (row === undefined) {
+      return yield* new UnknownSectionDocumentError({ hash });
+    }
     return row.doc;
-  }
+  });
 
   /** The full manifest chain, oldest first — for linearity assertions. */
-  async manifestChain(draftId: string) {
-    const res = await this.db.query(
-      `SELECT seq, hash, parent_hash FROM manifests
-       WHERE draft_id = $1 AND team_id = $2 ORDER BY seq`,
-      [draftId, this.db.teamId],
-    );
-    return res.rows as {
-      seq: string;
-      hash: string;
-      parent_hash: string | null;
-    }[];
-  }
+  const manifestChain = Effect.fn('sync.manifestChain')(function* (
+    draftId: string,
+  ) {
+    const { tx, teamId } = yield* tenant();
+    const rows = yield* tx
+      .select({
+        seq: manifests.seq,
+        hash: manifests.hash,
+        parentHash: manifests.parentHash,
+      })
+      .from(manifests)
+      .where(and(eq(manifests.draftId, draftId), eq(manifests.teamId, teamId)))
+      .orderBy(manifests.seq);
+    return rows satisfies ManifestChainEntry[];
+  });
+
+  return {
+    ttlMs,
+    createDraft,
+    acquire,
+    takeover,
+    renew,
+    release,
+    commit,
+    resume,
+    getSection,
+    manifestChain,
+  } as const;
 }
+
+export type SyncServer = ReturnType<typeof makeSyncServer>;
 
 /** Test helper: simulate the passage of time (a slept laptop) by expiring a
  * lease in place. Touches only expires_at — the machinery stays untouched. */
-export async function forceExpire(
-  db: TenantDb,
-  executeTransaction: SyncTransactionExecutor,
+export const forceExpire = Effect.fn('sync.forceExpireForTest')(function* (
   draftId: string,
   sectionId: string,
 ) {
-  await executeTransaction('forceExpireForTest', (client) =>
-    client.query(
-      `UPDATE leases SET expires_at = now() - interval '1 millisecond'
-       WHERE draft_id = $1 AND section_id = $2 AND team_id = $3`,
-      [draftId, sectionId, db.teamId],
-    ),
-  );
-}
+  const { tx, teamId } = yield* tenant();
+  yield* tx
+    .update(leases)
+    .set({ expiresAt: sql`now() - interval '1 millisecond'` })
+    .where(
+      and(
+        eq(leases.draftId, draftId),
+        eq(leases.sectionId, sectionId),
+        eq(leases.teamId, teamId),
+      ),
+    );
+});

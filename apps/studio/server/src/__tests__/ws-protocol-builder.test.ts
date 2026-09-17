@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { createORPCClient, getEventMeta } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
+import { Effect, Layer, ManagedRuntime, type Context } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
@@ -20,12 +22,17 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { type contract } from '@codaco/studio-rpc';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createStudio } from '../app.ts';
+import { AuditSignal } from '../audit/signal.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { Database } from '../db/client.ts';
+import { TenantScope, unsafeMakeTeamAccess } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import { ProtocolStore } from '../protocol/store.ts';
+import { Jobs } from '../jobs/jobs.ts';
+import { createProtocol } from '../protocol/store.ts';
+import type { StudioServices } from '../rpc/deps.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -58,6 +65,11 @@ type Connected = { client: StudioClient; socket: WebSocket };
 
 describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   let dispose: () => Promise<void>;
+  /** The Effect client the router's own handlers run against. */
+  let effectRuntime: ManagedRuntime.ManagedRuntime<
+    StudioServices,
+    SqlError.SqlError
+  >;
   let server: Awaited<ReturnType<typeof startStudioServer>>;
   let sockets: WebSocket[];
   let protocolId: string;
@@ -168,10 +180,39 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
         'utf8',
       ),
     ) as CurrentProtocol;
-    const created = await new ProtocolStore(
-      createTenantDb(scratch.app, TEAM_ID),
-      testCipher(),
-    ).createProtocol({ protocol });
+    // The Effect half of the same scratch schema. `@effect/sql-pg` rc.115
+    // cannot set a `search_path` startup parameter, so the client carries it
+    // as `DatabaseConfig.searchPath` and every transaction it opens pins it.
+    const schema = (
+      await scratch.pool.query<{ schema: string }>(
+        'select current_schema() as schema',
+      )
+    ).rows[0]!.schema;
+    effectRuntime = ManagedRuntime.make(
+      Layer.mergeAll(
+        Database.layer({
+          url: db.url,
+          searchPath: schema,
+          maxConnections: 10,
+          applicationName: 'studio-test-ws-protocol-builder',
+        }),
+        AuditSignal.layer,
+        // Nothing on this router enqueues, and nothing here seals: the two are
+        // present because the `/rpc` route asks for the whole data layer, and
+        // the recording queue is what makes "nothing enqueued" observable
+        // rather than assumed.
+        Jobs.layerRecording,
+        Layer.succeed(SecretsCipher)(testCipher()),
+      ),
+    );
+    const services: Context.Context<StudioServices> =
+      await effectRuntime.runPromise(Effect.context<StudioServices>());
+    const created = await Effect.runPromiseWith(services)(
+      TenantScope.open(
+        unsafeMakeTeamAccess(TEAM_ID, 'owner'),
+        createProtocol(TEAM_ID, testCipher(), { protocol }),
+      ),
+    );
     protocolId = created.protocolId;
 
     // Self-hosted rather than the dev default: the managed topology refuses
@@ -185,6 +226,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
           Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
       }),
       pool: scratch.app as pg.Pool,
+      services,
     });
     server = await startStudioServer(serverEnv, studio);
     origin = new URL(env.auth.baseUrl).origin;
@@ -195,6 +237,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   afterAll(async () => {
     for (const socket of sockets ?? []) socket.close();
     await server?.dispose();
+    await effectRuntime?.dispose();
     await dispose?.();
   });
 

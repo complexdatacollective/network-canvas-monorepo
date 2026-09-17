@@ -27,8 +27,14 @@ const decodeUserId = Schema.decodeUnknownSync(UserId);
  * `userId` branded by decoding it through `UserId` rather than asserted. A
  * value the schema refuses is a provider that has changed under us, which is a
  * defect rather than a refusal — so the decode throws instead of being caught.
+ *
+ * Exported because the `/ws` plane needs it too: the protocol builder resolves
+ * its own principal from a Hono middleware on the upgrade (`auth/principal.ts`)
+ * rather than through the `Authenticated` middleware below, and `audited`
+ * requires the contract's `Principal` service. One conversion, so the branded
+ * principal a command acts on cannot differ between the two transports.
  */
-const principalOf = (session: SessionPrincipal): Principal['Service'] =>
+export const principalOf = (session: SessionPrincipal): Principal['Service'] =>
   Principal.of({
     kind: 'user',
     userId: decodeUserId(session.userId),

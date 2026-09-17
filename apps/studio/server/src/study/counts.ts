@@ -1,10 +1,19 @@
-import type pg from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
-import type { StudyCounts } from '@codaco/studio-rpc';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
+import type { StudyCounts } from '@codaco/studio-contract/schema/study';
+
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
+import { PROTOCOL_TABLES } from '../protocol/schema.ts';
+import { STUDY_TABLES } from './schema.ts';
 
 // The numbers the study sidebar carries beside its countable destinations
 // (app-shell design §5.5): published versions, participants, waves, sessions.
+
+const { interviewSessions, participants, studies, studyWaves } = STUDY_TABLES;
+const { protocolVersions } = PROTOCOL_TABLES;
 
 /**
  * All four counts in ONE statement, driven off the study row.
@@ -27,35 +36,43 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
  * Every subquery carries its own `team_id` predicate as well as running under
  * row-level security, following the rest of the data layer: the predicates
  * lead the team-first indexes, and they hold even where RLS is bypassed.
+ *
+ * The `::int` casts are what make the shape true: `count(*)` is a `bigint`,
+ * which the driver's codec decodes as a JavaScript `bigint` unless it is
+ * narrowed in SQL first — so without them every number here would be a value
+ * the contract's `NonNegativeInt` refuses and arithmetic on it would throw.
  */
-export async function readStudyCounts(
-  db: TenantDb,
+export const readStudyCounts: (
   studyId: string,
-): Promise<StudyCounts | undefined> {
-  // `TenantDb.query` returns an untyped `pg.QueryResult`, so the row shape is
-  // named on the way out rather than asserted afterwards. The `::int` casts
-  // below are what make the shape true: `count(*)` is a bigint, which `pg`
-  // hands back as a string unless it is narrowed in SQL first.
-  const result: pg.QueryResult<StudyCounts> = await db.query(
-    `SELECT
-       (SELECT count(*)::int FROM protocol_versions v
-         WHERE v.team_id = s.team_id AND v.protocol_id = s.protocol_id)
-         AS versions,
-       (SELECT count(*)::int FROM participants p
-         WHERE p.team_id = s.team_id AND p.study_id = s.id)
-         AS participants,
-       (SELECT count(*)::int FROM study_waves w
-         WHERE w.team_id = s.team_id AND w.study_id = s.id)
-         AS waves,
-       (SELECT count(*)::int FROM interview_sessions i
-         WHERE i.team_id = s.team_id AND i.study_id = s.id)
-         AS sessions
-     FROM studies s
-     WHERE s.id = $1 AND s.team_id = $2`,
-    [studyId, db.teamId],
-  );
+) => Effect.Effect<StudyCounts | undefined, SqlError.SqlError, Transaction> =
+  Effect.fn('study.counts.readStudyCounts')(function* (studyId: string) {
+    const { tx, teamId } = yield* Transaction;
+    if (teamId === null) {
+      return yield* Effect.die(
+        new Error(
+          'the study counts require a tenant scope; this transaction stamps no team',
+        ),
+      );
+    }
+    const rows = yield* tx
+      .select({
+        versions: sql<number>`(SELECT count(*)::int FROM ${protocolVersions}
+                                WHERE ${protocolVersions.teamId} = ${studies.teamId}
+                                  AND ${protocolVersions.protocolId} = ${studies.protocolId})`,
+        participants: sql<number>`(SELECT count(*)::int FROM ${participants}
+                                    WHERE ${participants.teamId} = ${studies.teamId}
+                                      AND ${participants.studyId} = ${studies.id})`,
+        waves: sql<number>`(SELECT count(*)::int FROM ${studyWaves}
+                             WHERE ${studyWaves.teamId} = ${studies.teamId}
+                               AND ${studyWaves.studyId} = ${studies.id})`,
+        sessions: sql<number>`(SELECT count(*)::int FROM ${interviewSessions}
+                                WHERE ${interviewSessions.teamId} = ${studies.teamId}
+                                  AND ${interviewSessions.studyId} = ${studies.id})`,
+      })
+      .from(studies)
+      .where(and(eq(studies.id, studyId), eq(studies.teamId, teamId)));
 
-  // Undefined for a study this team does not have — which, under row-level
-  // security, is also every study another team does have.
-  return result.rows[0];
-}
+    // Undefined for a study this team does not have — which, under row-level
+    // security, is also every study another team does have.
+    return rows[0];
+  }, sqlErrorsOnly);

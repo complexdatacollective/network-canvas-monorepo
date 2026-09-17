@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { implement, ORPCError, withEventMeta } from '@orpc/server';
+import { Effect, type Context } from 'effect';
 import type pg from 'pg';
 
 import { contract } from '@codaco/studio-rpc';
@@ -18,13 +19,15 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import type { AssetStore } from '../assets.ts';
+import type { AuditSignal } from '../audit/signal.ts';
 import type { AuthService, Principal } from '../auth/service.ts';
+import type { Database } from '../db/client.ts';
+import { TenantScope } from '../db/tenant.ts';
 import { openAssetKey } from '../protocol/asset-keys.ts';
-import { createProtocolSyncServer } from '../protocol/sync.ts';
 import type { RateLimiter } from '../rate-limit.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import type { RpcContext } from '../rpc.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
@@ -36,6 +39,7 @@ import {
   readSection,
   releaseConnection,
   releaseLock,
+  renewLease,
   sessionOwner,
   sessionPresence,
   submit,
@@ -55,7 +59,7 @@ import {
   REAUTHORIZE_MS,
   type ProtocolBuilderRuntime,
 } from './runtime.ts';
-import { resolveProtocolSession } from './tenancy.ts';
+import { openSession } from './tenancy.ts';
 import {
   readWriteReceipt,
   type WriteOperation,
@@ -63,6 +67,18 @@ import {
 } from './writeReceipts.ts';
 
 const os = implement(contract).$context<RpcContext>();
+
+/**
+ * What this router's effects run against: the application database, and the
+ * operator channel an audited command's failed append signals on.
+ *
+ * The protocol builder is oRPC over `/ws` until stage 8 (#1930), so its
+ * handlers are promises and the Effects behind them have to be run somewhere.
+ * The set comes from the program that built this router (`programs/serve.ts`),
+ * not from the frame: a frame is not an Effect, and the lease keeper renews
+ * and releases from a timer, long after the call that took the lease returned.
+ */
+export type ProtocolBuilderServices = Database | AuditSignal;
 
 export type ProtocolBuilderRouterDeps = {
   auth: AuthService;
@@ -76,7 +92,7 @@ export type ProtocolBuilderRouterDeps = {
    * set — so it is refused beside the pool below rather than being allowed to
    * reach a write that would store the key in the section document.
    */
-  cipher?: SecretsCipher;
+  cipher?: SecretsCipherApi;
   /**
    * Where this router's calls are counted (#1909). Every procedure here
    * authenticates through `openSession` rather than through `requireUser` and
@@ -85,6 +101,13 @@ export type ProtocolBuilderRouterDeps = {
    * RPC plane with no per-user or per-team limit at all.
    */
   limiter?: RateLimiter;
+  /**
+   * What this router's Effects run with (#1931 stage 3). Absent on an
+   * entrypoint with no database, where it is refused beside the pool: every
+   * procedure here reads or writes, so a router without it can serve none of
+   * them.
+   */
+  services?: Context.Context<ProtocolBuilderServices>;
 };
 
 function requirePrincipal(context: RpcContext): Principal {
@@ -115,7 +138,22 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
   const { auth, runtime } = deps;
   const staged = new StagedResourceRegistry(randomUUID);
 
-  const openSession = async (
+  /**
+   * Runs one of this router's effects.
+   *
+   * A router wired without services can serve nothing, which is the reading
+   * the missing pool already had — and `sessionFor` refuses on both before any
+   * of these runs, so this rejection is the unreachable backstop rather than
+   * the answer a caller sees.
+   */
+  const run = <A, E>(
+    effect: Effect.Effect<A, E, ProtocolBuilderServices>,
+  ): Promise<A> =>
+    deps.services === undefined
+      ? Promise.reject(new ORPCError('INTERNAL_SERVER_ERROR'))
+      : Effect.runPromiseWith(deps.services)(effect);
+
+  const sessionFor = async (
     context: RpcContext,
     protocolId: string,
   ): Promise<ProtocolBuilderSession | null> => {
@@ -128,19 +166,21 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       principal.userId,
       context.resHeaders,
     );
-    if (!deps.pool || !deps.cipher) {
+    if (!deps.pool || !deps.cipher || !deps.services) {
       throw new ORPCError('INTERNAL_SERVER_ERROR');
     }
     const memberships = await auth.listMemberships(principal.userId);
-    const session = await resolveProtocolSession(deps.pool, {
-      protocolId,
-      principal,
-      requestId: context.requestId,
-      connectionId: connectionOf(context, principal),
-      clientSessionId: clientSessionOf(context, principal),
-      memberships,
-      cipher: deps.cipher,
-    });
+    const session = await run(
+      openSession({
+        protocolId,
+        principal,
+        requestId: context.requestId,
+        connectionId: connectionOf(context, principal),
+        clientSessionId: clientSessionOf(context, principal),
+        memberships,
+        cipher: deps.cipher,
+      }),
+    );
     if (session !== null) {
       // And the team's, once the session says which team this protocol is in —
       // the same order `openTeam` takes them in, and for the same reason: a
@@ -149,7 +189,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       await enforceRateLimit(
         deps.limiter,
         'rpc_team',
-        session.tenantDb.teamId,
+        session.access.teamId,
         context.resHeaders,
       );
       runtime.leases.touch(sessionOwner(session));
@@ -208,9 +248,8 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
   const assetsDocument = async (
     session: ProtocolBuilderSession,
   ): Promise<SectionDoc> => {
-    const assets = await readSection(
-      session,
-      makeSectionId({ kind: 'assets' }),
+    const assets = await run(
+      readSection(session, makeSectionId({ kind: 'assets' })),
     );
     return assets?.document ?? {};
   };
@@ -237,28 +276,32 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       runtime.leases.drop(session.draftId, sectionId, owner);
     }
     staged.releaseMatching(ownerPrefix(session));
-    const released = await releaseConnection(session, held);
+    const released = await run(releaseConnection(session, held));
     publish(session, released.events);
   };
 
   return {
     acquireLock: os.protocolBuilder.acquireLock.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const result = await acquireLock(session, input.sectionId);
+        const result = await run(acquireLock(session, input.sectionId));
         if (result.outcome === undefined) {
           throw errors.SECTION_NOT_FOUND({ data: input });
         }
         if (result.lease !== undefined) {
+          const epoch = result.lease.epoch;
           runtime.leases.hold({
-            sync: createProtocolSyncServer(session.tenantDb),
+            // The keeper has no transaction to give, so the host is what
+            // turns each renewal into one — the same division `endOwner`
+            // already had, and the one `SyncClient` gets from
+            // `SyncTransport`.
+            renew: () => run(renewLease(session, input.sectionId, epoch)),
             draftId: session.draftId,
             sectionId: input.sectionId,
             owner: sessionOwner(session),
-            epoch: result.lease.epoch,
           });
           // Presence is a connection's, and a unary call has none: the cookie
           // session it falls back to for ownership is shared by every tab of a
@@ -280,11 +323,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
     releaseLock: os.protocolBuilder.releaseLock.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const result = await releaseLock(session, input.sectionId);
+        const result = await run(releaseLock(session, input.sectionId));
         const owner = sessionOwner(session);
         runtime.leases.drop(session.draftId, input.sectionId, owner);
         // A tab can hold two sections at once — a codebook dialog over a stage
@@ -309,11 +352,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
     getSection: os.protocolBuilder.getSection.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const state = await readSection(session, input.sectionId);
+        const state = await run(readSection(session, input.sectionId));
         if (state === undefined) {
           throw errors.SECTION_NOT_FOUND({ data: input });
         }
@@ -323,11 +366,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
     listSections: os.protocolBuilder.listSections.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        return { sectionIds: await listSectionIds(session) };
+        return { sectionIds: await run(listSectionIds(session)) };
       },
     ),
 
@@ -338,7 +381,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       lastEventId,
       signal,
     }) {
-      const session = await openSession(context, input.protocolId);
+      const session = await sessionFor(context, input.protocolId);
       if (session === null) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
@@ -369,12 +412,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         // hand the client everything it had already been given, on every
         // reconnect.
         const from = laterCursor(input.since, lastEventId);
-        const backlog = await readProtocolEvents(
-          session.tenantDb,
-          session.draftId,
-          from,
+        const backlog = await run(
+          TenantScope.open(
+            session.access,
+            readProtocolEvents(session.access.teamId, session.draftId, from),
+          ),
         );
-        let last = backlog.at(-1)?.cursor ?? from;
+        const lastCursor = backlog.at(-1)?.cursor;
+        let last = lastCursor === undefined ? from : BigInt(lastCursor);
         for (const entry of backlog) {
           yield withEventMeta(entry.event, { id: entry.cursor });
         }
@@ -389,7 +434,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           // is publishing to costs nothing; ending the iterator here also ends
           // the connection that was keeping this owner's leases renewed.
           if (runtime.now() - authorizedAt >= REAUTHORIZE_MS) {
-            if ((await openSession(context, input.protocolId)) === null) {
+            if ((await sessionFor(context, input.protocolId)) === null) {
               throw errors.PROTOCOL_NOT_FOUND({ data: input });
             }
             authorizedAt = runtime.now();
@@ -400,10 +445,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             yield entry.event;
             continue;
           }
-          if (last !== undefined && BigInt(entry.cursor) <= BigInt(last)) {
-            continue;
-          }
-          last = entry.cursor;
+          const cursor = BigInt(entry.cursor);
+          if (last !== undefined && cursor <= last) continue;
+          last = cursor;
           yield withEventMeta(entry.event, { id: entry.cursor });
         }
       } finally {
@@ -420,7 +464,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
     submit: os.protocolBuilder.submit.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
@@ -430,9 +474,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         // wrote. Asked before the promotion is planned, because a retry's
         // staged resources are gone — the first attempt took them — and
         // planning again would refuse the retry rather than answer it.
-        const already = await readWriteReceipt(
-          session.tenantDb,
-          writeKey(session, 'submit', input.requestId),
+        const already = await run(
+          TenantScope.open(
+            session.access,
+            readWriteReceipt(
+              session.access.teamId,
+              writeKey(session, 'submit', input.requestId),
+            ),
+          ),
         );
         if (already !== undefined) return submitted(already);
         const store =
@@ -452,15 +501,17 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             data: { sectionId: input.sectionId, failure: planned.failure },
           });
         }
-        const result = await submit(session, input.sectionId, input.document, {
-          requestId: input.requestId,
-          ...(planned === undefined
-            ? {}
-            : {
-                assetEntries: planned.data.entries,
-                promoted: planned.data.promoted,
-              }),
-        });
+        const result = await run(
+          submit(session, input.sectionId, input.document, {
+            requestId: input.requestId,
+            ...(planned === undefined
+              ? {}
+              : {
+                  assetEntries: planned.data.entries,
+                  promoted: planned.data.promoted,
+                }),
+          }),
+        );
         publish(session, result.events);
         const outcome = result.outcome;
         if (outcome === undefined) {
@@ -510,7 +561,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
      */
     create: os.protocolBuilder.create.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
@@ -520,9 +571,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         // record rather than minted again, because a second create would put a
         // second copy of the stage in the protocol and the retry would never
         // learn of the first.
-        const already = await readWriteReceipt(
-          session.tenantDb,
-          writeKey(session, 'create', input.requestId),
+        const already = await run(
+          TenantScope.open(
+            session.access,
+            readWriteReceipt(
+              session.access.teamId,
+              writeKey(session, 'create', input.requestId),
+            ),
+          ),
         );
         if (already !== undefined) return created(already);
         const store =
@@ -540,19 +596,23 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (planned?.status === 'failed') {
           throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
         }
-        const result = await create(session, {
-          requestId: input.requestId,
-          kind: input.kind,
-          document: input.document,
-          ...(input.position === undefined ? {} : { position: input.position }),
-          ...(planned === undefined
-            ? {}
-            : {
-                assetEntries: planned.data.entries,
-                promoted: planned.data.promoted,
-              }),
-          mintId: randomUUID,
-        });
+        const result = await run(
+          create(session, {
+            requestId: input.requestId,
+            kind: input.kind,
+            document: input.document,
+            ...(input.position === undefined
+              ? {}
+              : { position: input.position }),
+            ...(planned === undefined
+              ? {}
+              : {
+                  assetEntries: planned.data.entries,
+                  promoted: planned.data.promoted,
+                }),
+            mintId: randomUUID,
+          }),
+        );
         publish(session, result.events);
         // Another call carrying this request id got there first, so this one
         // is its retry: the stage it made, not a second one.
@@ -603,7 +663,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
      */
     delete: os.protocolBuilder.delete.handler(
       async ({ input, context, errors }) => {
-        const session = await openSession(context, input.protocolId);
+        const session = await sessionFor(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
@@ -611,7 +671,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (ref.kind !== 'stage') {
           throw errors.SECTION_NOT_FOUND({ data: input });
         }
-        const result = await deleteStage(session, ref.stageId);
+        const result = await run(deleteStage(session, ref.stageId));
         publish(session, result.events);
         if (result.outcome === undefined) {
           throw errors.SECTION_NOT_FOUND({ data: input });
@@ -633,28 +693,32 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     refactor: {
       deleteVariable: os.protocolBuilder.refactor.deleteVariable.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          const result = await deleteVariable(session, {
-            subject: input.subject,
-            variableId: input.variableId,
-          });
+          const result = await run(
+            deleteVariable(session, {
+              subject: input.subject,
+              variableId: input.variableId,
+            }),
+          );
           publish(session, result.events);
           return applied(result.outcome, errors);
         },
       ),
       deleteEntityType: os.protocolBuilder.refactor.deleteEntityType.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          const result = await deleteEntityType(session, {
-            entity: input.entity,
-            typeId: input.typeId,
-          });
+          const result = await run(
+            deleteEntityType(session, {
+              entity: input.entity,
+              typeId: input.typeId,
+            }),
+          );
           publish(session, result.events);
           return applied(result.outcome, errors);
         },
@@ -664,7 +728,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     resources: {
       list: os.protocolBuilder.resources.list.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
@@ -694,7 +758,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
       stage: os.protocolBuilder.resources.stage.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
@@ -707,7 +771,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
       discard: os.protocolBuilder.resources.discard.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
@@ -719,7 +783,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 
       inspect: os.protocolBuilder.resources.inspect.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
@@ -732,13 +796,18 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             store === undefined
               ? committedInspection(assets, input.resourceId)
               : store.inspect(assets, input.resourceId);
-          return withCommittedAssetKey(session, input.resourceId, inspection);
+          return withCommittedAssetKey(
+            run,
+            session,
+            input.resourceId,
+            inspection,
+          );
         },
       ),
 
       preview: os.protocolBuilder.resources.preview.handler(
         async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
+          const session = await sessionFor(context, input.protocolId);
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
@@ -771,6 +840,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
  * carries a value is passed through untouched.
  */
 async function withCommittedAssetKey(
+  run: <A, E>(
+    effect: Effect.Effect<A, E, ProtocolBuilderServices>,
+  ) => Promise<A>,
   session: ProtocolBuilderSession,
   resourceId: string,
   outcome: ResourceOutcome<Inspection>,
@@ -778,11 +850,16 @@ async function withCommittedAssetKey(
   if (outcome.status !== 'ok') return outcome;
   if (outcome.data.descriptor.kind !== 'apikey') return outcome;
   if (outcome.data.value !== undefined) return outcome;
-  const value = await openAssetKey(session.tenantDb, session.cipher, {
-    teamId: session.tenantDb.teamId,
-    protocolId: session.protocolId,
-    assetId: resourceId,
-  });
+  const value = await run(
+    TenantScope.open(
+      session.access,
+      openAssetKey(session.cipher, {
+        teamId: session.access.teamId,
+        protocolId: session.protocolId,
+        assetId: resourceId,
+      }),
+    ),
+  );
   // A manifest entry with no sealed row is a protocol written before this
   // existed, or one whose key was never promoted: the descriptor is still the
   // truth about the asset, so it is answered without a value rather than as a
@@ -798,10 +875,14 @@ async function withCommittedAssetKey(
 function laterCursor(
   since: string | undefined,
   lastEventId: string | undefined,
-): string | undefined {
-  if (since === undefined) return lastEventId;
-  if (lastEventId === undefined) return since;
-  return BigInt(lastEventId) > BigInt(since) ? lastEventId : since;
+): bigint | undefined {
+  if (since === undefined) {
+    return lastEventId === undefined ? undefined : BigInt(lastEventId);
+  }
+  if (lastEventId === undefined) return BigInt(since);
+  const asked = BigInt(since);
+  const reached = BigInt(lastEventId);
+  return reached > asked ? reached : asked;
 }
 
 /**

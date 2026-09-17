@@ -5,6 +5,8 @@ import { Context, Effect, Layer } from 'effect';
 import type pg from 'pg';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { MaintenanceDatabase } from '../../../db/client.ts';
+import { MaintenanceScope } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
 import {
   asApp,
@@ -16,7 +18,6 @@ import {
   onWorker,
   readJobs,
 } from '../../__tests__/support.ts';
-import { Database, withTransaction } from '../../database.ts';
 import { Jobs } from '../../jobs.ts';
 import {
   type GcOptions,
@@ -278,7 +279,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
     it.effect('refuses a login that may not assume that role', () =>
       Effect.gen(function* () {
         // The other half of the misconfiguration, and the half the identity
-        // check above cannot see: a maintenance `Database` whose login is not
+        // check above cannot see: a maintenance `MaintenanceDatabase` whose login is not
         // a member of the role. `set local role` refuses it one statement
         // before the handler's own, and what this case pins is that the
         // refusal still arrives as the diagnosis rather than as a bare
@@ -296,7 +297,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           Effect.gen(function* () {
             const context = yield* Effect.orDie(
               Layer.build(
-                Database.layer('maintenance', {
+                MaintenanceDatabase.layer({
                   url: url.href,
                   maxConnections: 1,
                   searchPath: studioSchema,
@@ -311,7 +312,10 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
               Effect.catch((error) =>
                 Effect.succeed(`unexpected: ${String(error)}`),
               ),
-              Effect.provideService(Database, Context.get(context, Database)),
+              Effect.provideService(
+                MaintenanceDatabase,
+                Context.get(context, MaintenanceDatabase),
+              ),
             );
           }),
         ).pipe(
@@ -348,7 +352,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
 
         const jobs = yield* Jobs;
         const jobId = yield* asApp(
-          withTransaction(jobs.enqueue('protocol-store-gc', {})),
+          MaintenanceScope.open(jobs.enqueue('protocol-store-gc', {})),
         );
 
         const step = yield* drainWith('protocol-store-gc', protocolStoreGc);
@@ -385,7 +389,9 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
       Effect.gen(function* () {
         yield* clearStore;
         const jobs = yield* Jobs;
-        yield* asApp(withTransaction(jobs.enqueue('protocol-store-gc', {})));
+        yield* asApp(
+          MaintenanceScope.open(jobs.enqueue('protocol-store-gc', {})),
+        );
 
         const step = yield* onWorker((worker) =>
           Effect.gen(function* () {
@@ -395,7 +401,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
             yield* Effect.flatMap(DeliveryHarness, (harness) =>
               Effect.provideService(
                 worker.work('protocol-store-gc', protocolStoreGc),
-                Database,
+                MaintenanceDatabase,
                 harness.app,
               ),
             );

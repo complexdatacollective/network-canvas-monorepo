@@ -8,7 +8,10 @@ import type pg from 'pg';
 
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import type { OAuthTokenColumn, SecretsCipher } from '../../secrets/cipher.ts';
+import type {
+  OAuthTokenColumn,
+  SecretsCipherApi,
+} from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import { seedHex, seedTime, seedUuid, shiftDays } from './rng.ts';
 
@@ -136,7 +139,7 @@ async function insertCredentialAccount(
  */
 export async function seedAdminOAuthAccount(
   client: pg.ClientBase,
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
   input: { userId: string; createdAt: Date },
 ): Promise<string[]> {
   const accountId = `seed-google-${seedHex(8)}`;

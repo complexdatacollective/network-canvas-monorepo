@@ -1,50 +1,65 @@
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, it } from 'vitest';
+import { assert } from '@effect/vitest';
+import { Cause, Effect, Exit, Layer, Schema } from 'effect';
+import { describe, it } from 'vitest';
 
-import type { TenantDb } from '@codaco/studio-sync/tenant';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
-import type { SessionPrincipal } from '../../auth/service.ts';
+import { AuditSignal } from '../../audit/signal.ts';
+import { DatabaseAbsent } from '../../db/client.ts';
+import { unsafeMakeTeamAccess } from '../../db/tenant.ts';
+import { RequestId } from '../../http/middleware/request-id.ts';
+import { SecretsCipher } from '../../secrets/services.ts';
 import { createAuditedProtocol } from '../commands.ts';
 
-const PRINCIPAL: SessionPrincipal = {
+const PRINCIPAL = Principal.of({
   kind: 'user',
-  userId: 'protocol-command-owner',
+  userId: Schema.decodeSync(UserId)('protocol-command-owner'),
   email: 'protocol-command-owner@example.com',
   emailVerified: true,
   name: 'Protocol Command Owner',
   locale: null,
   sessionId: 'protocol-command-owner-session',
-};
+});
+
+/**
+ * Everything the command needs EXCEPT a usable database. `DatabaseAbsent`
+ * throws on first touch, which is what makes "before opening a transaction" an
+ * oracle rather than a claim: a command that reached the scope would fail with
+ * that error instead of the name refusal.
+ */
+const Harness = Layer.mergeAll(
+  DatabaseAbsent,
+  AuditSignal.layer,
+  Layer.succeed(SecretsCipher)(testCipher()),
+  Layer.succeed(Principal, PRINCIPAL),
+  Layer.succeed(RequestId, RequestId.of(randomUUID())),
+);
 
 describe('audited protocol commands', () => {
-  it('rejects a whitespace-only protocol name before opening a transaction', () => {
-    let transactionCount = 0;
-    const tenantDb: TenantDb = {
-      teamId: 'protocol-command-team',
-      query: () => Promise.reject(new Error('unexpected query')),
-      transaction: () => {
-        transactionCount += 1;
-        return Promise.reject(new Error('unexpected transaction'));
-      },
-    };
-
-    expect(() =>
-      createAuditedProtocol(
-        {
-          tenantDb,
-          principal: PRINCIPAL,
-          requestId: randomUUID(),
-        },
-        {
-          name: '   ',
-          protocolId: randomUUID(),
-          draftId: randomUUID(),
-        },
-        testCipher(),
+  it('rejects a whitespace-only protocol name before opening a transaction', async () => {
+    const outcome = await Effect.runPromise(
+      Effect.exit(
+        createAuditedProtocol(
+          unsafeMakeTeamAccess('protocol-command-team', 'owner'),
+          {
+            name: '   ',
+            protocolId: randomUUID(),
+            draftId: randomUUID(),
+          },
+        ).pipe(Effect.provide(Harness)),
       ),
-    ).toThrow('Protocol name must contain a non-whitespace character');
-    expect(transactionCount).toBe(0);
+    );
+
+    assert.isTrue(Exit.isFailure(outcome));
+    // A contract violation rather than a refusal a caller could act on, so it
+    // is a defect — and the message is the schema's, not the database's.
+    assert.include(
+      Exit.isFailure(outcome) ? Cause.pretty(outcome.cause) : '',
+      'Protocol name must contain a non-whitespace character',
+    );
   });
 });

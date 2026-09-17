@@ -1,40 +1,160 @@
 import { randomUUID } from 'node:crypto';
 
+import { PgClient } from '@effect/sql-pg';
 import {
   generateDrizzleJson,
   generateMigration,
 } from 'drizzle-kit/api-postgres';
+import {
+  DefaultServices,
+  make as makeDrizzle,
+} from 'drizzle-orm/effect-postgres';
+import { Context, Effect, Layer, ManagedRuntime, Redacted } from 'effect';
+import { Reactivity } from 'effect/unstable/reactivity';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
-import { TENANT_ROLES } from '../rls.ts';
+import { TEAM_GUC, TENANT_ROLES } from '../rls.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import {
+  type CommitParams,
+  type CommitResult,
   forceExpire,
-  SyncServer,
-  type SyncTransactionExecutor,
+  type Lease,
+  makeSyncServer,
+  type ManifestChainEntry,
+  type ResumeResult,
+  type SectionValidator,
 } from '../server.ts';
-import { createTenantDb, type TenantDb } from '../tenant.ts';
+import { createTenantDb, type TenantDb, Transaction } from '../tenant.ts';
 import { CI, PGPORT } from './test-env.ts';
 
 export const TEST_TEAM_ID = 'team-test';
 
-export function testSyncTransactionExecutor(
-  db: TenantDb,
-): SyncTransactionExecutor {
-  return (_operation, work, opts) => db.transaction(work, opts);
-}
+/** The isolation levels a test scope may ask Postgres for. */
+export type TestIsolation = 'repeatable read' | 'serializable';
 
-export function makeTestSyncServer(db: TenantDb, ttlMs?: number): SyncServer {
-  return new SyncServer(db, testSyncTransactionExecutor(db), ttlMs);
+/**
+ * Runs an effect inside ONE team-stamped transaction — the studio-sync half of
+ * what `TenantScope.open` does in `apps/studio/server`, which this package
+ * cannot import because that app depends on it. Same order for the same
+ * reason: the role first, then the team, so no statement in the body runs
+ * unpinned or unstamped.
+ */
+export type RunTenant = <A, E>(
+  body: Effect.Effect<A, E, Transaction>,
+  options?: {
+    readonly isolation?: TestIsolation;
+    /** `null` opens a scope that stamps no team, as a maintenance one does. */
+    readonly teamId?: string | null;
+  },
+) => Promise<A>;
+
+type SyncDbShape = {
+  readonly sql: PgClient.PgClient;
+  readonly db: Effect.Success<ReturnType<typeof makeDrizzle>>;
+};
+
+class SyncDb extends Context.Service<SyncDb, SyncDbShape>()(
+  '@studio-sync/test/SyncDb',
+) {}
+
+const layerSyncDb = (url: string): Layer.Layer<SyncDb> =>
+  Layer.effect(
+    SyncDb,
+    Effect.gen(function* () {
+      const sql = yield* PgClient.make({
+        url: Redacted.make(url),
+        maxConnections: 20,
+        applicationName: 'studio-sync-test',
+      });
+      const db = yield* makeDrizzle().pipe(
+        Effect.provideService(PgClient.PgClient, sql),
+        Effect.provide(DefaultServices),
+      );
+      return { sql, db };
+    }),
+  ).pipe(Layer.provide(Reactivity.layer), Layer.orDie);
+
+/**
+ * The promise-shaped facade the suites drive the server through.
+ *
+ * Every method opens its own team-stamped transaction, which is exactly the
+ * boundary the node-postgres executor gave each operation before the
+ * conversion — so the scenarios below still read as "the client makes a call".
+ * `resume` opens its at `repeatable read`, because its two reads must come
+ * from one snapshot; `transaction.test.ts` drives the Effect-native path,
+ * where several operations share one.
+ */
+export type SyncFacade = {
+  createDraft(
+    draftId: string,
+    sections: Record<string, SectionDoc>,
+  ): Promise<Record<string, string>>;
+  acquire(
+    draftId: string,
+    sectionId: string,
+    owner: string,
+  ): Promise<Lease | null>;
+  takeover(
+    draftId: string,
+    sectionId: string,
+    owner: string,
+  ): Promise<Lease | null>;
+  renew(
+    draftId: string,
+    sectionId: string,
+    owner: string,
+    epoch: bigint,
+  ): Promise<Lease | null>;
+  release(
+    draftId: string,
+    sectionId: string,
+    owner: string,
+    epoch: bigint,
+  ): Promise<void>;
+  commit(params: CommitParams): Promise<CommitResult>;
+  resume(draftId: string, owner: string): Promise<ResumeResult>;
+  getSection(hash: string): Promise<SectionDoc>;
+  manifestChain(draftId: string): Promise<ManifestChainEntry[]>;
+};
+
+export function makeSyncFacade(
+  run: RunTenant,
+  options?: {
+    readonly ttlMs?: number;
+    readonly validateSection?: SectionValidator;
+  },
+): SyncFacade {
+  const server = makeSyncServer({
+    ttlMs: options?.ttlMs,
+    validateSection: options?.validateSection,
+  });
+  return {
+    createDraft: (draftId, sections) =>
+      run(server.createDraft(draftId, sections)),
+    acquire: (draftId, sectionId, owner) =>
+      run(server.acquire(draftId, sectionId, owner)),
+    takeover: (draftId, sectionId, owner) =>
+      run(server.takeover(draftId, sectionId, owner)),
+    renew: (draftId, sectionId, owner, epoch) =>
+      run(server.renew(draftId, sectionId, owner, epoch)),
+    release: (draftId, sectionId, owner, epoch) =>
+      run(Effect.asVoid(server.release(draftId, sectionId, owner, epoch))),
+    commit: (params) => run(server.commit(params)),
+    resume: (draftId, owner) =>
+      run(server.resume(draftId, owner), { isolation: 'repeatable read' }),
+    getSection: (hash) => run(server.getSection(hash)),
+    manifestChain: (draftId) => run(server.manifestChain(draftId)),
+  };
 }
 
 export function expireLease(
-  db: TenantDb,
+  run: RunTenant,
   draftId: string,
   sectionId: string,
 ): Promise<void> {
-  return forceExpire(db, testSyncTransactionExecutor(db), draftId, sectionId);
+  return run(Effect.asVoid(forceExpire(draftId, sectionId)));
 }
 
 export type SyncDatabase = {
@@ -133,15 +253,66 @@ export const dbAvailable = await (async () => {
   }
 })();
 
+export type SyncHarness = {
+  db: pg.Pool;
+  app: pg.Pool;
+  maintenance: pg.Pool;
+  tenantDb: TenantDb;
+  /** Opens one team-stamped transaction and runs the effect inside it. */
+  run: RunTenant;
+  server: SyncFacade;
+  dispose: () => Promise<void>;
+};
+
 /** The server under test runs as the application role, as it does in Studio. */
-export async function makeServer(dbName: string, ttlMs?: number) {
+export async function makeServer(
+  dbName: string,
+  ttlMs?: number,
+): Promise<SyncHarness> {
   const { db, app, maintenance, dispose } = await createSyncDatabase(
     PGPORT,
     dbName,
   );
-  const tenantDb = createTenantDb(app, TEST_TEAM_ID);
-  const server = makeTestSyncServer(tenantDb, ttlMs);
-  return { db, app, maintenance, tenantDb, server, dispose };
+  const url = `postgres://postgres:spike@127.0.0.1:${PGPORT}/${dbName}`;
+  const runtime = ManagedRuntime.make(layerSyncDb(url));
+
+  const run: RunTenant = (body, options) =>
+    runtime.runPromise(
+      SyncDb.use(({ sql, db: drizzle }) => {
+        const teamId =
+          options?.teamId === undefined ? TEST_TEAM_ID : options.teamId;
+        return drizzle.transaction(
+          (tx) =>
+            Effect.provideService(
+              Effect.gen(function* () {
+                yield* sql.unsafe(`set local role ${TENANT_ROLES.app}`);
+                if (teamId !== null) {
+                  yield* sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
+                }
+                return yield* body;
+              }),
+              Transaction,
+              Transaction.of({ tx, sql, teamId }),
+            ),
+          options?.isolation === undefined
+            ? undefined
+            : { isolationLevel: options.isolation },
+        );
+      }),
+    );
+
+  return {
+    db,
+    app,
+    maintenance,
+    tenantDb: createTenantDb(app, TEST_TEAM_ID),
+    run,
+    server: makeSyncFacade(run, ttlMs === undefined ? {} : { ttlMs }),
+    dispose: async () => {
+      await runtime.dispose();
+      await dispose();
+    },
+  };
 }
 
 export const DEFAULT_SECTIONS: Record<string, SectionDoc> = {
@@ -151,7 +322,7 @@ export const DEFAULT_SECTIONS: Record<string, SectionDoc> = {
 };
 
 export async function makeDraft(
-  server: SyncServer,
+  server: SyncFacade,
   sections: Record<string, SectionDoc> = DEFAULT_SECTIONS,
 ) {
   const draftId = randomUUID();
@@ -178,7 +349,7 @@ export async function waitForLockWait(db: pg.Pool): Promise<void> {
 }
 
 export async function assertLinearChain(
-  server: SyncServer,
+  server: SyncFacade,
   draftId: string,
 ): Promise<number> {
   const chain = await server.manifestChain(draftId);
@@ -188,7 +359,7 @@ export async function assertLinearChain(
     if (Number(entry.seq) !== i) {
       throw new Error(`non-contiguous seq at ${i}: ${entry.seq}`);
     }
-    if (i > 0 && entry.parent_hash !== chain[i - 1]?.hash) {
+    if (i > 0 && entry.parentHash !== chain[i - 1]?.hash) {
       throw new Error(`fork at seq ${entry.seq}: parent does not match`);
     }
   }

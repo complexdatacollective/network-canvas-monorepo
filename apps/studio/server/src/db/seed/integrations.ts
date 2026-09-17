@@ -4,7 +4,7 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
-import type { SecretsCipher } from '../../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededSession } from './network.ts';
 import {
@@ -228,7 +228,7 @@ export async function seedWebhooks(
   studies: SeedStudy[],
   sessions: SeededSession[],
   withdrawals: SeedWithdrawal[],
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): Promise<string[]> {
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];

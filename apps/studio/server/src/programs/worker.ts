@@ -1,6 +1,7 @@
 import { Effect, Layer, Option, Ref, Schema } from 'effect';
 import { HttpRouter } from 'effect/unstable/http';
 
+import { MaintenanceDatabase } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import {
@@ -11,8 +12,6 @@ import {
   schemaCheckOnPool,
 } from '../http/health.ts';
 import { JobClock } from '../jobs/clock.ts';
-import { Database } from '../jobs/database.ts';
-import { DeniedAuditSummaryWriter } from '../jobs/handlers/denied-attempts/audit-writer.ts';
 import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JobMaintenanceGate, MaintenanceState } from '../jobs/maintenance.ts';
@@ -28,7 +27,7 @@ import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { createRateLimiter } from '../rate-limit.ts';
 import { getRateLimitStore, RateLimitStoresLive } from '../rate-limit/store.ts';
-import { verifySecretKeysOrExit } from '../secrets/boot.ts';
+import { KeyringVerified } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
 // The worker program: the same image as src/programs/serve.ts, started with a
@@ -84,7 +83,7 @@ class JobsNotStarted extends Schema.TaggedError<JobsNotStarted>()(
 /** What the `jobs` check reads once the queue's layers have been built. */
 type StartedQueue = {
   readonly worker: JobWorker['Service'];
-  readonly database: Database['Service'];
+  readonly database: MaintenanceDatabase['Service'];
 };
 
 /**
@@ -142,13 +141,13 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       // worker is what signs webhook deliveries, so a keyring that cannot
       // produce a stored key id would turn every delivery for that team into a
       // failed job. Waits for the gate, so the development lane's wait is one
-      // wait.
-      const SecretsVerified = Layer.effectDiscard(
-        Effect.gen(function* () {
-          const status = yield* SchemaStatus;
-          yield* status.current;
-          yield* Effect.promise(() => verifySecretKeysOrExit(env, pool));
-        }),
+      // wait: `Layer.provide` builds what it is given first, so the schema is
+      // current before the keyring is read.
+      const SchemaCurrent = Layer.effectDiscard(
+        Effect.flatMap(SchemaStatus, (status) => status.current),
+      );
+      const SecretsVerified = KeyringVerified.pipe(
+        Layer.provide(SchemaCurrent),
       );
 
       // The maintenance client the queue runs on. Same database, same role and
@@ -157,7 +156,7 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       // handler's idempotency read goes through this client while the audit
       // row is written through that pool, and two schemas apart the read would
       // report every written summary as missing.
-      const QueueDatabase = Database.layer('maintenance', {
+      const QueueDatabase = MaintenanceDatabase.layer({
         url: db.url,
         applicationName: 'studio-worker',
       });
@@ -167,7 +166,7 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       const Started = Layer.effectDiscard(
         Effect.gen(function* () {
           const worker = yield* JobWorker;
-          const database = yield* Database;
+          const database = yield* MaintenanceDatabase;
           yield* Ref.set(started, Option.some({ worker, database }));
           yield* Effect.log(
             `Network Canvas Studio worker ${STUDIO_VERSION} started`,
@@ -191,7 +190,6 @@ function workerWith(env: StudioEnv, db: DbEnv) {
             ? DeniedAttemptsStore.layer(getRateLimitStore(env.redis))
             : DeniedAttemptsStore.layerAbsent,
         ),
-        Layer.provide(DeniedAuditSummaryWriter.layer(pool)),
         Layer.provideMerge(JobWorker.layer({ schema: JOB_SCHEMA })),
         Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
         // The production skew correction, measured against this client's own

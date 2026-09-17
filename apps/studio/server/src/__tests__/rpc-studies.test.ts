@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -13,6 +14,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -70,6 +72,12 @@ const OUTSIDER = researcher('outsider', OTHER_TEAM_ID, 'owner');
 describe.skipIf(!db)('the studies RPC', () => {
   let pool: pg.Pool;
   let appPool: pg.Pool;
+  /**
+   * The Effect data layer over this scratch schema, which is what every
+   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
+   * than built per Studio: the clients underneath it are connection pools.
+   */
+  let services: Context.Context<StudioServices>;
   let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let clients: Map<Researcher, RpcTestClient>;
@@ -85,6 +93,7 @@ describe.skipIf(!db)('the studies RPC', () => {
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
     appPool = scratch.app;
+    services = await scratch.services();
     maintenance = scratch.maintenance;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
@@ -112,7 +121,9 @@ describe.skipIf(!db)('the studies RPC', () => {
       });
       clients.set(
         who,
-        await createRpcClient(createStudio(readEnv(), { auth, pool: appPool })),
+        await createRpcClient(
+          createStudio(readEnv(), { auth, pool: appPool, services }),
+        ),
       );
     }
   });

@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import type pg from 'pg';
 
 import { splitStatements } from '../db/statements.ts';
-import { Transaction } from './database.ts';
+import { Transaction } from '../db/tenant.ts';
 import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 
 // Installing the queue's schema, in both shapes a caller can need it.
@@ -15,8 +15,8 @@ import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 // Two functions because two drivers do the same work for two lifetimes. The
 // node-postgres one is what `applySchema` and `studio-api migrate` call: both
 // already hold one client inside one transaction and apply everything through
-// it. The Effect one is for a program that owns its own `Database` and creates
-// the schema through `withTransaction` (the suites' harness does). They share
+// it. The Effect one is for a program that owns a client and creates the
+// schema through a scope (the suites' harness does). They share
 // the statements, so the bytes cannot drift between the path that installs a
 // deployment and the path that installs a suite's scratch schema.
 
@@ -62,10 +62,10 @@ export async function installJobSchema(
 
 /**
  * The same install over an open `Transaction` — stage 3's path, and the one
- * the queue's own suites can use once they build a `Database` rather than a
- * `pg.Pool`. `Transaction` and not `Database` for the reason `Jobs.enqueue`
- * takes it: the requirement is what says this runs inside a transaction
- * somebody else opened.
+ * the queue's own suites use now that they build a client rather than a
+ * `pg.Pool`. `Transaction` and not the client itself, for the reason
+ * `Jobs.enqueue` takes it: the requirement is what says this runs inside a
+ * transaction somebody else opened.
  */
 export const installJobSchemaEffect = Effect.fn('installJobSchema')(function* (
   schema: string,

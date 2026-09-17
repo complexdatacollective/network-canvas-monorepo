@@ -12,7 +12,7 @@ import { readEnv } from '../../env.ts';
 import {
   type OAuthTokenColumn,
   parseOAuthTokenKeyId,
-  type SecretsCipher,
+  type SecretsCipherApi,
 } from '../../secrets/cipher.ts';
 import { SecretUnreadableError } from '../../secrets/envelope.ts';
 import { createBetterAuthInstance } from '../better-auth.ts';
@@ -63,7 +63,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
    * A better-auth instance on the scratch schema, wired through the real
    * constructor so the adapter under test is the one the server builds.
    */
-  function contextFor(cipher: SecretsCipher) {
+  function contextFor(cipher: SecretsCipherApi) {
     if (!env.auth) throw new Error('dev env must configure auth');
     if (!scratch) throw new Error('the scratch schema was not provisioned');
     return createBetterAuthInstance(
@@ -103,7 +103,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
    * inside `runWithTransaction`, so the account write goes through the
    * transaction's adapter rather than the one better-auth was configured with.
    */
-  async function signUpWithGoogle(cipher: SecretsCipher) {
+  async function signUpWithGoogle(cipher: SecretsCipherApi) {
     const ctx = await contextFor(cipher);
     const email = `${randomUUID()}@example.com`;
     const accountId = randomUUID();

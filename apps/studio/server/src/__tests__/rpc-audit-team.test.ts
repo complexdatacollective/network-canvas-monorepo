@@ -1,3 +1,4 @@
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -10,6 +11,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -45,6 +47,8 @@ describe.skipIf(!db)('audited team RPC', () => {
   let membershipRole: string;
   let client: RpcTestClient;
   let inviteeClients: RpcTestClient[];
+  /** The Effect data layer over this scratch schema, shared by every client. */
+  let services: Context.Context<StudioServices>;
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -52,6 +56,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     pool = scratch.pool;
     jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
+    services = await scratch.services();
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM_ID);
     await pool.query(
@@ -79,7 +84,7 @@ describe.skipIf(!db)('audited team RPC', () => {
         pool: scratch.app,
         // What the web process hands the router: creating an invitation queues
         // its delivery in the same transaction (#1895).
-        jobs: await scratch.createJobClient(),
+        services,
       }),
     );
   });
@@ -203,7 +208,11 @@ describe.skipIf(!db)('audited team RPC', () => {
       getMembership: () => Promise.resolve(null),
     });
     const inviteeClient = await createRpcClient(
-      createStudio(readEnv(), { auth: inviteeAuth, pool }),
+      createStudio(readEnv(), {
+        auth: inviteeAuth,
+        pool,
+        services,
+      }),
     );
     inviteeClients.push(inviteeClient);
 

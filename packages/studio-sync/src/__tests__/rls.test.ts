@@ -9,14 +9,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TEAM_GUC, TENANT_ROLES } from '../rls.ts';
 import { SYNC_TABLES } from '../schema.ts';
-import { type SyncServer } from '../server.ts';
-import { createTenantDb, type TenantDb } from '../tenant.ts';
+import type { TenantDb } from '../tenant.ts';
 import {
   TEST_TEAM_ID,
   dbAvailable,
   makeDraft,
   makeServer,
-  makeTestSyncServer,
+  makeSyncFacade,
+  type SyncFacade,
 } from './helpers.ts';
 
 const OTHER_TEAM_ID = 'team-other';
@@ -29,11 +29,16 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
   let tenantDb: TenantDb;
 
   beforeAll(async () => {
-    let server: SyncServer;
-    ({ db, app, maintenance, tenantDb, server, dispose } =
+    let server: SyncFacade;
+    let run;
+    ({ db, app, maintenance, tenantDb, run, server, dispose } =
       await makeServer('sync_rls'));
     await makeDraft(server);
-    await makeDraft(makeTestSyncServer(createTenantDb(app, OTHER_TEAM_ID)));
+    await makeDraft(
+      makeSyncFacade((body, options) =>
+        run(body, { ...options, teamId: OTHER_TEAM_ID }),
+      ),
+    );
   });
   afterAll(async () => {
     await dispose();

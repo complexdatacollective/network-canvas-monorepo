@@ -1,3 +1,7 @@
+import { Cause, Effect, Exit } from 'effect';
+
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+
 import { readEnv } from '../env.ts';
 import { getRateLimitStore, type RateLimitStore } from '../rate-limit/store.ts';
 
@@ -312,10 +316,78 @@ function limiter(): DeniedAuditRateLimiter {
   return processLimiter;
 }
 
-export function reserveDeniedAuditAttempt(input: {
+function reserveDeniedAuditAttempt(input: {
   actorId: string;
   teamId: string;
   operation: string;
 }): Promise<DeniedAuditReservation> {
   return limiter().reserve(input);
 }
+
+/**
+ * The window, as the one combinator every audited command wraps itself in.
+ *
+ * The order it fixes is the whole point of the limiter: the slot is taken
+ * **before** the command opens any transaction, so once a window's allowance
+ * is spent a further denial is refused without the database being touched at
+ * all — and a caller who can produce denials on demand cannot queue unbounded
+ * permanent rows behind the team's audit lock.
+ *
+ * `refusal` is what a suppressed attempt answers with, and every caller passes
+ * the refusal the command would have given anyway. Answering differently would
+ * make the audit log's own suppression observable from outside, which is
+ * exactly what an attacker probing the cap would look for.
+ *
+ * `isDenial` decides what spends the allowance. Only a confirmed denial does:
+ * a success, a conflict, a database failure and an interrupt all give the
+ * in-flight slot back without counting, because the window bounds how many
+ * permanent denial rows one actor can cause and nothing else. The settlement
+ * runs on the `Exit`, so it happens on every path out — which is what the two
+ * `complete` calls in a `try` and a `catch` used to arrange by hand.
+ */
+export const reservedDenial: <A, E, E2, R>(
+  input: {
+    readonly operation: string;
+    readonly teamId: string;
+    readonly refusal: () => E2;
+    readonly isDenial: (error: unknown) => boolean;
+  },
+  command: Effect.Effect<A, E, R>,
+) => Effect.Effect<A, E | E2, R | Principal> = Effect.fnUntraced(function* <
+  A,
+  E,
+  E2,
+  R,
+>(
+  input: {
+    readonly operation: string;
+    readonly teamId: string;
+    readonly refusal: () => E2;
+    readonly isDenial: (error: unknown) => boolean;
+  },
+  command: Effect.Effect<A, E, R>,
+) {
+  const principal = yield* Principal;
+  const reservation = yield* Effect.promise(() =>
+    reserveDeniedAuditAttempt({
+      actorId: principal.userId,
+      teamId: input.teamId,
+      operation: input.operation,
+    }),
+  );
+  if (!reservation.admitted) return yield* Effect.fail(input.refusal());
+  return yield* Effect.onExit(command, (exit: Exit.Exit<A, E>) =>
+    // Awaited rather than fired and forgotten: the in-flight slot has to be
+    // back, and a confirmed denial counted, before the next request asks — or
+    // a caller making permitted calls in sequence would run itself out of
+    // capacity, and one making denied calls in sequence would never reach the
+    // cap.
+    Effect.promise(() =>
+      reservation.complete(
+        Exit.isFailure(exit) && input.isDenial(Cause.squash(exit.cause))
+          ? 'denied'
+          : 'other',
+      ),
+    ),
+  );
+});

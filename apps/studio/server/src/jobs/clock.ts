@@ -8,7 +8,12 @@ import {
   Schedule,
 } from 'effect';
 
-import { type Database, withTransaction, Transaction } from './database.ts';
+import { type Database, type MaintenanceDatabase } from '../db/client.ts';
+import {
+  MaintenanceScope,
+  Transaction,
+  UntenantedScope,
+} from '../db/tenant.ts';
 
 // The clock every job timestamp is taken from.
 //
@@ -105,19 +110,23 @@ export function skewWarning(skew: number): string | null {
  * One measurement of `select now()` against the local clock, in milliseconds:
  * positive when the database is ahead of this process.
  *
- * Read inside a transaction because that is the only place `Database` pins the
- * identity's role, and `now()` inside a transaction is the transaction's start
+ * Read inside a transaction because that is the only place the identity's
+ * role is pinned, and `now()` inside a transaction is the transaction's start
  * time — which is what pg-boss's `getTime()` plan reads too, and is the same
  * instant every statement of a job's own transaction will see.
  */
-const measureSkew = Effect.fnUntraced(function* () {
+const DATABASE_NOW = Effect.flatMap(
+  Transaction,
+  ({ sql }) => sql<{ at: number }>`SELECT now() AS at`,
+);
+
+const measureSkew = Effect.fnUntraced(function* <R>(
+  onScope: (
+    read: typeof DATABASE_NOW,
+  ) => Effect.Effect<ReadonlyArray<{ at: number }>, unknown, R>,
+) {
   const before = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
-  const rows = yield* withTransaction(
-    Effect.flatMap(
-      Transaction,
-      ({ sql }) => sql<{ at: number }>`SELECT now() AS at`,
-    ),
-  );
+  const rows = yield* onScope(DATABASE_NOW);
   const after = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
   const databaseMillis = rows[0]?.at;
   if (databaseMillis === undefined) {
@@ -128,16 +137,19 @@ const measureSkew = Effect.fnUntraced(function* () {
   return skewMillis({ before, after, database: databaseMillis });
 });
 
-const layer = (
-  config: JobClockConfig = {},
-): Layer.Layer<never, never, Database> =>
+const makeLayer = <R>(
+  config: JobClockConfig,
+  onScope: (
+    read: typeof DATABASE_NOW,
+  ) => Effect.Effect<ReadonlyArray<{ at: number }>, unknown, R>,
+): Layer.Layer<never, never, R> =>
   Layer.effect(
     JobClockKey,
     Effect.gen(function* () {
       const skew = MutableRef.make(0);
 
       const remeasure = Effect.gen(function* () {
-        const measured = yield* measureSkew();
+        const measured = yield* measureSkew(onScope);
         MutableRef.set(skew, measured);
         const warning = skewWarning(measured);
         if (warning !== null) yield* Effect.logWarning(warning);
@@ -190,8 +202,34 @@ const layerOffset = (offset: Duration.Input): Layer.Layer<never> =>
     ),
   });
 
+/**
+ * The worker's, on the maintenance client: the identity its own jobs run as.
+ */
+const layer = (
+  config: JobClockConfig = {},
+): Layer.Layer<never, never, MaintenanceDatabase> =>
+  makeLayer(config, (read) => MaintenanceScope.open(read));
+
+/**
+ * The web process's, on the application client.
+ *
+ * It exists because the node-postgres enqueue this replaced asked the database
+ * for `now()` in the insert itself, so the web process never needed a clock at
+ * all. `Jobs.enqueue` passes an instant as a parameter, which is what makes
+ * the whole queue `TestClock`-drivable — and which would otherwise leave a
+ * replica with a fast clock enqueueing jobs into the future for an unskewed
+ * worker to ignore. Same measurement, same interval, same threshold; only the
+ * scope differs, because a request-serving process holds no maintenance
+ * client.
+ */
+const layerApplication = (
+  config: JobClockConfig = {},
+): Layer.Layer<never, never, Database> =>
+  makeLayer(config, (read) => UntenantedScope.open(read));
+
 export const JobClock = Object.assign(JobClockKey, {
   layer,
+  layerApplication,
   layerTest,
   layerOffset,
 });

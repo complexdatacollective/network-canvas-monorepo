@@ -46,6 +46,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
       env,
       scratch.app,
       'locale',
+      await scratch.services(),
     ));
     client = await createRpcClient(studio, { cookie });
     anonymousClient = await createRpcClient(studio);

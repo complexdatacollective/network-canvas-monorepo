@@ -1,16 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
+import type { Effect } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
+import type { Transaction } from '../../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
-import { ProtocolStore } from '../store.ts';
+import {
+  createProtocol,
+  getDraftDocument,
+  listVersions,
+  publishDraft,
+} from '../store.ts';
 import {
   TEST_TEAM_ID,
   baseProtocol,
@@ -36,13 +42,14 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
 
 describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   let db: pg.Pool;
-  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
-  let store: ProtocolStore;
+  let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
+  const cipher = testCipher();
 
   beforeAll(async () => {
-    ({ db, tenantDb, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(tenantDb, testCipher());
+    const schema = await makeStoreSchema();
+    ({ db, dispose } = schema);
+    run = (body) => schema.inTeam(TEST_TEAM_ID, body);
   });
   afterAll(async () => {
     await dispose();
@@ -58,13 +65,13 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
       [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
     );
-    await makeTestSyncServer(tenantDb).createDraft(draftId, V7_SECTIONS);
+    await run(makeTestSyncServer().createDraft(draftId, V7_SECTIONS));
     await db.query(
       `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
        VALUES ($1, $2, $3)`,
       [draftId, TEST_TEAM_ID, protocolId],
     );
-    const published = await store.publishDraft({ draftId });
+    const published = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (published.status !== 'published') {
       throw new Error(`v7 publish failed: ${published.status}`);
     }
@@ -73,7 +80,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
 
   it('migrates a stored v7 version into a current-schema draft and records provenance on publish', async () => {
     const { protocolId, versionId } = await seedV7Version();
-    const versions = await store.listVersions(protocolId);
+    const versions = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(versions[0]!.schemaVersion).toBe(7);
 
     const frozenBefore = await db.query(
@@ -81,16 +88,18 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       [versionId],
     );
 
-    const migration = await migrateStoredVersionToDraft(tenantDb, {
-      versionId,
-    });
+    const migration = await run(
+      migrateStoredVersionToDraft(TEST_TEAM_ID, { versionId }),
+    );
     expect(migration).toMatchObject({
       protocolId,
       fromSchemaVersion: 7,
       toSchemaVersion: 8,
     });
 
-    const document = (await store.getDraftDocument(migration.draftId)) as {
+    const document = (await run(
+      getDraftDocument(TEST_TEAM_ID, migration.draftId),
+    )) as {
       name: string;
       schemaVersion: number;
       codebook: {
@@ -102,9 +111,11 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
 
-    const published = await store.publishDraft({ draftId: migration.draftId });
+    const published = await run(
+      publishDraft(TEST_TEAM_ID, { draftId: migration.draftId }),
+    );
     if (published.status !== 'published') throw new Error(published.status);
-    const after = await store.listVersions(protocolId);
+    const after = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(after[0]).toMatchObject({
       versionNumber: 2,
       schemaVersion: 8,
@@ -127,25 +138,31 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     // (#1900) — and a migration that put the placeholder back would write a
     // fake key into the new draft's sections.
     const KEY = 'map-key-migrated-sealed';
-    const { protocolId, draftId } = await store.createProtocol({
-      protocol: {
-        ...baseProtocol(),
-        assetManifest: {
-          mapKey: { name: 'Mapbox token', type: 'apikey', value: KEY },
-        },
-      } as unknown as CurrentProtocol,
-    });
-    const published = await store.publishDraft({ draftId });
+    const { protocolId, draftId } = await run(
+      createProtocol(TEST_TEAM_ID, cipher, {
+        protocol: {
+          ...baseProtocol(),
+          assetManifest: {
+            mapKey: { name: 'Mapbox token', type: 'apikey', value: KEY },
+          },
+        } as unknown as CurrentProtocol,
+      }),
+    );
+    const published = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (published.status !== 'published') throw new Error(published.status);
 
-    const migration = await migrateStoredVersionToDraft(tenantDb, {
-      versionId: published.versionId,
-    });
+    const migration = await run(
+      migrateStoredVersionToDraft(TEST_TEAM_ID, {
+        versionId: published.versionId,
+      }),
+    );
     expect(migration.protocolId).toBe(protocolId);
 
     // Still redacted, under the same asset id — which is what keeps the sealed
     // row (keyed by team, protocol and asset) reachable from the new draft.
-    const document = (await store.getDraftDocument(migration.draftId)) as {
+    const document = (await run(
+      getDraftDocument(TEST_TEAM_ID, migration.draftId),
+    )) as {
       assetManifest: Record<string, Record<string, unknown>>;
     };
     expect(document.assetManifest.mapKey).toEqual({
@@ -161,30 +178,34 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
 
     await expect(
-      openAssetKey(tenantDb, testCipher(), {
-        teamId: TEST_TEAM_ID,
-        protocolId,
-        assetId: 'mapKey',
-      }),
+      run(
+        openAssetKey(cipher, {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'mapKey',
+        }),
+      ),
     ).resolves.toBe(KEY);
   });
 
   it('migrating a current-schema version republishes as unchanged', async () => {
-    const { draftId } = await store.createProtocol({
-      protocol: baseProtocol(),
-    });
-    const published = await store.publishDraft({ draftId });
+    const { draftId } = await run(
+      createProtocol(TEST_TEAM_ID, cipher, { protocol: baseProtocol() }),
+    );
+    const published = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (published.status !== 'published') throw new Error(published.status);
 
-    const migration = await migrateStoredVersionToDraft(tenantDb, {
-      versionId: published.versionId,
-    });
+    const migration = await run(
+      migrateStoredVersionToDraft(TEST_TEAM_ID, {
+        versionId: published.versionId,
+      }),
+    );
     expect(migration.fromSchemaVersion).toBe(8);
     expect(migration.toSchemaVersion).toBe(8);
 
-    const republished = await store.publishDraft({
-      draftId: migration.draftId,
-    });
+    const republished = await run(
+      publishDraft(TEST_TEAM_ID, { draftId: migration.draftId }),
+    );
     expect(republished).toEqual({
       status: 'unchanged',
       versionId: published.versionId,

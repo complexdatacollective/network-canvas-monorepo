@@ -4,8 +4,9 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
+import { type MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { Mailer } from '../../mail/mailer.ts';
-import { type Database, Transaction, withTransaction } from '../database.ts';
 import {
   causeError,
   deepestMessage,
@@ -15,8 +16,8 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // `invitation-delivery` as an Effect (#1927 §11): the same state machine the
 // pg-boss handler ran, with that queue's job metadata replaced by `HandledJob`
-// and its two pool transactions replaced by two `withTransaction` calls on the
-// maintenance `Database`.
+// and its two pool transactions replaced by two `MaintenanceScope.open` calls
+// on the maintenance client.
 //
 // The transport is stage 1's `Mailer` (src/mail/mailer.ts), the one every
 // other sender already uses: `sendTeamInvitation` fails with `MailFailed` when
@@ -37,7 +38,7 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //    `suppressed` and `uncertain` are returned; a failure is the error channel,
 //    and `JobWorker` decides `retrying` or `failed` from the attempt counters.
 //  - Recording a failure and then failing is the commit-then-fail shape of
-//    §10: an `Effect` that fails inside `withTransaction` rolls the
+//    §10: an `Effect` that fails inside the scope rolls the
 //    transaction back, so the row's `last_error`/`failed_at` would be lost. The
 //    exit is captured, the row is written, the transaction commits, and the
 //    attempt fails outside it.
@@ -116,7 +117,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
   ): Effect.fn.Return<
     JobOutcome,
     DeliveryAttemptFailed | SqlError.SqlError,
-    Database | Mailer
+    MaintenanceDatabase | Mailer
   > {
     const { deliveryId } = job.payload;
     const mailer = yield* Mailer;
@@ -139,7 +140,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
     // expiry would otherwise have every retry behind it stamp a number and
     // give up, spending the ladder on refusals while `last_error` stayed empty.
     const counted = yield* Effect.exit(
-      withTransaction(
+      MaintenanceScope.open(
         Effect.gen(function* () {
           const { sql } = yield* Transaction;
           yield* sql`
@@ -169,7 +170,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
       // Both are ordinary: a delivery settles once and its job may still be
       // retried behind it, and an invitation deleted with its team takes the
       // row with it while the job outlives both.
-      const known = yield* withTransaction(
+      const known = yield* MaintenanceScope.open(
         Effect.flatMap(
           Transaction,
           ({ sql }) =>
@@ -191,7 +192,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
     // The second transaction: take the invitation again — the first ended with
     // the commit that counted the attempt — and hold it for the send.
     const attempt = yield* Effect.exit(
-      withTransaction(
+      MaintenanceScope.open(
         Effect.gen(function* () {
           const { sql } = yield* Transaction;
           const locked = yield* sql<DeliverableRow>`
@@ -317,7 +318,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
       // fresh transaction; failing instead would hand the job back to the
       // queue and risk a second copy (#1305, #1307).
       const reason = cut(failureMessage(attempt.cause) ?? 'the attempt failed');
-      yield* withTransaction(
+      yield* MaintenanceScope.open(
         Effect.flatMap(
           Transaction,
           ({ sql }) => sql`

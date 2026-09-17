@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Exit } from 'effect';
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +10,7 @@ import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -107,34 +109,6 @@ async function insertEvent(
   return id;
 }
 
-/**
- * The application pool with a client budget, so a chosen transaction fails at
- * the first thing an audited append does: acquire a client. An audit read
- * spends one budgeted client on the transaction that decides authorization,
- * which leaves the denial append — the next transaction the request opens —
- * with nothing.
- */
-function poolWithClientBudget(
-  pool: pg.Pool,
-  budget: number,
-  message: string,
-): pg.Pool {
-  let remaining = budget;
-  return new Proxy(pool, {
-    get(target, property, receiver) {
-      if (property === 'connect') {
-        return () => {
-          if (remaining <= 0) return Promise.reject(new Error(message));
-          remaining -= 1;
-          return target.connect();
-        };
-      }
-      const value = Reflect.get(target, property, receiver);
-      return typeof value === 'function' ? value.bind(target) : value;
-    },
-  });
-}
-
 /** The structured `detail` of a `process.emitWarning` call, parsed. */
 function warningDetail(options: string | object | undefined): unknown {
   if (typeof options !== 'object' || options === null) {
@@ -160,6 +134,12 @@ async function nextSequence(pool: pg.Pool, teamId: string): Promise<number> {
 describe.skipIf(!db)('audit list/get RPC', () => {
   let pool: pg.Pool;
   let appPool: pg.Pool;
+  /**
+   * The Effect data layer over this scratch schema, which is what every
+   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
+   * than built per Studio: the clients underneath it are connection pools.
+   */
+  let services: Context.Context<StudioServices>;
   let dispose: () => Promise<void>;
   let currentPrincipal: SessionPrincipal;
   let memberships: Record<string, string | undefined>;
@@ -182,6 +162,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
     appPool = scratch.app;
+    services = await scratch.services();
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM);
@@ -222,6 +203,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       createStudio(readEnv(), {
         auth,
         pool: appPool,
+        services,
       }),
     );
     extraClients = [];
@@ -810,6 +792,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const demotedClient = await createRpcClient(
       createStudio(readEnv(), {
         pool: appPool,
+        services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(demoted),
           // Still owner: this is the stale read the request carries forward.
@@ -887,6 +870,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     const promotedClient = await createRpcClient(
       createStudio(readEnv(), {
         pool: appPool,
+        services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(promoted),
           // Still member: this is the stale read the request carries forward.
@@ -962,16 +946,29 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       .mockImplementation(() => undefined);
     const unrecordedClient = await createRpcClient(
       createStudio(readEnv(), {
-        // One client for the transaction that decides the denial; the append
-        // that must record it then cannot acquire one.
-        pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),
+        pool: appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(unrecorded),
           getMembership: () => Promise.resolve({ role: 'member' }),
         }),
+        services,
       }),
     );
     extraClients.push(unrecordedClient);
+
+    // The append refused by the database rather than starved of a connection.
+    // Starving one used to work because the denial event was written through
+    // the same `pg.Pool` the read borrowed; the append goes through the Effect
+    // client now, so a client budget on the pool no longer reaches it — and a
+    // trigger is the stronger oracle anyway, since the insert really is
+    // attempted and really does fail.
+    await pool.query(`
+      create or replace function refuse_read_denial() returns trigger as $refuse$
+      begin raise exception 'audit read denial rejected'; end;
+      $refuse$ language plpgsql;
+      create or replace trigger refuse_read_denial
+        before insert on audit_events
+        for each row execute function refuse_read_denial()`);
 
     let calls: (typeof warning)['mock']['calls'];
     try {
@@ -984,6 +981,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       calls = [...warning.mock.calls];
     } finally {
       warning.mockRestore();
+      await pool.query('drop trigger refuse_read_denial on audit_events');
     }
 
     const lost = calls.filter(
@@ -993,8 +991,10 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
     );
     expect(lost).toHaveLength(1);
+    // `AuditSignal` owns the wording now (`audit/signal.ts`), which is what
+    // makes one code mean one sentence wherever it is emitted from.
     expect(lost[0]?.[0]).toBe(
-      'Required audit.read_denied event was not recorded; the read stayed denied.',
+      'An audit read denial could not be recorded; the read was still denied.',
     );
     expect(warningDetail(lost[0]?.[1])).toEqual({
       eventType: 'audit.read_denied',
@@ -1002,8 +1002,15 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       teamId: TEAM,
       actorId: unrecorded.userId,
       requestId: expect.any(String),
-      causeName: 'Error',
-      causeMessage: 'test client budget exhausted',
+      // The failure the DATABASE reported, not the wrapper's: the operator
+      // needs to know why the append was lost, and `@effect/sql-pg`'s own
+      // message is always `PgConnection: Query failed`.
+      //
+      // Mutation: `error.message` in place of `deepestMessage(error)` in
+      // `rpc/audit-read.ts` — the detail then reads `PgConnection: Query
+      // failed` and this fails.
+      causeName: 'effect/sql/SqlError',
+      causeMessage: expect.stringContaining('audit read denial rejected'),
     });
 
     // The signal exists precisely because nothing was recorded.

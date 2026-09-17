@@ -3,6 +3,47 @@ export type AuditPolicy =
   | { kind: 'denied-only'; reason: string }
   | { kind: 'none'; reason: string };
 
+/**
+ * A procedure, named the way the rpc plane names it: an `RpcGroup`'s request
+ * tag. The keys below were the oRPC contract's dotted paths and the tags are
+ * the same strings, so the data is unchanged by the rekey — but the key space
+ * is now the served surface itself rather than a parallel spelling of it.
+ */
+export type RpcTag = string;
+
+/**
+ * The procedures that read and write nothing, so the mutation registry says
+ * nothing about them.
+ *
+ * It lives here rather than in the test that used to hold it because the
+ * invariant is about the two together: **every request tag is either in this
+ * set or has a policy below, and none is in both.** Kept apart, a tag could be
+ * dropped from the walk and added here in the same change without either half
+ * noticing; kept together, the set equality the test asserts in both directions
+ * is over one declaration.
+ *
+ * `protocolBuilder.watchProtocol` is a subscription rather than a write: it
+ * observes revisions, locks and presence, and changes nothing it observes.
+ */
+export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
+  'status',
+  'me',
+  'protocols.draft',
+  'protocols.list',
+  'studies.counts',
+  'studies.get',
+  'studies.list',
+  'audit.list',
+  'audit.get',
+  'audit.filterOptions',
+  'protocolBuilder.getSection',
+  'protocolBuilder.listSections',
+  'protocolBuilder.watchProtocol',
+  'protocolBuilder.resources.list',
+  'protocolBuilder.resources.inspect',
+  'protocolBuilder.resources.preview',
+]);
+
 // Every currently exposed meaningful domain mutation is required. Lease-only
 // coordination remains excluded by the audit design.
 export const RPC_MUTATION_AUDIT_POLICIES = {
@@ -58,8 +99,10 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'Discarding a staged import drops process-local state; no stored bytes, manifest entry or revision existed to remove.',
   },
-} as const satisfies Record<string, AuditPolicy>;
+} as const satisfies Record<RpcTag, AuditPolicy>;
 
+// Mutations that are not rpc procedures at all, so they are keyed by what they
+// are rather than by a tag.
 export const NON_RPC_MUTATION_AUDIT_POLICIES = {
   'better-auth.identity-and-session': {
     kind: 'none',

@@ -5,8 +5,7 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { applyCommands, contentHash } from '../apply.ts';
-import { LeaseRejectedError, type SyncServer } from '../server.ts';
-import type { TenantDb } from '../tenant.ts';
+import { LeaseRejectedError } from '../server.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -14,17 +13,19 @@ import {
   expireLease,
   makeDraft,
   makeServer,
+  type RunTenant,
+  type SyncFacade,
   waitForLockWait,
 } from './helpers.ts';
 
 describe.skipIf(!dbAvailable)('commit path', () => {
   let db: Pool;
   let dispose: () => Promise<void>;
-  let tenantDb: TenantDb;
-  let server: SyncServer;
+  let run: RunTenant;
+  let server: SyncFacade;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server, dispose } = await makeServer('sync_commit'));
+    ({ db, run, server, dispose } = await makeServer('sync_commit'));
   });
 
   afterAll(async () => {
@@ -105,7 +106,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
     // …and before the retry arrives, the lease expires and another tab
     // takes the section over (epoch bump).
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
 
@@ -167,7 +168,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
       // The lease expires while the commit queues. Transaction-start time
       // would still read it as live at the serialization point.
-      await expireLease(tenantDb, draft, 'stage-1');
+      await expireLease(run, draft, 'stage-1');
       await blocker.query('ROLLBACK');
 
       expect(await commit).toBeInstanceOf(LeaseRejectedError);

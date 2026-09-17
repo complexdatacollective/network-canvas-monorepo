@@ -1,10 +1,20 @@
 import type { AuditPolicy } from './policy.ts';
 
-// Every tenant-scoped transaction that is not yet an audited command must be
-// named here. The executor checks this registry at runtime, while the source
-// policy test prevents production code from reaching TenantDb.transaction by
-// any other path. Protocol audit producers are delivered by #1521; lease
-// lifecycle writes are permanently excluded from the audit-log design.
+// Every tenant-scoped transaction that is not an audited command must be named
+// here. `audit/no-audit.ts` checks this registry at runtime, and the source
+// policy test holds the registry and its callers to each other in both
+// directions: an operation opened without an entry fails at the first call,
+// and an entry nothing opens fails the suite.
+//
+// Ten `protocol.*` entries left with #1927 stage 3. They named transactions
+// the protocol store opened *for itself* — `protocol.create`,
+// `protocol.addStage`, `protocol.publishDraft` and the rest — and the store
+// owns none now: every one of its spans requires the caller's `Transaction`,
+// so the transaction, and the policy it runs under, belong to whoever opened
+// it. What is left is the four the sweep opens, the three the editor's lease
+// lifecycle opens, the three audit reads, and the sync server's eight.
+//
+// Lease lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
   'audit.list': {
     kind: 'none',
@@ -21,48 +31,29 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Reading the values the activity filters can take is a permission-checked bounded read over the same rows as audit.list; the audit taxonomy records exports and denied access, not views.',
   },
-  'protocol.create': {
+  // The protocol store's hourly sweep (`jobs/handlers/protocol-store-gc.ts`).
+  // Four tenant transactions on the maintenance client, and a sweep is
+  // nobody's action — but they are still tenant transactions, so the registry
+  // is where each one says why it emits nothing.
+  'protocol.gcDraftHistory': {
     kind: 'none',
     reason:
-      'The transaction-owning store path supports isolated store workflows; the Studio RPC supplies an audited command client.',
+      'Collecting manifests and command-log rows below a draft head is scheduled maintenance, not an action any actor took.',
   },
-  'protocol.createDraftFromVersion': {
-    kind: 'none',
-    reason: 'Protocol producer coverage is delivered by #1521.',
-  },
-  'protocol.publishDraft': {
-    kind: 'none',
-    reason: 'Protocol producer coverage is delivered by #1521.',
-  },
-  'protocol.discardDraft': {
-    kind: 'none',
-    reason: 'Protocol producer coverage is delivered by #1521.',
-  },
-  'protocol.addStage': {
+  'protocol.gcReconcileReferencedSections': {
     kind: 'none',
     reason:
-      'The transaction-owning structure path supports isolated store workflows; the Studio RPC supplies an audited command client.',
+      'Clearing the unreferenced mark from a section a version, template or manifest still names corrects the sweep bookkeeping; no state a team can see changes.',
   },
-  'protocol.removeStage': {
-    kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
-  'protocol.moveStage': {
+  'protocol.gcMarkUnreferencedSections': {
     kind: 'none',
     reason:
-      'The transaction-owning structure path supports isolated store workflows; the Studio RPC supplies an audited command client.',
+      'Marking a section unreferenced starts its grace period; it deletes nothing and is scheduled maintenance rather than an action.',
   },
-  'protocol.addCodebookEntity': {
+  'protocol.gcDeleteUnreferencedSections': {
     kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
-  'protocol.removeCodebookEntity': {
-    kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
-  'protocol.migrateStoredVersionToDraft': {
-    kind: 'none',
-    reason: 'Protocol migration producer coverage is delivered by #1521.',
+    reason:
+      'Deleting a section no version, template or manifest has named for the whole grace period is scheduled maintenance; the protocols that referenced it were audited when they stopped.',
   },
   'protocolBuilder.acquireLock': {
     kind: 'none',

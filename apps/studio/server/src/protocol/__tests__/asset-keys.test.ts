@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
+import { and, eq } from 'drizzle-orm';
+import { Effect } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { TenantDb } from '@codaco/studio-sync/tenant';
-
 import { testCipher } from '../../__tests__/support/secrets.ts';
+import { Transaction } from '../../db/tenant.ts';
 import { SecretUnreadableError } from '../../secrets/envelope.ts';
 import {
   ASSET_KEY_PLACEHOLDER,
@@ -15,13 +16,23 @@ import {
   stripAssetKeyValues,
   withPlaceholderAssetKeys,
 } from '../asset-keys.ts';
-import { ProtocolStore } from '../store.ts';
+import { PROTOCOL_TABLES } from '../schema.ts';
+import { createProtocol } from '../store.ts';
 import {
   TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
   storeDb,
 } from './helpers.ts';
+
+const { protocolAssetKeys } = PROTOCOL_TABLES;
+
+/**
+ * Whether a `bytea` arrives as node's `Buffer` through `@effect/sql-pg`'s
+ * driver, which is what the case below pins: the cipher takes the wider
+ * `Uint8Array`, and this records which of the two it is actually handed.
+ */
+const EFFECT_SQL_PG_YIELDS_BUFFER = false;
 
 const MAPBOX_KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJub3QtYS1yZWFsLWtleSJ9';
 
@@ -128,16 +139,18 @@ describe('withPlaceholderAssetKeys', () => {
 
 describe.skipIf(!storeDb)('protocol_asset_keys', () => {
   let db: pg.Pool;
-  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
+  let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
   let protocolId: string;
   const cipher = testCipher();
 
   beforeAll(async () => {
-    ({ db, tenantDb, dispose } = await makeStoreSchema());
-    const created = await new ProtocolStore(tenantDb, cipher).createProtocol({
-      protocol: baseProtocol(),
-    });
+    const schema = await makeStoreSchema();
+    ({ db, dispose } = schema);
+    run = (body) => schema.inTeam(TEST_TEAM_ID, body);
+    const created = await run(
+      createProtocol(TEST_TEAM_ID, cipher, { protocol: baseProtocol() }),
+    );
     protocolId = created.protocolId;
   });
   afterAll(async () => {
@@ -145,9 +158,8 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
   });
 
   const seal = (assetId: string, value: string) =>
-    tenantDb.transaction((client) =>
+    run(
       sealAssetKeys(
-        client,
         cipher,
         { teamId: TEST_TEAM_ID, protocolId },
         new Map([[assetId, value]]),
@@ -158,11 +170,13 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
     await seal('roundTrip', MAPBOX_KEY);
 
     await expect(
-      openAssetKey(tenantDb, cipher, {
-        teamId: TEST_TEAM_ID,
-        protocolId,
-        assetId: 'roundTrip',
-      }),
+      run(
+        openAssetKey(cipher, {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'roundTrip',
+        }),
+      ),
     ).resolves.toBe(MAPBOX_KEY);
   });
 
@@ -180,6 +194,33 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
     expect(stored.ciphertext.toString('base64')).not.toContain(MAPBOX_KEY);
   });
 
+  it('reads the ciphertext back as the byte array the cipher takes', async () => {
+    // `bytea` decodes as a `Buffer` through node-postgres and as a plain
+    // `Uint8Array` through `@effect/sql-pg`, and drizzle declares the column
+    // as the former. What the cipher is handed is therefore whatever the
+    // driver produced, and this says which — so a cipher narrowed to `Buffer`
+    // would fail here rather than in production.
+    await seal('shape', MAPBOX_KEY);
+    const ciphertext = await run(
+      Effect.gen(function* () {
+        const { tx } = yield* Transaction;
+        const rows = yield* tx
+          .select({ ciphertext: protocolAssetKeys.ciphertext })
+          .from(protocolAssetKeys)
+          .where(
+            and(
+              eq(protocolAssetKeys.teamId, TEST_TEAM_ID),
+              eq(protocolAssetKeys.protocolId, protocolId),
+              eq(protocolAssetKeys.assetId, 'shape'),
+            ),
+          );
+        return rows[0]?.ciphertext;
+      }),
+    );
+    expect(ciphertext).toBeInstanceOf(Uint8Array);
+    expect(Buffer.isBuffer(ciphertext)).toBe(EFFECT_SQL_PG_YIELDS_BUFFER);
+  });
+
   it('replaces the row when the researcher changes the key', async () => {
     await seal('rotated', 'first-value');
     await seal('rotated', 'second-value');
@@ -191,21 +232,25 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
     );
     expect((count.rows[0] as { n: number }).n).toBe(1);
     await expect(
-      openAssetKey(tenantDb, cipher, {
-        teamId: TEST_TEAM_ID,
-        protocolId,
-        assetId: 'rotated',
-      }),
+      run(
+        openAssetKey(cipher, {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'rotated',
+        }),
+      ),
     ).resolves.toBe('second-value');
   });
 
   it('answers with nothing for an asset that has no row', async () => {
     await expect(
-      openAssetKey(tenantDb, cipher, {
-        teamId: TEST_TEAM_ID,
-        protocolId,
-        assetId: 'never-sealed',
-      }),
+      run(
+        openAssetKey(cipher, {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'never-sealed',
+        }),
+      ),
     ).resolves.toBeUndefined();
   });
 

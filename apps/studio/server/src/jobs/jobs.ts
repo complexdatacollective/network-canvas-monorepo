@@ -2,16 +2,17 @@ import { Context, DateTime, Effect, Layer, Schema } from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { Transaction } from '../db/tenant.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
-import { Transaction } from './database.ts';
 import { insertJobStatement } from './insert.ts';
 import { type JobPayload, payloadCodec } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
 // The Effect half of creating a job (#1927 §4, the `Jobs` row). One statement
 // on the transaction's own connection, which is the whole of the transaction
-// guarantee: `enqueue` requires `Transaction`, nothing but `withTransaction`
-// provides it, and a statement issued inside a transaction runs on that
+// guarantee: `enqueue` requires `Transaction`, nothing but `TenantScope.open`
+// / `MaintenanceScope.open` (src/db/tenant.ts) provides it, and a statement
+// issued inside a transaction runs on that
 // transaction's connection because `SqlClient` routes by the fiber's
 // `TransactionConnection` service (SqlClient.ts `makeWithTransaction`). There
 // is no second connection an enqueue could reach for, so a domain row and its

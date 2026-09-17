@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 
 import {
   createSecretsCipher,
-  type SecretsCipher,
+  type SecretsCipherApi,
 } from '../../secrets/cipher.ts';
-import { type Keyring, parseKeyring } from '../../secrets/keyring.ts';
+import { type KeyringApi, parseKeyring } from '../../secrets/keyring.ts';
 
 // The keyring every suite that touches a secret uses, so no test invents key
 // material of its own and every one of them can seal a value another suite
@@ -25,10 +25,12 @@ export function testKeyringEntry(id: string): string {
   return `${id}:${key.toString('base64')}`;
 }
 
-export function testKeyring(ids: readonly string[] = TEST_KEY_IDS): Keyring {
+export function testKeyring(ids: readonly string[] = TEST_KEY_IDS): KeyringApi {
   return parseKeyring(ids.map(testKeyringEntry).join(','));
 }
 
-export function testCipher(keyring: Keyring = testKeyring()): SecretsCipher {
+export function testCipher(
+  keyring: KeyringApi = testKeyring(),
+): SecretsCipherApi {
   return createSecretsCipher(keyring);
 }

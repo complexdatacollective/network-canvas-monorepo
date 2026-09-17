@@ -4,7 +4,7 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
-import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
+import { type KeyringApi, parseKeyring } from '../secrets/keyring.ts';
 import type { EnvironmentVariables } from './schema.ts';
 
 export type S3Env = {
@@ -62,7 +62,7 @@ export type StudioEnv = {
    * not read back, and both entrypoints refuse again at boot for the key ids
    * already in use.
    */
-  secrets: Keyring | undefined;
+  secrets: KeyringApi | undefined;
   /**
    * The shared rate-limit store (#1909). Undefined means no store: every limit
    * is disabled and the limiter says so at boot, which is the same posture the
@@ -391,7 +391,7 @@ function resolveSecrets(
   raw: EnvironmentVariables,
   db: DbEnv | undefined,
   readSecretsFile: (path: string) => string,
-): Keyring | undefined {
+): KeyringApi | undefined {
   if (raw.STUDIO_SECRETS_KEY && raw.STUDIO_SECRETS_KEY_FILE) {
     // Never a guess about which one was meant: the two would usually hold the
     // same keyring, and the time they do not is the time it matters.

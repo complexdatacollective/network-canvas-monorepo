@@ -12,14 +12,15 @@ import {
   contentHash,
   type SectionDoc,
 } from '../apply.ts';
-import { LeaseRejectedError, type SyncServer } from '../server.ts';
-import type { TenantDb } from '../tenant.ts';
+import { LeaseRejectedError } from '../server.ts';
 import {
   assertLinearChain,
   dbAvailable,
   expireLease,
   makeDraft,
   makeServer,
+  type RunTenant,
+  type SyncFacade,
 } from './helpers.ts';
 
 const jsonValue = fc.jsonValue({ maxDepth: 3 });
@@ -116,11 +117,11 @@ describe.skipIf(!dbAvailable)(
   'lease/commit interleaving property (DB-backed, 25 schedules)',
   () => {
     let dispose: () => Promise<void>;
-    let tenantDb: TenantDb;
-    let server: SyncServer;
+    let run: RunTenant;
+    let server: SyncFacade;
 
     beforeAll(async () => {
-      ({ tenantDb, server, dispose } = await makeServer('sync_property'));
+      ({ run, server, dispose } = await makeServer('sync_property'));
     });
 
     afterAll(async () => {
@@ -166,7 +167,7 @@ describe.skipIf(!dbAvailable)(
 
             for (const o of ops) {
               if (o === 'expire') {
-                await expireLease(tenantDb, draft, 's');
+                await expireLease(run, draft, 's');
                 if (model) model.expired = true;
               } else if (o === 'acquireA' || o === 'acquireB') {
                 const who = o === 'acquireA' ? 'A' : 'B';

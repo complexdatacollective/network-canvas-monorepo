@@ -359,40 +359,53 @@ describe('the web process', () => {
     expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([]);
   });
 
-  it('creates jobs through the enqueue-only client', () => {
+  it('creates jobs through the one enqueue', () => {
     // The positive half, so that "no worker" cannot be satisfied by having no
-    // queue at all. One module now: the node-postgres enqueue, which renders
-    // its statement through `src/jobs/insert.ts` and sends it on the
-    // command's own transaction client.
-    expect(reached(graph, ['src/jobs/client.ts'])).toEqual([
-      'src/jobs/client.ts',
+    // queue at all. `Jobs.enqueue` renders its statement through
+    // `src/jobs/insert.ts` and sends it on the caller's own `Transaction` —
+    // the same module and the same statement the worker sends.
+    //
+    // This case used to assert the opposite of the one below it: that the web
+    // process reached `src/jobs/client.ts`, a node-postgres twin, and reached
+    // no `@effect/sql-pg` at all. #1927 stage 3 moved every command onto the
+    // Effect data layer, so the twin is deleted and the driver is exactly what
+    // this process runs on. What is asserted instead is that the enqueue is
+    // the *only* part of the queue it reaches — which is the case below.
+    expect(reached(graph, ['src/jobs/jobs.ts', 'src/jobs/insert.ts'])).toEqual([
+      'src/jobs/jobs.ts',
+      'src/jobs/insert.ts',
     ]);
   });
 
-  it('carries no Effect SQL driver for that enqueue', () => {
-    // The invariant `src/jobs/insert.ts`'s own header exists for, and which
-    // `src/jobs/queues.ts` repeats over `JOB_SCHEMA`: the statement lives
-    // apart from `src/jobs/jobs.ts` so that this graph reaches no
-    // `@effect/sql-pg`. The web process runs its commands on node-postgres,
-    // and a second Postgres driver pulled in behind the enqueue would be paid
-    // for by every web container while nothing here could use it.
+  it('runs its commands on the Effect driver', () => {
+    // The driver half of the enqueue case above, and the reason it is only a
+    // positive one. #1927 stage 3 moved every command onto `@effect/sql-pg`,
+    // so this is now the client the process's own work runs on.
     //
-    // The modules are named beside the package because the package is only
-    // absent as long as they are: each of them imports it (directly, or
-    // through `database.ts`), so naming them says which import would be the
-    // one that did it.
+    // The matching negative — "and it carries no node-postgres" — is not true
+    // of this process today, so it is not asserted here: `pg` still arrives
+    // through db/pool.ts, db/database-pool.ts, setup/bootstrap.ts,
+    // http/health.ts and auth/better-auth.ts, the last of which needs a
+    // node-postgres drizzle handle until stage 6 gives better-auth an Effect
+    // one. Asserting the absence would fail; asserting the presence of the
+    // holders would pass whatever else joined them. The negative is asserted
+    // where it is true instead — see the rotation process below, the one
+    // entry already clear of the driver.
     //
-    // Mutation: `import { Transaction } from './database.ts';` in
-    // src/jobs/client.ts — the module and the package both appear.
+    // Mutation: drop `@effect/sql-pg` from src/db/client.ts.
     expect(
-      reached(graph, [
-        '@effect/sql-pg',
-        'src/jobs/database.ts',
-        'src/jobs/jobs.ts',
-        'src/jobs/clock.ts',
-        'src/jobs/install.ts',
-      ]),
-    ).toEqual([]);
+      reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
+    ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
+  });
+
+  it('carries the queue’s schema installer nowhere near it', () => {
+    // Creating a job is all of the queue this process may hold. The installer
+    // belongs to the migrate command and the worker's own boot, and a web
+    // container that could reach it is one call away from creating the queue's
+    // tables under the application role.
+    //
+    // Mutation: import src/jobs/install.ts from src/programs/serve.ts.
+    expect(reached(graph, ['src/jobs/install.ts'])).toEqual([]);
   });
 });
 
@@ -410,6 +423,26 @@ describe('the rotation process', () => {
     expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([
       'src/secrets/rotate.ts',
     ]);
+  });
+
+  it('is the entry already clear of node-postgres', () => {
+    // The measurement the web process cannot carry yet (see its driver case):
+    // one entry reaches the Effect driver and nothing else, so #1927 stage 3's
+    // retreat from node-postgres is asserted somewhere rather than nowhere.
+    // Rotation was already maintenance-only Effect code; the pools that keep
+    // `pg` in the other three graphs — db/pool.ts and db/database-pool.ts —
+    // are not in this one.
+    //
+    // Mutation: import src/db/pool.ts from src/programs/rotate-secrets.ts.
+    expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
+    expect(
+      reached(graph, [
+        'pg',
+        'drizzle-orm/node-postgres',
+        'src/db/pool.ts',
+        'src/db/database-pool.ts',
+      ]),
+    ).toEqual([]);
   });
 
   it('serves nothing and runs no job', () => {

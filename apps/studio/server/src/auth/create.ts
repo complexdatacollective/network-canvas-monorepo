@@ -1,9 +1,10 @@
+import type { Context } from 'effect';
 import type pg from 'pg';
 
 import type { StudioEnv } from '../env.ts';
-import type { JobClient } from '../jobs/client.ts';
 import { createSignInEmailSender } from '../jobs/sign-in-email.ts';
 import type { RateLimiter } from '../rate-limit.ts';
+import type { StudioServices } from '../rpc/deps.ts';
 import { createSecretsCipher } from '../secrets/cipher.ts';
 import { createBetterAuthService } from './better-auth.ts';
 import { type AuthService, createDisabledAuthService } from './service.ts';
@@ -16,11 +17,19 @@ import { type AuthService, createDisabledAuthService } from './service.ts';
 export function createAuthService(
   env: StudioEnv,
   pool?: pg.Pool,
-  jobs?: JobClient,
+  /**
+   * What sign-in mail is queued on (#1895). Absent only where there is no
+   * database, which is also where auth is disabled outright — so reaching the
+   * sender with none is unrepresentable rather than refused at send time, and
+   * the "no job client is configured" rejection this replaced is gone.
+   */
+  services?: Context.Context<StudioServices>,
   /** Where sign-in attempts are counted (#1909); `createApp` builds it. */
   limiter?: RateLimiter,
 ): AuthService {
-  if (!env.db || !env.auth || !pool) return createDisabledAuthService();
+  if (!env.db || !env.auth || !pool || !services) {
+    return createDisabledAuthService();
+  }
   // `resolve` refuses a configured database without a keyring, so reaching
   // here without one is impossible; narrowed rather than asserted so the
   // failure names the cause instead of surfacing as a missing-method error
@@ -33,7 +42,7 @@ export function createAuthService(
   return createBetterAuthService(
     env.auth,
     pool,
-    createSignInEmailSender(jobs, pool),
+    createSignInEmailSender(services),
     createSecretsCipher(env.secrets),
     limiter,
   );

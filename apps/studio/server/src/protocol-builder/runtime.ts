@@ -5,7 +5,7 @@
 // releases. Studio's storage is a lease with a wall-clock expiry, so keeping
 // the two agreeing is the server's business — this is where that happens.
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
-import type { SyncServer } from '@codaco/studio-sync/server';
+import type { Lease } from '@codaco/studio-sync/server';
 
 import { ProtocolEventPublisher } from './events.ts';
 
@@ -60,11 +60,23 @@ export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
 const UNANSWERED = Symbol('lease renewal unanswered');
 
 type HeldLease = {
-  sync: SyncServer;
+  /**
+   * Renews this lease, in a transaction the caller opens.
+   *
+   * A closure rather than the sync server itself, because a sync operation now
+   * requires the open `Transaction` and this keeper has none to give: it runs
+   * from a timer, outside any request, and a transaction opened here would be
+   * one no team GUC had been stamped on. The host is what turns the call into
+   * a transaction — the same division `connect`'s `end` already used, and the
+   * same one `SyncClient` gets from `SyncTransport`.
+   *
+   * `null` is the storage's answer that the lease is gone; a rejection is the
+   * storage not answering, which `renewDue` tells apart below.
+   */
+  renew: () => Promise<Lease | null>;
   draftId: string;
   sectionId: string;
   owner: string;
-  epoch: bigint;
   touchedAt: number;
 };
 
@@ -184,9 +196,7 @@ export class LeaseKeeper {
         this.#held.delete(key);
         continue;
       }
-      const renewed = await lease.sync
-        .renew(lease.draftId, lease.sectionId, lease.owner, lease.epoch)
-        .catch(() => UNANSWERED);
+      const renewed = await lease.renew().catch(() => UNANSWERED);
       // A renewal that could not be made is not an answer: a database that
       // was briefly unreachable has said nothing about whose lease it is, and
       // forgetting the lease here would let it expire under an editor who is

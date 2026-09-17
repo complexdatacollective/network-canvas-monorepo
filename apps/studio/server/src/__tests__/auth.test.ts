@@ -457,12 +457,12 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const jobs = await scratch.createJobClient();
-      // The production wiring: createApp builds the auth service from the
-      // pool and the job client, and no mailer exists for it to reach for —
-      // src/__tests__/process-separation.test.ts pins that nodemailer is not
-      // even in this process's module graph.
-      const app = createApp(env, { jobs, pool: scratch.app });
+      const services = await scratch.services();
+      // The production wiring: createApp builds the auth service from the pool
+      // and the Effect services the sign-in mail is queued on, and no mailer
+      // exists for it to reach for — src/__tests__/process-separation.test.ts
+      // pins that nodemailer is not even in this process's module graph.
+      const app = createApp(env, { services, pool: scratch.app });
       const email = `queued-${Date.now()}@example.com`;
 
       const send = await app.request('/api/auth/sign-in/magic-link', {
@@ -509,6 +509,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
         env,
         scratch.app,
         'researcher',
+        await scratch.services(),
       );
 
       const me = await meOver(studio, { cookie });
@@ -614,6 +615,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
         env,
         scratch.app,
         'owner',
+        await scratch.services(),
       );
       const me = await meOver(studio, { cookie });
 
@@ -661,6 +663,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
         env,
         scratch.app,
         'owner',
+        await scratch.services(),
       );
       const create = await callBetterAuthOrganizationRoute(
         auth,

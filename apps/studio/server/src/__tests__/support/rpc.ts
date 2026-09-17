@@ -20,6 +20,8 @@ import type { Studio } from '../../app.ts';
 import { AuthenticatedLive } from '../../rpc/authenticated.ts';
 import { ClientSessionMiddlewareLive } from '../../rpc/client-session.ts';
 import { StudioRpcHandlers } from '../../rpc/handlers.ts';
+import { TeamAdministrationLive } from '../../rpc/team-administration.ts';
+import { studioServices } from './services.ts';
 
 // The rpc plane in process: `RpcTest.makeClient` wires a generated client
 // straight to the handlers for the same group, through the normal client and
@@ -69,8 +71,9 @@ export async function createRpcClient(
     Layer.mergeAll(
       StudioRpcHandlers(studio.rpc),
       AuthenticatedLive(studio.rpc.auth),
+      TeamAdministrationLive(studio.rpc),
       ClientSessionMiddlewareLive,
-    ),
+    ).pipe(Layer.provide(studioServices(studio))),
   );
   // The client forks a server loop and a client loop that have to outlive any
   // one call, so their scope is the harness's rather than a request's.

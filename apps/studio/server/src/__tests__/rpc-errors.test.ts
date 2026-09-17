@@ -254,7 +254,11 @@ describe.skipIf(!db)('the error map', () => {
   /** A client whose session and memberships this case decides for itself. */
   async function clientAs(auth: Partial<AuthService>): Promise<RpcTestClient> {
     const settled = await createRpcClient(
-      createStudio(env, { auth: stubAuthService(auth), pool: scratch.app }),
+      createStudio(env, {
+        auth: stubAuthService(auth),
+        pool: scratch.app,
+        services: await scratch.services(),
+      }),
     );
     disposals.push(settled.dispose);
     return settled;
@@ -537,7 +541,7 @@ describe.skipIf(!db)('the error map', () => {
 
     beforeEach(async () => {
       await scratch.pool.query('delete from installation');
-      const issued = await issueBootstrapToken(scratch.pool);
+      const issued = await scratch.asOwner(issueBootstrapToken());
       if (issued.kind !== 'issued') throw new Error('expected a token');
       token = issued.token;
     });

@@ -3,20 +3,19 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
-import {
-  Database,
-  Transaction,
-  withTenantTransaction,
-  withTransaction,
-} from '../database.ts';
+import { noAuditMaintenanceTransaction } from '../../audit/no-audit.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
+import { maintenanceTeamAccess } from '../team-access.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // The protocol store's hourly sweep, and the whole of the handler that runs it
 // (#1895). It joins the two halves that used to be `src/protocol/gc.ts` and
 // the pg-boss handler beside it: nine statements of node-postgres over a
 // maintenance pool and a `createTenantDb` per tenant became `sql` over
-// `withTransaction` and `withTenantTransaction` on the maintenance `Database`.
+// `MaintenanceScope.open` and `MaintenanceScope.openTenant` on the maintenance
+// client.
 //
 // What the port did not change: which rows are eligible. Every predicate below
 // is the one `gc.ts` runs, text for text — the `referenced` expression above
@@ -27,12 +26,13 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //  - `rowCount` has no equivalent: rc.115 hands back the rows a statement
 //    returned, so each counted statement carries a `RETURNING` and the count
 //    is that array's length.
-//  - `runNoAuditTenantTransaction`'s policy lookup is gone with the audit
-//    trigger it guarded; the operation names it passed are kept as the
-//    comments they effectively were. Stage 4's `audited` seam is where a
-//    tenant transaction becomes audited again, and these four stay outside it
-//    for the same reason they are on the no-audit list today: a sweep is not
-//    anybody's action.
+//  - `runNoAuditTenantTransaction` became `noAuditMaintenanceTransaction`
+//    (`audit/no-audit.ts`), which is the same registry check on the
+//    maintenance client. The four operation names are entries in
+//    `NO_AUDIT_TRANSACTION_POLICIES` again rather than comments, so the guard
+//    applies: a fifth unaudited sweep cannot be added without saying in the
+//    registry why it emits nothing. They stay outside `audited` for the reason
+//    each entry gives — a sweep is not anybody's action.
 //  - The role assertion reads `current_user` inside a transaction rather than
 //    off the pool, and is a weaker check for it. What it still catches and
 //    what it no longer catches are spelled out above the assertion itself.
@@ -44,8 +44,8 @@ export type GcResult = {
 };
 
 /**
- * The sweep is not running as the maintenance role: either the `Database` it
- * was given carries another identity, or its login may not assume the role.
+ * The sweep is not running as the maintenance role: either the client it was
+ * given carries another identity, or its login may not assume the role.
  * Under any other role the tenant enumeration below sees nothing, so the run
  * would report a clean sweep without having visited anyone.
  */
@@ -155,7 +155,7 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
 ): Effect.fn.Return<
   GcResult,
   GcBoundsError | GcRoleError | SqlError.SqlError,
-  Database
+  MaintenanceDatabase
 > {
   const { retainManifestsPerDraft, sectionGraceMs, commandRetryHorizonMs } =
     opts;
@@ -180,12 +180,13 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     commandRetryHorizonMs,
   );
 
-  // What this verifies and what it cannot. `withTransaction` pins the identity
-  // with `set local role` as its first statement (database.ts), so
+  // What this verifies and what it cannot. The scope pins the identity with
+  // `set local role` as its first statement (src/db/tenant.ts), so
   // `current_user` here reads back the label this module wrote one statement
-  // earlier. That refuses a worker built on `Database.layer('app', …)` — the
-  // misconfiguration the check exists for — but it cannot tell one maintenance
-  // `Database` from another: a maintenance identity over the wrong login still
+  // earlier. That refuses a worker whose maintenance client was built from
+  // `Database.layer` — the misconfiguration the check exists for — but it
+  // cannot tell one maintenance client from another: a maintenance identity
+  // over the wrong login still
   // passes, because `set local role` succeeds for any login that is a member
   // of `studio_maintenance`, which rls.ts grants to the connecting login WITH
   // SET TRUE. The original asserted against a role a startup parameter had
@@ -200,7 +201,7 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
   // have come from `set local role`, since nothing else it runs — BEGIN, the
   // search-path pin, `SELECT current_user` — needs a privilege at all.
   const identity = yield* Effect.exit(
-    withTransaction(
+    MaintenanceScope.open(
       Effect.flatMap(
         Transaction,
         ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
@@ -214,7 +215,7 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     // Outside a transaction, where the absent `set local role` is the point:
     // this answers with the connecting login, which is the identity that could
     // not become the maintenance role and so the one to name.
-    const login = yield* Database.use(
+    const login = yield* MaintenanceDatabase.use(
       ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
     ).pipe(Effect.catch(() => Effect.succeed([])));
     return yield* new GcRoleError({ role: login[0]?.role ?? '' });
@@ -238,7 +239,7 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
   // forever. Not a membership lookup, so the AuthService seam stays intact.
   // The row-level security policies admit this scan only to the maintenance
   // role checked above (studio-sync/src/rls.ts).
-  const tenants = yield* withTransaction(
+  const tenants = yield* MaintenanceScope.open(
     Effect.flatMap(
       Transaction,
       ({ sql }) => sql<{ teamId: string }>`
@@ -250,8 +251,8 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
   );
 
   for (const { teamId } of tenants) {
-    const drafts = yield* withTenantTransaction(
-      teamId,
+    const drafts = yield* MaintenanceScope.openTenant(
+      maintenanceTeamAccess(teamId),
       Effect.flatMap(
         Transaction,
         ({ sql }) => sql<{ id: string }>`
@@ -260,9 +261,9 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     );
 
     for (const { id: draftId } of drafts) {
-      // protocol.gcDraftHistory: no audit event — a sweep is nobody's action.
-      yield* withTenantTransaction(
-        teamId,
+      yield* noAuditMaintenanceTransaction(
+        'protocol.gcDraftHistory',
+        maintenanceTeamAccess(teamId),
         Effect.gen(function* () {
           const { sql } = yield* Transaction;
           const head = yield* sql<{ headSeq: string }>`
@@ -311,9 +312,9 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
       );
     }
 
-    // protocol.gcReconcileReferencedSections: likewise unaudited.
-    yield* withTenantTransaction(
-      teamId,
+    yield* noAuditMaintenanceTransaction(
+      'protocol.gcReconcileReferencedSections',
+      maintenanceTeamAccess(teamId),
       Effect.flatMap(
         Transaction,
         ({ sql }) => sql`
@@ -322,9 +323,9 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
                AND (${sql.literal(REFERENCED)})`,
       ),
     );
-    // protocol.gcMarkUnreferencedSections.
-    yield* withTenantTransaction(
-      teamId,
+    yield* noAuditMaintenanceTransaction(
+      'protocol.gcMarkUnreferencedSections',
+      maintenanceTeamAccess(teamId),
       Effect.flatMap(
         Transaction,
         ({ sql }) => sql`
@@ -333,9 +334,9 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
                AND NOT (${sql.literal(REFERENCED)})`,
       ),
     );
-    // protocol.gcDeleteUnreferencedSections.
-    const sections = yield* withTenantTransaction(
-      teamId,
+    const sections = yield* noAuditMaintenanceTransaction(
+      'protocol.gcDeleteUnreferencedSections',
+      maintenanceTeamAccess(teamId),
       Effect.flatMap(
         Transaction,
         ({ sql }) => sql<{ deleted: number }>`
@@ -369,7 +370,7 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
 ): Effect.fn.Return<
   JobOutcome,
   GcBoundsError | GcRoleError | SqlError.SqlError,
-  Database
+  MaintenanceDatabase
 > {
   const swept = yield* gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS);
   // The counts are the only evidence a deployment has that the sweep is

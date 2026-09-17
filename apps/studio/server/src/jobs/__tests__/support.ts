@@ -10,10 +10,16 @@ import {
   provisionScratchSchema,
   type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
+import {
+  Database,
+  type DatabaseService,
+  MaintenanceDatabase,
+  OwnerDatabase,
+} from '../../db/client.ts';
 import { splitStatements } from '../../db/statements.ts';
+import { MaintenanceScope } from '../../db/tenant.ts';
 import type { DbEnv } from '../../env.ts';
 import { JobClock } from '../clock.ts';
-import { Database, withTransaction } from '../database.ts';
 import { type EnqueueOptions, Jobs } from '../jobs.ts';
 import { type JobPayload, resolvedQueue } from '../queues.ts';
 import {
@@ -28,18 +34,23 @@ import {
   type JobWorkerConfig,
 } from '../worker.ts';
 
-// One scratch job schema per suite, with a client per identity. The three
-// identities are three `Database` *values* rather than three tags — today
-// there is one `Database` tag and one `identity` field, and a program picks
-// which one it runs as by providing the service. Stage 3 splits them into
-// `Database` / `MaintenanceDatabase` / `OwnerDatabase` for the same reason
-// `PgClient.layer` cannot serve two: a tag holds one value.
+// One scratch job schema per suite, with a client per identity, built from the
+// three tags stage 3 owns: `Database` (the application role), then
+// `MaintenanceDatabase` and `OwnerDatabase` (src/db/client.ts).
+//
+// The queue is maintenance work, so every scope it opens is a
+// `MaintenanceScope` and reads the `MaintenanceDatabase` tag. `asApp` /
+// `asMaintenance` / `asOwner` below therefore put the *chosen* identity's
+// client under that one tag: it is how one scope function is exercised as each
+// of the three roles, and it is what lets `grants.test.ts` assert what
+// `studio_app` may not do with a job. A harness-only substitution — the worker
+// program provides the maintenance client and nothing else.
 
 export type QueueHarnessShape = {
   readonly schema: string;
-  readonly app: Database['Service'];
-  readonly maintenance: Database['Service'];
-  readonly owner: Database['Service'];
+  readonly app: DatabaseService;
+  readonly maintenance: DatabaseService;
+  readonly owner: DatabaseService;
 };
 
 export class QueueHarness extends Context.Service<
@@ -54,7 +65,7 @@ export class QueueHarness extends Context.Service<
  * splitting on `;` would cut it in half.
  */
 const installSchema = Effect.fnUntraced(function* (schema: string) {
-  const { sql } = yield* Database;
+  const { sql } = yield* MaintenanceDatabase;
   for (const statement of [
     ...splitStatements(jobSchemaSql(schema)),
     ...splitStatements(jobSchemaGrantsSql(schema)),
@@ -63,12 +74,14 @@ const installSchema = Effect.fnUntraced(function* (schema: string) {
   }
 });
 
-const client = (identity: 'app' | 'maintenance' | 'owner', db: DbEnv) =>
-  Database.layer(identity, {
-    url: db.url,
-    maxConnections: 4,
-    applicationName: `studio-test-${identity}`,
-  });
+const clientConfig = (
+  identity: 'app' | 'maintenance' | 'owner',
+  db: DbEnv,
+) => ({
+  url: db.url,
+  maxConnections: 4,
+  applicationName: `studio-test-${identity}`,
+});
 
 /**
  * A scratch schema with the queue installed, its grants applied, and a client
@@ -81,23 +94,39 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
       const schema = `studio_test_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
       // Built into this layer's own scope rather than `Effect.provide`d, which
       // would close each pool the moment the effect that built it finished.
-      const build = (identity: 'app' | 'maintenance' | 'owner') =>
-        Effect.map(Effect.orDie(Layer.build(client(identity, db))), (context) =>
-          Context.get(context, Database),
-        );
-      const owner = yield* build('owner');
-      const app = yield* build('app');
-      const maintenance = yield* build('maintenance');
+      const owner = Context.get(
+        yield* Effect.orDie(
+          Layer.build(OwnerDatabase.layer(clientConfig('owner', db))),
+        ),
+        OwnerDatabase,
+      );
+      const app = Context.get(
+        yield* Effect.orDie(
+          Layer.build(Database.layer(clientConfig('app', db))),
+        ),
+        Database,
+      );
+      const maintenance = Context.get(
+        yield* Effect.orDie(
+          Layer.build(
+            MaintenanceDatabase.layer(clientConfig('maintenance', db)),
+          ),
+        ),
+        MaintenanceDatabase,
+      );
 
-      const asOwner = <A, E>(effect: Effect.Effect<A, E, Database>) =>
-        Effect.provideService(effect, Database, owner);
+      const asOwner = <A, E>(
+        effect: Effect.Effect<A, E, MaintenanceDatabase>,
+      ) => Effect.provideService(effect, MaintenanceDatabase, owner);
 
-      yield* Effect.orDie(asOwner(withTransaction(installSchema(schema))));
+      yield* Effect.orDie(
+        asOwner(MaintenanceScope.open(installSchema(schema))),
+      );
 
       yield* Effect.addFinalizer(() =>
         Effect.orDie(
           asOwner(
-            Effect.flatMap(Database, ({ sql }) =>
+            Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
               sql.unsafe(dropJobSchemaSql(schema)),
             ),
           ),
@@ -111,33 +140,36 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
 /** Runs an effect as the role that serves requests. */
 export const asApp = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.app),
+    Effect.provideService(effect, MaintenanceDatabase, harness.app),
   );
 
 /** Runs an effect as the role the worker runs as. */
 export const asMaintenance = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.maintenance),
+    Effect.provideService(effect, MaintenanceDatabase, harness.maintenance),
   );
 
 /** Runs an effect as the connecting login; the suites' oracle connection. */
 export const asOwner = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.owner),
+    Effect.provideService(effect, MaintenanceDatabase, harness.owner),
   );
 
-/** The maintenance client under the `Database` tag, for a worker layer. */
-const layerMaintenanceDatabase: Layer.Layer<Database, never, QueueHarness> =
-  Layer.effect(
-    Database,
-    Effect.map(QueueHarness, (harness) => harness.maintenance),
-  );
+/** The harness's maintenance client, for a worker layer. */
+const layerMaintenanceDatabase: Layer.Layer<
+  MaintenanceDatabase,
+  never,
+  QueueHarness
+> = Layer.effect(
+  MaintenanceDatabase,
+  Effect.map(QueueHarness, (harness) => harness.maintenance),
+);
 
 /**
  * The worker as the suites build it: on the maintenance client, with every
@@ -152,7 +184,7 @@ export const layerWorker = (
    * `JobClock.layerOffset(…)`.
    */
   clock: Layer.Layer<never> = JobClock.layerTest,
-): Layer.Layer<JobWorker | Jobs | Database, never, QueueHarness> =>
+): Layer.Layer<JobWorker | Jobs | MaintenanceDatabase, never, QueueHarness> =>
   Layer.unwrap(
     Effect.map(QueueHarness, (harness) =>
       JobWorker.layer({
@@ -196,7 +228,7 @@ export const readJobs = Effect.fnUntraced(function* (queue?: string) {
   const { schema } = yield* QueueHarness;
   return yield* asOwner(
     Effect.flatMap(
-      Database,
+      MaintenanceDatabase,
       ({ sql }) =>
         sql<JobRow>`
           SELECT id, queue, state, policy, attempts, payload, singleton_key,
@@ -245,12 +277,12 @@ export const layerJobs: Layer.Layer<Jobs, never, QueueHarness> = Layer.unwrap(
 export const clearQueue = Effect.gen(function* () {
   const { schema } = yield* QueueHarness;
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(`DELETE FROM ${schema}.jobs`),
     ),
   );
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
     ),
   );
@@ -263,7 +295,7 @@ export const enqueue = <Queue extends JobQueueName>(
   options?: EnqueueOptions,
 ) =>
   Effect.flatMap(Jobs, (jobs) =>
-    asApp(withTransaction(jobs.enqueue(queue, payload, options))),
+    asApp(MaintenanceScope.open(jobs.enqueue(queue, payload, options))),
   );
 
 /** One job on the delivery queue, which is the queue most cases drive. */
@@ -282,7 +314,7 @@ export const updateJob = Effect.fnUntraced(function* (
 ) {
   const { schema } = yield* QueueHarness;
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(
         `UPDATE ${schema}.jobs SET ${assignment} WHERE id = '${jobId}'`,
       ),
@@ -302,7 +334,7 @@ export const readSchedules = Effect.fnUntraced(function* () {
   const { schema } = yield* QueueHarness;
   return yield* asOwner(
     Effect.flatMap(
-      Database,
+      MaintenanceDatabase,
       ({ sql }) => sql<ScheduleRow>`
         SELECT name, cron, queue, next_run_at
           FROM ${sql(schema)}.job_schedules
@@ -384,7 +416,7 @@ export type Holder = {
 
 /**
  * An open transaction on a raw `pg` connection of its own, for the length of
- * `use`. The harness's three `Database` values share nothing with it, which is
+ * `use`. The harness's three clients share nothing with it, which is
  * the point: a second connection is the only way to hold a row lock — or an
  * advisory one — that the queue's own statements then have to deal with, and
  * an Effect transaction on the calling fiber would route those statements onto
@@ -574,28 +606,33 @@ export const layerDeliveryHarness = (
       // pg-boss's scratch schema follows.
       const schema = `${studioSchema}_ejobs`;
 
-      const build = (identity: 'app' | 'maintenance' | 'owner') =>
-        Effect.map(
-          Effect.orDie(
-            Layer.build(
-              Database.layer(identity, {
-                url: db.url,
-                maxConnections: 6,
-                applicationName: `studio-test-${identity}`,
-                searchPath: studioSchema,
-              }),
-            ),
-          ),
-          (context) => Context.get(context, Database),
-        );
-      const owner = yield* build('owner');
-      const app = yield* build('app');
-      const maintenance = yield* build('maintenance');
+      const deliveryConfig = (identity: 'app' | 'maintenance' | 'owner') => ({
+        url: db.url,
+        maxConnections: 6,
+        applicationName: `studio-test-${identity}`,
+        searchPath: studioSchema,
+      });
+      const owner = Context.get(
+        yield* Effect.orDie(
+          Layer.build(OwnerDatabase.layer(deliveryConfig('owner'))),
+        ),
+        OwnerDatabase,
+      );
+      const app = Context.get(
+        yield* Effect.orDie(Layer.build(Database.layer(deliveryConfig('app')))),
+        Database,
+      );
+      const maintenance = Context.get(
+        yield* Effect.orDie(
+          Layer.build(MaintenanceDatabase.layer(deliveryConfig('maintenance'))),
+        ),
+        MaintenanceDatabase,
+      );
 
       yield* Effect.orDie(
         Effect.provideService(
-          withTransaction(installSchema(schema)),
-          Database,
+          MaintenanceScope.open(installSchema(schema)),
+          MaintenanceDatabase,
           owner,
         ),
       );

@@ -89,10 +89,18 @@ describe.skipIf(!db)('team-scoped procedures', () => {
         Promise.resolve(memberships[teamId] ?? null),
     });
     client = await createRpcClient(
-      createStudio(readEnv(), { auth, pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth,
+        pool: scratch.app,
+        services: await scratch.services(),
+      }),
     );
     anonymousClient = await createRpcClient(
-      createStudio(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth: stubAuthService(),
+        pool: scratch.app,
+        services: await scratch.services(),
+      }),
     );
   });
   afterAll(async () => {
@@ -227,6 +235,7 @@ describe.skipIf(!db)('team-scoped procedures', () => {
               getMembership: () => Promise.resolve({ role: 'admin' }),
             }),
             pool: scratch.app,
+            services: await scratch.services(),
             limits: { rpc_user: { max: 2, windowMs: 60_000 } },
           },
         ),

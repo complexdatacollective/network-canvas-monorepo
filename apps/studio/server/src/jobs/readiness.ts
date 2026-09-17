@@ -1,7 +1,7 @@
 import { Effect, Option, Schema } from 'effect';
 
+import { MaintenanceDatabase } from '../db/client.ts';
 import type { CheckVerdict, HealthCheck } from '../http/health.ts';
-import { Database } from './database.ts';
 import { deepestMessage } from './errors.ts';
 import { JobWorker } from './worker.ts';
 
@@ -62,40 +62,43 @@ class JobQueuesUnreadable extends Schema.TaggedError<JobQueuesUnreadable>()(
  * answer. That is the honest reading — the listener is in fact not up yet —
  * and `degraded` is not a 503.
  */
-const check: Effect.Effect<CheckVerdict, unknown, JobWorker | Database> =
-  Effect.gen(function* () {
-    const worker = yield* JobWorker;
-    if (!(yield* worker.ready)) {
-      return yield* new JobWorkerNotReady({
-        message: 'the job worker has not read its queues yet',
-      });
-    }
-    yield* Effect.mapError(
-      worker.queueDepths,
-      (error) =>
-        new JobQueuesUnreadable({
-          message: deepestMessage(error) ?? String(error),
-        }),
-    );
-    const listening = yield* worker.listening;
-    const verdict: CheckVerdict = Option.getOrElse(listening, () => true)
-      ? 'ok'
-      : 'degraded';
-    return verdict;
-  });
+const check: Effect.Effect<
+  CheckVerdict,
+  unknown,
+  JobWorker | MaintenanceDatabase
+> = Effect.gen(function* () {
+  const worker = yield* JobWorker;
+  if (!(yield* worker.ready)) {
+    return yield* new JobWorkerNotReady({
+      message: 'the job worker has not read its queues yet',
+    });
+  }
+  yield* Effect.mapError(
+    worker.queueDepths,
+    (error) =>
+      new JobQueuesUnreadable({
+        message: deepestMessage(error) ?? String(error),
+      }),
+  );
+  const listening = yield* worker.listening;
+  const verdict: CheckVerdict = Option.getOrElse(listening, () => true)
+    ? 'ok'
+    : 'degraded';
+  return verdict;
+});
 
 /**
  * The check as `HealthChecks` takes it — every dependency provided, because a
  * probe is assembled where the process is, not where the check is written.
- * The `Database` is passed rather than taken from a layer so the process that
+ * The client is passed rather than taken from a layer so the process that
  * mounts this runs the check as the role it actually works jobs as, which is
  * what makes a grant problem show up here instead of in the first claim.
  */
 export const jobsCheck = (
   worker: JobWorker['Service'],
-  database: Database['Service'],
+  database: MaintenanceDatabase['Service'],
 ): HealthCheck =>
   check.pipe(
     Effect.provideService(JobWorker, worker),
-    Effect.provideService(Database, database),
+    Effect.provideService(MaintenanceDatabase, database),
   );

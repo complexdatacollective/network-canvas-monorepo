@@ -3246,6 +3246,9 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../protocol-builder-core
+      '@codaco/studio-sync':
+        specifier: workspace:^
+        version: link:../studio-sync
       effect:
         specifier: 'catalog:'
         version: 4.0.0-rc.115
@@ -3293,6 +3296,9 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 1.0.0-rc.5-5935859(@effect/sql-pg@4.0.0-rc.115(effect@4.0.0-rc.115))(@electric-sql/pglite@0.4.3)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.4)(effect@4.0.0-rc.115)(mssql@11.0.1(supports-color@10.2.2))(mysql2@3.24.2(@types/node@24.13.3))(pg@8.23.0)(postgres@3.4.7)(valibot@1.4.2(typescript@7.0.2))(zod@4.5.4)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.115
       pg:
         specifier: ^8.23.0
         version: 8.23.0
@@ -3303,6 +3309,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.115(effect@4.0.0-rc.115)
       '@types/pg':
         specifier: ^8.20.4
         version: 8.20.4

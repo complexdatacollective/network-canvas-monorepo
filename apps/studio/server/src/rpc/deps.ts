@@ -1,15 +1,19 @@
+import type { Context } from 'effect';
 import type pg from 'pg';
 
 import type { AssetStore } from '../assets.ts';
+import type { AuditSignal } from '../audit/signal.ts';
 import type { AuthService } from '../auth/service.ts';
+import type { Database } from '../db/client.ts';
 import type {
   AuthCapabilities,
   DeploymentStatus,
   InstallationReader,
 } from '../domain.ts';
-import type { JobClient } from '../jobs/client.ts';
+import type { Jobs } from '../jobs/jobs.ts';
 import type { RateLimiter } from '../rate-limit.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
+import type { SecretsCipher } from '../secrets/services.ts';
 
 /**
  * Everything the `/rpc` handlers are wired from, resolved once by
@@ -32,18 +36,33 @@ export type RpcDeps = {
   readonly deployment: DeploymentStatus;
   /** The installation row behind `status.setup` and the instance's name. */
   readonly readInstallation: InstallationReader;
-  /** How a command queues the work it causes (#1895); see CreateAppDeps. */
-  readonly jobs?: JobClient | undefined;
   readonly pool?: pg.Pool | undefined;
   /** The protocol-builder router's object store; no `/rpc` handler reads it. */
   readonly assetStore?: AssetStore | undefined;
   /**
-   * Seals and opens the API-key protocol assets (#1900). Absent only where
-   * there is no keyring, which the env layer allows only where there is no
-   * database — and every procedure that would seal or open a secret needs a
-   * pool too.
+   * Seals and opens the API-key protocol assets on the protocol-builder router
+   * (#1900), which is a promise router and cannot read the `SecretsCipher`
+   * service. Every Effect caller takes it from `services` instead. Absent only
+   * where there is no keyring, which the env layer allows only where there is
+   * no database.
    */
-  readonly cipher?: SecretsCipher | undefined;
+  readonly cipher?: SecretsCipherApi | undefined;
   /** Where per-user and per-team call limits are counted (#1909). */
   readonly limiter?: RateLimiter | undefined;
+  /**
+   * The Effect services every data-layer caller on this plane runs on (#1931
+   * stage 3): the application client, the operator signal, the job queue and
+   * the process's cipher.
+   *
+   * It is a `Context` rather than a set of layers because two of the consumers
+   * are promises — the protocol builder's oRPC handlers until stage 8 moves
+   * that router onto the rpc plane (#1930), and better-auth's sign-in mail
+   * callback — and the program that owns the layers is the only thing that can
+   * supply them. Absent wherever there is no database, where every procedure
+   * that would need one refuses beside the missing pool.
+   */
+  readonly services?: Context.Context<StudioServices> | undefined;
 };
+
+/** What a request-serving process resolves its data-layer work against. */
+export type StudioServices = Database | AuditSignal | Jobs | SecretsCipher;

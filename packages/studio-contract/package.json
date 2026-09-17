@@ -27,6 +27,7 @@
     "./schema/audit": "./src/schema/audit.ts",
     "./schema/participant": "./src/schema/participant.ts",
     "./middleware/authenticated": "./src/middleware/authenticated.ts",
+    "./middleware/team-administration": "./src/middleware/teamAdministration.ts",
     "./middleware/session": "./src/middleware/session.ts",
     "./middleware/client-session": "./src/middleware/clientSession.ts",
     "./rpc/status": "./src/rpc/status.ts",
@@ -49,6 +50,7 @@
   },
   "dependencies": {
     "@codaco/protocol-builder-core": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
     "effect": "catalog:"
   },
   "devDependencies": {

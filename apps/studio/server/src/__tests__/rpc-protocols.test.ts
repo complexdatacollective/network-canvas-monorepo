@@ -124,6 +124,7 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
+    const services = await scratch.services();
     pool = scratch.pool;
     maintenance = scratch.maintenance;
     dispose = scratch.dispose;
@@ -153,7 +154,11 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
         listMemberships: () =>
           Promise.resolve([{ teamId: TEAM_ID, role: who.role }]),
       });
-      const studio = createStudio(readEnv(), { auth, pool: scratch.app });
+      const studio = createStudio(readEnv(), {
+        auth,
+        pool: scratch.app,
+        services,
+      });
       clients.set(who, await createRpcClient(studio));
       builderClients.set(
         who,

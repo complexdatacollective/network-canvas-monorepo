@@ -9,6 +9,20 @@
 // is one transaction by contract, so it hands the store an adapter that runs
 // every unit of work on the seed's already-open client instead — see
 // `seedTenantScope` for why that adapter must not open a subtransaction.
+//
+// DOES NOT COMPILE, and deliberately so rather than patched over (#1927 stage
+// 3). The store is an Effect over `@effect/sql-pg` now: every function takes
+// the team id first and requires the caller's `Transaction`, and
+// `ProtocolStore` is gone. There is no adapter that can be written here,
+// because `@effect/sql-pg` speaks the wire protocol itself and cannot adopt an
+// open `pg` connection — so an Effect transaction is necessarily a second
+// connection, which cannot see the `teams` rows this seed run has written and
+// not committed, and would fail the `protocols.team_id` foreign key before
+// reaching any question of atomicity. The seed stays on node-postgres for the
+// reason #1927 §9 gives (drizzle-kit's `pushSchema` has no Effect driver), so
+// closing this needs the seed's own transaction to become an Effect one — the
+// whole `db/seed/` tree, not this file. Until then the seed does not run at
+// all: `new ProtocolStore(...)` would throw at this line's import.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -21,7 +35,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { addStage, removeStage } from '../../protocol/draft-structure.ts';
 import { ProtocolStore } from '../../protocol/store.ts';
-import type { SecretsCipher } from '../../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../../secrets/cipher.ts';
 import { seedHex, seedTime, seedUuid } from './rng.ts';
 
 /** The structural half of an assembled protocol document `generateNetwork` reads. */
@@ -159,7 +173,7 @@ export async function seedProtocolLine(
   client: pg.PoolClient,
   teamId: string,
   /** Seals the protocol's API-key asset (#1900). */
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): Promise<SeededProtocolLine> {
   const scope = seedTenantScope(client, teamId);
   const store = new ProtocolStore(scope, cipher);

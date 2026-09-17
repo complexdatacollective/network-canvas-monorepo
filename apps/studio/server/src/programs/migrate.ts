@@ -2,12 +2,14 @@ import { readFile } from 'node:fs/promises';
 
 import { Console, Effect, Layer, Schema } from 'effect';
 
+import { OwnerDatabase } from '../db/client.ts';
 import { migrateDatabase, type SchemaDdl } from '../db/migrate.ts';
 import { createOwnerPool } from '../db/pool.ts';
+import { OwnerScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
-import { verifySecretKeysOrExit } from '../secrets/boot.ts';
+import { verifyKeyring } from '../secrets/services.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
@@ -105,7 +107,7 @@ const migrate = Effect.gen(function* () {
   // container start. `Environment` already refused to run without a keyring
   // at all. Before the bootstrap token, so a refused database never prints a
   // token nobody should use.
-  yield* Effect.promise(() => verifySecretKeysOrExit(env));
+  yield* verifyKeyring;
   yield* Console.log(
     'Stored secrets are readable with the configured keyring.',
   );
@@ -113,12 +115,14 @@ const migrate = Effect.gen(function* () {
   // First-run bootstrap (#1909): on a database nobody owns yet, issue the
   // token `/setup` spends and print it once — rotating any earlier one, so a
   // lost token is recovered by running this again. An owned instance issues
-  // nothing and prints nothing. After `migrateDatabase`, on the pool: the
-  // installation table exists only once its transaction has committed.
-  const token = yield* Effect.tryPromise({
-    try: () => issueBootstrapToken(pool),
-    catch: (cause) => new MigrateFailed({ cause }),
-  });
+  // nothing and prints nothing. After `migrateDatabase`, because the
+  // installation table exists only once its transaction has committed, and on
+  // the OWNER scope, because neither application role holds INSERT on it —
+  // arming an instance is deliberately not something the server can do.
+  const token = yield* OwnerScope.open(issueBootstrapToken()).pipe(
+    Effect.provide(OwnerDatabase.layer({ url: db.url })),
+    Effect.catch((cause) => new MigrateFailed({ cause })),
+  );
   printBootstrapToken(token, env.auth?.baseUrl);
 });
 

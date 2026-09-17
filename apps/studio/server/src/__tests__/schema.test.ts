@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import { Effect } from 'effect';
+import { Effect, Layer } from 'effect';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
@@ -17,8 +17,8 @@ import {
   STUDIO_README_PATH,
 } from '../../scripts/schema-docs.ts';
 import { ACCESS_SIDECAR_SQL } from '../db/access.ts';
+import { MaintenanceDatabase, OwnerDatabase } from '../db/client.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
-import { createPool } from '../db/pool.ts';
 import {
   checkSchema,
   SIDECARS,
@@ -27,15 +27,15 @@ import {
   schemaProblemMessage,
   staleDatabaseMessage,
 } from '../db/schema.ts';
+import { MaintenanceScope } from '../db/tenant.ts';
 import type { DbEnv } from '../env.ts';
-import { createJobClient } from '../jobs/client.ts';
-import { Database, withTransaction } from '../jobs/database.ts';
 import { installJobSchemaEffect } from '../jobs/install.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { jobSchemaGrantsSql, jobSchemaSql } from '../jobs/schema.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
+  enqueueAsApplication,
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
@@ -470,6 +470,7 @@ describe.skipIf(!db)('schema verification', () => {
         'command_log',
         'consent_documents',
         'consent_items',
+        'deployment_state',
         'drafts',
         'edges',
         'experiment_assignments',
@@ -567,7 +568,7 @@ describe.skipIf(!db)('schema verification', () => {
   // so everything a schema application installs outside `public` has to be
   // there too — the queue's schema above all. Read through `jobSchema`
   // rather than by rebuilding the name here, because that field is what a
-  // suite builds a `Database` against.
+  // suite builds a client against.
   it('provisions the job schema beside the scratch schema', async () => {
     await withScratch(createScratchSchema, async (pool, scratch) => {
       await provisionScratchSchema(pool);
@@ -585,7 +586,7 @@ describe.skipIf(!db)('schema verification', () => {
 
   // Two drivers install that schema — node-postgres for the two callers that
   // apply a schema, `@effect/sql-pg` for a caller that already owns a
-  // `Database` — and the only thing keeping them the same schema is that they
+  // client — and the only thing keeping them the same schema is that they
   // send the same split statements. Proved by installing through the Effect path into a sibling
   // and comparing the catalogue, because a difference here would not surface
   // until a worker claimed a job against a table it had created itself.
@@ -603,9 +604,16 @@ describe.skipIf(!db)('schema verification', () => {
       const sibling = `${scratch.jobSchema}_effect`;
       try {
         await Effect.runPromise(
-          withTransaction(installJobSchemaEffect(sibling)).pipe(
+          MaintenanceScope.open(installJobSchemaEffect(sibling)).pipe(
+            // The install needs the connecting login, and the scope reads the
+            // maintenance tag: the owner client goes in under it, the way the
+            // job suites' `asOwner` does (src/jobs/__tests__/support.ts).
             Effect.provide(
-              Database.layer('owner', { url: db!.url, maxConnections: 2 }),
+              Layer.effect(MaintenanceDatabase, OwnerDatabase).pipe(
+                Layer.provide(
+                  OwnerDatabase.layer({ url: db!.url, maxConnections: 2 }),
+                ),
+              ),
             ),
             Effect.orDie,
           ),
@@ -797,23 +805,8 @@ describe.skipIf(!db)('schema application', () => {
    * survived — or were re-applied after — whatever the apply did to the
    * schema, which the owner pool cannot answer for, being a superuser here.
    */
-  async function enqueueAsApplication(scratchDb: DbEnv): Promise<string> {
-    const jobs = createJobClient();
-    const app = createPool(scratchDb);
-    try {
-      const connection = await app.connect();
-      try {
-        await connection.query('BEGIN');
-        const id = await jobs.enqueue(connection, 'protocol-store-gc', {});
-        await connection.query('COMMIT');
-        return id;
-      } finally {
-        connection.release();
-      }
-    } finally {
-      await app.end();
-    }
-  }
+  const enqueueSweepAsApplication = (scratchDb: DbEnv): Promise<string> =>
+    enqueueAsApplication(scratchDb, 'protocol-store-gc', {});
 
   it('installs the job schema with its grants', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
@@ -871,7 +864,7 @@ describe.skipIf(!db)('schema application', () => {
       // Enqueued as the application role, which is the half the owner pool
       // cannot answer for: a reapply that dropped and rebuilt the schema would
       // take the grants with it, and this row with them.
-      const queued = await enqueueAsApplication(scratch.db);
+      const queued = await enqueueSweepAsApplication(scratch.db);
 
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
@@ -885,7 +878,7 @@ describe.skipIf(!db)('schema application', () => {
       expect(jobs.rows).toEqual([{ id: queued, queue: 'protocol-store-gc' }]);
 
       // And the schema still enqueues afterwards: the grants survived too.
-      await enqueueAsApplication(scratch.db);
+      await enqueueSweepAsApplication(scratch.db);
       const after = await pool.query<{ count: string }>(
         `select count(*)::text from ${JOB_SCHEMA}.jobs`,
       );

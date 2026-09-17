@@ -1,11 +1,20 @@
-import type pg from 'pg';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { Effect, Option, Schema } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
-import type { AuthService, EstablishedSession } from '../auth/service.ts';
+import type { AuthService } from '../auth/service.ts';
+import type { Database } from '../db/client.ts';
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction, UntenantedScope } from '../db/tenant.ts';
+import { SetCookies } from '../rpc/set-cookies.ts';
 import { bootstrapTokenMatches, readInstallation } from './bootstrap.ts';
+import { SETUP_TABLES } from './schema.ts';
 
 // First-run setup, the command behind the public `setup.complete` procedure
 // (#1909): spend the bootstrap token, create the first owner, name the
-// instance, and hand back the session that signs the browser in.
+// instance, and sign the browser in.
+
+const { installation } = SETUP_TABLES;
 
 export type CompleteSetupInput = {
   token: string;
@@ -13,33 +22,90 @@ export type CompleteSetupInput = {
   owner: { name: string; email: string; password: string };
 };
 
-export type SetupFailure =
+export type CompletedSetup = {
+  instanceName: string;
+  /**
+   * Whether the browser was actually signed in. A call that arrived over the
+   * WebSocket, or in process, has no HTTP response to carry a cookie on — so
+   * nothing is set and this says so, which is what decides whether the shell
+   * continues into the signed-in app or sends the new owner to sign in.
+   */
+  signedIn: boolean;
+};
+
+const SetupFailure = Schema.Literals([
   /** Already owned, or no installation to set up: `/setup` is not here. */
-  | 'closed'
+  'closed',
   /** Wrong token, or none outstanding. Never distinguished from each other. */
-  | 'unauthorized'
+  'unauthorized',
   /** The address has an account whose password the caller did not give. */
-  | 'emailTaken';
+  'emailTaken',
+]);
 
-export class SetupCommandError extends Error {
-  readonly reason: SetupFailure;
+type SetupFailure = typeof SetupFailure.Type;
 
-  constructor(reason: SetupFailure) {
-    super(`first-run setup refused: ${reason}`);
-    this.name = 'SetupCommandError';
-    this.reason = reason;
+export class SetupCommandError extends Schema.TaggedError<SetupCommandError>()(
+  'SetupCommandError',
+  { reason: SetupFailure },
+) {
+  override get message(): string {
+    return `first-run setup refused: ${this.reason}`;
   }
 }
+
+/**
+ * Claims the instance for the account that was just established.
+ *
+ * A conditional update that re-checks BOTH the absence of an owner and the
+ * token it was authorised by, so two concurrent calls cannot both succeed and
+ * a token rotated in between loses. `.returning()` is what makes that real:
+ * without it the builder answers with the driver's own result object, typed as
+ * a row array and not one, so a losing claim would read as a winning one and
+ * two callers would each be told they own the instance.
+ */
+const claimInstallation: (input: {
+  ownerUserId: string;
+  instanceName: string;
+  bootstrapTokenHash: string | null;
+}) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
+  'setup.claimInstallation',
+)(function* (input: {
+  ownerUserId: string;
+  instanceName: string;
+  bootstrapTokenHash: string | null;
+}) {
+  const { tx } = yield* Transaction;
+  // A null hash can never be claimed against: `eq(…, null)` is SQL's unknown,
+  // which matches nothing — and an installation with no token outstanding is
+  // exactly one nobody may claim.
+  if (input.bootstrapTokenHash === null) return false;
+  const owned = yield* tx
+    .update(installation)
+    .set({
+      ownerUserId: input.ownerUserId,
+      name: input.instanceName,
+      bootstrapTokenHash: null,
+      bootstrapTokenIssuedAt: null,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(installation.id, 1),
+        isNull(installation.ownerUserId),
+        eq(installation.bootstrapTokenHash, input.bootstrapTokenHash),
+      ),
+    )
+    .returning({ id: installation.id });
+  return owned.length === 1;
+}, sqlErrorsOnly);
 
 /**
  * Two writes that cannot share a transaction: the account is created through
  * the auth provider's own API, on its own connection, and the ownership mark
  * is an update this application makes. They are ordered so that the window
- * between them is recoverable rather than fatal.
- *
- * The mark is a conditional update that re-checks BOTH the absence of an owner
- * and the token it was authorised by, so two concurrent calls cannot both
- * succeed and a token rotated in between loses.
+ * between them is recoverable rather than fatal — which is why the two
+ * `UntenantedScope` transactions here are deliberately separate rather than
+ * one around the whole command.
  *
  * **If the process dies between the two**, the account exists and the
  * installation is still ownerless with the same token outstanding. Running
@@ -50,61 +116,81 @@ export class SetupCommandError extends Error {
  * caller's, whether this flow created it a moment ago or the operator signed
  * up before setting the instance up. An address whose password the caller
  * cannot produce is refused outright.
+ *
+ * Untenanted because there is no tenant: `installation` is a singleton row
+ * with no team, and this runs before any team exists at all.
  */
-export async function completeSetup(
-  deps: { auth: AuthService; pool: pg.Pool },
+export const completeSetup: (
+  auth: AuthService,
   input: CompleteSetupInput,
-): Promise<EstablishedSession> {
-  const installation = await readInstallation(deps.pool);
+) => Effect.Effect<
+  CompletedSetup,
+  SetupCommandError | SqlError.SqlError,
+  Database
+> = Effect.fn('setup.complete')(function* (
+  auth: AuthService,
+  input: CompleteSetupInput,
+) {
+  const existing = yield* UntenantedScope.open(readInstallation());
   // A missing row is an unprovisioned database, not an open instance: there is
   // no token to spend and nothing to mark. It reads as closed, like an owned
   // one, because neither can be set up from here.
-  if (!installation || installation.ownerUserId !== null) {
-    throw new SetupCommandError('closed');
+  if (existing === null || existing.ownerUserId !== null) {
+    return yield* new SetupCommandError({ reason: 'closed' });
   }
-  if (!bootstrapTokenMatches(input.token, installation.bootstrapTokenHash)) {
-    throw new SetupCommandError('unauthorized');
+  if (!bootstrapTokenMatches(input.token, existing.bootstrapTokenHash)) {
+    return yield* new SetupCommandError({ reason: 'unauthorized' });
   }
 
-  const session = await establishOwnerSession(deps.auth, input.owner);
+  const session = yield* establishOwnerSession(auth, input.owner);
 
-  const owned = await deps.pool.query(
-    `update installation
-        set owner_user_id = $1,
-            name = $2,
-            bootstrap_token_hash = null,
-            bootstrap_token_issued_at = null,
-            updated_at = now()
-      where id = 1
-        and owner_user_id is null
-        and bootstrap_token_hash = $3`,
-    [session.userId, input.instanceName, installation.bootstrapTokenHash],
+  const owned = yield* UntenantedScope.open(
+    claimInstallation({
+      ownerUserId: session.userId,
+      instanceName: input.instanceName,
+      bootstrapTokenHash: existing.bootstrapTokenHash,
+    }),
   );
   // Somebody else completed setup, or the token was rotated, while this call
   // was creating the account. The account stays — it is a real account whose
   // owner holds the password — but it is not this instance's owner.
-  if (owned.rowCount === 0) throw new SetupCommandError('closed');
+  if (!owned) return yield* new SetupCommandError({ reason: 'closed' });
 
-  return session;
-}
+  // The provider's own `set-cookie` strings, handed to the request's holder;
+  // the `/rpc` route middleware folds them onto the response on the way out.
+  // A transport with no response to carry them has no holder, and the result
+  // says the browser was not signed in.
+  const setCookies = yield* Effect.serviceOption(SetCookies);
+  const cookies = session.headers.getSetCookie();
+  if (Option.isNone(setCookies) || cookies.length === 0) {
+    return { instanceName: input.instanceName, signedIn: false };
+  }
+  for (const cookie of cookies) {
+    yield* setCookies.value.append(cookie);
+  }
+  return { instanceName: input.instanceName, signedIn: true };
+});
 
-async function establishOwnerSession(
+const establishOwnerSession = Effect.fnUntraced(function* (
   auth: AuthService,
   owner: CompleteSetupInput['owner'],
-): Promise<EstablishedSession> {
-  const created = await auth.signUpEmail(owner);
+) {
+  const created = yield* Effect.promise(() => auth.signUpEmail(owner));
   if (created.kind === 'created') return created.session;
   // Auth off means no database or no secret, and `setup.required` is false in
   // both — so this is a deployment fault rather than a refusal, and it leaves
   // as one.
   if (created.kind === 'unavailable') {
-    throw new Error('first-run setup reached with auth disabled');
+    return yield* Effect.die(
+      new Error('first-run setup reached with auth disabled'),
+    );
   }
 
-  const adopted = await auth.signInEmail({
-    email: owner.email,
-    password: owner.password,
-  });
-  if (adopted.kind === 'refused') throw new SetupCommandError('emailTaken');
+  const adopted = yield* Effect.promise(() =>
+    auth.signInEmail({ email: owner.email, password: owner.password }),
+  );
+  if (adopted.kind === 'refused') {
+    return yield* new SetupCommandError({ reason: 'emailTaken' });
+  }
   return adopted.session;
-}
+});

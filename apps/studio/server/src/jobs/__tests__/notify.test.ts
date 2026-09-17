@@ -2,7 +2,7 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Effect, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database } from '../database.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
 import { JobWorker } from '../worker.ts';
 import {
   asOwner,
@@ -105,7 +105,9 @@ describe.skipIf(!db)('waking a worker with LISTEN/NOTIFY', () => {
             const { schema } = yield* QueueHarness;
             const asOwnerSql = (statement: string) =>
               asOwner(
-                Effect.flatMap(Database, ({ sql }) => sql.unsafe(statement)),
+                Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
+                  sql.unsafe(statement),
+                ),
               );
 
             yield* Effect.gen(function* () {

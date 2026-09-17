@@ -1,16 +1,22 @@
 import { createHash } from 'node:crypto';
 
+import { Effect } from 'effect';
 import type pg from 'pg';
 
-import { installJobSchema } from '../jobs/install.ts';
+import { installJobSchema, installJobSchemaEffect } from '../jobs/install.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { OwnerDatabase } from './client.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import {
   checkSchema,
+  checkSchemaEffect,
   SCHEMA_LOCK_KEY,
   staleDatabaseMessage,
   stampFingerprint,
+  stampFingerprintEffect,
 } from './schema.ts';
+import { splitStatements } from './statements.ts';
+import { OwnerScope, Transaction } from './tenant.ts';
 
 // `studio-api migrate`, the deployed half of schema application (#1909).
 //
@@ -173,3 +179,98 @@ export async function migrateDatabase(
     lock.release();
   }
 }
+
+/**
+ * The deployed `studio-api migrate`, on `@effect/sql-pg`.
+ *
+ * Same shape and same verdicts as `migrateDatabase` above; the differences are
+ * all forced by the driver:
+ *
+ *   * **The lock rides a reserved connection.** `pg_advisory_lock` is
+ *     session-scoped, so the connection that takes it must be the one that
+ *     holds it for the whole run. `sql.reserve` is that connection, and its
+ *     scope is what releases it — an unlock in a `finally` could not survive
+ *     an interrupt, and a scope finalizer does.
+ *   * **`checkSchema` reads on the pool, not on the reserved connection.** It
+ *     is a read, and running it on the pool is what proves the lock is held
+ *     *across* it rather than merely around it: another migrate reaching the
+ *     same database blocks at `pg_advisory_lock` before it can read.
+ *   * **The statements are split.** `@effect/sql-pg` has no simple-query path:
+ *     every multi-command string is refused with `42601`, so the one
+ *     `statements.join('\n')` the node-postgres path sends becomes one
+ *     statement at a time through `splitStatements` — which is dollar-quote
+ *     aware, and has to be, because the sidecars carry `plpgsql` bodies that a
+ *     split on `;` would cut in half.
+ *
+ * The fingerprint is computed over the *unsplit* strings, so splitting here
+ * does not move it.
+ */
+export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* (
+  ddl: SchemaDdl,
+  { log = () => undefined }: MigrateOptions = {},
+) {
+  verifySchemaDdl(ddl);
+  const owner = yield* OwnerDatabase;
+
+  return yield* Effect.scoped(
+    Effect.gen(function* () {
+      const lock = yield* owner.sql.reserve;
+      yield* lock.executeUnprepared(
+        `select pg_advisory_lock(${SCHEMA_LOCK_KEY})`,
+        [],
+        undefined,
+      );
+      yield* Effect.addFinalizer(() =>
+        Effect.orDie(
+          Effect.ignore(
+            lock.executeUnprepared(
+              `select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`,
+              [],
+              undefined,
+            ),
+          ),
+        ),
+      );
+
+      // Read under the lock, so two one-shots racing on the same database
+      // cannot both find it absent and both apply.
+      const state = yield* checkSchemaEffect(owner.sql);
+      if (state.kind === 'current') {
+        log('Schema current.');
+        return { kind: 'current' } satisfies MigrateOutcome;
+      }
+      if (state.kind === 'stale') {
+        return yield* Effect.fail(
+          new StaleDatabase(staleDatabaseMessage(state)),
+        );
+      }
+
+      yield* OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          const statements = ddl.statements.flatMap((statement) =>
+            splitStatements(statement),
+          );
+          log(`Applying ${statements.length} schema statement(s).`);
+          for (const statement of statements) {
+            yield* sql.unsafe(statement);
+          }
+
+          // After the schema, because the grants name the roles the sync
+          // sidecar creates, and before the stamp, because a stamped database
+          // has to be one a process can already enqueue against.
+          log(`Installing the ${JOB_SCHEMA} schema.`);
+          yield* installJobSchemaEffect(JOB_SCHEMA);
+
+          // Last, and inside the transaction with everything it vouches for: a
+          // stamp that could outlive a failed apply is a database that reads
+          // as this build's and is not.
+          yield* stampFingerprintEffect(sql, ddl.fingerprint);
+        }),
+      );
+
+      log('Schema applied.');
+      return { kind: 'applied' } satisfies MigrateOutcome;
+    }),
+  );
+});

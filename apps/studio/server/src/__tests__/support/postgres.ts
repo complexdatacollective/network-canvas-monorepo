@@ -1,15 +1,28 @@
 import { randomUUID } from 'node:crypto';
 
+import { type Context, Effect, Exit, Layer, Scope } from 'effect';
 import pg from 'pg';
 
+import type { JobQueueName } from '@codaco/studio-sync/jobs';
 import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
 
+import { AuditSignal } from '../../audit/signal.ts';
+import { Database, OwnerDatabase } from '../../db/client.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { createOwnerPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
+import {
+  OwnerScope,
+  type Transaction,
+  UntenantedScope,
+} from '../../db/tenant.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
-import { createJobClient, type JobClient } from '../../jobs/client.ts';
 import { installJobSchema } from '../../jobs/install.ts';
+import { Jobs } from '../../jobs/jobs.ts';
+import { JOB_SCHEMA, type JobPayload } from '../../jobs/queues.ts';
+import type { StudioServices } from '../../rpc/deps.ts';
+import { createSecretsCipher } from '../../secrets/cipher.ts';
+import { SecretsCipher } from '../../secrets/services.ts';
 import { CI } from './env.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
 
@@ -78,13 +91,23 @@ export type ScratchSchema = {
   /** This scratch schema's job schema, once provisioned. */
   jobSchema: string;
   /**
-   * The web process's enqueue-only job client, against this scratch job
-   * schema — the production construction with only the schema changed. It
-   * holds no pool and opens no connection, so there is nothing to start and
-   * nothing to stop; it is `async` only so the suites that build one in a
-   * `beforeAll` need not change shape.
+   * The Effect services `createStudio` takes, over this scratch schema: the
+   * application client, the job queue on this schema's job sibling, the
+   * operator signal, and the process cipher. The production wiring with only
+   * the two schema names changed.
+   *
+   * Built on first call and released by `dispose`, because the clients hold
+   * connection pools — a suite that built one per case would leak a pool per
+   * case.
    */
-  createJobClient: () => Promise<JobClient>;
+  services: () => Promise<Context.Context<StudioServices>>;
+  /**
+   * One transaction on this scratch schema as the **connecting login**, run to
+   * a promise — the seam a node-postgres suite needs to call an Effect command
+   * that requires `Transaction`. The schema step's own scope, so a suite
+   * arming an instance does it as the identity production arms it as.
+   */
+  asOwner: <A, E>(effect: Effect.Effect<A, E, Transaction>) => Promise<A>;
   dispose: () => Promise<void>;
 };
 
@@ -120,17 +143,78 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
   const maintenance = connect(TENANT_ROLES.maintenance);
   const jobSchema = jobSchemaFor(name);
 
+  // One per scratch schema, built lazily: most suites here never ask for it,
+  // and building the clients eagerly would open pools they never use.
+  let servicesScope: Scope.Closeable | undefined;
+  let built:
+    | Promise<Context.Context<StudioServices | OwnerDatabase>>
+    | undefined;
+
+  const buildServices = (): Promise<
+    Context.Context<StudioServices | OwnerDatabase>
+  > => {
+    const scope = Effect.runSync(Scope.make());
+    servicesScope = scope;
+    // `searchPath` is the harness's stand-in for the startup parameter rc.115
+    // cannot set (fallback A): `pinSession` emits `set local search_path` as
+    // the second statement of every transaction, which is how the unqualified
+    // names in this scratch schema resolve.
+    const keyring = readEnv().secrets;
+    const layer: Layer.Layer<StudioServices | OwnerDatabase> = Layer.mergeAll(
+      Jobs.layer({ schema: jobSchema }),
+      AuditSignal.layer,
+      keyring === undefined
+        ? Layer.succeed(SecretsCipher)(
+            new Proxy({} as ReturnType<typeof createSecretsCipher>, {
+              get: (_target, property) => {
+                throw new Error(
+                  `this suite configured no keyring: nothing may read SecretsCipher.${String(property)}`,
+                );
+              },
+            }),
+          )
+        : Layer.succeed(SecretsCipher)(createSecretsCipher(keyring)),
+    ).pipe(
+      Layer.provideMerge(
+        Layer.mergeAll(
+          Layer.orDie(
+            Database.layer({
+              url: db.url,
+              maxConnections: 8,
+              applicationName: 'studio-test-app-effect',
+              searchPath: name,
+            }),
+          ),
+          Layer.orDie(
+            OwnerDatabase.layer({
+              url: db.url,
+              maxConnections: 4,
+              applicationName: 'studio-test-owner-effect',
+              searchPath: name,
+            }),
+          ),
+        ),
+      ),
+    );
+    return Effect.runPromise(Layer.buildWithScope(layer, scope));
+  };
+
   return {
     pool,
     app,
     maintenance,
     jobSchema,
-    createJobClient: () =>
-      // The search path the scratch pools carry is not the client's concern:
-      // every statement it runs names its schema, and it runs them on the
-      // connection its caller hands it.
-      Promise.resolve(createJobClient({ schema: jobSchema })),
+    services: () => (built ??= buildServices()),
+    asOwner: async (effect) => {
+      const context = await (built ??= buildServices());
+      return Effect.runPromise(
+        Effect.provide(OwnerScope.open(effect), context).pipe(Effect.orDie),
+      );
+    },
     dispose: async () => {
+      if (servicesScope !== undefined) {
+        await Effect.runPromise(Scope.close(servicesScope, Exit.void));
+      }
       await Promise.all([app.end(), maintenance.end(), pool.end()]);
       const cleanup = createOwnerPool(db);
       try {
@@ -310,4 +394,44 @@ export async function createScratchDatabase(
       }
     },
   };
+}
+
+/**
+ * One job created the way the web process creates one: `Jobs.enqueue` inside a
+ * transaction on the **application** client.
+ *
+ * The role is the point. It proves the queue's grants survived — or were
+ * re-applied after — whatever an apply did to the schema, which the owner pool
+ * cannot answer for, being a superuser here. A client per call rather than a
+ * shared one, because the callers each name a different database and each
+ * makes exactly one job.
+ */
+export async function enqueueAsApplication<Queue extends JobQueueName>(
+  db: DbEnv,
+  queue: Queue,
+  payload: JobPayload<Queue>,
+  options: { schema?: string } = {},
+): Promise<string> {
+  return Effect.runPromise(
+    Effect.scoped(
+      Effect.flatMap(Jobs, (jobs) =>
+        UntenantedScope.open(jobs.enqueue(queue, payload)),
+      ).pipe(
+        Effect.orDie,
+        Effect.provide(
+          Jobs.layer({ schema: options.schema ?? JOB_SCHEMA }).pipe(
+            Layer.provideMerge(
+              Layer.orDie(
+                Database.layer({
+                  url: db.url,
+                  maxConnections: 2,
+                  applicationName: 'studio-test-enqueue',
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

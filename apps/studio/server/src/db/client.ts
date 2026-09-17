@@ -133,6 +133,32 @@ export class Database extends Context.Service<Database, DatabaseService>()(
   );
 }
 
+/**
+ * The application client a process with **no database** has.
+ *
+ * Every surface that would reach it has already refused: the auth gate is off
+ * without a database, so no procedure that opens a transaction is reachable,
+ * and the two public ones that stay reachable — `status` and `setup.complete`
+ * — answer from the absent pool before any client is asked for. So this is not
+ * a fallback that degrades; it is the shape of a requirement nothing satisfies
+ * and nothing asks for, and touching it is a programming error rather than a
+ * deployment state.
+ *
+ * A proxy rather than a layer that fails to build: a process without a
+ * database is a supported topology (`programs/serve.ts`'s `withoutDatabase`),
+ * and refusing to build the graph would take down the status surface that
+ * exists to explain exactly that.
+ */
+export const DatabaseAbsent: Layer.Layer<Database> = Layer.succeed(Database)(
+  new Proxy({} as DatabaseService, {
+    get: (_target, property) => {
+      throw new Error(
+        `this process has no database: nothing may read Database.${String(property)}`,
+      );
+    },
+  }),
+);
+
 /** Background work: every transaction runs as the cross-team maintenance role. */
 export class MaintenanceDatabase extends Context.Service<
   MaintenanceDatabase,

@@ -8,15 +8,21 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import {
   baseProtocol,
   makeStoreSchema,
+  type StoreSchema,
   storeDb,
+  TEST_TEAM_ID,
 } from '../../protocol/__tests__/helpers.ts';
-import { ProtocolStore } from '../../protocol/store.ts';
+import {
+  createProtocol,
+  getDraftDocument,
+  getVersionDocument,
+  publishDraft,
+} from '../../protocol/store.ts';
 import { AssetKeyLeakError, assertNoAssetKeyValues } from '../exclusion.ts';
 
 const API_KEY = 'pk.eyJ1IjoiZXhjbHVzaW9uIiwiYSI6Im5vdC1hLXJlYWwta2V5In0';
@@ -83,13 +89,12 @@ describe('assertNoAssetKeyValues', () => {
 
 describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
   let db: pg.Pool;
-  let tenantDb: TenantDb;
+  let inTeam: StoreSchema['inTeam'];
   let dispose: () => Promise<void>;
-  let store: ProtocolStore;
+  const cipher = testCipher();
 
   beforeAll(async () => {
-    ({ db, tenantDb, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(tenantDb, testCipher());
+    ({ db, inTeam, dispose } = await makeStoreSchema());
   });
   afterAll(async () => {
     await dispose();
@@ -99,17 +104,24 @@ describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
     // The check must not fire on the shape the store actually produces, on
     // either exit — a false refusal here would take out every read of every
     // protocol that has an API key.
-    const { draftId } = await store.createProtocol({
-      protocol: protocolWithKey(),
-    });
-    const published = await store.publishDraft({ draftId, label: 'v1' });
+    const { draftId } = await inTeam(
+      TEST_TEAM_ID,
+      createProtocol(TEST_TEAM_ID, cipher, { protocol: protocolWithKey() }),
+    );
+    const published = await inTeam(
+      TEST_TEAM_ID,
+      publishDraft(TEST_TEAM_ID, { draftId, label: 'v1' }),
+    );
     if (published.status !== 'published') {
       throw new Error(`the fixture did not publish: ${published.status}`);
     }
 
     for (const document of [
-      await store.getDraftDocument(draftId),
-      await store.getVersionDocument(published.versionId),
+      await inTeam(TEST_TEAM_ID, getDraftDocument(TEST_TEAM_ID, draftId)),
+      await inTeam(
+        TEST_TEAM_ID,
+        getVersionDocument(TEST_TEAM_ID, published.versionId),
+      ),
     ]) {
       const manifest = document.assetManifest as Record<string, unknown>;
       expect(manifest[ASSET_ID]).toEqual({ name: 'Map token', type: 'apikey' });
@@ -118,10 +130,14 @@ describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
   });
 
   it('refuses to hand out a document a key found its way back into', async () => {
-    const { draftId } = await store.createProtocol({
-      protocol: protocolWithKey(),
-    });
-    const published = await store.publishDraft({ draftId, label: 'v1' });
+    const { draftId } = await inTeam(
+      TEST_TEAM_ID,
+      createProtocol(TEST_TEAM_ID, cipher, { protocol: protocolWithKey() }),
+    );
+    const published = await inTeam(
+      TEST_TEAM_ID,
+      publishDraft(TEST_TEAM_ID, { draftId, label: 'v1' }),
+    );
     if (published.status !== 'published') {
       throw new Error(`the fixture did not publish: ${published.status}`);
     }
@@ -159,11 +175,14 @@ describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
 
     // The published version pins the same content-addressed row, so one edit
     // poisons both exits.
-    await expect(store.getDraftDocument(draftId)).rejects.toThrow(
-      AssetKeyLeakError,
-    );
-    await expect(store.getVersionDocument(published.versionId)).rejects.toThrow(
-      AssetKeyLeakError,
-    );
+    await expect(
+      inTeam(TEST_TEAM_ID, getDraftDocument(TEST_TEAM_ID, draftId)),
+    ).rejects.toThrow(AssetKeyLeakError);
+    await expect(
+      inTeam(
+        TEST_TEAM_ID,
+        getVersionDocument(TEST_TEAM_ID, published.versionId),
+      ),
+    ).rejects.toThrow(AssetKeyLeakError);
   });
 });

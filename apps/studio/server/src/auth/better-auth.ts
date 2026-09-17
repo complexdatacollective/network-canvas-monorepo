@@ -11,7 +11,7 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { RateLimiter } from '../rate-limit.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
@@ -83,7 +83,7 @@ export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
-  secrets: SecretsCipher,
+  secrets: SecretsCipherApi,
   /**
    * Where sign-in attempts are counted. Absent means this instance enforces no
    * limit of its own: the auth CLI's configuration and the suites that are not
@@ -271,7 +271,7 @@ export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
-  secrets: SecretsCipher,
+  secrets: SecretsCipherApi,
   limiter?: RateLimiter,
 ): AuthService {
   const auth = createBetterAuthInstance(

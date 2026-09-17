@@ -1,10 +1,11 @@
 import { Console, Effect, Layer, Schema } from 'effect';
 
-import { createMaintenancePool } from '../db/pool.ts';
+import { MaintenanceDatabase } from '../db/client.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
+import { Keyring, SecretsCipherLive } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -20,10 +21,10 @@ import { reportingRefusals } from './command.ts';
 // which a source-policy test pins (src/__tests__/process-separation.test.ts).
 //
 // A one-shot `Effect`: `NodeRuntime.runMain`'s teardown turns the outcome
-// into the exit code, and the pool is released by its scope before the
-// process ends, so a rotation that refused does not leave connections for the
-// database to time out. Stage 6 rewrites the body onto the Effect clients;
-// this stage only moves the shell.
+// into the exit code, and the maintenance client is released by the scope
+// `Effect.provide` opens around the rotation before the process ends, so a
+// rotation that refused does not leave connections for the database to time
+// out.
 
 /** A refusal before anything is touched: a message for whoever typed the command. */
 class RotateRefused extends Schema.TaggedError<RotateRefused>()(
@@ -66,19 +67,27 @@ const rotateSecrets = Effect.gen(function* () {
   yield* Console.log(`Network Canvas Studio rotate-secrets ${STUDIO_VERSION}`);
 
   // The cross-team identity, because rotation must visit every team's rows
-  // and the tenant tables force row-level security on every other role.
-  const pool = yield* Effect.acquireRelease(
-    Effect.sync(() => createMaintenancePool(db)),
-    (maintenance) => Effect.promise(() => maintenance.end()),
+  // and the tenant tables force row-level security on every other role. Built
+  // for this command and released with it: nothing else in the process holds a
+  // client that sees across teams.
+  const Maintenance = MaintenanceDatabase.layer({
+    url: db.url,
+    applicationName: 'studio-rotate-secrets',
+  });
+  // The keyring the environment was started with, and the one cipher over it:
+  // every seal and every open in the rotation goes through the service rather
+  // than through a cipher the rotation built for itself.
+  const Secrets = SecretsCipherLive.pipe(
+    Layer.provideMerge(Layer.succeed(Keyring, secrets)),
   );
 
-  const counts = yield* Effect.tryPromise({
-    try: () =>
-      rotate(pool, secrets, {
-        log: (message) => Effect.runSync(Console.log(message)),
-      }),
-    catch: (cause) => new RotateFailed({ cause }),
-  });
+  const counts = yield* rotate({ log: Console.log }).pipe(
+    Effect.provide(Layer.mergeAll(Maintenance, Secrets)),
+    // Every way the rotation can end badly is one sentence for whoever typed
+    // the command: an incomplete keyring, a rotation that could not prove
+    // itself finished, or a statement that failed.
+    Effect.catch((cause) => new RotateFailed({ cause })),
+  );
   for (const [store, rotated] of Object.entries(counts)) {
     yield* Console.log(`${store}: ${rotated} re-sealed`);
   }
@@ -90,7 +99,6 @@ const rotateSecrets = Effect.gen(function* () {
 
 /** The command, with the environment decoded once at its root. */
 export const RotateSecretsProgram = rotateSecrets.pipe(
-  Effect.scoped,
   reportingRefusals,
   Effect.provide(
     Layer.mergeAll(LoggerLive, TracingLive('rotate-secrets')).pipe(

@@ -1,4 +1,5 @@
 import { Effect, Schema } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { StudiesRpcs } from '@codaco/studio-contract/rpc/studies';
@@ -9,32 +10,51 @@ import {
   StudyDetail,
   StudySummary,
 } from '@codaco/studio-contract/schema/study';
+import type { SectionValidationFailedError } from '@codaco/studio-sync/section-validation';
 
-import { AuditCommandTeamNotFoundError } from '../../audit/command.ts';
+import { TenantScope } from '../../db/tenant.ts';
+import type { ProtocolStoreError } from '../../protocol/store.ts';
 import {
   createAuditedStudy,
   StudyCommandError as StudyCommandFailure,
 } from '../../study/commands.ts';
 import { readStudyCounts } from '../../study/counts.ts';
-import { StudyStore } from '../../study/store.ts';
+import { listStudies } from '../../study/store.ts';
 import { seesEveryTeamStudy } from '../../study/tenancy.ts';
-import { requireCipher, runCommand } from '../bridge.ts';
+import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
-import { openStudy, openTeam } from '../team-scope.ts';
+import { openTeam, resolveStudy } from '../team-scope.ts';
 
 /**
  * A study command's own vocabulary, no longer flattened into a transport code:
  * a duplicate study id is `StudyCommandError({ code: 'CONFLICT' })`, and a
  * locked membership that lost the role is `{ code: 'FORBIDDEN' }`. A team row
- * that went away under the command is the shared `NotFound`.
+ * that went away under the command leaves as the shared `NotFound` the audited
+ * combinator raises. A protocol-store refusal and a database failure are
+ * faults, exactly as they were when the command threw them into a promise.
  */
-const studyRefusal = (
-  cause: unknown,
-): Effect.Effect<never, NotFound | StudyCommandError> => {
-  if (cause instanceof AuditCommandTeamNotFoundError) return new NotFound({});
-  if (!(cause instanceof StudyCommandFailure)) return Effect.die(cause);
-  return new StudyCommandError({ code: cause.code });
-};
+const refusals = <A, R>(
+  command: Effect.Effect<
+    A,
+    | StudyCommandFailure
+    | ProtocolStoreError
+    | SectionValidationFailedError
+    | NotFound
+    | SqlError.SqlError,
+    R
+  >,
+): Effect.Effect<A, NotFound | StudyCommandError, R> =>
+  command.pipe(
+    Effect.catch(
+      (error): Effect.Effect<never, NotFound | StudyCommandError> => {
+        if (error instanceof StudyCommandFailure) {
+          return Effect.fail(new StudyCommandError({ code: error.code }));
+        }
+        if (error instanceof NotFound) return Effect.fail(error);
+        return Effect.die(error);
+      },
+    ),
+  );
 
 const decodeSummaries = Schema.decodeUnknownSync(Schema.Array(StudySummary));
 const decodeDetail = Schema.decodeUnknownSync(StudyDetail);
@@ -48,54 +68,57 @@ export const StudiesHandlers = (deps: RpcDeps) =>
     // so `studies.get` refuses exactly what `studies.list` omits.
     'studies.list': (payload) =>
       Effect.gen(function* () {
-        const scope = yield* openTeam(deps, yield* Principal, payload.teamId);
+        const principal = yield* Principal;
+        const access = yield* openTeam(deps, principal, payload.teamId);
         return decodeSummaries(
-          yield* Effect.promise(() =>
-            new StudyStore(scope.tenantDb).listStudies({
-              actorUserId: scope.principal.userId,
-              seesEveryStudy: seesEveryTeamStudy(scope.team.role),
-            }),
+          yield* Effect.orDie(
+            TenantScope.open(
+              access,
+              listStudies({
+                actorUserId: principal.userId,
+                seesEveryStudy: seesEveryTeamStudy(access.role),
+              }),
+            ),
           ),
         );
       }),
     'studies.get': (payload) =>
       Effect.gen(function* () {
-        const scope = yield* openStudy(deps, yield* Principal, payload.studyId);
-        const { protocolDraftId, ...study } = scope.study;
-        return decodeDetail({ teamId: scope.team.id, study, protocolDraftId });
+        const resolved = yield* resolveStudy(
+          deps,
+          yield* Principal,
+          payload.studyId,
+        );
+        const { protocolDraftId, ...study } = resolved.study;
+        return decodeDetail({
+          teamId: resolved.access.teamId,
+          study,
+          protocolDraftId,
+        });
       }),
     // Resolved like `get`, so the numbers beside the sidebar's destinations
     // exist for exactly the studies their reader can open, and a study the
     // caller cannot reach is refused the same way for both.
     'studies.counts': (payload) =>
       Effect.gen(function* () {
-        const scope = yield* openStudy(deps, yield* Principal, payload.studyId);
-        const counts = yield* Effect.promise(() =>
-          readStudyCounts(scope.tenantDb, scope.study.id),
+        const resolved = yield* resolveStudy(
+          deps,
+          yield* Principal,
+          payload.studyId,
         );
-        // `openStudy` found the row inside this tenant a moment ago; a row
+        const counts = yield* Effect.orDie(
+          TenantScope.open(resolved.access, readStudyCounts(resolved.study.id)),
+        );
+        // `resolveStudy` found the row inside this tenant a moment ago; a row
         // missing now is a purge racing the read, not an oracle.
         if (!counts) return yield* new NotFound({});
         return counts;
       }),
     'studies.create': (payload) =>
       Effect.gen(function* () {
-        const scope = yield* openTeam(deps, yield* Principal, payload.teamId);
-        const cipher = yield* requireCipher(deps);
+        const access = yield* openTeam(deps, yield* Principal, payload.teamId);
         return decodeCreated(
-          yield* runCommand(
-            () =>
-              createAuditedStudy(
-                {
-                  tenantDb: scope.tenantDb,
-                  principal: scope.principal,
-                  requestId: scope.requestId,
-                },
-                payload,
-                cipher,
-              ),
-            studyRefusal,
-          ),
+          yield* refusals(withRequestId(createAuditedStudy(access, payload))),
         );
       }),
   });

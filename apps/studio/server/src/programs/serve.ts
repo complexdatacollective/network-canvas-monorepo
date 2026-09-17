@@ -1,19 +1,29 @@
-import { Effect, Layer } from 'effect';
+import { Cause, Effect, Layer } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/unstable/http';
 
 import { createStudio, type Studio } from '../app.ts';
+import { AuditSignal } from '../audit/signal.ts';
+import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
 import { Routes } from '../http/router.ts';
-import { createJobClient } from '../jobs/client.ts';
+import { JobClock } from '../jobs/clock.ts';
+import { Jobs } from '../jobs/jobs.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { HttpServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { RateLimitStoresLive } from '../rate-limit/store.ts';
-import { verifySecretKeysOrExit } from '../secrets/boot.ts';
+import type { StudioServices } from '../rpc/deps.ts';
+import {
+  KeyringLive,
+  SecretsCipherAbsent,
+  SecretsCipherLive,
+  verifyKeyring,
+} from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
 // The web program, development and production both: one Node process serving
@@ -79,16 +89,17 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
 
-      // The enqueue-only job client. It holds no pool and opens no connection:
-      // every job is inserted on the connection the caller is already holding
-      // inside its own transaction, as the application role — the role that may
-      // create a job and can do nothing else with it. So there is nothing to
-      // start and nothing to stop, and nothing here cares when the schema
-      // becomes current: an enqueue against a database that has not been
-      // migrated yet fails the one request that made it, and the next one tries
-      // again. That matters on the development lane, where `pnpm dev` can finish
-      // applying the schema well after this process booted.
-      const jobs = createJobClient();
+      // The Effect services every data-layer caller on this process runs on,
+      // captured as one context and handed down to the two promise-shaped
+      // consumers that cannot take layers: the protocol builder's oRPC router
+      // and better-auth's sign-in mail callback (`rpc/deps.ts`).
+      //
+      // Nothing here cares when the schema becomes current: a statement against
+      // a database that has not been migrated yet fails the one request that
+      // made it, and the next one tries again. That matters on the development
+      // lane, where `pnpm dev` can finish applying the schema well after this
+      // process booted.
+      const services = yield* Effect.context<StudioServices>();
 
       // What runs once the schema is current. Beside the fingerprint check and
       // for the same reason (#1900): a keyring that cannot produce a key id
@@ -96,7 +107,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       // secret and fail the rest one request at a time.
       const bootChecks = Effect.gen(function* () {
         yield* status.current;
-        yield* Effect.promise(() => verifySecretKeysOrExit(env));
+        yield* verifyKeyring;
       });
       // In a deployment the schema is current at boot — the gate would have
       // refused the build otherwise — so the checks settle before the listener
@@ -105,12 +116,25 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       // not wait for it: `pnpm dev` finishes its reset while this process is
       // already running.
       if (env.devDefaults) {
-        yield* Effect.forkScoped(bootChecks);
+        // A forked refusal has nothing above it to fail, and a development
+        // process that went on serving with a keyring that cannot read its own
+        // database would be the one lane where the check does not stop
+        // anything. So it is reported and the process ends, exactly as the
+        // print-and-exit this check used to be did from inside the promise.
+        yield* Effect.forkScoped(
+          Effect.tapCause(bootChecks, (cause) =>
+            Cause.hasInterruptsOnly(cause)
+              ? Effect.void
+              : Effect.logError(cause).pipe(
+                  Effect.andThen(Effect.sync(() => process.exit(1))),
+                ),
+          ),
+        );
       } else {
         yield* bootChecks;
       }
 
-      const studio = createStudio(env, { jobs, pool });
+      const studio = createStudio(env, { services, pool });
       return Serve(studio, {
         ...studio.checks,
         // Is the database this build's? Both processes refuse a stale schema
@@ -125,6 +149,17 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Layer.provide(SchemaStatus.layer),
     Layer.provide(RateLimitStoresLive),
     Layer.provide(DatabasePool.layerApplication(db)),
+    // The application client and everything over it. `Jobs` is built above
+    // `JobClock.layerApplication` so the skew against the database is measured
+    // once, at boot, rather than per enqueue — the correction the
+    // node-postgres enqueue this replaced got for free by writing `now()` into
+    // the statement.
+    Layer.provide(SecretsCipherLive),
+    Layer.provide(KeyringLive),
+    Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
+    Layer.provide(JobClock.layerApplication()),
+    Layer.provide(AuditSignal.layer),
+    Layer.provideMerge(Layer.orDie(Database.layerFromEnvironment)),
   );
 }
 
@@ -134,7 +169,19 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
  */
 function withoutDatabase(env: StudioEnv) {
   const studio = createStudio(env);
-  return Serve(studio, studio.checks).pipe(Layer.provide(RateLimitStoresLive));
+  return Serve(studio, studio.checks).pipe(
+    Layer.provide(RateLimitStoresLive),
+    // The `/rpc` route asks for the data layer whatever this process is, so
+    // the requirement has to be met here too. Nothing reaches it: the auth
+    // gate is off without a database, so every procedure that would open a
+    // transaction refuses before a client is asked for, and the two that stay
+    // reachable answer from the absent pool. The stand-ins throw rather than
+    // degrade, which is what makes "nothing reaches it" checkable.
+    Layer.provide(SecretsCipherAbsent),
+    Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
+    Layer.provide(AuditSignal.layer),
+    Layer.provide(DatabaseAbsent),
+  );
 }
 
 /**

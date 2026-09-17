@@ -1,45 +1,48 @@
 import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
-import type { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import {
   Forbidden,
   type RateLimited,
 } from '@codaco/studio-contract/schema/errors';
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
-import { ProtocolStore } from '../protocol/store.ts';
-import type { StudyDetailRow } from '../study/store.ts';
-import { resolveStudy, seesEveryTeamStudy } from '../study/tenancy.ts';
-import { roleGrantsTeamAdministration } from '../team/roles.ts';
+import type { Database } from '../db/client.ts';
 import {
-  chargeLimit,
-  requestIdOrMint,
-  requireCipher,
-  requirePool,
-} from './bridge.ts';
+  type TeamAccess,
+  type Transaction,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
+import { isReachableByCaller } from '../protocol/store.ts';
+import {
+  type ResolvedStudy,
+  resolveStudy as resolveStudyTenant,
+  seesEveryTeamStudy,
+} from '../study/tenancy.ts';
+import { roleGrantsTeamAdministration } from '../team/roles.ts';
+import { chargeLimit, requirePool } from './bridge.ts';
 import type { RpcDeps } from './deps.ts';
 
-// The three scopes today's `requireTeam`, `requireStudy` and `requireProtocol`
-// middlewares resolved (`src/rpc.ts`), as helpers a handler calls.
+// Where a `TeamAccess` comes from on the rpc plane (#1927 §10).
 //
-// They are not rpc middlewares. `RpcMiddleware`'s options expose the payload as
-// `unknown`, so a middleware would have to re-decode an untyped payload to find
-// the team it is being asked about — which is why the design puts this
-// authorization at the command level instead (#1930 §20, risk 1). What the move
-// must preserve is the ORDER: the caller's own budget before any query, the
-// team's only once membership is confirmed. A spent window leaves as the
-// contract's `RateLimited`, which every procedure that opens a scope declares.
-
-/** A caller, resolved inside one team, with that team's database pinned. */
-export type TeamScope = {
-  readonly principal: Principal['Service'];
-  readonly requestId: string;
-  readonly team: { readonly id: string; readonly role: string };
-  readonly tenantDb: TenantDb;
-};
-
-/** A team scope that a study was resolved through, carrying the study row. */
-export type StudyScope = TeamScope & { readonly study: StudyDetailRow };
+// `TeamAccess` is the branded token `@codaco/studio-sync/tenant` declares, and
+// `TenantScope.open` takes one instead of a bare team id — so a tenant
+// transaction cannot be opened without a membership check having happened and
+// the compiler says so. That only holds while the token's constructors are few
+// and each one has just proved something, which is what this module is: the
+// rpc plane's two, `openTeam` and `resolveStudy`. The others are
+// `team/commands.ts` (an invitation whose actor is not yet a member),
+// `protocol-builder/tenancy.ts` (the editor host's own gate) and
+// `jobs/team-access.ts` (worker-only).
+//
+// The Promise-era `tenantDbFor` is gone with the last store that spoke
+// node-postgres: every team-scoped write now opens its own `TenantScope`, so
+// there is no second way a team's rows are reached.
+//
+// What the move from the old `TeamScope` record must preserve is the ORDER:
+// the caller's own budget before any query, the team's only once membership is
+// confirmed. A spent window leaves as the contract's `RateLimited`, which every
+// procedure that opens a scope declares.
 
 /**
  * Tenancy is checked per request against an explicit teamId in the procedure
@@ -54,110 +57,114 @@ export const openTeam = Effect.fnUntraced(function* (
   deps: RpcDeps,
   principal: Principal['Service'],
   teamId: string,
-): Effect.fn.Return<TeamScope, Forbidden | RateLimited> {
+): Effect.fn.Return<TeamAccess, Forbidden | RateLimited> {
   // The caller's own budget first, before the database is touched at all: that
   // is the one a runaway client spends, and refusing after a membership lookup
   // would have spent the work the limit exists to stop.
   yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
-  const pool = yield* requirePool(deps);
+  // Asserted here rather than where the handle is built, so a plane wired
+  // without a database refuses in the same place it always did — before any
+  // membership is looked up.
+  yield* requirePool(deps);
   const membership = yield* Effect.promise(() =>
     deps.auth.getMembership(principal.userId, teamId),
   );
+  // One refusal, built the same way for both misses: `Forbidden` carries no
+  // reason beyond `detail`, and neither branch sets one, so a non-member and an
+  // unknown team are byte-identical answers rather than an existence oracle.
   if (!membership) return yield* new Forbidden({});
   // The team's ceiling is charged only once this caller is known to be in the
   // team. Charging it first would let any signed-in stranger who can guess a
   // team id exhaust that team's quota with calls that are all refused — a
   // denial of service built entirely out of forbidden requests.
   yield* chargeLimit(deps.limiter, 'rpc_team', teamId);
-  return {
-    principal,
-    requestId: yield* requestIdOrMint,
-    team: { id: teamId, role: membership.role },
-    tenantDb: createTenantDb(pool, teamId),
-  };
+  return unsafeMakeTeamAccess(teamId, membership.role);
 });
 
 /**
- * Membership plus the team Admin tier: the rule #1257 gives study creation,
- * applied to creating a protocol line no study owns. The command re-reads it
- * from the locked membership row, because this answer is already stale by the
- * time the transaction opens.
- */
-export const openTeamForAdministration = Effect.fnUntraced(function* (
-  deps: RpcDeps,
-  principal: Principal['Service'],
-  teamId: string,
-): Effect.fn.Return<TeamScope, Forbidden | RateLimited> {
-  const scope = yield* openTeam(deps, principal, teamId);
-  if (!roleGrantsTeamAdministration(scope.team.role)) {
-    return yield* new Forbidden({});
-  }
-  return scope;
-});
-
-/**
- * Membership plus #1257's visibility rule, carried from the study tier to every
- * procedure addressed by a protocol line (`protocol/store.ts`). A Member
- * reaches a line only through a study they hold a grant on, so what
- * `studies.list` omits and `studies.get` refuses cannot be read — or edited —
- * through the protocol behind it.
+ * The team Admin tier on top of membership: the rule #1257 gives study
+ * creation, applied to creating a protocol line no study owns.
  *
- * The refusal is `studies.get`'s: unreachable for any reason — absent, another
- * team's, or one this caller's role does not show them — is the same
- * `Forbidden`, so this is not an existence oracle either. Which draft belongs
- * to which line stays each procedure's own check; this one is about the line.
+ * This is the pre-transaction refusal that keeps a non-admin from taking the
+ * team audit lock at all. It is not the authoritative check — the command
+ * re-reads the tier from the locked membership row, because this answer is
+ * already stale by the time the transaction opens.
  */
-export const openProtocol = Effect.fnUntraced(function* (
-  deps: RpcDeps,
-  principal: Principal['Service'],
-  input: { readonly teamId: string; readonly protocolId: string },
-): Effect.fn.Return<TeamScope, Forbidden | RateLimited> {
-  const scope = yield* openTeam(deps, principal, input.teamId);
-  const cipher = yield* requireCipher(deps);
-  const reachable = yield* Effect.promise(() =>
-    new ProtocolStore(scope.tenantDb, cipher).isReachableByCaller(
-      input.protocolId,
-      {
-        actorUserId: scope.principal.userId,
-        seesEveryStudy: seesEveryTeamStudy(scope.team.role),
-      },
-    ),
-  );
-  if (!reachable) return yield* new Forbidden({});
-  return scope;
-});
+export const requireTeamAdministration = (
+  access: TeamAccess,
+): Effect.Effect<void, Forbidden> =>
+  roleGrantsTeamAdministration(access.role) ? Effect.void : new Forbidden({});
 
 /**
  * `requireStudy` (app-shell design §6.3). A study URL names no team, so the
- * tenant is derived from the caller's own memberships and the pinned TenantDb
- * comes back with the study the probe found — nothing about the study is read
- * outside it. Unreachable for any reason — absent, another team's, or one this
- * caller's team role does not show them — is the same `Forbidden`, so this is
- * not an existence oracle.
+ * tenant is derived from the caller's own memberships and the access comes back
+ * with the study the probe found — nothing about the study is read outside its
+ * team's own transaction. Unreachable for any reason — absent, another team's,
+ * or one this caller's team role does not show them — is the same `Forbidden`,
+ * so this is not an existence oracle.
+ *
+ * The study row travels *beside* the access rather than fused into it: the
+ * brand means "this caller may act in this team" and nothing else, and widening
+ * it per call site would make every consumer of a `TeamAccess` carry a payload
+ * it has no use for.
  */
-export const openStudy = Effect.fnUntraced(function* (
+export const resolveStudy = Effect.fnUntraced(function* (
   deps: RpcDeps,
   principal: Principal['Service'],
   studyId: string,
-): Effect.fn.Return<StudyScope, Forbidden | RateLimited> {
+): Effect.fn.Return<ResolvedStudy, Forbidden | RateLimited, Database> {
   // A study URL names no team, so the team limit cannot be taken before the
   // tenant is resolved; the caller's own is taken before any query.
   yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
-  const pool = yield* requirePool(deps);
-  const resolved = yield* Effect.promise(async () =>
-    resolveStudy(pool, {
-      studyId,
-      actorUserId: principal.userId,
-      memberships: await deps.auth.listMemberships(principal.userId),
-    }),
+  const resolved = yield* Effect.orDie(
+    Effect.flatMap(
+      Effect.promise(() => deps.auth.listMemberships(principal.userId)),
+      (memberships) =>
+        resolveStudyTenant({
+          studyId,
+          actorUserId: principal.userId,
+          memberships,
+        }),
+    ),
   );
-  if (!resolved) return yield* new Forbidden({});
-  yield* chargeLimit(deps.limiter, 'rpc_team', resolved.teamId);
-  return {
-    principal,
-    requestId: yield* requestIdOrMint,
-    team: { id: resolved.teamId, role: resolved.role },
-    tenantDb: resolved.tenantDb,
-    study: resolved.study,
-  };
+  if (resolved === null) return yield* new Forbidden({});
+  yield* chargeLimit(deps.limiter, 'rpc_team', resolved.access.teamId);
+  return resolved;
+});
+
+/**
+ * #1257's visibility rule for one protocol line, **inside the caller's own
+ * transaction**.
+ *
+ * Requiring `Transaction` is the whole point. A check that opens a transaction
+ * of its own answers about a state the write then re-reads, and between the two
+ * the grant it relied on can be revoked; taken here it is one transaction per
+ * call, the check and the write see the same snapshot and hold the same locks,
+ * and no caller can arrange otherwise because the type refuses the call
+ * anywhere else. `rpc/__tests__/protocol-check-placement.test.ts` is the
+ * source-level backstop for the callers that have not moved yet.
+ *
+ * The predicate is the store's own, so what `studies.list` omits and
+ * `studies.get` refuses cannot be read — or edited — through the protocol
+ * behind it. The refusal is `studies.get`'s too: unreachable for any reason —
+ * absent, another team's, or one this caller's role does not show them — is the
+ * same `Forbidden`, so this is not an existence oracle either. Which draft
+ * belongs to which line stays each procedure's own check; this one is about the
+ * line.
+ */
+export const requireProtocol = Effect.fnUntraced(function* (
+  access: TeamAccess,
+  protocolId: string,
+): Effect.fn.Return<
+  void,
+  Forbidden | SqlError.SqlError,
+  Transaction | Principal
+> {
+  const principal = yield* Principal;
+  const reachable = yield* isReachableByCaller(access.teamId, protocolId, {
+    actorUserId: principal.userId,
+    seesEveryStudy: seesEveryTeamStudy(access.role),
+  });
+  if (!reachable) return yield* new Forbidden({});
+  return undefined;
 });

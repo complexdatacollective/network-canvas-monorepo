@@ -1,3 +1,4 @@
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
@@ -7,16 +8,18 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import { installJobSchema } from '../../jobs/install.ts';
 import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { OwnerDatabase } from '../client.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
   migrateDatabase,
+  migrateDatabaseEffect,
   type SchemaDdl,
   SchemaDdlMismatch,
   StaleDatabase,
   verifySchemaDdl,
 } from '../migrate.ts';
-import { checkSchema, stampFingerprint } from '../schema.ts';
+import { checkSchema, SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 
 // `studio-api migrate` against a real, empty database — the one-shot a
 // deployment runs before anything else starts (#1909).
@@ -400,6 +403,158 @@ describe.skipIf(!db)('migrate', () => {
       await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
         /no fingerprint/,
       );
+    },
+    CASE_TIMEOUT_MS,
+  );
+});
+
+// The deployed path, on `@effect/sql-pg`.
+//
+// These are the same four verdicts the node-postgres suite above proves, run
+// again through `migrateDatabaseEffect` — and that is the point. The two paths
+// differ in exactly one way that could break the schema: the Effect driver has
+// no simple-query path, so the one multi-command string the node-postgres path
+// sends is cut into single statements by `splitStatements` first. This suite is
+// the splitter's real oracle. A splitter that cut a `plpgsql` body in half, or
+// dropped a statement, or merged two, fails here as a `42601` or as a database
+// that does not read `current` — which is what the mutation
+// "skip `splitStatements` on one sidecar" demonstrates.
+describe.skipIf(!db)('studio-api migrate, on the Effect driver', () => {
+  const scratches: Awaited<ReturnType<typeof createScratchDatabase>>[] = [];
+  let ddl: SchemaDdl;
+
+  beforeAll(async () => {
+    ddl = await renderSchemaDdl();
+  }, RENDER_TIMEOUT_MS);
+
+  afterAll(async () => {
+    for (const scratch of scratches) {
+      await scratch.dispose().catch(() => undefined);
+    }
+  }, DISPOSE_TIMEOUT_MS);
+
+  async function emptyDatabase() {
+    if (!db) throw new Error('no database');
+    const scratch = await createScratchDatabase(db);
+    scratches.push(scratch);
+    return scratch;
+  }
+
+  /** The migrate program, run against one scratch database as its owner. */
+  const runMigrate = (
+    url: string,
+    options?: { log?: (line: string) => void },
+  ) =>
+    Effect.runPromise(
+      Effect.scoped(
+        Effect.provide(
+          migrateDatabaseEffect(ddl, options),
+          OwnerDatabase.layer({ url, applicationName: 'studio-migrate-test' }),
+        ),
+      ),
+    );
+
+  it(
+    'creates a schema every process reads as current',
+    async () => {
+      const scratch = await emptyDatabase();
+      expect((await checkSchema(scratch.pool)).kind).toBe('absent');
+
+      const lines: string[] = [];
+      const outcome = await runMigrate(scratch.db.url, {
+        log: (line) => lines.push(line),
+      });
+
+      expect(outcome).toEqual({ kind: 'applied' });
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
+      expect(lines.at(-1)).toBe('Schema applied.');
+
+      // The queue's schema is inside the same transaction and before the
+      // stamp, so a database this build stamped carries it.
+      const jobs = await scratch.pool.query<{ present: boolean }>(
+        `select exists (select 1 from pg_namespace where nspname = $1) as present`,
+        [JOB_SCHEMA],
+      );
+      expect(jobs.rows[0]?.present).toBe(true);
+
+      // And the roles, without which every pool is refused at connect.
+      const roles = await scratch.pool.query<{ rolname: string }>(
+        `select rolname from pg_roles where rolname in ('studio_app', 'studio_maintenance') order by rolname`,
+      );
+      expect(roles.rows.map((row) => row.rolname)).toEqual([
+        'studio_app',
+        'studio_maintenance',
+      ]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'writes nothing the second time',
+    async () => {
+      const scratch = await emptyDatabase();
+      await runMigrate(scratch.db.url);
+
+      const lines: string[] = [];
+      const outcome = await runMigrate(scratch.db.url, {
+        log: (line) => lines.push(line),
+      });
+
+      expect(outcome).toEqual({ kind: 'current' });
+      expect(lines).toEqual(['Schema current.']);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'refuses a database another build stamped',
+    async () => {
+      const scratch = await emptyDatabase();
+      await runMigrate(scratch.db.url);
+      await stampFingerprint(scratch.pool, 'a'.repeat(64));
+
+      await expect(runMigrate(scratch.db.url)).rejects.toThrow(StaleDatabase);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'serialises two concurrent migrates, so only one applies',
+    async () => {
+      const scratch = await emptyDatabase();
+
+      // Both start against an empty database. The advisory lock is held on a
+      // reserved connection across `checkSchema`, so the loser reads the
+      // database only after the winner has committed — and reads it as
+      // current. Without the lock spanning the read, both would find it
+      // absent and both would apply.
+      const [first, second] = await Promise.all([
+        runMigrate(scratch.db.url),
+        runMigrate(scratch.db.url),
+      ]);
+
+      expect([first, second].map((outcome) => outcome.kind).toSorted()).toEqual(
+        ['applied', 'current'],
+      );
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'holds the advisory lock across the whole run',
+    async () => {
+      const scratch = await emptyDatabase();
+      await runMigrate(scratch.db.url);
+
+      // And gives it back: a migrate that leaked its session lock would make
+      // every later one block forever. Taken on a fresh connection, so this is
+      // the lock's real state and not a re-entrant grant.
+      const held = await scratch.pool.query<{ free: boolean }>(
+        `select pg_try_advisory_lock($1) as free`,
+        [SCHEMA_LOCK_KEY],
+      );
+      expect(held.rows[0]?.free).toBe(true);
     },
     CASE_TIMEOUT_MS,
   );

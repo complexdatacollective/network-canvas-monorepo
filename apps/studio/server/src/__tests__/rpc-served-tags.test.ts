@@ -13,9 +13,14 @@ import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
+import { AuditSignal } from '../audit/signal.ts';
+import { DatabaseAbsent } from '../db/client.ts';
 import { getDeploymentStatus } from '../domain.ts';
+import { Jobs } from '../jobs/jobs.ts';
+import { JOB_SCHEMA } from '../jobs/queues.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
+import { SecretsCipherAbsent } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 
 /**
@@ -94,8 +99,23 @@ function servesHandler(context: Context.Context<never>, key: string): boolean {
   return isHandlerEntry(entry);
 }
 
+// The stand-ins rather than a database: this suite asks which handlers were
+// registered, and every one of them is a layer that has not run yet.
 const handlerContext = await Effect.runPromise(
-  Effect.scoped(Layer.build(StudioRpcHandlers(deps))),
+  Effect.scoped(
+    Layer.build(
+      StudioRpcHandlers(deps).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            DatabaseAbsent,
+            SecretsCipherAbsent,
+            AuditSignal.layer,
+            Jobs.layer({ schema: JOB_SCHEMA }),
+          ),
+        ),
+      ),
+    ),
+  ),
 );
 
 describe('the handlers served at /rpc', () => {

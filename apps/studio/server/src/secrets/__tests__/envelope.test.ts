@@ -77,6 +77,24 @@ describe('sealing and opening each kind of secret', () => {
     expect(cipher.openAssetKey(ASSET, sealed)).toBe(ASSET_KEY);
   });
 
+  it('opens a ciphertext a row hands back as a plain Uint8Array', () => {
+    // `protocol_asset_keys.ciphertext` is a `bytea`, and the two clients this
+    // stage straddles decode one differently: node-postgres returns a
+    // `Buffer`, `@effect/sql-pg` a plain `Uint8Array`. Pinned on the runtime
+    // type rather than on the declared one, because a cipher that reached for
+    // a `Buffer` method would typecheck against `Uint8Array` and still throw
+    // on the row it was given.
+    const sealed = cipher.sealAssetKey(ASSET, ASSET_KEY);
+    const asSqlPgReadsIt = new Uint8Array(sealed.ciphertext);
+    expect(Buffer.isBuffer(asSqlPgReadsIt)).toBe(false);
+    expect(
+      cipher.openAssetKey(ASSET, {
+        ciphertext: asSqlPgReadsIt,
+        keyId: sealed.keyId,
+      }),
+    ).toBe(ASSET_KEY);
+  });
+
   it('round trips an OAuth token through its stored string form', () => {
     const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
     expect(stored.startsWith('studio-secret:test-1:')).toBe(true);

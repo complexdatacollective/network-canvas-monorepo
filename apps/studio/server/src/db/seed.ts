@@ -3,9 +3,12 @@ import type pg from 'pg';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
-import { refreshProjectionsForSessions } from '../network/projections.ts';
-import { createSecretsCipher, type SecretsCipher } from '../secrets/cipher.ts';
-import type { Keyring } from '../secrets/keyring.ts';
+import { refreshProjectionsForSessionsOnClient } from '../network/projections.ts';
+import {
+  createSecretsCipher,
+  type SecretsCipherApi,
+} from '../secrets/cipher.ts';
+import type { KeyringApi } from '../secrets/keyring.ts';
 import { seedAssets, seedTemplates } from './seed/assets.ts';
 import { seedAuditEvents } from './seed/audit.ts';
 import {
@@ -74,7 +77,7 @@ export type SeedOptions = {
    * instance cannot open — which the boot check would then refuse to serve
    * behind.
    */
-  secrets: Keyring;
+  secrets: KeyringApi;
   /** Defaults to SEED_ADMIN_PASSWORD. */
   adminPassword?: string;
   /** Defaults to `demo`. */
@@ -221,7 +224,7 @@ async function populate(
   client: pg.PoolClient,
   adminPassword: string,
   scale: (typeof SCALES)[SeedScale],
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): Promise<SeedTotals> {
   await wipe(client);
 
@@ -274,7 +277,7 @@ async function populate(
       team,
       studies,
       versionsById,
-      refreshProjectionsForSessions,
+      refreshProjectionsForSessionsOnClient,
       scale,
     );
     await recordLinkRedemptions(client, team.id);

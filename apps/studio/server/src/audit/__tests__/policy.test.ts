@@ -24,6 +24,7 @@ import {
   BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS,
 } from '../better-auth-policy.ts';
 import {
+  AUDIT_READ_TAGS,
   NON_RPC_MUTATION_AUDIT_POLICIES,
   RPC_MUTATION_AUDIT_POLICIES,
   type AuditPolicy,
@@ -205,13 +206,25 @@ function tenantBoundaryAccesses(source: string): TenantBoundaryAccess[] {
   return accesses;
 }
 
+/**
+ * The two seams that open a registered no-audit transaction, and which
+ * argument names the operation.
+ *
+ * `runNoAuditTenantTransaction` took the handle first and the operation
+ * second; `noAuditTransaction` / `noAuditMaintenanceTransaction`
+ * (`audit/no-audit.ts`) take the operation first, because the access they take
+ * beside it is a branded token rather than a database handle.
+ */
+const NO_AUDIT_SEAMS = ['noAuditTransaction', 'noAuditMaintenanceTransaction'];
+
 function noAuditOperations(source: string): string[] {
   const tokens = sourceTokens(source);
   const operations: string[] = [];
   for (let index = 0; index < tokens.length; index++) {
-    if (tokenName(tokens[index]) !== 'runNoAuditTenantTransaction') continue;
+    const name = tokenName(tokens[index]);
+    if (name === undefined || !NO_AUDIT_SEAMS.includes(name)) continue;
+    if (tokens[index + 1]?.raw !== '(') continue;
     let argumentDepth = 0;
-    let sawFirstComma = false;
     for (let cursor = index + 1; cursor < tokens.length; cursor++) {
       const token = tokens[cursor];
       if (token === undefined) break;
@@ -220,14 +233,10 @@ function noAuditOperations(source: string): string[] {
         argumentDepth--;
         if (argumentDepth === 0) break;
       }
-      if (token.raw === ',' && argumentDepth === 1) {
-        if (!sawFirstComma) {
-          sawFirstComma = true;
-          continue;
-        }
-        break;
-      }
-      if (sawFirstComma && token.kind === SyntaxKind.StringLiteral) {
+      // The first argument, and only the first: an operation read from any
+      // later position would let a caller name one it does not run under.
+      if (token.raw === ',' && argumentDepth === 1) break;
+      if (argumentDepth === 1 && token.kind === SyntaxKind.StringLiteral) {
         operations.push(token.value);
         break;
       }
@@ -236,84 +245,115 @@ function noAuditOperations(source: string): string[] {
   return operations;
 }
 
-describe('audit mutation policy', () => {
-  it('classifies every internal RPC mutation and only mutations', () => {
-    const reads = new Set([
-      'status',
-      'me',
-      'protocols.draft',
-      'protocols.list',
-      'studies.counts',
-      'studies.get',
-      'studies.list',
-      'audit.list',
-      'audit.get',
-      'audit.filterOptions',
-      // The protocol-builder host's reads. `watchProtocol` is a subscription
-      // rather than a write: it observes revisions, locks and presence, and
-      // changes nothing it observes.
-      'protocolBuilder.getSection',
-      'protocolBuilder.listSections',
-      'protocolBuilder.watchProtocol',
-      'protocolBuilder.resources.list',
-      'protocolBuilder.resources.inspect',
-      'protocolBuilder.resources.preview',
-    ]);
-    // The SPA's procedures are the Effect rpc group's request tags; the
-    // protocol-builder surface is still an oRPC contract until stage 8, so its
-    // leaves are walked the oRPC way — through the contract's own
-    // `StudioStreams` re-export, which is the one name that surface keeps.
-    // When stage 8 moves it onto the rpc plane this second half becomes
-    // `StudioStreams.requests.keys()` and `contractLeaves` goes with it.
-    //
-    // Tags are dotted exactly as the oRPC contract's paths were and `me` stays
-    // bare, so `reads` and `RPC_MUTATION_AUDIT_POLICIES` are unchanged by the
-    // move: the inventory this pins is the same one it pinned before.
-    const procedures = [
-      ...StudioRpcs.requests.keys(),
-      ...contractLeaves(StudioStreams, 'protocolBuilder'),
-    ];
-    const mutations = procedures.filter((procedure) => !reads.has(procedure));
-    expect(mutations.toSorted(byName)).toEqual(
-      Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(byName),
-    );
+/**
+ * Everything wrong with one classification of `tags`, as sentences.
+ *
+ * Read and mutation are the two halves of one partition, so the invariant has
+ * four ways to break and each is named separately: a tag in both halves, a tag
+ * in neither, and an entry in either half that nothing serves. Comparing the
+ * two key lists instead would see only the last two, and only when they do not
+ * cancel out.
+ */
+function classificationProblems(
+  tags: readonly string[],
+  reads: ReadonlySet<string>,
+  policies: Readonly<Record<string, unknown>>,
+): string[] {
+  const problems: string[] = [];
+  for (const tag of tags) {
+    const isRead = reads.has(tag);
+    const isMutation = Object.hasOwn(policies, tag);
+    if (isRead && isMutation) {
+      problems.push(`${tag} is classified as a read and as a mutation`);
+    }
+    if (!isRead && !isMutation) {
+      problems.push(`${tag} is classified as neither a read nor a mutation`);
+    }
+  }
+  const served = new Set(tags);
+  for (const tag of reads) {
+    if (!served.has(tag)) {
+      problems.push(`${tag} is in the read set but is served by nothing`);
+    }
+  }
+  for (const tag of Object.keys(policies)) {
+    if (!served.has(tag)) {
+      problems.push(`${tag} has a mutation policy but is served by nothing`);
+    }
+  }
+  return problems.toSorted(byName);
+}
 
-    expect(RPC_MUTATION_AUDIT_POLICIES['team.updateMemberRole']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['team.acceptInvitation']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['team.createInvitation']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['team.cancelInvitation']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.create']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['studies.create']).toEqual({
-      kind: 'required',
-    });
+describe('audit mutation policy', () => {
+  /**
+   * Every procedure the two planes serve, as the rpc plane names them.
+   *
+   * The SPA's are the Effect rpc group's request tags; the protocol-builder
+   * surface is still an oRPC contract until stage 8, so its leaves are walked
+   * the oRPC way — through the contract's own `StudioStreams` re-export, which
+   * is the one name that surface keeps. When stage 8 moves it onto the rpc
+   * plane this second half becomes `StudioStreams.requests.keys()` and
+   * `contractLeaves` goes with it.
+   */
+  const servedTags = (): string[] => [
+    ...StudioRpcs.requests.keys(),
+    ...contractLeaves(StudioStreams, 'protocolBuilder'),
+  ];
+
+  it('gives every served tag exactly one classification', () => {
     expect(
-      RPC_MUTATION_AUDIT_POLICIES['protocols.addInformationStage'],
-    ).toEqual({ kind: 'required' });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.moveStage']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.submit']).toEqual({
-      kind: 'required',
-    });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.create']).toEqual({
-      kind: 'required',
-    });
+      classificationProblems(
+        servedTags(),
+        AUDIT_READ_TAGS,
+        RPC_MUTATION_AUDIT_POLICIES,
+      ),
+    ).toEqual([]);
+  });
+
+  it('names every way a classification can be wrong', () => {
+    // The oracle for the case above, run against an inventory that is wrong in
+    // all four ways at once. Without it, comparing two sorted key lists would
+    // pass for a surface where one tag is in both halves and another in
+    // neither: the lengths match and so do the contents once the duplicate
+    // collapses. Each line here is a mutation that must not survive.
     expect(
-      RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.refactor.deleteVariable'],
-    ).toEqual({ kind: 'required' });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.delete']).toEqual({
-      kind: 'required',
-    });
+      classificationProblems(
+        ['both.ways', 'neither.way', 'a.read', 'a.write'],
+        new Set(['both.ways', 'a.read', 'gone.read']),
+        {
+          'both.ways': { kind: 'required' },
+          'a.write': { kind: 'required' },
+          'gone.write': { kind: 'required' },
+        },
+      ),
+    ).toEqual([
+      'both.ways is classified as a read and as a mutation',
+      'gone.read is in the read set but is served by nothing',
+      'gone.write has a mutation policy but is served by nothing',
+      'neither.way is classified as neither a read nor a mutation',
+    ]);
+  });
+
+  it('keeps the required classification on every meaningful domain mutation', () => {
+    for (const tag of [
+      'team.updateMemberRole',
+      'team.acceptInvitation',
+      'team.createInvitation',
+      'team.cancelInvitation',
+      'protocols.create',
+      'studies.create',
+      'protocols.addInformationStage',
+      'protocols.moveStage',
+      'protocolBuilder.submit',
+      'protocolBuilder.create',
+      'protocolBuilder.delete',
+      'protocolBuilder.refactor.deleteVariable',
+      'protocolBuilder.refactor.deleteEntityType',
+    ] as const) {
+      expect(RPC_MUTATION_AUDIT_POLICIES[tag], tag).toEqual({
+        kind: 'required',
+      });
+    }
     assertReasons(RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NON_RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NO_AUDIT_TRANSACTION_POLICIES);
@@ -466,11 +506,21 @@ describe('audit mutation policy', () => {
         }));
       }
     }
+    // The two executors are `db/tenant.ts`'s, since #1927 stage 3.
+    // `audit/command.ts` and `audit/transaction.ts` used to be them, each
+    // opening a transaction on a `TenantDb` handle a caller passed in; both
+    // are deleted. `audited` (`audit/audited.ts`) and `noAuditTransaction`
+    // (`audit/no-audit.ts`) now go through the scopes, which take a branded
+    // `TeamAccess` and read their client from a service — so there is exactly
+    // one module left that opens a transaction at all, and a third call
+    // appearing anywhere else is what this case is for.
     expect(actual).toEqual({
-      'apps/studio/server/src/audit/command.ts': [
+      'apps/studio/server/src/db/tenant.ts': [
+        // `openOn`: the root of every scope — `TenantScope`, `OwnerScope`,
+        // `MaintenanceScope` and the untenanted one all share it.
         { member: 'transaction', form: 'call', line: 0 },
-      ],
-      'apps/studio/server/src/audit/transaction.ts': [
+        // `savepoint`: the nested transaction `audited` runs its body in, on
+        // the connection the outer scope already holds.
         { member: 'transaction', form: 'call', line: 0 },
       ],
       // Not a tenant transaction: this is better-auth's own adapter handing
