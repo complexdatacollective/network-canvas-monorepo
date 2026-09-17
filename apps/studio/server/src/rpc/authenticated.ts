@@ -16,9 +16,15 @@ import { transportHeaders } from './request-headers.ts';
 //
 // Deliberately minimal. It resolves the session and nothing else — no rate
 // limit is charged here, although the middleware declares `RateLimited`
-// alongside `Unauthorized`. The per-user limit arrives with stage 4's
-// team-opening helper (#1930); charging it here now would move a decision the
-// procedures still make for themselves.
+// alongside `Unauthorized`.
+//
+// The per-user budget is already charged, just not here: `rpc/team-scope.ts`'s
+// scope-opening helpers take it before any query, and the three procedures
+// that open no scope (`me`, `account.updateLocale`, `team.acceptInvitation`)
+// take it in the handler. Stage 4 moves that charge INTO this middleware
+// (#1932 §3, §12), which is what makes "before any database work" structural
+// rather than a rule every helper has to keep. Doing it here now would take
+// the decision away from procedures that still make it for themselves.
 
 const decodeUserId = Schema.decodeUnknownSync(UserId);
 
