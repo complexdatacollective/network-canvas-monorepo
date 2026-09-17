@@ -1,4 +1,7 @@
+import { expect } from '@playwright/test';
+
 import { type StageEditor } from '../stage-editor.js';
+import { openValidationSection } from './form-field-controls.js';
 import { createAttribute } from './variables.js';
 
 // CategoricalBin's follow-up bin, a nested toggleable section of the prompt
@@ -19,12 +22,17 @@ import { createAttribute } from './variables.js';
 // - otherOptionLabel ("Other bin label") and otherVariablePrompt ("Follow-up
 //   question") are visible-labelled RichText fields; all three fields are
 //   required once the section is open.
+// - Once an attribute is held, a nested "Validation" section over that
+//   attribute's own rules (`CodebookVariableValidationSection`) mounts beneath
+//   the picker. It writes straight to the codebook, which is what `required`
+//   reaches.
 export async function enableOtherOption(
   editor: StageEditor,
   opts: {
     variableName: string;
     optionLabel: string;
     variablePrompt: string;
+    required?: boolean;
   },
 ): Promise<void> {
   const section = editor.section('Follow-up other option');
@@ -35,6 +43,15 @@ export async function enableOtherOption(
   // picker above it (`otherVariable` against `variable`) even though both are
   // on screen at once.
   await createAttribute(editor.field('otherVariable'), opts.variableName);
+  if (opts.required === true) {
+    const rules = await openValidationSection(section);
+    const required = rules.getByRole('switch', {
+      name: 'Required answer',
+      exact: true,
+    });
+    await required.click();
+    await expect(required).toBeChecked();
+  }
   await editor.fillRichText('Other bin label', opts.optionLabel);
   await editor.fillRichText('Follow-up question', opts.variablePrompt);
 }

@@ -1240,6 +1240,7 @@
             "component": "Text",
             "type": "text",
             "validation": {
+              "required": true,
               "unique": true
             }
           },
@@ -1507,7 +1508,10 @@
           },
           "979c9ad7-74cb-402d-8574-3f0a91c9174d": {
             "name": "other_variable",
-            "type": "text"
+            "type": "text",
+            "validation": {
+              "required": true
+            }
           },
           "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a": {
             "name": "homework_friend",
@@ -1724,7 +1728,10 @@
         "variables": {
           "venue_name_variable": {
             "name": "name",
-            "type": "text"
+            "type": "text",
+            "validation": {
+              "required": true
+            }
           },
           "7316d500-6c1e-4188-a531-b2ef587721e0": {
             "name": "location",

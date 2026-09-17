@@ -13,7 +13,6 @@ import { installMapboxMocks } from '../fixtures/mapbox-mocks.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
   assertBuiltProtocolInvariants,
-  dropForcedRequiredValidation,
   normalizeProtocol,
 } from '../helpers/normalize-protocol.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
@@ -493,15 +492,8 @@ test.describe.serial('sample protocol built from scratch', () => {
     await selectOrCreateNodeType(page, 'Person');
     // Person has no text attribute yet, so this creates `name` through the
     // quick-add picker's own name box. An attribute created there is born
-    // `{ required: true }` — quick add's box is the only thing the participant
-    // gives — while canonical Person `name` is `{ name, type: 'text' }`, so
-    // the nested Validation section beneath the picker is switched off to
-    // clear it. `dropForcedRequiredValidation` deliberately does NOT forgive
-    // this one: the section makes it removable, so a requirement left on
-    // `name` is a real difference.
-    await selectOrCreateQuickAddVariable(editor, 'name', {
-      clearRequiredValidation: true,
-    });
+    // `{ required: true }`, matching canonical Person `name`.
+    await selectOrCreateQuickAddVariable(editor, 'name');
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
@@ -973,6 +965,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'group_other',
         optionLabel: s('stages', 25, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 25, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     const stage = await saveStage(25, 'CategoricalBin');
@@ -1019,6 +1012,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'social_network_research_relationship_other',
         optionLabel: s('stages', 27, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 27, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     await configureStageFilter(editor, {
@@ -1105,8 +1099,6 @@ test.describe.serial('sample protocol built from scratch', () => {
 
     const normalizedBuilt = normalizeProtocol(built);
     const normalizedCanonical = normalizeProtocol(canonicalRaw);
-    expect(
-      dropForcedRequiredValidation(normalizedBuilt, normalizedCanonical),
-    ).toEqual(normalizedCanonical);
+    expect(normalizedBuilt).toEqual(normalizedCanonical);
   });
 });
