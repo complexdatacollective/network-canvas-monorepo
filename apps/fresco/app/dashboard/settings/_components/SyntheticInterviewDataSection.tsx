@@ -386,6 +386,7 @@ export default function SyntheticInterviewDataSection({
           <Button
             disabled={!selectedProtocolId || isGenerating}
             onClick={handleGenerate}
+            className="shrink-0"
           >
             {isGenerating
               ? intl.formatMessage(messages.copyGenerating)

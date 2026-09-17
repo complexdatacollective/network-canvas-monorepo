@@ -109,6 +109,7 @@ export default function RecruitmentTestSection({
           }}
           value={selectedProtocol?.id}
           placeholder={intl.formatMessage(messages.selectAProtocol)}
+          className="min-w-auto"
         />
         <SelectField
           aria-label={intl.formatMessage(messages.selectAParticipant)}
@@ -126,6 +127,7 @@ export default function RecruitmentTestSection({
           }}
           value={selectedParticipant?.id}
           placeholder={intl.formatMessage(messages.selectAParticipant)}
+          className="min-w-auto"
         />
       </div>
       <div className="tablet-landscape:flex-row mt-4 flex flex-col gap-2">

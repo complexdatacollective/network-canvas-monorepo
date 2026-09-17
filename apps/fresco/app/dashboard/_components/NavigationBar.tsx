@@ -79,7 +79,7 @@ const itemVariants: Variants = {
 };
 
 const navItemClassName =
-  'focusable relative rounded-full font-semibold outline-offset-10!';
+  'focusable relative rounded-full font-semibold whitespace-nowrap outline-offset-10!';
 
 const NavButton = ({
   label,
@@ -164,22 +164,6 @@ export function NavigationBar() {
           />
         </ul>
         <div className="tablet-landscape:gap-6 flex items-center gap-2">
-          <motion.div variants={itemVariants} className="flex">
-            <FrescoLocaleSwitcher
-              renderTrigger={
-                // Named by the switcher, which sets the language on it at runtime.
-                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
-                <button
-                  type="button"
-                  className={cx(
-                    navItemClassName,
-                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
-                  )}
-                />
-              }
-            />
-          </motion.div>
-
           <div className="tablet-landscape:flex hidden">
             <NavButton
               label={
@@ -194,6 +178,25 @@ export function NavigationBar() {
               isActive={pathname === '/dashboard/settings'}
             />
           </div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:flex hidden"
+          >
+            <FrescoLocaleSwitcher
+              renderTrigger={
+                // Named by the switcher, which sets the language on it at runtime.
+                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                <button
+                  type="button"
+                  className={cx(
+                    navItemClassName,
+                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                  )}
+                />
+              }
+            />
+          </motion.div>
 
           <motion.div
             variants={itemVariants}

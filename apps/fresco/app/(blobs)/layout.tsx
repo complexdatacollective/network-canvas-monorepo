@@ -32,7 +32,9 @@ export default function Layout({ children }: PropsWithChildren) {
           </Link>
           <FrescoLocaleSwitcher variant="default" color="default" size="md" />
         </header>
-        <main className="flex items-center justify-center">{children}</main>
+        <main className="flex min-w-0 items-center justify-center">
+          {children}
+        </main>
         <NetlifyBadge />
       </div>
     </>
