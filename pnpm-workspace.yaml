@@ -127,8 +127,17 @@ catalog:
   # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
   # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
   # range once 1.0.0 stable ships.
-  drizzle-kit: 1.0.0-rc.4
-  drizzle-orm: 1.0.0-rc.4
+  #
+  # The `rc5` snapshot rather than the `rc` tag (still 1.0.0-rc.4): rc.4's
+  # `drizzle-orm/effect-postgres` entry point does not load on Effect
+  # 4.0.0-rc.115 at all — it calls `Schema.TaggedErrorClass`, which Effect
+  # removed, so importing it throws `Schema$1.TaggedErrorClass is not a
+  # function` before any Studio code runs. rc.5 also adds the
+  # `transaction(fn, config)` overload #1927 §9 needs to set an isolation
+  # level on a tenant scope. Both packages move together, as the note above
+  # requires.
+  drizzle-kit: 1.0.0-rc.5-5935859
+  drizzle-orm: 1.0.0-rc.5-5935859
   # Pinned exactly: the `rc` dist-tag moves. Bumping is a chore PR of its own.
   effect: 4.0.0-rc.115
   electron: ^43.0.0
