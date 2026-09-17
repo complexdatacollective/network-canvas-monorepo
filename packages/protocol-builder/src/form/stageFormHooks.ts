@@ -333,6 +333,33 @@ export function stageDraftValue(
  * value" — so a caller whose path is itself optional can still ask
  * unconditionally, which a hook has to be able to do.
  */
+export function stageValueAt(
+  state: FormStoreState,
+  committedFields: StageFormDraft,
+  path: string | undefined,
+): unknown {
+  if (path === undefined) return undefined;
+  const target = safePath(path);
+  if (target === null) return undefined;
+
+  const pathOperations = state.pathOperations;
+  if (pathOperations === undefined) {
+    return state.hasValue(path)
+      ? state.getValue(path)
+      : stageDraftValue(committedFields, path);
+  }
+  return pathOperations.hasValue(target)
+    ? pathOperations.getValue(target)
+    : stageDraftValue(committedFields, path);
+}
+
+/**
+ * `stageValueAt` as a hook: the same read, re-run whenever the form changes.
+ *
+ * What a section uses. The function underneath it is for a caller holding a
+ * question rather than a subscription — a confirmation deciding, at the moment
+ * it is asked, what a change would cost.
+ */
 export function useStageValue(path: string | undefined): unknown {
   const { storeApi, committedFields } = useStageEditorForm();
 
@@ -341,22 +368,10 @@ export function useStageValue(path: string | undefined): unknown {
     [storeApi],
   );
 
-  const getSnapshot = useCallback((): unknown => {
-    if (path === undefined) return undefined;
-    const target = safePath(path);
-    if (target === null) return undefined;
-
-    const state = storeApi.getState();
-    const pathOperations = state.pathOperations;
-    if (pathOperations === undefined) {
-      return state.hasValue(path)
-        ? state.getValue(path)
-        : stageDraftValue(committedFields, path);
-    }
-    return pathOperations.hasValue(target)
-      ? pathOperations.getValue(target)
-      : stageDraftValue(committedFields, path);
-  }, [committedFields, path, storeApi]);
+  const getSnapshot = useCallback(
+    (): unknown => stageValueAt(storeApi.getState(), committedFields, path),
+    [committedFields, path, storeApi],
+  );
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
@@ -446,14 +461,34 @@ export function useAskStageHasAnyValue(): (
  * to delete content nobody entered.
  */
 function hasAnswer(value: unknown): boolean {
-  if (isUnanswered(value)) return false;
-  if (Array.isArray(value)) return value.some(hasAnswer);
+  return answeredPart(value) !== undefined;
+}
+
+/**
+ * The value with everything unanswered taken out of it, or `undefined` when
+ * nothing is left.
+ *
+ * `hasAnswer` is this question asked for a yes or a no. Two values are
+ * compared through it when what matters is whether they say the same thing —
+ * mounting a control assembles `{ action: undefined }` beside whatever is
+ * really there, and a stage that differs from another only by which controls
+ * happen to be on screen does not differ at all.
+ */
+export function answeredPart(value: unknown): unknown {
+  if (isUnanswered(value)) return undefined;
+  if (Array.isArray(value)) {
+    const items = value.map(answeredPart).filter((item) => item !== undefined);
+    return items.length === 0 ? undefined : items;
+  }
   // `isUnanswered` already ruled out null, so anything left of object type is
   // a real container.
   if (typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).some(hasAnswer);
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, inner]) => [key, answeredPart(inner)] as const)
+      .filter(([, inner]) => inner !== undefined);
+    return entries.length === 0 ? undefined : Object.fromEntries(entries);
   }
-  return true;
+  return value;
 }
 
 /**

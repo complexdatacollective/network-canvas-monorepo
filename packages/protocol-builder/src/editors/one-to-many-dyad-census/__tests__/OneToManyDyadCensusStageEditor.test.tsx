@@ -73,12 +73,6 @@ describe('creating a one-to-many dyad census stage', () => {
       expect(stageNameInput()).toHaveValue('One to Many Dyad Census #2'),
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    // A first choice of type costs the stage what it is already carrying, and
-    // this is the one census whose template carries something — so the picker
-    // asks before it moves, and the researcher has to answer.
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the node type' }),
-    );
     // The prompts wait on the type they describe, so the control that adds one
     // arrives only once the stage has been told what it works with.
     await harness.user.click(
