@@ -79,7 +79,9 @@ describe('a rule read in Spanish', () => {
     // The connecting word is the preview's own message, formatted through the
     // provider; the entity and attribute names are the researcher's own
     // codebook and stay as they are.
-    expect(screen.getByText('con', { exact: true })).toBeInTheDocument();
+    expect(
+      screen.getByText('cuyo atributo', { exact: true }),
+    ).toBeInTheDocument();
     // The operator phrase comes from `describeRule`, so this fails if the
     // description is still being built in English beside a Spanish preview.
     expect(screen.getByText('es mayor que')).toBeInTheDocument();

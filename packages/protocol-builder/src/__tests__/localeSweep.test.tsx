@@ -308,7 +308,7 @@ describe('the row dialogs under es', () => {
     // below, whose input control is how this knows the surface is up.
     await harness.user.click(
       within(picker).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado “apodo”.',
+        name: 'Crear un atributo nuevo llamado «apodo».',
       }),
     );
     await screen.findByRole('combobox', { name: 'Control de entrada' });

@@ -169,7 +169,7 @@ describe.each(['additional', 'signup', 'switch'])(
         deviceType: 'multiDevice',
         friendlyName: null,
         englishName: 'Synced passkey',
-        spanishName: 'Clave de acceso sincronizada',
+        spanishName: 'Llave de acceso sincronizada',
       },
       {
         aaguid: 'unknown',

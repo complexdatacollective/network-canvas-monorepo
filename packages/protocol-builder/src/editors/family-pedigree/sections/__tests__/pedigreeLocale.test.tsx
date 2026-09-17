@@ -140,7 +140,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
         harness.user,
         attributeField('Sexo biológico'),
         'Busca o crea un atributo',
-        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+        (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
   });
@@ -229,7 +229,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
     // The collaborator's revision reaches this control over the protocol
     // channel, which is a microtask: read after it has arrived, not before.
     await within(control).findByText(
-      'biologicalSex — ya no ofrece los valores que necesita este control',
+      'biologicalSex: ya no ofrece los valores que necesita este control',
     );
     // Still the researcher's stored choice, and the control says so: the
     // button offers to CHANGE an attribute rather than to choose a first one.

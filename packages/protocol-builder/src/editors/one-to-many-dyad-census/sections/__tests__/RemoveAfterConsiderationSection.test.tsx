@@ -100,10 +100,10 @@ describe('the node availability section, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Quitarla de la lista' }),
+      screen.getByRole('radio', { name: 'Quitarlo de la lista' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Mantenerla en la lista' }),
+      screen.getByRole('radio', { name: 'Mantenerlo en la lista' }),
     ).toBeInTheDocument();
   });
 });

@@ -82,7 +82,7 @@ it('translates the open migration notes while retaining schema identifiers and a
     }),
   ).toBeVisible();
   const spanish =
-    'Añadir nuevas opciones de validación para los campos de formulario: unique, sameAs y differentFrom.';
+    'Se añaden nuevas opciones de validación para los campos de formulario: unique, sameAs y differentFrom.';
   await waitFor(() =>
     expect(
       within(dialog)
