@@ -3,17 +3,27 @@
 // submitted, and what the procedure answers decides what happens next. The
 // screen is the only way into an instance nobody owns, so each refusal has to
 // say something different and none of them may look like success.
-import { ORPCError } from '@orpc/client';
-import type { InferContractRouterOutputs } from '@orpc/contract';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { contract } from '@codaco/studio-rpc';
+import {
+  Conflict,
+  NotFound,
+  Unauthorized,
+} from '@codaco/studio-contract/schema/errors';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { sessionQueryOptions } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import { rpcKey } from '../../runtime/rpc.ts';
+import {
+  installRpcHarness,
+  type RpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -46,63 +56,47 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-type Status = InferContractRouterOutputs<typeof contract>['status'];
-
-const fixtures = vi.hoisted(() => ({
-  complete: vi.fn(),
-  // Read at call time: completing setup is what turns this over, and the
-  // screen invalidates the query that carries it.
-  setup: { required: true },
-}));
-
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    status: {
-      // The caller's options are carried through — `staleTime: Infinity`, in
-      // `lib/deployment.ts`. Dropping them would make every `fetchQuery` go
-      // back to the queryFn, and the cases below could not tell a screen that
-      // invalidates status from one that does not.
-      queryOptions: (options?: { staleTime?: number }) => ({
-        ...options,
-        queryKey: ['status'],
-        queryFn: (): Status => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'self-hosted', billing: false },
-          setup: fixtures.setup,
-        }),
-      }),
-    },
-    me: {
-      queryOptions: () => ({ queryKey: ['me'], queryFn: vi.fn() }),
-      key: () => ['me'],
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
+const STATUS: Omit<InstanceStatus, 'setup'> = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
   },
-  rpcClient: { setup: { complete: fixtures.complete } },
-}));
+  deployment: { mode: 'self-hosted', billing: false },
+};
+
+/**
+ * Read at call time by the `status` handler: completing setup is what turns
+ * this over, and the screen invalidates the query that carries it. The status
+ * query is `staleTime: Infinity`, so an answer cached before setup completed
+ * would stand for the life of the page — which is what lets the cases below
+ * tell a screen that invalidates status from one that does not.
+ */
+let setupRequired = true;
+
+/**
+ * The harness in the shape this file needs it: a real `status` answer, and
+ * whatever `setup.complete` is being made to do for one case.
+ */
+function installSetupHarness(
+  complete: StudioHandlers['setup.complete'],
+): RpcHarness {
+  return installRpcHarness({
+    'status': () =>
+      Effect.succeed({ ...STATUS, setup: { required: setupRequired } }),
+    'setup.complete': complete,
+  });
+}
+
+/** What the screen sent to one procedure, in the order it sent it. */
+function payloadsFor(harness: RpcHarness, tag: string): unknown[] {
+  return harness.calls
+    .filter((call) => call.tag === tag)
+    .map((call) => call.payload);
+}
 
 const OWNER = {
   token: 'a-bootstrap-token',
@@ -148,33 +142,38 @@ async function fillAndSubmit() {
 }
 
 beforeEach(() => {
-  fixtures.setup = { required: true };
-  fixtures.complete.mockReset();
+  setupRequired = true;
 });
 
 describe('completing first-run setup', () => {
   it('sends what the operator typed and leaves them signed in', async () => {
-    fixtures.complete.mockImplementation(() => {
-      // The server state this call changes. The screen has to go back for it:
-      // the status query is `staleTime: Infinity`, so an answer cached before
-      // setup completed would stand for the life of the page.
-      fixtures.setup = { required: false };
-      return Promise.resolve({ instanceName: OWNER.instanceName });
-    });
+    const harness = installSetupHarness(() =>
+      Effect.sync(() => {
+        // The server state this call changes. The screen has to go back for
+        // it, which is what the status assertion below watches for.
+        setupRequired = false;
+        // `signedIn` is what says the response also carried the new owner's
+        // session cookie; the screen records the session rather than asking
+        // for it only when it did.
+        return { instanceName: OWNER.instanceName, signedIn: true };
+      }),
+    );
     const { queryClient, router } = renderSetup();
 
     await fillAndSubmit();
 
     await waitFor(() =>
-      expect(fixtures.complete).toHaveBeenCalledWith({
-        token: OWNER.token,
-        instanceName: OWNER.instanceName,
-        owner: {
-          name: OWNER.name,
-          email: OWNER.email,
-          password: OWNER.password,
+      expect(payloadsFor(harness, 'setup.complete')).toEqual([
+        {
+          token: OWNER.token,
+          instanceName: OWNER.instanceName,
+          owner: {
+            name: OWNER.name,
+            email: OWNER.email,
+            password: OWNER.password,
+          },
         },
-      }),
+      ]),
     );
     // The response carried the session cookie, so the screen records the
     // session rather than asking for it — and hands the researcher on to the
@@ -189,13 +188,41 @@ describe('completing first-run setup', () => {
     // the one the route guard resolved a moment ago.
     await waitFor(() =>
       expect(
-        (queryClient.getQueryData(['status']) as Status | undefined)?.setup,
+        queryClient.getQueryData<InstanceStatus>(rpcKey('status'))?.setup,
       ).toEqual({ required: false }),
     );
   });
 
+  it('records no session when the response carried no cookie', async () => {
+    // Setup completed — the instance has a name and an owner — but the
+    // response did not establish a session, which is what `signedIn: false`
+    // reports: a deployment whose `Set-Cookie` never reached this tab. The
+    // screen may not record one anyway. If it did, `/` would resolve through
+    // a cached `'signedIn'` to this researcher's landing destination, and the
+    // first call made from there would come back `Unauthorized`.
+    installSetupHarness(() =>
+      Effect.sync(() => {
+        setupRequired = false;
+        return { instanceName: OWNER.instanceName, signedIn: false };
+      }),
+    );
+    const { queryClient, router } = renderSetup();
+
+    await fillAndSubmit();
+
+    // The navigation happens either way, and `/` is the one address that
+    // resolves either way: with no session established it resolves to the way
+    // in rather than to a landing destination.
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).not.toBe(
+      'signedIn',
+    );
+  });
+
   it('says the token was refused, and stays on the form', async () => {
-    fixtures.complete.mockRejectedValue(new ORPCError('UNAUTHORIZED'));
+    installSetupHarness(() => Effect.fail(new Unauthorized({})));
     const { queryClient, router } = renderSetup();
 
     await fillAndSubmit();
@@ -215,7 +242,7 @@ describe('completing first-run setup', () => {
   });
 
   it('says so when somebody else set the instance up first', async () => {
-    fixtures.complete.mockRejectedValue(new ORPCError('NOT_FOUND'));
+    installSetupHarness(() => Effect.fail(new NotFound({})));
     renderSetup();
 
     await fillAndSubmit();
@@ -228,7 +255,7 @@ describe('completing first-run setup', () => {
   });
 
   it('says so when the address already has an account', async () => {
-    fixtures.complete.mockRejectedValue(new ORPCError('CONFLICT'));
+    installSetupHarness(() => Effect.fail(new Conflict({})));
     renderSetup();
 
     await fillAndSubmit();
@@ -241,7 +268,9 @@ describe('completing first-run setup', () => {
   });
 
   it('reports a failure the procedure did not name', async () => {
-    fixtures.complete.mockRejectedValue(new Error('network down'));
+    // A failure the contract does not declare is a defect rather than one of
+    // the three refusals, which is exactly what the screen's catch-all is for.
+    installSetupHarness(() => Effect.die(new Error('network down')));
     renderSetup();
 
     await fillAndSubmit();

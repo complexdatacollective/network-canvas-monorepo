@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
+import { Result, Schema } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { contract } from '@codaco/studio-rpc';
+import { AuditListInput } from '@codaco/studio-contract/schema/audit';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -22,21 +23,14 @@ import {
 const db = await reachableDb();
 const store = new AuditStore();
 
-// The schema audit.list actually validates its input with, reached through the
-// same standard-schema interface oRPC validates through, rather than a second
-// copy of the bound: what the wire rejects is the whole point of the assertion
-// below.
-const [auditListInputSchema] = contract.audit.list['~orpc'].inputSchemas ?? [];
+// The schema audit.list actually validates its payload with, decoded exactly
+// as the rpc server decodes it rather than through a second copy of the bound:
+// what the wire rejects is the whole point of the assertion below.
+const decodeAuditListInput = Schema.decodeUnknownResult(AuditListInput);
 
 function auditListInputIssues(input: unknown) {
-  if (!auditListInputSchema) {
-    throw new Error('audit.list declares no input schema');
-  }
-  const result = auditListInputSchema['~standard'].validate(input);
-  if (result instanceof Promise) {
-    throw new Error('audit.list input validation is asynchronous');
-  }
-  return result.issues ?? [];
+  const result = decodeAuditListInput(input);
+  return Result.isFailure(result) ? [result.failure] : [];
 }
 
 function invitationEvent(teamId: string): AuditEventInput {

@@ -3,10 +3,9 @@
 // and the real cookie plane — the session it returns is carried back in as a
 // cookie and asked to answer `me`, because a set-cookie header that does not
 // sign anybody in is the failure this exists to catch.
-import { safe } from '@orpc/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { createStudio, type Studio } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import { readEnv } from '../env.ts';
 import { issueBootstrapToken, readInstallation } from '../setup/bootstrap.ts';
@@ -15,39 +14,96 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectPayloadRejected,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 import { testCipher } from './support/secrets.ts';
+import { composeStudio } from './support/serve.ts';
 
 const env = readEnv();
 const db = await reachableDb();
 
 const INSTANCE_NAME = 'Department of Social Research';
 
+type SetupInput = {
+  token: string;
+  instanceName: string;
+  owner: { name: string; email: string; password: string };
+};
+
 describe.skipIf(!db)('setup.complete', () => {
   let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
-  let app: ReturnType<typeof createApp>;
-  let client: ReturnType<typeof createRpcClient>;
+  let studio: Studio;
+  let composed: ReturnType<typeof composeStudio>;
+  let client: RpcTestClient;
   let token: string;
   let sequence = 0;
 
   /**
    * The RPC transport as a browser speaks it, so the response — and its
-   * `set-cookie` — can be read. The typed client hands back the procedure's
-   * output and nothing else, which is exactly what the cookie is not.
+   * `set-cookie` — can be read. The in-process client hands back the
+   * procedure's output and nothing else, which is exactly what the cookie is
+   * not.
+   *
+   * The body is one ndjson frame, which is what `RpcSerialization.layerNdjson`
+   * decodes: a `Request` envelope naming the tag and carrying the payload.
    */
-  const completeOverHttp = async (input: {
-    token: string;
-    instanceName: string;
-    owner: { name: string; email: string; password: string };
-  }) =>
-    await app.request('/rpc/setup/complete', {
+  const completeOverHttp = (input: SetupInput) =>
+    composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/ndjson',
         'sec-fetch-site': 'same-origin',
       },
-      body: JSON.stringify({ json: input }),
+      body: `${JSON.stringify({
+        _tag: 'Request',
+        id: 1,
+        tag: 'setup.complete',
+        payload: input,
+        headers: [],
+      })}\n`,
     });
+
+  /** Any other procedure over the same transport, for the holder proof below. */
+  const statusOverHttp = () =>
+    composed.request('/rpc', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/ndjson',
+        'sec-fetch-site': 'same-origin',
+      },
+      body: `${JSON.stringify({
+        _tag: 'Request',
+        id: 1,
+        tag: 'status',
+        // `null`, not `undefined`: `status` takes `Schema.Void`, whose wire
+        // form is `null`, and `JSON.stringify` drops an `undefined` value
+        // entirely — a request with no payload key at all dies on decode
+        // before the handler, while the transport still answers 200.
+        payload: null,
+        headers: [],
+      })}\n`,
+    });
+
+  /** The one `Exit` frame in an ndjson response body. */
+  const exitFrameOf = async (response: Response): Promise<unknown> => {
+    const frames = (await response.text())
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line: string): unknown => JSON.parse(line));
+    const exit = frames.find(
+      (frame): frame is { _tag: 'Exit'; exit: { value?: unknown } } =>
+        typeof frame === 'object' &&
+        frame !== null &&
+        '_tag' in frame &&
+        frame._tag === 'Exit',
+    );
+    if (!exit) throw new Error(`no Exit frame in ${JSON.stringify(frames)}`);
+    return exit.exit.value;
+  };
 
   const owner = (password = 'first-owner-password') => {
     sequence += 1;
@@ -69,10 +125,13 @@ describe.skipIf(!db)('setup.complete', () => {
       () => Promise.resolve(),
       testCipher(),
     );
-    app = createApp(env, { auth, pool: scratch.app });
-    client = createRpcClient(app);
+    studio = createStudio(env, { auth, pool: scratch.app });
+    composed = composeStudio(env, studio);
+    client = await createRpcClient(studio);
   });
   afterAll(async () => {
+    await client.dispose();
+    await composed.dispose();
     await scratch.dispose();
   });
 
@@ -86,29 +145,33 @@ describe.skipIf(!db)('setup.complete', () => {
     token = issued.token;
   });
 
-  it('reports setup as required while nobody owns the instance', async () => {
-    const status = await client.status();
+  const status = () => client.call(client.rpc('status', undefined));
 
-    expect(status.setup).toEqual({ required: true });
+  it('reports setup as required while nobody owns the instance', async () => {
+    const reported = await status();
+
+    expect(reported.setup).toEqual({ required: true });
     // No stored name yet, so the product name stands in.
-    expect(status.name).toBe('Network Canvas Studio');
+    expect(reported.name).toBe('Network Canvas Studio');
   });
 
   it('refuses a wrong token, and says no more than that', async () => {
-    const wrong = await safe(
-      client.setup.complete({
-        token: 'not-the-token',
-        instanceName: INSTANCE_NAME,
-        owner: owner(),
-      }),
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('setup.complete', {
+          token: 'not-the-token',
+          instanceName: INSTANCE_NAME,
+          owner: owner(),
+        }),
+      ),
+      'Unauthorized',
     );
-    expect(wrong.error).toMatchObject({ code: 'UNAUTHORIZED' });
 
     // A refusal writes nothing: no owner, and the real token still works.
     const installation = await readInstallation(scratch.pool);
     expect(installation?.ownerUserId).toBeNull();
     expect(installation?.name).toBeNull();
-    expect((await client.status()).setup.required).toBe(true);
+    expect((await status()).setup.required).toBe(true);
   });
 
   it('creates the owner, names the instance, and signs the browser in', async () => {
@@ -123,16 +186,25 @@ describe.skipIf(!db)('setup.complete', () => {
     expect(response.status).toBe(200);
     const setCookie = response.headers.getSetCookie();
     expect(setCookie.length).toBeGreaterThan(0);
+    // The flag is what the shell branches on, and it must agree with the
+    // header: a response that carried no cookie must not claim it signed
+    // anybody in.
+    expect(await exitFrameOf(response)).toEqual({
+      instanceName: INSTANCE_NAME,
+      signedIn: true,
+    });
 
     // The cookie is a working session, not just a header: carried back in, it
     // answers `me` as the account that was just created.
     const cookie = setCookie.map((value) => value.split(';')[0]).join('; ');
-    const me = await createRpcClient(app, { cookie }).me();
+    const signedIn = await createRpcClient(studio, { cookie });
+    const me = await signedIn.call(signedIn.rpc('me', undefined));
     expect(me.email).toBe(account.email);
     expect(me.name).toBe(account.name);
     // A brand-new owner belongs to no team yet; the landing resolution takes
     // them to `/no-team`, and team creation is #1256's.
     expect(me.teams).toEqual([]);
+    await signedIn.dispose();
 
     const installation = await readInstallation(scratch.pool);
     expect(installation).toEqual({
@@ -142,9 +214,87 @@ describe.skipIf(!db)('setup.complete', () => {
       bootstrapTokenHash: null,
     });
 
-    const status = await client.status();
-    expect(status.setup).toEqual({ required: false });
-    expect(status.name).toBe(INSTANCE_NAME);
+    const reported = await status();
+    expect(reported.setup).toEqual({ required: false });
+    expect(reported.name).toBe(INSTANCE_NAME);
+  });
+
+  it('refuses a call that cannot show it came from our own origin', async () => {
+    // The cookie plane's CSRF gate, now a route middleware on `/rpc` rather
+    // than a Hono one (#1248). `setup.complete` is the procedure a forged
+    // cross-origin POST would most like to reach, since it takes no session.
+    const forged = await composed.request('/rpc', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/ndjson',
+        'sec-fetch-site': 'cross-site',
+      },
+      body: `${JSON.stringify({
+        _tag: 'Request',
+        id: 1,
+        tag: 'setup.complete',
+        payload: {
+          token,
+          instanceName: INSTANCE_NAME,
+          owner: owner(),
+        },
+        headers: [],
+      })}\n`,
+    });
+
+    expect(forged.status).toBe(403);
+    expect(forged.headers.get('Content-Type')).toContain(
+      'application/problem+json',
+    );
+    expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
+  });
+
+  it('gives every request its own cookie holder', async () => {
+    // The holder is allocated by the effect the route middleware runs per
+    // request. One built when the route was registered would be shared by the
+    // whole process, and the cookie minted for this caller would be set on
+    // whoever's response came next.
+    const signedUp = await completeOverHttp({
+      token,
+      instanceName: INSTANCE_NAME,
+      owner: owner(),
+    });
+    expect(signedUp.headers.getSetCookie().length).toBeGreaterThan(0);
+
+    const next = await statusOverHttp();
+    expect(next.status).toBe(200);
+    // The 200 is the transport's verdict, not the call's: a request the rpc
+    // server refuses is answered 200 with a failing exit frame. Asserting the
+    // answer — and that it is the answer of a `status` handler that read the
+    // installation the request before it wrote — is what keeps the
+    // set-cookie assertion below about a served call.
+    expect(await exitFrameOf(next)).toMatchObject({
+      setup: { required: false },
+    });
+    expect(next.headers.getSetCookie()).toEqual([]);
+  });
+
+  it('reports signedIn false for a call with no response to set a cookie on', async () => {
+    // The in-process client has no HTTP response, so the `/rpc` route's
+    // `SetCookies` holder is absent — exactly the position a call arriving
+    // over the WebSocket is in. The owner is created either way; what the
+    // caller is told is that it was not signed in, which is what sends them to
+    // sign in rather than into the app.
+    const account = owner();
+
+    const completed = await client.call(
+      client.rpc('setup.complete', {
+        token,
+        instanceName: INSTANCE_NAME,
+        owner: account,
+      }),
+    );
+
+    expect(completed).toEqual({
+      instanceName: INSTANCE_NAME,
+      signedIn: false,
+    });
+    expect((await readInstallation(scratch.pool))?.name).toBe(INSTANCE_NAME);
   });
 
   it('is not there once the instance has an owner', async () => {
@@ -155,17 +305,18 @@ describe.skipIf(!db)('setup.complete', () => {
     });
     expect(first.status).toBe(200);
 
-    const second = await safe(
-      client.setup.complete({
-        token,
-        instanceName: 'A second instance name',
-        owner: owner(),
-      }),
-    );
-
     // NOT_FOUND, which is what `/setup` renders as its not-found screen: the
     // procedure is gone, not merely refusing this caller.
-    expect(second.error).toMatchObject({ code: 'NOT_FOUND' });
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('setup.complete', {
+          token,
+          instanceName: 'A second instance name',
+          owner: owner(),
+        }),
+      ),
+      'NotFound',
+    );
     expect((await readInstallation(scratch.pool))?.name).toBe(INSTANCE_NAME);
   });
 
@@ -174,7 +325,7 @@ describe.skipIf(!db)('setup.complete', () => {
     // was not. Standing in for it with the provider's own sign-up endpoint,
     // which is exactly what the procedure calls.
     const account = owner();
-    const signedUp = await app.request('/api/auth/sign-up/email', {
+    const signedUp = await studio.app.request('/api/auth/sign-up/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -196,14 +347,16 @@ describe.skipIf(!db)('setup.complete', () => {
       .getSetCookie()
       .map((value) => value.split(';')[0])
       .join('; ');
-    const me = await createRpcClient(app, { cookie }).me();
+    const signedIn = await createRpcClient(studio, { cookie });
+    const me = await signedIn.call(signedIn.rpc('me', undefined));
     expect(me.email).toBe(account.email);
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBe(me.userId);
+    await signedIn.dispose();
   });
 
   it('refuses an address whose password the caller cannot produce', async () => {
     const account = owner();
-    const signedUp = await app.request('/api/auth/sign-up/email', {
+    const signedUp = await studio.app.request('/api/auth/sign-up/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -213,38 +366,42 @@ describe.skipIf(!db)('setup.complete', () => {
     });
     expect(signedUp.status).toBe(200);
 
-    const refused = await safe(
-      client.setup.complete({
-        token,
-        instanceName: INSTANCE_NAME,
-        owner: { ...account, password: 'a-different-password' },
-      }),
-    );
-
     // Holding the bootstrap token does not confer somebody else's account.
-    expect(refused.error).toMatchObject({ code: 'CONFLICT' });
+    // The reason is machine-readable now, where the oRPC boundary had only the
+    // CONFLICT code: `/setup` can say which conflict it was.
+    const refused = await expectRpcFailure(
+      client.callExit(
+        client.rpc('setup.complete', {
+          token,
+          instanceName: INSTANCE_NAME,
+          owner: { ...account, password: 'a-different-password' },
+        }),
+      ),
+      'Conflict',
+    );
+    expect(refused.reason).toBe('emailTaken');
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
   });
 
   it('refuses input the contract does not allow', async () => {
-    const rejected = await safe(
-      client.setup.complete({
+    const blankName = await client.callExit(
+      client.rpc('setup.complete', {
         token,
         instanceName: '   ',
         owner: owner(),
       }),
     );
-    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expectPayloadRejected(blankName, 'instanceName');
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
 
-    const shortPassword = await safe(
-      client.setup.complete({
+    const shortPassword = await client.callExit(
+      client.rpc('setup.complete', {
         token,
         instanceName: INSTANCE_NAME,
         owner: owner('short'),
       }),
     );
-    expect(shortPassword.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expectPayloadRejected(shortPassword, 'owner.password');
     expect((await readInstallation(scratch.pool))?.ownerUserId).toBeNull();
   });
 });

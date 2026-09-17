@@ -1,11 +1,13 @@
-import { Layer } from 'effect';
+import { Effect, Layer } from 'effect';
 
 import type { Studio } from '../app.ts';
+import { Environment } from '../env.ts';
 import { type HealthChecks, HealthRoutes } from './health.ts';
 import { HonoBridge } from './hono-bridge.ts';
 import { ClientAddressLive } from './middleware/client-address.ts';
 import { ProblemJson } from './middleware/problem-json.ts';
 import { RequestIdLive } from './middleware/request-id.ts';
+import { RpcRoutes } from './rpc-routes.ts';
 import { WsBridge } from './ws-bridge.ts';
 
 /**
@@ -23,13 +25,24 @@ import { WsBridge } from './ws-bridge.ts';
  *
  * The Hono bridge is outermost — built last — because it is a catch-all:
  * everything the Effect shell owns has to be registered before the route that
- * matches everything else.
+ * matches everything else. `/rpc` sits between the health routes and `/ws`,
+ * which is where design §8 puts it: the two machine surfaces the shell owns,
+ * then the upgrade, then whatever is left.
+ *
+ * The environment is read here rather than passed in, because the only thing
+ * the routes want from it is the browser-facing origin the `/rpc` CSRF gate
+ * compares against, and every caller of this function already provides it.
  */
-export const Routes = (studio: Studio, checks: HealthChecks) => {
-  const middlewares = ClientAddressLive.pipe(
-    Layer.provideMerge(RequestIdLive.pipe(Layer.provideMerge(ProblemJson))),
+export const Routes = (studio: Studio, checks: HealthChecks) =>
+  Layer.unwrap(
+    Effect.gen(function* () {
+      const env = yield* Environment;
+      const middlewares = ClientAddressLive.pipe(
+        Layer.provideMerge(RequestIdLive.pipe(Layer.provideMerge(ProblemJson))),
+      );
+      const health = HealthRoutes(checks).pipe(Layer.provideMerge(middlewares));
+      const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(health));
+      const ws = WsBridge(studio.ws).pipe(Layer.provideMerge(rpc));
+      return HonoBridge(studio.app).pipe(Layer.provideMerge(ws));
+    }),
   );
-  const health = HealthRoutes(checks).pipe(Layer.provideMerge(middlewares));
-  const ws = WsBridge(studio.ws).pipe(Layer.provideMerge(health));
-  return HonoBridge(studio.app).pipe(Layer.provideMerge(ws));
-};

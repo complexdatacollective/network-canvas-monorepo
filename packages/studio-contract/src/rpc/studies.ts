@@ -2,7 +2,12 @@ import { Schema } from 'effect';
 import { Rpc, RpcGroup } from 'effect/unstable/rpc';
 
 import { Authenticated } from '../middleware/authenticated.ts';
-import { Conflict, Forbidden, NotFound } from '../schema/errors.ts';
+import {
+  Conflict,
+  Forbidden,
+  NotFound,
+  RateLimited,
+} from '../schema/errors.ts';
 import {
   CreateStudyInput,
   CreateStudyResult,
@@ -26,7 +31,7 @@ export const StudiesRpcs = RpcGroup.make(
   Rpc.make('studies.list', {
     payload: TeamScoped,
     success: Schema.Array(StudySummary),
-    error: Forbidden,
+    error: Schema.Union([Forbidden, RateLimited]),
   }),
   /**
    * One study, addressed by study id alone: a study URL is canonical and has
@@ -38,7 +43,7 @@ export const StudiesRpcs = RpcGroup.make(
   Rpc.make('studies.get', {
     payload: StudyGetInput,
     success: StudyDetail,
-    error: Forbidden,
+    error: Schema.Union([Forbidden, RateLimited]),
   }),
   /**
    * How many things are at each countable destination of one study's
@@ -49,7 +54,7 @@ export const StudiesRpcs = RpcGroup.make(
   Rpc.make('studies.counts', {
     payload: StudyCountsInput,
     success: StudyCounts,
-    error: Schema.Union([Forbidden, NotFound]),
+    error: Schema.Union([Forbidden, NotFound, RateLimited]),
   }),
   /**
    * Creates the study and its protocol line in one transaction, so every
@@ -59,6 +64,12 @@ export const StudiesRpcs = RpcGroup.make(
   Rpc.make('studies.create', {
     payload: CreateStudyInput,
     success: CreateStudyResult,
-    error: Schema.Union([Forbidden, Conflict, NotFound, StudyCommandError]),
+    error: Schema.Union([
+      Forbidden,
+      Conflict,
+      NotFound,
+      RateLimited,
+      StudyCommandError,
+    ]),
   }),
 ).middleware(Authenticated);

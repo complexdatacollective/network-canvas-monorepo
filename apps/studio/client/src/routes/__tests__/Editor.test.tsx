@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { ORPCError } from '@orpc/client';
 import type { ClientLink } from '@orpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
@@ -10,9 +9,20 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
+import type { Me } from '@codaco/studio-contract/schema/account';
+import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+import { type StudyDetail } from '@codaco/studio-contract/schema/study';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -20,19 +30,40 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
 import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
+
+/**
+ * Each procedure's own handler, minus the options argument the harness passes
+ * it: a fixture that has drifted from the contract fails `tsc` rather than
+ * passing here.
+ */
+type Answer<Tag extends keyof StudioHandlers> = (
+  payload: Parameters<StudioHandlers[Tag]>[0],
+) => ReturnType<StudioHandlers[Tag]>;
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
 const STAGE_C = '33333333-3333-4333-8333-333333333333';
-const queryDraft = vi.hoisted(() => vi.fn());
+const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
+const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
+const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
+
+/**
+ * The study and the protocol line it points at share this identifier here, the
+ * way `TeamStudies` mints them: one UUID, two brands.
+ */
+const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 const DRAFT = {
   protocol: {
-    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    draftId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    id: ProtocolId.make(PROTOCOL_UUID),
+    draftId: DraftId.make('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
     name: 'Shell proof',
     createdAt: new Date('2026-08-28T00:00:00Z'),
     updatedAt: new Date('2026-08-28T00:00:00Z'),
@@ -94,17 +125,20 @@ const tenancy = {
   owner: TEAM_A.id as string | null,
 };
 
-const STUDY_ID = DRAFT.protocol.id;
+const STUDY_ID = StudyId.make(PROTOCOL_UUID);
 
-function studyDetail() {
-  if (tenancy.owner === null) throw new ORPCError('FORBIDDEN');
+/**
+ * The study as `studies.get` answers it, for the team that owns it. The schema
+ * module exports no type alias, so the shape is read off the schema itself.
+ */
+function studyDetail(owner: string): (typeof StudyDetail)['Type'] {
   return {
-    teamId: tenancy.owner,
+    teamId: TeamId.make(owner),
     study: {
       id: STUDY_ID,
       name: DRAFT.protocol.name,
-      state: 'draft' as const,
-      participationMode: 'managed' as const,
+      state: 'draft',
+      participationMode: 'managed',
       protocolId: DRAFT.protocol.id,
       createdAt: DRAFT.protocol.createdAt,
       waveCount: 0,
@@ -113,6 +147,31 @@ function studyDetail() {
     protocolDraftId: DRAFT.protocol.draftId,
   };
 }
+
+/** The signed-in researcher; nothing here turns on any of it. */
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  // `me` carries the account's UI-language preference; null means
+  // "follow the browser" (2026-09-04 localization design §5.2).
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
+
+const STATUS: InstanceStatus = {
+  name: 'Studio',
+  version: 'test',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 const protocolBuilderHost = vi.hoisted((): { client: unknown } => ({
   client: undefined,
@@ -351,83 +410,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: async () => ({
-          name: 'Studio',
-          version: 'test',
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      // The editor's owning team and draft id both come from here: one
-      // procedure, addressed by the study id the URL carries, which resolves
-      // the tenant server-side (§6.3).
-      get: {
-        queryOptions: ({ input }: { input: { studyId: string } }) => ({
-          queryKey: ['study', input.studyId],
-          queryFn: () => Promise.resolve(studyDetail()),
-        }),
-        key: ({ input }: { input: { studyId: string } }) => [
-          'study',
-          input.studyId,
-        ],
-      },
-      list: {
-        queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['studies', input.teamId],
-          queryFn: () => Promise.resolve([studyDetail().study]),
-        }),
-        key: ({ input }: { input: { teamId: string } }) => [
-          'studies',
-          input.teamId,
-        ],
-      },
-      create: { mutationOptions: vi.fn() },
-    },
-    protocols: {
-      draft: {
-        // The address travels into the mock so a test can read which team the
-        // draft was asked for. No `key`: nothing invalidates this query any
-        // more, because nothing on the screen is drawn from it beyond the
-        // draft's existence and the protocol's name.
-        queryOptions: ({ input }: { input: Record<string, string> }) => ({
-          queryKey: ['draft'],
-          queryFn: () => queryDraft(input),
-        }),
-      },
-    },
-  },
-  rpcClient: {
-    protocols: {
-      addInformationStage: vi
-        .fn()
-        .mockResolvedValue({ sequence: '3', hash: 'r3' }),
-      moveStage: vi.fn().mockResolvedValue({ sequence: '3', hash: 'r3' }),
-    },
-  },
-}));
-
 beforeEach(() => {
   tenancy.teams = [TEAM_A, TEAM_B];
   tenancy.activeTeam = TEAM_A;
@@ -455,16 +437,30 @@ beforeEach(() => {
   } as ReturnType<typeof authClient.useSession>);
   vi.mocked(authClient.signOut).mockReset();
   queryDraft.mockReset();
-  queryDraft.mockResolvedValue(DRAFT);
-  vi.mocked(rpcClient.protocols.addInformationStage).mockReset();
-  vi.mocked(rpcClient.protocols.addInformationStage).mockResolvedValue({
-    sequence: '3',
-    hash: 'r3',
-  });
-  vi.mocked(rpcClient.protocols.moveStage).mockReset();
-  vi.mocked(rpcClient.protocols.moveStage).mockResolvedValue({
-    sequence: '3',
-    hash: 'r3',
+  queryDraft.mockReturnValue(Effect.succeed(DRAFT));
+  addInformationStage.mockReset();
+  addInformationStage.mockReturnValue(
+    Effect.succeed({ sequence: '3', hash: 'r3' }),
+  );
+  moveStage.mockReset();
+  moveStage.mockReturnValue(Effect.succeed({ sequence: '3', hash: 'r3' }));
+  // The in-process rpc client for Studio's own procedures. `tenancy.owner`
+  // being null is the server refusing the study altogether, which is what the
+  // URL of a study in somebody else's team looks like from here (§6.3).
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () => Effect.succeed(STATUS),
+    'studies.get': () =>
+      tenancy.owner === null
+        ? Effect.fail(new Forbidden({}))
+        : Effect.succeed(studyDetail(tenancy.owner)),
+    'studies.list': () =>
+      tenancy.owner === null
+        ? Effect.fail(new Forbidden({}))
+        : Effect.succeed([studyDetail(tenancy.owner).study]),
+    'protocols.draft': (payload) => queryDraft(payload),
+    'protocols.addInformationStage': (payload) => addInformationStage(payload),
+    'protocols.moveStage': (payload) => moveStage(payload),
   });
   // Nothing in jsdom serves `/ws`, and the socket tests below are about which
   // sockets the transport opens rather than about what a host answers.
@@ -602,7 +598,7 @@ describe('Studio editor shell', () => {
     // this move was computed from is the one on screen, so the revision it is
     // fenced on is the host's.
     await waitFor(() =>
-      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+      expect(moveStage).toHaveBeenCalledWith(
         expect.objectContaining({
           stageId: STAGE_B,
           toIndex: 0,
@@ -879,21 +875,19 @@ describe('Studio editor shell', () => {
         }),
       ).not.toBeInTheDocument(),
     );
-    expect(rpcClient.protocols.addInformationStage).not.toHaveBeenCalled();
+    expect(addInformationStage).not.toHaveBeenCalled();
     expect(label).toHaveValue('Unsaved welcome');
 
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
-    await waitFor(() =>
-      expect(rpcClient.protocols.addInformationStage).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(addInformationStage).toHaveBeenCalledTimes(1));
   });
 
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
-    vi.mocked(rpcClient.protocols.addInformationStage).mockRejectedValueOnce(
-      new Error('response lost'),
+    addInformationStage.mockReturnValueOnce(
+      Effect.die(new Error('response lost')),
     );
     renderEditor();
     await screen.findByRole('heading', { name: 'Protocol sections' });
@@ -919,10 +913,12 @@ describe('Studio editor shell', () => {
    * this screen that is READ back rather than subscribed to.
    */
   it('shows the order a reorder of this researcher\u2019s left behind', async () => {
-    vi.mocked(rpcClient.protocols.moveStage).mockImplementation(async () => {
-      commandWrote.set(STAGE_ORDER, { stages: [STAGE_B, STAGE_A] });
-      return { sequence: '3', hash: 'r3' };
-    });
+    moveStage.mockImplementation(() =>
+      Effect.sync(() => {
+        commandWrote.set(STAGE_ORDER, { stages: [STAGE_B, STAGE_A] });
+        return { sequence: '3', hash: 'r3' };
+      }),
+    );
     renderEditor();
     const moveUp = await screen.findByRole('button', {
       name: 'Move Follow-up up',
@@ -943,8 +939,8 @@ describe('Studio editor shell', () => {
   });
 
   it('shows the screen an add of this researcher\u2019s left behind', async () => {
-    vi.mocked(rpcClient.protocols.addInformationStage).mockImplementation(
-      async ({ stageId }) => {
+    addInformationStage.mockImplementation(({ stageId }) =>
+      Effect.sync(() => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
           id: stageId,
           type: 'Information',
@@ -953,7 +949,7 @@ describe('Studio editor shell', () => {
         });
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
         return { sequence: '3', hash: 'r3' };
-      },
+      }),
     );
     renderEditor();
     await findStageNameField();
@@ -977,9 +973,7 @@ describe('Studio editor shell', () => {
   it('blocks another reorder until an ambiguous failure is reconciled', async () => {
     // Studio's reorder is a command of its own, outside the protocol
     // contract, so a lost answer leaves the new order unknown to this tab.
-    vi.mocked(rpcClient.protocols.moveStage).mockRejectedValueOnce(
-      new Error('response lost'),
-    );
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
     renderEditor();
     const moveUp = await screen.findByRole('button', {
       name: 'Move Follow-up up',
@@ -1071,7 +1065,7 @@ describe('a protocol that is not all here', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Move Closing up' }));
     await waitFor(() =>
-      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+      expect(moveStage).toHaveBeenCalledWith(
         expect.objectContaining({ stageId: STAGE_C, toIndex: 1 }),
       ),
     );
@@ -1192,7 +1186,7 @@ describe('what a collaborator changes', () => {
     );
 
     await waitFor(() =>
-      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+      expect(moveStage).toHaveBeenCalledWith(
         expect.objectContaining({
           stageId: STAGE_B,
           toIndex: 0,

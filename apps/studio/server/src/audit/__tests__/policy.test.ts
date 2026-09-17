@@ -3,12 +3,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Predicate } from 'effect';
 import pg from 'pg';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs, StudioStreams } from '@codaco/studio-contract/rpc/studio';
-import { contract } from '@codaco/studio-rpc';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import {
@@ -35,10 +35,27 @@ const REPO_ROOT = resolve(
   '../../../../../..',
 );
 
+/**
+ * A value whose properties can be read: an object, an array or a callable,
+ * never null. `Predicate.isObjectKeyword` is that check — better-auth's
+ * endpoints are functions carrying `path` and `options`, and an oRPC
+ * contract's nodes are plain objects, so both walks below need the callable
+ * case. The refinement adds the index signature the callers read through.
+ */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    (typeof value === 'object' && value !== null) || typeof value === 'function'
-  );
+  return Predicate.isObjectKeyword(value);
+}
+
+/**
+ * The default `toSorted()` ordering, spelled out: every inventory compared
+ * below is sorted by the same total order, so each comparison is about its
+ * contents alone. `toSorted()` with no argument sorts by the string form of
+ * each element, which is what this is for the string arrays here — stating it
+ * is what keeps the two sides of a comparison provably ordered alike.
+ */
+function byName(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
 }
 
 function contractLeaves(value: Record<string, unknown>, prefix = ''): string[] {
@@ -242,27 +259,23 @@ describe('audit mutation policy', () => {
       'protocolBuilder.resources.inspect',
       'protocolBuilder.resources.preview',
     ]);
-    const mutations = contractLeaves(contract).filter(
-      (procedure) => !reads.has(procedure),
-    );
-    expect(mutations.toSorted()).toEqual(
-      Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(),
-    );
-
-    // The Effect rpc plane must classify the same mutations as the oRPC
-    // contract above: tags are dotted the same way and `me` stays bare, so
-    // `reads` and `RPC_MUTATION_AUDIT_POLICIES` serve both walks unchanged.
-    // Keep the two walks agreeing until stage 2b deletes the oRPC one.
-    const effectProcedures = [
+    // The SPA's procedures are the Effect rpc group's request tags; the
+    // protocol-builder surface is still an oRPC contract until stage 8, so its
+    // leaves are walked the oRPC way — through the contract's own
+    // `StudioStreams` re-export, which is the one name that surface keeps.
+    // When stage 8 moves it onto the rpc plane this second half becomes
+    // `StudioStreams.requests.keys()` and `contractLeaves` goes with it.
+    //
+    // Tags are dotted exactly as the oRPC contract's paths were and `me` stays
+    // bare, so `reads` and `RPC_MUTATION_AUDIT_POLICIES` are unchanged by the
+    // move: the inventory this pins is the same one it pinned before.
+    const procedures = [
       ...StudioRpcs.requests.keys(),
-      // The protocol-builder surface is still oRPC until stage 8, so its
-      // leaves are walked the oRPC way — but through the contract's own
-      // `StudioStreams` re-export, which is the one name that surface keeps.
       ...contractLeaves(StudioStreams, 'protocolBuilder'),
     ];
-    const effectMutations = effectProcedures.filter((p) => !reads.has(p));
-    expect(effectMutations.toSorted()).toEqual(
-      Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(),
+    const mutations = procedures.filter((procedure) => !reads.has(procedure));
+    expect(mutations.toSorted(byName)).toEqual(
+      Object.keys(RPC_MUTATION_AUDIT_POLICIES).toSorted(byName),
     );
 
     expect(RPC_MUTATION_AUDIT_POLICIES['team.updateMemberRole']).toEqual({
@@ -342,8 +355,8 @@ describe('audit mutation policy', () => {
         },
       );
 
-      expect(runtimeRoutes.toSorted()).toEqual(
-        Object.keys(BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES).toSorted(),
+      expect(runtimeRoutes.toSorted(byName)).toEqual(
+        Object.keys(BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES).toSorted(byName),
       );
       for (const [key, policy] of Object.entries(
         BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES,
@@ -360,7 +373,9 @@ describe('audit mutation policy', () => {
   });
 
   it('keeps every unaudited Better Auth team mutation blocked', () => {
-    expect([...BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS].toSorted()).toEqual([
+    expect(
+      [...BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS].toSorted(byName),
+    ).toEqual([
       '/api/auth/organization/accept-invitation',
       '/api/auth/organization/cancel-invitation',
       '/api/auth/organization/create',
@@ -484,8 +499,8 @@ describe('audit mutation policy', () => {
       ...directOperations,
       ...Object.values(SYNC_TRANSACTION_POLICIES),
     ]);
-    expect([...usedOperations].toSorted()).toEqual(
-      Object.keys(NO_AUDIT_TRANSACTION_POLICIES).toSorted(),
+    expect([...usedOperations].toSorted(byName)).toEqual(
+      Object.keys(NO_AUDIT_TRANSACTION_POLICIES).toSorted(byName),
     );
   });
 });

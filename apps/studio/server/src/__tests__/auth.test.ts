@@ -1,7 +1,7 @@
-import { safe } from '@orpc/client';
+import { Predicate } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import { createApp, createStudio, type Studio } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
@@ -12,8 +12,68 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import { createRpcClient, expectRpcFailure } from './support/rpc.ts';
 import { testCipher, testKeyring } from './support/secrets.ts';
+import { composeStudio } from './support/serve.ts';
+
+/** `me` over the rpc plane, with the harness disposed however the case ends. */
+async function meOver(studio: Studio, headers?: Record<string, string>) {
+  const client = await createRpcClient(studio, headers);
+  try {
+    return await client.call(client.rpc('me', undefined));
+  } finally {
+    await client.dispose();
+  }
+}
+
+/** The same call, asserted to be refused as `Unauthorized`. */
+async function expectMeUnauthorized(
+  studio: Studio,
+  headers?: Record<string, string>,
+): Promise<void> {
+  const client = await createRpcClient(studio, headers);
+  try {
+    await expectRpcFailure(
+      client.callExit(client.rpc('me', undefined)),
+      'Unauthorized',
+    );
+  } finally {
+    await client.dispose();
+  }
+}
+
+/**
+ * The `exit` of the one `Exit` frame in an ndjson `/rpc` response body — the
+ * shape `rpc-setup.test.ts` reads a response with, left unnarrowed because the
+ * cases below are about how a call was refused rather than what it returned.
+ *
+ * Note that a refusal is still a 200: the rpc server answers the transport and
+ * puts the verdict in the frame, so a case that only read the status would pass
+ * on every one of these.
+ */
+async function exitFrameOf(response: Response): Promise<unknown> {
+  const frames = (await response.text())
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line: string): unknown => JSON.parse(line));
+  const frame = frames.find(
+    (one) => Predicate.hasProperty(one, '_tag') && one._tag === 'Exit',
+  );
+  if (!Predicate.hasProperty(frame, 'exit')) {
+    throw new Error(`no Exit frame in ${JSON.stringify(frames)}`);
+  }
+  return frame.exit;
+}
+
+/** The instance descriptor over the rpc plane. */
+async function statusOver(studio: Studio) {
+  const client = await createRpcClient(studio);
+  try {
+    return await client.call(client.rpc('status', undefined));
+  } finally {
+    await client.dispose();
+  }
+}
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -40,8 +100,7 @@ describe('principal resolution', () => {
           { teamId: 'team-b', role: 'admin,member' },
         ]),
     });
-    const client = createRpcClient(createApp(readEnv(), { auth }));
-    const me = await client.me();
+    const me = await meOver(createStudio(readEnv(), { auth }));
     expect(me).toEqual({
       userId: 'user-1',
       email: 'researcher@example.com',
@@ -55,11 +114,84 @@ describe('principal resolution', () => {
     });
   });
 
+  it('asks the provider with the request headers, not the cookie alone', async () => {
+    let asked: Headers | undefined;
+    const auth = stubAuthService({
+      getSession: (headers) => {
+        asked = headers;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    const me = await meOver(createStudio(readEnv(), { auth }), {
+      'cookie': 'studio.session_token=opaque',
+      'user-agent': 'Studio Test Agent',
+    });
+    expect(me.userId).toBe('user-1');
+    expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+    // The provider is handed a request rather than a cookie: which headers
+    // its endpoint consults is its own business, so the whole set goes
+    // through — the header set `createPrincipalMiddleware` passed on the Hono
+    // mount. This client talks to the handlers in process, so the set it
+    // presents is the only one there is; the case below is where a real
+    // request and a message that contradicts it are told apart.
+    expect(asked?.get('user-agent')).toBe('Studio Test Agent');
+  });
+
+  it('asks the provider with the headers the request carried, not ones a message attached', async () => {
+    // `RpcServer` merges each message's own headers over the request's, so
+    // `options.headers` is partly caller-supplied. A header a caller attaches
+    // with `RpcClient.withHeaders` must not reach the auth provider as though
+    // the deployment had received it: with `TRUSTED_PROXIES` set, the address
+    // better-auth resolves comes off `x-forwarded-for`, and the forgery would
+    // arrive in the request body where no reverse proxy can correct it.
+    let asked: Headers | undefined;
+    const auth = stubAuthService({
+      getSession: (headers) => {
+        asked = headers;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    // Over the transport, because that is the only place the two sets differ:
+    // the in-process client has no HTTP request behind it at all.
+    const configured = readEnv();
+    const stack = composeStudio(configured, createStudio(configured, { auth }));
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+          'cookie': 'studio.session_token=opaque',
+          'user-agent': 'The Real Agent',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'me',
+          payload: null,
+          headers: [
+            ['user-agent', 'A Forged Agent'],
+            ['x-forwarded-for', '203.0.113.9'],
+          ],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      expect(asked?.get('user-agent')).toBe('The Real Agent');
+      // Not overwritten and not invented: a header the request never carried
+      // stays absent however loudly the message names it.
+      expect(asked?.get('x-forwarded-for')).toBeNull();
+      // Still the request's own credential, which is the point of forwarding
+      // the set at all.
+      expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+    } finally {
+      await stack.dispose();
+    }
+  });
+
   it('refuses protected procedures without a session', async () => {
     const auth = stubAuthService();
-    const client = createRpcClient(createApp(readEnv(), { auth }));
-    const { error } = await safe(client.me());
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(createStudio(readEnv(), { auth }));
   });
 
   it('never falls back to the cookie when an Authorization header is present', async () => {
@@ -70,23 +202,142 @@ describe('principal resolution', () => {
         return Promise.resolve(PRINCIPAL);
       },
     });
-    const app = createApp(readEnv(), { auth });
+    const studio = createStudio(readEnv(), { auth });
 
-    const me = await createRpcClient(app).me();
+    const me = await meOver(studio);
     expect(me.userId).toBe('user-1');
 
     // With the header, the request is on the token plane (#1248): the cookie
     // session must not even be consulted.
-    const { error } = await safe(
-      createRpcClient(app, { authorization: 'Bearer some-token' }).me(),
-    );
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(studio, { authorization: 'Bearer some-token' });
     expect(getSessionCalls).toBe(1);
   });
 
+  it('refuses the token plane even when the message erases the header', async () => {
+    // The bypass a guard reading the merged set leaves open, and the reason
+    // the case above cannot stand for this one: it drives the in-process
+    // client, where the request's headers and the message's are one set, so it
+    // passes whichever set the guard asks.
+    //
+    // A message's headers are raw `JSON.parse` output — `layerNdjson` parses
+    // the envelope and never decodes it against `RequestEncoded` — so a caller
+    // may put a one-element entry there, which `Headers.fromInput` merges as
+    // `authorization: undefined`. The merged set then answers `undefined` to a
+    // `!== undefined` guard while the request still carries a real
+    // `Authorization`, and the cookie beside it would be the silent
+    // token-to-cookie fallback #1248 forbids.
+    let getSessionCalls = 0;
+    const auth = stubAuthService({
+      getSession: () => {
+        getSessionCalls += 1;
+        return Promise.resolve(PRINCIPAL);
+      },
+    });
+    const configured = readEnv();
+    const stack = composeStudio(configured, createStudio(configured, { auth }));
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+          'cookie': 'studio.session_token=opaque',
+          'authorization': 'Bearer real-token',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'me',
+          payload: null,
+          // Deliberately not a pair. The wire type says `[string, string]`;
+          // nothing on this path enforces it.
+          headers: [['authorization']],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      expect(await exitFrameOf(response)).toMatchObject({
+        _tag: 'Failure',
+        cause: [{ _tag: 'Fail', error: { _tag: 'Unauthorized' } }],
+      });
+      // And refused before the provider was consulted at all: a call that
+      // reached `getSession` had already handed it the cookie and the token
+      // together, whatever it went on to answer.
+      expect(getSessionCalls).toBe(0);
+    } finally {
+      await stack.dispose();
+    }
+  });
+
+  it('refuses a payload the contract rejects, at the server boundary', async () => {
+    // The server-side half of `expectPayloadRejected` (`support/rpc.ts`),
+    // which can only ever see the *client's* encoder refuse: under
+    // `RpcTest.makeClient` the payload never leaves the process. Over the
+    // transport the bytes arrive as sent, and it is `RpcServer`'s decode that
+    // refuses — a different code path, and the one a caller who is not using
+    // our client reaches.
+    //
+    // `setup.complete` because it is public: the refusal has to be the
+    // payload's, not a middleware's, and this way nothing else could have
+    // produced it.
+    const configured = readEnv();
+    const stack = composeStudio(
+      configured,
+      createStudio(configured, { auth: stubAuthService() }),
+    );
+    try {
+      const response = await stack.request('/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ndjson',
+          'sec-fetch-site': 'same-origin',
+        },
+        body: `${JSON.stringify({
+          _tag: 'Request',
+          id: 1,
+          tag: 'setup.complete',
+          payload: {
+            token: 'a-token',
+            // Blank once trimmed, which the contract refuses.
+            instanceName: '   ',
+            owner: {
+              name: 'First Owner',
+              email: 'owner@example.test',
+              password: 'first-owner-password',
+            },
+          },
+          headers: [],
+        })}\n`,
+      });
+      expect(response.status).toBe(200);
+
+      // A `Die`, not a declared failure: a payload the schema refuses is not
+      // one of the procedure's errors.
+      const exit = await exitFrameOf(response);
+      expect(exit).toMatchObject({
+        _tag: 'Failure',
+        cause: [{ _tag: 'Die' }],
+      });
+      // And the defect — `SchemaIssue.defaultFormatter`'s rendering of the
+      // refusal — has to name the field. "Died" alone is the same shape a call
+      // produces when it is admitted and then throws, which is the argument
+      // `expectPayloadRejected` makes for taking `field` at all; here it is
+      // also what says the decode refused this payload rather than the
+      // envelope around it.
+      const defect =
+        Predicate.hasProperty(exit, 'cause') &&
+        Predicate.hasProperty(exit.cause, 0) &&
+        Predicate.hasProperty(exit.cause[0], 'defect')
+          ? exit.cause[0].defect
+          : undefined;
+      expect(defect).toContain('instanceName');
+    } finally {
+      await stack.dispose();
+    }
+  });
+
   it('reports auth capabilities in the RPC status', async () => {
-    const client = createRpcClient(createApp());
-    const status = await client.status();
+    const status = await statusOver(createStudio());
     expect(status.auth).toEqual({
       enabled: true,
       magicLink: true,
@@ -101,10 +352,9 @@ describe('principal resolution', () => {
     // capability answers whether the method exists, and `mail` is the worker's
     // resolution — the web process's read leaves it undefined entirely.
     const base = readEnv();
-    const client = createRpcClient(
-      createApp({ ...base, mail: { kind: 'refuse' } }),
+    const status = await statusOver(
+      createStudio({ ...base, mail: { kind: 'refuse' } }),
     );
-    const status = await client.status();
     expect(status.auth.magicLink).toBe(true);
   });
 
@@ -121,8 +371,7 @@ describe('principal resolution', () => {
         },
       },
     };
-    const client = createRpcClient(createApp(withProviders));
-    const status = await client.status();
+    const status = await statusOver(createStudio(withProviders));
     expect(status.auth.socialProviders).toEqual(['google', 'microsoft']);
   });
 });
@@ -159,8 +408,7 @@ describe('unconfigured auth', () => {
   });
 
   it('reports auth as disabled in status', async () => {
-    const client = createRpcClient(createApp(env));
-    const status = await client.status();
+    const status = await statusOver(createStudio(env));
     expect(status.auth).toEqual({
       enabled: false,
       magicLink: false,
@@ -170,9 +418,7 @@ describe('unconfigured auth', () => {
   });
 
   it('refuses protected procedures', async () => {
-    const client = createRpcClient(createApp(env));
-    const { error } = await safe(client.me());
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    await expectMeUnauthorized(createStudio(env));
   });
 });
 
@@ -259,18 +505,17 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, email, cookie } = await signInWithMagicLink(
+      const { studio, email, cookie } = await signInWithMagicLink(
         env,
         scratch.app,
         'researcher',
       );
 
-      const me = await createRpcClient(app, { cookie }).me();
+      const me = await meOver(studio, { cookie });
       expect(me.email).toBe(email);
       expect(me.emailVerified).toBe(true);
 
-      const { error } = await safe(createRpcClient(app).me());
-      expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+      await expectMeUnauthorized(studio);
     } finally {
       await scratch.dispose();
     }
@@ -297,11 +542,11 @@ describe.skipIf(!db)('email/password sign-in', () => {
   const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
-  let app: ReturnType<typeof createApp>;
+  let studio: Studio;
 
   const signIn = (password: string) => {
     if (!env.auth) throw new Error('dev env must configure auth');
-    return app.request('/api/auth/sign-in/email', {
+    return studio.app.request('/api/auth/sign-in/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -328,7 +573,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     // ten minutes, which a developer re-running this file would reach on the
     // third run. The limiter is not what this file is about, so it states a
     // limit of its own rather than sharing the constant's window (#1909).
-    app = createApp(env, {
+    studio = createStudio(env, {
       auth,
       limits: { sign_in_email: SIGN_IN_ALLOWANCE },
     });
@@ -345,7 +590,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     expect(setCookie).toBeTruthy();
     const cookie = (setCookie ?? '').split(';')[0]!;
 
-    const me = await createRpcClient(app, { cookie }).me();
+    const me = await meOver(studio, { cookie });
     expect(me.email).toBe(SEED_ADMIN_EMAIL);
   });
 
@@ -365,12 +610,12 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, auth, cookie } = await signInWithMagicLink(
+      const { studio, auth, cookie } = await signInWithMagicLink(
         env,
         scratch.app,
         'owner',
       );
-      const me = await createRpcClient(app, { cookie }).me();
+      const me = await meOver(studio, { cookie });
 
       // Call the plugin handler directly in this integration test. Studio's
       // public forwarding boundary blocks organization creation until the

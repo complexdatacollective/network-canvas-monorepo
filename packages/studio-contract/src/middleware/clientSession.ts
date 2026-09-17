@@ -1,10 +1,9 @@
 import { Context } from 'effect';
 import { RpcMiddleware } from 'effect/unstable/rpc';
 
-// Imported rather than copied: one spelling of the header name, in the module
-// that explains why it exists. Stage 2b moves that module into this package,
-// at which point this re-export becomes the definition's new home.
-export { CLIENT_SESSION_HEADER } from '@codaco/studio-rpc/client-session';
+// Re-exported rather than copied: one spelling of the header name, defined in
+// the module that explains why it exists, which now lives in this package.
+export { CLIENT_SESSION_HEADER } from '../clientSession.ts';
 
 /**
  * Which browser tab is calling, or `null` for a caller that named none.

@@ -9,7 +9,7 @@ import {
   AuditListInput,
   AuditListOutput,
 } from '../schema/audit.ts';
-import { Forbidden, NotFound } from '../schema/errors.ts';
+import { Forbidden, NotFound, RateLimited } from '../schema/errors.ts';
 import { TeamScoped } from '../schema/team.ts';
 
 // The team's immutable activity record. Reads require the audit.read
@@ -18,17 +18,27 @@ import { TeamScoped } from '../schema/team.ts';
 //
 // Every audit denial is `Forbidden` and nothing else, including the
 // denial-rate-limit refusal; `AuditReadDenied`/`AuditTeamNotFound` are
-// internal to the read path and never declared here.
+// internal to the read path and never declared here. The `RateLimited` below
+// is a different thing entirely — the call limits, not the audit log's own
+// suppression, which stays unobservable.
+//
+// Every procedure here declares `RateLimited` as well as its own refusals. The
+// per-user and per-team call limits (#1909) are charged inside the handlers
+// that resolve the caller's team, not inside the `Authenticated` middleware, and
+// `Rpc.ToHandlerFn` types a handler's error channel from the rpc's OWN error
+// schema rather than from `Rpc.ErrorSchema` — which is what folds a middleware's
+// errors in. So a refusal the middleware's schema would happily encode still has
+// to be declared here for a handler to be able to raise it.
 export const AuditRpcs = RpcGroup.make(
   Rpc.make('audit.list', {
     payload: AuditListInput,
     success: AuditListOutput,
-    error: Schema.Union([Forbidden, NotFound]),
+    error: Schema.Union([Forbidden, NotFound, RateLimited]),
   }),
   Rpc.make('audit.get', {
     payload: AuditGetInput,
     success: AuditEventDetail,
-    error: Schema.Union([Forbidden, NotFound]),
+    error: Schema.Union([Forbidden, NotFound, RateLimited]),
   }),
   /**
    * The values the list filters can take, over the team's whole history. A
@@ -41,6 +51,6 @@ export const AuditRpcs = RpcGroup.make(
   Rpc.make('audit.filterOptions', {
     payload: TeamScoped,
     success: AuditFilterOptions,
-    error: Forbidden,
+    error: Schema.Union([Forbidden, RateLimited]),
   }),
 ).middleware(Authenticated);

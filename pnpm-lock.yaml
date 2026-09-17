@@ -1916,6 +1916,9 @@ importers:
       '@codaco/app-i18n':
         specifier: workspace:^
         version: link:../../../packages/app-i18n
+      '@codaco/effect-query':
+        specifier: workspace:^
+        version: link:../../../packages/effect-query
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../../../packages/fresco-ui
@@ -1931,6 +1934,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../../packages/shared-consts
+      '@codaco/studio-contract':
+        specifier: workspace:^
+        version: link:../../../packages/studio-contract
       '@codaco/studio-rpc':
         specifier: workspace:^
         version: link:../../../packages/studio-rpc
@@ -1952,9 +1958,6 @@ importers:
       '@orpc/contract':
         specifier: 'catalog:'
         version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
-      '@orpc/tanstack-query':
-        specifier: 'catalog:'
-        version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)(@tanstack/query-core@5.102.8)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.102.0)(terser@5.48.0)(tsx@4.23.5)(yaml@2.9.0))
@@ -1982,6 +1985,9 @@ importers:
       better-auth:
         specifier: 'catalog:'
         version: 1.7.5(89296fb7ff970654558b80537de8325c)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.115
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.3.0)
@@ -2033,6 +2039,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../../packages/shared-consts
+      '@codaco/studio-contract':
+        specifier: workspace:^
+        version: link:../../../packages/studio-contract
       '@codaco/studio-rpc':
         specifier: workspace:^
         version: link:../../../packages/studio-rpc
@@ -2091,9 +2100,6 @@ importers:
         specifier: ^4.5.4
         version: 4.5.4
     devDependencies:
-      '@codaco/studio-contract':
-        specifier: workspace:^
-        version: link:../../../packages/studio-contract
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../../tooling/typescript
@@ -3240,9 +3246,6 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../protocol-builder-core
-      '@codaco/studio-rpc':
-        specifier: workspace:^
-        version: link:../studio-rpc
       effect:
         specifier: 'catalog:'
         version: 4.0.0-rc.115
@@ -3265,9 +3268,9 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../protocol-builder-core
-      '@orpc/contract':
-        specifier: 'catalog:'
-        version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
+      '@codaco/studio-contract':
+        specifier: workspace:^
+        version: link:../studio-contract
       zod:
         specifier: ^4.5.4
         version: 4.5.4

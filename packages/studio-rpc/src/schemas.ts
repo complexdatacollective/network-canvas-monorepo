@@ -1,20 +1,33 @@
 import { z } from 'zod';
 
-import { SUPPORTED_STUDIO_LOCALES } from './locales.ts';
-import { DEPLOYMENT_MODES } from './surfaces.ts';
+// The enum tuples are imported from the Effect contract rather than declared
+// twice: this file's zod schemas and the contract's `Schema` ones describe the
+// same wire values, so one tuple each is what stops the two boundaries
+// drifting. They are re-exported below, beside the zod schema each one feeds,
+// because today's importers read them from here.
+import {
+  AUDIT_ACTOR_KINDS,
+  AUDIT_CATEGORIES,
+  AUDIT_OUTCOMES,
+} from '@codaco/studio-contract/schema/audit';
+import { SOCIAL_PROVIDERS } from '@codaco/studio-contract/schema/status';
+import {
+  STUDY_PARTICIPATION_MODES,
+  STUDY_STATES,
+} from '@codaco/studio-contract/schema/study';
+import { TEAM_ROLES } from '@codaco/studio-contract/schema/team';
 
-// Schemas for the internal RPC boundary, shared source-first between server
-// validation and the client's types (type-only on the client). This surface
-// is unpublished (#1248, 2026-08-11): no OpenAPI metadata, no registry ids.
-// Boundary schemas must have identical input and output types — no
-// `.transform()`, coercions, or divergent defaults — so one schema describes
-// both what the server emits and what the client receives. Declared output
-// schemas are also the serialization allowlist: fields not named here are
-// stripped before they reach the wire.
+// What is left of the zod boundary for the internal RPC surface.
+//
+// The twenty researcher-facing procedures validate through
+// `@codaco/studio-contract`'s Effect schemas now (#1930), so the payload and
+// result schemas they used are gone. What remains is the vocabulary the
+// server's own stores, commands and audit renderers type themselves from — the
+// enum tuples, the name bounds, and the audit row shapes — which moves when
+// that code does rather than when the boundary does.
 
-export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
+export { SOCIAL_PROVIDERS, TEAM_ROLES };
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
-export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
 export const TeamRoleSchema = z.enum(TEAM_ROLES);
 export type TeamRole = z.infer<typeof TeamRoleSchema>;
 export const TeamInvitationIdSchema = z
@@ -22,211 +35,6 @@ export const TeamInvitationIdSchema = z
   .min(1)
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
-
-// Read through `StatusSchema`; the server's `DeploymentStatus` and the
-// client's view of it are both inferred from that one output type.
-const DeploymentSchema = z.object({
-  /** Which topology this deployment serves; see `./surfaces.ts`. */
-  mode: z.enum(DEPLOYMENT_MODES),
-  /**
-   * Whether the deployment offers billing. Not implied by `managed`: billing
-   * (#1253) is separate configuration, and the shell has to render correctly
-   * where it is absent.
-   */
-  billing: z.boolean(),
-});
-
-export const StatusSchema = z.object({
-  /**
-   * What this instance calls itself: the name its owner gave it at first-run
-   * setup, or the product name until one is given (#1909).
-   */
-  name: z.string(),
-  version: z.string(),
-  auth: z.object({
-    enabled: z.boolean(),
-    magicLink: z.boolean(),
-    emailAndPassword: z.boolean(),
-    socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
-  }),
-  deployment: DeploymentSchema,
-  /**
-   * First-run bootstrap (#1909). `required` is true exactly while this
-   * instance has no owner — which is what `/setup` is for, and what makes the
-   * route a real screen rather than a not-found. Public, like the rest of
-   * status: whether an instance has been set up is not a secret, and the token
-   * that completes setup never leaves the operator's terminal.
-   */
-  setup: z.object({
-    required: z.boolean(),
-  }),
-});
-
-/** The instance's own name, as `/setup` stores it. */
-const InstanceNameSchema = z
-  .string()
-  .min(1)
-  .max(120)
-  .refine((name) => name.trim().length > 0, {
-    error: 'Instance name must contain a non-whitespace character',
-  });
-
-/**
- * What `/setup` submits: the token from the schema step, the instance's name,
- * and the first owner's account.
- *
- * The password bound is better-auth's own minimum (8) and its maximum (128);
- * refusing here means the form can say so rather than the provider refusing
- * an account this procedure has already decided to create.
- */
-export const CompleteSetupInputSchema = z.object({
-  token: z.string().min(1).max(256),
-  instanceName: InstanceNameSchema,
-  owner: z.object({
-    name: z.string().min(1).max(320),
-    email: z.email().max(320),
-    password: z.string().min(8).max(128),
-  }),
-});
-
-export const CompleteSetupResultSchema = z.object({
-  instanceName: InstanceNameSchema,
-});
-
-export const MeSchema = z.object({
-  userId: z.string(),
-  email: z.string(),
-  emailVerified: z.boolean(),
-  name: z.string(),
-  /*
-    The stored UI-language preference (2026-09-04 localization design §5.2);
-    null until the researcher chooses one. A plain string, NOT the
-    supported-locale enum, for the same reason `role` below is: the supported
-    list can narrow between releases, and a stored tag this build no longer
-    offers must fall back on the client rather than fail the whole of `me`.
-  */
-  locale: z.string().nullable(),
-  /**
-   * Every team the caller belongs to, and their role in it.
-   *
-   * Here rather than in a procedure of its own because it answers the same
-   * question `me` does — who is this, and what may they do — and because
-   * nothing else can answer it: Better Auth's `listOrganizations` joins the
-   * member table and then returns only the organization, dropping the role.
-   * The team NAMES still come from that list; this supplies what it drops.
-   */
-  teams: z.array(
-    z.object({
-      teamId: z.string().min(1).max(255),
-      /*
-        A plain string, NOT `TeamRoleSchema`. Better Auth stores a member's
-        roles as one comma-separated value, so a legacy row reads
-        "owner,admin" — and the enum would reject it, failing the whole of
-        `me` for that researcher rather than the one field. The client splits
-        it; that is what `teamRoles` is for.
-      */
-      role: z.string(),
-    }),
-  ),
-});
-
-/**
- * A non-null preference must be a tag this build supports — unknown tags are
- * a validation error, not a silent store (client and server ship together, so
- * the list is always current). Null clears the preference back to browser
- * negotiation ("Automatic").
- *
- * The enum, and not a canonicalising transform that would accept spellings
- * like `EN-gb`: BCP 47 tags are case-insensitive, but this is not a public
- * API. It is a contract typed end to end whose only caller is the generated
- * client, which sends tags from its own registry — so the narrow
- * `SupportedStudioLocale | null` input type is worth more than tolerating a
- * spelling no real caller produces. Widening the input to `string` to admit
- * one would give the client back the ability to send anything, and it is the
- * compile-time refusal that keeps the supported list and what can be stored
- * the same question.
- *
- * Where a tag genuinely is uncontrolled the repository is lenient about
- * exactly this: `@codaco/app-i18n`'s `resolveAppLocale` runs
- * `canonicalizeAppLocale` over the browser's requested list, and over the
- * stored preference on its way back out, so a case variant that reached the
- * column some other way still resolves. Lenient where the input is
- * uncontrolled, strict where it is typed — and the design's requirement that
- * this command canonicalise is satisfied for the tags it declares,
- * canonicalisation being the identity on every one of them.
- */
-export const UpdateAccountLocaleInputSchema = z.object({
-  locale: z.enum(SUPPORTED_STUDIO_LOCALES).nullable(),
-});
-
-// A plain string on the way out, like `MeSchema.locale`: what came back from
-// the row, not what this build's registry admits.
-export const UpdateAccountLocaleResultSchema = z.object({
-  locale: z.string().nullable(),
-});
-
-// Every team-scoped procedure names its team explicitly — the authz input is
-// never the session's active team (#1248: every route is team-scoped by
-// construction).
-export const TeamScopedSchema = z.object({
-  teamId: z.string().min(1),
-});
-
-export const UpdateTeamMemberRoleInputSchema = TeamScopedSchema.extend({
-  memberId: z.string().min(1),
-  role: TeamRoleSchema,
-});
-
-export const UpdateTeamMemberRoleResultSchema = z.object({
-  memberId: z.string().min(1),
-  role: TeamRoleSchema,
-});
-
-export const CreateTeamInvitationInputSchema = TeamScopedSchema.extend({
-  email: z.email().max(320),
-  role: TeamRoleSchema,
-});
-
-export const CreateTeamInvitationResultSchema = z.object({
-  invitationId: TeamInvitationIdSchema,
-  email: z.email().max(320),
-  role: TeamRoleSchema,
-  status: z.literal('pending'),
-  expiresAt: z.date(),
-});
-
-export const CancelTeamInvitationInputSchema = TeamScopedSchema.extend({
-  invitationId: TeamInvitationIdSchema,
-});
-
-export const CancelTeamInvitationResultSchema = z.object({
-  invitationId: TeamInvitationIdSchema,
-  status: z.literal('canceled'),
-});
-
-// Acceptance deliberately has no teamId: the authenticated invitee is not a
-// member yet, so the server resolves and locks the invitation's team instead
-// of trusting a tenant chosen by the browser.
-export const AcceptTeamInvitationInputSchema = z.object({
-  invitationId: TeamInvitationIdSchema,
-});
-
-export const AcceptTeamInvitationResultSchema = z.object({
-  invitationId: TeamInvitationIdSchema,
-  teamId: z.string().min(1).max(255),
-  teamName: z.string().min(1).max(320),
-  memberId: z.string().min(1).max(255),
-  role: TeamRoleSchema,
-  status: z.literal('accepted'),
-});
-
-export const ProtocolSummarySchema = z.object({
-  id: z.uuid(),
-  draftId: z.uuid().nullable(),
-  name: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
 
 export const ProtocolNameSchema = z
   .string()
@@ -242,11 +50,11 @@ export const ProtocolNameSchema = z
 // `studies_participation_mode_check` constraints, so a value the database
 // refuses cannot reach it, and a value it gains needs a migration this
 // boundary is versioned alongside.
-export const STUDY_STATES = ['draft', 'live', 'paused', 'closed'] as const;
+export { STUDY_STATES };
 export const StudyStateSchema = z.enum(STUDY_STATES);
 export type StudyState = z.infer<typeof StudyStateSchema>;
 
-export const STUDY_PARTICIPATION_MODES = ['managed', 'anonymous'] as const;
+export { STUDY_PARTICIPATION_MODES };
 export const StudyParticipationModeSchema = z.enum(STUDY_PARTICIPATION_MODES);
 export type StudyParticipationMode = z.infer<
   typeof StudyParticipationModeSchema
@@ -261,75 +69,6 @@ export const StudyNameSchema = z
   .refine((name) => name.trim().length > 0, {
     error: 'Study name must contain a non-whitespace character',
   });
-
-/**
- * One study as its team's list reports it. `protocolId` is nullable because
- * the column is: a Draft study may retarget its protocol line, and the
- * schema keeps the pin optional until go-live (#1262).
- *
- * The two counts come from the same row as the study, so the picker can say
- * how much work a study holds without a request per study. They are
- * decoration — a study with neither still lists — and they are not the study
- * sidebar's counts, which are per-destination and answered elsewhere.
- */
-export const StudySummarySchema = z.object({
-  id: z.uuid(),
-  name: z.string(),
-  state: StudyStateSchema,
-  participationMode: StudyParticipationModeSchema,
-  protocolId: z.uuid().nullable(),
-  createdAt: z.date(),
-  waveCount: z.number().int().nonnegative(),
-  participantCount: z.number().int().nonnegative(),
-});
-
-// No teamId, deliberately, and the same rule `AcceptTeamInvitationInputSchema`
-// records above: a cold direct navigation to `/study/$studyId` carries no
-// team, so the server resolves the tenant from the caller's own memberships
-// (app-shell design §6.3) rather than trusting one chosen by the browser.
-export const StudyGetInputSchema = z.object({
-  studyId: z.uuid(),
-});
-
-export const StudyDetailSchema = z.object({
-  /** The owning team, which only the server could say (§6.3). */
-  teamId: z.string().min(1).max(255),
-  study: StudySummarySchema,
-  /**
-   * The current editable draft of the study's protocol line, which is what
-   * the protocol editor is addressed by. Null when the study has no protocol
-   * line yet, or its line has no draft — two states the editor reports
-   * differently from a study it cannot reach at all.
-   */
-  protocolDraftId: z.uuid().nullable(),
-});
-
-// Creation mints every identifier client-side for the same reason protocol
-// creation does: a retry after a lost response repeats the same request
-// rather than leaving a second study behind.
-export const CreateStudyInputSchema = TeamScopedSchema.extend({
-  name: StudyNameSchema,
-  studyId: z.uuid(),
-  protocolId: z.uuid(),
-  draftId: z.uuid(),
-});
-
-export const CreateStudyResultSchema = z.object({
-  studyId: z.uuid(),
-  protocolId: z.uuid(),
-  draftId: z.uuid(),
-});
-
-export const CreateProtocolInputSchema = TeamScopedSchema.extend({
-  name: ProtocolNameSchema,
-  protocolId: z.uuid(),
-  draftId: z.uuid(),
-});
-
-export const CreateProtocolResultSchema = z.object({
-  protocolId: z.uuid(),
-  draftId: z.uuid(),
-});
 
 // Every value carried by this schema is a PostgreSQL `bigint` on the wire, and
 // the server hands these strings straight to a `::bigint` cast. The digit
@@ -348,47 +87,6 @@ const DecimalSequenceSchema = z
       !DECIMAL_SEQUENCE_PATTERN.test(value) || BigInt(value) <= PG_BIGINT_MAX,
     { message: 'must be within the PostgreSQL bigint range' },
   );
-const SectionDocumentSchema = z.record(z.string(), z.unknown());
-
-export const ProtocolDraftInputSchema = TeamScopedSchema.extend({
-  protocolId: z.uuid(),
-  draftId: z.uuid(),
-});
-
-export const ProtocolDraftSchema = z.object({
-  protocol: ProtocolSummarySchema.extend({ draftId: z.uuid() }),
-  revision: z.object({
-    sequence: DecimalSequenceSchema,
-    hash: z.string().min(1),
-  }),
-  sections: z.record(z.string(), SectionDocumentSchema),
-});
-
-export const ManifestRevisionSchema = z.object({
-  sequence: DecimalSequenceSchema,
-  hash: z.string().min(1),
-});
-
-export const AddInformationStageInputSchema = ProtocolDraftInputSchema.extend({
-  stageId: z.uuid(),
-});
-
-export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
-  stageId: z.string().min(1),
-  toIndex: z.number().int().nonnegative(),
-  expectedRevision: DecimalSequenceSchema,
-});
-
-// The four countable study destinations the app shell's sidebar carries
-// (app-shell design §5.5). Deliberately one procedure rather than a count field
-// on each destination's own list query: the sidebar needs all four on every
-// study screen, including the screens that list none of them, and four
-// separately-keyed queries would be four round trips whose answers could
-// disagree with each other.
-// Study id alone, like `StudyGetInputSchema`: the server resolves the team.
-export const StudyCountsInputSchema = z.object({
-  studyId: z.uuid(),
-});
 
 // Plain counts, not a rendered string: `NavItem` formats them in the runtime's
 // locale, and it is the one that decides a zero is left off entirely.
@@ -401,28 +99,14 @@ export const StudyCountsSchema = z.object({
 });
 export type StudyCounts = z.infer<typeof StudyCountsSchema>;
 
-// Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
-// new value requires a schema migration, which the fingerprint pipeline keeps
-// in lockstep with deployed code.
-export const AUDIT_CATEGORIES = [
-  'team_access',
-  'protocol',
-  'study',
-  'participant_data',
-  'data_egress',
-  'credential',
-  'integration',
-  'security',
-  'audit',
-] as const;
+export { AUDIT_CATEGORIES };
 export const AuditCategorySchema = z.enum(AUDIT_CATEGORIES);
 export type AuditCategory = z.infer<typeof AuditCategorySchema>;
 
-export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
+export { AUDIT_OUTCOMES };
 export const AuditOutcomeSchema = z.enum(AUDIT_OUTCOMES);
 export type AuditOutcome = z.infer<typeof AuditOutcomeSchema>;
 
-const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
 export const AuditActorKindSchema = z.enum(AUDIT_ACTOR_KINDS);
 
 // One actor exactly as the feed renders it. `id` is null only for a system
@@ -436,41 +120,6 @@ const AuditActorFilterSchema = z.object({
   id: z.string().min(1).max(255).nullable(),
 });
 export type AuditActorFilter = z.infer<typeof AuditActorFilterSchema>;
-
-// Sequences are per-team bigints represented as base-10 strings on the wire;
-// clients display and round-trip them but never do arithmetic on them. The
-// cursor is the last returned sequence and pages request `sequence < cursor`.
-export const AuditListInputSchema = TeamScopedSchema.extend({
-  cursor: DecimalSequenceSchema.optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-  categories: z
-    .array(AuditCategorySchema)
-    .min(1)
-    .max(AUDIT_CATEGORIES.length)
-    .optional(),
-  // Not the event types this build registers: the filter list is drawn from
-  // the team's whole history, which includes rows a newer server appended, so
-  // the only bound that holds is the one the table itself enforces
-  // (`audit_events_identifier_lengths_check`: `event_type` is 1–128
-  // characters). A narrower bound here would show an event in the feed, offer
-  // it in the action menu, and then reject the selection as a bad request.
-  eventTypes: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
-  actor: AuditActorFilterSchema.optional(),
-  outcomes: z
-    .array(AuditOutcomeSchema)
-    .min(1)
-    .max(AUDIT_OUTCOMES.length)
-    .optional(),
-  // A half-open instant window, `from <= occurred_at < to`. `occurred_at` is
-  // `statement_timestamp()`, which Postgres keeps to microseconds, so an
-  // inclusive end could never name the true last instant of a day — any bound
-  // a millisecond-precision `Date` can express leaves the final fractional
-  // millisecond outside it. Callers selecting a calendar day send the start of
-  // the following day, and both bounds are absolute instants, so the day
-  // boundaries are the caller's local ones whatever timezone the server keeps.
-  from: z.date().optional(),
-  to: z.date().optional(),
-});
 
 const AuditActorSchema = z.object({
   kind: AuditActorKindSchema,
@@ -503,11 +152,6 @@ export const AuditEventSummarySchema = z.object({
 });
 export type AuditEventSummary = z.infer<typeof AuditEventSummarySchema>;
 
-export const AuditListOutputSchema = z.object({
-  items: z.array(AuditEventSummarySchema),
-  nextCursor: DecimalSequenceSchema.nullable(),
-});
-
 // Filter values are drawn from the team's whole history, not from the pages
 // the client happens to have loaded, so an action or actor that appears only
 // in old history is still selectable. In practice the set is small — the
@@ -518,18 +162,12 @@ export const AuditListOutputSchema = z.object({
 // rather than silently shortening it.
 export const AUDIT_FACET_LIMIT = 200;
 
-// The input is TeamScopedSchema itself, as protocols.list is: the option set
-// is a property of the team and takes no other argument.
 export const AuditFilterOptionsSchema = z.object({
   actions: z.array(z.object({ eventType: z.string(), title: z.string() })),
   actors: z.array(AuditActorFilterSchema.extend({ label: z.string() })),
   truncated: z.boolean(),
 });
 export type AuditFilterOptions = z.infer<typeof AuditFilterOptionsSchema>;
-
-export const AuditGetInputSchema = TeamScopedSchema.extend({
-  eventId: z.uuid(),
-});
 
 export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   teamLabel: z.string(),

@@ -5,7 +5,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
-import { orpc } from '../lib/api.ts';
+import { toStudyId } from '../lib/ids.ts';
+import { rpcQuery } from '../runtime/rpc.ts';
 import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { studyDestinations } from './navigationManifest.ts';
@@ -63,17 +64,15 @@ export default function StudyArea({ studyId }: { studyId: string }) {
   // like `studies.get`, the procedure is addressed by the study alone and the
   // server resolves the team from the researcher's memberships, so the numbers
   // exist for exactly the studies they can open.
-  const counts = useQuery(
-    orpc.studies.counts.queryOptions({
-      input: { studyId },
-      // The client's own freshness applies, which for numbers that move while
-      // a researcher works is what is wanted: the sidebar stays mounted for
-      // the whole of a study visit, so nothing else would ever refresh them.
-      // A failure is not retried — the row simply has no number, which is a
-      // complete answer, and a retry loop behind a sidebar is not worth one.
-      retry: false,
-    }),
-  );
+  const counts = useQuery({
+    ...rpcQuery('studies.counts', { studyId: toStudyId(studyId) }),
+    // The client's own freshness applies, which for numbers that move while
+    // a researcher works is what is wanted: the sidebar stays mounted for
+    // the whole of a study visit, so nothing else would ever refresh them.
+    // A failure is not retried — the row simply has no number, which is a
+    // complete answer, and a retry loop behind a sidebar is not worth one.
+    retry: false,
+  });
 
   return (
     <AppArea

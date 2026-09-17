@@ -5,12 +5,23 @@
 import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
+import { createRouterClient } from '@orpc/server';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import {
+  DraftId,
+  ProtocolId,
+  StageId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
+import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
@@ -18,11 +29,15 @@ import {
   reachableDb,
   seedTeam,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM_ID = 'rpc-protocols-team';
+const TEAM_ID = TeamId.make('rpc-protocols-team');
 
 type Researcher = {
   principal: SessionPrincipal;
@@ -52,22 +67,31 @@ const MEMBER = researcher('member', 'member');
 
 /** One study, and the protocol line `studies.create` gave it. */
 type CreatedStudy = {
-  studyId: string;
-  protocolId: string;
-  draftId: string;
+  studyId: StudyId;
+  protocolId: ProtocolId;
+  draftId: DraftId;
 };
 
 describe.skipIf(!db)('the protocol RPC surface', () => {
   let pool: pg.Pool;
   let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
-  let clients: Map<Researcher, ReturnType<typeof createRpcClient>>;
+  let clients: Map<Researcher, RpcTestClient>;
+  /**
+   * The same researchers on the protocol-builder host, which is still an oRPC
+   * router served over `/ws` until stage 8 — so it is driven in process here
+   * rather than through the rpc plane, which no longer carries it.
+   */
+  let builderClients: Map<
+    Researcher,
+    ReturnType<typeof createRouterClient<ReturnType<typeof createRpcRouter>>>
+  >;
   /** A study the Member holds a study-role grant on. */
   let granted: CreatedStudy;
   /** A study of the same team that nobody granted the Member. */
   let ungranted: CreatedStudy;
   /** A protocol line no study references: the Admin-only case. */
-  let orphan: { protocolId: string; draftId: string };
+  let orphan: { protocolId: ProtocolId; draftId: DraftId };
 
   const asClient = (who: Researcher) => {
     const client = clients.get(who);
@@ -75,15 +99,21 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     return client;
   };
 
+  const asBuilderClient = (who: Researcher) => {
+    const client = builderClients.get(who);
+    if (!client) throw new Error(`no client for ${who.principal.userId}`);
+    return client;
+  };
+
   const createStudy = async (name: string): Promise<CreatedStudy> => {
     const input = {
       teamId: TEAM_ID,
-      studyId: randomUUID(),
-      protocolId: randomUUID(),
-      draftId: randomUUID(),
+      studyId: StudyId.make(randomUUID()),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
       name,
     };
-    await asClient(ADMIN).studies.create(input);
+    await asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input));
     return {
       studyId: input.studyId,
       protocolId: input.protocolId,
@@ -101,6 +131,10 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     await seedTeam(pool, TEAM_ID);
 
     clients = new Map();
+    builderClients = new Map();
+    // One runtime for both researchers: a lock one of them holds has to be
+    // visible to the other, which is what makes a refusal mean anything.
+    const protocolBuilder = createProtocolBuilderRuntime();
     for (const who of [ADMIN, MEMBER]) {
       await pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
@@ -119,9 +153,21 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
         listMemberships: () =>
           Promise.resolve([{ teamId: TEAM_ID, role: who.role }]),
       });
-      clients.set(
+      const studio = createStudio(readEnv(), { auth, pool: scratch.app });
+      clients.set(who, await createRpcClient(studio));
+      builderClients.set(
         who,
-        createRpcClient(createApp(readEnv(), { auth, pool: scratch.app })),
+        createRouterClient(
+          createRpcRouter({ ...studio.rpc, protocolBuilder }),
+          {
+            context: {
+              principal: who.principal,
+              requestId: randomUUID(),
+              connectionId: `${who.memberId}-connection`,
+              clientSessionId: `${who.memberId}-tab`,
+            },
+          },
+        ),
       );
     }
 
@@ -142,29 +188,37 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
       ],
     );
 
-    orphan = { protocolId: randomUUID(), draftId: randomUUID() };
-    await asClient(ADMIN).protocols.create({
-      teamId: TEAM_ID,
-      name: 'Study-less protocol',
-      ...orphan,
-    });
+    orphan = {
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
+    };
+    await asClient(ADMIN).call(
+      asClient(ADMIN).rpc('protocols.create', {
+        teamId: TEAM_ID,
+        name: 'Study-less protocol',
+        ...orphan,
+      }),
+    );
   });
 
   afterAll(async () => {
+    for (const client of clients.values()) await client.dispose();
     await dispose();
   });
 
   it('lists every line for an Admin and only granted lines for a Member', async () => {
-    const forAdmin = await asClient(ADMIN).protocols.list({ teamId: TEAM_ID });
+    const forAdmin = await asClient(ADMIN).call(
+      asClient(ADMIN).rpc('protocols.list', { teamId: TEAM_ID }),
+    );
     expect(forAdmin.map((protocol) => protocol.id).toSorted()).toEqual(
       [granted.protocolId, ungranted.protocolId, orphan.protocolId].toSorted(),
     );
 
     // The Member's own list is the answer `studies.list` gives them, read
     // through the other tier: one study, one line.
-    const forMember = await asClient(MEMBER).protocols.list({
-      teamId: TEAM_ID,
-    });
+    const forMember = await asClient(MEMBER).call(
+      asClient(MEMBER).rpc('protocols.list', { teamId: TEAM_ID }),
+    );
     expect(forMember.map((protocol) => protocol.id)).toEqual([
       granted.protocolId,
     ]);
@@ -172,43 +226,40 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
   });
 
   it('opens a granted line for a Member and refuses the rest identically', async () => {
-    const opened = await asClient(MEMBER).protocols.draft({
-      teamId: TEAM_ID,
-      protocolId: granted.protocolId,
-      draftId: granted.draftId,
-    });
+    const opened = await asClient(MEMBER).call(
+      asClient(MEMBER).rpc('protocols.draft', {
+        teamId: TEAM_ID,
+        protocolId: granted.protocolId,
+        draftId: granted.draftId,
+      }),
+    );
     expect(opened.protocol.id).toBe(granted.protocolId);
 
     // Three ways to be unable to reach a line, one answer: a line behind a
     // study this Member holds no grant on, a line no study references at all,
     // and a line that does not exist. Distinguishing them would make the
     // protocol surface the existence oracle `studies.get` refuses to be.
-    const refusals = await Promise.all([
-      safe(
-        asClient(MEMBER).protocols.draft({
-          teamId: TEAM_ID,
-          protocolId: ungranted.protocolId,
-          draftId: ungranted.draftId,
-        }),
+    const refusals: { protocolId: ProtocolId; draftId: DraftId }[] = [
+      { protocolId: ungranted.protocolId, draftId: ungranted.draftId },
+      { protocolId: orphan.protocolId, draftId: orphan.draftId },
+      {
+        protocolId: ProtocolId.make(randomUUID()),
+        draftId: DraftId.make(randomUUID()),
+      },
+    ];
+    await Promise.all(
+      refusals.map((line) =>
+        expectRpcFailure(
+          asClient(MEMBER).callExit(
+            asClient(MEMBER).rpc('protocols.draft', {
+              teamId: TEAM_ID,
+              ...line,
+            }),
+          ),
+          'Forbidden',
+        ),
       ),
-      safe(
-        asClient(MEMBER).protocols.draft({
-          teamId: TEAM_ID,
-          protocolId: orphan.protocolId,
-          draftId: orphan.draftId,
-        }),
-      ),
-      safe(
-        asClient(MEMBER).protocols.draft({
-          teamId: TEAM_ID,
-          protocolId: randomUUID(),
-          draftId: randomUUID(),
-        }),
-      ),
-    ]);
-    for (const { error } of refusals) {
-      expect(error).toMatchObject({ code: 'FORBIDDEN' });
-    }
+    );
 
     // The same rule on the editing surface. The protocol-builder host takes no
     // teamId — it derives the tenant from the caller's own memberships — so it
@@ -216,13 +267,13 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     // this Member holds no grant on as for a protocol id nobody ever made.
     const locks = await Promise.all([
       safe(
-        asClient(MEMBER).protocolBuilder.acquireLock({
+        asBuilderClient(MEMBER).protocolBuilder.acquireLock({
           protocolId: ungranted.protocolId,
           sectionId: 'settings',
         }),
       ),
       safe(
-        asClient(MEMBER).protocolBuilder.acquireLock({
+        asBuilderClient(MEMBER).protocolBuilder.acquireLock({
           protocolId: randomUUID(),
           sectionId: 'settings',
         }),
@@ -234,42 +285,50 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
   });
 
   it('refuses a Member’s edit of an ungranted line and commits nothing', async () => {
-    const stageId = randomUUID();
-    const { error } = await safe(
-      asClient(MEMBER).protocols.addInformationStage({
-        teamId: TEAM_ID,
-        protocolId: ungranted.protocolId,
-        draftId: ungranted.draftId,
-        stageId,
-      }),
+    const stageId = StageId.make(randomUUID());
+    await expectRpcFailure(
+      asClient(MEMBER).callExit(
+        asClient(MEMBER).rpc('protocols.addInformationStage', {
+          teamId: TEAM_ID,
+          protocolId: ungranted.protocolId,
+          draftId: ungranted.draftId,
+          stageId,
+        }),
+      ),
+      'Forbidden',
     );
-    expect(error).toMatchObject({ code: 'FORBIDDEN' });
 
     // Read back through the Admin, who can see the line: the refusal has to
     // mean the draft is untouched, not merely that the Member was told no.
-    const draft = await asClient(ADMIN).protocols.draft({
-      teamId: TEAM_ID,
-      protocolId: ungranted.protocolId,
-      draftId: ungranted.draftId,
-    });
+    const draft = await asClient(ADMIN).call(
+      asClient(ADMIN).rpc('protocols.draft', {
+        teamId: TEAM_ID,
+        protocolId: ungranted.protocolId,
+        draftId: ungranted.draftId,
+      }),
+    );
     expect(draft.sections.stageOrder).toEqual({ stages: [] });
     expect(draft.sections[`stage:${stageId}`]).toBeUndefined();
 
     // The same edit on the line they were granted goes through, so the refusal
     // above is about the study behind the line rather than about the procedure
     // being closed to Members altogether.
-    const grantedStageId = randomUUID();
-    await asClient(MEMBER).protocols.addInformationStage({
-      teamId: TEAM_ID,
-      protocolId: granted.protocolId,
-      draftId: granted.draftId,
-      stageId: grantedStageId,
-    });
-    const edited = await asClient(MEMBER).protocols.draft({
-      teamId: TEAM_ID,
-      protocolId: granted.protocolId,
-      draftId: granted.draftId,
-    });
+    const grantedStageId = StageId.make(randomUUID());
+    await asClient(MEMBER).call(
+      asClient(MEMBER).rpc('protocols.addInformationStage', {
+        teamId: TEAM_ID,
+        protocolId: granted.protocolId,
+        draftId: granted.draftId,
+        stageId: grantedStageId,
+      }),
+    );
+    const edited = await asClient(MEMBER).call(
+      asClient(MEMBER).rpc('protocols.draft', {
+        teamId: TEAM_ID,
+        protocolId: granted.protocolId,
+        draftId: granted.draftId,
+      }),
+    );
     expect(edited.sections.stageOrder).toEqual({ stages: [grantedStageId] });
   });
 
@@ -279,11 +338,15 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     const input = {
       teamId: TEAM_ID,
       name: 'Must not be created',
-      protocolId: randomUUID(),
-      draftId: randomUUID(),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
     };
-    const { error } = await safe(asClient(MEMBER).protocols.create(input));
-    expect(error).toMatchObject({ code: 'FORBIDDEN' });
+    await expectRpcFailure(
+      asClient(MEMBER).callExit(
+        asClient(MEMBER).rpc('protocols.create', input),
+      ),
+      'Forbidden',
+    );
 
     expect(
       await pool.query(`SELECT id FROM protocols WHERE id = $1`, [
@@ -299,7 +362,9 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
 
     // The same request from an Admin creates the line, so the refusal is the
     // role and not the input.
-    await expect(asClient(ADMIN).protocols.create(input)).resolves.toEqual({
+    await expect(
+      asClient(ADMIN).call(asClient(ADMIN).rpc('protocols.create', input)),
+    ).resolves.toEqual({
       protocolId: input.protocolId,
       draftId: input.draftId,
     });

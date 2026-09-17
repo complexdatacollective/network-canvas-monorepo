@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { orpc } from '../lib/api.ts';
 import { sessionQueryOptions } from '../lib/session.ts';
+import { rpcQuery } from '../runtime/rpc.ts';
 import { useStudioLocale } from './StudioI18nProvider.tsx';
 
 /**
@@ -33,10 +33,9 @@ import { useStudioLocale } from './StudioI18nProvider.tsx';
 export default function LocaleSync() {
   const { applyServerPreference } = useStudioLocale();
   const session = useQuery(sessionQueryOptions);
-  const me = useQuery({
-    ...orpc.me.queryOptions(),
-    enabled: session.data === 'signedIn',
-  });
+  const me = useQuery(
+    rpcQuery('me', undefined, { enabled: session.data === 'signedIn' }),
+  );
   const userId = me.data?.userId;
   const serverLocale = me.data?.locale ?? null;
 

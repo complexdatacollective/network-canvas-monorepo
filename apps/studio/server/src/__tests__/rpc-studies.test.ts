@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
+import {
+  DraftId,
+  ProtocolId,
+  StudyId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
+
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -15,21 +21,27 @@ import {
   seedTeam,
   uniqueTeamId,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
 const db = await reachableDb();
 
-const TEAM_ID = uniqueTeamId('rpc-studies-team');
-const OTHER_TEAM_ID = 'rpc-studies-other-team';
+// The payloads are branded, so the ids are built through the contract's own
+// schemas rather than passed as bare strings.
+const TEAM_ID = TeamId.make(uniqueTeamId('rpc-studies-team'));
+const OTHER_TEAM_ID = TeamId.make('rpc-studies-other-team');
 
 type Researcher = {
   principal: SessionPrincipal;
   memberId: string;
-  teamId: string;
+  teamId: TeamId;
   role: string;
 };
 
-function researcher(slug: string, teamId: string, role: string): Researcher {
+function researcher(slug: string, teamId: TeamId, role: string): Researcher {
   return {
     principal: {
       kind: 'user',
@@ -60,7 +72,7 @@ describe.skipIf(!db)('the studies RPC', () => {
   let appPool: pg.Pool;
   let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
-  let clients: Map<Researcher, ReturnType<typeof createRpcClient>>;
+  let clients: Map<Researcher, RpcTestClient>;
 
   const asClient = (who: Researcher) => {
     const client = clients.get(who);
@@ -100,12 +112,13 @@ describe.skipIf(!db)('the studies RPC', () => {
       });
       clients.set(
         who,
-        createRpcClient(createApp(readEnv(), { auth, pool: appPool })),
+        await createRpcClient(createStudio(readEnv(), { auth, pool: appPool })),
       );
     }
   });
 
   afterAll(async () => {
+    for (const client of clients.values()) await client.dispose();
     await dispose();
   });
 
@@ -129,12 +142,14 @@ describe.skipIf(!db)('the studies RPC', () => {
   const createStudy = async (name: string) => {
     const input = {
       teamId: TEAM_ID,
-      studyId: randomUUID(),
-      protocolId: randomUUID(),
-      draftId: randomUUID(),
+      studyId: StudyId.make(randomUUID()),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
       name,
     };
-    await expect(asClient(ADMIN).studies.create(input)).resolves.toEqual({
+    await expect(
+      asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input)),
+    ).resolves.toEqual({
       studyId: input.studyId,
       protocolId: input.protocolId,
       draftId: input.draftId,
@@ -228,7 +243,9 @@ describe.skipIf(!db)('the studies RPC', () => {
     // existing identity is not a second creation: no second study, no second
     // grant, and no second pair of events.
     await expect(
-      asClient(ADMIN).studies.create({ ...created }),
+      asClient(ADMIN).call(
+        asClient(ADMIN).rpc('studies.create', { ...created }),
+      ),
     ).resolves.toEqual({
       studyId: created.studyId,
       protocolId: created.protocolId,
@@ -254,7 +271,9 @@ describe.skipIf(!db)('the studies RPC', () => {
     // no grant for the replayer — the one write that used to slip through,
     // unaudited — and the creator's grant untouched.
     await expect(
-      asClient(SECOND_ADMIN).studies.create({ ...created }),
+      asClient(SECOND_ADMIN).call(
+        asClient(SECOND_ADMIN).rpc('studies.create', { ...created }),
+      ),
     ).resolves.toEqual({
       studyId: created.studyId,
       protocolId: created.protocolId,
@@ -291,7 +310,9 @@ describe.skipIf(!db)('the studies RPC', () => {
       );
     }
 
-    const forAdmin = await asClient(ADMIN).studies.list({ teamId: TEAM_ID });
+    const forAdmin = await asClient(ADMIN).call(
+      asClient(ADMIN).rpc('studies.list', { teamId: TEAM_ID }),
+    );
     // Newest first, which is the order the composite index is declared in.
     expect(forAdmin.map((study) => study.name)).toEqual([
       'Unshared study',
@@ -313,7 +334,9 @@ describe.skipIf(!db)('the studies RPC', () => {
     );
 
     // #1257: a team Member sees only the studies they hold a grant on.
-    const forMember = await asClient(MEMBER).studies.list({ teamId: TEAM_ID });
+    const forMember = await asClient(MEMBER).call(
+      asClient(MEMBER).rpc('studies.list', { teamId: TEAM_ID }),
+    );
     expect(forMember.map((study) => study.id)).toEqual([shared.studyId]);
   });
 
@@ -325,7 +348,9 @@ describe.skipIf(!db)('the studies RPC', () => {
     // No teamId in the input: a cold navigation to `/study/$studyId` has none
     // to send, so the server derives it (§6.3).
     await expect(
-      asClient(ADMIN).studies.get({ studyId: shared.studyId }),
+      asClient(ADMIN).call(
+        asClient(ADMIN).rpc('studies.get', { studyId: shared.studyId }),
+      ),
     ).resolves.toEqual({
       teamId: TEAM_ID,
       study: expect.objectContaining({
@@ -338,33 +363,47 @@ describe.skipIf(!db)('the studies RPC', () => {
       protocolDraftId: shared.draftId,
     });
     await expect(
-      asClient(MEMBER).studies.get({ studyId: shared.studyId }),
+      asClient(MEMBER).call(
+        asClient(MEMBER).rpc('studies.get', { studyId: shared.studyId }),
+      ),
     ).resolves.toMatchObject({ teamId: TEAM_ID });
 
     // Three ways to be unable to see a study, one answer: a study in this
     // team the Member holds no grant on, a study in a team the caller is not
     // in, and a study that does not exist at all. Distinguishing them would
     // make this an existence oracle.
-    const refusals = await Promise.all([
-      safe(asClient(MEMBER).studies.get({ studyId: hidden.studyId })),
-      safe(asClient(OUTSIDER).studies.get({ studyId: shared.studyId })),
-      safe(asClient(OUTSIDER).studies.get({ studyId: randomUUID() })),
-    ]);
-    for (const { error } of refusals) {
-      expect(error).toMatchObject({ code: 'FORBIDDEN' });
-    }
+    const refusals: [RpcTestClient, StudyId][] = [
+      [asClient(MEMBER), hidden.studyId],
+      [asClient(OUTSIDER), shared.studyId],
+      [asClient(OUTSIDER), StudyId.make(randomUUID())],
+    ];
+    await Promise.all(
+      refusals.map(([who, studyId]) =>
+        expectRpcFailure(
+          who.callExit(who.rpc('studies.get', { studyId })),
+          'Forbidden',
+        ),
+      ),
+    );
   });
 
   it('refuses study creation by a team Member and records the denial', async () => {
     const input = {
       teamId: TEAM_ID,
-      studyId: randomUUID(),
-      protocolId: randomUUID(),
-      draftId: randomUUID(),
+      studyId: StudyId.make(randomUUID()),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
       name: 'Must not be created',
     };
-    const { error } = await safe(asClient(MEMBER).studies.create(input));
-    expect(error).toMatchObject({ code: 'FORBIDDEN' });
+    // The command's own refusal, with its own code: `StudyCommandError` is no
+    // longer flattened into a bare status on the way out, so `FORBIDDEN` —
+    // the code the oRPC plane answered with — is now a field on the declared
+    // error rather than the whole of it.
+    const refused = await expectRpcFailure(
+      asClient(MEMBER).callExit(asClient(MEMBER).rpc('studies.create', input)),
+      'StudyCommandError',
+    );
+    expect(refused.code).toBe('FORBIDDEN');
 
     // Nothing committed — not the study, not the protocol line the command
     // writes before it.

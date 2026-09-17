@@ -1,10 +1,10 @@
-import { ORPCError } from '@orpc/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import type { SuccessOf } from '@codaco/effect-query/types';
 import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -15,11 +15,14 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 
-import { rpcClient } from '../lib/api.ts';
 import { invalidateInstanceStatus } from '../lib/deployment.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { sessionQueryOptions } from '../lib/session.ts';
+import { isConflict, isNotFound } from '../runtime/errors.ts';
+import { rpcCall } from '../runtime/rpc.ts';
+import type { StudioRpcsType } from '../runtime/runtime.ts';
 
 // First-run setup (#1909). The one screen an instance nobody owns can serve:
 // the operator brings the token the schema step printed, names the instance,
@@ -137,7 +140,7 @@ const messages = defineMessages({
   },
 });
 
-// Every bound below mirrors `CompleteSetupInputSchema` in `@codaco/studio-rpc`
+// Every bound below mirrors `CompleteSetupInput` in `@codaco/studio-contract`
 // exactly — 256, 120, 320, 320, and 8 to 128, better-auth's own password
 // window. The contract refuses anything outside them, so a field that did not
 // would send a submission the server was always going to reject and report it
@@ -171,8 +174,9 @@ export default function Setup() {
               success: false as const,
               formErrors: [intl.formatMessage(message)],
             });
+            let completed: SuccessOf<StudioRpcsType, 'setup.complete'>;
             try {
-              await rpcClient.setup.complete({
+              completed = await rpcCall('setup.complete', {
                 token: text(values.token),
                 instanceName: text(values.instanceName),
                 owner: {
@@ -182,28 +186,40 @@ export default function Setup() {
                 },
               });
             } catch (error) {
-              if (error instanceof ORPCError) {
-                if (error.code === 'UNAUTHORIZED') {
-                  return failure(messages.wrongToken);
-                }
-                if (error.code === 'NOT_FOUND') {
-                  return failure(messages.alreadySetUp);
-                }
-                if (error.code === 'CONFLICT') {
-                  return failure(messages.emailTaken);
-                }
+              // The procedure's three declared refusals, as the instances the
+              // contract sends rather than as transport codes: a wrong or
+              // missing token, an instance that already has an owner, and an
+              // email address somebody has already used.
+              if (error instanceof Unauthorized) {
+                return failure(messages.wrongToken);
+              }
+              if (isNotFound(error)) {
+                return failure(messages.alreadySetUp);
+              }
+              if (isConflict(error)) {
+                return failure(messages.emailTaken);
               }
               return failure(messages.failed);
             }
 
-            // The procedure's response carried the session cookie, so this is
-            // established fact rather than a guess — recorded rather than
-            // invalidated, for the reason `sessionQueryOptions` gives.
-            queryClient.setQueryData(sessionQueryOptions.queryKey, 'signedIn');
-            // Status is the other thing that has just changed: the instance
-            // has a name and an owner, so setup is closed and this route is
-            // about to become a not-found.
+            // Status has changed whatever else did: the instance has a name
+            // and an owner, so setup is closed and this route is about to
+            // become a not-found.
             await invalidateInstanceStatus(queryClient);
+            // Only when the response actually carried the new owner's session
+            // cookie, which is what `signedIn` reports. Recorded rather than
+            // invalidated, for the reason `sessionQueryOptions` gives — but it
+            // is a record of established fact, so it must not be written when
+            // the fact is that no session was established.
+            if (completed.signedIn) {
+              queryClient.setQueryData(
+                sessionQueryOptions.queryKey,
+                'signedIn',
+              );
+            }
+            // `/` resolves either way: to this researcher's landing
+            // destination when they are signed in, and to the way in when they
+            // are not.
             await navigate({ to: '/' });
             return { success: true };
           }}

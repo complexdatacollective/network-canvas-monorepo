@@ -1,8 +1,10 @@
-// `/ws` serves the same RPC router as `/rpc` (#1483). The fetch transport
-// answers one request with one response, so the host contract's only
-// streaming procedure — `watchProtocol` — is unserveable there; this is the
-// transport that carries it, and the wiring is what this file proves: a real
-// socket, through the real origin and principal guards, to the real router.
+// `/ws` is where the protocol-builder host is served (#1483), and since the
+// SPA's own procedures moved onto the Effect rpc plane it is the only place
+// that router is mounted at all. It has to be: a fetch transport answers one
+// request with one response, so the host contract's only streaming procedure
+// — `watchProtocol` — is unserveable over one. The wiring is what this file
+// proves: a real socket, through the real origin and principal guards, to the
+// real router.
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -15,8 +17,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { type contract } from '@codaco/studio-rpc';
-import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 

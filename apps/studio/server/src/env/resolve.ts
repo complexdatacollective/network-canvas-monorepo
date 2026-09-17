@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { parse as parseConnectionString } from 'pg-connection-string';
 
-import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
+import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
 import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
 import type { EnvironmentVariables } from './schema.ts';

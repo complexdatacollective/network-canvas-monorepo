@@ -2,9 +2,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Me } from '@codaco/studio-contract/schema/account';
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+
 import { createAppRouter } from '../../router.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * Which language Studio paints in, and when it knows (2026-09-04 localization
@@ -49,62 +55,31 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () =>
-          fixtures.meUnresolved
-            ? // Identity that never answers: the window the mirror exists for.
-              new Promise(() => undefined)
-            : Promise.resolve({
-                userId: 'user-1',
-                email: 'researcher@example.org',
-                emailVerified: true,
-                name: 'Researcher',
-                locale: fixtures.meLocale,
-                teams: [{ teamId: 'team-a', role: 'owner' }],
-              }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: vi.fn().mockResolvedValue({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
+/** The signed-in researcher, as `me` reports them, per test. */
+function me(): Me {
+  return {
+    userId: 'user-1',
+    email: 'researcher@example.org',
+    emailVerified: true,
+    name: 'Researcher',
+    locale: fixtures.meLocale,
+    teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+  };
+}
+
+/** What this instance says about itself; nothing here turns on any of it. */
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
   },
-  rpcClient: { account: { updateLocale: vi.fn() }, protocols: {}, team: {} },
-}));
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 const MIRROR_KEY = 'studio.locale';
 
@@ -161,6 +136,13 @@ beforeEach(() => {
   });
   fixtures.setActive.mockResolvedValue({ data: null, error: null });
   setBrowserLanguages(['en-US', 'en']);
+  // The in-process rpc client. `Effect.never` is identity that has not
+  // answered — the first-paint window the device mirror exists for.
+  installRpcHarness({
+    'me': () => (fixtures.meUnresolved ? Effect.never : Effect.succeed(me())),
+    'status': () => Effect.succeed(STATUS),
+    'studies.list': () => Effect.succeed([]),
+  });
 });
 
 describe('the locale a researcher lands in', () => {

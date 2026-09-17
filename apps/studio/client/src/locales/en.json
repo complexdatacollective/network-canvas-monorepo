@@ -1551,6 +1551,10 @@
     "defaultMessage": "Who belongs to this team, and which invitations are still outstanding.",
     "description": "Introduction under the members screen's heading."
   },
+  "studio.teamMembers.invitationCancelDeliveryInProgress": {
+    "defaultMessage": "This invitation is being sent right now. Try again in a moment.",
+    "description": "Error when cancelling an invitation while the delivery job holds it; nothing changed and the researcher can retry."
+  },
   "studio.teamMembers.invitationCancelRecovered": {
     "defaultMessage": "Team details refreshed. Check the pending invitations before trying again.",
     "description": "Shown after a later refresh succeeded following an unconfirmed invitation change."

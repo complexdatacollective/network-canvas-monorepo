@@ -1,68 +1,116 @@
 // @vitest-environment jsdom
-import { ORPCError } from '@orpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createAppRouter } from '../../router.tsx';
+import type { Me } from '@codaco/studio-contract/schema/account';
+import type { AuditEventSummary } from '@codaco/studio-contract/schema/audit';
+import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
-const fixtures = vi.hoisted(() => {
-  const invitationCreated = {
-    id: '00000000-0000-4000-8000-000000000003',
-    sequence: '3',
-    occurredAt: new Date('2026-08-30T10:15:00.000Z'),
-    eventType: 'team.invitation.created',
-    eventVersion: 1,
-    category: 'team_access',
-    outcome: 'succeeded',
-    actor: { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
-    subject: {
-      type: 'team_invitation',
-      id: 'invitation-1',
-      label: 'invitee@example.com',
-    },
-    resource: null,
-    title: 'Invitation created',
-    rendered: true,
-  };
-  const roleDenied = {
-    id: '00000000-0000-4000-8000-000000000002',
-    sequence: '2',
-    occurredAt: new Date('2026-08-30T10:05:00.000Z'),
-    eventType: 'team.member.role_change_denied',
-    eventVersion: 1,
-    category: 'team_access',
-    outcome: 'denied',
-    actor: { kind: 'user', id: 'user-admin', label: 'Admin Researcher' },
-    subject: { type: 'team_member', id: 'member-1', label: 'Member One' },
-    resource: null,
-    title: 'Member role change denied',
-    rendered: true,
-  };
-  const futureEvent = {
-    id: '00000000-0000-4000-8000-000000000001',
-    sequence: '1',
-    occurredAt: new Date('2026-08-30T10:00:00.000Z'),
-    eventType: 'audit.future_event',
-    eventVersion: 7,
-    category: 'audit',
-    outcome: 'succeeded',
-    actor: { kind: 'system', id: null, label: 'Studio' },
-    subject: null,
-    resource: null,
-    title: 'audit.future_event',
-    rendered: false,
-  };
-  return {
-    invitationCreated,
-    roleDenied,
-    futureEvent,
-    listAudit: vi.fn(),
-    getAudit: vi.fn(),
-    auditFilterOptions: vi.fn(),
-  };
-});
+import { createAppRouter } from '../../router.tsx';
+import {
+  installRpcHarness,
+  type StudioHandlers,
+} from '../../test/rpcHarness.ts';
+
+/**
+ * Each audit procedure's own handler, minus the options argument the harness
+ * passes it: a fixture that has drifted from the contract fails `tsc` rather
+ * than passing here.
+ */
+type Answer<Tag extends keyof StudioHandlers> = (
+  payload: Parameters<StudioHandlers[Tag]>[0],
+) => ReturnType<StudioHandlers[Tag]>;
+
+const invitationCreated: AuditEventSummary = {
+  id: AuditEventId.make('00000000-0000-4000-8000-000000000003'),
+  sequence: '3',
+  occurredAt: new Date('2026-08-30T10:15:00.000Z'),
+  eventType: 'team.invitation.created',
+  eventVersion: 1,
+  category: 'team_access',
+  outcome: 'succeeded',
+  actor: { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
+  subject: {
+    type: 'team_invitation',
+    id: 'invitation-1',
+    label: 'invitee@example.com',
+  },
+  resource: null,
+  title: 'Invitation created',
+  rendered: true,
+};
+
+const roleDenied: AuditEventSummary = {
+  id: AuditEventId.make('00000000-0000-4000-8000-000000000002'),
+  sequence: '2',
+  occurredAt: new Date('2026-08-30T10:05:00.000Z'),
+  eventType: 'team.member.role_change_denied',
+  eventVersion: 1,
+  category: 'team_access',
+  outcome: 'denied',
+  actor: { kind: 'user', id: 'user-admin', label: 'Admin Researcher' },
+  subject: { type: 'team_member', id: 'member-1', label: 'Member One' },
+  resource: null,
+  title: 'Member role change denied',
+  rendered: true,
+};
+
+const futureEvent: AuditEventSummary = {
+  id: AuditEventId.make('00000000-0000-4000-8000-000000000001'),
+  sequence: '1',
+  occurredAt: new Date('2026-08-30T10:00:00.000Z'),
+  eventType: 'audit.future_event',
+  eventVersion: 7,
+  category: 'audit',
+  outcome: 'succeeded',
+  actor: { kind: 'system', id: null, label: 'Studio' },
+  subject: null,
+  resource: null,
+  title: 'audit.future_event',
+  rendered: false,
+};
+
+const fixtures = {
+  invitationCreated,
+  roleDenied,
+  futureEvent,
+  listAudit: vi.fn<Answer<'audit.list'>>(),
+  getAudit: vi.fn<Answer<'audit.get'>>(),
+  auditFilterOptions: vi.fn<Answer<'audit.filterOptions'>>(),
+};
+
+/** The signed-in researcher; nothing here turns on any of it. */
+const ME: Me = {
+  userId: 'user-1',
+  email: 'researcher@example.org',
+  emailVerified: true,
+  name: 'Researcher',
+  // `me` carries the account's UI-language preference; null means
+  // "follow the browser" (2026-09-04 localization design §5.2).
+  locale: null,
+  teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+};
+
+// The team area reads the deployment topology from here to decide whether this
+// instance has billing at all (§10.4), so every test that renders a team route
+// needs an answer.
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'managed', billing: false },
+  setup: { required: false },
+};
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -101,115 +149,6 @@ type RetryOption =
   | number
   | ((failureCount: number, error: unknown) => boolean);
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    // The header renders on every app route, and its study segment asks for
-    // the team's studies — a real dependency of the shell these tests mount,
-    // not of this screen. It answers nothing here: no study is open, so the
-    // query is disabled and the segment is absent.
-    protocols: {
-      list: {
-        queryOptions: () => ({
-          queryKey: ['protocols', 'list'],
-          queryFn: () => [],
-        }),
-      },
-    },
-    // The team area reads the deployment topology from here to decide whether
-    // this instance has billing at all (§10.4), so every test that renders a
-    // team route needs an answer.
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          deployment: { mode: 'managed', billing: false },
-        }),
-      }),
-    },
-    // The header's study chip asks for the study on every app route, and
-    // answers nothing on one that names no study.
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    audit: {
-      list: {
-        infiniteOptions: (options: {
-          input: (pageParam: string | undefined) => Record<string, unknown>;
-          initialPageParam: string | undefined;
-          getNextPageParam: (page: {
-            nextCursor: string | null;
-          }) => string | undefined;
-          retry?: RetryOption;
-        }) => ({
-          queryKey: ['audit-list', JSON.stringify(options.input(undefined))],
-          queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-            fixtures.listAudit(options.input(pageParam)),
-          initialPageParam: options.initialPageParam,
-          getNextPageParam: options.getNextPageParam,
-          // The real @orpc/tanstack-query queryOptions/infiniteOptions spread
-          // their input options onto the returned query options, so a `retry`
-          // passed by the route reaches React Query. Mirror that here, or a
-          // retry regression cannot be observed.
-          retry: options.retry,
-        }),
-      },
-      get: {
-        queryOptions: (options: {
-          input: { teamId: string; eventId: string };
-          retry?: RetryOption;
-        }) => ({
-          queryKey: ['audit-get', options.input.eventId],
-          queryFn: () => fixtures.getAudit(options.input),
-          retry: options.retry,
-        }),
-      },
-      filterOptions: {
-        queryOptions: (options: {
-          input: { teamId: string };
-          enabled?: boolean;
-          staleTime?: number;
-          retry?: RetryOption;
-        }) => ({
-          queryKey: ['audit-filter-options', options.input.teamId],
-          queryFn: () => fixtures.auditFilterOptions(options.input),
-          // `enabled` gates the second audit read; a mock that ignored it
-          // could not observe the denied-path behaviour below.
-          enabled: options.enabled,
-          staleTime: options.staleTime,
-          retry: options.retry,
-        }),
-      },
-    },
-  },
-  rpcClient: {},
-}));
-
 // `retry` defaults to false so most tests observe a single attempt. The retry
 // tests pass a retrying default instead, so that a route query which forwards
 // no retry option of its own inherits it and visibly retries.
@@ -230,8 +169,8 @@ function renderActivity(defaultRetry: RetryOption = false) {
   );
 }
 
-function listPages(input: { cursor?: string; teamId: string }) {
-  return Promise.resolve(
+const listPages: Answer<'audit.list'> = (input) =>
+  Effect.succeed(
     input.cursor === undefined
       ? {
           items: [fixtures.invitationCreated, fixtures.roleDenied],
@@ -239,7 +178,6 @@ function listPages(input: { cursor?: string; teamId: string }) {
         }
       : { items: [fixtures.futureEvent], nextCursor: null },
   );
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -248,29 +186,41 @@ beforeEach(() => {
   // rest of the file running in New York.
   vi.unstubAllEnvs();
   fixtures.listAudit.mockImplementation(listPages);
-  fixtures.getAudit.mockResolvedValue({
-    ...fixtures.invitationCreated,
-    teamLabel: 'Alpha research team',
-    requestId: '00000000-0000-4000-8000-00000000aaaa',
-    details: { role: 'member' },
-  });
+  fixtures.getAudit.mockReturnValue(
+    Effect.succeed({
+      ...fixtures.invitationCreated,
+      teamLabel: 'Alpha research team',
+      requestId: '00000000-0000-4000-8000-00000000aaaa',
+      details: { role: 'member' },
+    }),
+  );
   // Deliberately a superset of the loaded pages: these are the team's whole
   // history, not the rows on screen.
-  fixtures.auditFilterOptions.mockResolvedValue({
-    actions: [
-      { eventType: 'team.invitation.created', title: 'Invitation created' },
-      {
-        eventType: 'team.member.role_change_denied',
-        title: 'Member role change denied',
-      },
-      { eventType: 'protocol.created', title: 'Protocol created' },
-    ],
-    actors: [
-      { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
-      { kind: 'user', id: 'user-departed', label: 'Departed Researcher' },
-      { kind: 'system', id: null, label: 'Studio' },
-    ],
-    truncated: false,
+  fixtures.auditFilterOptions.mockReturnValue(
+    Effect.succeed({
+      actions: [
+        { eventType: 'team.invitation.created', title: 'Invitation created' },
+        {
+          eventType: 'team.member.role_change_denied',
+          title: 'Member role change denied',
+        },
+        { eventType: 'protocol.created', title: 'Protocol created' },
+      ],
+      actors: [
+        { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
+        { kind: 'user', id: 'user-departed', label: 'Departed Researcher' },
+        { kind: 'system', id: null, label: 'Studio' },
+      ],
+      truncated: false,
+    }),
+  );
+  // The in-process rpc client, installed per test.
+  installRpcHarness({
+    'me': () => Effect.succeed(ME),
+    'status': () => Effect.succeed(STATUS),
+    'audit.list': (payload) => fixtures.listAudit(payload),
+    'audit.get': (payload) => fixtures.getAudit(payload),
+    'audit.filterOptions': (payload) => fixtures.auditFilterOptions(payload),
   });
 });
 
@@ -327,10 +277,9 @@ describe('Team activity screen', () => {
       name: 'audit.future_event Unrecognized event',
     });
 
-    fixtures.listAudit.mockResolvedValue({
-      items: [fixtures.roleDenied],
-      nextCursor: null,
-    });
+    fixtures.listAudit.mockReturnValue(
+      Effect.succeed({ items: [fixtures.roleDenied], nextCursor: null }),
+    );
     fireEvent.change(screen.getByLabelText('Outcome'), {
       target: { value: 'denied' },
     });
@@ -353,7 +302,9 @@ describe('Team activity screen', () => {
       ).toBeNull();
     });
 
-    fixtures.listAudit.mockResolvedValue({ items: [], nextCursor: null });
+    fixtures.listAudit.mockReturnValue(
+      Effect.succeed({ items: [], nextCursor: null }),
+    );
     fireEvent.change(screen.getByLabelText('Outcome'), {
       target: { value: 'failed' },
     });
@@ -394,10 +345,9 @@ describe('Team activity screen', () => {
       );
     });
 
-    fixtures.listAudit.mockResolvedValue({
-      items: [fixtures.roleDenied],
-      nextCursor: null,
-    });
+    fixtures.listAudit.mockReturnValue(
+      Effect.succeed({ items: [fixtures.roleDenied], nextCursor: null }),
+    );
     fireEvent.change(screen.getByLabelText('Action'), {
       target: { value: 'team.member.role_change_denied' },
     });
@@ -479,10 +429,9 @@ describe('Team activity screen', () => {
       );
     });
 
-    fixtures.listAudit.mockResolvedValue({
-      items: [fixtures.futureEvent],
-      nextCursor: null,
-    });
+    fixtures.listAudit.mockReturnValue(
+      Effect.succeed({ items: [fixtures.futureEvent], nextCursor: null }),
+    );
     fireEvent.change(screen.getByLabelText('Actor'), {
       target: { value: 'system:' },
     });
@@ -506,11 +455,9 @@ describe('Team activity screen', () => {
     });
     expect(screen.queryByText(/missing from them/)).toBeNull();
 
-    fixtures.auditFilterOptions.mockResolvedValue({
-      actions: [],
-      actors: [],
-      truncated: true,
-    });
+    fixtures.auditFilterOptions.mockReturnValue(
+      Effect.succeed({ actions: [], actors: [], truncated: true }),
+    );
     renderActivity();
     expect(
       await screen.findByText(/than these menus can list/),
@@ -518,7 +465,7 @@ describe('Team activity screen', () => {
   });
 
   it('asks for no filter options while the log itself is denied', async () => {
-    fixtures.listAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    fixtures.listAudit.mockReturnValue(Effect.fail(new Forbidden({})));
     renderActivity();
     await screen.findByText(/only available to team owners and admins/);
     // Every denied audit read commits a rate-limited audit.read_denied event;
@@ -527,7 +474,9 @@ describe('Team activity screen', () => {
   });
 
   it('shows the unfiltered empty state', async () => {
-    fixtures.listAudit.mockResolvedValue({ items: [], nextCursor: null });
+    fixtures.listAudit.mockReturnValue(
+      Effect.succeed({ items: [], nextCursor: null }),
+    );
     renderActivity();
     expect(
       await screen.findByText(
@@ -539,7 +488,7 @@ describe('Team activity screen', () => {
   it('recovers from a load error through Retry', async () => {
     // Rejects for every attempt: a transient failure is retried away by the
     // route's own retry option, so the error state needs a persistent failure.
-    fixtures.listAudit.mockRejectedValue(new Error('network down'));
+    fixtures.listAudit.mockReturnValue(Effect.die(new Error('network down')));
     renderActivity();
 
     expect(
@@ -553,7 +502,7 @@ describe('Team activity screen', () => {
   });
 
   it('shows the permission state for members', async () => {
-    fixtures.listAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    fixtures.listAudit.mockReturnValue(Effect.fail(new Forbidden({})));
     renderActivity();
 
     expect(
@@ -609,12 +558,14 @@ describe('Team activity screen', () => {
   });
 
   it('renders a detail value that JSON cannot express', async () => {
-    fixtures.getAudit.mockResolvedValue({
-      ...fixtures.invitationCreated,
-      teamLabel: 'Alpha research team',
-      requestId: '00000000-0000-4000-8000-00000000aaaa',
-      details: { role: 'member', attemptCount: 9007199254740993n },
-    });
+    fixtures.getAudit.mockReturnValue(
+      Effect.succeed({
+        ...fixtures.invitationCreated,
+        teamLabel: 'Alpha research team',
+        requestId: '00000000-0000-4000-8000-00000000aaaa',
+        details: { role: 'member', attemptCount: 9007199254740993n },
+      }),
+    );
     renderActivity();
     await screen.findByRole('cell', { name: 'Invitation created' });
 
@@ -626,7 +577,7 @@ describe('Team activity screen', () => {
   });
 
   it('does not retry either audit read after a permission refusal', async () => {
-    fixtures.listAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    fixtures.listAudit.mockReturnValue(Effect.fail(new Forbidden({})));
     renderActivity(2);
 
     expect(
@@ -638,7 +589,7 @@ describe('Team activity screen', () => {
   // A viewer demoted after the feed loaded gets FORBIDDEN from audit.get.
   // Retrying it appends a further audit.read_denied event per attempt.
   it('does not retry a detail read that was denied', async () => {
-    fixtures.getAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    fixtures.getAudit.mockReturnValue(Effect.fail(new Forbidden({})));
     renderActivity(2);
     await screen.findByRole('cell', { name: 'Invitation created' });
 
@@ -653,7 +604,9 @@ describe('Team activity screen', () => {
   // Guards the shape of the fix: suppressing retries outright would also stop
   // a transient failure from recovering.
   it('still retries a detail read that failed transiently', async () => {
-    fixtures.getAudit.mockRejectedValueOnce(new Error('network down'));
+    fixtures.getAudit.mockReturnValueOnce(
+      Effect.die(new Error('network down')),
+    );
     renderActivity(2);
     await screen.findByRole('cell', { name: 'Invitation created' });
 

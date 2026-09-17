@@ -340,6 +340,55 @@ describe.skipIf(!db)('migrate', () => {
   );
 
   it(
+    'takes the job schema down with a public step that fails after it',
+    async () => {
+      // The case above from the other side. There the install is the step
+      // that fails, so it proves nothing about an install that runs somewhere
+      // else: one hoisted out of the transaction entirely would fail in the
+      // same place and leave the same empty database behind. Here the install
+      // succeeds and a public statement after it fails, which is the only
+      // arrangement that can tell the two apart — a job schema committed on
+      // its own before the apply began would survive this rollback, leaving a
+      // database carrying half of what the stamp vouches for.
+      //
+      // The obstruction is an empty `schemaFingerprint` of the wrong shape.
+      // It is the one table the DDL creates that the staleness probe ignores,
+      // and with no row in it the verdict is still `absent` — so the run gets
+      // past the read and dies inside the transaction, on the `CREATE TABLE`
+      // that names it, a hundred-odd public statements in.
+      const scratch = await emptyDatabase();
+      await scratch.pool.query(
+        `create table "schemaFingerprint" ("fingerprint" text, "appliedAt" timestamp with time zone)`,
+      );
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'absent' });
+
+      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+        /relation "schemaFingerprint" already exists/,
+      );
+
+      // The oracle: `migrate` installs the job schema inside the transaction
+      // that applies the public one, so a public step that fails takes the
+      // job schema with it. An install that ran before that transaction
+      // committed itself, and this would find it still here.
+      const installed = await scratch.pool.query<{ present: boolean }>(
+        'select exists (select 1 from pg_namespace where nspname = $1) as present',
+        [JOB_SCHEMA],
+      );
+      expect(installed.rows[0]).toEqual({ present: false });
+
+      // And nothing of the public schema survives either, beyond the
+      // obstruction this case put there itself.
+      const tables = await scratch.pool.query<{ tablename: string }>(
+        `select tablename from pg_tables where schemaname = 'public' order by 1`,
+      );
+      expect(tables.rows.map((row) => row.tablename)).toEqual([
+        'schemaFingerprint',
+      ]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
     'refuses a database carrying tables but no fingerprint',
     async () => {
       // The `unstamped` verdict: a database whose SQL is unknown. Adopting it

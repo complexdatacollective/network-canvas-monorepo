@@ -1,7 +1,7 @@
 import type pg from 'pg';
 import { expect } from 'vitest';
 
-import { createApp } from '../../app.ts';
+import { createStudio } from '../../app.ts';
 import { createBetterAuthService } from '../../auth/better-auth.ts';
 import type { AuthService } from '../../auth/service.ts';
 import type { StudioEnv } from '../../env.ts';
@@ -49,8 +49,11 @@ export async function signInWithMagicLink(
     testCipher(),
   );
   // The same pool better-auth writes through, so RPC procedures address the
-  // scratch schema too rather than whatever DATABASE_URL points at.
-  const app = createApp(env, { auth, pool });
+  // scratch schema too rather than whatever DATABASE_URL points at. The whole
+  // Studio rather than its Hono half: `/rpc` is the Effect shell's now, and a
+  // suite driving it needs `studio.rpc` (see support/rpc.ts).
+  const studio = createStudio(env, { auth, pool });
+  const app = studio.app;
   const email = `${prefix}-${Date.now()}@example.com`;
 
   const send = await app.request('/api/auth/sign-in/magic-link', {
@@ -71,5 +74,5 @@ export async function signInWithMagicLink(
   expect(setCookie).toBeTruthy();
   const cookie = (setCookie ?? '').split(';')[0]!;
 
-  return { app, auth, email, cookie };
+  return { studio, app, auth, email, cookie };
 }

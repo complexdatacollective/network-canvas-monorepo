@@ -1,4 +1,4 @@
-import { createORPCClient, DynamicLink, ORPCError } from '@orpc/client';
+import { createORPCClient, DynamicLink } from '@orpc/client';
 import type { ClientLink } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
@@ -42,15 +42,23 @@ import {
   type ProtocolReading,
 } from '@codaco/protocol-builder/state/protocolContext';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
+import {
+  StageId,
+  type DraftId,
+  type ProtocolId,
+  type TeamId,
+} from '@codaco/studio-contract/schema/ids';
 import type { contract } from '@codaco/studio-rpc';
-import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { registerStudioEditorSession } from '../editor/sessionLifecycle.ts';
-import { orpc, rpcClient } from '../lib/api.ts';
 import { clientSessionId } from '../lib/clientSession.ts';
 import { createUuid } from '../lib/createUuid.ts';
+import { toStudyId } from '../lib/ids.ts';
+import { isForbidden } from '../runtime/errors.ts';
+import { rpcCall, rpcQuery } from '../runtime/rpc.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
 // the screen onto `/study/$studyId/editor`.
@@ -195,9 +203,9 @@ registerStudioEditorSession(async () => {
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {
-  teamId: string;
-  protocolId: string;
-  draftId: string;
+  teamId: TeamId;
+  protocolId: ProtocolId;
+  draftId: DraftId;
 };
 
 type Selection =
@@ -567,15 +575,14 @@ function stageLabel(
  * about their access.
  */
 function useEditorTarget(studyId: string): EditorTarget {
-  const study = useQuery(orpc.studies.get.queryOptions({ input: { studyId } }));
+  const study = useQuery(
+    rpcQuery('studies.get', { studyId: toStudyId(studyId) }),
+  );
 
   if (study.isPending) return { status: 'pending' };
   if (study.isError) {
     return {
-      status:
-        study.error instanceof ORPCError && study.error.code === 'FORBIDDEN'
-          ? 'unreachable'
-          : 'unavailable',
+      status: isForbidden(study.error) ? 'unreachable' : 'unavailable',
     };
   }
   const { teamId, study: row, protocolDraftId } = study.data;
@@ -653,7 +660,7 @@ export default function Editor() {
  */
 function ProtocolEditor({ address }: { address: DraftAddress }) {
   const intl = useAppIntl();
-  const draft = useQuery(orpc.protocols.draft.queryOptions({ input: address }));
+  const draft = useQuery(rpcQuery('protocols.draft', address));
 
   if (draft.isPending) {
     return (
@@ -809,8 +816,10 @@ function EditorWorkspace({
 
   const addStage = useMutation({
     mutationFn: async () => {
-      const stageId = createUuid();
-      await rpcClient.protocols.addInformationStage({ ...params, stageId });
+      // Checked rather than merely branded: an identifier this screen mints
+      // and the schema then refuses is a defect, not a refusal.
+      const stageId = StageId.make(createUuid());
+      await rpcCall('protocols.addInformationStage', { ...params, stageId });
       return stageId;
     },
     onSuccess: async (stageId) => {
@@ -826,7 +835,7 @@ function EditorWorkspace({
       toIndex: number;
       expectedRevision: bigint;
     }) =>
-      rpcClient.protocols.moveStage({
+      rpcCall('protocols.moveStage', {
         ...params,
         stageId: input.stageId,
         toIndex: input.toIndex,

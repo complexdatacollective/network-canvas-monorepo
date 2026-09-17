@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { Option } from 'effect';
 import { useState, type ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import type { SuccessOf } from '@codaco/effect-query/types';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -11,12 +13,13 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
+import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
 
-import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
 import { roleLabel } from '../lib/teamRoles.ts';
+import { rpcCall } from '../runtime/rpc.ts';
+import type { StudioRpcsType } from '../runtime/runtime.ts';
 
 const messages = defineMessages({
   unavailableHeading: {
@@ -134,9 +137,7 @@ function ScreenHeading({ children }: { children: ReactNode }) {
   );
 }
 
-type AcceptedInvitation = Awaited<
-  ReturnType<typeof rpcClient.team.acceptInvitation>
->;
+type AcceptedInvitation = SuccessOf<StudioRpcsType, 'team.acceptInvitation'>;
 
 export default function AcceptInvitation(props: { invitationId: string }) {
   const intl = useAppIntl();
@@ -148,10 +149,13 @@ export default function AcceptInvitation(props: { invitationId: string }) {
   const [accepted, setAccepted] = useState<AcceptedInvitation | null>(null);
   const [activationFailed, setActivationFailed] = useState(false);
   const [error, setError] = useState<'accept' | 'signOut' | null>(null);
-  const invitationId = TeamInvitationIdSchema.safeParse(props.invitationId);
+  // The link's own id, checked before anything is asked of it: an id this
+  // schema refuses could not have been minted here, and the screen says the
+  // link is not valid rather than sending it.
+  const invitationId = TeamInvitationId.makeOption(props.invitationId);
 
   const useDifferentAccount = async () => {
-    if (!invitationId.success) return;
+    if (Option.isNone(invitationId)) return;
     setSwitchingAccount(true);
     setError(null);
     try {
@@ -163,7 +167,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       queryClient.clear();
       await navigate({
         to: '/sign-in',
-        search: { invitationId: invitationId.data },
+        search: { invitationId: invitationId.value },
       });
     } catch {
       setError('signOut');
@@ -173,12 +177,12 @@ export default function AcceptInvitation(props: { invitationId: string }) {
   };
 
   const accept = async () => {
-    if (!invitationId.success) return;
+    if (Option.isNone(invitationId)) return;
     setAccepting(true);
     setError(null);
     try {
-      const result = await rpcClient.team.acceptInvitation({
-        invitationId: invitationId.data,
+      const result = await rpcCall('team.acceptInvitation', {
+        invitationId: invitationId.value,
       });
       try {
         const active = await authClient.organization.setActive({
@@ -218,7 +222,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       className="flex h-full items-center justify-center p-4"
     >
       <Surface className="max-w-xl" spacing="lg">
-        {!invitationId.success ? (
+        {Option.isNone(invitationId) ? (
           <>
             <ScreenHeading>
               {intl.formatMessage(messages.unavailableHeading)}
@@ -275,7 +279,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
             </ScreenHeading>
             <Paragraph>{intl.formatMessage(messages.signInPrompt)}</Paragraph>
             <Button asChild>
-              <Link to="/sign-in" search={{ invitationId: invitationId.data }}>
+              <Link to="/sign-in" search={{ invitationId: invitationId.value }}>
                 {intl.formatMessage(messages.signInToContinue)}
               </Link>
             </Button>

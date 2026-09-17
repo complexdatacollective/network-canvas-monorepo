@@ -1,6 +1,6 @@
 import type pg from 'pg';
 
-import type { SupportedStudioLocale } from '@codaco/studio-rpc';
+import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
 
 // The account namespace acts on the caller's own user row: requireUser only,
 // no tenant. Deliberately NOT an audited command (2026-09-04 localization

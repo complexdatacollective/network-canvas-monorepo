@@ -32,17 +32,22 @@ import {
 } from '@codaco/fresco-ui/Table';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
+import {
+  TEAM_ROLES,
+  TeamCommandError,
+  type TeamRole,
+} from '@codaco/studio-contract/schema/team';
 
-import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
+import { toMemberId, toTeamId, toTeamInvitationId } from '../lib/ids.ts';
 import {
   canManageTeam,
   roleLabel,
   teamRoles,
   teamRolesLabel,
 } from '../lib/teamRoles.ts';
+import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 /**
  * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
@@ -67,6 +72,16 @@ type TeamRefreshRecovery = {
 type TeamMutationOutcome = {
   commit: 'confirmed' | 'unknown';
   refreshed: boolean;
+  /**
+   * What the mutation rejected with, for the caller that recognises a
+   * particular refusal. `undefined` whenever the commit is confirmed.
+   *
+   * The reconciler cannot read it: an unknown commit is unknown precisely
+   * because a failure says nothing about whether the command landed. A caller
+   * that can identify a *declared* refusal knows more than that, and this is
+   * where it gets to look.
+   */
+  failure: unknown;
 };
 
 async function reconcileTeamMutation<Result>(
@@ -74,13 +89,26 @@ async function reconcileTeamMutation<Result>(
   refresh: () => Promise<boolean>,
 ): Promise<TeamMutationOutcome> {
   let commit: TeamMutationOutcome['commit'] = 'confirmed';
+  let failure: unknown;
   try {
     await mutation();
-  } catch {
+  } catch (error) {
     commit = 'unknown';
+    failure = error;
   }
-  return { commit, refreshed: await refresh() };
+  return { commit, failure, refreshed: await refresh() };
 }
+
+/**
+ * The one refusal this screen can explain rather than reconcile: the delivery
+ * job holds the invitation while it sends the email, so a cancellation that
+ * races it is turned away with nothing changed (design §5). It is a confirmed
+ * refusal, not an unknown commit — the researcher needs to know to try again
+ * in a moment, not to go and check what happened.
+ */
+const isDeliveryInProgress = (failure: unknown): boolean =>
+  failure instanceof TeamCommandError &&
+  failure.code === 'DELIVERY_IN_PROGRESS';
 
 type TeamRefreshState = {
   activeMember: Pick<
@@ -141,7 +169,7 @@ function useTeamStateRefresh(
         // without this it would go on calling them Owner until something
         // unrelated remounted it.
         Promise.resolve().then(() =>
-          queryClient.invalidateQueries({ queryKey: orpc.me.key() }),
+          queryClient.invalidateQueries({ queryKey: rpcKey('me') }),
         ),
       ]);
       if (
@@ -305,6 +333,13 @@ const messages = defineMessages({
       'Studio could not confirm whether the invitation was cancelled, and team details could not be refreshed. Refresh them before trying again.',
     description:
       'Shown when cancelling an invitation may or may not have landed and team details could not be re-read either.',
+  },
+  invitationCancelDeliveryInProgress: {
+    id: 'studio.teamMembers.invitationCancelDeliveryInProgress',
+    defaultMessage:
+      'This invitation is being sent right now. Try again in a moment.',
+    description:
+      'Error when cancelling an invitation while the delivery job holds it; nothing changed and the researcher can retry.',
   },
   invitationCancelRecovered: {
     id: 'studio.teamMembers.invitationCancelRecovered',
@@ -613,9 +648,9 @@ function TeamManagement(props: {
     try {
       const outcome = await reconcileTeamMutation(
         () =>
-          rpcClient.team.updateMemberRole({
-            teamId: team.id,
-            memberId,
+          rpcCall('team.updateMemberRole', {
+            teamId: toTeamId(team.id),
+            memberId: toMemberId(memberId),
             role,
           }),
         refreshTeamState,
@@ -668,13 +703,25 @@ function TeamManagement(props: {
     try {
       const outcome = await reconcileTeamMutation(
         () =>
-          rpcClient.team.cancelInvitation({
-            teamId: team.id,
-            invitationId,
+          rpcCall('team.cancelInvitation', {
+            teamId: toTeamId(team.id),
+            invitationId: toTeamInvitationId(invitationId),
           }),
         refreshTeamState,
       );
       if (outcome.commit === 'unknown') {
+        // A declared refusal, so there is nothing to reconcile: the invitation
+        // is exactly as it was, and the researcher is told to try again rather
+        // than sent to check the list.
+        if (isDeliveryInProgress(outcome.failure)) {
+          setMessage({
+            kind: 'error',
+            text: intl.formatMessage(
+              messages.invitationCancelDeliveryInProgress,
+            ),
+          });
+          return;
+        }
         if (outcome.refreshed) {
           setMessage({
             kind: 'error',
@@ -889,8 +936,8 @@ function TeamManagement(props: {
               try {
                 const outcome = await reconcileTeamMutation(
                   () =>
-                    rpcClient.team.createInvitation({
-                      teamId: team.id,
+                    rpcCall('team.createInvitation', {
+                      teamId: toTeamId(team.id),
                       email,
                       role,
                     }),

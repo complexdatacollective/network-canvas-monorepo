@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -11,14 +11,15 @@ import {
 } from '@codaco/fresco-ui/navigation/TeamAndStudySwitcher';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { toStudyId } from '../lib/ids.ts';
 import {
   STUDY_STATE_MESSAGES,
   STUDY_STATE_TONES,
   studySummaryLine,
 } from '../lib/studyState.ts';
 import { teamRolesLabel } from '../lib/teamRoles.ts';
+import { rpcKey, rpcQuery } from '../runtime/rpc.ts';
 
 /**
  * The header's team ▸ study lockup (§5.5): the team the researcher is acting
@@ -171,15 +172,22 @@ function useStudySegment(
   const intl = useAppIntl();
   const navigate = useNavigate();
 
-  const study = useQuery({
-    ...orpc.studies.get.queryOptions({ input: { studyId: studyId ?? '' } }),
-    enabled: studyId !== undefined,
-  });
+  // `skipToken` rather than a disabled query with a placeholder payload: the
+  // two identifiers these are addressed by are branded, and there is no string
+  // that stands in for one. A payload built from `studyId ?? ''` would be a
+  // query keyed on, and one `enabled` mistake away from asking about, a study
+  // that cannot exist.
+  const study = useQuery(
+    studyId === undefined
+      ? { queryKey: rpcKey('studies.get'), queryFn: skipToken }
+      : rpcQuery('studies.get', { studyId: toStudyId(studyId) }),
+  );
   const teamId = study.data?.teamId;
-  const siblings = useQuery({
-    ...orpc.studies.list.queryOptions({ input: { teamId: teamId ?? '' } }),
-    enabled: teamId !== undefined,
-  });
+  const siblings = useQuery(
+    teamId === undefined
+      ? { queryKey: rpcKey('studies.list'), queryFn: skipToken }
+      : rpcQuery('studies.list', { teamId }),
+  );
 
   // No study on screen: the segment is absent, not empty. After every hook, so
   // the hook order does not depend on the route.
@@ -288,8 +296,10 @@ export default function EntityLockup({ className }: { className?: string }) {
   // Every membership, from `me`. Better Auth's team list drops the role, so
   // without this only the ACTIVE team could carry one and every other row
   // would be silent about what the researcher may do there.
-  const me = useQuery(orpc.me.queryOptions());
-  const roles = new Map(
+  const me = useQuery(rpcQuery('me', undefined));
+  // Keyed by plain string, because it is looked up by the ids Better Auth's
+  // own team list reports, which carry no brand.
+  const roles = new Map<string, string>(
     (me.data?.teams ?? []).map((membership) => [
       membership.teamId,
       membership.role,

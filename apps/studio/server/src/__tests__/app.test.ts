@@ -67,10 +67,14 @@ describe('studio server', () => {
   });
 
   it('serves instance status over the typed RPC surface', async () => {
-    const client = createRpcClient(createApp());
-    const status = await client.status();
-    expect(status.name).toBe('Network Canvas Studio');
-    expect(status.version).toMatch(/^\d+\.\d+\.\d+/);
+    const client = await createRpcClient(createStudio());
+    try {
+      const status = await client.call(client.rpc('status', undefined));
+      expect(status.name).toBe('Network Canvas Studio');
+      expect(status.version).toMatch(/^\d+\.\d+\.\d+/);
+    } finally {
+      await client.dispose();
+    }
   });
 
   it('does not serve unknown RPC paths', async () => {

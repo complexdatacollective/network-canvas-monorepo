@@ -3,9 +3,12 @@
 // created stage reachable, and the replay that makes a dropped connection
 // recoverable.
 //
-// Driven through `createRouterClient` rather than a transport, so what is
-// under test is the router and its storage rather than a serialization: the
-// WebSocket wiring is covered by ws-protocol-builder.test.ts.
+// These procedures are served at `/ws` alone, through stage 1's socket bridge
+// — the SPA's own twenty live on the Effect rpc plane at `/rpc` and this
+// router no longer has a unary mount of its own. Driven through
+// `createRouterClient` rather than a transport, so what is under test is the
+// router and its storage rather than a serialization: the WebSocket wiring is
+// covered by ws-protocol-builder.test.ts.
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -15,12 +18,19 @@ import { createRouterClient } from '@orpc/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  DraftId,
+  ProtocolId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { SyncServer } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
+import { createStudio } from '../app.ts';
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { resolve as resolveEnv } from '../env/resolve.ts';
 import {
   createProtocolBuilderRuntime,
   IDLE_MS,
@@ -38,7 +48,8 @@ import {
   reachableDb,
   seedTeam,
 } from './support/postgres.ts';
-import { testCipher } from './support/secrets.ts';
+import { createRpcClient, type RpcTestClient } from './support/rpc.ts';
+import { testCipher, testKeyringEntry } from './support/secrets.ts';
 
 const db = await reachableDb();
 
@@ -158,6 +169,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let router: ReturnType<typeof createRpcRouter>;
   let buildRouter: () => ReturnType<typeof createRpcRouter>;
   let runtime: ProtocolBuilderRuntime;
+  /**
+   * The researcher-facing plane beside the host: `protocols.draft` is served
+   * by the Effect rpc server at `/rpc`, so the one case that reads a whole
+   * draft back drives it through that client rather than this router.
+   */
+  let adaRpc: RpcTestClient;
   /**
    * The object store a content promotion writes through, in memory.
    *
@@ -292,56 +309,73 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     // its staging areas, its lease keeper — is built here, so calling it again
     // is a restarted server serving the same database.
     buildRouter = () =>
-      createRpcRouter(
-        {
+      createRpcRouter({
+        auth: stubAuthService({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        capabilities: {
           enabled: true,
           emailAndPassword: true,
           magicLink: false,
           socialProviders: [],
         },
-        {
-          auth: stubAuthService({
-            listMemberships: memberships,
-            getMembership: membership,
-          }),
-          deployment: { mode: 'self-hosted', billing: false },
-          // Nothing here reads `status`; the installation row is the
-          // first-run bootstrap's (#1909), and an unset one is "no
-          // installation to report".
-          readInstallation: () => Promise.resolve(null),
-          pool: scratch.app,
-          protocolBuilder: createProtocolBuilderRuntime(() => now),
-          assetStore,
-          cipher: testCipher(),
-        },
-      );
-    router = createRpcRouter(
-      {
+        deployment: { mode: 'self-hosted', billing: false },
+        // Nothing here reads `status`; the installation row is the first-run
+        // bootstrap's (#1909), and an unset one is "no installation to
+        // report".
+        readInstallation: () => Promise.resolve(null),
+        pool: scratch.app,
+        protocolBuilder: createProtocolBuilderRuntime(() => now),
+        assetStore,
+        cipher: testCipher(),
+      });
+    router = createRpcRouter({
+      auth: stubAuthService({
+        listMemberships: memberships,
+        getMembership: membership,
+      }),
+      capabilities: {
         enabled: true,
         emailAndPassword: true,
         magicLink: false,
         socialProviders: [],
       },
-      {
-        auth: stubAuthService({
-          listMemberships: memberships,
-          getMembership: membership,
-        }),
-        deployment: { mode: 'self-hosted', billing: false },
-        readInstallation: () => Promise.resolve(null),
-        pool: scratch.app,
-        protocolBuilder: runtime,
-        assetStore,
-        cipher: testCipher(),
-      },
-    );
+      deployment: { mode: 'self-hosted', billing: false },
+      readInstallation: () => Promise.resolve(null),
+      pool: scratch.app,
+      protocolBuilder: runtime,
+      assetStore,
+      cipher: testCipher(),
+    });
     clients = new Map([
       [ADA, clientFor(ADA)],
       [GRACE, clientFor(GRACE)],
     ]);
+    // The same keyring the router above is built with, so a draft read back
+    // through the rpc plane opens the rows this suite sealed.
+    adaRpc = await createRpcClient(
+      createStudio(
+        resolveEnv({
+          NODE_ENV: 'test',
+          STUDIO_SECRETS_KEY: ['test-1', 'test-2']
+            .map(testKeyringEntry)
+            .join(','),
+        }),
+        {
+          auth: stubAuthService({
+            getSession: () => Promise.resolve(ADA.principal),
+            listMemberships: memberships,
+            getMembership: membership,
+          }),
+          pool: scratch.app,
+        },
+      ),
+    );
   });
 
   afterAll(async () => {
+    await adaRpc.dispose();
     await dispose?.();
   });
 
@@ -837,11 +871,13 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     }
 
     // And the researcher-facing read of the whole draft carries none of it.
-    const draft = await asClient(ADA).protocols.draft({
-      teamId: TEAM_ID,
-      protocolId,
-      draftId,
-    });
+    const draft = await adaRpc.call(
+      adaRpc.rpc('protocols.draft', {
+        teamId: TeamId.make(TEAM_ID),
+        protocolId: ProtocolId.make(protocolId),
+        draftId: DraftId.make(draftId),
+      }),
+    );
     expect(JSON.stringify(draft)).not.toContain(SECRET);
   });
 
@@ -1952,10 +1988,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
   /**
    * Presence is a connection's: a colleague's cursor is drawn from a socket
-   * and goes when that socket does. A unary call has no connection at all, and
-   * the cookie session it falls back to for ownership is shared by every tab
-   * of a browser and never ends — so a lock taken over `/rpc` adds no
-   * participant, because nothing would ever be able to remove it.
+   * and goes when that socket does. A call that names no connection has none,
+   * and the cookie session it falls back to for ownership is shared by every
+   * tab of a browser and never ends — so such a lock adds no participant,
+   * because nothing would ever be able to remove it.
    */
   it('adds no participant for a lock taken without a connection', async () => {
     const sectionId = stageSection(reference.stageId);

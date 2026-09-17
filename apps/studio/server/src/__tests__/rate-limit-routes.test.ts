@@ -1,17 +1,28 @@
 import { randomUUID } from 'node:crypto';
 
-import { createORPCClient, isDefinedError, safe } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterContractClient } from '@orpc/contract';
+import { safe } from '@orpc/client';
+import { createRouterClient } from '@orpc/server';
+import { Cause, Exit } from 'effect';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import type { contract } from '@codaco/studio-rpc';
+import {
+  ProtocolId,
+  TeamId,
+  TeamInvitationId,
+} from '@codaco/studio-contract/schema/ids';
 
-import { createApp, createStudio } from '../app.ts';
+import { createApp, createStudio, type Studio } from '../app.ts';
 import { resolve } from '../env/resolve.ts';
+import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import type { RateLimitSettings } from '../rate-limit/scopes.ts';
+import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 import { startStudioServer } from './support/serve.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
@@ -98,23 +109,67 @@ function appWith(
   return createApp(env, deps);
 }
 
-/** An RPC client that keeps the response so a header can be read off it. */
-function rpcClientFor(app: ReturnType<typeof createApp>) {
-  const responses: Response[] = [];
-  const link = new RPCLink({
-    origin: 'http://studio.test',
-    url: '/rpc',
-    headers: { 'sec-fetch-site': 'same-origin' },
-    fetch: async (request, init) => {
-      const response = await app.request(request, init);
-      responses.push(response);
-      return response;
+function studioWith(
+  limits: Partial<RateLimitSettings>,
+  principalUserId?: string,
+  memberOfTeamId?: string,
+): Studio {
+  const { env, deps } = appOptions(limits, principalUserId, memberOfTeamId);
+  return createStudio(env, deps);
+}
+
+/**
+ * A client on the rpc plane, which is where the `rpc_user`, `rpc_team` and
+ * `invitation_accept` limits are charged now.
+ *
+ * A refusal there is the contract's `RateLimited({ retryAfterSeconds })` and
+ * nothing else: the `Retry-After` header the oRPC fetch plane carried is gone
+ * by design (design §14, "two failure planes"), because the same procedures
+ * are served over a socket, where a frame has no headers to put it in. The
+ * HTTP surfaces below keep the header, and their cases are unchanged.
+ */
+function rpcClientFor(studio: Studio): Promise<RpcTestClient> {
+  return createRpcClient(studio);
+}
+
+/** The protocol-builder host, still an oRPC router served over `/ws`. */
+function builderClientFor(studio: Studio, userId: string) {
+  return createRouterClient(
+    createRpcRouter({
+      ...studio.rpc,
+      protocolBuilder: createProtocolBuilderRuntime(),
+    }),
+    {
+      context: {
+        principal: {
+          kind: 'user',
+          userId,
+          email: `${userId}@example.org`,
+          emailVerified: true,
+          name: 'Researcher',
+          locale: null,
+          sessionId: `session-${userId}`,
+        },
+        requestId: randomUUID(),
+        connectionId: `${userId}-connection`,
+        clientSessionId: `${userId}-tab`,
+      },
     },
-  });
-  return {
-    client: createORPCClient(link) as RouterContractClient<typeof contract>,
-    lastResponse: () => responses.at(-1),
-  };
+  );
+}
+
+/**
+ * A call the limiter admitted: there is no database behind these apps, so the
+ * procedure behind the limit fails on the pool, and the call dies rather than
+ * failing with one of its declared errors. That it got that far is what proves
+ * it was admitted — the same thing `INTERNAL_SERVER_ERROR` proved on the oRPC
+ * plane.
+ */
+function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
+  expect(Exit.isFailure(exit)).toBe(true);
+  if (Exit.isFailure(exit)) {
+    expect(Cause.hasDies(exit.cause)).toBe(true);
+  }
 }
 
 /** The shape every refusal takes, whichever surface produced it. */
@@ -171,38 +226,27 @@ describe.skipIf(!url)('the limited request paths', () => {
     // guard a 404 and the live path would have none. The client accepts over
     // RPC (client/src/routes/AcceptInvitation.tsx).
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ invitation_accept: perMinute(2) }, userId);
-    const { client, lastResponse } = rpcClientFor(app);
-    const invitationId = randomUUID();
-
-    // Admitted calls fail inside the procedure — there is no database behind
-    // this app — which is what proves they got past the limiter.
-    const admitted = async () => {
-      const { error } = await safe(
-        client.team.acceptInvitation({ invitationId }),
-      );
-      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-    };
-    await admitted();
-    await admitted();
-
-    const { error } = await safe(
-      client.team.acceptInvitation({ invitationId }),
+    const client = await rpcClientFor(
+      studioWith({ invitation_accept: perMinute(2) }, userId),
     );
-    expect(error).toMatchObject({
-      code: 'TOO_MANY_REQUESTS',
-      data: { retryAfter: expect.any(Number) },
-    });
-    expect(lastResponse()?.status).toBe(429);
-    expect(Number(lastResponse()?.headers.get('Retry-After'))).toBeGreaterThan(
-      0,
-    );
+    const invitationId = TeamInvitationId.make(randomUUID());
+    try {
+      const accept = (id = invitationId) =>
+        client.callExit(
+          client.rpc('team.acceptInvitation', { invitationId: id }),
+        );
 
-    // Another token is another bucket.
-    const other = await safe(
-      client.team.acceptInvitation({ invitationId: randomUUID() }),
-    );
-    expect(other.error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+      expectAdmitted(await accept());
+      expectAdmitted(await accept());
+
+      const refused = await expectRpcFailure(accept(), 'RateLimited');
+      expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+
+      // Another token is another bucket.
+      expectAdmitted(await accept(TeamInvitationId.make(randomUUID())));
+    } finally {
+      await client.dispose();
+    }
   });
 
   it('refuses the blocked better-auth invitation route outright', async () => {
@@ -293,57 +337,73 @@ describe.skipIf(!url)('the limited request paths', () => {
     }
   });
 
-  it('refuses a third RPC call for one user, with Retry-After on the response', async () => {
+  it('refuses a third RPC call for one user, with the interval to wait', async () => {
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ rpc_user: perMinute(2) }, userId);
-    const { client, lastResponse } = rpcClientFor(app);
+    const client = await rpcClientFor(
+      studioWith({ rpc_user: perMinute(2) }, userId),
+    );
+    try {
+      await expect(
+        client.call(client.rpc('me', undefined)),
+      ).resolves.toMatchObject({ userId });
+      await expect(
+        client.call(client.rpc('me', undefined)),
+      ).resolves.toMatchObject({ userId });
 
-    await expect(client.me()).resolves.toMatchObject({ userId });
-    await expect(client.me()).resolves.toMatchObject({ userId });
-
-    const refused = await safe(client.me());
-    expect(refused.error).toBeInstanceOf(Error);
-    expect(isDefinedError(refused.error)).toBe(false);
-    expect(refused.error).toMatchObject({
-      code: 'TOO_MANY_REQUESTS',
-      data: { retryAfter: expect.any(Number) },
-    });
-    // The header is what a browser's own retry logic reads; the error data is
-    // what a call over the WebSocket has instead, because a frame carries no
-    // headers.
-    const response = lastResponse();
-    expect(response?.status).toBe(429);
-    expect(Number(response?.headers.get('Retry-After'))).toBeGreaterThan(0);
+      // One refusal, carrying the interval: the `Retry-After` header the fetch
+      // plane used to answer with is gone, because these procedures are served
+      // over a socket too and a frame carries no headers. The declared error
+      // is the one answer both transports can give.
+      const refused = await expectRpcFailure(
+        client.callExit(client.rpc('me', undefined)),
+        'RateLimited',
+      );
+      expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+    } finally {
+      await client.dispose();
+    }
   });
 
   it('charges the team nothing for a caller who is not in it', async () => {
     // Charging the team bucket before the membership lookup would let any
     // signed-in stranger who can guess a team id exhaust that team's quota
     // with calls that are all refused.
-    const teamId = `team-${randomUUID()}`;
-    const stranger = appWith(
-      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
-      `stranger-${randomUUID()}`,
+    const teamId = TeamId.make(`team-${randomUUID()}`);
+    const outsider = await rpcClientFor(
+      studioWith(
+        { rpc_team: perMinute(2), rpc_user: perMinute(100) },
+        `stranger-${randomUUID()}`,
+      ),
     );
-    const outsider = rpcClientFor(stranger).client;
-    for (let call = 0; call < 6; call += 1) {
-      const { error } = await safe(outsider.studies.list({ teamId }));
-      expect(error).toMatchObject({ code: 'FORBIDDEN' });
-    }
+    const insider = await rpcClientFor(
+      studioWith(
+        { rpc_team: perMinute(2), rpc_user: perMinute(100) },
+        `member-${randomUUID()}`,
+        teamId,
+      ),
+    );
+    try {
+      for (let call = 0; call < 6; call += 1) {
+        await expectRpcFailure(
+          outsider.callExit(outsider.rpc('studies.list', { teamId })),
+          'Forbidden',
+        );
+      }
 
-    // A member of that team still has the whole allowance.
-    const member = appWith(
-      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
-      `member-${randomUUID()}`,
-      teamId,
-    );
-    const insider = rpcClientFor(member).client;
-    for (let call = 0; call < 2; call += 1) {
-      const { error } = await safe(insider.studies.list({ teamId }));
-      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+      // A member of that team still has the whole allowance.
+      for (let call = 0; call < 2; call += 1) {
+        expectAdmitted(
+          await insider.callExit(insider.rpc('studies.list', { teamId })),
+        );
+      }
+      await expectRpcFailure(
+        insider.callExit(insider.rpc('studies.list', { teamId })),
+        'RateLimited',
+      );
+    } finally {
+      await outsider.dispose();
+      await insider.dispose();
     }
-    const { error } = await safe(insider.studies.list({ teamId }));
-    expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
   });
 
   it('refuses a third protocol-builder call for one user', async () => {
@@ -352,10 +412,25 @@ describe.skipIf(!url)('the limited request paths', () => {
     // one part of the RPC plane with no per-user limit — including edits over
     // an open WebSocket.
     const userId = `user-${randomUUID()}`;
-    const app = appWith({ rpc_user: perMinute(2) }, userId);
-    const { client, lastResponse } = rpcClientFor(app);
+    // In process rather than over `/rpc`: this router is the protocol-builder
+    // host, which is served over `/ws` alone until stage 8. That is also why
+    // there is no response status to assert here any more — a frame has none,
+    // and the refusal the caller reads is the error itself.
+    //
+    // `builderClientFor` hands the router a principal outright, so the user
+    // the limiter charges is the one this case names rather than one resolved
+    // from a session. Nothing here covers the auth path; what it covers is
+    // that the limit is charged at all.
+    const client = builderClientFor(
+      studioWith({ rpc_user: perMinute(2) }, userId),
+      userId,
+    );
     const call = () =>
-      safe(client.protocolBuilder.listSections({ protocolId: randomUUID() }));
+      safe(
+        client.protocolBuilder.listSections({
+          protocolId: ProtocolId.make(randomUUID()),
+        }),
+      );
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const { error } = await call();
@@ -363,34 +438,29 @@ describe.skipIf(!url)('the limited request paths', () => {
     }
     const { error } = await call();
     expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
-    expect(lastResponse()?.status).toBe(429);
   });
 
   it('refuses a third RPC call for one team, whoever makes it', async () => {
-    const teamId = `team-${randomUUID()}`;
-    const app = appWith(
-      // The per-user limit is left generous so that what refuses the third
-      // call can only be the team's.
-      { rpc_team: perMinute(2), rpc_user: perMinute(100) },
-      `user-${randomUUID()}`,
-      teamId,
+    const teamId = TeamId.make(`team-${randomUUID()}`);
+    const client = await rpcClientFor(
+      studioWith(
+        // The per-user limit is left generous so that what refuses the third
+        // call can only be the team's.
+        { rpc_team: perMinute(2), rpc_user: perMinute(100) },
+        `user-${randomUUID()}`,
+        teamId,
+      ),
     );
-    const { client, lastResponse } = rpcClientFor(app);
+    try {
+      const list = () =>
+        client.callExit(client.rpc('studies.list', { teamId }));
+      expectAdmitted(await list());
+      expectAdmitted(await list());
 
-    // There is no database behind this app, so an admitted call fails inside
-    // the procedure instead — which is exactly what proves it was admitted.
-    const admitted = async () => {
-      const { error } = await safe(client.studies.list({ teamId }));
-      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-    };
-    await admitted();
-    await admitted();
-
-    const { error } = await safe(client.studies.list({ teamId }));
-    expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
-    expect(lastResponse()?.status).toBe(429);
-    expect(Number(lastResponse()?.headers.get('Retry-After'))).toBeGreaterThan(
-      0,
-    );
+      const refused = await expectRpcFailure(list(), 'RateLimited');
+      expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+    } finally {
+      await client.dispose();
+    }
   });
 });

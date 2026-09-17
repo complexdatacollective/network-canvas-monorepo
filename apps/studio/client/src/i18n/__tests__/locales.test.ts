@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ecosystemLocales, PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { supportedSiteLocales } from '@codaco/shared-consts';
-import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
+import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 
 import {
   studioDefaultLocale,

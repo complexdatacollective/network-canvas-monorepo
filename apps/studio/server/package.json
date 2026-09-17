@@ -39,6 +39,7 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
+    "@codaco/studio-contract": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
     "@effect/platform-node": "catalog:",
@@ -60,7 +61,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@codaco/studio-contract": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@dbml/core": "10.1.1",
     "@effect/vitest": "catalog:",

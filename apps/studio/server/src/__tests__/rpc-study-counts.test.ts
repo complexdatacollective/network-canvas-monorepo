@@ -9,15 +9,13 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
-import type { RouterContractClient } from '@orpc/contract';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { contract } from '@codaco/studio-rpc';
+import { StudyId } from '@codaco/studio-contract/schema/ids';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import { createApp } from '../app.ts';
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { seed } from '../db/seed.ts';
 import { readEnv } from '../env.ts';
@@ -27,7 +25,11 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 import { testKeyring } from './support/secrets.ts';
 
 const db = await reachableDb();
@@ -62,10 +64,10 @@ describe.skipIf(!db)('studies.counts', () => {
   let ownerPool: pg.Pool;
   let appPool: pg.Pool;
   /** An Admin of the study's team: sees every study the team owns. */
-  let client: RouterContractClient<typeof contract>;
+  let client: RpcTestClient;
   /** A plain Member of the same team holding no study-role grant. */
-  let ungrantedClient: RouterContractClient<typeof contract>;
-  let anonymousClient: RouterContractClient<typeof contract>;
+  let ungrantedClient: RpcTestClient;
+  let anonymousClient: RpcTestClient;
   /** The team the caller is a member of. */
   let memberTeamId: string;
   let collectingStudy: SeededStudy;
@@ -113,25 +115,30 @@ describe.skipIf(!db)('studies.counts', () => {
         listMemberships: () =>
           Promise.resolve([{ teamId: memberTeamId, role }]),
       });
-    client = createRpcClient(
-      createApp(readEnv(), { auth: memberOf('admin'), pool: scratch.app }),
+    client = await createRpcClient(
+      createStudio(readEnv(), { auth: memberOf('admin'), pool: scratch.app }),
     );
-    ungrantedClient = createRpcClient(
-      createApp(readEnv(), { auth: memberOf('member'), pool: scratch.app }),
+    ungrantedClient = await createRpcClient(
+      createStudio(readEnv(), { auth: memberOf('member'), pool: scratch.app }),
     );
-    anonymousClient = createRpcClient(
-      createApp(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
+    anonymousClient = await createRpcClient(
+      createStudio(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
     );
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {
+    await client.dispose();
+    await ungrantedClient.dispose();
+    await anonymousClient.dispose();
     await dispose();
   });
 
   it('counts the rows of that study, recomputed one table at a time', async () => {
-    const counts = await client.studies.counts({
-      studyId: collectingStudy.id,
-    });
+    const counts = await client.call(
+      client.rpc('studies.counts', {
+        studyId: StudyId.make(collectingStudy.id),
+      }),
+    );
 
     // Four separate statements, each the plain definition of its destination —
     // a second expression of the answer rather than the handler's own query
@@ -167,9 +174,11 @@ describe.skipIf(!db)('studies.counts', () => {
   });
 
   it('counts one study rather than the team, which shares a protocol line', async () => {
-    const counts = await client.studies.counts({
-      studyId: collectingStudy.id,
-    });
+    const counts = await client.call(
+      client.rpc('studies.counts', {
+        studyId: StudyId.make(collectingStudy.id),
+      }),
+    );
 
     // The seed gives every study of a team the same protocol line, so a query
     // that dropped its `study_id` predicate would still agree with the oracle
@@ -199,13 +208,15 @@ describe.skipIf(!db)('studies.counts', () => {
     // A Draft study before a protocol is chosen: `protocol_id` is null, so
     // nothing is published against it. Zero is the true answer, and the row
     // must still be found — an absent study and an empty one are different.
-    const studyId = randomUUID();
+    const studyId = StudyId.make(randomUUID());
     await createTenantDb(appPool, memberTeamId).query(
       `insert into studies (id, team_id, name) values ($1, $2, $3)`,
       [studyId, memberTeamId, 'Study without a protocol line'],
     );
 
-    await expect(client.studies.counts({ studyId })).resolves.toEqual({
+    await expect(
+      client.call(client.rpc('studies.counts', { studyId })),
+    ).resolves.toEqual({
       versions: 0,
       participants: 0,
       waves: 0,
@@ -225,31 +236,45 @@ describe.skipIf(!db)('studies.counts', () => {
       ]),
     ).resolves.toBe(1);
 
-    const crossTenant = await safe(
-      client.studies.counts({ studyId: otherTeamStudy.id }),
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('studies.counts', {
+          studyId: StudyId.make(otherTeamStudy.id),
+        }),
+      ),
+      'Forbidden',
     );
-    expect(crossTenant.error).toMatchObject({ code: 'FORBIDDEN' });
 
-    const unknown = await safe(
-      client.studies.counts({ studyId: randomUUID() }),
+    await expectRpcFailure(
+      client.callExit(
+        client.rpc('studies.counts', { studyId: StudyId.make(randomUUID()) }),
+      ),
+      'Forbidden',
     );
-    expect(unknown.error).toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('refuses a team member the study is not shown to', async () => {
     // A Member sees only the studies they hold a study-role grant on (#1257),
     // and this one holds none: the numbers must not exist for them either,
     // or the sidebar would describe a study they cannot open.
-    const { error } = await safe(
-      ungrantedClient.studies.counts({ studyId: collectingStudy.id }),
+    await expectRpcFailure(
+      ungrantedClient.callExit(
+        ungrantedClient.rpc('studies.counts', {
+          studyId: StudyId.make(collectingStudy.id),
+        }),
+      ),
+      'Forbidden',
     );
-    expect(error).toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('refuses without a session', async () => {
-    const { error } = await safe(
-      anonymousClient.studies.counts({ studyId: collectingStudy.id }),
+    await expectRpcFailure(
+      anonymousClient.callExit(
+        anonymousClient.rpc('studies.counts', {
+          studyId: StudyId.make(collectingStudy.id),
+        }),
+      ),
+      'Unauthorized',
     );
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
   });
 });

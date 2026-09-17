@@ -9,9 +9,15 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+
 import { createAppRouter } from '../../router.tsx';
+import { rpcKey } from '../../runtime/rpc.ts';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * The shell's guards and its unresolved states.
@@ -23,31 +29,43 @@ import { createAppRouter } from '../../router.tsx';
  * rendered rather than reasoned about.
  */
 
-const fixtures = vi.hoisted(() => ({
-  TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
-  TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
-  deployment: { mode: 'managed', billing: false },
-  /** Whether `getSession` answers with a session, read at call time. */
-  signedIn: true,
-  /**
-   * How many `getSession` reads answer normally before the rest answer with an
-   * error — the shape better-fetch resolves a refused read with. The landing
-   * resolution reads the session a SECOND time, after the guard's read has
-   * already succeeded, so a transient failure is a failure of that one.
-   */
-  successfulSessionReads: Number.POSITIVE_INFINITY,
-  sessionReads: 0,
-  /** What `organization.list` answers with, read at call time. */
-  teams: [] as { id: string; name: string }[],
-  /** The session's `activeOrganizationId`, which `setActive` moves. */
-  activeTeamId: undefined as string | undefined,
-  listTeams: vi.fn(),
-  setActive: vi.fn(),
-  useListOrganizations: vi.fn(),
-  useActiveOrganization: vi.fn(),
-  useActiveMember: vi.fn(),
-  signOut: vi.fn(),
-}));
+const fixtures = vi.hoisted(() => {
+  // Annotated, not asserted. A hoisted factory infers `mode` as `string`, and
+  // an assertion would silence that widening rather than check it; the
+  // binding's own type is what makes a mode the status document has no member
+  // for a type error here, and it still admits the `self-hosted` the tests
+  // below reassign.
+  const deployment: InstanceStatus['deployment'] = {
+    mode: 'managed',
+    billing: false,
+  };
+
+  return {
+    TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
+    TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
+    deployment,
+    /** Whether `getSession` answers with a session, read at call time. */
+    signedIn: true,
+    /**
+     * How many `getSession` reads answer normally before the rest answer with an
+     * error — the shape better-fetch resolves a refused read with. The landing
+     * resolution reads the session a SECOND time, after the guard's read has
+     * already succeeded, so a transient failure is a failure of that one.
+     */
+    successfulSessionReads: Number.POSITIVE_INFINITY,
+    sessionReads: 0,
+    /** What `organization.list` answers with, read at call time. */
+    teams: [] as { id: string; name: string }[],
+    /** The session's `activeOrganizationId`, which `setActive` moves. */
+    activeTeamId: undefined as string | undefined,
+    listTeams: vi.fn(),
+    setActive: vi.fn(),
+    useListOrganizations: vi.fn(),
+    useActiveOrganization: vi.fn(),
+    useActiveMember: vi.fn(),
+    signOut: vi.fn(),
+  };
+});
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -87,61 +105,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-vi.mock('../../lib/api.ts', () => ({
-  orpc: {
-    me: {
-      queryOptions: () => ({
-        queryKey: ['me'],
-        queryFn: () => ({
-          userId: 'user-1',
-          email: 'researcher@example.org',
-          emailVerified: true,
-          name: 'Researcher',
-          // `me` carries the account's UI-language preference; null means
-          // "follow the browser" (2026-09-04 localization design §5.2).
-          locale: null,
-          teams: [{ teamId: 'team-a', role: 'owner' }],
-        }),
-      }),
-      key: () => ['me'],
-    },
-    status: {
-      queryOptions: () => ({
-        queryKey: ['status'],
-        queryFn: () => ({
-          name: 'Network Canvas Studio',
-          version: '0.1.0',
-          auth: {
-            enabled: true,
-            magicLink: true,
-            emailAndPassword: true,
-            socialProviders: [],
-          },
-          deployment: fixtures.deployment,
-        }),
-      }),
-    },
-    studies: {
-      list: {
-        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
-        key: () => ['studies'],
-      },
-      get: {
-        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
-        key: () => ['study'],
-      },
-      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-  },
-  rpcClient: { protocols: {}, team: {} },
-}));
-
 function renderAt(path: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -171,6 +134,38 @@ function unresolved() {
 beforeEach(() => {
   vi.clearAllMocks();
   fixtures.deployment = { mode: 'managed', billing: false };
+  // The three procedures the shell and its screens ask for on these routes.
+  // No URL here names a study, so the lockup skips `studies.get` and the
+  // sibling list, and a handler for either would stand for a call the shell
+  // must not make.
+  installRpcHarness({
+    'status': () =>
+      Effect.succeed({
+        name: 'Network Canvas Studio',
+        version: '0.1.0',
+        auth: {
+          enabled: true,
+          magicLink: true,
+          emailAndPassword: true,
+          socialProviders: [],
+        },
+        setup: { required: false },
+        // Read at call time, like the session fixtures above.
+        deployment: fixtures.deployment,
+      }),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        // `me` carries the account's UI-language preference; null means
+        // "follow the browser" (2026-09-04 localization design §5.2).
+        locale: null,
+        teams: [{ teamId: TeamId.make(fixtures.TEAM_A.id), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([]),
+  });
   fixtures.signedIn = true;
   fixtures.successfulSessionReads = Number.POSITIVE_INFINITY;
   fixtures.sessionReads = 0;
@@ -494,7 +489,10 @@ describe('a session that ends outside this tab', () => {
     const router = renderAt('/team/team-a');
     await screen.findByRole('heading', { level: 1, name: 'Studies' });
     const { queryClient } = router.options.context;
-    expect(queryClient.getQueryData(['studies'])).toBeDefined();
+    const studiesKey = rpcKey('studies.list', {
+      teamId: TeamId.make(fixtures.TEAM_A.id),
+    });
+    expect(queryClient.getQueryData(studiesKey)).toBeDefined();
 
     // Signed out in another tab, or simply expired. Nothing here fails, and
     // the session query is `staleTime: Infinity`, so left alone no guard ever
@@ -509,7 +507,7 @@ describe('a session that ends outside this tab', () => {
     expect(router.state.resolvedLocation?.pathname).toBe('/sign-in');
     // §6.2: what was in the cache belonged to the researcher whose session has
     // ended, and nobody signing in next may be served it.
-    expect(queryClient.getQueryData(['studies'])).toBeUndefined();
+    expect(queryClient.getQueryData(studiesKey)).toBeUndefined();
   });
 });
 

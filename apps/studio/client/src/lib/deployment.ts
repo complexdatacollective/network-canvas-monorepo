@@ -6,9 +6,9 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   isSurfaceServed,
   type DeploymentMode,
-} from '@codaco/studio-rpc/surfaces';
+} from '@codaco/studio-contract/surfaces';
 
-import { orpc } from './api.ts';
+import { rpcQuery } from '../runtime/rpc.ts';
 
 /**
  * The status query, at the freshness §10.4 gives it. One options object for
@@ -22,7 +22,9 @@ import { orpc } from './api.ts';
  * stale. It is deliberately not a boot snapshot baked into the client — one
  * bundle is served by both topologies, so the answer cannot be compiled in.
  */
-const statusQueryOptions = orpc.status.queryOptions({ staleTime: Infinity });
+const statusQueryOptions = rpcQuery('status', undefined, {
+  staleTime: Infinity,
+});
 
 /**
  * Which of the two topologies this deployment serves (§10.4), for a

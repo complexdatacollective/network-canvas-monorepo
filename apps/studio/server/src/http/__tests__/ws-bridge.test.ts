@@ -1,12 +1,19 @@
+import { randomUUID } from 'node:crypto';
+
 import { describe, expect, it } from '@effect/vitest';
-import { Effect } from 'effect';
+import { Effect, Predicate } from 'effect';
 import { Hono } from 'hono';
 import { WebSocket } from 'ws';
 
+import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
+
+import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import type { Studio, WsBridgeDeps } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import { getDeploymentStatus } from '../../domain.ts';
 import { resolve } from '../../env/resolve.ts';
+import type { RpcDeps } from '../../rpc/deps.ts';
 
 // The socket route on its own, with the RPC router stubbed out: what the
 // protocol-builder suite proves is that the wiring carries a real session,
@@ -24,16 +31,37 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'ws-bridge-session',
 };
 
+/** Nothing has been asked of the handler yet, which is not "named no tab". */
+const NO_FRAME = 'no frame arrived';
+
 /**
- * A socket handler that answers every frame, so the loop is observable, and
- * counts the peers it was told had gone.
+ * The tab id in the context the bridge built, or null when it named none: the
+ * bridge leaves the field off entirely for a socket with no tab, because
+ * Effect's header record has no entry for a header nobody set.
  */
-function echoing(): Studio & { readonly closed: () => number } {
+function tabIn(context: unknown): string | null {
+  return Predicate.hasProperty(context, 'clientSessionId') &&
+    Predicate.isString(context.clientSessionId)
+    ? context.clientSessionId
+    : null;
+}
+
+/**
+ * A socket handler that answers every frame, so the loop is observable, counts
+ * the peers it was told had gone, and remembers the tab id the bridge handed
+ * it — `tab()` is only meaningful once a frame has been answered.
+ */
+function echoing(): Studio & {
+  readonly closed: () => number;
+  readonly tab: () => string | null | typeof NO_FRAME;
+} {
   let closed = 0;
+  let tab: string | null | typeof NO_FRAME = NO_FRAME;
   const ws: WsBridgeDeps = {
     admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: {
-      message: (peer, data) => {
+      message: (peer, data, options) => {
+        tab = tabIn(options?.context);
         peer.send(typeof data === 'string' ? `echo:${data}` : 'echo:binary');
         return Promise.resolve({ matched: true });
       },
@@ -43,7 +71,27 @@ function echoing(): Studio & { readonly closed: () => number } {
       },
     },
   };
-  return { app: new Hono(), ws, checks: {}, closed: () => closed };
+  // The `/rpc` route is registered from this too, and answers nothing useful
+  // here: this suite drives the socket alone.
+  const rpc: RpcDeps = {
+    auth: stubAuthService(),
+    capabilities: {
+      enabled: false,
+      magicLink: false,
+      emailAndPassword: false,
+      socialProviders: [],
+    },
+    deployment: getDeploymentStatus('self-hosted'),
+    readInstallation: () => Promise.resolve(null),
+  };
+  return {
+    app: new Hono(),
+    ws,
+    rpc,
+    checks: {},
+    closed: () => closed,
+    tab: () => tab,
+  };
 }
 
 /** Resolves on the socket's next event of this kind, or rejects on its error. */
@@ -122,6 +170,55 @@ describe('the socket bridge', () => {
       } finally {
         socket.close();
       }
+    }),
+  );
+
+  /**
+   * Opens a socket with these handshake headers and no query string, and
+   * reports the tab id the bridge handed the socket handler. The echo is the
+   * sync point: the handler records the id on the way to answering.
+   */
+  const tabFromHandshake = (headers: Record<string, string>) =>
+    Effect.promise(async () => {
+      const env = resolve({ NODE_ENV: 'test' });
+      const studio = echoing();
+      const { origin, dispose } = await startStudioServer(env, studio);
+      const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`, {
+        headers,
+      });
+      try {
+        const echoed = nextMessage(socket);
+        await opened(socket);
+        socket.send('ping');
+        expect(await echoed).toBe('echo:ping');
+        return studio.tab();
+      } finally {
+        socket.close();
+        await dispose();
+      }
+    });
+
+  // The query string is the only thing that names a tab on `/ws`. A browser
+  // cannot put a header on a handshake, so a header here comes from a client
+  // that wrote the request itself — and the id it carries goes on to be a
+  // `leases.owner` value, so it must have passed the contract's check.
+  it.live('ignores a tab id a handshake supplied as a header', () =>
+    Effect.gen(function* () {
+      // Well-formed, so nothing but the rewrite's authority can refuse it.
+      const named = yield* tabFromHandshake({
+        [CLIENT_SESSION_HEADER]: randomUUID(),
+      });
+      expect(named).toBeNull();
+    }),
+  );
+
+  it.live('never hands the bridge an id the contract would refuse', () =>
+    Effect.gen(function* () {
+      // 65 characters: one past the bound `readClientSessionId` enforces.
+      const exotic = yield* tabFromHandshake({
+        [CLIENT_SESSION_HEADER]: 'x'.repeat(65),
+      });
+      expect(exotic).toBeNull();
     }),
   );
 });

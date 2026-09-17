@@ -1,17 +1,17 @@
-// The account namespace: personal, not team-scoped — requireUser only, no
-// tenant, and deliberately no audit row (2026-09-04 localization design §5.2,
-// decision 7). Runs against the real better-auth service so the whole loop
-// closes: account.updateLocale writes user.locale through the plain pool, and
-// the next session lookup carries the stored value back out through `me`.
-import { safe } from '@orpc/client';
+// The account namespace: personal, not team-scoped — the caller's own budget
+// only, no tenant, and deliberately no audit row (2026-09-04 localization
+// design §5.2, decision 7). Runs against the real better-auth service so the
+// whole loop closes: account.updateLocale writes user.locale through the plain
+// pool, and the next session lookup carries the stored value back out
+// through `me`.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   SUPPORTED_STUDIO_LOCALES,
   type SupportedStudioLocale,
-} from '@codaco/studio-rpc';
+} from '@codaco/studio-contract/locales';
 
-import type { createApp } from '../app.ts';
+import type { Studio } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { signInWithMagicLink } from './support/auth.ts';
 import {
@@ -19,29 +19,47 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
-import { createRpcClient } from './support/rpc.ts';
+import {
+  createRpcClient,
+  expectPayloadRejected,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 
 const env = readEnv();
 const db = await reachableDb();
 
 describe.skipIf(!db)('account.updateLocale', () => {
   let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
-  let app: ReturnType<typeof createApp>;
+  let studio: Studio;
+  let app: Studio['app'];
   let cookie: string;
   let userId: string;
-  let client: ReturnType<typeof createRpcClient>;
+  let client: RpcTestClient;
+  let anonymousClient: RpcTestClient;
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    ({ app, cookie } = await signInWithMagicLink(env, scratch.app, 'locale'));
-    client = createRpcClient(app, { cookie });
-    userId = (await client.me()).userId;
+    ({ studio, app, cookie } = await signInWithMagicLink(
+      env,
+      scratch.app,
+      'locale',
+    ));
+    client = await createRpcClient(studio, { cookie });
+    anonymousClient = await createRpcClient(studio);
+    userId = (await client.call(client.rpc('me', undefined))).userId;
   });
   afterAll(async () => {
+    await client.dispose();
+    await anonymousClient.dispose();
     await scratch.dispose();
   });
+
+  const me = () => client.call(client.rpc('me', undefined));
+  const updateLocale = (locale: SupportedStudioLocale | null) =>
+    client.call(client.rpc('account.updateLocale', { locale }));
 
   const storedLocale = async (): Promise<string | null> => {
     const row = await scratch.pool.query<{ locale: string | null }>(
@@ -54,56 +72,52 @@ describe.skipIf(!db)('account.updateLocale', () => {
 
   it('stores every supported tag and hands it back through me', async () => {
     // A fresh sign-up starts with no preference.
-    expect((await client.me()).locale).toBeNull();
+    expect((await me()).locale).toBeNull();
 
     // Two tags today ('en', 'en-GB'); a registry change must revisit this
     // suite rather than slide through it.
     expect(SUPPORTED_STUDIO_LOCALES).toEqual(['en', 'en-GB']);
     for (const locale of SUPPORTED_STUDIO_LOCALES) {
-      expect(await client.account.updateLocale({ locale })).toEqual({
-        locale,
-      });
+      expect(await updateLocale(locale)).toEqual({ locale });
       // The row itself, not just the echo …
       expect(await storedLocale()).toBe(locale);
       // … and the value the client's LocaleSync will actually watch.
-      expect((await client.me()).locale).toBe(locale);
+      expect((await me()).locale).toBe(locale);
     }
   });
 
   it('clears the preference with null', async () => {
-    await client.account.updateLocale({ locale: 'en-GB' });
-    expect(await client.account.updateLocale({ locale: null })).toEqual({
-      locale: null,
-    });
+    await updateLocale('en-GB');
+    expect(await updateLocale(null)).toEqual({ locale: null });
     expect(await storedLocale()).toBeNull();
-    expect((await client.me()).locale).toBeNull();
+    expect((await me()).locale).toBeNull();
   });
 
   it('refuses an unknown tag as a validation error, storing nothing', async () => {
-    await client.account.updateLocale({ locale: 'en' });
+    await updateLocale('en');
     // The contract type refuses this at compile time; the server must refuse
     // it at runtime too — unknown tags are a validation error, never a
     // silent store (§5.2). The cast exists precisely to defeat that
     // narrowing, which is the point of the schema.
-    const rejected = await safe(
-      client.account.updateLocale({
+    const rejected = await client.callExit(
+      client.rpc('account.updateLocale', {
         locale: 'fr' as unknown as SupportedStudioLocale,
       }),
     );
-    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 
   it('refuses a malformed tag the same way it refuses an unknown one', async () => {
     // "Not a tag at all" and "a tag we do not offer" must fail identically:
-    // one BAD_REQUEST, no write. Same cast, same reason.
-    await client.account.updateLocale({ locale: 'en' });
-    const rejected = await safe(
-      client.account.updateLocale({
+    // one payload rejection, no write. Same cast, same reason.
+    await updateLocale('en');
+    const rejected = await client.callExit(
+      client.rpc('account.updateLocale', {
         locale: 'not a tag' as unknown as SupportedStudioLocale,
       }),
     );
-    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 
@@ -116,28 +130,30 @@ describe.skipIf(!db)('account.updateLocale', () => {
     // registry — cannot produce. Leniency belongs where tags are actually
     // uncontrolled: `resolveAppLocale` canonicalises what the browser asks
     // for, and canonicalises the stored value on the way back out.
-    await client.account.updateLocale({ locale: 'en' });
-    const rejected = await safe(
-      client.account.updateLocale({
+    await updateLocale('en');
+    const rejected = await client.callExit(
+      client.rpc('account.updateLocale', {
         locale: 'EN-gb' as unknown as SupportedStudioLocale,
       }),
     );
-    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expectPayloadRejected(rejected, 'locale');
     expect(await storedLocale()).toBe('en');
   });
 
   it('requires a signed-in user', async () => {
-    const { error } = await safe(
-      createRpcClient(app).account.updateLocale({ locale: 'en' }),
+    await expectRpcFailure(
+      anonymousClient.callExit(
+        anonymousClient.rpc('account.updateLocale', { locale: 'en' }),
+      ),
+      'Unauthorized',
     );
-    expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
   it('cannot be written through better-auth’s own update endpoint', async () => {
     // input: false on the additionalField declaration is what keeps
     // update-user from accepting the field; dropping it must fail here.
     if (!env.auth) throw new Error('dev env must configure auth');
-    await client.account.updateLocale({ locale: 'en' });
+    await updateLocale('en');
     const response = await app.request('/api/auth/update-user', {
       method: 'POST',
       headers: {
@@ -154,7 +170,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
   });
 
   it('writes no audit row: a personal preference has no tenant', async () => {
-    await client.account.updateLocale({ locale: 'en-GB' });
+    await updateLocale('en-GB');
     const events = await scratch.pool.query('select id from audit_events');
     expect(events.rows).toEqual([]);
   });

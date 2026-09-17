@@ -2,12 +2,8 @@ import { Schema } from 'effect';
 
 // The supported-locale list is imported rather than copied: it is the
 // contract-level source of truth for what the server will store, and two
-// copies could disagree about which tags a build accepts. Today it can only be
-// reached through this package's `"."` export, which drags the oRPC contract
-// module along with it. That is accepted for this stage; stage 2b moves
-// `locales.ts` here and the import becomes a local one.
-import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
-
+// copies could disagree about which tags a build accepts.
+import { SUPPORTED_STUDIO_LOCALES } from '../locales.ts';
 import { TeamId } from './ids.ts';
 
 // The account tier: who the caller is, and the one preference they may change
