@@ -81,7 +81,7 @@ const tones = [
 
 export const Tones: Story = {
   render: () => (
-    <div className="grid grid-cols-[auto_auto] gap-3">
+    <div className="grid grid-cols-[auto_auto] justify-start justify-items-start gap-3">
       {tones.map((tone) => (
         <React.Fragment key={tone}>
           <Badge tone={tone}>{tone}</Badge>

@@ -230,8 +230,7 @@ const EntityType = ({
       return (
         <Badge
           key={`validation-${index}-${label}`}
-          tone="neutral"
-          className="wrap-break-word"
+          className="wrap-break-word [--badge-color:var(--surface-3)]"
         >
           {label}
         </Badge>
@@ -239,7 +238,7 @@ const EntityType = ({
     }
     return (
       <Link key={id} href={`/protocol/stage/${id}`}>
-        <Badge tone="neutral" className="wrap-break-word">
+        <Badge className="wrap-break-word [--badge-color:var(--surface-3)]">
           {label}
         </Badge>
       </Link>

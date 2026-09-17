@@ -22,7 +22,6 @@ import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
-import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -521,11 +520,8 @@ export function DeckCard(props: DeckCardProps) {
                       }
                       tone="warning"
                       uppercase
-                      icon={<Globe />}
-                      className={cx(
-                        proportionalLucideIconVariants(),
-                        'px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)]',
-                      )}
+                      icon={<Globe className="size-4" />}
+                      className="whitespace-nowrap"
                     >
                       {intl.formatMessage(messages.requiresInternet)}
                     </Badge>

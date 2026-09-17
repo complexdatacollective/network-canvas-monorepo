@@ -40,8 +40,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
       return (
         <Badge
           key={`validation-option-${index}`}
-          tone="accent"
-          className="whitespace-nowrap"
+          className="whitespace-nowrap [--badge-color:var(--surface-3)]"
         >
           {label}
         </Badge>
@@ -52,7 +51,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 
     return (
       <Link key={id} href={href}>
-        <Badge tone="accent" className="whitespace-nowrap">
+        <Badge className="whitespace-nowrap [--badge-color:var(--surface-3)]">
           {label}
         </Badge>
       </Link>
