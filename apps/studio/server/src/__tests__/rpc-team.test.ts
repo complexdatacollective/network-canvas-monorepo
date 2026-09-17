@@ -205,10 +205,12 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     'refuses a caller who has spent their per-user budget, with the interval to wait',
     async () => {
       // The per-user call limit (#1909) is charged by the team-opening helper,
-      // not by the `Authenticated` middleware — and it reaches the client as
-      // the contract's `RateLimited` on an ordinary procedure, not only on
-      // `team.acceptInvitation`. A fresh user id per run, because the bucket is
-      // keyed by it and the window outlives the test.
+      // not by the `Authenticated` middleware, and it reaches the client as the
+      // contract's `RateLimited` on an ordinary procedure, not only on
+      // `team.acceptInvitation`. Stage 4 moves the charge into the middleware
+      // (#1932 §3); this case is what proves the move kept the refusal. A fresh
+      // user id per run, because the bucket is keyed by it and the window
+      // outlives the test.
       const userId = `budget-${randomUUID()}`;
       const limited = await createRpcClient(
         createStudio(
