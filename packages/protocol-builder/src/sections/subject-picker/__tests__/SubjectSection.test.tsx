@@ -16,6 +16,7 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../../__tests__/rowFixtures.tsx';
+import NodeLayoutSection from '../../canvas-behaviours/NodeLayoutSection.tsx';
 import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
@@ -1084,6 +1085,30 @@ describe('choosing a type for a stage that has never had one', () => {
         },
       },
       sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
+    expect(pickedTypeBehindTheQuestion()).toBeUndefined();
+  });
+
+  it('asks when an unmounted sibling of a default holds an answer', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NetworkComposer' as const,
+        fields: {
+          label: 'Build your network',
+          behaviours: { automaticLayout: true, freeDraw: true },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
+        },
+      },
+      sections: (
+        <>
+          <SubjectSection entity="node" filter />
+          <NodeLayoutSection />
+        </>
+      ),
     });
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));

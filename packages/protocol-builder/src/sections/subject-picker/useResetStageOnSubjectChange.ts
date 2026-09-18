@@ -12,7 +12,7 @@ import {
 } from '../../form/stageEditorContext.ts';
 import {
   answeredPart,
-  stageValueAt,
+  stageAnswerAt,
   useAskStageHasAnyValue,
   useClearStageValue,
 } from '../../form/stageFormHooks.ts';
@@ -121,7 +121,7 @@ const survivesTheReset = (
 ): boolean =>
   key in template &&
   isEqual(
-    answeredPart(stageValueAt(storeApi.getState(), committedFields, key)),
+    stageAnswerAt(storeApi.getState(), committedFields, key),
     answeredPart(template[key]),
   );
 

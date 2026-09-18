@@ -9,6 +9,7 @@ import {
   getValue,
   type ObjectPath,
   omitValue,
+  setValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
@@ -333,33 +334,6 @@ export function stageDraftValue(
  * value" — so a caller whose path is itself optional can still ask
  * unconditionally, which a hook has to be able to do.
  */
-export function stageValueAt(
-  state: FormStoreState,
-  committedFields: StageFormDraft,
-  path: string | undefined,
-): unknown {
-  if (path === undefined) return undefined;
-  const target = safePath(path);
-  if (target === null) return undefined;
-
-  const pathOperations = state.pathOperations;
-  if (pathOperations === undefined) {
-    return state.hasValue(path)
-      ? state.getValue(path)
-      : stageDraftValue(committedFields, path);
-  }
-  return pathOperations.hasValue(target)
-    ? pathOperations.getValue(target)
-    : stageDraftValue(committedFields, path);
-}
-
-/**
- * `stageValueAt` as a hook: the same read, re-run whenever the form changes.
- *
- * What a section uses. The function underneath it is for a caller holding a
- * question rather than a subscription — a confirmation deciding, at the moment
- * it is asked, what a change would cost.
- */
 export function useStageValue(path: string | undefined): unknown {
   const { storeApi, committedFields } = useStageEditorForm();
 
@@ -368,10 +342,22 @@ export function useStageValue(path: string | undefined): unknown {
     [storeApi],
   );
 
-  const getSnapshot = useCallback(
-    (): unknown => stageValueAt(storeApi.getState(), committedFields, path),
-    [committedFields, path, storeApi],
-  );
+  const getSnapshot = useCallback((): unknown => {
+    if (path === undefined) return undefined;
+    const target = safePath(path);
+    if (target === null) return undefined;
+
+    const state = storeApi.getState();
+    const pathOperations = state.pathOperations;
+    if (pathOperations === undefined) {
+      return state.hasValue(path)
+        ? state.getValue(path)
+        : stageDraftValue(committedFields, path);
+    }
+    return pathOperations.hasValue(target)
+      ? pathOperations.getValue(target)
+      : stageDraftValue(committedFields, path);
+  }, [committedFields, path, storeApi]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
@@ -557,6 +543,42 @@ function pathHasAnswer(
     committed = omitValue(committed, record.path.slice(target.length));
   }
   return hasAnswer(committed);
+}
+
+export function stageAnswerAt(
+  state: FormStoreState,
+  committedFields: StageFormDraft,
+  path: string,
+): unknown {
+  const target = safePath(path);
+  if (target === null) return undefined;
+
+  const records = formRecords(state);
+  const exact = records.find((record) => samePath(record.path, target));
+
+  let value: unknown = getValue(committedFields, target);
+  if (exact) {
+    value = exact.value;
+  } else {
+    for (const record of records
+      .filter((candidate) => isAbove(candidate.path, target))
+      .sort((a, b) => a.path.length - b.path.length)) {
+      const inside = readInside(record.value, target.slice(record.path.length));
+      if (hasAnswer(inside)) value = inside;
+    }
+  }
+
+  const holder: Record<string, unknown> = { value };
+  for (const record of records
+    .filter((candidate) => isBelow(candidate.path, target))
+    .sort((a, b) => a.path.length - b.path.length)) {
+    setValue(
+      holder,
+      ['value', ...record.path.slice(target.length)],
+      record.value,
+    );
+  }
+  return answeredPart(holder.value);
 }
 
 function readInside(value: unknown, relative: ObjectPath): unknown {
