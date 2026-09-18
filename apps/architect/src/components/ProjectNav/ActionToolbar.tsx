@@ -203,6 +203,7 @@ const ActionToolbar = ({
         <SegmentedToolbar
           aria-label={ariaLabel}
           size="md"
+          restAt="end"
           className={cx(
             'pointer-events-auto ml-auto min-w-0 self-end',
             className,

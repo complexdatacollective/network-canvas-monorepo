@@ -17,5 +17,9 @@ every title and description can be read.
 
 A video preview keeps its playback controls inside the window.
 
-When a toolbar is too narrow for all its buttons, it now shows the last
-button, such as Download, and fades the edge where more buttons are hidden.
+When the toolbar at the bottom of the screen is too narrow for all its buttons,
+it now shows the last button, such as Download.
+
+When a toolbar is too narrow for all its buttons, it now fades the edge where
+more buttons are hidden, so it is clear the toolbar can be scrolled. This
+includes the Background Creator toolbar.
