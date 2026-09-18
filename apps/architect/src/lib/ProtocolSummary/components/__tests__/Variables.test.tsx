@@ -26,7 +26,7 @@ const selectorsFor = (table: Element, utility: string) =>
       token
         .slice(1, token.lastIndexOf(']:'))
         .replaceAll('_', ' ')
-        .replace('&', ':scope'),
+        .replaceAll('&', ':scope'),
     );
 
 const renderVariables = () => {
