@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { isInaccessible, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -69,6 +69,15 @@ function theOnlyControl(): HTMLElement {
   return button;
 }
 
+function expectOnlyNamedBy(control: HTMLElement, name: string) {
+  const others = Array.from(document.body.querySelectorAll('*')).filter(
+    (element) => element !== control && !isInaccessible(element),
+  );
+  for (const element of others) {
+    expect(element).not.toHaveAccessibleName(name);
+  }
+}
+
 describe('ResourceChoiceCard', () => {
   it('is chosen by its name, described by its badges', async () => {
     const { client, protocolId } = createResourceHost();
@@ -76,11 +85,12 @@ describe('ResourceChoiceCard', () => {
 
     const onSelect = renderCard(client, protocolId, descriptor);
 
-    expect(
-      await screen.findByRole('img', { name: 'skyline.png' }),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('img')).not.toBeNull());
+    expect(document.querySelector('img')).toHaveAttribute('alt', '');
+    expect(screen.queryByRole('img')).toBeNull();
     const button = theOnlyControl();
     expect(button).toHaveAccessibleName('skyline.png');
+    expectOnlyNamedBy(button, 'skyline.png');
     expect(button).toHaveAccessibleDescription(/Image/);
 
     await userEvent.click(button);
@@ -94,7 +104,11 @@ describe('ResourceChoiceCard', () => {
     renderCard(client, protocolId, descriptor);
 
     await waitFor(() => expect(document.querySelector('video')).not.toBeNull());
-    theOnlyControl();
+    const video = document.querySelector('video');
+    expect(video).toHaveAttribute('aria-hidden', 'true');
+    expect(video).not.toHaveAttribute('aria-label');
+    const button = theOnlyControl();
+    expectOnlyNamedBy(button, 'walk.mp4');
   });
 
   it('leaves the type mark, not a retry, when the preview fails', async () => {

@@ -400,7 +400,7 @@ export default function ResourcePreview({
     return (
       <img
         src={preview.url}
-        alt={name}
+        alt={presentational ? '' : name}
         className={className ?? 'max-h-64 w-full rounded object-contain'}
       />
     );
@@ -414,7 +414,8 @@ export default function ResourcePreview({
         src={preview.url}
         controls={!presentational}
         muted={presentational}
-        aria-label={name}
+        aria-label={presentational ? undefined : name}
+        aria-hidden={presentational || undefined}
         className={className ?? 'max-h-64 w-full rounded'}
       />
     );
