@@ -342,6 +342,8 @@
     --drag-over: oklch(var(--slate-blue) / 0.8);
 
     --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
+    --surface-link: var(--link);
+    --surface-accent-link: var(--link);
 
     /*
      * CHANGED: a deeper hairline than the default theme's `--background`
@@ -582,6 +584,8 @@
     --drag-over: oklch(var(--slate-blue) / 0.8);
 
     --link: oklch(from var(--accent) calc(l + 0.1) c h);
+    --surface-link: var(--link);
+    --surface-accent-link: var(--link);
 
     /* A touch above the raised surface, as in the mockup. */
     --outline: oklch(0.32 0.038 var(--base-hue));

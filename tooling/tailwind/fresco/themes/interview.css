@@ -167,6 +167,8 @@
     --drag-over: oklch(var(--slate-blue) / 0.8);
 
     --link: oklch(var(--sea-green));
+    --surface-link: var(--link);
+    --surface-accent-link: var(--link);
 
     --input: oklch(var(--navy-taupe));
     --input-contrast: oklch(var(--white));

@@ -64,8 +64,9 @@ const surfaceOwnVariants = cva({
       4: '[--surface-depth:4]',
     },
     series: {
-      default: '',
-      accent: '',
+      default: '[--link-underline-rest:0%] [--link:var(--surface-link)]',
+      accent:
+        '[--link-underline-rest:100%] [--link:var(--surface-accent-link)]',
     },
     floating: {
       true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
