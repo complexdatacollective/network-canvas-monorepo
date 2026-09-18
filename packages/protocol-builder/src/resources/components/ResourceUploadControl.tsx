@@ -323,6 +323,9 @@ export default function ResourceUploadControl({
         <Button asChild color="primary" icon={<Upload aria-hidden="true" />}>
           <label
             htmlFor={inputId}
+            // A label is never `:disabled`, so without this Button's hover
+            // lift and press would still play over a disabled input.
+            aria-disabled={disabled || busy ? true : undefined}
             // `outline-primary` alongside the ring for the reason Button
             // carries its own: a label never matches `:focus`, so Button's
             // `focus:outline-primary` cannot fire here, and `focusable` would

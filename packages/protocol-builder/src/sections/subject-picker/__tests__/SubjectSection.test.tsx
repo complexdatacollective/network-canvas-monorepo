@@ -1043,8 +1043,8 @@ describe('choosing a type for a stage that has never had one', () => {
    * A Network Composer is created holding `behaviours.automaticLayout` and an
    * unskewed background, which is what every stage of that interface starts
    * with — and the reset writes those same values straight back. Counting them
-   * as configuration made the first type a researcher ever picked on a
-   * Sociogram, a Narrative, a Network Composer or a Family Pedigree ask them
+   * as configuration made the first type a researcher ever picked on a One to
+   * Many Dyad Census, a Sociogram, a Narrative or a Network Composer ask them
    * to agree to losing work they had not done.
    */
   it('does not ask for the first type on an interface that has defaults', async () => {

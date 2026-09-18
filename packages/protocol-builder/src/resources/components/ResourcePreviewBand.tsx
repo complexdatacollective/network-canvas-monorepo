@@ -13,6 +13,8 @@ export type ResourcePreviewBandProps = Readonly<{
    * which is what a researcher choosing a background needs to see.
    */
   shape?: 'thumbnail' | 'canvas';
+  /** Draw the resource without controls, as `ResourcePreview`'s own option. */
+  presentational?: boolean;
 }>;
 
 /**
@@ -29,6 +31,7 @@ export type ResourcePreviewBandProps = Readonly<{
 export default function ResourcePreviewBand({
   descriptor,
   shape = 'thumbnail',
+  presentational = false,
 }: ResourcePreviewBandProps) {
   const Icon = RESOURCE_KIND_ICONS[descriptor.kind];
   const framedKind =
@@ -52,6 +55,7 @@ export default function ResourcePreviewBand({
           resourceId={descriptor.id}
           kind={framedKind}
           name={descriptor.name}
+          presentational={presentational}
           className={cx(
             'col-start-1 row-start-1 w-full object-contain object-center',
             shape === 'canvas' ? 'size-full' : 'max-h-40',

@@ -29,10 +29,11 @@ export type ResourceChoiceCardProps = Readonly<{
  *
  * The whole card is the control, because the picture is what a researcher
  * picks a resource by — two rosters with similar names are told apart by their
- * details, but two photographs are told apart by looking at them. It is named
- * by the resource's own name alone and described by the rest, so a reader who
- * cannot see the picture hears "skyline.png" rather than the whole card before
- * choosing it.
+ * details, but two photographs are told apart by looking at them. The control
+ * itself is the resource's name, stretched over the card: a button holds only
+ * phrasing content and nothing operable, and the card holds a picture and
+ * badges. It is described by the badges, so a reader who cannot see the
+ * picture hears "skyline.png" before choosing it rather than the whole card.
  *
  * `ResourceCard` is the other half of this pair: what a field shows for the
  * resource it already holds, in full, with everything `inspect` read out of
@@ -46,38 +47,30 @@ export default function ResourceChoiceCard({
   disabled = false,
 }: ResourceChoiceCardProps) {
   const intl = useAppIntl();
-  const nameId = useId();
   const detailId = useId();
 
   return (
     <Surface
-      as="button"
-      type="button"
       noContainer
       spacing="none"
       shadow="sm"
-      disabled={disabled}
-      aria-current={current ? 'true' : undefined}
-      aria-labelledby={nameId}
-      aria-describedby={detailId}
-      onClick={() => onSelect(descriptor)}
       data-current={current || undefined}
-      className="focusable data-current:border-primary ui-enabled:hover:border-primary ui-disabled:cursor-not-allowed ui-disabled:opacity-50 flex h-full w-full min-w-0 flex-col overflow-hidden! border-2 border-transparent text-left transition-[border-color] duration-200"
+      className="focusable-within data-current:border-primary has-[button:enabled]:hover:border-primary relative flex h-full w-full min-w-0 flex-col overflow-hidden! border-2 border-transparent transition-[border-color] duration-200 has-[button:disabled]:opacity-50"
     >
-      <ResourcePreviewBand descriptor={descriptor} />
+      <ResourcePreviewBand descriptor={descriptor} presentational />
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        {/*
-          Not a heading: inside a control its level names nothing a reader can
-          navigate to, and the control is already named by it.
-        */}
-        <span
-          id={nameId}
+        <button
+          type="button"
+          disabled={disabled}
+          aria-current={current ? 'true' : undefined}
+          aria-describedby={detailId}
+          onClick={() => onSelect(descriptor)}
           title={descriptor.name}
-          className="line-clamp-2 text-lg leading-tight font-semibold wrap-anywhere"
+          className="cursor-pointer text-left text-lg leading-tight font-semibold outline-none after:absolute after:inset-0 disabled:cursor-not-allowed"
         >
-          {descriptor.name}
-        </span>
+          <span className="line-clamp-2 wrap-anywhere">{descriptor.name}</span>
+        </button>
         <div
           id={detailId}
           className="mt-auto flex flex-wrap items-center gap-2"
