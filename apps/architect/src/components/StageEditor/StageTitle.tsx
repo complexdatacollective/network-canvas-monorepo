@@ -11,6 +11,8 @@ import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { useStageTypeInfo } from '@codaco/protocol-builder/interfaces/useStageTypeInfo';
 import { useAutoStageName } from '@codaco/protocol-builder/naming/useAutoStageName';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
+import { STAGE_HERO_HEIGHT_VARIABLE } from '~/utils/stageHeroHeight';
 const messages = defineMessages({
   position: {
     id: 'architect.stageEditor.stageTitle.position',
@@ -55,19 +57,32 @@ export default function StageTitle({
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
   const { label } = useStageName();
   const { onBlur } = useAutoStageName();
+  // Published for the route, which starts the section list in the column
+  // beside this one below this block rather than level with it.
+  const hero = usePublishedBlockHeight<HTMLDivElement>(
+    STAGE_HERO_HEIGHT_VARIABLE,
+  );
 
   return (
     <div
+      ref={hero}
       aria-labelledby={headingId}
       // 1.75rem above the title and 3.5rem below it, of which only 2rem is
       // stated: the shell lays its slots out with `gap-6`, so the other 1.5rem
       // is already there.
       //
+      // That 2rem is PADDING rather than the margin it reads as, so that the
+      // height published above counts it: the route offsets the section list
+      // by this block plus what separates it from the editor's first card, and
+      // a margin would leave the route restating a second measurement of its
+      // own. Same space either way — margins do not collapse in a flex
+      // container, and this block paints no background or border.
+      //
       // Two columns from `48rem` of the editor's own column, which is what
       // answers the query from the header slot. The editor pads that column by
       // 24px a side, so at the threshold the name has 768 − 48 − 14rem − 32 =
       // 464px; below it the rail would take room the name has not got.
-      className="mb-8 flex w-full flex-col gap-5 pt-7 @min-[48rem]:grid @min-[48rem]:grid-cols-[14rem_auto] @min-[48rem]:gap-8 @min-[48rem]:pt-10"
+      className="flex w-full flex-col gap-5 pt-7 pb-8 @min-[48rem]:grid @min-[48rem]:grid-cols-[14rem_auto] @min-[48rem]:gap-8 @min-[48rem]:pt-10"
     >
       <div className="flex items-center justify-center">
         {/*

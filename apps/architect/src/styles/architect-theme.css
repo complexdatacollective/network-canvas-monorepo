@@ -98,6 +98,18 @@
      * so the fallback is the measurement rather than a guess short of it.
      */
     --architect-nav-height: 6.75rem;
+
+    /*
+     * How tall the stage editor's title block is. `StageTitle` measures the
+     * real block and overwrites this before the first paint; the value here is
+     * what the route resolves to until it does, so the declaration that starts
+     * the section list level with the editor's first card is never dropped for
+     * being unresolvable.
+     *
+     * 184px is that block's own border box at a desktop width with a stage
+     * name on one line, so the fallback is a measurement rather than a guess.
+     */
+    --architect-stage-hero-height: 11.5rem;
   }
   html,
   body {
