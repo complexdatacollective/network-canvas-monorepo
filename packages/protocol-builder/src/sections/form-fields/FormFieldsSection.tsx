@@ -445,17 +445,6 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * The rules that can actually refuse a save.
- *
- * The whole list is one field value, so a rule about the list belongs here —
- * a row cannot refuse anything, and the schema's own "Too
- * small: expected array to have >=1 items" arrives against a path rather than
- * against the section the researcher is looking at. Completeness and the
- * one-field-per-attribute rule are the same story: both are schema failures
- * that would otherwise surface long after the researcher has moved on, and the
- * duplicate rule asks the question in exactly the schema's terms
- * (`duplicateFormFieldIndices`) so the two cannot disagree.
- *
  * Said of an entry the list cannot even show.
  *
  * Asked of the RAW array rather than of `rowsOf`, which drops what is not a

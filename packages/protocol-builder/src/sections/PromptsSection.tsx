@@ -87,14 +87,6 @@ const messages = defineMessages({
   },
 });
 
-/**
- * The rule that can actually refuse a save.
- *
- * The whole list is one field value, so this is where a rule about the list
- * itself belongs — a row cannot refuse anything, and the
- * protocol schema's own "Too small: expected array to have >=1 items" arrives
- * against a path rather than against the section the researcher is looking at.
- */
 const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
 
 export type PromptsSectionProps = Readonly<{
