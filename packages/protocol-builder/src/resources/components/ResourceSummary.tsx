@@ -68,6 +68,8 @@ const messages = defineMessages({
   },
 });
 
+const CONTENT_ADDRESSED_SOURCE = /^[0-9a-f]{64}(?:\.[0-9a-z]+)?$/i;
+
 export type ResourceSummaryProps = Readonly<{
   inspection: ResourceInspection;
 }>;
@@ -125,11 +127,13 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
           heading above is what the protocol calls the resource, and that is
           the answer to "which file is this" for a saved one.
         */}
-        {descriptor.status === 'staged' && descriptor.source !== undefined && (
-          <Detail term={intl.formatMessage(messages.fileTerm)}>
-            {descriptor.source}
-          </Detail>
-        )}
+        {descriptor.status === 'staged' &&
+          descriptor.source !== undefined &&
+          !CONTENT_ADDRESSED_SOURCE.test(descriptor.source) && (
+            <Detail term={intl.formatMessage(messages.fileTerm)}>
+              {descriptor.source}
+            </Detail>
+          )}
         {descriptor.byteLength !== undefined && (
           <Detail term={intl.formatMessage(messages.sizeTerm)}>
             {formatByteLength(descriptor.byteLength, intl)}
