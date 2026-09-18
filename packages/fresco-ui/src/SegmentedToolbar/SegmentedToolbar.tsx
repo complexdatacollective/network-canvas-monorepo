@@ -280,12 +280,78 @@ const rootLayoutVariants = cva({
   base: 'effect-shadow-md flex w-fit max-w-full min-w-0 items-center gap-1 p-1.5',
   variants: {
     orientation: {
-      horizontal: 'flex-row',
+      horizontal: 'scroll-area-viewport-x flex-row',
       vertical: 'flex-col',
     },
   },
   defaultVariants: { orientation: 'horizontal' },
 });
+
+function useHorizontalOverflow(
+  enabled: boolean,
+  children: React.ReactNode,
+): React.RefObject<HTMLDivElement | null> {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const laneWidth = React.useRef(-1);
+
+  const publishOverflow = React.useCallback(() => {
+    const lane = laneRef.current;
+    const pill = lane?.parentElement;
+    if (!lane || !pill) return;
+    if (!enabled) {
+      pill.style.removeProperty('--scroll-area-overflow-x-start');
+      pill.style.removeProperty('--scroll-area-overflow-x-end');
+      return;
+    }
+    const hidden = Math.max(0, lane.scrollWidth - lane.clientWidth);
+    const travelled = Math.min(Math.abs(lane.scrollLeft), hidden);
+    const rightToLeft = isRightToLeft(lane);
+    const left = rightToLeft ? hidden - travelled : travelled;
+    pill.style.setProperty('--scroll-area-overflow-x-start', `${left}px`);
+    pill.style.setProperty(
+      '--scroll-area-overflow-x-end',
+      `${hidden - left}px`,
+    );
+  }, [enabled]);
+
+  const anchorToEnd = React.useCallback(() => {
+    const lane = laneRef.current;
+    if (!lane || !enabled) return;
+    const hidden = lane.scrollWidth - lane.clientWidth;
+    if (hidden <= 0) return;
+    lane.scrollLeft = isRightToLeft(lane) ? -hidden : hidden;
+  }, [enabled]);
+
+  React.useLayoutEffect(() => {
+    anchorToEnd();
+    publishOverflow();
+  }, [anchorToEnd, publishOverflow, children]);
+
+  React.useEffect(() => {
+    const lane = laneRef.current;
+    if (!lane) return undefined;
+    const onScroll = () => publishOverflow();
+    lane.addEventListener('scroll', onScroll, { passive: true });
+    const observer = new ResizeObserver(() => {
+      if (lane.clientWidth !== laneWidth.current) {
+        laneWidth.current = lane.clientWidth;
+        anchorToEnd();
+      }
+      publishOverflow();
+    });
+    observer.observe(lane);
+    return () => {
+      lane.removeEventListener('scroll', onScroll);
+      observer.disconnect();
+    };
+  }, [anchorToEnd, publishOverflow]);
+
+  return laneRef;
+}
+
+function isRightToLeft(element: HTMLElement): boolean {
+  return getComputedStyle(element).direction === 'rtl';
+}
 
 const layoutSpring: Transition = {
   type: 'spring',
@@ -877,6 +943,7 @@ export function SegmentedToolbar({
   dragHandleLabel,
   className,
   disabled = false,
+  ref,
   ...props
 }: SegmentedToolbarProps) {
   const intl = useAppIntl();
@@ -944,10 +1011,20 @@ export function SegmentedToolbar({
     [orientation, reduceMotion, size],
   );
 
+  const laneRef = useHorizontalOverflow(orientation === 'horizontal', children);
+  const setLane = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      laneRef.current = node;
+      assignRef(ref, node);
+    },
+    [laneRef, ref],
+  );
+
   const innerToolbar = (
     <ToolbarContext.Provider value={context}>
       <Toolbar.Root
         {...props}
+        ref={setLane}
         disabled={disabled}
         orientation={orientation}
         className={cx(

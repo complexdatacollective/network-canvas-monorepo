@@ -627,6 +627,94 @@ describe('SegmentedToolbar — conditional motion', () => {
   });
 });
 
+describe('SegmentedToolbar — overflowing lane', () => {
+  const LANE_WIDTH = 352;
+  const CONTENT_WIDTH = 505;
+  const HIDDEN = CONTENT_WIDTH - LANE_WIDTH;
+
+  const layOutLane = (lane: HTMLElement, contentWidth: number) => {
+    let scrollLeft = 0;
+    Object.defineProperty(lane, 'clientWidth', {
+      configurable: true,
+      get: () => LANE_WIDTH,
+    });
+    Object.defineProperty(lane, 'scrollWidth', {
+      configurable: true,
+      get: () => contentWidth,
+    });
+    Object.defineProperty(lane, 'scrollLeft', {
+      configurable: true,
+      get: () => scrollLeft,
+      set: (next: number) => {
+        scrollLeft = Math.min(Math.max(next, 0), contentWidth - LANE_WIDTH);
+        lane.dispatchEvent(new Event('scroll'));
+      },
+    });
+    return () => scrollLeft;
+  };
+
+  const toolbar = (label: string) => (
+    <SegmentedToolbar aria-label="Page actions">
+      <ToolbarGroup aria-label="Page">
+        <ToolbarButton icon={<Pencil />}>Return to Stages</ToolbarButton>
+        <ToolbarButton icon={<List />}>{label}</ToolbarButton>
+      </ToolbarGroup>
+    </SegmentedToolbar>
+  );
+
+  it('rests at its trailing end so the primary action is on screen, and fades the edge it hides', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const pill = lane.parentElement;
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(HIDDEN);
+    expect(pill).toHaveClass('scroll-area-viewport-x');
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-start')).toBe(
+      `${HIDDEN}px`,
+    );
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('fades the trailing edge once the researcher scrolls back to the start', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const pill = lane.parentElement;
+    layOutLane(lane, CONTENT_WIDTH);
+    rerender(toolbar('Print'));
+
+    lane.scrollLeft = 0;
+
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-start')).toBe(
+      '0px',
+    );
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      `${HIDDEN}px`,
+    );
+  });
+
+  it('draws no fade and moves nothing when every control fits', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const pill = lane.parentElement;
+    const scrollLeft = layOutLane(lane, LANE_WIDTH);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(0);
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-start')).toBe(
+      '0px',
+    );
+    expect(pill?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+});
+
 describe('SegmentedToolbar — dragging', () => {
   it('does not render a drag handle by default', () => {
     render(
