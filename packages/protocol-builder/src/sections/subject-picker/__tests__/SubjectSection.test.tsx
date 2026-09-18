@@ -16,6 +16,7 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../../__tests__/rowFixtures.tsx';
+import NodeLayoutSection from '../../canvas-behaviours/NodeLayoutSection.tsx';
 import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
@@ -1035,5 +1036,84 @@ describe('choosing a type for a stage that has never had one', () => {
       expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
     );
     expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument();
+  });
+
+  /**
+   * An interface's own defaults are not the researcher's work.
+   *
+   * A Network Composer is created holding `behaviours.automaticLayout` and an
+   * unskewed background, which is what every stage of that interface starts
+   * with — and the reset writes those same values straight back. Counting them
+   * as configuration made the first type a researcher ever picked on a One to
+   * Many Dyad Census, a Sociogram, a Narrative or a Network Composer ask them
+   * to agree to losing work they had not done.
+   */
+  it('does not ask for the first type on an interface that has defaults', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NetworkComposer' as const,
+        fields: {
+          label: 'Build your network',
+          behaviours: { automaticLayout: true },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
+        },
+      },
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+    );
+    expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument();
+  });
+
+  /**
+   * And the guard still fires for the same stage once a default has been
+   * answered away from — which is what proves the test above is about the
+   * defaults rather than about the interface.
+   */
+  it('still asks when a default has been changed', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NetworkComposer' as const,
+        fields: {
+          label: 'Build your network',
+          behaviours: { automaticLayout: false },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
+        },
+      },
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
+    expect(pickedTypeBehindTheQuestion()).toBeUndefined();
+  });
+
+  it('asks when an unmounted sibling of a default holds an answer', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NetworkComposer' as const,
+        fields: {
+          label: 'Build your network',
+          behaviours: { automaticLayout: true, freeDraw: true },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
+        },
+      },
+      sections: (
+        <>
+          <SubjectSection entity="node" filter />
+          <NodeLayoutSection />
+        </>
+      ),
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
+    expect(pickedTypeBehindTheQuestion()).toBeUndefined();
   });
 });

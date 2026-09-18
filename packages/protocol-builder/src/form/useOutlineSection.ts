@@ -25,15 +25,10 @@ export function useOutlineSection(
   // renamed section reporting itself as finished.
   const initialTitle = useRef(title);
   useEffect(() => {
-    const unregister = outline.registerSection({
+    return outline.registerSection({
       id: sectionId,
       title: initialTitle.current,
     });
-    // Looked up rather than held by a ref: the element belongs to whichever
-    // component renders the section's chrome. The outline needs it only to
-    // order sections by where they sit on the page.
-    outline.setSectionElement(sectionId, document.getElementById(sectionId));
-    return unregister;
   }, [outline, sectionId]);
 
   useEffect(() => {

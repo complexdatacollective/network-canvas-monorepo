@@ -10,13 +10,11 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import { resourceOk, type ResourceDescriptor } from '../types.ts';
+import ResourceChoiceCard from './ResourceChoiceCard.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   browsableKinds,
-  formatByteLength,
   RESOURCE_PICKER_COPY,
-  resourceKindLabel,
-  resourceStatusLabel,
   type ResourcePickerKind,
 } from './resourceKinds.ts';
 import ResourceSecretControl from './ResourceSecretControl.tsx';
@@ -209,36 +207,16 @@ function ResourceBrowserBody({
         {library.resources.length > 0 && (
           <ul
             aria-label={intl.formatMessage(messages.libraryTitle)}
-            className="flex flex-col gap-2"
+            className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4"
           >
             {library.resources.map((descriptor) => (
-              <li
-                key={descriptor.id}
-                className="flex flex-wrap items-center gap-3"
-              >
-                <Button
-                  type="button"
-                  color="default"
-                  size="sm"
+              <li key={descriptor.id} className="flex min-w-0">
+                <ResourceChoiceCard
+                  descriptor={descriptor}
+                  current={descriptor.id === selectedId}
+                  onSelect={onSelect}
                   disabled={disabled}
-                  aria-current={
-                    descriptor.id === selectedId ? 'true' : undefined
-                  }
-                  onClick={() => onSelect(descriptor)}
-                >
-                  {descriptor.name}
-                </Button>
-                <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceKindLabel(descriptor.kind, intl)}
-                </Paragraph>
-                <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceStatusLabel(descriptor.status, intl)}
-                </Paragraph>
-                {descriptor.byteLength !== undefined && (
-                  <Paragraph intent="smallText" emphasis="muted" margin="none">
-                    {formatByteLength(descriptor.byteLength, intl)}
-                  </Paragraph>
-                )}
+                />
               </li>
             ))}
           </ul>

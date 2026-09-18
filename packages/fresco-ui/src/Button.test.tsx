@@ -94,8 +94,8 @@ describe('Button', () => {
       'overflow-visible',
     );
     expect(label).toHaveClass(
-      'group-hover/link:bg-[length:100%_2px]',
-      'group-focus-visible/link:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      'group-focus-visible/link:bg-[length:var(--link-underline-active,100%_2px)]',
     );
   });
 
@@ -161,8 +161,8 @@ describe('Button', () => {
     expect(link).not.toHaveAttribute('type');
     expect(link.firstElementChild).toBe(screen.getByTestId('slotted-icon'));
     expect(link.lastElementChild).toHaveClass(
-      'group-hover/link:bg-[length:100%_2px]',
-      'group-focus-visible/link:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      'group-focus-visible/link:bg-[length:var(--link-underline-active,100%_2px)]',
     );
   });
 

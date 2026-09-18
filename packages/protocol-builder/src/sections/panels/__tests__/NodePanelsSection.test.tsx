@@ -763,6 +763,87 @@ describe('the side panels a name generator shows', () => {
   });
 });
 
+const deleteTheOnlyRule = async (
+  harness: Harness,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.click(
+    dialog.getByRole('button', { name: /^Delete rule:/ }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Delete' }),
+  );
+  await waitFor(() =>
+    expect(dialog.queryByRole('button', { name: /^Delete rule:/ })).toBeNull(),
+  );
+};
+
+describe('a panel filter emptied down to nothing', () => {
+  it('saves the panel unfiltered rather than refusing it', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await deleteTheOnlyRule(harness, dialog);
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual({
+      id: 'panel-1',
+      title: 'People you named earlier',
+      dataSource: 'existing',
+    });
+  });
+
+  it('reopens the saved panel with its filter switched off and no rules', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await deleteTheOnlyRule(harness, dialog);
+    await saveTheRow(harness, dialog);
+
+    const reopened = await openPanel(harness, 'Edit panel');
+    const filterSwitch = reopened.getByRole('switch', { name: 'Panel filter' });
+    expect(filterSwitch).not.toBeChecked();
+    await harness.user.click(filterSwitch);
+    expect(
+      await reopened.findByRole('button', { name: 'Add new filter rule' }),
+    ).toBeInTheDocument();
+    expect(
+      reopened.queryByRole('button', { name: /^Delete rule:/ }),
+    ).toBeNull();
+  });
+
+  it('does not bring the deleted rule back when the filter is switched off and on', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await deleteTheOnlyRule(harness, dialog);
+
+    const filterSwitch = dialog.getByRole('switch', { name: 'Panel filter' });
+    await harness.user.click(filterSwitch);
+    await waitFor(() => expect(filterSwitch).not.toBeChecked());
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).toBeNull();
+    await harness.user.click(filterSwitch);
+    expect(
+      await dialog.findByRole('button', { name: 'Add new filter rule' }),
+    ).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /^Delete rule:/ })).toBeNull();
+
+    await saveTheRow(harness, dialog);
+    expect(
+      Object.hasOwn(panelsOf(await harness.submit())[0] ?? {}, 'filter'),
+    ).toBe(false);
+  });
+});
+
 /** Saves the row the dialog has open and waits for it to close. */
 const saveTheRow = async (
   harness: Harness,

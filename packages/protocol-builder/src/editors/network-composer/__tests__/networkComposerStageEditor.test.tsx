@@ -121,13 +121,7 @@ describe('the network composer stage editor', () => {
     const name = await screen.findByRole('textbox', { name: 'Stage name' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Build');
-    // The template's own automatic-layout default is a dependent the picker
-    // can see, so the first node type chosen for this stage still asks before
-    // it throws that default away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the node type' }),
-    );
     await screen.findByText(
       'Create or select an attribute for the quick-add form',
       { selector: 'label' },
@@ -142,10 +136,9 @@ describe('the network composer stage editor', () => {
       attributeField('Create or select an attribute to store node coordinates'),
       'layout',
     );
-    await harness.user.type(
+    expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
-      '2',
-    );
+    ).toHaveDisplayValue('4');
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
@@ -153,7 +146,7 @@ describe('the network composer stage editor', () => {
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
-      background: { concentricCircles: 2 },
+      background: { concentricCircles: 4 },
       behaviours: { automaticLayout: true },
     });
   });

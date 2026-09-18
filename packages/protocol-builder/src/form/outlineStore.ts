@@ -128,15 +128,30 @@ function fieldsInside(
     if (name === null || name === '') continue;
     fields.push({
       name,
-      label:
-        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`)
-          ?.textContent ?? '',
+      label: labelText(
+        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`),
+      ),
       required:
         container.querySelector(`[id$="${FIELD_ELEMENT.required}"]`) !== null,
       invalid: container.querySelector('[aria-invalid="true"]') !== null,
     });
   }
   return fields;
+}
+
+function labelText(label: Element | null): string {
+  if (label === null) return '';
+  let text = '';
+  for (const node of label.childNodes) {
+    if (
+      node.nodeType === Node.ELEMENT_NODE &&
+      (node as Element).getAttribute('aria-hidden') === 'true'
+    ) {
+      continue;
+    }
+    text += node.textContent ?? '';
+  }
+  return text.trim();
 }
 
 const sameField = (
@@ -331,13 +346,6 @@ export class SectionOutlineStore {
     this.changed();
   }
 
-  setSectionElement(id: string, element: HTMLElement | null): void {
-    const record = this.sections.get(id);
-    if (!record || record.element === element) return;
-    record.element = element;
-    this.changed();
-  }
-
   setSectionAvailability(id: string, availability: SectionAvailability): void {
     const record = this.sections.get(id);
     if (!record || record.availability === availability) return;
@@ -493,13 +501,20 @@ export class SectionOutlineStore {
   }
 
   private orderedRecords(): SectionRecord[] {
-    return [...this.sections.values()].toSorted(compareByDocumentPosition);
+    const records = [...this.sections.values()];
+    for (const record of records) locate(record);
+    return records.toSorted(compareByDocumentPosition);
   }
 
   private changed(): void {
     this.version += 1;
     for (const listener of this.listeners) listener();
   }
+}
+
+function locate(record: SectionRecord): void {
+  if (record.element?.isConnected === true) return;
+  record.element = document.getElementById(record.id);
 }
 
 /**

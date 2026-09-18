@@ -38,7 +38,7 @@ import type { StageType } from '@codaco/protocol-validation';
  * as the editor they replace always did. An image background replaces the
  * whole block, so it takes this with it.
  */
-const UNSKEWED_CIRCLES = { skewedTowardCenter: false };
+const UNSKEWED_CIRCLES = { concentricCircles: 4, skewedTowardCenter: false };
 
 const INTERFACE_TEMPLATES: Partial<
   Record<StageType, Record<string, FieldValue>>

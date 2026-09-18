@@ -34,6 +34,7 @@ import { cva, cx } from '../utils/cva';
 export type SegmentSize = 'sm' | 'md' | 'lg';
 export type ToolbarOrientation = 'horizontal' | 'vertical';
 export type Position = { x: number; y: number };
+export type ToolbarRestPosition = 'start' | 'end';
 
 const TOOLBAR_MOTION_CHILD = Symbol('ToolbarMotionChild');
 
@@ -237,6 +238,7 @@ export type SegmentedToolbarProps = Omit<
     | { top: number; left: number; right: number; bottom: number };
   /** Accessible name for the drag handle. @default 'Move toolbar' */
   'dragHandleLabel'?: string;
+  'restAt'?: ToolbarRestPosition;
 };
 
 type ToolbarContextValue = {
@@ -286,6 +288,85 @@ const rootLayoutVariants = cva({
   },
   defaultVariants: { orientation: 'horizontal' },
 });
+
+function useHorizontalOverflow(
+  enabled: boolean,
+  restAt: ToolbarRestPosition,
+  children: React.ReactNode,
+) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const frameRef = React.useRef<HTMLDivElement>(null);
+  const laneWidth = React.useRef(-1);
+  const pinnedToEnd = React.useRef(true);
+  const anchorsToEnd = enabled && restAt === 'end';
+
+  const publishOverflow = React.useCallback(() => {
+    const lane = laneRef.current;
+    const frame = frameRef.current;
+    if (!lane || !frame) return;
+    if (!enabled) {
+      frame.style.removeProperty('--scroll-area-overflow-x-start');
+      frame.style.removeProperty('--scroll-area-overflow-x-end');
+      return;
+    }
+    const hidden = Math.max(0, lane.scrollWidth - lane.clientWidth);
+    const travelled = Math.min(Math.abs(lane.scrollLeft), hidden);
+    const rightToLeft = isRightToLeft(lane);
+    const left = rightToLeft ? hidden - travelled : travelled;
+    frame.style.setProperty('--scroll-area-overflow-x-start', `${left}px`);
+    frame.style.setProperty(
+      '--scroll-area-overflow-x-end',
+      `${hidden - left}px`,
+    );
+  }, [enabled]);
+
+  const anchorToEnd = React.useCallback(() => {
+    const lane = laneRef.current;
+    if (!lane || !anchorsToEnd) return;
+    const hidden = lane.scrollWidth - lane.clientWidth;
+    if (hidden <= 0) return;
+    lane.scrollLeft = isRightToLeft(lane) ? -hidden : hidden;
+  }, [anchorsToEnd]);
+
+  React.useLayoutEffect(() => {
+    if (pinnedToEnd.current) anchorToEnd();
+    publishOverflow();
+  }, [anchorToEnd, publishOverflow, children]);
+
+  React.useEffect(() => {
+    const lane = laneRef.current;
+    if (!lane) return undefined;
+    const onScroll = () => {
+      const hidden = Math.max(0, lane.scrollWidth - lane.clientWidth);
+      const travelled = Math.min(Math.abs(lane.scrollLeft), hidden);
+      pinnedToEnd.current = hidden - travelled <= 1;
+      publishOverflow();
+    };
+    lane.addEventListener('scroll', onScroll, { passive: true });
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(() => {
+            if (lane.clientWidth !== laneWidth.current) {
+              laneWidth.current = lane.clientWidth;
+              pinnedToEnd.current = true;
+              anchorToEnd();
+            }
+            publishOverflow();
+          });
+    observer?.observe(lane);
+    return () => {
+      lane.removeEventListener('scroll', onScroll);
+      observer?.disconnect();
+    };
+  }, [anchorToEnd, publishOverflow]);
+
+  return { laneRef, frameRef };
+}
+
+function isRightToLeft(element: HTMLElement): boolean {
+  return getComputedStyle(element).direction === 'rtl';
+}
 
 const layoutSpring: Transition = {
   type: 'spring',
@@ -875,8 +956,10 @@ export function SegmentedToolbar({
   onPositionChange,
   dragConstraints,
   dragHandleLabel,
+  restAt = 'start',
   className,
   disabled = false,
+  ref,
   ...props
 }: SegmentedToolbarProps) {
   const intl = useAppIntl();
@@ -944,40 +1027,62 @@ export function SegmentedToolbar({
     [orientation, reduceMotion, size],
   );
 
+  const { laneRef, frameRef } = useHorizontalOverflow(
+    orientation === 'horizontal',
+    restAt,
+    children,
+  );
+  const setLane = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      laneRef.current = node;
+      assignRef(ref, node);
+    },
+    [laneRef, ref],
+  );
+
   const innerToolbar = (
     <ToolbarContext.Provider value={context}>
-      <Toolbar.Root
-        {...props}
-        disabled={disabled}
-        orientation={orientation}
+      <div
+        ref={frameRef}
         className={cx(
-          'relative flex min-w-0 items-center gap-1',
-          orientation === 'vertical'
-            ? 'flex-col'
-            : // The horizontal lane scrolls so that segments which do not fit
-              // stay reachable, with 5px of headroom because a non-`visible`
-              // `overflow-x` clips the other axis too and would otherwise slice
-              // the focus ring off every segment.
-              //
-              // It scrolls WITHOUT scrollbar chrome, because the only thing
-              // that reliably paints one is the toolbar's own motion. Swapping
-              // the segments pins each departing control at its old coordinates
-              // with `position: absolute` (AnimatePresence `popLayout`) and
-              // writes layout-projection transforms on the ones that stay, so
-              // `scrollWidth` runs some 80px past `clientWidth` for the length
-              // of every hand-off. At rest the two are equal. Left to `auto`,
-              // that overshoot flashes a scrollbar across the pill — and where
-              // the platform reserves space for one, grows it 15px taller
-              // mid-animation — to advertise content that was never out of
-              // reach. Genuine overflow still scrolls by wheel, by touch, and
-              // by the toolbar's roving focus.
-              'm-[-5px] scrollbar-none overflow-x-auto overscroll-x-contain p-[5px] [&::-webkit-scrollbar]:hidden',
+          'relative flex min-w-0',
+          orientation === 'horizontal' && 'scroll-area-viewport-x m-[-5px]',
         )}
       >
-        <GroupDisabledContext.Provider value={disabled}>
-          <AnimatedChildren>{children}</AnimatedChildren>
-        </GroupDisabledContext.Provider>
-      </Toolbar.Root>
+        <Toolbar.Root
+          {...props}
+          ref={setLane}
+          disabled={disabled}
+          orientation={orientation}
+          className={cx(
+            'relative flex min-w-0 items-center gap-1',
+            orientation === 'vertical'
+              ? 'flex-col'
+              : // The horizontal lane scrolls so that segments which do not fit
+                // stay reachable, with 5px of headroom because a non-`visible`
+                // `overflow-x` clips the other axis too and would otherwise slice
+                // the focus ring off every segment.
+                //
+                // It scrolls WITHOUT scrollbar chrome, because the only thing
+                // that reliably paints one is the toolbar's own motion. Swapping
+                // the segments pins each departing control at its old coordinates
+                // with `position: absolute` (AnimatePresence `popLayout`) and
+                // writes layout-projection transforms on the ones that stay, so
+                // `scrollWidth` runs some 80px past `clientWidth` for the length
+                // of every hand-off. At rest the two are equal. Left to `auto`,
+                // that overshoot flashes a scrollbar across the pill — and where
+                // the platform reserves space for one, grows it 15px taller
+                // mid-animation — to advertise content that was never out of
+                // reach. Genuine overflow still scrolls by wheel, by touch, and
+                // by the toolbar's roving focus.
+                'scrollbar-none overflow-x-auto overscroll-x-contain p-[5px] [&::-webkit-scrollbar]:hidden',
+          )}
+        >
+          <GroupDisabledContext.Provider value={disabled}>
+            <AnimatedChildren>{children}</AnimatedChildren>
+          </GroupDisabledContext.Provider>
+        </Toolbar.Root>
+      </div>
     </ToolbarContext.Provider>
   );
 

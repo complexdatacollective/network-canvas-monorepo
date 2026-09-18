@@ -45,6 +45,21 @@ describe('the prompt list a stage owns', () => {
     ).toBeInTheDocument();
   });
 
+  it('reports an empty list as unfinished, and says a prompt is wanted', async () => {
+    const harness = renderStageEditor({
+      stage: { type: 'NameGenerator', fields: { label: 'New stage' } },
+      sections: <>{prompts}</>,
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()).toEqual([
+      { title: 'Prompt collection', state: 'Not finished' },
+    ]);
+    expect(
+      await screen.findByRole('list', { name: 'Prompts' }),
+    ).toHaveAccessibleDescription(/Required/);
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 

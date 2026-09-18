@@ -186,6 +186,7 @@
     "./stages/StageBar": "./src/stages/StageBar.tsx",
     "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
+    "./storybook-support/colorContrast": "./src/storybook-support/colorContrast.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
     "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
@@ -881,6 +882,10 @@
       "./storybook-support/awaitPassiveEffects": {
         "types": "./dist/storybook-support/awaitPassiveEffects.d.ts",
         "default": "./dist/storybook-support/awaitPassiveEffects.js"
+      },
+      "./storybook-support/colorContrast": {
+        "types": "./dist/storybook-support/colorContrast.d.ts",
+        "default": "./dist/storybook-support/colorContrast.js"
       },
       "./styles.css": "./dist/styles.css",
       "./styles/controlVariants": {

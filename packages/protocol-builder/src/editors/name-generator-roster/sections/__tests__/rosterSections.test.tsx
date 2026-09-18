@@ -707,6 +707,12 @@ describe('how a participant searches a roster', () => {
     );
     await screen.findByRole('group', { name: /Searchable attributes/ });
 
+    await waitFor(() =>
+      expect(harness.outline()).toEqual([
+        { title: 'Roster search', state: 'Not finished' },
+      ]),
+    );
+
     expect(await harness.submit()).toBeNull();
     expect(
       screen.getByText(

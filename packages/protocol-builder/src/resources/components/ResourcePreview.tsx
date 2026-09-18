@@ -26,6 +26,12 @@ export type ResourcePreviewProps = Readonly<{
   /** The resource's name, which is what the media is announced as. */
   name: string;
   className?: string;
+  /**
+   * A picture of the resource and nothing to operate: no player controls and
+   * no retry, for a preview drawn inside something that is itself the control.
+   * A preview that fails draws nothing, leaving whatever it sits over showing.
+   */
+  presentational?: boolean;
 }>;
 
 /**
@@ -180,6 +186,7 @@ export default function ResourcePreview({
   kind,
   name,
   className,
+  presentational = false,
 }: ResourcePreviewProps) {
   const resources = useResourceClient();
   const intl = useAppIntl();
@@ -377,6 +384,7 @@ export default function ResourcePreview({
   }, [attempt, resourceId, resources]);
 
   if (failure !== undefined) {
+    if (presentational) return null;
     return (
       <ResourceFailureNotice
         failure={failure}
@@ -392,7 +400,7 @@ export default function ResourcePreview({
     return (
       <img
         src={preview.url}
-        alt={name}
+        alt={presentational ? '' : name}
         className={className ?? 'max-h-64 w-full rounded object-contain'}
       />
     );
@@ -404,8 +412,10 @@ export default function ResourcePreview({
       // its accessible name is the name the manifest records for it.
       <video
         src={preview.url}
-        controls
-        aria-label={name}
+        controls={!presentational}
+        muted={presentational}
+        aria-label={presentational ? undefined : name}
+        aria-hidden={presentational || undefined}
         className={className ?? 'max-h-64 w-full rounded'}
       />
     );

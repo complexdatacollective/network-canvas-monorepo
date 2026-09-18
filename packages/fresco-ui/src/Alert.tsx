@@ -25,7 +25,8 @@ const alertVariants = cva({
   base: 'my-6 flex w-full rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
-      default: 'bg-surface text-surface-contrast [--link:var(--color-link)]',
+      default:
+        'bg-surface text-surface-contrast [--link-underline-active:initial] [--link-underline-rest:initial] [--link:var(--surface-link)]',
       info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
       destructive:
         'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',

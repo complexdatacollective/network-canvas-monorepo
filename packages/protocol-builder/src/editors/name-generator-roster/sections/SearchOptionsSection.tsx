@@ -7,10 +7,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
-import {
-  type MessageRule,
-  messageRuleValidation,
-} from '@codaco/fresco-ui/form/validation/helpers';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 
 import { useStageValue } from '../../../form/stageFormHooks.ts';
@@ -251,24 +248,10 @@ const withSavedTolerance = (
  * an empty half is what let the commonest case through: switching search on
  * and saving straight away leaves both empty, and two rules that excuse each
  * other say nothing about a pair that is entirely missing.
- *
- * Both refusals are encoded rather than formatted: a `MessageRule` hands the
- * form a plain string, and `FieldErrors` decodes it in the reader's own
- * language where it is shown.
  */
-const matchIsAnswered: MessageRule = (value) =>
-  Array.isArray(value) && value.length > 0
-    ? undefined
-    : createMessageError(messages.matchRequired);
+const MATCH_REQUIRED = createMessageError(messages.matchRequired);
 
-const toleranceValidation = messageRuleValidation([
-  // `0` is an answer — the strictest setting — so the test is on the TYPE, not
-  // on truthiness.
-  (value) =>
-    typeof value === 'number'
-      ? undefined
-      : createMessageError(messages.toleranceRequired),
-]);
+const TOLERANCE_REQUIRED = createMessageError(messages.toleranceRequired);
 
 /**
  * How a participant finds someone in a long roster.
@@ -322,13 +305,9 @@ export default function SearchOptionsSection() {
    * the same: `orphans.refusal` reads the current orphans through a ref, so a
    * rule registered before the gateway answered is still the rule that runs.
    * See `useOrphanedColumnChoices`.
-   *
-   * Unanswered first, dangling second — the order `messageRuleValidation`
-   * documents, and the one that tells a researcher what is missing before it
-   * tells them what they kept is stale.
    */
   const matchValidation = useMemo(
-    () => messageRuleValidation([matchIsAnswered, orphans.refusal]),
+    () => messageRuleValidation([orphans.refusal]),
     [orphans.refusal],
   );
 
@@ -359,6 +338,7 @@ export default function SearchOptionsSection() {
           label={intl.formatMessage(messages.matchLabel)}
           hint={intl.formatMessage(messages.matchHint)}
           options={options}
+          required={MATCH_REQUIRED}
           custom={matchValidation}
         />
       </Section>
@@ -378,7 +358,7 @@ export default function SearchOptionsSection() {
           label={intl.formatMessage(messages.toleranceLabel)}
           hint={intl.formatMessage(messages.toleranceHint)}
           options={tolerances}
-          custom={toleranceValidation}
+          required={TOLERANCE_REQUIRED}
         />
       </Section>
     </BuilderSection>

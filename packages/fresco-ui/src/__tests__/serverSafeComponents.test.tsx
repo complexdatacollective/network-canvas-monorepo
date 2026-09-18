@@ -191,7 +191,9 @@ describe('server-safe components', () => {
       /^<a [^>]*href="\/docs"[^>]*><span [^>]*>Documentation<\/span><\/a>$/,
     );
     expect(markup).toContain('group/link');
-    expect(markup).toContain('group-hover/link:bg-[length:100%_2px]');
+    expect(markup).toContain(
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+    );
   });
 
   it('preserves the NativeLink router render override in static markup', () => {

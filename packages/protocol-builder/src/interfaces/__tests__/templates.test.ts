@@ -38,11 +38,11 @@ describe('getInterfaceTemplate', () => {
   it('seeds the layout and consideration behaviours their interfaces are designed around', () => {
     expect(getInterfaceTemplate('Narrative')).toEqual({
       behaviours: { allowRepositioning: true, automaticLayout: true },
-      background: { skewedTowardCenter: false },
+      background: { concentricCircles: 4, skewedTowardCenter: false },
     });
     expect(getInterfaceTemplate('NetworkComposer')).toEqual({
       behaviours: { automaticLayout: true },
-      background: { skewedTowardCenter: false },
+      background: { concentricCircles: 4, skewedTowardCenter: false },
     });
     expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
       behaviours: { removeAfterConsideration: true },
@@ -55,13 +55,14 @@ describe('getInterfaceTemplate', () => {
    * saved with no answer to the toggle draws the skew the editor showed
    * switched off.
    */
-  it('answers the concentric-circles skew for every canvas interface', () => {
+  it('answers the whole circles background for every canvas interface', () => {
     for (const stageType of [
       'Sociogram',
       'Narrative',
       'NetworkComposer',
     ] as const) {
       expect(getInterfaceTemplate(stageType).background, stageType).toEqual({
+        concentricCircles: 4,
         skewedTowardCenter: false,
       });
     }
@@ -122,15 +123,15 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
-  Narrative: ['background', 'presets', 'subject'],
+  Narrative: ['presets', 'subject'],
   // Its template DOES set `diseases: []`, and the schema wants at least one —
   // so this key is present and still refused, which is a different thing from
   // the absences above and worth being able to tell apart.
   NarrativePedigree: ['diseases'],
-  NetworkComposer: ['background', 'layoutVariable', 'quickAdd', 'subject'],
+  NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
   OrdinalBin: ['prompts', 'subject'],
-  Sociogram: ['background', 'prompts', 'subject'],
+  Sociogram: ['prompts', 'subject'],
   TieStrengthCensus: ['introductionPanel', 'prompts', 'subject'],
 };
 

@@ -32,8 +32,8 @@ describe('ExternalLink', () => {
     );
     expect(link).not.toHaveClass('group');
     expect(link.firstElementChild).toHaveClass(
-      'group-hover/link:bg-[length:100%_2px]',
-      'group-focus-visible/link:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      'group-focus-visible/link:bg-[length:var(--link-underline-active,100%_2px)]',
     );
     expect(link.firstElementChild).not.toHaveClass(
       'group-hover:bg-[length:100%_2px]',

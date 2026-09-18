@@ -298,6 +298,7 @@ test('the stage editor splits into two columns on the room the researcher can se
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
+  { path: '/protocol/summary', heading: 'Protocol Summary' },
 ] as const) {
   test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
     architectPage,
@@ -535,14 +536,30 @@ for (const viewport of VIEWPORTS) {
     const bounds = await architectPage
       .getByRole('toolbar', { name: 'Page actions' })
       .evaluate((toolbar) => {
-        const pill = toolbar.parentElement;
-        if (!pill) throw new Error('toolbar has no pill container');
+        const frame = toolbar.parentElement;
+        const pill = frame?.parentElement;
+        if (!frame || !pill) throw new Error('toolbar has no pill container');
+        const controls = toolbar.querySelectorAll('button');
+        const last = controls[controls.length - 1];
+        if (!last) throw new Error('toolbar has no controls');
         const box = pill.getBoundingClientRect();
-        return { left: box.left, right: box.right, width: window.innerWidth };
+        const visible = frame.getBoundingClientRect();
+        const trailing = last.getBoundingClientRect();
+        return {
+          left: box.left,
+          right: box.right,
+          width: window.innerWidth,
+          visible: { left: visible.left, right: visible.right },
+          trailing: { left: trailing.left, right: trailing.right },
+        };
       });
 
     expect(bounds.left).toBeGreaterThanOrEqual(0);
     expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    expect(bounds.trailing.left).toBeGreaterThanOrEqual(
+      bounds.visible.left - 1,
+    );
+    expect(bounds.trailing.right).toBeLessThanOrEqual(bounds.visible.right + 1);
   });
 }
 

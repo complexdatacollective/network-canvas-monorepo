@@ -5,7 +5,6 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
   hasValidatedUse,
@@ -218,18 +217,6 @@ export default function NominationPromptsSection() {
     ],
   );
 
-  const promptsValidation = useMemo(
-    () => ({
-      custom: messageRuleValidation([
-        (value: unknown) =>
-          Array.isArray(value) && value.length > 0
-            ? undefined
-            : AT_LEAST_ONE_PROMPT,
-      ]),
-    }),
-    [],
-  );
-
   const rowList = useMemo<RowListConfig>(
     () => ({
       Preview: NominationPromptPreview,
@@ -284,7 +271,7 @@ export default function NominationPromptsSection() {
           editorComponent={RowDialog}
           itemTemplate={rowTemplate()}
           sortable
-          {...promptsValidation}
+          required={AT_LEAST_ONE_PROMPT}
         />
       </RowList>
     </BuilderSection>

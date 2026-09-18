@@ -9,6 +9,7 @@ import {
   getValue,
   type ObjectPath,
   omitValue,
+  setValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
@@ -446,14 +447,34 @@ export function useAskStageHasAnyValue(): (
  * to delete content nobody entered.
  */
 function hasAnswer(value: unknown): boolean {
-  if (isUnanswered(value)) return false;
-  if (Array.isArray(value)) return value.some(hasAnswer);
+  return answeredPart(value) !== undefined;
+}
+
+/**
+ * The value with everything unanswered taken out of it, or `undefined` when
+ * nothing is left.
+ *
+ * `hasAnswer` is this question asked for a yes or a no. Two values are
+ * compared through it when what matters is whether they say the same thing —
+ * mounting a control assembles `{ action: undefined }` beside whatever is
+ * really there, and a stage that differs from another only by which controls
+ * happen to be on screen does not differ at all.
+ */
+export function answeredPart(value: unknown): unknown {
+  if (isUnanswered(value)) return undefined;
+  if (Array.isArray(value)) {
+    const items = value.map(answeredPart).filter((item) => item !== undefined);
+    return items.length === 0 ? undefined : items;
+  }
   // `isUnanswered` already ruled out null, so anything left of object type is
   // a real container.
   if (typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).some(hasAnswer);
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, inner]) => [key, answeredPart(inner)] as const)
+      .filter(([, inner]) => inner !== undefined);
+    return entries.length === 0 ? undefined : Object.fromEntries(entries);
   }
-  return true;
+  return value;
 }
 
 /**
@@ -522,6 +543,42 @@ function pathHasAnswer(
     committed = omitValue(committed, record.path.slice(target.length));
   }
   return hasAnswer(committed);
+}
+
+export function stageAnswerAt(
+  state: FormStoreState,
+  committedFields: StageFormDraft,
+  path: string,
+): unknown {
+  const target = safePath(path);
+  if (target === null) return undefined;
+
+  const records = formRecords(state);
+  const exact = records.find((record) => samePath(record.path, target));
+
+  let value: unknown = getValue(committedFields, target);
+  if (exact) {
+    value = exact.value;
+  } else {
+    for (const record of records
+      .filter((candidate) => isAbove(candidate.path, target))
+      .sort((a, b) => a.path.length - b.path.length)) {
+      const inside = readInside(record.value, target.slice(record.path.length));
+      if (hasAnswer(inside)) value = inside;
+    }
+  }
+
+  const holder: Record<string, unknown> = { value };
+  for (const record of records
+    .filter((candidate) => isBelow(candidate.path, target))
+    .sort((a, b) => a.path.length - b.path.length)) {
+    setValue(
+      holder,
+      ['value', ...record.path.slice(target.length)],
+      record.value,
+    );
+  }
+  return answeredPart(holder.value);
 }
 
 function readInside(value: unknown, relative: ObjectPath): unknown {
