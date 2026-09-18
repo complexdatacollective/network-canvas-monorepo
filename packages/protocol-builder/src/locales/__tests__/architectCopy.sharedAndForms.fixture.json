@@ -96,8 +96,8 @@
   },
   "protocolBuilder.pageContent.pageItemsHint": {
     "en": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
-    "es": "Añade bloques de texto, imagen, video y audio abajo, y arrástralos para cambiar su orden. Los participantes pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y video pueden tener un tamaño de visualización definido.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio"
+    "es": "Añade bloques de texto, imagen, vídeo y audio abajo, y arrástralos para cambiar su orden. Los participantes pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y vídeo pueden tener un tamaño de visualización definido.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.pageContent.pageAddLabel": {
     "en": "Create new content item",
@@ -136,8 +136,8 @@
   },
   "protocolBuilder.contentBlock.contentHint": {
     "en": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
-    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {video}} para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem"
+    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {vídeo}} para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.contentBlock.sizeHint": {
     "en": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
@@ -246,8 +246,8 @@
   },
   "protocolBuilder.censusPrompts.bucketOrderAddLabel": {
     "en": "Add new bucket sort rule",
-    "es": "Añadir nueva regla de orden de categorías",
-    "from": "74a07e626 architect.additional.sections.bucketSortOrderSection.addNewBucketSortRule"
+    "es": "Añadir nueva regla de orden de la reserva",
+    "from": "74a07e626 architect.additional.sections.bucketSortOrderSection.addNewBucketSortRule; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.censusPrompts.bucketOrderEmptyState": {
     "en": "No sort rules have been created yet.",
@@ -316,13 +316,13 @@
   },
   "protocolBuilder.networkCanvas.backgroundCirclesOptionDescription": {
     "en": "Use the conventional concentric circles sociogram background.",
-    "es": "Usar el fondo convencional de círculos concéntricos del sociograma.",
-    "from": "74a07e626 architect.sections.background.background.config.useTheConventionalConcentricCirclesSociogram"
+    "es": "Usa el fondo convencional de círculos concéntricos del sociograma.",
+    "from": "74a07e626 architect.sections.background.background.config.useTheConventionalConcentricCirclesSociogram; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.backgroundImageOptionDescription": {
     "en": "Use a custom image of your choosing as the background.",
-    "es": "Usar una imagen personalizada como fondo.",
-    "from": "74a07e626 architect.sections.background.background.config.useACustomImageOfYour"
+    "es": "Usa una imagen personalizada como fondo.",
+    "from": "74a07e626 architect.sections.background.background.config.useACustomImageOfYour; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.backgroundSkewLabel": {
     "en": "Skew circle sizes",
@@ -341,8 +341,8 @@
   },
   "protocolBuilder.networkCanvas.backgroundImageResponsiveHint": {
     "en": "A responsive SVG can span the canvas in portrait and landscape while keeping labels readable. <link>Learn how to create a responsive SVG background</link>.",
-    "es": "Un SVG adaptable puede cubrir el lienzo en orientación vertical y horizontal manteniendo la legibilidad de las etiquetas. <link>Aprenda a crear un fondo SVG adaptable</link>.",
-    "from": "74a07e626 architect.additional.sections.background.background.aResponsiveSVGCanSpanThe with architect.sections.background.background.learnHowToCreateAResponsive inside its tag, as one whole sentence"
+    "es": "Un SVG adaptable puede cubrir el lienzo en orientación vertical y horizontal manteniendo la legibilidad de las etiquetas. <link>Aprende a crear un fondo SVG adaptable</link>.",
+    "from": "74a07e626 architect.additional.sections.background.background.aResponsiveSVGCanSpanThe with architect.sections.background.background.learnHowToCreateAResponsive inside its tag, as one whole sentence; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.nodePanels.description": {
     "en": "Configure up to two side panels for this name generator.",
@@ -386,8 +386,8 @@
   },
   "protocolBuilder.nodePanels.clearDescription": {
     "en": "This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?",
-    "es": "Esto borrará la configuración de los paneles y eliminará las reglas de filtro que hayas creado. ¿Quieres continuar?",
-    "from": "74a07e626 architect.utility.sections.nodePanels.nodePanels.thisWillClearYourPanelConfiguration"
+    "es": "Esto borrará la configuración de los paneles y eliminará las reglas de filtrado que hayas creado. ¿Quieres continuar?",
+    "from": "74a07e626 architect.utility.sections.nodePanels.nodePanels.thisWillClearYourPanelConfiguration; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.quickAdd.title": {
     "en": "Quick add configuration",
@@ -501,8 +501,8 @@
   },
   "protocolBuilder.formFields.validationHintsHint": {
     "en": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
-    "es": "Mostrar automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a los participantes a entender los requisitos de entrada.",
-    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis"
+    "es": "Muestra automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a los participantes a entender los requisitos de entrada.",
+    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.formFields.lockedTypeTitle": {
     "en": "Attribute type is locked",
@@ -626,8 +626,8 @@
   },
   "protocolBuilder.contentBlock.kindVideo": {
     "en": "Video",
-    "es": "Video",
-    "from": "74a07e626 architect.sections.contentGrid.options.config.video"
+    "es": "Vídeo",
+    "from": "74a07e626 architect.sections.contentGrid.options.config.video; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.variablePicker.renameTrigger": {
     "en": "Edit attribute name: {label}",

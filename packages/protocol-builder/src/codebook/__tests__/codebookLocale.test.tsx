@@ -156,10 +156,10 @@ describe('the codebook read in Spanish', () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByRole('heading', { name: 'Tipos de nodos', level: 2 }),
+      screen.getByRole('heading', { name: 'Tipos de nodo', level: 2 }),
     ).toBeVisible();
     expect(
-      screen.getByRole('heading', { name: 'Tipos de vínculos', level: 2 }),
+      screen.getByRole('heading', { name: 'Tipos de vínculo', level: 2 }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Crear tipo de vínculo' }),
@@ -176,7 +176,7 @@ describe('the codebook read in Spanish', () => {
       screen.getByRole('article', { name: 'Tipo de nodo: Person' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('article', { name: 'Atributos de Ego' }),
+      screen.getByRole('article', { name: 'Atributos de ego' }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Editar tipo de vínculo: Knows' }),
@@ -188,7 +188,7 @@ describe('the codebook read in Spanish', () => {
     ).toBeVisible();
     expect(
       screen.getByRole('button', {
-        name: 'Editar el atributo Consent de los atributos de Ego',
+        name: 'Editar el atributo Consent de los atributos de ego',
       }),
     ).toBeVisible();
     expect(
@@ -336,7 +336,7 @@ describe('the codebook editors swept for English', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar entidad' }));
 
     expect(
-      await screen.findByText('No se ha podido guardar esta entidad'),
+      await screen.findByText('No se pudo guardar esta entidad'),
     ).toBeVisible();
     expectNoLocaleLeaks(
       'the entity editor after a refused save',

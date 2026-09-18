@@ -106,8 +106,8 @@
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherDescription": {
     "en": "Collect a participant-entered value when a node is placed in an other bin.",
-    "es": "Recoger un valor introducido por el participante cuando se coloca un nodo en el contenedor «Otro».",
-    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA"
+    "es": "Recoge un valor introducido por el participante cuando se coloca un nodo en el contenedor «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherPromptHint": {
     "en": "Enter a question prompt to show when the other option is triggered.",
@@ -246,8 +246,8 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder": {
     "en": "Enter text for the negative label here...",
-    "es": "Introduce aquí el texto de la etiqueta negativa...",
-    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForTheNegativeLabel"
+    "es": "Introduce aquí el texto de la opción de rechazo...",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForTheNegativeLabel; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.censusPrompts.tieStrengthDeclineTitle": {
     "en": "Decline response",
@@ -416,8 +416,8 @@
   },
   "protocolBuilder.nodePanels.filterGroupDescription": {
     "en": "Filter the nodes and edges displayed to participants in this panel.",
-    "es": "Filtre los nodos y vínculos que se muestran a los participantes en este panel.",
-    "from": "74a07e626 architect.sections.fields.networkFilter.filterTheNodesAndEdgesDisplayed"
+    "es": "Filtra los nodos y vínculos que se muestran a los participantes en este panel.",
+    "from": "74a07e626 architect.sections.fields.networkFilter.filterTheNodesAndEdgesDisplayed; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.nodePanels.filterGroupTitle": {
     "en": "Panel filter",

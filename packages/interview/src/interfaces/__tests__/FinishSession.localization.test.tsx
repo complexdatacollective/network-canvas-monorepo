@@ -37,7 +37,7 @@ const payload = {
 const english =
   'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.';
 const spanish =
-  'No se ha podido finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.';
+  'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.';
 const diagnostic =
   'private host failure details that must stay out of the dialog';
 

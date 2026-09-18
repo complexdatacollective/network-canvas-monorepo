@@ -205,7 +205,7 @@ describe('the fields in this directory, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', {
-        name: 'ghost — este tipo ya no está en el libro de códigos',
+        name: 'ghost: este tipo ya no está en el libro de códigos',
       }),
     ).toBeInTheDocument();
     expect(
@@ -245,7 +245,7 @@ describe('the fields in this directory, read in Spanish', () => {
     // The stored choice nothing offers is kept and named on the field itself,
     // beside the sentence saying what the researcher has to do about it.
     expect(
-      screen.getByText('gone — este atributo no está disponible aquí'),
+      screen.getByText('gone: este atributo no está disponible aquí'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Este atributo no está disponible aquí. Elige otro.'),
@@ -323,7 +323,7 @@ describe('the fields in this directory, read in Spanish', () => {
 
     expect(
       screen.getByText(
-        'La etapa a la que salta esto ya no forma parte de esta entrevista. Elige dónde debe continuar la entrevista.',
+        'La etapa de destino del salto ya no forma parte de esta entrevista. Elige dónde debe continuar la entrevista.',
       ),
     ).toBeInTheDocument();
     expect(

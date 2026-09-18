@@ -221,7 +221,7 @@ describe('the content-block dialog, read in Spanish', () => {
         'Elige el tipo de contenido que mostrará este elemento.',
       ),
     ).toBeInTheDocument();
-    for (const kind of ['Imagen', 'Video', 'Audio', 'Texto']) {
+    for (const kind of ['Imagen', 'Vídeo', 'Audio', 'Texto']) {
       expect(
         within(dialog).getByRole('radio', { name: kind }),
       ).toBeInTheDocument();
@@ -288,10 +288,10 @@ describe('the content-block dialog, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
 
-    await chooseKind('Video');
+    await chooseKind('Vídeo');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de video para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();

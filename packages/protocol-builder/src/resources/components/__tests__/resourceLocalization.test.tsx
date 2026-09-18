@@ -135,7 +135,7 @@ describe('resource surfaces in a reader’s own language', () => {
     ).toBeVisible();
 
     await user.upload(
-      screen.getByLabelText('Elige un archivo de tu ordenador'),
+      screen.getByLabelText('Elige un archivo de tu dispositivo'),
       new File(['notes'], 'notes.txt', { type: 'text/plain' }),
     );
 
@@ -164,7 +164,7 @@ describe('resource surfaces in a reader’s own language', () => {
     );
 
     await user.click(
-      await screen.findByRole('button', { name: 'Selecciona una imagen' }),
+      await screen.findByRole('button', { name: 'Seleccionar una imagen' }),
     );
     await user.click(
       within(
