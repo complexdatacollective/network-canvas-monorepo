@@ -277,16 +277,7 @@ function ComboboxField(props: ComboboxFieldProps) {
         </Combobox.Icon>
       </Combobox.Trigger>
       <Combobox.Portal container={portalContainer ?? undefined}>
-        {/*
-          `z-3000`, as `IconPicker`'s and `LocaleSwitcher`'s combobox
-          positioners and `Popover`'s carry. A host that mounts no
-          `PortalContainerProvider` sends this popup to `document.body`, where a
-          positioner left at `z-index: auto` loses to any positioned page
-          content — a `sticky z-10` table header, say, which is exactly what
-          swallowed the Interviewer data view's protocol filter: the popup
-          rendered behind the table, invisible and unclickable, while still
-          reporting itself open to assistive technology.
-        */}
+        {/* The popup layer, as `Popover`'s: this can open from inside one. */}
         <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
           <Combobox.Popup
             render={

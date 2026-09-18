@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
+import Button from '../../../Button';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
@@ -691,78 +693,49 @@ export const DisabledOptions: Story = {
 };
 
 /**
- * The popup opens over positioned page content, not behind it.
- *
- * A host that mounts no `PortalContainerProvider` — Interviewer is one — sends
- * this popup to `document.body`, where it competes with the page's own
- * stacking. The Interviewer data view puts this combobox in a filter popover
- * above a `sticky z-10` table header, and a positioner left at `z-index: auto`
- * put the whole popup behind that header: invisible, unclickable, and still
- * reporting itself open to assistive technology.
- *
- * The oracle is the one that caught it — asking the document what is actually
- * painted at the popup's own coordinates, rather than trusting the
- * accessibility tree, which was correct throughout.
+ * Opened from inside a Popover, as Interviewer's data view filters by protocol,
+ * the list paints over the rest of the Popover rather than behind it.
  */
-export const OverPositionedPageContent: Story = {
-  render: function OverPositionedPageContentStory() {
+export const InsidePopover: Story = {
+  render: function InsidePopoverStory() {
     const [value, setValue] = useState<(string | number)[]>([]);
 
     return (
-      <div className="flex flex-col gap-4">
-        <div className="w-80">
-          <ComboboxField
-            name="over-positioned-content"
-            options={sampleOptions}
-            placeholder="Select options..."
-            value={value}
-            onChange={(v) => setValue(v ?? [])}
-          />
-        </div>
-        {/* Stands in for the data table this popup opens over. */}
-        <div className="bg-surface-2 sticky top-0 z-10 h-64 rounded p-4">
-          <Paragraph margin="none">Positioned page content</Paragraph>
-        </div>
-      </div>
+      <Popover defaultOpen>
+        <PopoverTrigger render={<Button>Open filters</Button>} />
+        <PopoverContent className="w-md">
+          <div className="flex flex-col gap-4">
+            <ComboboxField
+              name="inside-popover"
+              options={sampleOptions}
+              placeholder="Select options..."
+              value={value}
+              onChange={(v) => setValue(v ?? [])}
+            />
+            <div className="bg-surface-2 h-64 rounded p-4">
+              <Paragraph margin="none">Other filters</Paragraph>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('combobox'));
+  play: async () => {
+    const trigger = await screen.findByRole('combobox');
+    await userEvent.click(trigger);
+    const option = await screen.findByRole('option', { name: 'Option 4' });
 
-    const option = await screen.findByRole('option', { name: 'Option 1' });
-
-    // The positioner is the absolutely-positioned ancestor base-ui places the
-    // popup with, and its stacking is the whole of this regression: a host
-    // with no `PortalContainerProvider` drops this element straight into
-    // `document.body`, where `z-index: auto` loses to any positioned page
-    // content. Storybook always mounts that provider, so the composed failure
-    // cannot be staged here — what can be asserted is the property whose
-    // absence caused it.
-    let positioner: HTMLElement | null = option.parentElement;
-    while (
-      positioner !== null &&
-      getComputedStyle(positioner).position !== 'absolute'
-    ) {
-      positioner = positioner.parentElement;
-    }
-    expect(positioner).not.toBeNull();
-    expect(getComputedStyle(positioner as HTMLElement).zIndex).not.toBe('auto');
-
-    // And with the provider in place it really is the thing painted at its own
-    // coordinates, and operable there. A multi-select trigger reports the
-    // count rather than the label.
-    const box = option.getBoundingClientRect();
-    expect(box.width).toBeGreaterThan(0);
-    const painted = document.elementFromPoint(
-      box.left + box.width / 2,
-      box.top + box.height / 2,
-    );
-    expect(painted !== null && option.contains(painted)).toBe(true);
+    await waitFor(() => {
+      const box = option.getBoundingClientRect();
+      expect(box.height).toBeGreaterThan(0);
+      const painted = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      expect(painted !== null && option.contains(painted)).toBe(true);
+    });
 
     await userEvent.click(option);
-    await waitFor(() =>
-      expect(canvas.getByRole('combobox')).toHaveTextContent('1 item selected'),
-    );
+    await waitFor(() => expect(trigger).toHaveTextContent('1 item selected'));
   },
 };
