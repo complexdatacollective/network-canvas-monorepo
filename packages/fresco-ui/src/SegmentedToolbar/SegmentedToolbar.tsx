@@ -332,17 +332,20 @@ function useHorizontalOverflow(
     if (!lane) return undefined;
     const onScroll = () => publishOverflow();
     lane.addEventListener('scroll', onScroll, { passive: true });
-    const observer = new ResizeObserver(() => {
-      if (lane.clientWidth !== laneWidth.current) {
-        laneWidth.current = lane.clientWidth;
-        anchorToEnd();
-      }
-      publishOverflow();
-    });
-    observer.observe(lane);
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(() => {
+            if (lane.clientWidth !== laneWidth.current) {
+              laneWidth.current = lane.clientWidth;
+              anchorToEnd();
+            }
+            publishOverflow();
+          });
+    observer?.observe(lane);
     return () => {
       lane.removeEventListener('scroll', onScroll);
-      observer.disconnect();
+      observer?.disconnect();
     };
   }, [anchorToEnd, publishOverflow]);
 
