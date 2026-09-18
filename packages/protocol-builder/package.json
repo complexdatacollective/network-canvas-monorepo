@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-builder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Shared protocol-authoring sessions and stage editors for Architect and Studio, over the @codaco/protocol-builder-core contract.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
