@@ -77,11 +77,11 @@ describe('Fresco researcher message catalogs', () => {
     const intl = createAppIntl({ locale: 'es', messages: frescoCatalogs.es });
     expect(
       intl.formatMessage({
-        id: 'fresco.language.label',
-        defaultMessage: 'Language',
-        description: 'Application language preference label.',
+        id: 'fresco.NavigationBar.settings',
+        defaultMessage: 'Settings',
+        description: 'Researcher-facing NavigationBar: Settings',
       }),
-    ).toBe('Idioma');
+    ).toBe('Configuración');
     expect(intl.formatMessage(commonMessages.cancel)).toBe('Cancelar');
   });
 
@@ -128,11 +128,11 @@ describe('Fresco researcher message catalogs', () => {
     ).toBe('Unauthorised');
     expect(
       intl.formatMessage({
-        id: 'fresco.language.label',
-        defaultMessage: 'Language',
-        description: 'Application language preference label.',
+        id: 'fresco.NavigationBar.settings',
+        defaultMessage: 'Settings',
+        description: 'Researcher-facing NavigationBar: Settings',
       }),
-    ).toBe('Language');
+    ).toBe('Settings');
   });
 
   it('uses British self-enrol wording on both recruitment surfaces', () => {

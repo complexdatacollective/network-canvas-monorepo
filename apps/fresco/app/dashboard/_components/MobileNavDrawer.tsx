@@ -15,6 +15,7 @@ import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { logout } from '~/actions/auth';
 import SubmitButton from '~/components/SubmitButton';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 const messages = defineMessages({
   interviews: {
@@ -81,6 +82,9 @@ const navItems: NavItem[] = [
   { label: messages.interviews, href: '/dashboard/interviews' },
 ];
 
+const mobileNavItemClassName =
+  'focusable flex min-h-[44px] w-full items-center gap-3 rounded-lg px-4 py-3 text-lg font-semibold transition-colors';
+
 const MobileNavLink = ({
   item,
   isActive,
@@ -97,7 +101,7 @@ const MobileNavLink = ({
       href={item.href}
       onClick={onClick}
       className={cx(
-        'focusable flex min-h-[44px] items-center gap-3 rounded-lg px-4 py-3 text-lg font-semibold transition-colors',
+        mobileNavItemClassName,
         isActive
           ? 'bg-sea-green/20 text-sea-green'
           : 'hover:bg-surface-1-contrast/10',
@@ -178,6 +182,23 @@ export function MobileNavDrawer() {
                   }}
                   isActive={pathname === '/dashboard/settings'}
                   onClick={handleClose}
+                />
+              </li>
+
+              <li>
+                <FrescoLocaleSwitcher
+                  display="label"
+                  renderTrigger={
+                    // Named by the switcher, which sets the language on it at runtime.
+                    // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                    <button
+                      type="button"
+                      className={cx(
+                        mobileNavItemClassName,
+                        'hover:bg-surface-1-contrast/10 data-popup-open:bg-surface-1-contrast/10 cursor-pointer [&>svg]:size-5',
+                      )}
+                    />
+                  }
                 />
               </li>
             </motion.ul>

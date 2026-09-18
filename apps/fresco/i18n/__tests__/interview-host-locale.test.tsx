@@ -17,7 +17,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
 import ParticipantLayout from '~/app/(interview)/layout';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
-import LanguageSetting from '~/i18n/LanguageSetting';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 import type { FrescoI18nInitialization } from '~/i18n/resolve';
 
 const { shell, updateLocale, refresh } = vi.hoisted(() => ({
@@ -107,7 +107,7 @@ function ParticipantChrome() {
 function Host({ initial = spanish }: { initial?: FrescoI18nInitialization }) {
   return (
     <FrescoI18nProvider initial={initial}>
-      <LanguageSetting />
+      <FrescoLocaleSwitcher />
       <ParticipantLayout>
         <ParticipantChrome />
         <InterviewClient
@@ -151,9 +151,10 @@ describe('Fresco passes its resolved host request to the interview package', () 
     expect(shell.mock.lastCall?.[0]).not.toHaveProperty('localePreference');
     expect(updateLocale).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Idioma' }), {
-      target: { value: '__automatic' },
-    });
+    fireEvent.click(
+      screen.getByRole('combobox', { name: /^Idioma de la interfaz/ }),
+    );
+    fireEvent.click(await screen.findByRole('option', { name: /^Automático/ }));
     expect(screen.getByTestId('shell-request')).toHaveAttribute(
       'data-requested-locale',
       'en-GB',
