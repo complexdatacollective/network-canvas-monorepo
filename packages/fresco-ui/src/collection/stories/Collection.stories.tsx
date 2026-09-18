@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import preview from '../../../.storybook/preview';
+import { Badge } from '../../Badge';
 import Node, { type NodeColorSequence } from '../../Node';
 import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
@@ -107,16 +108,12 @@ function CardItem({
     >
       <div className="flex items-center justify-between">
         <Heading level="label">{item.name}</Heading>
-        <span
-          className={cx(
-            'rounded-full px-2 py-0.5 text-xs',
-            item.completed
-              ? 'bg-success/20 text-success'
-              : 'bg-warning/20 text-warning',
-          )}
+        <Badge
+          tone={item.completed ? 'success' : 'warning'}
+          appearance="outline"
         >
           {item.completed ? 'Done' : 'Pending'}
-        </span>
+        </Badge>
       </div>
       <div className="text-surface-1-contrast/70 mt-2 flex flex-wrap gap-4 text-sm">
         <span>{item.department}</span>

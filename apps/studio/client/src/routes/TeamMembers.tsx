@@ -742,7 +742,7 @@ function TeamManagement(props: {
               {intl.formatMessage(messages.membersIntro)}
             </Paragraph>
           </div>
-          <Badge variant="secondary">
+          <Badge tone="secondary">
             {intl.formatMessage(messages.memberCount, {
               count: team.members.length,
             })}
@@ -835,7 +835,7 @@ function TeamManagement(props: {
                           />
                         </>
                       ) : (
-                        <Badge variant="outline">
+                        <Badge appearance="outline">
                           {teamRolesLabel(intl, member.role)}
                         </Badge>
                       )}

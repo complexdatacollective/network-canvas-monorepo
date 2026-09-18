@@ -12,10 +12,11 @@ const meta = {
     docs: {
       description: {
         component: `
-A compact, uppercase label with an optional palette-coloured dot. Give it
-\`onPressedChange\` and it becomes a toggle button (Base UI \`Toggle\`) that
-exposes \`pressed\` as \`aria-pressed\` — the shape used for multi-select facet
-filters such as Architect's capability filter and the protocol gallery sidebar.
+A \`Badge\` with a toggle state: uppercase, with an optional palette-coloured
+dot. Give it \`onPressedChange\` and it becomes a toggle button (Base UI
+\`Toggle\`) that exposes \`pressed\` as \`aria-pressed\` — the shape used for
+multi-select facet filters such as Architect's capability filter and the
+protocol gallery sidebar.
 
 \`\`\`tsx
 import Tag from '@codaco/fresco-ui/Tag';
@@ -26,8 +27,9 @@ import Tag from '@codaco/fresco-ui/Tag';
 \`\`\`
 
 Props: \`color\` (palette name for the dot), \`pressed\` + \`onPressedChange\`
-(interactive toggle), \`light\` (muted display tone), \`disabled\`, \`size\`
-(\`md\` default, \`sm\` for dense filter rows), plus any button attributes.
+(interactive toggle), \`light\` (muted display tone), \`uppercase\` (set false
+for labels whose own casing carries meaning), \`disabled\`, \`size\` (\`md\`
+default, \`sm\` for dense filter rows), plus any button attributes.
 `,
       },
     },

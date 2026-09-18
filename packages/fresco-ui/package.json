@@ -51,7 +51,6 @@
     "./Modal/ModalPopup": "./src/Modal/ModalPopup.tsx",
     "./NativeLink": "./src/NativeLink.tsx",
     "./Node": "./src/Node.tsx",
-    "./Pill": "./src/Pill.tsx",
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
@@ -341,10 +340,6 @@
       "./Node": {
         "types": "./dist/Node.d.ts",
         "default": "./dist/Node.js"
-      },
-      "./Pill": {
-        "types": "./dist/Pill.d.ts",
-        "default": "./dist/Pill.js"
       },
       "./Pips": {
         "types": "./dist/Pips.d.ts",

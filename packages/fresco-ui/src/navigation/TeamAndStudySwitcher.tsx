@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { Badge } from '../Badge';
 import { IdentityMark } from '../IdentityMark';
-import Pill from '../Pill';
 import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
 import { composeEventHandlers } from '../utils/composeEventHandlers';
@@ -468,17 +468,13 @@ function Segment({
                         )}
                       </Select.ItemText>
                       {item.badge !== undefined && (
-                        <Pill
+                        <Badge
                           size="sm"
-                          // `filled` tints with the row's OWN text colour, so
-                          // the pill follows whatever row it is on. The tint
-                          // comes off on the selected row, where it would pull
-                          // the label to about 4.2:1.
-                          variant="filled"
-                          className="shrink-0 uppercase group-data-selected:bg-transparent"
+                          mono
+                          className="shrink-0 bg-current/10 whitespace-nowrap text-current uppercase group-data-selected:bg-transparent"
                         >
                           {item.badge}
-                        </Pill>
+                        </Badge>
                       )}
                       {/*
                         The tick's column is reserved by this wrapper rather

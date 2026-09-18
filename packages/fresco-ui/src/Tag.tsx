@@ -3,24 +3,28 @@
 import { Toggle } from '@base-ui/react/toggle';
 import * as React from 'react';
 
+import { Badge } from './Badge';
 import { type PaletteColor, paletteColorStyles } from './styles/palette';
-import { cva, cx, type VariantProps } from './utils/cva';
+import { cva, type VariantProps } from './utils/cva';
 
 const tagVariants = cva({
-  base: 'inline-flex items-center justify-center rounded-full border-2 border-transparent text-xs leading-tight font-medium whitespace-nowrap',
+  base: 'justify-center border-2 leading-tight font-medium whitespace-nowrap',
   variants: {
     size: {
       sm: 'gap-2 px-2.5 py-0.5',
       md: 'gap-2 px-3 py-1',
     },
     uppercase: {
-      true: 'uppercase',
+      true: '',
       false: '',
     },
     tone: {
-      default: 'bg-text/15 text-text',
-      light: 'bg-platinum text-surface-2-contrast',
-      pressed: 'bg-text text-background',
+      default:
+        '[--badge-color:color-mix(in_oklab,var(--text)_15%,transparent)] [--badge-contrast:var(--text)]',
+      light:
+        '[--badge-color:var(--color-platinum)] [--badge-contrast:var(--surface-2-contrast)]',
+      pressed:
+        '[--badge-color:var(--text)] [--badge-contrast:var(--background)]',
     },
     interactive: {
       true: 'focusable cursor-pointer',
@@ -31,6 +35,9 @@ const tagVariants = cva({
       false: '',
     },
   },
+  compoundVariants: [
+    { uppercase: true, size: 'sm', className: 'tracking-wide' },
+  ],
   defaultVariants: {
     size: 'md',
     uppercase: true,
@@ -38,12 +45,6 @@ const tagVariants = cva({
     interactive: false,
     disabled: false,
   },
-  // Loose tracking is a caps treatment; set in mixed case the label keeps the
-  // xs scale's own letter-spacing.
-  compoundVariants: [
-    { uppercase: true, size: 'sm', className: 'tracking-wide' },
-    { uppercase: true, size: 'md', className: 'tracking-widest' },
-  ],
 });
 
 const dotVariants = cva({
@@ -93,53 +94,46 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
   ref,
 ) {
   const interactive = onPressedChange !== undefined;
-  const classes = tagVariants({
-    size,
-    uppercase,
-    tone: pressed ? 'pressed' : light ? 'light' : 'default',
-    interactive: interactive && !disabled,
-    disabled,
-    className,
-  });
-  const setRef = (node: HTMLElement | null) => {
-    if (typeof ref === 'function') ref(node);
-    else if (ref) ref.current = node;
-  };
   const dotStyle: TagDotStyle | undefined = color
     ? { '--tag-dot': paletteColorStyles[color].color }
     : undefined;
-  const content = (
-    <>
-      {color ? (
-        <span
-          aria-hidden
-          className={cx(dotVariants({ size }))}
-          style={dotStyle}
-        />
-      ) : null}
-      {children}
-    </>
-  );
-
-  if (interactive) {
-    return (
-      <Toggle
-        ref={setRef}
-        pressed={pressed}
-        disabled={disabled}
-        onPressedChange={(next) => onPressedChange(next)}
-        className={classes}
-        {...props}
-      >
-        {content}
-      </Toggle>
-    );
-  }
 
   return (
-    <div ref={setRef} className={classes} {...props}>
-      {content}
-    </div>
+    <Badge
+      ref={ref}
+      size="md"
+      uppercase={uppercase}
+      appearance="filled"
+      icon={
+        color ? (
+          <span
+            aria-hidden
+            className={dotVariants({ size })}
+            style={dotStyle}
+          />
+        ) : undefined
+      }
+      className={tagVariants({
+        size,
+        uppercase,
+        tone: pressed ? 'pressed' : light ? 'light' : 'default',
+        interactive: interactive && !disabled,
+        disabled,
+        className,
+      })}
+      render={
+        interactive ? (
+          <Toggle
+            pressed={pressed}
+            disabled={disabled}
+            onPressedChange={(next) => onPressedChange(next)}
+          />
+        ) : undefined
+      }
+      {...props}
+    >
+      {children}
+    </Badge>
   );
 });
 
