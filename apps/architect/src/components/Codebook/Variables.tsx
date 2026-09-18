@@ -108,7 +108,11 @@ const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
 };
 
 const NameCell = ({ row }: CellContext<Variable, unknown>) => (
-  <ConnectedVariablePill editable uuid={row.original.id} />
+  <ConnectedVariablePill
+    editable
+    uuid={row.original.id}
+    className="max-w-[min(20rem,55cqi)]"
+  />
 );
 
 const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
@@ -258,7 +262,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   });
 
   return (
-    <div className="mt-7">
+    <div className="@container mt-7">
       <DataTable
         table={table}
         showPagination={false}
