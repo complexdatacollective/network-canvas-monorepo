@@ -455,11 +455,7 @@ const asString = (value: unknown): string | undefined =>
  * that would otherwise surface long after the researcher has moved on, and the
  * duplicate rule asks the question in exactly the schema's terms
  * (`duplicateFormFieldIndices`) so the two cannot disagree.
- */
-const atLeastOneField = (value: unknown) =>
-  Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD;
-
-/**
+ *
  * Said of an entry the list cannot even show.
  *
  * Asked of the RAW array rather than of `rowsOf`, which drops what is not a
@@ -791,11 +787,7 @@ export default function FormFieldsSection({
   const fieldsValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        // Before the one that counts it. Only the first rule to fail is shown,
-        // and "add at least one field" said of a value that is not a list
-        // sends the researcher to add a row to something that cannot hold one.
         everyEntryIsAField,
-        ...(optional ? [] : [atLeastOneField]),
         everyFieldComplete,
         noAttributeTwice,
         (value: unknown) =>
@@ -902,6 +894,7 @@ export default function FormFieldsSection({
             editorComponent={RowDialog}
             itemTemplate={rowTemplate()}
             sortable
+            required={optional ? false : AT_LEAST_ONE_FIELD}
             {...fieldsValidation}
           />
         </RowList>

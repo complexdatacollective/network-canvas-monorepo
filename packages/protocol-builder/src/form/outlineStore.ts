@@ -128,15 +128,30 @@ function fieldsInside(
     if (name === null || name === '') continue;
     fields.push({
       name,
-      label:
-        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`)
-          ?.textContent ?? '',
+      label: labelText(
+        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`),
+      ),
       required:
         container.querySelector(`[id$="${FIELD_ELEMENT.required}"]`) !== null,
       invalid: container.querySelector('[aria-invalid="true"]') !== null,
     });
   }
   return fields;
+}
+
+function labelText(label: Element | null): string {
+  if (label === null) return '';
+  let text = '';
+  for (const node of label.childNodes) {
+    if (
+      node.nodeType === Node.ELEMENT_NODE &&
+      (node as Element).getAttribute('aria-hidden') === 'true'
+    ) {
+      continue;
+    }
+    text += node.textContent ?? '';
+  }
+  return text.trim();
 }
 
 const sameField = (
