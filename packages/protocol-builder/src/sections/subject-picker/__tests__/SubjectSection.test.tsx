@@ -1054,7 +1054,7 @@ describe('choosing a type for a stage that has never had one', () => {
         fields: {
           label: 'Build your network',
           behaviours: { automaticLayout: true },
-          background: { skewedTowardCenter: false },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
         },
       },
       sections: nodeSubjectAndFilter,
@@ -1080,7 +1080,7 @@ describe('choosing a type for a stage that has never had one', () => {
         fields: {
           label: 'Build your network',
           behaviours: { automaticLayout: false },
-          background: { skewedTowardCenter: false },
+          background: { concentricCircles: 4, skewedTowardCenter: false },
         },
       },
       sections: nodeSubjectAndFilter,

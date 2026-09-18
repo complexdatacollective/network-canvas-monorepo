@@ -179,6 +179,8 @@ const circlesValidation = {
   ]),
 };
 
+const CIRCLES_FIELD_WIDTH = 'w-36';
+
 /**
  * What the participant sees behind the nodes.
  *
@@ -277,6 +279,7 @@ export default function BackgroundSection() {
           <Field<typeof IntegerFieldControl>
             name={CIRCLES_FIELD}
             component={IntegerFieldControl}
+            className={CIRCLES_FIELD_WIDTH}
             label={intl.formatMessage(messages.backgroundCirclesLabel)}
             required={REQUIRED}
             {...circlesValidation}

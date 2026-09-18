@@ -91,10 +91,9 @@ describe('the narrative stage editor', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    await harness.user.type(
+    expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
-      '4',
-    );
+    ).toHaveDisplayValue('4');
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({

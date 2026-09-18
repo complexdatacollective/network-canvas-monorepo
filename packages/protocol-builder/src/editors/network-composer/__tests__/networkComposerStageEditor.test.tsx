@@ -136,10 +136,9 @@ describe('the network composer stage editor', () => {
       attributeField('Create or select an attribute to store node coordinates'),
       'layout',
     );
-    await harness.user.type(
+    expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
-      '2',
-    );
+    ).toHaveDisplayValue('4');
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
@@ -147,7 +146,7 @@ describe('the network composer stage editor', () => {
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
-      background: { concentricCircles: 2 },
+      background: { concentricCircles: 4 },
       behaviours: { automaticLayout: true },
     });
   });
