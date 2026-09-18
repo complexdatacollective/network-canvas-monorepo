@@ -346,13 +346,6 @@ export class SectionOutlineStore {
     this.changed();
   }
 
-  setSectionElement(id: string, element: HTMLElement | null): void {
-    const record = this.sections.get(id);
-    if (!record || record.element === element) return;
-    record.element = element;
-    this.changed();
-  }
-
   setSectionAvailability(id: string, availability: SectionAvailability): void {
     const record = this.sections.get(id);
     if (!record || record.availability === availability) return;
@@ -508,13 +501,20 @@ export class SectionOutlineStore {
   }
 
   private orderedRecords(): SectionRecord[] {
-    return [...this.sections.values()].toSorted(compareByDocumentPosition);
+    const records = [...this.sections.values()];
+    for (const record of records) locate(record);
+    return records.toSorted(compareByDocumentPosition);
   }
 
   private changed(): void {
     this.version += 1;
     for (const listener of this.listeners) listener();
   }
+}
+
+function locate(record: SectionRecord): void {
+  if (record.element?.isConnected === true) return;
+  record.element = document.getElementById(record.id);
 }
 
 /**
