@@ -58,7 +58,7 @@ const SummaryPage = () => {
       }}
     >
       <div className="w-full">
-        <div className="w-full print:hidden">
+        <div className="phone-landscape:px-7 tablet-landscape:px-29 w-full px-5 print:hidden">
           <PageHeading
             title={intl.formatMessage(messages.protocolSummary)}
             description={intl.formatMessage(
