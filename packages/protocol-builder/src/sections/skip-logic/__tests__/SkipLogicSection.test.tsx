@@ -416,10 +416,12 @@ describe('a rule set the researcher cannot save', () => {
       await screen.findByRole('button', { name: 'Delete' }),
     );
 
-    // An empty rule set still looks like an answer to the form, so nothing but
-    // this check stands between it and the schema's "Too small" refusal.
     await waitFor(() =>
-      expect(skipLogicOutline(harness)?.state).toBe('Has a problem'),
+      expect(skipLogicOutline(harness)?.state).toBe('Not finished'),
+    );
+    expect(screen.getByRole('group', { name: /Rules/ })).toHaveAttribute(
+      'aria-invalid',
+      'false',
     );
 
     expect(await harness.submit()).toBeNull();
@@ -430,6 +432,9 @@ describe('a rule set the researcher cannot save', () => {
     expect(screen.getByRole('group', { name: /Rules/ })).toHaveAttribute(
       'aria-invalid',
       'true',
+    );
+    await waitFor(() =>
+      expect(skipLogicOutline(harness)?.state).toBe('Has a problem'),
     );
   });
 
