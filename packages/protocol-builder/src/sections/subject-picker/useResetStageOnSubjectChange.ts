@@ -99,19 +99,8 @@ const heldStageKeys = (
 ];
 
 /**
- * Whether this key would come through the reset exactly as it went in.
- *
- * The reset writes the interface template's default over every
- * subject-dependent key, so a key already holding that default is a key
- * nothing happens to — and the defaults are on a stage from the moment it is
- * created, before the researcher has done anything at all. Without this, every
- * interface with a template (a Sociogram's rings, a Network Composer's
- * automatic layout) asked the researcher to agree to losing work they had not
- * done, the first time they chose a type.
- *
- * Compared as answers rather than as values: the stage's copy is assembled
- * from whichever controls are mounted, so it carries blanks the template has
- * no reason to spell out.
+ * Compared as answers rather than as values: the form's copy carries blanks
+ * the template does not spell out.
  */
 const survivesTheReset = (
   storeApi: StageFormStoreApi,
@@ -130,13 +119,12 @@ const survivesTheReset = (
  *
  * Asked before the change rather than after it — see `EntityTypePickerField`,
  * which holds the pick back until it is answered — so it reads what the stage
- * is carrying NOW. A key the template supplies and the stage does not is no
- * loss, which is why this is not the reset's own list; a key that is only a
- * registered field holding nothing — an empty prompt list a section has
- * mounted — is no loss either, which is why it asks the same "holds something"
- * a capability's switch-off asks rather than counting keys; and a key holding
- * what the reset is about to write back is no loss at all, which is
- * `survivesTheReset` above.
+ * is carrying NOW rather than what a reset would write. A key the template
+ * supplies and the stage does not is no loss, which is why this is not the
+ * reset's own list; and a key that is only a registered field holding nothing
+ * — an empty prompt list a section has mounted — is no loss either, which is
+ * why it asks the same "holds something" a capability's switch-off asks rather
+ * than counting keys.
  *
  * A function rather than a value: it reads the form's values, and a section
  * re-rendering on every keystroke to keep an answer current is one

@@ -233,22 +233,6 @@ const withSavedTolerance = (
   ].toSorted((one, other) => one.value - other.value);
 };
 
-/**
- * Both halves are required, and neither excuses the other.
- *
- * Search is optional, and "this roster is not searched" is said by switching
- * the capability off — which clears both paths and unmounts both controls, so
- * neither rule runs at all. Once the capability is ON, every half of it has to
- * be answered: a search with nothing to match against finds nobody whatever
- * the participant types, and either half missing is refused by the schema as
- * `searchOptions.matchProperties` or `searchOptions.fuzziness` against a path,
- * long after the researcher has moved on.
- *
- * Each rule therefore judges only its OWN value. Reading the sibling to excuse
- * an empty half is what let the commonest case through: switching search on
- * and saving straight away leaves both empty, and two rules that excuse each
- * other say nothing about a pair that is entirely missing.
- */
 const MATCH_REQUIRED = createMessageError(messages.matchRequired);
 
 const TOLERANCE_REQUIRED = createMessageError(messages.toleranceRequired);

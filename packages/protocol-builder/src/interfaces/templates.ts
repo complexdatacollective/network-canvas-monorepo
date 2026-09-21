@@ -27,18 +27,16 @@ import type { StageType } from '@codaco/protocol-validation';
  * an empty object.
  */
 /**
- * The answer a canvas background gives to the skew toggle before anyone
- * touches it.
- *
- * It is a template rather than a schema default because the two spellings are
- * not the same canvas: `ConcentricCircles` (the interview's own) defaults
- * `skewed` to `true`, so a stage with no key at all draws the rings
- * compressed towards the edge while the toggle in the editor reads off. The
- * three interfaces composing `BackgroundSection` therefore write the answer,
- * as the editor they replace always did. An image background replaces the
- * whole block, so it takes this with it.
+ * A template rather than a schema default, because `ConcentricCircles`
+ * defaults `skewed` to `true` while the editor's toggle reads off. The ring
+ * count, matching the interview and the schema-8 migration, lives here
+ * rather than as a field default so the subject reset does not count it as
+ * the researcher's work.
  */
-const UNSKEWED_CIRCLES = { concentricCircles: 4, skewedTowardCenter: false };
+const DEFAULT_CIRCLES_BACKGROUND = {
+  concentricCircles: 4,
+  skewedTowardCenter: false,
+};
 
 const INTERFACE_TEMPLATES: Partial<
   Record<StageType, Record<string, FieldValue>>
@@ -49,20 +47,20 @@ const INTERFACE_TEMPLATES: Partial<
     },
   },
   Sociogram: {
-    background: UNSKEWED_CIRCLES,
+    background: DEFAULT_CIRCLES_BACKGROUND,
   },
   Narrative: {
     behaviours: {
       allowRepositioning: true,
       automaticLayout: true,
     },
-    background: UNSKEWED_CIRCLES,
+    background: DEFAULT_CIRCLES_BACKGROUND,
   },
   NetworkComposer: {
     behaviours: {
       automaticLayout: true,
     },
-    background: UNSKEWED_CIRCLES,
+    background: DEFAULT_CIRCLES_BACKGROUND,
   },
   FamilyPedigree: {
     framing: { mode: 'fixed', value: 'gamete' },

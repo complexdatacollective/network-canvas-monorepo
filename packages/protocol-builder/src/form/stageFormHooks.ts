@@ -450,16 +450,7 @@ function hasAnswer(value: unknown): boolean {
   return answeredPart(value) !== undefined;
 }
 
-/**
- * The value with everything unanswered taken out of it, or `undefined` when
- * nothing is left.
- *
- * `hasAnswer` is this question asked for a yes or a no. Two values are
- * compared through it when what matters is whether they say the same thing —
- * mounting a control assembles `{ action: undefined }` beside whatever is
- * really there, and a stage that differs from another only by which controls
- * happen to be on screen does not differ at all.
- */
+/** The value with everything unanswered removed; `undefined` if nothing is left. */
 export function answeredPart(value: unknown): unknown {
   if (isUnanswered(value)) return undefined;
   if (Array.isArray(value)) {
