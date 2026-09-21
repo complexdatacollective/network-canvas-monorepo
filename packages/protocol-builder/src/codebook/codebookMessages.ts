@@ -115,3 +115,17 @@ export const variableValuesMessages = defineMessages({
       'Button that adds an empty row to the list of answers a participant may choose from.',
   },
 });
+
+export const variableParametersMessages = defineMessages({
+  parametersLegend: {
+    id: 'protocolBuilder.codebookVariable.parametersLegend',
+    defaultMessage: 'Control settings',
+    description:
+      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
+  },
+  parametersHint: {
+    id: 'protocolBuilder.codebookVariable.parametersHint',
+    defaultMessage: 'Configure the settings available for this input control.',
+    description: 'Guidance under the heading over an input control’s settings.',
+  },
+});

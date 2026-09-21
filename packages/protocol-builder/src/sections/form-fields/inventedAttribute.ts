@@ -22,32 +22,6 @@ export const INVENTED_TYPE_NOTICE = defineMessages({
 }).newTypeNotice;
 
 /**
- * Why a kind of answer a name cannot finish is refused at the row's own save.
- *
- * Shared by both inventing rows for the reason the notice above is: one rule,
- * `needsCodebookEditorToCreate`, decides which inventions come here, and a row
- * that phrased the refusal for itself could say something the rule does not
- * mean. Both file them against the input control, which is what decided the
- * kind and what the researcher has to change to get past the refusal.
- */
-export const CREATE_FIRST_REFUSALS = defineMessages({
-  createWithValuesFirst: {
-    id: 'protocolBuilder.formFields.createWithValuesFirst',
-    defaultMessage:
-      'Create this attribute and the values it offers before adding the field that collects it.',
-    description:
-      'Refusal shown under the control that decided the kind of answer when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
-  },
-  createWithSettingsFirst: {
-    id: 'protocolBuilder.formFields.createWithSettingsFirst',
-    defaultMessage:
-      'Create this attribute and what it accepts before adding the field that collects it.',
-    description:
-      'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
-  },
-});
-
-/**
  * What a form row holds while the attribute it collects is being invented.
  *
  * The picker's create row takes the name the researcher searched for and

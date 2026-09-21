@@ -44,7 +44,10 @@ import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import { variableValuesMessages } from '../codebookMessages.ts';
+import {
+  variableParametersMessages,
+  variableValuesMessages,
+} from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
@@ -167,17 +170,6 @@ const messages = defineMessages({
       'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
     description:
       'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
-  },
-  parametersLegend: {
-    id: 'protocolBuilder.codebookVariable.parametersLegend',
-    defaultMessage: 'Control settings',
-    description:
-      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
-  },
-  parametersHint: {
-    id: 'protocolBuilder.codebookVariable.parametersHint',
-    defaultMessage: 'Configure the settings available for this input control.',
-    description: 'Guidance under the heading over an input control’s settings.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
@@ -1102,10 +1094,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                {intl.formatMessage(messages.parametersLegend)}
+                {intl.formatMessage(
+                  variableParametersMessages.parametersLegend,
+                )}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                {intl.formatMessage(messages.parametersHint)}
+                {intl.formatMessage(variableParametersMessages.parametersHint)}
               </p>
               {blockParameterErrors.length > 0 && (
                 <ul

@@ -62,16 +62,9 @@ export type NewCodebookVariable = Readonly<{
   /**
    * The answers the attribute offers, where the section asked the researcher
    * for them before it existed.
-   *
-   * Only a yes-or-no answer reaches this: its two words are the whole of what
-   * a name cannot carry, and they are authored beside the question in the same
-   * gesture as the name (`sections/AttributeValueFields.tsx`), so writing them
-   * afterwards would be a second save for one act. A list of answers is a
-   * different case — the schema refuses fewer than two of them, so an
-   * attribute that IS its list is authored in the codebook's own editor, which
-   * creates it whole.
    */
   options?: readonly Readonly<Record<string, unknown>>[];
+  parameters?: Readonly<Record<string, unknown>>;
 }>;
 
 export type CreateCodebookVariableOutcome =
@@ -94,9 +87,14 @@ export type SetVariableComponentOutcome =
   | Readonly<{ status: 'written' }>
   | Readonly<{ status: 'refused'; message: string }>;
 
+export type ParametersToWrite = Readonly<{
+  parameters: Record<string, unknown> | undefined;
+}>;
+
 export type SetVariableComponent = (
   variableId: string,
   component: string,
+  authored?: ParametersToWrite,
 ) => Promise<SetVariableComponentOutcome>;
 
 export type RenameCodebookVariableOutcome =
@@ -368,6 +366,9 @@ export function useCreateCodebookVariable(
         ...(variable.options === undefined
           ? {}
           : { options: variable.options }),
+        ...(variable.parameters === undefined
+          ? {}
+          : { parameters: variable.parameters }),
       };
 
       // The builder refuses a duplicate name, an id already in use and a draft
@@ -431,7 +432,7 @@ export function useSetVariableComponent(
   const intl = useAppIntl();
 
   return useCallback(
-    async (variableId, component) => {
+    async (variableId, component, authored) => {
       if (subject === undefined) {
         return {
           status: 'refused',
@@ -442,8 +443,12 @@ export function useSetVariableComponent(
       // nothing to say: an unchanged save must not put a revision on the
       // codebook section that a collaborator has to merge. A cache that has not
       // arrived yet is not an answer, so it goes on and asks the host.
+      const held = variablesForSubject(protocolContext, subject)[variableId];
       if (
-        variableComponent(protocolContext, subject, variableId) === component
+        variableComponent(protocolContext, subject, variableId) === component &&
+        (authored === undefined ||
+          (held !== undefined &&
+            isEqual(Reflect.get(held, 'parameters'), authored.parameters)))
       ) {
         return { status: 'unchanged' };
       }
@@ -486,7 +491,13 @@ export function useSetVariableComponent(
         const parameters =
           nextShape === null
             ? undefined
-            : parametersForShape(nextShape, Reflect.get(current, 'parameters'));
+            : parametersForShape(
+                nextShape,
+                authored === undefined
+                  ? Reflect.get(current, 'parameters')
+                  : authored.parameters,
+              );
+        const parametersReplaced = parametersMoved || authored !== undefined;
 
         try {
           return documentWithUpdatedVariable({
@@ -495,13 +506,13 @@ export function useSetVariableComponent(
             variableId,
             draft: {
               component,
-              ...(parametersMoved && parameters !== undefined
+              ...(parametersReplaced && parameters !== undefined
                 ? { parameters }
                 : {}),
             },
             replaceProperties: [
               ...(optionsShapeFor(type, component) === null ? ['options'] : []),
-              ...(parametersMoved ? ['parameters'] : []),
+              ...(parametersReplaced ? ['parameters'] : []),
             ],
           });
         } catch (error: unknown) {

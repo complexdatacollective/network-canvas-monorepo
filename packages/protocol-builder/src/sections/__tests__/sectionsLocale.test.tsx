@@ -286,19 +286,12 @@ describe('the form-fields section, read in Spanish', () => {
       ['Selector de fecha', 'Selector de fecha relativa'],
     ]);
 
-    // A scale is not invented from a name and a control — its two end labels
-    // are part of it — so choosing the control that collects one offers the
-    // codebook editor as well, and both sentences that say so are read here.
     await harness.user.selectOptions(control, 'VisualAnalogScale');
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Ajustes del control' }),
+    );
     expect(
-      await dialog.findByRole('button', {
-        name: 'Crear este atributo y lo que acepta',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      dialog.getByText(
-        'Un atributo que se responde en una escala necesita una etiqueta en cada extremo, así que se crea junto con ellas.',
-      ),
+      settings.getByRole('textbox', { name: 'Etiqueta del mínimo' }),
     ).toBeInTheDocument();
     expect(
       dialog.getByRole('combobox', { name: 'Control de entrada' }),
@@ -554,10 +547,8 @@ const inventAttribute = async (
   return dialog;
 };
 
-/** Adds one value to the list the codebook editor is showing. */
 const addValue = async (
   harness: StageEditorHarness,
-  position: number,
   label: string,
   value: string,
 ) => {
@@ -565,12 +556,15 @@ const addValue = async (
     screen.getByRole('button', { name: 'Crear nueva opción' }),
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Etiqueta de la opción ${position}` }),
+    await screen.findByRole('textbox', { name: 'Etiqueta' }),
     label,
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Valor de la opción ${position}` }),
+    screen.getByRole('textbox', { name: 'Valor' }),
     value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finalizar edición de la opción' }),
   );
 };
 
@@ -628,12 +622,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * A categorical attribute IS its list of answers, so it cannot be made from
-   * a name and a control — and the sentence that says so has to say what to
-   * press instead, which is the button beside it.
-   */
-  it('explains why an attribute with values is made elsewhere, and refuses a field that skipped it', async () => {
+  it('refuses an invented list of answers until it offers two values', async () => {
     const harness = alterFormInSpanish();
     const dialog = await openFieldDialog(
       harness,
@@ -646,12 +635,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     );
 
     expect(
-      await dialog.findByText(
-        'Un atributo entre cuyas respuestas elige el participante necesita al menos dos valores, así que se crea junto con ellos.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      dialog.getByRole('button', { name: 'Crear este atributo y sus valores' }),
+      await dialog.findByRole('region', { name: 'Valores de las opciones' }),
     ).toBeInTheDocument();
 
     await writeQuestion(harness, dialog, '¿Dónde soléis veros?');
@@ -659,7 +643,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(
       await dialog.findByText(
-        'Crea este atributo y los valores que ofrece antes de añadir el campo que lo recoge.',
+        'Se requieren al menos dos opciones. Si necesitas menos opciones, considera usar un atributo booleano.',
       ),
     ).toBeInTheDocument();
   });
@@ -675,32 +659,17 @@ describe('the form-fields row dialog, read in Spanish', () => {
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'CheckboxGroup',
     );
-    await harness.user.click(
-      dialog.getByRole('button', { name: 'Crear este atributo y sus valores' }),
-    );
-
-    // The codebook's own editor, opened under the words on the button that
-    // opened it, and already holding the name the create row took.
-    expect(
-      await screen.findByRole('textbox', { name: 'Nombre del atributo' }),
-    ).toHaveValue('lugar_de_contacto');
-    await addValue(harness, 1, 'En casa', 'casa');
-    await addValue(harness, 2, 'En el trabajo', 'trabajo');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Crear atributo' }),
-    );
-
-    // The attribute now exists, so the row shows the two things that belong to
-    // it rather than the one that makes it: its values, inline under the
-    // picker...
-    expect(
-      await dialog.findByRole('region', { name: 'Valores de las opciones' }),
-    ).toBeInTheDocument();
-    // And the rules the answer has to satisfy, in the nested section this
-    // dialog ends with rather than behind a button of their own.
+    await addValue(harness, 'En casa', 'casa');
+    await addValue(harness, 'En el trabajo', 'trabajo');
     expect(
       dialog.getByRole('switch', { name: 'Validación' }),
     ).toBeInTheDocument();
+    await writeQuestion(harness, dialog, '¿Dónde soléis veros?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
   });
 
   it('offers the answers of a yes-or-no field by their words', async () => {
@@ -736,12 +705,11 @@ describe('the form-fields row dialog, read in Spanish', () => {
     );
     await chooseAttribute(harness, dialog, 'met_on');
 
-    // A date is not chosen from a list, so what there is to set is the window
-    // it accepts rather than any values.
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Ajustes del control' }),
+    );
     expect(
-      await dialog.findByRole('button', {
-        name: 'Definir qué acepta este campo',
-      }),
+      settings.getByRole('combobox', { name: 'Precisión de la fecha' }),
     ).toBeInTheDocument();
     expect(
       dialog.queryByRole('region', { name: 'Valores de las opciones' }),

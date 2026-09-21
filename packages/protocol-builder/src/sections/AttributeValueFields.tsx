@@ -82,8 +82,8 @@ const isOptionList = (value: unknown): value is OptionValue[] =>
  * registered from the same seed, and a write there would mark a row dirty that
  * nobody has touched.
  */
-function useAnswersThatFollowTheAttribute(
-  optionsField: string,
+export function useDraftThatFollowsTheAttribute(
+  draftField: string,
   binding: string,
   seeded: unknown,
   known: boolean,
@@ -103,8 +103,8 @@ function useAnswersThatFollowTheAttribute(
     // `undefined` for an attribute that holds no list, which clears the park
     // as well as the control: absence is what "this attribute offers no
     // answers" is spelled as everywhere else here.
-    setFieldValue(optionsField, seeded as never);
-  }, [binding, known, optionsField, seeded, setFieldValue]);
+    setFieldValue(draftField, seeded as never);
+  }, [binding, known, draftField, seeded, setFieldValue]);
 }
 
 export type AttributeValueFieldsProps = Readonly<{
@@ -126,11 +126,7 @@ export type AttributeValueFieldsProps = Readonly<{
    * The kind of answer this row is INVENTING, while it is inventing one.
    *
    * There is no codebook record to seed from yet, so the answers start empty
-   * and the row's own create writes them. Only a yes-or-no answer is authored
-   * this way: its two words are the whole of what a name cannot carry. An
-   * attribute that IS a list of answers is created in the codebook's own
-   * editor instead, which authors the list as it makes it — offered here as
-   * well it would be a second place to write the same values.
+   * and the row's own create writes them.
    */
   invented?: string;
 }>;
@@ -184,7 +180,7 @@ export default function AttributeValueFields({
   // change of question like any other.
   const heldSeed =
     picked === undefined ? undefined : Reflect.get(picked, 'options');
-  useAnswersThatFollowTheAttribute(
+  useDraftThatFollowsTheAttribute(
     optionsField,
     invented === undefined
       ? `attribute:${variableId ?? ''}`
@@ -214,7 +210,28 @@ export default function AttributeValueFields({
   // attribute that exists, because "edited where the question is asked, except
   // immediately after you invent it" is a rule with a hole in it.
   if (invented !== undefined) {
-    return optionsShapeFor(invented, rowComponent) === 'boolean' ? (
+    const inventedShape = optionsShapeFor(invented, rowComponent);
+    if (inventedShape === 'choice') {
+      return (
+        <Section
+          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+          description={intl.formatMessage(variableValuesMessages.optionsHint)}
+        >
+          <Field<typeof Options>
+            name={optionsField}
+            component={Options}
+            label={intl.formatMessage(variableValuesMessages.optionsLegend)}
+            labelHidden
+            addButtonLabel={intl.formatMessage(
+              variableValuesMessages.addOption,
+            )}
+            readOnly={readOnly}
+            {...optionsValidation}
+          />
+        </Section>
+      );
+    }
+    return inventedShape === 'boolean' ? (
       <Section
         title={intl.formatMessage(variableValuesMessages.answersLegend)}
         description={intl.formatMessage(variableValuesMessages.answersHint)}

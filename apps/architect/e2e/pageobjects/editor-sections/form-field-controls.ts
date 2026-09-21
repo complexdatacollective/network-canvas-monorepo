@@ -6,28 +6,7 @@ import { type OptionRow } from './variables.js';
 
 // Extended form-field authoring — the full-parameter sibling of forms.ts's
 // minimal `addFormField`. Both drive `@codaco/protocol-builder`'s
-// `FormFieldsSection`; this one also reaches the CODEBOOK editors the field
-// dialog launches, which is where an attribute's values, its settings and its
-// rules are authored now.
-//
-// The shape of the interaction, read off the source:
-//
-// - A form field row says which attribute it collects and how it asks for it.
-//   Everything ABOUT the attribute — its values, what its control accepts, the
-//   rules an answer must satisfy — belongs to the codebook. Values and what a
-//   control accepts are reached through `AttributeCodebookControls`, rendered
-//   inside the row dialog as a row of buttons named for what they open; the
-//   rules are a nested "Validation" section at the end of the same dialog.
-// - Both are offered against an attribute that EXISTS. While one is still
-//   being invented the row holds a sentinel, so `Set what this field accepts`
-//   is not on screen at all and the Validation section is the draft one the
-//   row carries — which is why anything beyond values and scale labels needs
-//   the field to be added first and then reopened. See
-//   `addConfiguredFormField`'s two phases.
-// - "Create this attribute and its values" / "Create this attribute and what
-//   it accepts" are the exception: a list of answers and a scale cannot be
-//   made from a name, so those two are authored during creation (forms.ts's
-//   `inventAttributeInFieldDialog`, through `inEditor`).
+// `FormFieldsSection`.
 
 export type BooleanOptionSpec = {
   /** The words this answer shows the participant. */
@@ -77,40 +56,33 @@ export async function openValidationSection(dialog: Locator): Promise<Locator> {
   return rules;
 }
 
-/**
- * Fill an attribute editor's list of allowed values.
- *
- * `VariableEditor`'s own rows, not the array field forms use elsewhere: each
- * row is named "Option {n} label" / "Option {n} value" (1-based), and "Create
- * new option" appends an empty one. Nothing is committed until the editor's
- * own submit, so the rows are filled in one pass.
- *
- * The label is a markdown box, not an input — the interview renders an option
- * label as markdown wherever it shows one — so it is written the way every
- * markdown value in this suite is written.
- */
-async function fillCodebookOptions(
-  editor: Locator,
+async function fillInlineOptions(
+  dialog: Locator,
   rows: readonly OptionRow[],
 ): Promise<void> {
-  const add = editor.getByRole('button', {
-    name: 'Create new option',
+  const values = dialog.getByRole('region', {
+    name: 'Choice values',
     exact: true,
   });
-  for (const [index, row] of rows.entries()) {
-    await add.click();
-    const position = index + 1;
+  for (const row of rows) {
+    await values
+      .getByRole('button', { name: 'Create new option', exact: true })
+      .click();
     await writeRichText(
-      editor.getByRole('textbox', {
-        name: `Option ${position} label`,
-        exact: true,
-      }),
+      values.getByRole('textbox', { name: 'Label', exact: true }),
       row.label,
     );
-    await editor
-      .getByRole('textbox', { name: `Option ${position} value`, exact: true })
+    await values
+      .getByRole('textbox', { name: 'Value', exact: true })
       .fill(row.value);
+    await values
+      .getByRole('button', { name: 'Finish editing option', exact: true })
+      .click();
   }
+}
+
+function controlSettings(dialog: Locator): Locator {
+  return dialog.getByRole('region', { name: 'Control settings', exact: true });
 }
 
 /**
@@ -156,23 +128,6 @@ async function setBooleanAnswer(
   await expect(negative).toBeChecked({ checked: spec.negative });
 }
 
-/** Open a codebook editor from a field dialog, run `fill`, and save it. */
-async function inCodebookEditor(
-  dialog: Locator,
-  label: string,
-  fill: (editor: Locator) => Promise<void>,
-): Promise<void> {
-  await dialog.getByRole('button', { name: label, exact: true }).click();
-  const editor = dialog
-    .page()
-    .getByRole('dialog', { name: label, exact: true });
-  await fill(editor);
-  await editor
-    .getByRole('button', { name: 'Save attribute', exact: true })
-    .click();
-  await editor.waitFor({ state: 'detached' });
-}
-
 export async function addConfiguredFormField(
   section: Locator,
   spec: FormFieldSpec,
@@ -190,15 +145,21 @@ export async function addConfiguredFormField(
       ? {}
       : { variableType: spec.variableType }),
     inputControl: spec.inputControl,
-    inEditor: async (editor) => {
-      if (spec.options) await fillCodebookOptions(editor, spec.options);
+    inRow: async (dialog) => {
+      if (spec.options) await fillInlineOptions(dialog, spec.options);
       if (spec.scalarParameters) {
-        await editor
+        const settings = controlSettings(dialog);
+        await settings
           .getByRole('textbox', { name: 'Minimum label', exact: true })
           .fill(spec.scalarParameters.minLabel);
-        await editor
+        await settings
           .getByRole('textbox', { name: 'Maximum label', exact: true })
           .fill(spec.scalarParameters.maxLabel);
+      }
+      if (spec.dateMin !== undefined) {
+        await controlSettings(dialog)
+          .getByRole('textbox', { name: 'Earliest date', exact: true })
+          .fill(spec.dateMin);
       }
     },
   });
@@ -212,9 +173,7 @@ export async function addConfiguredFormField(
   await addDialog.waitFor({ state: 'detached' });
 
   const needsSecondPass =
-    spec.booleanOptions !== undefined ||
-    spec.dateMin !== undefined ||
-    spec.required === true;
+    spec.booleanOptions !== undefined || spec.required === true;
   if (!needsSecondPass) return;
 
   // Phase two: everything that is ABOUT an attribute, and so is only offered
@@ -234,19 +193,6 @@ export async function addConfiguredFormField(
     // the row's own save is what records them on the attribute.
     await setBooleanAnswer(editDialog, 'true', booleanOptions.positive);
     await setBooleanAnswer(editDialog, 'false', booleanOptions.negative);
-  }
-
-  const dateMin = spec.dateMin;
-  if (dateMin) {
-    await inCodebookEditor(
-      editDialog,
-      'Set what this field accepts',
-      async (editor) => {
-        await editor
-          .getByRole('textbox', { name: 'Earliest date', exact: true })
-          .fill(dateMin);
-      },
-    );
   }
 
   if (spec.required) {

@@ -81,9 +81,7 @@ export type CreateAttributeForSlot = Readonly<{
  *
  * Which of the two a slot gets is asked of the type rather than passed in, so
  * a kind of answer that starts or stops needing more than a name moves every
- * slot that binds it at once. `needsCodebookEditorToCreate` is that question,
- * and it is the same one the form-fields row asks about the kind a researcher
- * has just chosen for an attribute they are inventing.
+ * slot that binds it at once. `needsCodebookEditorToCreate` is that question.
  */
 export function useCreateAttributeForSlot({
   subject,
