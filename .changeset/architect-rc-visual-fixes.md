@@ -17,6 +17,9 @@ every title and description can be read.
 
 A video preview keeps its playback controls inside the window.
 
+While you edit a choice value, its confirm button is now the same size as the
+delete button beside it.
+
 When a toolbar is too narrow for all its buttons, it now fades the edge where
 more buttons are hidden, so it is clear the toolbar can be scrolled. This
 includes the Background Creator toolbar. The toolbar at the bottom of
