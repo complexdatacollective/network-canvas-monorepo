@@ -10,6 +10,7 @@ import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useActionToolbar } from '~/components/ProjectNav/ActionToolbar';
+import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
@@ -94,7 +95,12 @@ const ExperimentsPage = () => {
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
-      <div className="phone-landscape:px-7 tablet-landscape:px-29 mx-auto my-10 flex max-w-7xl flex-col gap-6 px-5">
+      <div
+        className={cx(
+          pageInsetClasses,
+          'mx-auto my-10 flex max-w-7xl flex-col gap-6',
+        )}
+      >
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
             <div className="bg-mustard/20 rounded-lg p-2">
