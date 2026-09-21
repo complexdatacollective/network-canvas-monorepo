@@ -450,7 +450,6 @@ function hasAnswer(value: unknown): boolean {
   return answeredPart(value) !== undefined;
 }
 
-/** The value with everything unanswered removed; `undefined` if nothing is left. */
 export function answeredPart(value: unknown): unknown {
   if (isUnanswered(value)) return undefined;
   if (Array.isArray(value)) {

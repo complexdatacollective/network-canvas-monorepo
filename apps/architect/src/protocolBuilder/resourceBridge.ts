@@ -79,7 +79,6 @@ export class ResourceBridge {
   readonly #byRequest = new Map<string, string>();
   /** Which edit imported each staged resource, by resource id. */
   readonly #staged = new Map<string, string>();
-  /** The filename each staged file was picked as, by resource id. */
   readonly #pickedAs = new Map<string, string>();
 
   constructor(store: ArchitectStore) {
@@ -132,12 +131,11 @@ export class ResourceBridge {
       };
     }
 
-    // Filed by its content, not by the file the researcher picked: Architect
-    // keys the bytes by the asset id, but the manifest's `source` is what an
-    // export writes the file as and what every other host commits by content,
-    // and two imports of different pictures both called `portrait.png` must
-    // stay two assets wherever the protocol is opened next. The staged
-    // descriptor still reports the picked filename, as the contract asks.
+    // Named by its content, not by the file the researcher picked: Architect
+    // keys the bytes by the asset id, but `source` is what an export writes
+    // the file as and what every other host commits by content, and two
+    // imports of different pictures both called `portrait.png` must stay two
+    // assets wherever the protocol is opened next.
     const openedFor = getActiveProtocolId(this.#store.getState());
     const source = await contentAddressedSource(request.bytes, request.source);
     const file = new File([request.bytes], source, {
@@ -335,7 +333,6 @@ export class ResourceBridge {
     return descriptors;
   }
 
-  /** The name the asset manifest files a resource's bytes under. */
   #committedSource(resourceId: string): Partial<Pick<Descriptor, 'source'>> {
     const entry = getAssetManifest(this.#store.getState())[resourceId];
     return entry === undefined || entry.type === 'apikey'

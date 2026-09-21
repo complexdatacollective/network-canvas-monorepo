@@ -533,8 +533,6 @@ for (const viewport of VIEWPORTS) {
     // width and clipped "Cancel" off the left edge of the screen. It may now
     // scroll internally, but no part of the pill itself may sit outside the
     // viewport.
-    // The toolbar is the pill's scrolling lane: it spans the pill edge to edge
-    // (1px inside it), so its box is the part of the pill a researcher sees.
     const toolbar = architectPage.getByRole('toolbar', {
       name: 'Page actions',
     });
@@ -547,8 +545,6 @@ for (const viewport of VIEWPORTS) {
 
     expect(pill.x).toBeGreaterThanOrEqual(0);
     expect(pill.x + pill.width).toBeLessThanOrEqual(viewport.width);
-    // At rest the lane sits on its trailing end, so the last action is inside
-    // the visible part of the pill rather than scrolled past its edge.
     expect(control.x).toBeGreaterThanOrEqual(pill.x - 1);
     expect(control.x + control.width).toBeLessThanOrEqual(
       pill.x + pill.width + 1,

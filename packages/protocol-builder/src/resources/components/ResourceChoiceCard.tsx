@@ -21,7 +21,6 @@ export type ResourceChoiceCardProps = Readonly<{
   disabled?: boolean;
 }>;
 
-// The name button is stretched over the card, making the whole card its target.
 export default function ResourceChoiceCard({
   descriptor,
   current,

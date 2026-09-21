@@ -26,7 +26,6 @@ export type ResourcePreviewProps = Readonly<{
   /** The resource's name, which is what the media is announced as. */
   name: string;
   className?: string;
-  /** No controls or retry; a failed preview renders nothing. */
   presentational?: boolean;
 }>;
 

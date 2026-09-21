@@ -734,9 +734,6 @@ describe("Architect's in-process protocol-builder host", () => {
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
-    // Staged, the descriptor still names the file the researcher picked; the
-    // content-derived name is the manifest's, and the descriptor's only once
-    // the resource is promoted.
     expect(staged.data.descriptor.source).toBe('nook.png');
     expect(listed.data.resources).toContainEqual(
       expect.objectContaining({ id, name: 'Nook', source: 'nook.png' }),

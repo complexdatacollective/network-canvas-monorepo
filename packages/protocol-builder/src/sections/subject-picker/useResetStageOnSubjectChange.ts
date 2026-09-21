@@ -98,10 +98,6 @@ const heldStageKeys = (
     .filter((key) => key !== undefined),
 ];
 
-/**
- * Compared as answers rather than as values: the form's copy carries blanks
- * the template does not spell out.
- */
 const survivesTheReset = (
   storeApi: StageFormStoreApi,
   committedFields: StageFormDraft,

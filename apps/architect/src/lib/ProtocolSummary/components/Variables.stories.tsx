@@ -44,11 +44,6 @@ const cellHolding = (element: HTMLElement) => {
   return cell;
 };
 
-/**
- * Attribute names may break and hyphenate to fit the printed column; the
- * stored option values in the nested table are identifiers a researcher types
- * into analysis code, so they must print exactly as stored.
- */
 export const StoredValuesPrintVerbatim: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

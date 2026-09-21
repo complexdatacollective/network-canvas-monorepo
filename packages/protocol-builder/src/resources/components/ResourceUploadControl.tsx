@@ -304,8 +304,6 @@ export default function ResourceUploadControl({
         <Button asChild color="primary" icon={<Upload aria-hidden="true" />}>
           <label
             htmlFor={inputId}
-            // A label never matches `:focus` or `:disabled`, so Button's focus
-            // outline and `ui-enabled` press are overridden from the peer input.
             className="peer-focus-visible:focus-styles peer-focus-visible:outline-primary peer-disabled:active:elevation-low! peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-disabled:active:translate-y-0!"
           >
             {intl.formatMessage(messages.chooseFile)}
