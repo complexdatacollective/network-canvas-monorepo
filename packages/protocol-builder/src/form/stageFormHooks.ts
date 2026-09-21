@@ -562,7 +562,7 @@ export function stageAnswerAt(
   } else {
     for (const record of records
       .filter((candidate) => isAbove(candidate.path, target))
-      .sort((a, b) => a.path.length - b.path.length)) {
+      .toSorted((a, b) => a.path.length - b.path.length)) {
       const inside = readInside(record.value, target.slice(record.path.length));
       if (hasAnswer(inside)) value = inside;
     }
@@ -571,7 +571,7 @@ export function stageAnswerAt(
   const holder: Record<string, unknown> = { value };
   for (const record of records
     .filter((candidate) => isBelow(candidate.path, target))
-    .sort((a, b) => a.path.length - b.path.length)) {
+    .toSorted((a, b) => a.path.length - b.path.length)) {
     setValue(
       holder,
       ['value', ...record.path.slice(target.length)],
