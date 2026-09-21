@@ -79,7 +79,7 @@ const STATUS_PRESENTATION: Record<
   error: {
     label: STATUS_LABELS.error,
     icon: AlertCircle,
-    className: 'text-destructive',
+    className: 'text-destructive-ink',
   },
   incomplete: {
     label: STATUS_LABELS.incomplete,

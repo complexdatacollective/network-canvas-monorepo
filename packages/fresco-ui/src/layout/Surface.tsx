@@ -66,10 +66,10 @@ const surfaceOwnVariants = cva({
     series: {
       default: '',
       accent:
-        '[--link-underline-active:100%_3px] [--link-underline-rest:100%_1px] [--link:var(--surface-accent-link)]',
+        '[--destructive-ink:var(--surface-accent-destructive)] [--link-underline-active:100%_3px] [--link-underline-rest:100%_1px] [--link:var(--surface-accent-link)]',
     },
-    linkReset: {
-      true: '[--link-underline-active:initial] [--link-underline-rest:initial] [--link:var(--surface-link)]',
+    accentReset: {
+      true: '[--destructive-ink:var(--surface-destructive)] [--link-underline-active:initial] [--link-underline-rest:initial] [--link:var(--surface-link)]',
     },
     floating: {
       true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
@@ -268,7 +268,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
     // `series="default"` explicitly return to the default ladder.
     const depth = floating || series !== undefined ? 0 : parentSurface.depth;
     const renderedDepth = floating ? 0 : clampDepth(depth);
-    const linkReset =
+    const accentReset =
       resolvedSeries === 'default' && parentSurface.series === 'accent';
     // Children receive the true (unclamped) depth so over-nesting warnings
     // report accurate numbers; clamping applies only at render.
@@ -298,7 +298,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
             depth: floating ? undefined : renderedDepth,
             floating,
             series: resolvedSeries,
-            linkReset,
+            accentReset,
             spacing,
             shadow,
             section,

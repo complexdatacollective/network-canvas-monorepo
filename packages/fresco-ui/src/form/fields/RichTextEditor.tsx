@@ -1327,7 +1327,7 @@ export default function RichTextEditorField({
                     />
                     <div
                       id={linkErrorId}
-                      className="text-destructive min-h-5 text-sm leading-snug"
+                      className="text-destructive-ink min-h-5 text-sm leading-snug"
                       aria-live="polite"
                     >
                       {linkValidationMessage}

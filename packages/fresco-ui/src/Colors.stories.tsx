@@ -561,8 +561,8 @@ export const DestructiveInkPerTheme: Story = {
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
           Each row draws one theme’s <code>--destructive</code> fill and the{' '}
-          <code>--destructive-strong</code> ink a tinted surface opts into, both
-          on that theme’s accent surface.
+          <code>--surface-accent-destructive</code> ink an accent surface draws
+          destructive text with, on that theme’s first two accent steps.
         </Paragraph>
         <div className="space-y-4">
           {THEME_SCOPES.map((scope) => (
@@ -586,10 +586,22 @@ export const DestructiveInkPerTheme: Story = {
                 </span>
                 <span
                   data-testid={`ink-${scope.name}`}
-                  style={{ color: 'var(--destructive-strong)' }}
+                  style={{ color: 'var(--surface-accent-destructive)' }}
                 >
-                  --destructive-strong
+                  --surface-accent-destructive
                 </span>
+                <div
+                  className="rounded p-2"
+                  data-testid={`surface-1-${scope.name}`}
+                  style={{ background: 'var(--surface-accent-1)' }}
+                >
+                  <span
+                    data-testid={`ink-1-${scope.name}`}
+                    style={{ color: 'var(--surface-accent-destructive)' }}
+                  >
+                    --surface-accent-destructive
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -628,10 +640,19 @@ export const DestructiveInkPerTheme: Story = {
     // normal-size field errors this exists to carry. The weighting is now
     // chosen per scope, and this measures the result rather than trusting the
     // arithmetic behind it.
-    const ratios = THEME_SCOPES.map((scope) => ({
-      scope: scope.name,
-      ratio: contrastRatio(inkOf(scope.name), surfaceOf(scope.name)),
-    }));
+    const ratios = THEME_SCOPES.flatMap((scope) => [
+      {
+        scope: scope.name,
+        ratio: contrastRatio(inkOf(scope.name), surfaceOf(scope.name)),
+      },
+      {
+        scope: `${scope.name} step 1`,
+        ratio: contrastRatio(
+          inkOf(`1-${scope.name}`),
+          surfaceOf(`1-${scope.name}`),
+        ),
+      },
+    ]);
 
     // Asserted as a list rather than one expectation per scope so a failing
     // run names every scope that is short, and by how much, in one read.
@@ -639,7 +660,7 @@ export const DestructiveInkPerTheme: Story = {
       ratios
         .filter(({ ratio }) => ratio < AA_NORMAL_TEXT)
         .map(({ scope, ratio }) => `${scope} ${ratio.toFixed(2)}:1`),
-      '--destructive-strong is below AA on its own --surface-accent',
+      '--surface-accent-destructive is below AA on its own accent surface',
     ).toEqual([]);
   },
 };

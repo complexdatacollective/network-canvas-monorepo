@@ -1097,7 +1097,7 @@ export default function EntityTypePickerField({
         )}
       </fieldset>
       {isMissing && (
-        <p className="text-destructive text-sm">
+        <p className="text-destructive-ink text-sm">
           {intl.formatMessage(messages.missingType)}
         </p>
       )}

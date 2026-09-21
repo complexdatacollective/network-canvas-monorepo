@@ -312,7 +312,7 @@ export default function ResourceUploadControl({
       </div>
 
       {rejected !== undefined && (
-        <div role="alert" className="text-destructive text-sm">
+        <div role="alert" className="text-destructive-ink text-sm">
           {formatMessageError(rejected, intl) ?? rejected}
         </div>
       )}

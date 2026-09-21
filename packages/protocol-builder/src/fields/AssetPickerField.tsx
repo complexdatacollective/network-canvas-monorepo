@@ -496,7 +496,7 @@ export default function AssetPickerField({
 
           {refusal !== undefined && (
             <div className="flex flex-col items-start gap-2">
-              <div role="alert" className="text-destructive text-sm">
+              <div role="alert" className="text-destructive-ink text-sm">
                 {formatMessageError(refusal, intl) ?? refusal}
               </div>
               {/* Offered only when there is something to remove. A refusal can

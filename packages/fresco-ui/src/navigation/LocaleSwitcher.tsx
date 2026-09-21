@@ -467,7 +467,10 @@ export default function LocaleSwitcher({
               )}
               {notice?.state === 'failed' && (
                 <>
-                  <X aria-hidden className="text-destructive size-4 shrink-0" />
+                  <X
+                    aria-hidden
+                    className="text-destructive-ink size-4 shrink-0"
+                  />
                   <span className="flex-1">
                     {intl.formatMessage(messages.saveFailed)}
                   </span>

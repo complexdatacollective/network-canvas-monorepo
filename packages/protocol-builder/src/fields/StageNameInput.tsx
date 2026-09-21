@@ -156,7 +156,7 @@ const StageNameInput = ({
         className={cx(
           sharedTextLayout,
           'focusable h-full resize-none overflow-hidden bg-transparent outline-none placeholder:opacity-40',
-          ariaInvalid && 'text-destructive',
+          ariaInvalid && 'text-destructive-ink',
         )}
       />
     </div>

@@ -315,7 +315,7 @@ export function DiseasePreview({ item }: RowPreviewProps) {
         )}
       </div>
       {issue !== undefined && (
-        <p className="text-destructive text-sm">
+        <p className="text-destructive-ink text-sm">
           {formatMessageError(issue, intl) ?? issue}
         </p>
       )}

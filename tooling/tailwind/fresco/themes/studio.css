@@ -273,8 +273,9 @@
     /* Redeclared here rather than inherited, like every other expression in
        this block: made at `:root` it would carry the default theme's ink into
        a studio region. See `--color-destructive-strong` in theme.css. 78%
-       measures 5.46:1 on this scope's pale `--surface-accent`; the dark block
-       below cannot afford the same weighting and says so. */
+       measures 5.46:1 on this scope's pale `--surface-accent` and 4.83:1 on
+       `--surface-accent-1`; the dark block below cannot afford the same
+       weighting and says so. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 78%,
@@ -344,6 +345,9 @@
     --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
     --surface-link: var(--link);
     --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     /*
      * CHANGED: a deeper hairline than the default theme's `--background`
@@ -545,12 +549,12 @@
        The weighting is chosen per scope, not shared: `--surface-accent` here
        is a mid-lightness violet, so the 78% this theme's light block can
        afford leaves the ink on 4.32:1 — under AA for the normal-size field
-       errors the token carries. 72% measures 4.67:1 and is still plainly
-       red. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures every
+       errors the token carries, and its deeper `--surface-accent-1` asks for
+       more. 56% measures 5.66:1 and 4.66:1 and is still plainly red. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures every
        scope and fails below 4.5:1. */
     --destructive-strong: color-mix(
       in oklch,
-      var(--destructive) 72%,
+      var(--destructive) 56%,
       var(--text)
     );
 
@@ -586,6 +590,9 @@
     --link: oklch(from var(--accent) calc(l + 0.1) c h);
     --surface-link: var(--link);
     --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     /* A touch above the raised surface, as in the mockup. */
     --outline: oklch(0.32 0.038 var(--base-hue));

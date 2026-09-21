@@ -163,8 +163,9 @@
 
        The WEIGHTING is per scope too, not just the expression: how far the
        fill has to travel toward the ink depends on how light that scope's
-       `--surface-accent` is. 78% measures 5.00:1 here, and the studio and
-       interview blocks say why they need their own numbers. */
+       `--surface-accent` is. 78% measures 5.00:1 here and 4.55:1 on
+       `--surface-accent-1`, and the other blocks say why they need their own
+       numbers. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 78%,
@@ -194,6 +195,9 @@
     --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
     --surface-link: var(--link);
     --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     --outline: oklch(from var(--background) calc(l - 0.05) c h);
 
@@ -316,12 +320,12 @@
     /* Redeclared, like the surface aliases above: the mixture has to be made
        against THIS scope's `--destructive` and `--text` — mixing toward the
        light theme's near-black ink darkens the error on a dark surface
-       instead of lifting it off one. 78% still serves this scope — the ink
-       measures 4.63:1 on its `--surface-accent` — where studio dark and
-       interview need lighter mixtures; see those blocks. */
+       instead of lifting it off one. 78% measures 4.63:1 on this scope's
+       `--surface-accent` but 4.17:1 on `--surface-accent-1`; 70% measures
+       5.13:1 and 4.62:1. */
     --destructive-strong: color-mix(
       in oklch,
-      var(--destructive) 78%,
+      var(--destructive) 70%,
       var(--text)
     );
 
@@ -343,6 +347,9 @@
     --link: oklch(from var(--accent) calc(l + 0.1) c h);
     --surface-link: var(--link);
     --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     /* Borders sit just above the background on dark (inverse of light). */
     --outline: oklch(from var(--background) calc(l + 0.1) c h);
