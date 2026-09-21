@@ -408,7 +408,7 @@ export const AnAttributeTheCodebookHasLost: Story = {
 
     await expect(
       await canvas.findByText(
-        '"was_the_participant" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+        'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
       ),
     ).toBeInTheDocument();
   },

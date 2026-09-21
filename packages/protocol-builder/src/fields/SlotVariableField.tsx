@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -271,6 +271,12 @@ export default function SlotVariableField({
       ]),
     [],
   );
+
+  useEffect(() => {
+    const state = storeApi.getState();
+    if (state.getFieldErrors(name) === null) return;
+    void state.validateField(name);
+  }, [allVariables, name, storeApi]);
 
   return (
     <>

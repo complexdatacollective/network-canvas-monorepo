@@ -25,5 +25,8 @@ Architect's screen also scrolls to show its last button, such as Download.
 `SegmentedToolbar` has a new `restAt` prop. Set it to `"end"` to show a
 toolbar's last button, rather than its first, when the toolbar does not fit.
 
+A field's error message now has space between it and the control above it,
+instead of sitting right against it.
+
 `ScrollArea` now fades the correct edges when it scrolls sideways in a
 right-to-left language.

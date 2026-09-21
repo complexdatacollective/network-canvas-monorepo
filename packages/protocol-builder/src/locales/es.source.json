@@ -1057,7 +1057,7 @@
   "protocolBuilder.pedigree.slotUnvalidatedElsewhereRefusal": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
   "protocolBuilder.pedigree.slotValuesChangedNote": "This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.",
   "protocolBuilder.pedigree.slotValuesChangedOptionLabel": "{attributeName} — no longer offers the values this control needs",
-  "protocolBuilder.pedigree.variableGoneRefusal": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
+  "protocolBuilder.pedigree.variableGoneRefusal": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
   "protocolBuilder.pedigree.variableOptionsChangedRefusal": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",
   "protocolBuilder.pedigree.variableTypeChangedRefusal": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
   "protocolBuilder.promptAttribute.lockedOptions": "These values are set by the interface that uses this attribute, so they cannot be changed here.",

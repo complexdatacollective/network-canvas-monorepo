@@ -119,10 +119,10 @@ export default function FieldErrors({
         <div
           data-testid={name ? `${name}-field-error` : undefined}
           className={cx(
-            'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:mt-2 interview:px-4 interview:py-2 rounded-sm text-sm leading-snug',
+            'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:px-4 interview:py-2 mt-2 rounded-sm text-sm leading-snug',
             'text-destructive',
             variant === 'box' &&
-              'text-destructive-contrast bg-destructive mt-2 px-4 py-2',
+              'text-destructive-contrast bg-destructive px-4 py-2',
           )}
           key={displayed.signature} // Remount only when the displayed message actually changes
         >

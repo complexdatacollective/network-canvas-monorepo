@@ -1319,7 +1319,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     expect(
       await screen.findByText(
-        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+        'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
       ),
     ).toBeInTheDocument();
     // The dialog stays open, holding the prompt the researcher wrote, rather
@@ -1350,9 +1350,48 @@ describe('a codebook that changes while the pedigree is open', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        '"fm_name" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+        'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('withdraws the gone refusal once the attribute is in the codebook', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'preferred_name', {
+      name: 'preferred_name',
+      type: 'text',
+    });
+    removeFamilyMemberVariable(harness, 'fm_name');
+    expect(await harness.submit()).toBeNull();
+    await screen.findByText(/is no longer in the codebook/);
+
+    addFamilyMemberVariable(harness, 'fm_name', {
+      name: 'fm_name',
+      type: 'text',
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/is no longer in the codebook/),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).not.toBeNull();
+  });
+
+  it('holds an attribute invented from a slot without calling it gone', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await inventAttribute(
+      harness.user,
+      attributeField('Display label'),
+      'preferred_name',
+    );
+
+    await within(attributeField('Display label')).findByText('preferred_name');
+    expect(
+      screen.queryByText(/is no longer in the codebook/),
+    ).not.toBeInTheDocument();
+    expect(await harness.submit()).not.toBeNull();
   });
 
   /**

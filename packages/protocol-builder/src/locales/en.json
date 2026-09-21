@@ -4232,8 +4232,8 @@
     "description": "Name of the one option standing for the attribute a pedigree attribute control already holds, in a slot that uses a fixed set of values the interface owns (biological sex, relationship type, or gamete role), when that attribute still exists and is still a list of answers but the values it offers have been edited elsewhere and no longer match the fixed set. Shown in the select’s list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.pedigree.variableGoneRefusal": {
-    "defaultMessage": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
-    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated."
+    "defaultMessage": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
+    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. The attribute is not named, because once it is deleted only its internal identifier is left."
   },
   "protocolBuilder.pedigree.variableOptionsChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",
