@@ -824,12 +824,12 @@
     "description": "Heading of the page listing a protocol’s entity types and their attributes. The codebook is the protocol’s definition of what an interview records."
   },
   "protocolBuilder.codebookEntity.colorHint": {
-    "defaultMessage": "{entity, select, node {Choose a color reference for this node type.} edge {Choose a color reference for this edge type.} other {Choose a color reference for this ego definition.}}",
-    "description": "Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour."
+    "defaultMessage": "{entity, select, node {Choose a color for this node type.} edge {Choose a color for this edge type.} other {Choose a color for this ego definition.}}",
+    "description": "Guidance under the colour field. entity is node, edge or ego."
   },
   "protocolBuilder.codebookEntity.colorLabel": {
-    "defaultMessage": "Protocol color",
-    "description": "Label of the field choosing which position in the protocol’s palette this entity type is drawn in."
+    "defaultMessage": "{entity, select, node {Node color} other {Edge color}}",
+    "description": "Label of the field choosing the colour this entity type is drawn in. entity is node or edge; the ego has no colour."
   },
   "protocolBuilder.codebookEntity.colorOutsidePalette": {
     "defaultMessage": "Current color ({color})",
@@ -936,8 +936,8 @@
     "description": "Button on the ego card that opens its attribute list. The ego — the interview participant themselves — has attributes but no type properties, so the button offers those rather than editing a type."
   },
   "protocolBuilder.codebookEntity.nameHint": {
-    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data.} edge {This name identifies the edge type in the codebook and exported data.} other {This name identifies the ego definition in the codebook and exported data.}}",
-    "description": "Guidance under the name field, saying where the name is read back. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Works With\".} other {This name identifies the ego definition in the codebook and exported data.}}",
+    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated."
   },
   "protocolBuilder.codebookEntity.nameInvalid": {
     "defaultMessage": "{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}",
@@ -946,6 +946,10 @@
   "protocolBuilder.codebookEntity.nameLabel": {
     "defaultMessage": "{entity, select, node {Node type name} other {Edge type name}}",
     "description": "Label of the field holding the researcher’s own name for this entity type. entity is node or edge; the ego has no type name."
+  },
+  "protocolBuilder.codebookEntity.namePlaceholder": {
+    "defaultMessage": "{entity, select, node {Enter a name for this node type...} other {Enter a name for this edge type...}}",
+    "description": "Placeholder in the empty name field of the entity editor. entity is node or edge; the ego has no type name."
   },
   "protocolBuilder.codebookEntity.nameRequired": {
     "defaultMessage": "Enter a type name.",
