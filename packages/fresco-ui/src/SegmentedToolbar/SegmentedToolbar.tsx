@@ -16,6 +16,7 @@ import {
   type Variants,
 } from 'motion/react';
 import * as React from 'react';
+import { useMergeRefs } from 'react-best-merge-refs';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -30,6 +31,11 @@ import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
+import {
+  isRightToLeft,
+  measureHorizontalOverflow,
+  setHorizontalOverflowVariables,
+} from '../utils/horizontalOverflow';
 
 export type SegmentSize = 'sm' | 'md' | 'lg';
 export type ToolbarOrientation = 'horizontal' | 'vertical';
@@ -309,15 +315,7 @@ function useHorizontalOverflow(
       frame.style.removeProperty('--scroll-area-overflow-x-end');
       return;
     }
-    const hidden = Math.max(0, lane.scrollWidth - lane.clientWidth);
-    const travelled = Math.min(Math.abs(lane.scrollLeft), hidden);
-    const rightToLeft = isRightToLeft(lane);
-    const left = rightToLeft ? hidden - travelled : travelled;
-    frame.style.setProperty('--scroll-area-overflow-x-start', `${left}px`);
-    frame.style.setProperty(
-      '--scroll-area-overflow-x-end',
-      `${hidden - left}px`,
-    );
+    setHorizontalOverflowVariables(frame, measureHorizontalOverflow(lane));
   }, [enabled]);
 
   const anchorToEnd = React.useCallback(() => {
@@ -337,9 +335,7 @@ function useHorizontalOverflow(
     const lane = laneRef.current;
     if (!lane) return undefined;
     const onScroll = () => {
-      const hidden = Math.max(0, lane.scrollWidth - lane.clientWidth);
-      const travelled = Math.min(Math.abs(lane.scrollLeft), hidden);
-      pinnedToEnd.current = hidden - travelled <= 1;
+      pinnedToEnd.current = measureHorizontalOverflow(lane).inlineEnd <= 1;
       publishOverflow();
     };
     lane.addEventListener('scroll', onScroll, { passive: true });
@@ -362,10 +358,6 @@ function useHorizontalOverflow(
   }, [anchorToEnd, publishOverflow]);
 
   return { laneRef, frameRef };
-}
-
-function isRightToLeft(element: HTMLElement): boolean {
-  return getComputedStyle(element).direction === 'rtl';
 }
 
 const layoutSpring: Transition = {
@@ -1032,13 +1024,7 @@ export function SegmentedToolbar({
     restAt,
     children,
   );
-  const setLane = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      laneRef.current = node;
-      assignRef(ref, node);
-    },
-    [laneRef, ref],
-  );
+  const laneRefs = useMergeRefs({ laneRef, ref });
 
   const innerToolbar = (
     <ToolbarContext.Provider value={context}>
@@ -1051,7 +1037,7 @@ export function SegmentedToolbar({
       >
         <Toolbar.Root
           {...props}
-          ref={setLane}
+          ref={laneRefs}
           disabled={disabled}
           orientation={orientation}
           className={cx(
