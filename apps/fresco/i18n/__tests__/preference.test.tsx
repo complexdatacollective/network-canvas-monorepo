@@ -185,7 +185,7 @@ describe('Fresco locale preference control', () => {
     expect(refresh).not.toHaveBeenCalled();
     await open();
     expect(footer()).toHaveTextContent(
-      'No se pudo guardar. El idioma se aplica por ahora.',
+      'No se pudo guardar. Por ahora, el idioma solo se aplicará en esta visita.',
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'Volver a intentarlo' }),
