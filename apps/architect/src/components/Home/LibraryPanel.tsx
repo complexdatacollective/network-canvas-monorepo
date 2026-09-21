@@ -1169,9 +1169,7 @@ const LibraryPanel = ({
       </div>
     ) : activeTab === 'templates' ? (
       <div className="flex min-w-max items-center justify-end">
-        <Badge color="platinum" className="shadow-none">
-          {templateLabel}
-        </Badge>
+        <Badge color="platinum">{templateLabel}</Badge>
       </div>
     ) : null;
   return (

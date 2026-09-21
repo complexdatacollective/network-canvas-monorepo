@@ -11,6 +11,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { type ReactNode, useCallback, useLayoutEffect, useRef } from 'react';
 
 import { usePageBackgroundTargetRef } from '@codaco/art';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { inputFieldControlVariants } from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { env } from '~/env';
@@ -65,14 +66,13 @@ const SearchResultHit = ({
   return (
     <a href={hit.url}>
       {slug && colorClass ? (
-        <span
-          className={cx(
-            'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
-            colorClass,
-          )}
+        <Badge
+          size="sm"
+          uppercase
+          className={cx('mr-2 shrink-0 self-center text-white', colorClass)}
         >
           {sectionLabel(slug)}
-        </span>
+        </Badge>
       ) : null}
       {children}
     </a>

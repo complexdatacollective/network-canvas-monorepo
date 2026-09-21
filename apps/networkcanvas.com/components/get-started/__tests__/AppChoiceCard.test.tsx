@@ -61,13 +61,9 @@ describe('AppChoiceCard', () => {
     expect(description).toHaveClass('font-body');
     expect(description).not.toHaveClass('not-last:mb-[1em]');
     expect(status.tagName).toBe('DIV');
-    expect(status).toHaveClass(
-      'inline-flex',
-      'border-0',
-      'px-3',
-      'py-1.5',
-      'bg-surface/15',
-      'text-white',
+    expect(status).toHaveClass('inline-flex', 'border-transparent');
+    expect(status.style.getPropertyValue('--badge-color')).toBe(
+      'var(--color-white)',
     );
     expect(status).toHaveTextContent('Recommended for new studies');
   });
@@ -90,8 +86,10 @@ describe('AppChoiceCard', () => {
     );
 
     expect(
-      screen.getByText('Large Teams · Remote Administration · Recommended'),
-    ).toHaveClass('bg-cyber-grape/10', 'text-text');
+      screen
+        .getByText('Large Teams · Remote Administration · Recommended')
+        .style.getPropertyValue('--badge-color'),
+    ).toBe('var(--color-cyber-grape)');
   });
 
   it('gives each Classic platform link an app-specific accessible name', () => {

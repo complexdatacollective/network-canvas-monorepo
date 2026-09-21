@@ -1,75 +1,77 @@
-export const getBadgeColorsForActivityType = (type: string) => {
+import type { BadgeColor } from '@codaco/fresco-ui/Badge';
+
+export const getBadgeColorForActivityType = (type: string): BadgeColor => {
   switch (type) {
     case 'Protocol Installed':
-      return 'bg-slate-blue hover:bg-slate-blue-dark';
+      return 'slate-blue';
     case 'Protocol Uninstalled':
-      return 'bg-neon-carrot hover:bg-neon-carrot-dark';
+      return 'neon-carrot';
     case 'Participant(s) Added':
-      return 'bg-sea-green hover:bg-sea-green';
+      return 'sea-green';
     case 'Participant(s) Removed':
-      return 'bg-tomato hover:bg-tomato-dark';
+      return 'tomato';
     case 'Interview Started':
-      return 'bg-sea-serpent hover:bg-sea-serpent-dark';
+      return 'sea-serpent';
     case 'Interview Completed':
-      return 'bg-purple-pizazz hover:bg-purple-pizazz-dark';
+      return 'purple-pizazz';
     case 'Interview Opened':
-      return 'bg-cerulean-blue hover:bg-cerulean-blue-dark';
+      return 'cerulean-blue';
     case 'Interview(s) Deleted':
-      return 'bg-paradise-pink hover:bg-paradise-pink-dark';
+      return 'paradise-pink';
     case 'Data Exported':
-      return 'bg-kiwi hover:bg-kiwi-dark';
+      return 'kiwi';
     case 'API Token Created':
-      return 'bg-cerulean-blue hover:bg-cerulean-blue-dark';
+      return 'cerulean-blue';
     case 'API Token Updated':
-      return 'bg-kiwi hover:bg-kiwi-dark';
+      return 'kiwi';
     case 'API Token Deleted':
-      return 'bg-cyber-grape hover:bg-cyber-grape-dark';
+      return 'cyber-grape';
     case 'Password Changed':
-      return 'bg-mustard hover:bg-mustard-dark';
+      return 'mustard';
     case 'User Login':
-      return 'bg-neon-coral hover:bg-neon-coral-dark';
+      return 'neon-coral';
     case 'User Created':
-      return 'bg-sea-green hover:bg-sea-green-dark';
+      return 'sea-green';
     case 'User Deleted':
-      return 'bg-charcoal hover:bg-charcoal-dark';
+      return 'charcoal';
     case 'Two-Factor Enabled':
-      return 'bg-sea-green hover:bg-sea-green-dark';
+      return 'sea-green';
     case 'Two-Factor Disabled':
-      return 'bg-neon-carrot hover:bg-neon-carrot-dark';
+      return 'neon-carrot';
     case 'Two-Factor Reset':
-      return 'bg-mustard hover:bg-mustard-dark';
+      return 'mustard';
     case 'Recovery Code Used':
-      return 'bg-purple-pizazz hover:bg-purple-pizazz-dark';
+      return 'purple-pizazz';
     case 'Recovery Codes Regenerated':
-      return 'bg-cerulean-blue hover:bg-cerulean-blue-dark';
+      return 'cerulean-blue';
     case 'Passkey Registered':
-      return 'bg-sea-green hover:bg-sea-green-dark';
+      return 'sea-green';
     case 'Passkey Removed':
-      return 'bg-neon-carrot hover:bg-neon-carrot-dark';
+      return 'neon-carrot';
     case 'Password Removed':
-      return 'bg-mustard hover:bg-mustard-dark';
+      return 'mustard';
     case 'Password Set':
-      return 'bg-sea-green hover:bg-sea-green-dark';
+      return 'sea-green';
     case 'Auth Reset':
-      return 'bg-tomato hover:bg-tomato-dark';
+      return 'tomato';
     case 'Switched to Passkey Mode':
-      return 'bg-sea-green hover:bg-sea-green-dark';
+      return 'sea-green';
     case 'Switched to Password Mode':
-      return 'bg-mustard hover:bg-mustard-dark';
+      return 'mustard';
     case 'Setting Changed':
-      return 'bg-mustard hover:bg-mustard-dark';
+      return 'mustard';
     case 'Synthetic Data Generated':
-      return 'bg-sea-green hover:bg-sea-green';
+      return 'sea-green';
     case 'Synthetic Data Deleted':
-      return 'bg-neon-carrot hover:bg-neon-carrot-dark';
+      return 'neon-carrot';
     // Legacy event types kept for backward compatibility with existing DB rows
     case 'Two-Factor Login':
-      return 'bg-neon-coral hover:bg-neon-coral-dark';
+      return 'neon-coral';
     case 'Passkey Login':
-      return 'bg-neon-coral hover:bg-neon-coral-dark';
+      return 'neon-coral';
     case 'Recovery Code Login':
-      return 'bg-purple-pizazz hover:bg-purple-pizazz-dark';
+      return 'purple-pizazz';
     default:
-      return 'bg-slate hover:bg-slate-dark';
+      return 'slate-blue';
   }
 };
