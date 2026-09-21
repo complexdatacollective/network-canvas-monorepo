@@ -20,7 +20,9 @@ import {
   type CodebookRefusal,
 } from './compoundFailureCopy.ts';
 import {
+  draftRefusalMessage,
   DuplicateVariableNameError,
+  InvalidCodebookDraftError,
   MissingVariableError,
   sectionIdForCodebookSubject,
   type CodebookSubject,
@@ -158,15 +160,26 @@ const refactorRefusal = (
  * be passed on and decoded where they are rendered. Everything else it throws
  * reports a wiring defect and is written for whoever reads a log.
  */
-const builderRefusal = (error: unknown): CodebookWriteOutcome =>
-  error instanceof DuplicateVariableNameError ||
-  error instanceof MissingVariableError
-    ? {
-        status: 'refused',
-        message: error.message,
-        refusal: { kind: 'unexplained' },
-      }
-    : refused({ kind: 'unexplained' });
+const builderRefusal = (error: unknown): CodebookWriteOutcome => {
+  if (
+    error instanceof DuplicateVariableNameError ||
+    error instanceof MissingVariableError
+  ) {
+    return {
+      status: 'refused',
+      message: error.message,
+      refusal: { kind: 'unexplained' },
+    };
+  }
+  if (error instanceof InvalidCodebookDraftError) {
+    return {
+      status: 'refused',
+      message: draftRefusalMessage(error),
+      refusal: { kind: 'invalidShape' },
+    };
+  }
+  return refused({ kind: 'unexplained' });
+};
 
 /**
  * Rewrites one existing codebook section under its own lock.

@@ -52,6 +52,7 @@ import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
   documentWithUpdatedVariable,
+  draftRefusalMessage,
   DuplicateVariableNameError,
   InvalidCodebookDraftError,
   type CodebookDraftIssue,
@@ -683,7 +684,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         setFailure({ message: error.message, held: false });
         return;
       }
-      if (error instanceof InvalidCodebookDraftError) setIssues(error.issues);
+      if (error instanceof InvalidCodebookDraftError) {
+        setIssues(error.issues);
+        setFailure({ message: draftRefusalMessage(error), held: false });
+        return;
+      }
       setFailure({
         message: codebookRefusalMessage({ kind: 'unexplained' }),
         held: false,

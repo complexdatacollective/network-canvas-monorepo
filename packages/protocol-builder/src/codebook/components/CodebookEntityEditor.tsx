@@ -45,6 +45,8 @@ import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentForNewEntity,
   documentWithEntityProperties,
+  draftRefusalMessage,
+  InvalidCodebookDraftError,
   type CodebookEntityDraft,
 } from '../editing.ts';
 import {
@@ -693,12 +695,15 @@ export default function CodebookEntityEditor({
               authoritativeDocument: modeProps.authoritativeDocument,
               draft,
             });
-    } catch {
+    } catch (error: unknown) {
       // Everything the entity schema refuses past `validateFields` is written
       // for whoever reads a log, so the researcher gets the package's own words
       // for a save that did not happen.
       setFailure({
-        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        message:
+          error instanceof InvalidCodebookDraftError
+            ? draftRefusalMessage(error)
+            : codebookRefusalMessage({ kind: 'unexplained' }),
         held: false,
       });
       return;

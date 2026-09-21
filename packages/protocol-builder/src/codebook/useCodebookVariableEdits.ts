@@ -200,6 +200,7 @@ type RefusedDraft = Readonly<{
   name: unknown;
   type: unknown;
   component: unknown;
+  authorsOptions: boolean;
 }>;
 
 const isVariableType = (value: unknown): value is VariableType =>
@@ -280,6 +281,9 @@ const refusalMessage = (
     return intl.formatMessage(messages.missingVariable);
   }
   if (error instanceof InvalidCodebookDraftError) {
+    if (draft.authorsOptions && error.refusal !== undefined) {
+      return readRefusal(error.refusal, intl);
+    }
     for (const issue of error.issues) {
       const message = draftIssueMessage(issue, draft, intl);
       if (message !== undefined) return message;
@@ -393,6 +397,7 @@ export function useCreateCodebookVariable(
               name: variable.name,
               type: variable.type,
               component: variable.component,
+              authorsOptions: variable.options !== undefined,
             },
             intl.formatMessage(messages.refusedUnchanged),
             intl,
@@ -518,7 +523,12 @@ export function useSetVariableComponent(
         } catch (error: unknown) {
           refusal = refusalMessage(
             error,
-            { name: Reflect.get(current, 'name'), type, component },
+            {
+              name: Reflect.get(current, 'name'),
+              type,
+              component,
+              authorsOptions: false,
+            },
             intl.formatMessage(messages.refusedControlUnchanged),
             intl,
           );
@@ -634,6 +644,7 @@ export function useSetVariableOptions(): SetVariableOptions {
               name: Reflect.get(current, 'name'),
               type: Reflect.get(current, 'type'),
               component: Reflect.get(current, 'component'),
+              authorsOptions: true,
             },
             intl.formatMessage(messages.refusedOptionsUnchanged),
             intl,
@@ -723,6 +734,7 @@ export function useRenameCodebookVariable(
               name,
               type: Reflect.get(current, 'type'),
               component: Reflect.get(current, 'component'),
+              authorsOptions: false,
             },
             // Every refusal a rename draft can raise has its own sentence —
             // the name is taken, the attribute has gone, the name is not one

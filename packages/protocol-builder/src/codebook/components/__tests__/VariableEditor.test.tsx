@@ -43,6 +43,9 @@ const REFUSED = {
     'This change could not be saved, and nothing was altered. Wait a moment and try again.',
 } as const;
 
+const TOO_FEW_OPTIONS =
+  'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.';
+
 /** What a host says. None of it reaches the researcher. */
 const HOST_WORDS =
   'Expected object, received undefined at codebook.node.person';
@@ -542,10 +545,12 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     const alert = await screen.findByRole('alert');
-    // The draft never left the editor, so the alert says what happened rather
-    // than repeating the schema's account of which path was wrong.
-    expect(alert).toHaveTextContent(REFUSED.threw);
+    expect(alert).toHaveTextContent(TOO_FEW_OPTIONS);
+    expect(alert).not.toHaveTextContent(REFUSED.threw);
     expect(alert).not.toHaveTextContent('the variable draft is invalid');
+    expect(
+      screen.getByRole('group', { name: /Choice values/ }),
+    ).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
     expect(alert).toHaveFocus();
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),

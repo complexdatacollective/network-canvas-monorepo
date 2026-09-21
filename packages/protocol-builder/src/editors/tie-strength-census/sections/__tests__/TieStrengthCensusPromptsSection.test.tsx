@@ -563,6 +563,97 @@ describe('creating a scale from inside a tie-strength prompt', () => {
   });
 });
 
+describe('a scale created on a connection type created in the same prompt', () => {
+  async function inventScaleOnNewConnection(
+    harness: StageEditorHarness,
+    options: readonly Readonly<{ label: string; value: number }>[],
+  ) {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new edge type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Edge',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+    expect(await screen.findByRole('radio', { name: 'Edge' })).toBeChecked();
+    expect(
+      await screen.findByText(
+        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+      ),
+    ).toBeInTheDocument();
+
+    await inventAttribute(harness.user, await findScaleField(), 'f');
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('f');
+    for (const [index, option] of options.entries()) {
+      await addOption(harness, index + 1, option.label, option.value);
+    }
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+  }
+
+  const newEdgeVariables = (harness: StageEditorHarness) =>
+    Object.values(harness.hostCodebook().edge ?? {})
+      .filter((definition) => definition.name === 'Edge')
+      .flatMap((definition) =>
+        Object.values(definition.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      );
+
+  it('creates the scale and points the prompt at it', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await inventScaleOnNewConnection(harness, [
+      { label: 'Some', value: 1 },
+      { label: 'Lots', value: 2 },
+    ]);
+
+    const picker = await findScaleField();
+    await waitFor(() => expect(within(picker).getByText('f')).toBeVisible());
+    expect(newEdgeVariables(harness)).toEqual(['f']);
+  });
+
+  it.each([
+    { count: 'no values', options: [] },
+    { count: 'one value', options: [{ label: 'Some', value: 1 }] },
+  ])(
+    'refuses a scale with $count on its values, and says what it needs',
+    async ({ options }) => {
+      const harness = renderStageEditor(openSection());
+
+      await inventScaleOnNewConnection(harness, options);
+
+      const editor = await screen.findByRole('dialog', {
+        name: 'Create a new attribute',
+      });
+      const values = within(editor).getByRole('group', {
+        name: /Choice values/,
+      });
+      expect(
+        await within(values).findByText(
+          'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+        ),
+      ).toBeVisible();
+      expect(values).toHaveAttribute('aria-invalid', 'true');
+      expect(
+        within(editor).queryByText(
+          'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+        ),
+      ).toBeNull();
+      expect(newEdgeVariables(harness)).toEqual([]);
+    },
+  );
+});
+
 /**
  * A prompt saved over a scale the codebook no longer offers.
  *

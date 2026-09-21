@@ -8,6 +8,7 @@ import ArrayField, {
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 
+import { minimumOptionsMessage } from '../../codebook/editing.ts';
 import {
   invalidVariableName,
   isSameAnswer,
@@ -31,13 +32,6 @@ export type { OptionValue } from './Option.tsx';
  * encoded here and decoded by `FieldErrors` where the list shows it.
  */
 const messages = defineMessages({
-  minimumOptions: {
-    id: 'protocolBuilder.option.minimumOptions',
-    defaultMessage:
-      'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
-    description:
-      'Shown under a list of options when the researcher tries to save an ordinal or categorical attribute with fewer than two of them. A boolean attribute is the codebook variable type that records a yes/no answer.',
-  },
   incompleteOptions: {
     id: 'protocolBuilder.option.incompleteOptions',
     defaultMessage: 'Every option needs both a label and a value.',
@@ -69,7 +63,7 @@ const messages = defineMessages({
  * (spread as `{...optionsValidation}`), which hands the whole array to each
  * rule — rows are not registered fields and cannot carry them.
  */
-const MINIMUM_OPTIONS_MESSAGE = createMessageError(messages.minimumOptions);
+const MINIMUM_OPTIONS_MESSAGE = createMessageError(minimumOptionsMessage);
 
 const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
