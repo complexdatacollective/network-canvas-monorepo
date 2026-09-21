@@ -99,9 +99,9 @@ describe('the network composer sections, read in Spanish', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('region', { name: 'Tipos de conexiones' }),
+      screen.getByRole('region', { name: 'Tipos de vínculo' }),
     ).toHaveAccessibleDescription(
-      'Selecciona los tipos de vínculos que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.',
+      'Selecciona los tipos de vínculo que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.',
     );
   });
 
@@ -164,7 +164,7 @@ describe('the network composer sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'former_edge — este tipo de vínculo ya no está en el libro de códigos',
+        'former_edge: este tipo de vínculo ya no está en el libro de códigos',
       ),
     ).toBeInTheDocument();
   });
