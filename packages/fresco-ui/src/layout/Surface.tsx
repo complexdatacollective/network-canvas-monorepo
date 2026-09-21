@@ -186,6 +186,8 @@ const SurfaceContext = createContext<SurfaceContextValue>(
  */
 export const useSurfaceDepth = () => useContext(SurfaceContext).depth;
 
+export const useSurfaceSeries = () => useContext(SurfaceContext).series;
+
 /**
  * Restarts the Surface depth ladder for a subtree, as if the subtree were
  * mounted directly inside a depth-0 surface. Used by floating chrome that

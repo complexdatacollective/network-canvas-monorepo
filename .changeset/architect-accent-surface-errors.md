@@ -5,7 +5,7 @@
 
 Error messages inside a list item in Architect, such as the one under a
 yes/no attribute's answer labels, can be read again. They were red on the
-slate blue row and almost invisible. They are now a light pink that stands out
-from the row while still reading as an error. Other destructive text in
-Fresco UI, such as the required-field marker, follows the same colour on these
-rows.
+slate blue row and almost invisible. They now appear as white text in a red
+box, the same treatment Fresco UI already uses for errors on coloured
+backgrounds. Other destructive text on these rows, such as the required-field
+marker, is drawn in a light tint that stays legible against the row.

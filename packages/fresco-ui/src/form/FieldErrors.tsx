@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { useSurfaceSeries } from '../layout/Surface';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 
@@ -17,14 +18,14 @@ import { cx } from '../utils/cva';
  * `variant="box"` opts in to the boxed destructive treatment (used by the
  * `interview:` theme) unconditionally, for hosts that render on a
  * non-interview background that would otherwise leave plain destructive text
- * with poor contrast.
+ * with poor contrast. It is the default on an accent Surface.
  */
 export default function FieldErrors({
   id,
   name,
   errors,
   show,
-  variant = 'text',
+  variant,
 }: {
   id: string; // Used for aria labels
   name?: string; // Field name for testId
@@ -33,6 +34,8 @@ export default function FieldErrors({
   variant?: 'text' | 'box';
 }) {
   const intl = useAppIntl();
+  const series = useSurfaceSeries();
+  const boxed = (variant ?? (series === 'accent' ? 'box' : 'text')) === 'box';
   const liveMessages = show
     ? (errors ?? []).map((error) => formatMessageError(error, intl) ?? error)
     : [];
@@ -120,7 +123,7 @@ export default function FieldErrors({
           data-testid={name ? `${name}-field-error` : undefined}
           className={cx(
             'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:px-4 interview:py-2 mt-2 rounded-sm text-sm leading-snug',
-            variant === 'box'
+            boxed
               ? 'text-destructive-contrast bg-destructive px-4 py-2'
               : 'text-destructive-ink',
           )}

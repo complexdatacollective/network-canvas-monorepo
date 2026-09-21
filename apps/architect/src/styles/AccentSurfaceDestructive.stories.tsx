@@ -45,32 +45,40 @@ export const FieldErrorOnAccentSurface: Story = {
     const canvas = within(canvasElement);
 
     const surfaces = ['page', 'accent', 'accent-nested', 'nested-default'];
-    const inkIn = (id: string) =>
-      getComputedStyle(canvas.getByTestId(`${id}-field-error`)).color;
-    const surfaceOf = (id: string) => canvas.getByTestId(id);
+    const errorIn = (id: string) => canvas.getByTestId(`${id}-field-error`);
+    const isFilled = (element: Element) => {
+      const background = getComputedStyle(element).backgroundColor;
+      return background !== 'rgba(0, 0, 0, 0)' && background !== 'transparent';
+    };
+    const groundOf = (id: string) => {
+      const error = errorIn(id);
+      return getComputedStyle(isFilled(error) ? error : canvas.getByTestId(id))
+        .backgroundColor;
+    };
 
     await expect(
-      getComputedStyle(surfaceOf('accent-nested')).backgroundColor,
-    ).not.toBe(getComputedStyle(surfaceOf('accent')).backgroundColor);
+      getComputedStyle(canvas.getByTestId('accent-nested')).backgroundColor,
+    ).not.toBe(getComputedStyle(canvas.getByTestId('accent')).backgroundColor);
 
     await expect(
       surfaces
         .map((id) => ({
           id,
           ratio: contrastRatio(
-            inkIn(id),
-            getComputedStyle(surfaceOf(id)).backgroundColor,
+            getComputedStyle(errorIn(id)).color,
+            groundOf(id),
           ),
         }))
         .filter(({ ratio }) => ratio < AA_NORMAL_TEXT)
         .map(({ id, ratio }) => `${id} ${ratio.toFixed(2)}:1`),
-      'a field error is below AA on the surface it sits on',
+      'a field error is below AA on what it is drawn on',
     ).toEqual([]);
 
     for (const id of ['accent', 'accent-nested']) {
-      await expect(inkIn(id)).not.toBe(getComputedStyle(surfaceOf(id)).color);
+      await expect(isFilled(errorIn(id))).toBe(true);
     }
-
-    await expect(inkIn('nested-default')).toBe(inkIn('page'));
+    for (const id of ['page', 'nested-default']) {
+      await expect(isFilled(errorIn(id))).toBe(false);
+    }
   },
 };
