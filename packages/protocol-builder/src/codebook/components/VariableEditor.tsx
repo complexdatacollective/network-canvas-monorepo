@@ -903,7 +903,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             >
               <legend className="font-heading mb-2 font-bold">
                 {intl.formatMessage(variableValuesMessages.optionsLegend)}{' '}
-                <span className="text-destructive">*</span>
+                <span className="text-destructive-ink">*</span>
               </legend>
               <p className="text-muted mb-4 text-sm">
                 {intl.formatMessage(variableValuesMessages.optionsHint)}
@@ -925,20 +925,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       className="w-full overflow-visible!"
                     >
                       <div className="flex items-start gap-4">
-                        {/* The strong destructive ink is opted into HERE, on the
-                            field column, and not on the Surface: it is meant for
-                            destructive TEXT drawn on this tinted background —
-                            the required marker and a field's error — and
-                            `--destructive` is also the fill of the destructive
-                            remove button beside it, whose foreground stays
-                            `--destructive-contrast`. Tinting the whole surface
-                            repaints that fill without repainting the icon on
-                            it, which on the default dark theme lands at 2.85:1
-                            against white where the untouched pair reaches
-                            3.85:1 — under the 3:1 WCAG asks of a control. The
-                            button is outside this element, so it keeps its own
-                            pair. */}
-                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
+                        <div className="min-w-0 flex-1">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
@@ -1040,7 +1027,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {optionErrors.length > 0 && (
                 <ul
                   id={`${statusId}-option-errors`}
-                  className="text-destructive mt-3 list-disc pl-5"
+                  className="text-destructive-ink mt-3 list-disc pl-5"
                 >
                   {/* An option issue's message is a plain string carrying either
                       this package's own encoded descriptor or a wording the
@@ -1109,7 +1096,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {blockParameterErrors.length > 0 && (
                 <ul
                   id={`${statusId}-parameter-errors`}
-                  className="text-destructive mb-3 list-disc pl-5"
+                  className="text-destructive-ink mb-3 list-disc pl-5"
                 >
                   {/* Decoded here for the reason the option list above is: a
                       refusal about the whole block is held as an encoded

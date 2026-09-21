@@ -66,6 +66,7 @@ import VariablePickerField, {
 } from '../../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { crossClassPickIssue } from '../../form/arrayFields/crossClassPick.ts';
+import RevealWhenChosen from '../../form/RevealWhenChosen.tsx';
 import {
   RowDialog,
   RowList,
@@ -1187,28 +1188,31 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <AttributeValueFields
         subject={subject}
         variableId={chosen === '' ? undefined : chosen}
+        revealWhenChosenIn={COMPONENT_FIELD}
         {...(inventing && attributeType !== undefined
           ? { invented: attributeType, rowComponent: control }
           : {})}
       />
       {shape !== null && (
-        <Field<typeof ComposerParametersField>
-          name={PARAMETERS_FIELD}
-          component={ComposerParametersField}
-          label={intl.formatMessage(messages.parametersLabel)}
-          hint={intl.formatMessage(messages.parametersHint)}
-          shape={shape}
-          {...(inherited === undefined ? {} : { inherited })}
-          {...(chosen === undefined || variables[chosen] === undefined
-            ? {}
-            : { inheritedFrom: variables[chosen].name })}
-          initialValue={
-            isRecord(item[PARAMETERS_FIELD])
-              ? item[PARAMETERS_FIELD]
-              : undefined
-          }
-          {...parametersValidation}
-        />
+        <RevealWhenChosen chosenIn={COMPONENT_FIELD} revealKey={shape}>
+          <Field<typeof ComposerParametersField>
+            name={PARAMETERS_FIELD}
+            component={ComposerParametersField}
+            label={intl.formatMessage(messages.parametersLabel)}
+            hint={intl.formatMessage(messages.parametersHint)}
+            shape={shape}
+            {...(inherited === undefined ? {} : { inherited })}
+            {...(chosen === undefined || variables[chosen] === undefined
+              ? {}
+              : { inheritedFrom: variables[chosen].name })}
+            initialValue={
+              isRecord(item[PARAMETERS_FIELD])
+                ? item[PARAMETERS_FIELD]
+                : undefined
+            }
+            {...parametersValidation}
+          />
+        </RevealWhenChosen>
       )}
       <Field<typeof InputField>
         name={LABEL_FIELD}

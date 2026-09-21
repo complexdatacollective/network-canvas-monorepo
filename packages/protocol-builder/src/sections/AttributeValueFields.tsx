@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { type ReactElement, useEffect, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -19,6 +19,7 @@ import {
 import BooleanAnswersField from '../fields/BooleanAnswersField.tsx';
 import type { OptionValue } from '../form/arrayFields/Option.tsx';
 import Options, { optionsValidation } from '../form/arrayFields/Options.tsx';
+import RevealWhenChosen from '../form/RevealWhenChosen.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
   variablesForSubject,
@@ -129,6 +130,7 @@ export type AttributeValueFieldsProps = Readonly<{
    * and the row's own create writes them.
    */
   invented?: string;
+  revealWhenChosenIn?: string;
 }>;
 
 /**
@@ -157,8 +159,17 @@ export default function AttributeValueFields({
   rowComponent,
   optionsField = ATTRIBUTE_OPTIONS_FIELD,
   invented,
+  revealWhenChosenIn,
 }: AttributeValueFieldsProps) {
   const intl = useAppIntl();
+  const reveal = (shown: string, section: ReactElement) =>
+    revealWhenChosenIn === undefined ? (
+      section
+    ) : (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey={shown}>
+        {section}
+      </RevealWhenChosen>
+    );
   const { readOnly } = useStageEditorForm();
   const protocolContext = useProtocolContext();
 
@@ -212,7 +223,8 @@ export default function AttributeValueFields({
   if (invented !== undefined) {
     const inventedShape = optionsShapeFor(invented, rowComponent);
     if (inventedShape === 'choice') {
-      return (
+      return reveal(
+        'choice',
         <Section
           title={intl.formatMessage(variableValuesMessages.optionsLegend)}
           description={intl.formatMessage(variableValuesMessages.optionsHint)}
@@ -228,23 +240,26 @@ export default function AttributeValueFields({
             readOnly={readOnly}
             {...optionsValidation}
           />
-        </Section>
+        </Section>,
       );
     }
-    return inventedShape === 'boolean' ? (
-      <Section
-        title={intl.formatMessage(variableValuesMessages.answersLegend)}
-        description={intl.formatMessage(variableValuesMessages.answersHint)}
-      >
-        <Field<typeof BooleanAnswersField>
-          name={optionsField}
-          component={BooleanAnswersField}
-          label={intl.formatMessage(variableValuesMessages.answersLegend)}
-          labelHidden
-          readOnly={readOnly}
-        />
-      </Section>
-    ) : null;
+    return inventedShape === 'boolean'
+      ? reveal(
+          'boolean',
+          <Section
+            title={intl.formatMessage(variableValuesMessages.answersLegend)}
+            description={intl.formatMessage(variableValuesMessages.answersHint)}
+          >
+            <Field<typeof BooleanAnswersField>
+              name={optionsField}
+              component={BooleanAnswersField}
+              label={intl.formatMessage(variableValuesMessages.answersLegend)}
+              labelHidden
+              readOnly={readOnly}
+            />
+          </Section>,
+        )
+      : null;
   }
 
   if (picked === undefined || variableId === undefined) return null;
@@ -264,20 +279,22 @@ export default function AttributeValueFields({
   // answers this attribute offers, and whether they are the researcher's to
   // change is a fact about this attribute rather than a different subject.
   if (locked !== undefined) {
-    return (
+    return reveal(
+      'locked',
       <Section
         title={intl.formatMessage(variableValuesMessages.optionsLegend)}
         description={intl.formatMessage(variableValuesMessages.optionsHint)}
       >
         <LockedOptions options={locked} />
-      </Section>
+      </Section>,
     );
   }
 
   // Keyed on the attribute, so the list on screen is seeded from the one the
   // row binds NOW rather than from the one it bound when the dialog opened.
   if (shape === 'choice') {
-    return (
+    return reveal(
+      'choice',
       <Section
         title={intl.formatMessage(variableValuesMessages.optionsLegend)}
         description={intl.formatMessage(variableValuesMessages.optionsHint)}
@@ -296,7 +313,7 @@ export default function AttributeValueFields({
           readOnly={readOnly}
           {...optionsValidation}
         />
-      </Section>
+      </Section>,
     );
   }
 
@@ -305,7 +322,8 @@ export default function AttributeValueFields({
   // editor shows it: drawn as the pair, one would gain a second answer the
   // researcher never wrote and four would lose two.
   if (heldBooleanAnswersReason(heldOptions) !== null) {
-    return (
+    return reveal(
+      'heldBoolean',
       <Section
         title={intl.formatMessage(variableValuesMessages.answersLegend)}
         description={intl.formatMessage(variableValuesMessages.answersHint)}
@@ -316,11 +334,12 @@ export default function AttributeValueFields({
             value: String(answer.value),
           }))}
         />
-      </Section>
+      </Section>,
     );
   }
 
-  return (
+  return reveal(
+    'boolean',
     <Section
       title={intl.formatMessage(variableValuesMessages.answersLegend)}
       description={intl.formatMessage(variableValuesMessages.answersHint)}
@@ -334,6 +353,6 @@ export default function AttributeValueFields({
         initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
         readOnly={readOnly}
       />
-    </Section>
+    </Section>,
   );
 }

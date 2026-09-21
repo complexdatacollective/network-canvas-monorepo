@@ -11,6 +11,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
+import RevealWhenChosen from '@codaco/protocol-builder/form/RevealWhenChosen';
 import type { Variable, VariableOption } from '@codaco/protocol-validation';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
@@ -251,29 +252,31 @@ const NewVariableFields = ({
         />
       </Section>
       {isOrdinalOrCategoricalType(variableType) && (
-        <Section title={intl.formatMessage(messages.allowedValues)}>
-          <IssueAnchor
-            fieldName="options"
-            description={intl.formatMessage(messages.allowedValues)}
-          />
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
-          ) : (
-            <ArchitectArrayField
-              name="options"
-              label={intl.formatMessage(messages.options)}
-              hint={intl.formatMessage(
-                messages.createTheValuesThisInputControl,
-              )}
-              component={Options}
-              addButtonLabel={intl.formatMessage(
-                additionalMessages.createNewOption,
-              )}
-              initialValue={initialOptions}
-              validation={optionsValidation(intl)}
+        <RevealWhenChosen chosenIn="type" revealKey={variableType}>
+          <Section title={intl.formatMessage(messages.allowedValues)}>
+            <IssueAnchor
+              fieldName="options"
+              description={intl.formatMessage(messages.allowedValues)}
             />
-          )}
-        </Section>
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <ArchitectArrayField
+                name="options"
+                label={intl.formatMessage(messages.options)}
+                hint={intl.formatMessage(
+                  messages.createTheValuesThisInputControl,
+                )}
+                component={Options}
+                addButtonLabel={intl.formatMessage(
+                  additionalMessages.createNewOption,
+                )}
+                initialValue={initialOptions}
+                validation={optionsValidation(intl)}
+              />
+            )}
+          </Section>
+        </RevealWhenChosen>
       )}
     </Section>
   );

@@ -1558,12 +1558,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
+        revealWhenChosenIn={INPUT_CONTROL}
         {...(inventing && newType !== '' ? { invented: newType } : {})}
       />
       <AttributeParameterFields
         subject={subject}
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
+        revealWhenChosenIn={INPUT_CONTROL}
         {...(inventing && newType !== '' ? { invented: newType } : {})}
       />
       {/* Architect's own last section of this dialog

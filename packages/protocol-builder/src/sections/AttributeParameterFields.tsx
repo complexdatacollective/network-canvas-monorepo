@@ -14,6 +14,7 @@ import {
   validateParameters,
 } from '../codebook/variableParameters.ts';
 import ComposerParametersField from '../fields/ComposerParametersField.tsx';
+import RevealWhenChosen from '../form/RevealWhenChosen.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
   variablesForSubject,
@@ -32,6 +33,7 @@ export type AttributeParameterFieldsProps = Readonly<{
   variableId: string | undefined;
   rowComponent: unknown;
   invented?: string;
+  revealWhenChosenIn?: string;
 }>;
 
 export default function AttributeParameterFields({
@@ -39,6 +41,7 @@ export default function AttributeParameterFields({
   variableId,
   rowComponent,
   invented,
+  revealWhenChosenIn,
 }: AttributeParameterFieldsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
@@ -95,7 +98,7 @@ export default function AttributeParameterFields({
 
   if (shape === null) return null;
 
-  return (
+  const section = (
     <Section
       title={intl.formatMessage(variableParametersMessages.parametersLegend)}
       description={intl.formatMessage(
@@ -118,5 +121,13 @@ export default function AttributeParameterFields({
         {...validation}
       />
     </Section>
+  );
+
+  return revealWhenChosenIn === undefined ? (
+    section
+  ) : (
+    <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey={shape}>
+      {section}
+    </RevealWhenChosen>
   );
 }

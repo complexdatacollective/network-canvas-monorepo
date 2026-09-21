@@ -20,6 +20,10 @@ A video preview keeps its playback controls inside the window.
 While you edit a choice value, its confirm button is now the same size as the
 delete button beside it.
 
+When you create an attribute on the Codebook page and choose its type, the
+values it needs now scroll into view instead of appearing below the window's
+visible area.
+
 When a toolbar is too narrow for all its buttons, it now fades the edge where
 more buttons are hidden, so it is clear the toolbar can be scrolled. This
 includes the Background Creator toolbar. The toolbar at the bottom of

@@ -518,3 +518,39 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
     stored.codebook.node?.person?.variables?.['long-name-variable'],
   ).toBeUndefined();
 });
+
+for (const attributeType of ['Categorical', 'Ordinal']) {
+  test(`brings a new ${attributeType.toLowerCase()} attribute's values into view below its type`, async ({
+    architectPage,
+    seed,
+  }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.goto('/protocol/codebook');
+
+    await architectPage
+      .getByRole('button', { name: 'Add attribute' })
+      .first()
+      .click();
+    const dialog = architectPage.getByRole('dialog', {
+      name: 'Create New Attribute',
+    });
+    await dialog
+      .getByRole('textbox', { name: 'Attribute name' })
+      .fill('closeness');
+    const type = dialog.getByRole('combobox', { name: 'Attribute type' });
+    await type.click();
+    await architectPage
+      .getByRole('option', { name: attributeType, exact: true })
+      .click();
+
+    await expect(
+      dialog.getByRole('heading', { name: 'Allowed values' }),
+    ).toBeInViewport();
+    await expect(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    ).toBeInViewport();
+    await expect(type).toBeInViewport();
+    await expect(type).toBeFocused();
+  });
+}
