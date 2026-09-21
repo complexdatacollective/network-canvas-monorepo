@@ -107,6 +107,27 @@ describe('message errors across string result boundaries', () => {
   );
 
   it.each([
+    'Starting zoom must be between {min, number} and {max, number}.',
+    'Recorded on {when, date} at {when, time}.',
+  ])(
+    'decodes a production AST default whose argument has no style: %s',
+    (source) => {
+      const error = createMessageError(
+        { id: 'test.error.unstyled', defaultMessage: parse(source) },
+        { min: 0, max: 22, when: 0 },
+      );
+
+      expect(error).toContain('"style":null');
+      const decoded = formatMessageError(
+        error,
+        createAppIntl({ locale: 'en', timeZone: 'UTC' }),
+      );
+      expect(decoded).toBeDefined();
+      expect(decoded).not.toContain('@codaco/app-i18n');
+    },
+  );
+
+  it.each([
     'Plain diagnostic text',
     '@codaco/app-i18n/error/v1:invalid JSON',
     '@codaco/app-i18n/error/v1:null',
