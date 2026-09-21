@@ -385,6 +385,40 @@ describe('FieldPreviewPane', () => {
     expect(within(group).queryAllByRole('radio')).toHaveLength(0);
   });
 
+  it('previews the scale labels the row is writing for an invented attribute', () => {
+    const pane = renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      _parameters: { minLabel: 'Not close', maxLabel: 'Very close' },
+      prompt: 'How close are you?',
+    });
+
+    expect(within(pane).getByText('Not close')).toBeVisible();
+    expect(within(pane).getByText('Very close')).toBeVisible();
+  });
+
+  it('previews the values the row is writing for an invented list attribute', () => {
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'frequency',
+      _component: 'RadioGroup',
+      _options: [
+        { label: 'Daily', value: 'daily' },
+        { label: 'Weekly', value: 'weekly' },
+      ],
+      prompt: 'How often?',
+    });
+
+    const group = screen.getByRole('radiogroup', { name: 'How often?' });
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label') ?? radio.textContent),
+    ).toHaveLength(2);
+    expect(within(group).getByText('Daily')).toBeVisible();
+  });
+
   it('starts the trial answer again when the row is bound to another attribute', () => {
     // Two numbers collected by the same control resolve to the same field, so
     // the kind-and-control pairing alone cannot tell the rebinding apart. The
