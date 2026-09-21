@@ -65,7 +65,7 @@ export type StageSecretRequest = Readonly<{
  * mistake is exactly the one large enough to matter. A host may still refuse
  * something smaller, and that refusal is reported as any other is.
  */
-export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 8 * 1024 * 1024;
+export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 500 * 1024 * 1024;
 
 /**
  * Reasons that are retryable by default: exactly the ones describing a
