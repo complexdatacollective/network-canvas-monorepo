@@ -533,33 +533,26 @@ for (const viewport of VIEWPORTS) {
     // width and clipped "Cancel" off the left edge of the screen. It may now
     // scroll internally, but no part of the pill itself may sit outside the
     // viewport.
-    const bounds = await architectPage
-      .getByRole('toolbar', { name: 'Page actions' })
-      .evaluate((toolbar) => {
-        const frame = toolbar.parentElement;
-        const pill = frame?.parentElement;
-        if (!frame || !pill) throw new Error('toolbar has no pill container');
-        const controls = toolbar.querySelectorAll('button');
-        const last = controls[controls.length - 1];
-        if (!last) throw new Error('toolbar has no controls');
-        const box = pill.getBoundingClientRect();
-        const visible = frame.getBoundingClientRect();
-        const trailing = last.getBoundingClientRect();
-        return {
-          left: box.left,
-          right: box.right,
-          width: window.innerWidth,
-          visible: { left: visible.left, right: visible.right },
-          trailing: { left: trailing.left, right: trailing.right },
-        };
-      });
+    // The toolbar is the pill's scrolling lane: it spans the pill edge to edge
+    // (1px inside it), so its box is the part of the pill a researcher sees.
+    const toolbar = architectPage.getByRole('toolbar', {
+      name: 'Page actions',
+    });
+    const trailing = toolbar.getByRole('button', { name: 'Download' });
+    await expect(trailing).toBeVisible();
 
-    expect(bounds.left).toBeGreaterThanOrEqual(0);
-    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
-    expect(bounds.trailing.left).toBeGreaterThanOrEqual(
-      bounds.visible.left - 1,
+    const pill = await toolbar.boundingBox();
+    const control = await trailing.boundingBox();
+    if (!pill || !control) throw new Error('toolbar is not laid out');
+
+    expect(pill.x).toBeGreaterThanOrEqual(0);
+    expect(pill.x + pill.width).toBeLessThanOrEqual(viewport.width);
+    // At rest the lane sits on its trailing end, so the last action is inside
+    // the visible part of the pill rather than scrolled past its edge.
+    expect(control.x).toBeGreaterThanOrEqual(pill.x - 1);
+    expect(control.x + control.width).toBeLessThanOrEqual(
+      pill.x + pill.width + 1,
     );
-    expect(bounds.trailing.right).toBeLessThanOrEqual(bounds.visible.right + 1);
   });
 }
 

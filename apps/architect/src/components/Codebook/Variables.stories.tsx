@@ -70,12 +70,22 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const horizontalScrollPortOf = (element: HTMLElement) => {
+  for (
+    let ancestor = element.parentElement;
+    ancestor;
+    ancestor = ancestor.parentElement
+  ) {
+    const { overflowX } = getComputedStyle(ancestor);
+    if (overflowX === 'auto' || overflowX === 'scroll') return ancestor;
+  }
+  throw new Error('The table has no horizontal scroll port.');
+};
+
 export const LongAttributeName: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const table = canvasElement.querySelector('table');
-    if (!table?.parentElement) throw new Error('table scroll port not found');
-    const scrollPort = table.parentElement;
+    const scrollPort = horizontalScrollPortOf(canvas.getByRole('table'));
 
     expect(scrollPort.scrollWidth).toBeLessThanOrEqual(
       scrollPort.clientWidth + 1,

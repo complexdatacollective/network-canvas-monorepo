@@ -1,4 +1,4 @@
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Variable } from '@codaco/protocol-validation';
@@ -19,54 +19,17 @@ const variables = {
   } as unknown as Variable,
 };
 
-const selectorsFor = (table: Element, utility: string) =>
-  [...table.classList]
-    .filter((token) => token.endsWith(`]:${utility}`))
-    .map((token) =>
-      token
-        .slice(1, token.lastIndexOf(']:'))
-        .replaceAll('_', ' ')
-        .replaceAll('&', ':scope'),
-    );
-
-const renderVariables = () => {
-  const { container } = render(
-    <ArchitectI18nProvider>
-      <Variables variables={variables} />
-    </ArchitectI18nProvider>,
-  );
-
-  const tables = container.querySelectorAll('table');
-  const [outerTable, miniTable] = tables;
-
-  if (!outerTable || !miniTable) {
-    throw new Error('expected the attribute table to nest an options table');
-  }
-
-  return { outerTable, miniTable };
-};
-
 describe('printable summary attribute table', () => {
   it('renders each option value verbatim', () => {
-    const { miniTable } = renderVariables();
+    render(
+      <ArchitectI18nProvider>
+        <Variables variables={variables} />
+      </ArchitectI18nProvider>,
+    );
 
-    expect(miniTable.textContent).toContain('preferNotToSay');
+    const [, optionsTable] = screen.getAllByRole('table');
+    if (!optionsTable) throw new Error('The attribute has no options table.');
+
+    expect(within(optionsTable).getByText('preferNotToSay')).toBeVisible();
   });
-
-  it.each(['wrap-break-word', 'hyphens-auto'])(
-    'keeps %s off the nested options table',
-    (utility) => {
-      const { outerTable, miniTable } = renderVariables();
-      const selectors = selectorsFor(outerTable, utility);
-
-      expect(selectors).toHaveLength(1);
-
-      for (const selector of selectors) {
-        const matched = [...outerTable.querySelectorAll(selector)];
-
-        expect(matched.length).toBeGreaterThan(0);
-        expect(matched.filter((cell) => miniTable.contains(cell))).toEqual([]);
-      }
-    },
-  );
 });

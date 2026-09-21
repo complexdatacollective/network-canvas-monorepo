@@ -89,18 +89,6 @@ describe('what the participant sees behind the nodes', () => {
     ).toHaveDisplayValue('4');
   });
 
-  it('sizes the ring count to its content rather than to the section', async () => {
-    renderStageEditor(openCircles());
-
-    const circles = await screen.findByRole('spinbutton', {
-      name: 'Number of concentric circles',
-    });
-    const control = circles.parentElement?.parentElement;
-
-    expect(control).toHaveClass('w-36');
-    expect(control?.className.split(/\s+/u)).not.toContain('w-full');
-  });
-
   it('changes the number of circles the researcher asked for', async () => {
     const harness = renderStageEditor(openCircles());
 

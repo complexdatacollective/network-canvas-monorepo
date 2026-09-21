@@ -16,7 +16,6 @@ const meta = {
   title: 'Design System/Architect accent surface link',
   parameters: {
     layout: 'padded',
-    a11y: { disable: true },
     chromatic: { disableSnapshot: true },
   },
 } satisfies Meta;
