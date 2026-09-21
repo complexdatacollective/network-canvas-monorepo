@@ -1,6 +1,6 @@
 ---
 '@codaco/architect': patch
-'@codaco/fresco-ui': patch
+'@codaco/fresco-ui': minor
 '@codaco/background-creator': patch
 ---
 
@@ -17,9 +17,13 @@ every title and description can be read.
 
 A video preview keeps its playback controls inside the window.
 
-When the toolbar at the bottom of the screen is too narrow for all its buttons,
-it now shows the last button, such as Download.
-
 When a toolbar is too narrow for all its buttons, it now fades the edge where
 more buttons are hidden, so it is clear the toolbar can be scrolled. This
-includes the Background Creator toolbar.
+includes the Background Creator toolbar. The toolbar at the bottom of
+Architect's screen also scrolls to show its last button, such as Download.
+
+`SegmentedToolbar` has a new `restAt` prop. Set it to `"end"` to show a
+toolbar's last button, rather than its first, when the toolbar does not fit.
+
+`ScrollArea` now fades the correct edges when it scrolls sideways in a
+right-to-left language.
