@@ -68,8 +68,6 @@ const messages = defineMessages({
   },
 });
 
-const CONTENT_ADDRESSED_SOURCE = /^[0-9a-f]{64}(?:\.[0-9a-z]+)?$/i;
-
 export type ResourceSummaryProps = Readonly<{
   inspection: ResourceInspection;
 }>;
@@ -120,20 +118,16 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         {/*
           The file the researcher picked, while their import is still theirs to
           recognise. Only while it is staged: once the protocol has committed
-          it, `source` is the name the host files the bytes under — worked out
-          from the bytes themselves, so two files imported under one filename
-          stay two assets — and showing that under "File" would tell the
-          researcher their photograph is called sixty-four hex characters. The
+          it, `source` is the name the host files the bytes under, which the
+          contract lets a host derive from the content. The
           heading above is what the protocol calls the resource, and that is
           the answer to "which file is this" for a saved one.
         */}
-        {descriptor.status === 'staged' &&
-          descriptor.source !== undefined &&
-          !CONTENT_ADDRESSED_SOURCE.test(descriptor.source) && (
-            <Detail term={intl.formatMessage(messages.fileTerm)}>
-              {descriptor.source}
-            </Detail>
-          )}
+        {descriptor.status === 'staged' && descriptor.source !== undefined && (
+          <Detail term={intl.formatMessage(messages.fileTerm)}>
+            {descriptor.source}
+          </Detail>
+        )}
         {descriptor.byteLength !== undefined && (
           <Detail term={intl.formatMessage(messages.sizeTerm)}>
             {formatByteLength(descriptor.byteLength, intl)}

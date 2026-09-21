@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest';
 import type { ResourceInspection } from '../../types.ts';
 import ResourceSummary from '../ResourceSummary.tsx';
 
-const filedUnder = (digit: string, extension: string): string =>
-  `${digit.repeat(64)}${extension}`;
-
-function stagedImage(source: string): ResourceInspection {
+function image(
+  status: 'staged' | 'committed',
+  source: string,
+): ResourceInspection {
   return {
     descriptor: {
-      id: 'staged-image',
+      id: 'image',
       kind: 'image',
       name: 'portrait.png',
-      status: 'staged',
+      status,
       source,
       byteLength: 2048,
       contentType: 'image/png',
@@ -22,20 +22,22 @@ function stagedImage(source: string): ResourceInspection {
 }
 
 describe('the file a summary names', () => {
-  it('never reads back a name worked out from the bytes', () => {
-    const source = filedUnder('d', '.png');
+  it('names the file a staged import was picked as', () => {
+    render(
+      <ResourceSummary inspection={image('staged', 'holiday snap.png')} />,
+    );
 
-    render(<ResourceSummary inspection={stagedImage(source)} />);
+    expect(screen.getByText('File')).toBeVisible();
+    expect(screen.getByText('holiday snap.png')).toBeVisible();
+  });
+
+  it('keeps the name a host files committed bytes under to itself', () => {
+    const source = `${'d'.repeat(64)}.png`;
+
+    render(<ResourceSummary inspection={image('committed', source)} />);
 
     expect(screen.getByText('portrait.png')).toBeVisible();
     expect(document.body.textContent ?? '').not.toContain(source);
     expect(screen.queryByText('File')).not.toBeInTheDocument();
-  });
-
-  it('names the file a host kept the researcher’s own name for', () => {
-    render(<ResourceSummary inspection={stagedImage('holiday snap.png')} />);
-
-    expect(screen.getByText('File')).toBeVisible();
-    expect(screen.getByText('holiday snap.png')).toBeVisible();
   });
 });

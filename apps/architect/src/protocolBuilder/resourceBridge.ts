@@ -79,6 +79,8 @@ export class ResourceBridge {
   readonly #byRequest = new Map<string, string>();
   /** Which edit imported each staged resource, by resource id. */
   readonly #staged = new Map<string, string>();
+  /** The filename each staged file was picked as, by resource id. */
+  readonly #pickedAs = new Map<string, string>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -130,11 +132,12 @@ export class ResourceBridge {
       };
     }
 
-    // Named by its content, not by the file the researcher picked: Architect
-    // keys the bytes by the asset id, but `source` is what an export writes
-    // the file as and what every other host commits by content, and two
-    // imports of different pictures both called `portrait.png` must stay two
-    // assets wherever the protocol is opened next.
+    // Filed by its content, not by the file the researcher picked: Architect
+    // keys the bytes by the asset id, but the manifest's `source` is what an
+    // export writes the file as and what every other host commits by content,
+    // and two imports of different pictures both called `portrait.png` must
+    // stay two assets wherever the protocol is opened next. The staged
+    // descriptor still reports the picked filename, as the contract asks.
     const openedFor = getActiveProtocolId(this.#store.getState());
     const source = await contentAddressedSource(request.bytes, request.source);
     const file = new File([request.bytes], source, {
@@ -155,6 +158,7 @@ export class ResourceBridge {
       const imported = await this.#store
         .dispatch(importAssetAsync({ file, name: request.name }))
         .unwrap();
+      this.#pickedAs.set(imported.id, request.source);
       return { status: 'ok', data: this.#record(key, editId, imported.id) };
     } catch (error) {
       return failed('invalid-content', importFailureMessage(error));
@@ -180,7 +184,11 @@ export class ResourceBridge {
       if (descriptor === undefined || this.#staged.get(id) !== editId) {
         return failed('not-found', 'no such staged resource', id);
       }
-      promoted.push({ ...descriptor, status: 'committed' });
+      promoted.push({
+        ...descriptor,
+        ...this.#committedSource(id),
+        status: 'committed',
+      });
     }
     return { status: 'ok', data: { promoted, ids } };
   }
@@ -190,7 +198,10 @@ export class ResourceBridge {
    * edit's to discard. Called only once the section naming them is written.
    */
   completePromotion(ids: readonly string[]): void {
-    for (const id of ids) this.#staged.delete(id);
+    for (const id of ids) {
+      this.#staged.delete(id);
+      this.#pickedAs.delete(id);
+    }
   }
 
   /** Takes back what this edit imported: one resource, or all of them. */
@@ -199,6 +210,7 @@ export class ResourceBridge {
       for (const [id, owner] of this.#staged) {
         if (owner !== editId) continue;
         this.#staged.delete(id);
+        this.#pickedAs.delete(id);
         this.#store.dispatch(deleteAsset(id));
       }
       for (const key of this.#byRequest.keys()) {
@@ -214,6 +226,7 @@ export class ResourceBridge {
       );
     }
     this.#staged.delete(resourceId);
+    this.#pickedAs.delete(resourceId);
     this.#store.dispatch(deleteAsset(resourceId));
     return { status: 'ok' };
   }
@@ -310,10 +323,24 @@ export class ResourceBridge {
         name: entry.name,
         status:
           owner === undefined ? ('committed' as const) : ('staged' as const),
-        ...(entry.type === 'apikey' ? {} : { source: entry.source }),
+        ...(entry.type === 'apikey'
+          ? {}
+          : {
+              source:
+                (owner === undefined ? undefined : this.#pickedAs.get(id)) ??
+                entry.source,
+            }),
       });
     }
     return descriptors;
+  }
+
+  /** The name the asset manifest files a resource's bytes under. */
+  #committedSource(resourceId: string): Partial<Pick<Descriptor, 'source'>> {
+    const entry = getAssetManifest(this.#store.getState())[resourceId];
+    return entry === undefined || entry.type === 'apikey'
+      ? {}
+      : { source: entry.source };
   }
 
   #descriptor(

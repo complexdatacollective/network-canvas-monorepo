@@ -734,8 +734,36 @@ describe("Architect's in-process protocol-builder host", () => {
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
+    // Staged, the descriptor still names the file the researcher picked; the
+    // content-derived name is the manifest's, and the descriptor's only once
+    // the resource is promoted.
+    expect(staged.data.descriptor.source).toBe('nook.png');
     expect(listed.data.resources).toContainEqual(
-      expect.objectContaining({ id, name: 'Nook', source }),
+      expect.objectContaining({ id, name: 'Nook', source: 'nook.png' }),
+    );
+
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [id] },
+    });
+    expect(written.promoted).toEqual([
+      expect.objectContaining({ id, status: 'committed', source }),
+    ]);
+    const committed = await client.resources.list({
+      protocolId: PROTOCOL_ID,
+      status: 'committed',
+    });
+    if (committed.status !== 'ok') throw new Error('listing failed');
+    expect(committed.data.resources).toContainEqual(
+      expect.objectContaining({ id, source }),
     );
   });
 
