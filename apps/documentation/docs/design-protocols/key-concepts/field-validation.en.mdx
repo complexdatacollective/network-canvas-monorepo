@@ -13,6 +13,23 @@ navOrder: 8
 
 When designing [forms](/en/design-protocols/key-concepts/forms) in Architect, you can add validation rules to ensure that participants enter valid data before they can proceed. Validation rules are applied to individual fields and are checked when the participant attempts to submit the form or move to the next section of the interview.
 
+<AppOnly app="current">
+
+Validation rules belong to the attribute in the codebook, so they apply everywhere the attribute is collected. As well as in a form field's **Validation** section, you can set an attribute's rules wherever you choose an attribute that participants type into:
+
+- the quick add attribute of a [Name Generator (using Quick Add)](/en/design-protocols/interface-documentation/name-generator-using-quick-add)
+- the quick add attribute of a [Network Composer](/en/design-protocols/interface-documentation/network-composer)
+- the display label of a [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree)
+- the follow-up "other" attribute of a [Categorical Bin](/en/design-protocols/interface-documentation/categorical-bin) prompt
+
+Each of these has a **Validation** section below the attribute picker, which opens on the attribute's current rules. Changes made there are written straight to the codebook: cancelling your edits to the stage doesn't undo them. Switching the section off clears the attribute's rules.
+
+When a form field is creating a new attribute, you can set the new attribute's rules in the same dialog before saving the field, and they are saved along with it.
+
+Rules that take a number, such as a minimum or maximum, have buttons to raise and lower the value by one. A number you type is applied when you leave the box or press Enter.
+
+</AppOnly>
+
 Validation serves two important purposes:
 
 1. **Data quality** - Ensures you collect complete, accurate data in the expected format

@@ -52,6 +52,12 @@ Side panels can be expanded or contracted in the interview by clicking on the he
 
 When using the "Name Generator (using quick add)" Interface, the primary action button will trigger a single field form that a participant must complete to create an alter. This Interface uses a single "quick add variable" to store the value of the form, which allows a participant to rapidly create alters.
 
+<AppOnly app="current">
+
+Whether the participant must type something into the quick add box follows the validation rules of the quick add attribute. An attribute you create from the quick add picker starts out required, because what the participant types is the only thing they give for each alter. To allow an empty answer, switch off **Required answer** in the **Validation** section under the picker. The same section can add other rules the attribute's answers must satisfy. These rules belong to the attribute in the codebook, so changes to them are saved straight away and apply everywhere the attribute is used.
+
+</AppOnly>
+
 ![A quick add name generator](/assets/img/interface-documentation/name-generators/ng-quick.png)
 
 One or multiple [additional variables](../key-concepts/additional-variables) can be added to alters nominated on this Interface. Capturing additional variables may be useful either to help track where a node was elicited or to reflect a name interpreter element of the prompt (e.g. adding a variable called "close_friend" to a prompt asking about closeness).

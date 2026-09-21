@@ -22,6 +22,24 @@ Forms are comprised of one or more fields, which can be reordered to appear in a
 
 ![](/assets/img/key-concepts/forms/form.png)
 
+<AppOnly app="current">
+
+Set the **Form title**, and then create fields for each of the attributes you wish to capture on this form by clicking **Create new form field**.
+
+The field dialog has two panes. On the left are the field's settings. On the right is an **Interactive preview** showing the question as the participant will see it, in the interview's own theme. The preview follows what you type and choose, and you can answer it: **Check response** runs the attribute's validation rules against your answer, so you can see what a participant would be told. Answering the preview changes nothing in your protocol. On a narrow screen the two panes stack into a single column.
+
+The settings are arranged in this order:
+
+1. **Attribute selection** — choose an existing attribute, or create a new one, in the attribute window.
+2. **Field configuration** — the **Question text** (the [prompt](/en/design-protocols/key-concepts/prompts) shown to the participant, which supports markdown formatting), an optional **Hint text**, the **Show validation hints** switch, and finally the **Input control**. For a new attribute, the input control you choose determines the attribute's type.
+3. Below these come the attribute's own answer options, for attribute types that have them, and its **Validation** section. For an attribute you are creating in this field, you can set its validation rules here before saving the field, and they are created along with it.
+
+The hint is markdown-formatted guidance displayed below the question to help participants understand how to answer (for example, "Select all that apply..."). Leave it blank if no extra guidance is needed.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Set the form heading, and then create fields for each of the variables you wish to capture on this form by clicking the **create new** button.
 
 When creating a new field, you will first either create a new variable or select an existing one from the variable chooser. Next, you will type the question [prompt](/en/design-protocols/key-concepts/prompts) to be shown next to the input control. The prompt supports markdown formatting.
@@ -29,6 +47,8 @@ When creating a new field, you will first either create a new variable or select
 You can also provide an optional **hint** for the field. The hint is markdown-formatted guidance displayed below the question to help participants understand how to answer (for example, "Select all that apply..."). Leave it blank if no extra guidance is needed.
 
 Next, you must decide which [input control](/en/design-protocols/key-concepts/input-controls) to use. For new variables, this will determine the variable type.
+
+</AppOnly>
 
 <TipBox danger>
 

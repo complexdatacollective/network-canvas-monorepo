@@ -36,15 +36,40 @@ If the stage you are configuring uses a resource, it will provide an interface f
 
 ## Adding and removing resources from the resource library
 
+<AppOnly app="current">
+
+For a broader overview of all resources within your current protocol, open the **Resources** page from the navigation bar at the top of the editor. This is the resource library.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 For a broader overview of all resources within your current protocol, click the **resource library** button in the upper right hand corner of the protocol overview card when looking at the timeline. This will open the resource library.
 
 ![](/assets/img/key-concepts/assets/manage-assets-button.png)
+
+</AppOnly>
 
 In the resource library screen, you can browse, filter, and delete any existing resources, as well as add new ones. To add a new resource to the resource library, drag and drop a file into the designated area or browse for the file you wish to import.
 
 ![](/assets/img/key-concepts/assets/asset-library.png)
 
 You will notice that existing resources that are unused show a red **unused** pill. This indicates that you can delete them. Attempting to delete a resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
+
+<AppOnly app="current">
+
+## Missing resources
+
+A `.netcanvas` file stores its resources inside it. If a protocol file refers to a resource that isn't actually included in it, Architect still opens the protocol, and shows a **Some resources are missing** message naming each missing file. Every stage, prompt and variable in the protocol is kept exactly as it was.
+
+To fix the protocol, open the **Resources** page, where each missing resource is marked **File missing**, and add the file again. Until every missing file has been restored:
+
+- **The protocol can't be downloaded.** Architect refuses rather than producing a file without the resources, and the message lists the files you need to add again. Nothing is lost — the protocol stays in your library as it was.
+- **Interviewer and Fresco won't accept it.** They refuse any protocol with missing resources, because a resource that never loads would appear broken to a participant partway through an interview. Restore the files in Architect, then download the protocol again before deploying it.
+
+A protocol file whose contents are damaged is reported as damaged rather than opened. Try a backup, or the copy you originally downloaded.
+
+</AppOnly>
 
 ## Supported resource types
 
@@ -61,6 +86,8 @@ Interviewer supports MP3, AIFF, M4A, and MP4 audio file formats.
 ### Video
 
 Interviewer supports MP4 and MOV video file formats. Take special care when using video to make your files as small as possible.
+
+When you add a video to an [Information](/en/design-protocols/interface-documentation/information) stage, fill in the item's **Description**. A participant using a screen reader hears it as the video's name, in the same way that an image's description is read as its alternative text and an audio item's description names its player. If you leave it empty, the screen reader reads the video's file name instead, so write a short description for every video, as you would for images and audio.
 
 ### Network
 

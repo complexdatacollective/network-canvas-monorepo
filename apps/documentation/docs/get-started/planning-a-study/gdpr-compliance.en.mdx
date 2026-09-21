@@ -132,15 +132,15 @@ If your roster data contains PII, ensure your chosen storage backend stores it i
 
 ### Telemetry, analytics, and update checks
 
-Fresco includes optional usage and error analytics that contain no participant data. These analytics collect only feature usage, error types, and performance metrics. You can disable analytics in Fresco settings or block them at the network or firewall level.
+Fresco includes optional usage and error analytics that contain no participant data. These analytics collect only feature usage, error types, and performance metrics, and are sent to a PostHog analytics project managed by the development team through a relay the project operates. They carry no participant or interview identifiers: interview identifiers are removed from page addresses before sending, and inside the interview the identifiers of the session, nodes, and edges are replaced with random pseudonyms generated for that session; the link between a pseudonym and the real identifier is held only in the browser's memory and is never stored or transmitted. PostHog's autocapture, session replay, and heatmap capture are switched off throughout Fresco, so neither the text on a page nor recordings of it are collected; Fresco sends only its own usage events and error reports. You can disable analytics with the **Disable Analytics** setting in the **Privacy** section of Fresco's settings page, by setting the `DISABLE_ANALYTICS` environment variable to `true` (which also locks that setting), or by blocking them at the network or firewall level. If you keep analytics enabled, account for PostHog as a processor of this anonymous, non-participant telemetry in your assessment.
 
 Update checks are triggered only when viewing the Settings screen. These checks query the GitHub API for version information, and no identifiable information is transmitted.
 
 ### Logging and tracking
 
-Fresco does not log IP addresses of participants, log request metadata that could identify participants, use cookies beyond essential session handling, include third-party frontend scripts or tracking pixels, or share data with advertising or analytics platforms.
+Fresco does not log IP addresses of participants, log request metadata that could identify participants, include tracking pixels or advertising scripts, or share data with advertising platforms. The only third-party script it runs is the optional analytics library described above, which runs on every page, including the participant interview, while analytics are enabled, and sends only the anonymous telemetry described there.
 
-Session cookies are used only for researcher authentication to the dashboard. They are not used for participant tracking and are encrypted and HTTP-only for security.
+Session cookies are used only for researcher authentication to the dashboard. They are not used for participant tracking and are encrypted and HTTP-only for security. Fresco also stores the chosen interface language in a cookie, and while analytics are enabled the analytics library keeps an anonymous identifier in the browser's storage.
 
 ### Data sensitivity
 

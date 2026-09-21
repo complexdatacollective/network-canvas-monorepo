@@ -17,6 +17,12 @@ The Categorical Bin is a name interpreter Interface that collects nominal data o
 
 A Categorical Bin screen can include multiple [prompts](/en/design-protocols/key-concepts/prompts), each of which relates to a single categorical variable.
 
+<AppOnly app="current">
+
+In Architect, the categories are the answer options of the prompt's categorical attribute, and you edit them directly under the attribute you chose, in the prompt dialog. They are saved when you save the prompt. Option labels accept **bold** and _italic_ text, which participants see as emphasis.
+
+</AppOnly>
+
 Additionally an _other_ variable can be specified for custom responses that don't fit into the pre-configured categories.
 
 ![Configuring the 'other' variable for a categorical bin prompt](/assets/img/interface-documentation/categorical-bin/architect-other.png)
@@ -40,6 +46,12 @@ participants.
 Avoid using more than eight categories on this Interface. More categories
 cause the category labels to be difficult to read and the other visual
 compromises on the Interface become compromised.
+
+Category labels themselves can be as long as your question needs, such as a
+full sentence. Each label shrinks, a step at a time, to fit the space its bin
+has rather than being cut off mid-word, and a screen reader always reads the
+whole label. Even so, short labels stay larger and are easier to read at a
+glance.
 
 </BadPractice>
 

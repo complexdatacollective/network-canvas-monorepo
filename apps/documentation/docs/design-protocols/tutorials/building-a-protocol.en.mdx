@@ -75,7 +75,17 @@ To add a resource to this screen, click the **add new item** button at the botto
 
 This tutorial will not cover the configuration of each Information interface included in the sample protocol. You can use Information interfaces as frequently as needed throughout your protocol to describe an upcoming task, orient a participant to a series of prompts, or present participants with a resource to consider.
 
+<AppOnly app="current">
+
+Once you have added all resources for this stage, click **Finished Editing**. This saves your stage and returns you to the timeline view where your newly configured stage is now visible.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Once you have added all resources for this stage, click the **Save and Return** button in the bottom right. This saves your stage and returns you to the timeline view where your newly configured stage is now visible.
+
+</AppOnly>
 
 <Screenshot axis="architect" name="completed-stage"></Screenshot>
 
@@ -89,7 +99,7 @@ First, within the timeline view, click the **add a stage** button. From the inte
 
 ### Creating a new node type
 
-Before you can continue, you must tell Architect which type of node this interface will create. Since this is your first name generator, you have no node types defined yet. Click the **Create New Node Type** button to begin the process of creating one.
+Before you can continue, you must tell Architect which type of node this interface will create. Since this is your first name generator, you have no node types defined yet. <AppOnly app="current">Click **Create new node type**, under the node type picker, to begin the process of creating one.</AppOnly><AppOnly app="classic">Click the **Create New Node Type** button to begin the process of creating one.</AppOnly>
 
 <KeyConcept title='Key Concept: Node and Edge "Types"'>
 
@@ -101,9 +111,21 @@ are entirely up to you to decide upon.
 
 </KeyConcept>
 
+<AppOnly app="current">
+
+Your name generator will ask about people, so name the node type "Person". Each new node type starts on the next color in Architect's palette, so types you create one after another are told apart automatically. You can choose a different color if you like, but for this tutorial keep the one Architect picked.
+
+Finally, check the icon for this node type. New node types start with the Network Canvas "add a person" icon, which suits this node type, so you can leave it. To choose a different one, open the icon picker: it is a searchable list of the Network Canvas icons followed by the Lucide icon set, so type a few letters of a name (for example "building") and pick from the icons shown. This icon appears in the interview wherever the participant has the opportunity to create a new node of this type.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Your name generator will ask about people, so name the node type "Person". You can select a color to differentiate this node type from others, though in this case leave the default coral color selected.
 
 Finally, select the person icon to use for this node type. This icon appears in Interviewer wherever the participant has the opportunity to create a new node of this type.
+
+</AppOnly>
 
 <Screenshot axis="architect" name="node-type"></Screenshot>
 
@@ -115,13 +137,33 @@ In Architect you can also choose a **shape** for the node type, which is used al
 
 To vary the shape of nodes within the same type, see [Mapping a node variable to shape](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape).
 
+Click **Save entity** to create the node type and return to the name generator edit screen.
+
 </AppOnly>
+
+<AppOnly app="classic">
 
 Click **Save and Return** to create the node type and return to the name generator edit screen.
 
+</AppOnly>
+
 ### Creating a Quick Add variable
 
+<AppOnly app="current">
+
+Next, create a Quick Add attribute that will store data entered for each alter nominated by the participant. Unless you have a good reason not to, this attribute should be called "name". Interviewer will use this attribute as the label for every node created on this stage.
+
+To create it, click **Select attribute** under **Select an attribute**. A window opens with a search box, **Find or create an attribute**, above a list of the attributes this node type already has. Type the name of your attribute (e.g., "name"). Because nothing matches yet, the first row offers **Create new attribute called “name”.** — choose it, and the new attribute is created and selected as the Quick Add attribute.
+
+What the participant types into the quick add box is the only thing they give for each node, so an attribute created here starts out **required**. If you want to let participants leave the box empty, switch off **Required answer** in the **Validation** section under the picker.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Next, create a Quick Add variable that will store data entered for each alter nominated by the participant. Unless you have a good reason not to, this variable should be called "name". Interviewer will use this variable as the label for every node created on this stage. To create a new variable, select the dropdown menu and click **create new**, then type the name of your variable (e.g., "name"). Click the **Create** button and you will see the new variable name selected as the Quick Add variable.
+
+</AppOnly>
 
 ### Creating prompts
 
@@ -138,13 +180,13 @@ emphasis and rhythm. To create this formatting, use markdown syntax.
 
 </KeyConcept>
 
-Click the **Create New** button in the prompt section to open the new prompt edit form.
+Click <AppOnly app="current">**Create new prompt**</AppOnly><AppOnly app="classic">the **Create New** button</AppOnly> in the prompt section to open the new prompt edit form.
 
 <Screenshot axis="architect" name="edit-prompt"></Screenshot>
 
-Your first prompt will ask the participant to name the people with whom they have felt close to or discussed important matters. Enter the text "Within the past 6 months, who have you felt close to, or discussed important personal matters with?" and click **Save and Close**.
+Your first prompt will ask the participant to name the people with whom they have felt close to or discussed important matters. Enter the text "Within the past 6 months, who have you felt close to, or discussed important personal matters with?" and click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">**Save and Close**</AppOnly>.
 
-Click **Save and Return** on the stage editor to return to the timeline view with your new stage visible.
+Click <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic">**Save and Return**</AppOnly> on the stage editor to return to the timeline view with your new stage visible.
 
 ## Quick Add with a side panel
 
@@ -192,9 +234,21 @@ Fields capture data about alters or ego, and are where specific variables are de
 
 First, create a title for the form to orient the participant to the information you want to collect. Enter the title "Add a Clinic or Health Care Provider."
 
+<AppOnly app="current">
+
+Next, define the fields of the form. Click **Create new form field** in the **Form fields** section. A dialog opens with the field's settings on the left, where you choose an attribute for the field, write the question, choose an input control, and set any validation you want to include. On the right is a live preview of the question as the participant will see it, which updates as you work. On a narrow screen the preview appears below the settings instead.
+
+For the first field, you want to know the name of the clinic the participant is nominating. Under **Attribute selection**, click **Select attribute** and choose "name" from the list, or, if the Clinic node type doesn't have a "name" attribute yet, type "name" and choose **Create new attribute called “name”.** Next, under **Field configuration**, enter the **Question text**. In this example, use the question prompt "What is the name of this clinic?"
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Next, define the fields of the form. By clicking **Create New** in the fields panel, a new screen opens which asks you to define a variable for the field, the question prompt, an input control, and to select any validation you may want to include.
 
 For the first field, you want to know the name of the clinic the participant is nominating so use the variable "name" that you previously created by clicking **Select Variable** and selecting it from the list. Next, enter the text for this field label. In this example, use the question prompt "What is the name of this clinic?"
+
+</AppOnly>
 
 <Screenshot axis="architect" name="form-fields"></Screenshot>
 
@@ -204,7 +258,21 @@ In Architect, each form field can include an optional **hint** — a short, mark
 
 </AppOnly>
 
-<TipBox >
+<AppOnly app="current">
+
+<TipBox>
+
+Many screens in Architect let you either create a new attribute or select an existing one. They all use the same attribute window: click **Select attribute**, then type into the search box. Where you can create an attribute, the search box reads **Find or create an attribute**, and typing a name that doesn't exist yet offers **Create new attribute called “…”.** as the first row. Where you can only choose an existing attribute, the box reads **Find an attribute**.
+
+Otherwise, choose an existing attribute from the list. You can use the arrow keys and Enter instead of the mouse.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox>
 
 Many screens in Architect allow you to either create a new variable, or select an existing variable. If this is the case, the text next to the input will usually tell you.
 
@@ -213,6 +281,8 @@ When you want to create a new variable, click "Select Variable," type the name o
 Otherwise, click an existing variable from the list.
 
 </TipBox>
+
+</AppOnly>
 
 Finally, choose the input control that will be shown to collect this variable.
 
@@ -240,9 +310,11 @@ Finally, define validation requirements for this field. Indicate that this text 
 
 Architect also offers a **Show validation hints** option. When enabled, it automatically shows participants a hint derived from the field's validation rules, so they understand the input requirements.
 
+To try the field out, answer the question in the preview and click **Check response**. The preview runs the attribute's validation rules and shows you what a participant would be told. Answering the preview doesn't change your protocol.
+
 </AppOnly>
 
-Click **Save and Close** to create your first form field.
+Click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">**Save and Close**</AppOnly> to create your first form field.
 
 Now, using the process you learned above, create the two additional fields for this form.
 
@@ -251,7 +323,7 @@ Create the following fields with appropriate input controls, question prompts, a
 - A `last_visit` variable, using the Date Picker input control, prompt of "When was your visit?", and an appropriate start range
 - A `visit_purpose` variable, using the Text Area input control, and a prompt of "In your own words, what was the purpose of your visit?"
 
-After completing the form, configure the prompt for the stage. Click **Create New** in the prompts section and enter the text "Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited?"
+After completing the form, configure the prompt for the stage. Click <AppOnly app="current">**Create new prompt**</AppOnly><AppOnly app="classic">**Create New**</AppOnly> in the prompts section and enter the text "Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited?"
 
 <Screenshot axis="architect" name="fields-inputs-prompts"></Screenshot>
 
@@ -327,7 +399,7 @@ Next, we will create the following fields with associated variables, question pr
 
 To demonstrate the range of input control options, this example implements far more fields than would typically be best practice for a form within an interview. For more information, see the [input controls guide](/en/design-protocols/key-concepts/input-controls).
 
-Click **Save and Return** to go back to the timeline view and implement the next stage.
+Click <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic">**Save and Return**</AppOnly> to go back to the timeline view and implement the next stage.
 
 ## Creating a Per-Alter Form
 
@@ -373,7 +445,7 @@ The layout variable will be used to store the X/Y coordinates of the nodes when 
 
 <Screenshot axis="architect" name="sociogram-layout"></Screenshot>
 
-We finish by clicking "Save and Close" to close the prompt editor, then "Save and Return" to save the stage.
+We finish by clicking <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">"Save and Close"</AppOnly> to close the prompt editor, then <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic">"Save and Return"</AppOnly> to save the stage.
 
 ## Background Images
 
@@ -410,7 +482,7 @@ You may consider using this feature to progressively build up a network, by allo
 
 In the next box, we will either create a new edge type or select an existing one. Since we have not yet created any edge types, we will create a new type called "know" to correspond with the prompt.
 
-We click "Save and Close" to return to the Sociogram editor.
+We click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">"Save and Close"</AppOnly> to return to the Sociogram editor.
 
 <Screenshot axis="architect" name="edge-creation"></Screenshot>
 
@@ -452,7 +524,7 @@ To do this, select "Know" and "Conflict" under "Display edges of the following t
 Configuring the sociogram prompt to enable attribute toggling involves three steps: (1) toggle
 "Interaction Behavior", (2) select "Attribute Toggling", and (3) create (or select) a boolean variable to be assigned in the box that appears below.
 
-In this case of this prompt, using the techniques we have already covered, create a variable called "provides_advice" and press "Save and Close".
+In this case of this prompt, using the techniques we have already covered, create a variable called "provides_advice" and press <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">"Save and Close"</AppOnly>.
 
 We will now complete the exact same steps for the second prompt, which reads, "Please select anyone who has supported you financially within the previous 6 months." This time, we will create a boolean variable of "provides_material_support."
 
@@ -535,7 +607,7 @@ Create a variable named "communication_freq" with the following possible options
   </tr>
 </table>
 
-In the case of our prompt, we will use the default node bin and bucket sort options. Click "Save and Close" to finish editing this prompt, and then click "Save and Return" to return to the timeline view.
+In the case of our prompt, we will use the default node bin and bucket sort options. Click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">"Save and Close"</AppOnly> to finish editing this prompt, and then click <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic">"Save and Return"</AppOnly> to return to the timeline view.
 
 ## Creating a Categorical Bin
 
@@ -551,7 +623,7 @@ You should now be able to create a categorical bin interface using everything th
 - Toggle "on" the Follow-up "Other" option with bin label "other", question prompt "Which context best describes how you know this person?", and variable "group_other"
 
 <Screenshot axis="architect" name="catbin-variables"></Screenshot>
-As before, we will "Save and Close" and "Save and Return" to complete and save
+As before, we will click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">"Save and Close"</AppOnly> and <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic">"Save and Return"</AppOnly> to complete and save
 our edits on the stage.
 
 ## Skip Logic & Network Filtering on the Categorical Bin
@@ -576,7 +648,7 @@ We will also include a "Follow-up "Other" Option" for this prompt. Toggle the sw
 
 <Screenshot axis="architect" name="followup"></Screenshot>
 
-We have now finished configuring this stage. Press "Save and Close" on the bottom right of the prompt editor, and "Return and Close" on the Categorical Bin Interface editor.
+We have now finished configuring this stage. <AppOnly app="current">Press **Add** on the prompt editor, and **Finished Editing** on the Categorical Bin Interface editor.</AppOnly><AppOnly app="classic">Press "Save and Close" on the bottom right of the prompt editor, and "Return and Close" on the Categorical Bin Interface editor.</AppOnly>
 
 ## Creating the Narrative Interface
 
@@ -599,7 +671,7 @@ If we have collected data on a categorical variable and the participant has assi
 
 Under "Display Edges", we will see all edge types defined within our protocol. We will select the checkbox next to the edges we want to display ("know" and "conflict").
 
-The last step in the preset editor is to select any boolean variables we want to highlight on the participant's network. All available boolean variables will appear in the "Highlight Node Attributes" section and we can choose which of these we want included in the preset. We will select the checkboxes next to both "provides_advice" and "provides_material_support." To save our work, we click "Save and Close."
+The last step in the preset editor is to select any boolean variables we want to highlight on the participant's network. All available boolean variables will appear in the "Highlight Node Attributes" section and we can choose which of these we want included in the preset. We will select the checkboxes next to both "provides_advice" and "provides_material_support." To save our work, we click <AppOnly app="current">**Add**.</AppOnly><AppOnly app="classic">"Save and Close."</AppOnly>
 
 Back on our Narrative Interface edit screen, we can see the sample preset we just created. We will move below to the "Narrative Behaviors" section, and toggle both "Free-draw" and "Allow repositioning" to "on." (The latter should already be toggled on by default).
 
@@ -609,7 +681,7 @@ Free-draw is a function on this interface that allows a participant to annotate 
 
 Repositioning on the Narrative Interface enables a participant to drag their alters to new positions, keeping the displayed edges intact.
 
-Click "Save and Return" and are now able to view the configured Narrative stage on our timeline.
+<AppOnly app="current">Click **Finished Editing**</AppOnly><AppOnly app="classic">Click "Save and Return"</AppOnly> and are now able to view the configured Narrative stage on our timeline.
 
 ## Finishing Off Your Protocol
 

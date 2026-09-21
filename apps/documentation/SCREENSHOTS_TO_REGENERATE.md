@@ -3,6 +3,24 @@
 Screenshots that need to be replaced, grouped by the documentation page they appear on.
 Image paths are relative to `apps/documentation/public`.
 
+## September 2026 releases (Architect 8.3.0, Interviewer 8.3.0, Fresco 4.2.0)
+
+Rows marked 🔄 in the tables below changed with these releases. Capture them from
+the released builds. These affected images are not tracked in any table below:
+
+| Image (`/assets/img/…`)                                                                                      | What changed                                                           |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `architect/home-screen.png`, `architect/overview-screen.png`, `architect/preview-settings.png`               | Header language switcher (`home-screen.png` still shows v7.6.0)        |
+| `architect/edit-node-type-web.png`, `architect/node-shape-variable-mapping.jpg`                              | Regrouped node-type dialog, searchable icons, "Map attribute to shape" |
+| `key-concepts/forms/field.png`, `key-concepts/forms/form.png`                                                | Two-pane field dialog with participant preview                         |
+| `interface-documentation/categorical-bin/architect-other.png`                                                | Validation section on the "other" follow-up                            |
+| `interface-documentation/geospatial/initial-map-view.png`                                                    | Single "Initial map view" control with a real map                      |
+| `key-concepts/assets/asset-library.png`, `key-concepts/assets/bg-asset.png`                                  | Resources shown as a card grid (after PR #1974)                        |
+| `interviewer-guide/` — new capture of the in-interview settings menu                                         | Interface language chooser (not shown anywhere yet)                    |
+| `fresco-images/user-management.png`                                                                          | "Require Two-Factor Authentication" row, badge chips                   |
+| `fresco-images/configure-storage-s3.png`                                                                     | Globe button in the setup header                                       |
+| `fresco-images/protocols-page.png`, `participants-page.png`, `interviews-filtering.png`, `activity-feed.png` | Check: top bar and badge chips may have changed                        |
+
 ## Using Interviewer (Interviewer screenshots)
 
 Source: `docs/collect-data/interviewer/using-interviewer.en.mdx`
@@ -22,25 +40,25 @@ directly at `/assets/img/interviewer-guide/`.
 
 **Dashboard / setup / shell:**
 
-| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status      |
-| ----------------------------------------- | ------------------------------------------------------ | ----------- |
-| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | ✅ Captured |
-| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured |
-| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured |
-| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured |
-| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured |
-| `welcome.png`                             | First-run welcome screen — 8 only                      | ✅ Captured |
-| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | ✅ Captured |
-| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | ✅ Captured |
-| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | ✅ Captured |
-| `analytics.png`                           | Wizard analytics-preference step — 8 only              | ✅ Captured |
-| `settings.png`                            | Settings screen — 8 only                               | ✅ Captured |
-| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured |
-| `finish.png`                              | Finish screen                                          | ✅ Captured |
-| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured |
-| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured |
-| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured |
-| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured |
+| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status                                          |
+| ----------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | 🔄 Recapture — globe language button in top bar |
+| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured                                     |
+| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured                                     |
+| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured                                     |
+| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured                                     |
+| `welcome.png`                             | First-run welcome screen — 8 only                      | 🔄 Recapture — App language select              |
+| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | 🔄 Recapture — App language select              |
+| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | 🔄 Recapture — App language select              |
+| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | 🔄 Recapture — App language select              |
+| `analytics.png`                           | Wizard analytics-preference step — 8 only              | 🔄 Recapture — App language select              |
+| `settings.png`                            | Settings screen — 8 only                               | 🔄 Recapture — Language and Interview sections  |
+| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured                                     |
+| `finish.png`                              | Finish screen                                          | ✅ Captured                                     |
+| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured                                     |
+| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured                                     |
+| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured                                     |
+| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured                                     |
 
 **Interview interface stages** (version-swapped — each matches a 6.x shot of the same name in `sample-protocol/`):
 
@@ -75,61 +93,61 @@ shot is shown in both views. To wire a new Web capture, drop it at
 `/assets/img/architect-guide/<name>.png` and add `web="true"` to that
 screenshot in the article.
 
-| Image (`/assets/img/architect-guide/…`) | Status      |
-| --------------------------------------- | ----------- |
-| `add-a-stage.png`                       | ✅ Captured |
-| `information-interface.png`             | ✅ Captured |
-| `edit-item.png`                         | ✅ Captured |
-| `completed-stage.png`                   | ✅ Captured |
-| `node-type.png`                         | ✅ Captured |
-| `node-type-shape.png` (Web-only)        | ✅ Captured |
-| `edit-prompt.png`                       | ✅ Captured |
-| `side-panel.png`                        | ✅ Captured |
-| `form-fields.png`                       | ✅ Captured |
-| `input-control.png` (Web-only)          | ✅ Captured |
-| `validation.png`                        | ✅ Captured |
-| `fields-inputs-prompts.png`             | ✅ Captured |
-| `adding-roster.png`                     | ✅ Captured |
-| `roster-sort.png`                       | ✅ Captured |
-| `roster-search.png`                     | ✅ Captured |
-| `ego-form.png`                          | ✅ Captured |
-| `ego-form-fields.png`                   | ✅ Captured |
-| `per-alter-form.png`                    | ✅ Captured |
-| `sociogram-background.png`              | ✅ Captured |
-| `sociogram-layout.png`                  | ✅ Captured |
-| `edge-creation.png`                     | ✅ Captured |
-| `dyad-skip.png`                         | ✅ Captured |
-| `dyad-prompt.png`                       | ✅ Captured |
-| `variable-toggling.png`                 | ✅ Captured |
-| `catbin-variables.png`                  | ✅ Captured |
-| `filter-skip.png`                       | ✅ Captured |
-| `skip.png`                              | ✅ Captured |
-| `catbin-prompt.png`                     | ✅ Captured |
-| `followup.png`                          | ✅ Captured |
-| `narrative.png`                         | ✅ Captured |
-| `edit-preset.png`                       | ✅ Captured |
-| `edit-preset2.png`                      | ✅ Captured |
-| `narrative-behaviors.png`               | ✅ Captured |
+| Image (`/assets/img/architect-guide/…`) | Status                                                 |
+| --------------------------------------- | ------------------------------------------------------ |
+| `add-a-stage.png`                       | ✅ Captured                                            |
+| `information-interface.png`             | 🔄 Recapture — section outline                         |
+| `edit-item.png`                         | ✅ Captured                                            |
+| `completed-stage.png`                   | ✅ Captured                                            |
+| `node-type.png`                         | 🔄 Recapture — regrouped node-type dialog, icon search |
+| `node-type-shape.png` (Web-only)        | 🔄 Recapture — shape swatches                          |
+| `edit-prompt.png`                       | 🔄 Recapture — section outline                         |
+| `side-panel.png`                        | 🔄 Recapture — section outline                         |
+| `form-fields.png`                       | 🔄 Recapture — two-pane field dialog                   |
+| `input-control.png` (Web-only)          | 🔄 Recapture — two-pane field dialog                   |
+| `validation.png`                        | 🔄 Recapture — Validation section layout               |
+| `fields-inputs-prompts.png`             | ✅ Captured                                            |
+| `adding-roster.png`                     | ✅ Captured                                            |
+| `roster-sort.png`                       | ✅ Captured                                            |
+| `roster-search.png`                     | ✅ Captured                                            |
+| `ego-form.png`                          | ✅ Captured                                            |
+| `ego-form-fields.png`                   | ✅ Captured                                            |
+| `per-alter-form.png`                    | ✅ Captured                                            |
+| `sociogram-background.png`              | ✅ Captured                                            |
+| `sociogram-layout.png`                  | ✅ Captured                                            |
+| `edge-creation.png`                     | ✅ Captured                                            |
+| `dyad-skip.png`                         | ✅ Captured                                            |
+| `dyad-prompt.png`                       | ✅ Captured                                            |
+| `variable-toggling.png`                 | ✅ Captured                                            |
+| `catbin-variables.png`                  | 🔄 Recapture — options under the attribute             |
+| `filter-skip.png`                       | ✅ Captured                                            |
+| `skip.png`                              | ✅ Captured                                            |
+| `catbin-prompt.png`                     | 🔄 Recapture — options under the attribute             |
+| `followup.png`                          | 🔄 Recapture — Validation on "other"                   |
+| `narrative.png`                         | ✅ Captured                                            |
+| `edit-preset.png`                       | 🔄 Recapture — section outline                         |
+| `edit-preset2.png`                      | 🔄 Recapture — section outline                         |
+| `narrative-behaviors.png`               | ✅ Captured                                            |
 
 ## About Fresco
 
 Source: `docs/collect-data/fresco/about.en.mdx`
 
-| Image                                              | Alt text              | Status      |
-| -------------------------------------------------- | --------------------- | ----------- |
-| `/assets/img/fresco-images/features/dashboard.png` | The Fresco dashboard. | ✅ Replaced |
+| Image                                              | Alt text              | Status                               |
+| -------------------------------------------------- | --------------------- | ------------------------------------ |
+| `/assets/img/fresco-images/features/dashboard.png` | The Fresco dashboard. | 🔄 Recapture — globe language button |
 
 ## Using Fresco
 
 Source: `docs/collect-data/fresco/using-fresco.en.mdx`
 
-| Image                                                   | Alt text                                | Status      |
-| ------------------------------------------------------- | --------------------------------------- | ----------- |
-| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | ✅ Replaced |
-| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | ✅ Replaced |
-| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced |
-| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced |
-| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | ✅ Replaced |
+| Image                                                   | Alt text                                | Status                                     |
+| ------------------------------------------------------- | --------------------------------------- | ------------------------------------------ |
+| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | ✅ Replaced                                |
+| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | ✅ Replaced                                |
+| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced                                |
+| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced                                |
+| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | 🔄 Recapture — 2FA requirement row, badges |
 
 ## Workflows overview (Planning a Study)
 
@@ -143,12 +161,12 @@ Source: `docs/get-started/planning-a-study/workflows.en.mdx`
 
 Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/guide-vercel.en.mdx` (both reference the same images)
 
-| Image                                   | Alt text / caption                                             | Status              |
-| --------------------------------------- | -------------------------------------------------------------- | ------------------- |
-| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                  | ✅ Replaced         |
-| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                  | ✅ Replaced         |
-| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                              | ✅ Replaced         |
-| `/assets/img/fresco-images/fresco4.png` | Import participants and optionally allow anonymous recruitment | ⬜ Not yet replaced |
+| Image                                   | Alt text / caption                                             | Status                               |
+| --------------------------------------- | -------------------------------------------------------------- | ------------------------------------ |
+| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                  | 🔄 Recapture — globe in setup header |
+| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                  | 🔄 Recapture — globe in setup header |
+| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                              | 🔄 Recapture — globe in setup header |
+| `/assets/img/fresco-images/fresco4.png` | Import participants and optionally allow anonymous recruitment | ⬜ Not yet replaced                  |
 
 ---
 

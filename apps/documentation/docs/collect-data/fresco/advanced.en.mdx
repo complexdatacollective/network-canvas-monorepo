@@ -97,7 +97,7 @@ POSTGRES_PASSWORD=CHANGE_ME
 
 <TipBox>
 
-We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`. Leaving it at the default (`false`) helps us identify bugs and improve the app.
+We use anonymous analytics to gather usage and error data from instances of Fresco to troubleshoot issues. No participant data, and no participant or interview identifiers, are collected or sent to us. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`; this also locks the **Disable Analytics** setting on the settings page. Leaving it at the default (`false`) helps us identify bugs and improve the app.
 
 </TipBox>
 
@@ -200,7 +200,7 @@ The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, w
 
 ### Health checks
 
-Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. That is all it reports: it does not name the running Fresco version or the process uptime, because together they would tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. The running version is shown on the dashboard to signed-in researchers.
+Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. Alongside `status`, the body carries only a `timestamp`, the list of individual `checks` behind the overall status, and how long the check took. It does not name the running Fresco version or the process uptime, because together they would tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. Signed-in researchers can see the running version under **App Details** on the **Settings** page.
 
 ## Access Fresco
 
