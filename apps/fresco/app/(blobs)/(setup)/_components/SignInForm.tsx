@@ -547,7 +547,7 @@ export const SignInForm = () => {
 
           <Button
             variant="outline"
-            className="w-full"
+            className="h-auto min-h-12 w-full py-2 text-center text-wrap"
             onClick={handlePasskeySignIn}
             disabled={passkeyLoading}
             icon={<KeyRound />}
@@ -572,7 +572,7 @@ export const SignInForm = () => {
         variant="link"
         type="button"
         onClick={() => setShowRecovery(true)}
-        className="mt-4"
+        className="mt-4 text-wrap"
       >
         {intl.formatMessage(messages.troubleSigningIn)}
       </Button>

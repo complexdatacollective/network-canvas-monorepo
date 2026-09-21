@@ -8,7 +8,6 @@ import SettingsNavigation, {
   type SettingsSection,
 } from '~/components/settings/SettingsNavigation';
 import { env } from '~/env';
-import LanguageSetting from '~/i18n/LanguageSetting';
 import { getServerIntl } from '~/i18n/server';
 import { requirePageAuth } from '~/lib/auth/guards';
 import { requireAppNotExpired } from '~/queries/appSettings';
@@ -150,9 +149,6 @@ export default async function Settings() {
         )}
         data-testid="settings-page-header"
       />
-      <div className="mx-auto w-full max-w-5xl">
-        <LanguageSetting />
-      </div>
       <Suspense fallback={<SettingsContentSkeleton />}>
         <SettingsContent />
       </Suspense>
