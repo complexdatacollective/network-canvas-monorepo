@@ -7,27 +7,12 @@ import ResourcePreview from './ResourcePreview.tsx';
 
 export type ResourcePreviewBandProps = Readonly<{
   descriptor: ResourceDescriptor;
-  /**
-   * How the picture is framed: a band it is fitted into, as the resource
-   * library frames one, or the 16:9 interview canvas it will be drawn on,
-   * which is what a researcher choosing a background needs to see.
-   */
   shape?: 'thumbnail' | 'canvas';
-  /** Draw the resource without controls, as `ResourcePreview`'s own option. */
   presentational?: boolean;
 }>;
 
-/**
- * The picture at the top of a resource's card: the mark for its type, and over
- * that the resource itself when there is something to show.
- *
- * Both layers share the one grid cell, so a picture still resolving — or one
- * whose URL has lapsed — leaves the mark showing rather than a hole. The band
- * is sized rather than fixed, so a failure notice fits.
- *
- * Audio is previewable but is a control rather than a picture, so it wears its
- * mark here and plays wherever the card puts its player.
- */
+// Mark and picture share one grid cell, so a lapsed or loading picture leaves
+// the mark showing. Audio is a control, not a picture, so it shows its mark.
 export default function ResourcePreviewBand({
   descriptor,
   shape = 'thumbnail',
@@ -41,11 +26,7 @@ export default function ResourcePreviewBand({
 
   const band = (
     <>
-      {/*
-        Stands down when the picture is in the band, asked of the band rather
-        than of a flag: whether there is a picture is the preview's own
-        business, and it renews and drops the URL as leases lapse.
-      */}
+      {/* Asked of the band: the preview drops its URL as leases lapse. */}
       <Icon
         aria-hidden="true"
         className="col-start-1 row-start-1 size-14 opacity-60 group-has-[img]:hidden group-has-[video]:hidden"
@@ -69,11 +50,7 @@ export default function ResourcePreviewBand({
     shape === 'canvas' ? 'aspect-video' : 'min-h-40',
   );
 
-  /*
-    A picture hangs in the interview's own ground rather than on the editor's
-    paper, so transparency and dark edges read against the colour a
-    participant will see them against. A mark has nothing to hang there.
-  */
+  // On the interview's ground, so transparency reads as a participant sees it.
   return framedKind !== undefined ? (
     <ThemedRegion theme="interview" className={className}>
       {band}

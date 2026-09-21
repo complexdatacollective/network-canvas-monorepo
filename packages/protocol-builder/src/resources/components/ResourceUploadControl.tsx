@@ -124,11 +124,8 @@ export type ResourceUploadControlProps = Readonly<{
 /**
  * Imports a file into this edit, through the resource client alone.
  *
- * Two ways in, deliberately: a drop target for a pointer, and a file input
- * that keeps its own label and its place in the tab order rather than being
- * swallowed by the drop target — dropping a file is not something a keyboard
- * can do, so the input is the operable path and the drop target is the
- * shortcut.
+ * The drop target is a pointer shortcut; the labelled file input is the
+ * keyboard-operable path.
  *
  * The file is staged, not committed: it takes its asset id immediately so the
  * field can reference it, and the host holds the bytes outside the protocol
@@ -285,19 +282,11 @@ export default function ResourceUploadControl({
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         data-dragging={dragging ? '' : undefined}
-        className="bg-input text-input-contrast border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex min-h-36 flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-[border-color,background-color] duration-150"
+        className="bg-input text-input-contrast border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex min-h-36 flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-[border-color,background-color] duration-150 motion-reduce:transition-none"
       >
         <Paragraph margin="none">
           {intl.formatMessage(messages.dropHint)}
         </Paragraph>
-        {/*
-          Still the real, labelled, focusable control described above, and it
-          keeps its place in the tab order: `sr-only` takes it out of the
-          browser's own rendering without taking it out of the page, because
-          that rendering — a grey button and "no file chosen" — cannot be made
-          to sit inside a drop target. The label below is what a researcher
-          aims at, and wears this input's focus ring for it.
-        */}
         <input
           id={inputId}
           type="file"
@@ -312,26 +301,12 @@ export default function ResourceUploadControl({
             if (file != null) void stageFile(file);
           }}
         />
-        {/*
-          The input's own label, wearing Button: a `<label>` activates the
-          control it names with no script at all, which a `<button>` beside a
-          hidden input can only imitate — and imitating it would leave two tab
-          stops for one choice. `asChild` puts the button's treatment on the
-          label, and `peer-*` reads the state off the input, which is where a
-          file control's disabled and focus state actually live.
-        */}
         <Button asChild color="primary" icon={<Upload aria-hidden="true" />}>
           <label
             htmlFor={inputId}
-            // A label is never `:disabled`, so without this Button's hover
-            // lift and press would still play over a disabled input.
-            aria-disabled={disabled || busy ? true : undefined}
-            // `outline-primary` alongside the ring for the reason Button
-            // carries its own: a label never matches `:focus`, so Button's
-            // `focus:outline-primary` cannot fire here, and `focusable` would
-            // leave the ring at `currentColor` — this button's white text,
-            // against the white drop target it sits on.
-            className="peer-focus-visible:focus-styles peer-focus-visible:outline-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+            // A label never matches `:focus` or `:disabled`, so Button's focus
+            // outline and `ui-enabled` press are overridden from the peer input.
+            className="peer-focus-visible:focus-styles peer-focus-visible:outline-primary peer-disabled:active:elevation-low! peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-disabled:active:translate-y-0!"
           >
             {intl.formatMessage(messages.chooseFile)}
           </label>

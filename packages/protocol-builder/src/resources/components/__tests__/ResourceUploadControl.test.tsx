@@ -19,11 +19,16 @@ describe('ResourceUploadControl', () => {
 
     const input = screen.getByLabelText(CHOOSE_FILE);
     expect(input).toBeDisabled();
-    // Button's hover lift and press are gated on `ui-enabled`, which a label
-    // can only fail through `aria-disabled`.
-    expect(screen.getByText(CHOOSE_FILE).closest('label')).toHaveAttribute(
-      'aria-disabled',
-      'true',
+    expect(input).toHaveClass('peer');
+
+    const label = screen.getByText(CHOOSE_FILE).closest('label');
+    expect(label).toBe(input.nextElementSibling);
+    expect(label).not.toHaveAttribute('aria-disabled');
+    expect(label).toHaveClass(
+      'peer-disabled:cursor-not-allowed',
+      'peer-disabled:opacity-50',
+      'peer-disabled:active:translate-y-0!',
+      'peer-disabled:active:elevation-low!',
     );
   });
 });

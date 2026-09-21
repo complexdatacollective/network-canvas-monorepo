@@ -105,8 +105,6 @@ it('lists an imported file as staged, and lets a second field reference it, befo
   const library = await screen.findByRole('list', {
     name: 'Resources in this protocol',
   });
-  // Each resource is one card, and a card is named by the resource's own name
-  // — the type and the saved/staged badges on it are its description.
   const cards = within(library).getAllByRole('button');
   expect(cards).toHaveLength(2);
   expect(cards[0]).toHaveAccessibleName('Neighbourhood photo');

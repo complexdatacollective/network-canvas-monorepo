@@ -52,12 +52,6 @@ function renderCard(
   return onSelect;
 }
 
-/**
- * The card's one control, and everything else on the card that could be
- * operated. A button holds only phrasing content, so anything interactive or
- * block-level inside it is a control a click never reaches or markup a
- * browser rewrites.
- */
 function theOnlyControl(): HTMLElement {
   const buttons = screen.getAllByRole('button');
   expect(buttons).toHaveLength(1);

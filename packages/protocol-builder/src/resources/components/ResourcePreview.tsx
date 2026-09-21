@@ -26,11 +26,7 @@ export type ResourcePreviewProps = Readonly<{
   /** The resource's name, which is what the media is announced as. */
   name: string;
   className?: string;
-  /**
-   * A picture of the resource and nothing to operate: no player controls and
-   * no retry, for a preview drawn inside something that is itself the control.
-   * A preview that fails draws nothing, leaving whatever it sits over showing.
-   */
+  /** No controls or retry; a failed preview renders nothing. */
   presentational?: boolean;
 }>;
 
