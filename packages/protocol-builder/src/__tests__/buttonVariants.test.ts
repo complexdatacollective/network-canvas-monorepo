@@ -25,16 +25,16 @@ import { sourceFiles, sourcePath } from './packageSource.ts';
  * The components this rule is about: everything in the package that renders
  * as a button and takes fresco-ui's `variant` axis.
  *
- * `Pill` and `Badge` are NOT here, and that is the whole exemption: each has
- * its own unrelated `outline` — a hairline chip rather than a hollow button —
- * and neither is a control. Naming them here rather than pattern-matching
- * "things with a variant prop" is what keeps the exemption from widening: a
- * component added to this list is a decision somebody made in a diff.
+ * `Badge` is NOT here, and that is the whole exemption: it has its own
+ * unrelated `outline` — a hairline chip rather than a hollow button — and it
+ * is not a control. Naming it here rather than pattern-matching "things with
+ * an appearance prop" is what keeps the exemption from widening: a component
+ * added to this list is a decision somebody made in a diff.
  */
 const BUTTON_TAGS = ['Button', 'MotionButton', 'IconButton', 'SubmitButton'];
 
 /** Named so the exemption is a fact of the file rather than an omission. */
-const EXEMPT_FROM_THIS_RULE = ['Badge', 'Pill'];
+const EXEMPT_FROM_THIS_RULE = ['Badge'];
 
 /** The two Architect never uses. */
 const REFUSED_VARIANTS = ['outline', 'dashed'];
@@ -249,12 +249,12 @@ describe('button styles in this package', () => {
   });
 
   /**
-   * `Pill` and `Badge` keep an `outline` of their own. They are exempt by
-   * being absent from `BUTTON_TAGS`, so this states the pair the rule is
-   * deliberately not about — and fails if somebody quietly adds a third.
+   * `Badge` keeps an `outline` of its own. It is exempt by being absent from
+   * `BUTTON_TAGS`, so this states the one chip the rule is deliberately not
+   * about — and fails if somebody quietly adds a second.
    */
-  it('exempts only the two chips, by name', () => {
-    expect(EXEMPT_FROM_THIS_RULE).toEqual(['Badge', 'Pill']);
+  it('exempts only the chip, by name', () => {
+    expect(EXEMPT_FROM_THIS_RULE).toEqual(['Badge']);
     expect(
       BUTTON_TAGS.filter((tag) => EXEMPT_FROM_THIS_RULE.includes(tag)),
     ).toEqual([]);

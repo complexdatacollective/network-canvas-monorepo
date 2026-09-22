@@ -501,7 +501,7 @@ const inventThroughThePicker = async (
   const window = await searchForAnAttribute(harness, dialog, attributeName);
   await harness.user.click(
     within(window).getByRole('option', {
-      name: `Crear un atributo nuevo llamado “${attributeName}”.`,
+      name: `Crear un atributo nuevo llamado «${attributeName}».`,
     }),
   );
   // The window closes on the create row, and the picker is left showing the
@@ -783,7 +783,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     );
 
     const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado “nombre de pila”: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
+      name: 'No se puede crear un atributo llamado «nombre de pila»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
   });
@@ -802,7 +802,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     const window = await searchForAnAttribute(harness, dialog, 'contactType');
 
     const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado “contactType”: este tipo ya tiene un atributo con ese nombre',
+      name: 'No se puede crear un atributo llamado «contactType»: este tipo ya tiene un atributo con ese nombre',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
   });
@@ -864,7 +864,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
 
     expect(
       await dialog.findByText(
-        'No se ha podido cambiar el control de entrada de este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.',
+        'No se pudo cambiar el control de entrada de este atributo, así que no se cambió nada. Inténtalo de nuevo.',
       ),
     ).toBeInTheDocument();
   });

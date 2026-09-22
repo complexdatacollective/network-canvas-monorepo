@@ -309,7 +309,7 @@ export function DiseasePreview({ item }: RowPreviewProps) {
             intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
         </span>
         {marksNobody && (
-          <Badge variant="destructive">
+          <Badge tone="destructive">
             {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}
           </Badge>
         )}

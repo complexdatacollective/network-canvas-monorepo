@@ -107,7 +107,7 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
           badges it in.
         */}
         <Badge
-          variant="outline"
+          appearance="outline"
           color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
         >
           {resourceKindLabel(descriptor.kind, intl)}

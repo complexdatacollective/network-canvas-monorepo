@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { FrescoI18nProvider, useFrescoLocale } from '~/i18n/FrescoI18nProvider';
-import LanguageSetting from '~/i18n/LanguageSetting';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 import type { FrescoI18nInitialization } from '~/i18n/resolve';
 
 const { updateLocale, refresh } = vi.hoisted(() => ({
@@ -29,17 +29,17 @@ const initial: FrescoI18nInitialization = {
 };
 function Probe() {
   const intl = useAppIntl();
-  const { preference, failed, saving } = useFrescoLocale();
+  const { preference, saveState } = useFrescoLocale();
   return (
     <div data-testid="state">
-      {JSON.stringify({ locale: intl.locale, preference, failed, saving })}
+      {JSON.stringify({ locale: intl.locale, preference, saveState })}
     </div>
   );
 }
 function App({ value = initial }: { value?: FrescoI18nInitialization }) {
   return (
     <FrescoI18nProvider initial={value}>
-      <LanguageSetting />
+      <FrescoLocaleSwitcher />
       <Probe />
       <div lang="en" dir="ltr" data-testid="interview">
         Participant content
@@ -51,9 +51,26 @@ const readState = () =>
   JSON.parse(screen.getByTestId('state').textContent ?? '{}') as {
     locale: string;
     preference: string | null;
-    failed: boolean;
-    saving: boolean;
+    saveState: string;
   };
+const trigger = () => screen.getByRole('combobox');
+const open = async () => {
+  fireEvent.click(trigger());
+  return screen.findByRole('dialog', {
+    name: /^(Interface language|Idioma de la interfaz)$/,
+  });
+};
+const choose = async (name: RegExp) => {
+  const popover = await open();
+  fireEvent.click(screen.getByRole('option', { name }));
+  await waitFor(() => expect(popover).not.toBeInTheDocument());
+};
+// The footer live region; Base UI's empty-state element is a status too.
+const footer = () => {
+  const region = screen.getAllByRole('status').at(-1);
+  if (!region) throw new Error('no status region');
+  return region;
+};
 function deferred() {
   let resolve!: (value: { success: boolean }) => void;
   const promise = new Promise<{ success: boolean }>((done) => {
@@ -77,8 +94,7 @@ describe('Fresco locale preference control', () => {
   it('hydrates the exact Spanish server markup despite a British browser preference', async () => {
     const value = { ...initial, locale: 'es', preference: 'es' };
     const markup = renderToString(<App value={value} />);
-    expect(markup).toContain('Idioma');
-    expect(markup).not.toContain('Choose the language for Fresco');
+    expect(markup).toContain('Idioma de la interfaz: Español');
     const container = document.createElement('div');
     container.innerHTML = markup;
     document.body.append(container);
@@ -89,21 +105,33 @@ describe('Fresco locale preference control', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(container.querySelector('select')).toHaveValue('es');
+    expect(container.querySelector('[role="combobox"]')).toHaveAccessibleName(
+      'Idioma de la interfaz: Español',
+    );
     expect(document.documentElement.lang).toBe('es');
     expect(recoverableError).not.toHaveBeenCalled();
     await act(async () => root.unmount());
     container.remove();
   });
-  it('starts from serialized server locale before reading a different browser preference', () => {
+  it('starts from serialized server locale before reading a different browser preference', async () => {
     render(<App value={{ ...initial, locale: 'es', preference: 'es' }} />);
     expect(readState().locale).toBe('es');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByRole('combobox')).toHaveValue('es');
+    expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español');
+    await open();
     expect(screen.getByRole('option', { name: 'Español' })).toHaveAttribute(
-      'lang',
-      'es',
+      'aria-selected',
+      'true',
+    );
+    expect(
+      screen.getByRole('option', { name: 'Español' }).querySelector('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+  });
+  it('names the language the automatic entry resolves to from the request', async () => {
+    render(<App value={{ ...initial, requested: ['es-MX'] }} />);
+    expect(trigger()).toHaveAccessibleName(
+      'Interface language: Automatic (Español)',
     );
   });
   it('changes immediately, persists to the correct account, refreshes server fragments, and keeps interview lang', async () => {
@@ -111,40 +139,61 @@ describe('Fresco locale preference control', () => {
     updateLocale.mockReturnValue(write.promise);
     render(<App />);
     expect(document.documentElement.lang).toBe('en');
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'es' } });
+    await choose(/^Español$/);
     expect(document.documentElement.lang).toBe('es');
-    expect(readState()).toMatchObject({ locale: 'es', saving: true });
+    expect(readState()).toMatchObject({ locale: 'es', saveState: 'saving' });
     expect(screen.getByTestId('interview')).toHaveAttribute('lang', 'en');
     await waitFor(() =>
       expect(updateLocale).toHaveBeenCalledWith('es', 'alice'),
     );
     await act(async () => write.resolve({ success: true }));
     expect(refresh).toHaveBeenCalled();
-    expect(readState().saving).toBe(false);
+    expect(readState().saveState).toBe('saved');
+    await open();
+    expect(footer()).toHaveTextContent('Guardado en tu cuenta.');
+  });
+  it('reports a signed-out choice as saved on this device', async () => {
+    render(<App value={{ ...initial, userId: null }} />);
+    await choose(/^English \(UK\)$/);
+    await waitFor(() => expect(readState().saveState).toBe('saved'));
+    await open();
+    expect(footer()).toHaveTextContent('Saved on this device.');
   });
   it('saves Automatic as null and uses current browser best fit', async () => {
     render(<App value={{ ...initial, locale: 'es', preference: 'es' }} />);
-    fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: '__automatic' },
-    });
+    await choose(/^Automático/);
     expect(document.documentElement.lang).toBe('en-GB');
+    expect(trigger()).toHaveAccessibleName(
+      'Interface language: Automatic (English (UK))',
+    );
     await waitFor(() =>
       expect(updateLocale).toHaveBeenCalledWith(null, 'alice'),
     );
   });
-  it('restores the confirmed language and announces a failed write', async () => {
-    updateLocale.mockRejectedValue(new Error('offline'));
+  it('keeps a choice that failed to save applied and retries it from the footer', async () => {
+    updateLocale.mockRejectedValueOnce(new Error('offline'));
     render(<App />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'es' } });
+    await choose(/^Español$/);
     await waitFor(() =>
       expect(readState()).toMatchObject({
-        locale: 'en',
-        failed: true,
-        saving: false,
+        locale: 'es',
+        preference: 'es',
+        saveState: 'failed',
       }),
     );
-    expect(document.documentElement.lang).toBe('en');
-    expect(screen.getByRole('status')).not.toBeEmptyDOMElement();
+    expect(document.documentElement.lang).toBe('es');
+    expect(refresh).not.toHaveBeenCalled();
+    await open();
+    expect(footer()).toHaveTextContent(
+      'No se pudo guardar. Por ahora, el idioma solo se aplicará en esta visita.',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Volver a intentarlo' }),
+    );
+    await waitFor(() => expect(readState().saveState).toBe('saved'));
+    expect(updateLocale).toHaveBeenLastCalledWith('es', 'alice');
+    expect(updateLocale).toHaveBeenCalledTimes(2);
+    expect(refresh).toHaveBeenCalled();
   });
   it('serializes writes and keeps a late response from replacing the latest choice', async () => {
     const first = deferred(),
@@ -153,24 +202,25 @@ describe('Fresco locale preference control', () => {
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     render(<App />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'es' } });
+    await choose(/^Español$/);
     await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(1));
-    fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'en-GB' },
-    });
+    await choose(/^English \(UK\)$/);
     expect(document.documentElement.lang).toBe('en-GB');
     expect(updateLocale).toHaveBeenCalledTimes(1);
     await act(async () => first.resolve({ success: true }));
     await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(2));
-    expect(readState()).toMatchObject({ locale: 'en-GB', saving: true });
+    expect(readState()).toMatchObject({
+      locale: 'en-GB',
+      saveState: 'saving',
+    });
     await act(async () => second.resolve({ success: true }));
-    expect(readState()).toMatchObject({ locale: 'en-GB', saving: false });
+    expect(readState()).toMatchObject({ locale: 'en-GB', saveState: 'saved' });
   });
   it('applies a new account’s automatic preference and ignores the former account’s in-flight response', async () => {
     const write = deferred();
     updateLocale.mockReturnValue(write.promise);
     const view = render(<App />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'es' } });
+    await choose(/^Español$/);
     await waitFor(() =>
       expect(updateLocale).toHaveBeenCalledWith('es', 'alice'),
     );
@@ -179,28 +229,30 @@ describe('Fresco locale preference control', () => {
     );
     expect(readState()).toMatchObject({ locale: 'en-GB', preference: null });
     await act(async () => write.resolve({ success: true }));
-    expect(readState()).toMatchObject({ locale: 'en-GB', preference: null });
+    expect(readState()).toMatchObject({
+      locale: 'en-GB',
+      preference: null,
+      saveState: 'idle',
+    });
   });
-  it('rolls back two failed overlapping choices to the last confirmed server preference', async () => {
+  it('reports only the latest of two overlapping failed choices, keeping it applied', async () => {
     const first = deferred(),
       second = deferred();
     updateLocale
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     render(<App />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'es' } });
+    await choose(/^Español$/);
     await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(1));
-    fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'en-GB' },
-    });
+    await choose(/^English \(UK\)$/);
     await act(async () => first.resolve({ success: false }));
     await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(2));
+    expect(readState().saveState).toBe('saving');
     await act(async () => second.resolve({ success: false }));
     expect(readState()).toEqual({
-      locale: 'en',
-      preference: null,
-      saving: false,
-      failed: true,
+      locale: 'en-GB',
+      preference: 'en-GB',
+      saveState: 'failed',
     });
   });
 });

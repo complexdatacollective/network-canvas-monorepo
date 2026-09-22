@@ -151,7 +151,7 @@ test('Spanish administration and built-in interview controls preserve authored c
     .getByRole('checkbox', { name: 'Seleccionar Caso Á-17', exact: true })
     .check();
   await page
-    .getByRole('button', { name: 'Eliminar selección (1)', exact: true })
+    .getByRole('button', { name: 'Eliminar seleccionadas (1)', exact: true })
     .click();
   const deletion = page.getByRole('dialog', {
     name: '¿Eliminar 1 entrevista?',
@@ -422,7 +422,7 @@ test('an open finish confirmation follows the device language without finishing 
     '¿Seguro que quieres finalizar la entrevista?',
   );
   const description = confirmation.getByText(
-    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, un investigador puede volver a marcarla como sin finalizar más adelante.',
+    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, la persona responsable de la investigación puede volver a marcarla como sin finalizar más adelante.',
     { exact: true },
   );
   await expect(description).toBeVisible();

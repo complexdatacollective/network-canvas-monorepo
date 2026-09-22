@@ -277,7 +277,8 @@ function ComboboxField(props: ComboboxFieldProps) {
         </Combobox.Icon>
       </Combobox.Trigger>
       <Combobox.Portal container={portalContainer ?? undefined}>
-        <Combobox.Positioner align="start" sideOffset={10}>
+        {/* The popup layer, as `Popover`'s: this can open from inside one. */}
+        <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
           <Combobox.Popup
             render={
               <Surface

@@ -142,13 +142,11 @@ export default function StageSectionOutline({
       // so a list stuck at `top-0` loses its first rows behind it. `NavShell`
       // measures the bar and publishes the height.
       //
-      // The list starts at the top of ITS column — level with the editor's
-      // column, not with the editor's first section card. The editor draws its
-      // own title above those cards, and a read-only alert and a refused
-      // save's errors in the states that have them, so the first card sits
-      // lower than the first row here. Deliberate: aligning them means
-      // measuring a block whose height moves with a name that wraps, a badge
-      // row that wraps and an error list that appears on a failed save.
+      // Where the list STARTS is the route's: it pads the column so the first
+      // row clears the title the editor draws above its section cards, rather
+      // than sitting level with the top of the column. The padding is on the
+      // column and not here, so this still comes to rest under the navigation
+      // bar rather than that far below it.
       className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height)"
     >
       {/*

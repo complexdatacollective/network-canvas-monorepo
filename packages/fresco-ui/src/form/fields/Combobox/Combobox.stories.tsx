@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
+import Button from '../../../Button';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
@@ -686,5 +689,53 @@ export const DisabledOptions: Story = {
           'Individual options can be disabled. Select All respects disabled state.',
       },
     },
+  },
+};
+
+/**
+ * Opened from inside a Popover, as Interviewer's data view filters by protocol,
+ * the list paints over the rest of the Popover rather than behind it.
+ */
+export const InsidePopover: Story = {
+  render: function InsidePopoverStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <Popover defaultOpen>
+        <PopoverTrigger render={<Button>Open filters</Button>} />
+        <PopoverContent className="w-md">
+          <div className="flex flex-col gap-4">
+            <ComboboxField
+              name="inside-popover"
+              options={sampleOptions}
+              placeholder="Select options..."
+              value={value}
+              onChange={(v) => setValue(v ?? [])}
+            />
+            <div className="bg-surface-2 h-64 rounded p-4">
+              <Paragraph margin="none">Other filters</Paragraph>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox');
+    await userEvent.click(trigger);
+    const option = await screen.findByRole('option', { name: 'Option 4' });
+
+    await waitFor(() => {
+      const box = option.getBoundingClientRect();
+      expect(box.height).toBeGreaterThan(0);
+      const painted = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      expect(painted !== null && option.contains(painted)).toBe(true);
+    });
+
+    await userEvent.click(option);
+    await waitFor(() => expect(trigger).toHaveTextContent('1 item selected'));
   },
 };

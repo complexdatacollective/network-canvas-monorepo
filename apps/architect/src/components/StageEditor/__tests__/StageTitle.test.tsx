@@ -1,5 +1,5 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { stageTypeDocumentationUrl } from '@codaco/protocol-builder/interfaces/documentation';
 import {
@@ -7,6 +7,7 @@ import {
   loadFixtureStage,
 } from '@codaco/protocol-builder/testing/protocolFixture';
 import { renderStageEditor } from '@codaco/protocol-builder/testing/renderStageEditor';
+import { STAGE_HERO_HEIGHT_VARIABLE } from '~/utils/stageHeroHeight';
 
 import StageTitle from '../StageTitle';
 
@@ -101,5 +102,63 @@ describe('where the researcher starts', () => {
     // And nothing else in the title took it either, so the route's own
     // landing point is still free to have it.
     expect(document.body).toHaveFocus();
+  });
+});
+
+const publishedHeight = () =>
+  document.documentElement.style.getPropertyValue(STAGE_HERO_HEIGHT_VARIABLE);
+
+afterEach(() => {
+  document.documentElement.style.removeProperty(STAGE_HERO_HEIGHT_VARIABLE);
+});
+
+/**
+ * The route starts the list of the stage's sections, in the column beside the
+ * editor, below this title — which means knowing how much room the title took
+ * (`~/utils/stageHeroHeight`). So the title measures itself and says.
+ */
+describe('the height the stage title publishes', () => {
+  it('is the measured height of the title, on the document root', async () => {
+    renderStageEditor({ stageId: 'information-1', ...editableTitle });
+
+    // 600px is the height the test environment's `ResizeObserver` reports for
+    // every element it is asked about; what matters is that the published
+    // value is the OBSERVED one and carries a unit, not a constant written
+    // into the component.
+    await waitFor(() => {
+      expect(publishedHeight()).toBe('600px');
+    });
+  });
+
+  it('never publishes a title of no height', () => {
+    // `openTitle`, not `editableTitle`: this one has to read the variable in
+    // the tick the title MOUNTS in, and `editableTitle` draws nothing until
+    // the stage has been acquired — so there would be no title to have
+    // measured zero, and the assertion would hold with the measuring taken
+    // out altogether.
+    openTitle('information-1');
+
+    // Read synchronously: the title measures zero here, and a zero published
+    // would pull the section list back up level with the top of the column —
+    // the fault this exists to fix — for as long as the zero stood. The
+    // stylesheet's starting value holds instead, so the variable resolves.
+    expect(publishedHeight()).not.toBe('0px');
+  });
+
+  it('takes the value away again when the editor goes', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      ...editableTitle,
+    });
+
+    await waitFor(() => {
+      expect(publishedHeight()).toBe('600px');
+    });
+
+    // Every other route lays out no title at all, so the value must not
+    // outlive this one and pad a column that has nothing above it.
+    await harness.cancel();
+
+    expect(publishedHeight()).toBe('');
   });
 });

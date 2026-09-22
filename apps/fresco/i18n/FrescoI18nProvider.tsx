@@ -23,15 +23,28 @@ import {
 import type { FrescoI18nInitialization } from '~/i18n/resolve';
 import { frescoCatalogs } from '~/src/locales/catalogs';
 
+type FrescoLocaleSaveState = 'idle' | 'saving' | 'saved' | 'failed';
+
 type LocaleState = {
   // A host component can pass the resolved request through a nested content
   // provider without inheriting that content provider's formatter or registry.
   locale: string;
   preference: string | null;
-  saving: boolean;
-  failed: boolean;
+  /** What the automatic entry resolves to for this browser right now. */
+  automaticLocale: string;
+  saveState: FrescoLocaleSaveState;
+  /** A signed-in choice is stored on the account; otherwise on this device. */
+  persistence: 'account' | 'device';
   setLocale: (locale: string | null) => void;
 };
+
+const resolveAutomaticLocale = (requested: readonly string[]) =>
+  resolveAppLocale({
+    requested,
+    locales: frescoLocales,
+    defaultLocale: 'en',
+  }).locale;
+
 const LocaleContext = createContext<LocaleState | null>(null);
 
 export function FrescoI18nProvider({
@@ -62,12 +75,14 @@ function LocaleSession({
     preference: initial.preference,
     locale: initial.locale,
   });
-  const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // Seeded from the request so the server and hydrating client agree.
+  const [automaticLocale, setAutomaticLocale] = useState(() =>
+    resolveAutomaticLocale(initial.requested),
+  );
+  const [saveState, setSaveState] = useState<FrescoLocaleSaveState>('idle');
   const sequence = useRef(0);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const pending = useRef(false);
-  const acknowledged = useRef(state);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -80,11 +95,7 @@ function LocaleSession({
 
   useEffect(() => {
     if (pending.current) return;
-    acknowledged.current = {
-      preference: initial.preference,
-      locale: initial.locale,
-    };
-    setState(acknowledged.current);
+    setState({ preference: initial.preference, locale: initial.locale });
     // A request's account is authoritative, including Automatic. Keep the
     // mirror agreeing after sign-in without a client-side renegotiation flash.
     try {
@@ -97,16 +108,12 @@ function LocaleSession({
   const setLocale = useCallback(
     (preference: string | null) => {
       if (preference !== null && !isFrescoLocale(preference)) return;
-      const locale = resolveAppLocale({
-        stored: preference,
-        requested: navigator.languages,
-        locales: frescoLocales,
-        defaultLocale: 'en',
-      }).locale;
+      const automatic = resolveAutomaticLocale(navigator.languages);
+      const locale = preference ?? automatic;
 
+      setAutomaticLocale(automatic);
       setState({ preference, locale });
-      setFailed(false);
-      setSaving(true);
+      setSaveState('saving');
       pending.current = true;
       const generation = ++sequence.current;
       queue.current = queue.current
@@ -115,20 +122,18 @@ function LocaleSession({
           if (!mounted.current || generation !== sequence.current) return;
           try {
             const result = await updateLocale(preference, initial.userId);
-            if (mounted.current && result.success)
-              acknowledged.current = { preference, locale };
             if (!mounted.current || generation !== sequence.current) return;
             if (!result.success)
               throw new Error('Locale preference was not saved');
             pending.current = false;
-            setSaving(false);
+            setSaveState('saved');
             router.refresh();
           } catch {
             if (!mounted.current || generation !== sequence.current) return;
+            // The choice stays applied for this visit; the switcher offers a
+            // retry that sends it again.
             pending.current = false;
-            setSaving(false);
-            setFailed(true);
-            setState(acknowledged.current);
+            setSaveState('failed');
           }
         });
     },
@@ -136,13 +141,10 @@ function LocaleSession({
   );
 
   useEffect(() => {
-    if (state.preference !== null) return undefined;
     const followBrowser = () => {
-      const locale = resolveAppLocale({
-        requested: navigator.languages,
-        locales: frescoLocales,
-        defaultLocale: 'en',
-      }).locale;
+      const locale = resolveAutomaticLocale(navigator.languages);
+      setAutomaticLocale(locale);
+      if (state.preference !== null) return;
       setState({ preference: null, locale });
       router.refresh();
     };
@@ -155,8 +157,9 @@ function LocaleSession({
       value={{
         locale: state.locale,
         preference: state.preference,
-        saving,
-        failed,
+        automaticLocale,
+        saveState,
+        persistence: initial.userId === null ? 'device' : 'account',
         setLocale,
       }}
     >

@@ -104,7 +104,7 @@ describe('Tag', () => {
     );
 
     const filter = screen.getByRole('button', { name: 'Edges' });
-    expect(filter).toHaveClass('bg-text');
-    expect(filter).not.toHaveClass('bg-platinum');
+    expect(filter).toHaveClass('[--badge-color:var(--text)]');
+    expect(filter).not.toHaveClass('[--badge-color:var(--color-platinum)]');
   });
 });

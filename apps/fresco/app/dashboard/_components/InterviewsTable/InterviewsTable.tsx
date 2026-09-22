@@ -294,7 +294,7 @@ const InterviewsTableInner = ({
                 {exportDropdown}
                 <GenerateInterviewURLs
                   protocolsPromise={protocolsPromise}
-                  className="tablet-landscape:w-auto w-full"
+                  className="tablet-landscape:w-auto h-auto min-h-12 w-full py-2 text-center text-wrap"
                 />
                 <NuqsClearFilters paramKeys={clearableFilters} />
               </div>

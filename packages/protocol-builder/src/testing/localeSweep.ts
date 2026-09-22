@@ -87,9 +87,9 @@ const translatableEnglish = (): ReadonlyMap<string, string> => {
     if (translated === english) {
       // Indexed BY THE SENTENCE, so a sentence some message writes the same
       // way in both languages is not evidence of English wherever it appears
-      // — `contentBlock.kindVideo` says "Video" in Spanish too, which would
-      // otherwise be reported against `resourceKinds.videoLabel`, whose
-      // Spanish is "Vídeo". Recorded, and dropped from the index below.
+      // — `contentBlock.kindAudio` says "Audio" in Spanish too, which would
+      // otherwise be reported wherever another message says "Audio".
+      // Recorded, and dropped from the index below.
       sameInBoth.add(collapse(english));
       return;
     }
