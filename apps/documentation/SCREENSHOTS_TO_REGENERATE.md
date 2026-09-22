@@ -5,23 +5,16 @@ Image paths are relative to `apps/documentation/public`.
 
 ## September 2026 releases (Architect 8.3.0, Interviewer 8.3.0, Fresco 4.2.0)
 
-Rows marked 🔄 in the tables below changed with these releases. Capture them from
-the released builds.
+Every image these releases made stale has been recaptured from the release
+builds (the `changeset-release/main` tree, which carries the release version
+numbers): Architect and Interviewer 8.3.0 driving the bundled Sample Protocol,
+and Fresco 4.2.0 running locally against Postgres and MinIO, with the sample
+protocol imported and six participants and interviews. Interviewer also gained
+`interviewer-guide/interview-settings.png`, a new capture of the in-interview
+settings menu, now shown in Using Interviewer.
 
-The Architect and Interviewer images are done: every one was recaptured from
-the 8.3.0 builds (the `changeset-release/main` tree, which carries the
-release's version numbers), driving the bundled Sample Protocol. Interviewer
-also gained `interviewer-guide/interview-settings.png`, a new capture of the
-in-interview settings menu, now shown in Using Interviewer. The rows below, and
-the 🔄 rows that remain in the tables, are Fresco.
-
-These affected images are not tracked in any table below:
-
-| Image (`/assets/img/…`)                                       | What changed                                         |
-| ------------------------------------------------------------- | ---------------------------------------------------- |
-| `fresco-images/user-management.png`                           | "Require Two-Factor Authentication" row, badge chips |
-| `fresco-images/configure-storage-s3.png`                      | Globe button in the setup header                     |
-| `fresco-images/interviews-filtering.png`, `activity-feed.png` | Check: top bar and badge chips may have changed      |
+Nothing in this file is outstanding for the September 2026 releases. Rows kept
+below record what each image shows, for the next release that changes them.
 
 ## Using Interviewer (Interviewer screenshots)
 
@@ -135,21 +128,21 @@ screenshot in the article.
 
 Source: `docs/collect-data/fresco/about.en.mdx`
 
-| Image                                              | Alt text              | Status                               |
-| -------------------------------------------------- | --------------------- | ------------------------------------ |
-| `/assets/img/fresco-images/features/dashboard.png` | The Fresco dashboard. | 🔄 Recapture — globe language button |
+| Image                                              | Alt text              | Status                  |
+| -------------------------------------------------- | --------------------- | ----------------------- |
+| `/assets/img/fresco-images/features/dashboard.png` | The Fresco dashboard. | ✅ Recaptured for 4.2.0 |
 
 ## Using Fresco
 
 Source: `docs/collect-data/fresco/using-fresco.en.mdx`
 
-| Image                                                   | Alt text                                | Status                                              |
-| ------------------------------------------------------- | --------------------------------------- | --------------------------------------------------- |
-| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | 🔄 Check — top bar and badge chips may have changed |
-| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | 🔄 Check — top bar and badge chips may have changed |
-| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced                                         |
-| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced                                         |
-| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | 🔄 Recapture — 2FA requirement row, badges          |
+| Image                                                   | Alt text                                | Status                  |
+| ------------------------------------------------------- | --------------------------------------- | ----------------------- |
+| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced             |
+| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced             |
+| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | ✅ Recaptured for 4.2.0 |
 
 ## Workflows overview (Planning a Study)
 
@@ -163,12 +156,12 @@ Source: `docs/get-started/planning-a-study/workflows.en.mdx`
 
 Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/guide-vercel.en.mdx` (both reference the same images)
 
-| Image                                   | Alt text / caption                                             | Status                               |
-| --------------------------------------- | -------------------------------------------------------------- | ------------------------------------ |
-| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                  | 🔄 Recapture — globe in setup header |
-| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                  | 🔄 Recapture — globe in setup header |
-| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                              | 🔄 Recapture — globe in setup header |
-| `/assets/img/fresco-images/fresco4.png` | Import participants and optionally allow anonymous recruitment | ⬜ Not yet replaced                  |
+| Image                                   | Alt text / caption                                             | Status                  |
+| --------------------------------------- | -------------------------------------------------------------- | ----------------------- |
+| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                  | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                  | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                              | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco4.png` | Import participants and optionally allow anonymous recruitment | ⬜ Not yet replaced     |
 
 ---
 
