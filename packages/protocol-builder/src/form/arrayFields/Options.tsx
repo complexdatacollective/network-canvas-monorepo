@@ -6,6 +6,7 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
 import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
@@ -66,7 +67,7 @@ const messages = defineMessages({
 const MINIMUM_OPTIONS_MESSAGE = createMessageError(minimumOptionsMessage);
 
 const minTwoOptions = (value: unknown) =>
-  !value || (Array.isArray(value) && value.length < 2)
+  !value || (Array.isArray(value) && value.length < MINIMUM_VARIABLE_OPTIONS)
     ? MINIMUM_OPTIONS_MESSAGE
     : undefined;
 

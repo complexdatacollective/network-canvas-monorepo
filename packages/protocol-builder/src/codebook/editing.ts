@@ -2,6 +2,7 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
+  MINIMUM_VARIABLE_OPTIONS,
   NodeDefinitionSchema,
   type Variable,
   VariableSchema,
@@ -21,6 +22,7 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
+import { isOptionType } from '../sections/collectableTypes.ts';
 import { codebookRefusalMessage } from './compoundFailureCopy.ts';
 
 export type { CodebookSubject } from '../protocol-context.ts';
@@ -105,8 +107,6 @@ const messages = defineMessages({
 });
 
 export const minimumOptionsMessage = messages.minimumOptions;
-
-const MINIMUM_OPTIONS = 2;
 
 export class InvalidCodebookDraftError extends Error {
   readonly issues: readonly CodebookDraftIssue[];
@@ -335,9 +335,11 @@ const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
 const tooFewOptionsIssue = (
   draft: Readonly<Record<string, unknown>>,
 ): CodebookDraftIssue | null => {
-  if (draft.type !== 'categorical' && draft.type !== 'ordinal') return null;
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
   const { options } = draft;
-  if (Array.isArray(options) && options.length >= MINIMUM_OPTIONS) return null;
+  if (Array.isArray(options) && options.length >= MINIMUM_VARIABLE_OPTIONS) {
+    return null;
+  }
   return Object.freeze({
     path: Object.freeze(['options']),
     message: createMessageError(messages.minimumOptions),

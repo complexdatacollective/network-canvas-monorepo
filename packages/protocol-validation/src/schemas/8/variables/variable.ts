@@ -435,6 +435,8 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 // strings or integers — booleans are not selectable option values (a migration
 // coerces any legacy boolean values to strings). A binning stage needs at least
 // two options to be usable, so require a minimum of two.
+export const MINIMUM_VARIABLE_OPTIONS = 2;
+
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
@@ -442,7 +444,7 @@ const categoricalOptionsSchema = z
       value: z.union([z.number().int(), z.string()]),
     }),
   )
-  .min(2);
+  .min(MINIMUM_VARIABLE_OPTIONS);
 
 const ordinalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.ordinal),
