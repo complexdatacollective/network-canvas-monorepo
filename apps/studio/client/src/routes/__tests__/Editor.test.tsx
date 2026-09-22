@@ -12,9 +12,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProtocolBuilderProps } from '@codaco/protocol-builder/ProtocolBuilder';
 import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
-import { MAX_UPLOAD_BYTES } from '@codaco/studio-rpc/uploads';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -301,22 +299,6 @@ async function collaboratorDeletesScreen(stageId: string): Promise<void> {
     sectionId: sectionId({ kind: 'stage', stageId }),
   });
 }
-
-const mountedBuilders = vi.hoisted((): ProtocolBuilderProps[] => []);
-
-vi.mock('@codaco/protocol-builder/ProtocolBuilder', async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import('@codaco/protocol-builder/ProtocolBuilder')
-    >();
-  return {
-    ...actual,
-    ProtocolBuilder: (props: ProtocolBuilderProps) => {
-      mountedBuilders.push(props);
-      return actual.ProtocolBuilder(props);
-    },
-  };
-});
 
 vi.mock('@orpc/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@orpc/client')>();
@@ -667,17 +649,6 @@ describe('Studio editor shell', () => {
       'form',
       formId,
     );
-  });
-
-  it('tells the editor the largest resource Studio stores', async () => {
-    mountedBuilders.length = 0;
-    renderEditor();
-    await findStageNameField();
-
-    expect(mountedBuilders.length).toBeGreaterThan(0);
-    for (const props of mountedBuilders) {
-      expect(props.resourceUploadMaxByteLength).toBe(MAX_UPLOAD_BYTES);
-    }
   });
 
   it('keeps non-screen outline sections selectable', async () => {

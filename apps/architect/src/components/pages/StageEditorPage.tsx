@@ -39,7 +39,6 @@ import {
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
 import { createArchitectClient } from '~/protocolBuilder/createArchitectRouter';
-import { RESOURCE_MAX_BYTE_LENGTH } from '~/protocolBuilder/resourceBridge';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 const messages = defineMessages({
   stageNotFound: {
@@ -369,11 +368,7 @@ const StageEditorPage = () => {
               package states nothing of its own.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
-              <ProtocolBuilder
-                client={client}
-                protocolId={activeProtocolId}
-                resourceUploadMaxByteLength={RESOURCE_MAX_BYTE_LENGTH}
-              >
+              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
                 <EnclosingHeadingLevel level="h2">
                   <StageEditor
                     target={target}

@@ -11,7 +11,6 @@ import {
   useResourceClient,
   type ResourceClient,
 } from '../../client.tsx';
-import { DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH } from '../../types.ts';
 
 /**
  * The edit a resource control is mounted in.
@@ -52,7 +51,6 @@ export function ResourceContextFrame({
     () => ({
       client,
       protocolId,
-      resourceUploadMaxByteLength: DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
       utils: createTanstackQueryUtils(client),
     }),
     [client, protocolId],

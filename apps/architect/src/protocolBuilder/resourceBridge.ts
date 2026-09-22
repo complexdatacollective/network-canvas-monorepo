@@ -16,7 +16,6 @@ import {
 } from '~/ducks/modules/protocol/assetManifest';
 import { getAssetManifest } from '~/selectors/protocol';
 import { getAssetBlobUrl } from '~/utils/assetUtils';
-import { MAX_COMPRESSED_BYTES } from '~/utils/netcanvasSizeGuard';
 import {
   getGeoJsonVariables,
   getNetworkVariables,
@@ -41,17 +40,6 @@ export type DiscardOutcome =
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
 export type StagedResource = Readonly<{ descriptor: Descriptor }>;
-
-/**
- * The largest file Architect imports as one resource.
- *
- * Architect has no per-file store limit of its own, only the one on the whole
- * `.netcanvas` it will open again. A resource larger than that makes a
- * protocol Architect refuses to reopen — media rarely compresses, so the
- * archive is no smaller than the file — which makes that archive limit the
- * bound on any single file in it.
- */
-export const RESOURCE_MAX_BYTE_LENGTH = MAX_COMPRESSED_BYTES;
 
 function failed(
   reason: Failure['reason'],
@@ -141,13 +129,6 @@ export class ResourceBridge {
         status: 'ok',
         data: this.#record(key, editId, action.payload.id),
       };
-    }
-
-    if (request.bytes.size > RESOURCE_MAX_BYTE_LENGTH) {
-      return failed(
-        'too-large',
-        `Architect imports at most ${RESOURCE_MAX_BYTE_LENGTH} bytes per resource`,
-      );
     }
 
     // Named by its content, not by the file the researcher picked: Architect

@@ -16,11 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { MAX_UPLOAD_BYTES } from '@codaco/studio-rpc/uploads';
 import { SyncServer } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
-import type { AssetStore } from '../assets.ts';
+import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   createProtocolBuilderRuntime,

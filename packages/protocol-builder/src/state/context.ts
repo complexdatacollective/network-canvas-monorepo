@@ -13,8 +13,6 @@ export type ProtocolBuilderContextValue = Readonly<{
   client: ProtocolBuilderClient;
   utils: ProtocolQueryUtils;
   protocolId: string;
-  /** The largest file the host will stage as one resource, in bytes. */
-  resourceUploadMaxByteLength: number;
 }>;
 
 const ProtocolBuilderContext = createContext<

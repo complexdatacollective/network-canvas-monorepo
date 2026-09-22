@@ -25,7 +25,6 @@ import {
   createArchitectRouter,
 } from '../createArchitectRouter.ts';
 import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
-import { RESOURCE_MAX_BYTE_LENGTH } from '../resourceBridge.ts';
 
 /**
  * The bytes an import wrote, standing in for Architect's IndexedDB asset
@@ -534,43 +533,6 @@ describe("Architect's in-process protocol-builder host", () => {
     // Nothing in the protocol names the bytes any more, which is the condition
     // Architect's own orphan sweep collects them on.
     expect(Object.keys(getAssetManifest(store.getState()))).not.toContain(id);
-  });
-
-  it('refuses a file larger than the limit it gives the editor, and imports one at it', async () => {
-    const { store, client } = openProtocol();
-    const before = { ...getAssetManifest(store.getState()) };
-    const sized = (size: number): Blob => {
-      const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
-      Object.defineProperty(blob, 'size', { value: size });
-      return blob;
-    };
-    const stage = (requestId: string, bytes: Blob) =>
-      client.resources.stage({
-        protocolId: PROTOCOL_ID,
-        editId: EDIT,
-        requestId,
-        request: {
-          kind: 'content',
-          contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
-          contentType: 'image/png',
-          bytes,
-        },
-      });
-
-    const refused = await stage(
-      'too-large',
-      sized(RESOURCE_MAX_BYTE_LENGTH + 1),
-    );
-    expect(refused).toMatchObject({
-      status: 'failed',
-      failure: { reason: 'too-large', retryable: false },
-    });
-    expect(getAssetManifest(store.getState())).toEqual(before);
-
-    const accepted = await stage('at-limit', sized(RESOURCE_MAX_BYTE_LENGTH));
-    expect(accepted.status).toBe('ok');
   });
 
   /**

@@ -46,7 +46,6 @@ import {
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import type { contract } from '@codaco/studio-rpc';
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
-import { MAX_UPLOAD_BYTES } from '@codaco/studio-rpc/uploads';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -686,7 +685,6 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     <ProtocolBuilder
       client={hostClient.protocolBuilder}
       protocolId={address.protocolId}
-      resourceUploadMaxByteLength={MAX_UPLOAD_BYTES}
     >
       <EditorWorkspace
         address={address}
