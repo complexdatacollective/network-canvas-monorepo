@@ -134,7 +134,8 @@ export async function addConfiguredFormField(
 ): Promise<void> {
   const page = section.page();
 
-  // Phase one: the row, and everything the attribute cannot exist without.
+  // Phase one: the row, inventing its attribute with the options, scale labels
+  // and earliest date written inline.
   await section
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
@@ -176,8 +177,8 @@ export async function addConfiguredFormField(
     spec.booleanOptions !== undefined || spec.required === true;
   if (!needsSecondPass) return;
 
-  // Phase two: everything that is ABOUT an attribute, and so is only offered
-  // once one exists. The row just added is the last in the list.
+  // Phase two: the boolean answer labels and the required rule, set by
+  // reopening the saved row. The row just added is the last in the list.
   await section
     .getByRole('button', { name: 'Edit field', exact: true })
     .last()
