@@ -8,19 +8,20 @@ Image paths are relative to `apps/documentation/public`.
 Rows marked 🔄 in the tables below changed with these releases. Capture them from
 the released builds.
 
-The Architect images are done: every one was recaptured from the 8.3.0 build
-(the `changeset-release/main` tree, which carries the release's version number),
-driving the bundled Sample Protocol template. The rows below, and the 🔄 rows
-that remain in the tables, are Interviewer and Fresco.
+The Architect and Interviewer images are done: every one was recaptured from
+the 8.3.0 builds (the `changeset-release/main` tree, which carries the
+release's version numbers), driving the bundled Sample Protocol. Interviewer
+also gained `interviewer-guide/interview-settings.png`, a new capture of the
+in-interview settings menu, now shown in Using Interviewer. The rows below, and
+the 🔄 rows that remain in the tables, are Fresco.
 
 These affected images are not tracked in any table below:
 
-| Image (`/assets/img/…`)                                              | What changed                                         |
-| -------------------------------------------------------------------- | ---------------------------------------------------- |
-| `interviewer-guide/` — new capture of the in-interview settings menu | Interface language chooser (not shown anywhere yet)  |
-| `fresco-images/user-management.png`                                  | "Require Two-Factor Authentication" row, badge chips |
-| `fresco-images/configure-storage-s3.png`                             | Globe button in the setup header                     |
-| `fresco-images/interviews-filtering.png`, `activity-feed.png`        | Check: top bar and badge chips may have changed      |
+| Image (`/assets/img/…`)                                       | What changed                                         |
+| ------------------------------------------------------------- | ---------------------------------------------------- |
+| `fresco-images/user-management.png`                           | "Require Two-Factor Authentication" row, badge chips |
+| `fresco-images/configure-storage-s3.png`                      | Globe button in the setup header                     |
+| `fresco-images/interviews-filtering.png`, `activity-feed.png` | Check: top bar and badge chips may have changed      |
 
 ## Using Interviewer (Interviewer screenshots)
 
@@ -41,25 +42,25 @@ directly at `/assets/img/interviewer-guide/`.
 
 **Dashboard / setup / shell:**
 
-| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status                                          |
-| ----------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
-| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | 🔄 Recapture — globe language button in top bar |
-| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured                                     |
-| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured                                     |
-| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured                                     |
-| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured                                     |
-| `welcome.png`                             | First-run welcome screen — 8 only                      | 🔄 Recapture — App language select              |
-| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | 🔄 Recapture — App language select              |
-| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | 🔄 Recapture — App language select              |
-| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | 🔄 Recapture — App language select              |
-| `analytics.png`                           | Wizard analytics-preference step — 8 only              | 🔄 Recapture — App language select              |
-| `settings.png`                            | Settings screen — 8 only                               | 🔄 Recapture — Language and Interview sections  |
-| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured                                     |
-| `finish.png`                              | Finish screen                                          | ✅ Captured                                     |
-| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured                                     |
-| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured                                     |
-| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured                                     |
-| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured                                     |
+| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status                  |
+| ----------------------------------------- | ------------------------------------------------------ | ----------------------- |
+| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | ✅ Recaptured for 8.3.0 |
+| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured             |
+| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured             |
+| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured             |
+| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured             |
+| `welcome.png`                             | First-run welcome screen — 8 only                      | ✅ Recaptured for 8.3.0 |
+| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | ✅ Recaptured for 8.3.0 |
+| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | ✅ Recaptured for 8.3.0 |
+| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | ✅ Recaptured for 8.3.0 |
+| `analytics.png`                           | Wizard analytics-preference step — 8 only              | ✅ Recaptured for 8.3.0 |
+| `settings.png`                            | Settings screen — 8 only                               | ✅ Recaptured for 8.3.0 |
+| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured             |
+| `finish.png`                              | Finish screen                                          | ✅ Captured             |
+| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured             |
+| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured             |
+| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured             |
+| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured             |
 
 **Interview interface stages** (version-swapped — each matches a 6.x shot of the same name in `sample-protocol/`):
 
