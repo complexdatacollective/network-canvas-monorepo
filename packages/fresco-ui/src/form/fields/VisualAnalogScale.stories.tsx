@@ -10,6 +10,7 @@ import {
 } from 'storybook/test';
 
 import Surface from '../../layout/Surface';
+import { PortalContainerProvider } from '../../PortalContainer';
 import Paragraph from '../../typography/Paragraph';
 import { withPointerCaptureStubbed } from './sliderTestHelpers';
 import VisualAnalogScaleField from './VisualAnalogScale';
@@ -340,6 +341,58 @@ export const ValuePopoverWhileDragging: Story = {
     await waitFor(() =>
       expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
     );
+  },
+};
+
+/**
+ * The bubble stays on the thumb when its portal layer sits inside an ancestor
+ * that re-anchors `position: fixed` — here a `filter`, which is what an open
+ * dialog leaves behind after its entrance animation. Architect's field preview
+ * is exactly this: a `ThemedRegion` (with its own portal layer) inside a dialog.
+ */
+export const ValuePopoverInsideFilteredAncestor: Story = {
+  args: {
+    value: 0.25,
+    minLabel: 'Not at all',
+    maxLabel: 'Extremely',
+  },
+  render: (args) => (
+    <div style={{ filter: 'blur(0px)' }}>
+      <PortalContainerProvider>
+        <ControlledVAS {...args} initialValue={args.value} />
+      </PortalContainerProvider>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+    const thumb = slider.parentElement;
+    if (!thumb) throw new Error('Slider input has no thumb element');
+
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      const popover = await screen.findByTestId('scale-value-popover');
+      await waitFor(async () => {
+        const thumbBox = thumb.getBoundingClientRect();
+        const popoverBox = popover.getBoundingClientRect();
+        const thumbCentre = thumbBox.left + thumbBox.width / 2;
+        const popoverCentre = popoverBox.left + popoverBox.width / 2;
+        await expect(Math.abs(popoverCentre - thumbCentre)).toBeLessThan(1);
+        await expect(popoverBox.bottom).toBeLessThanOrEqual(thumbBox.top);
+        await expect(thumbBox.top - popoverBox.bottom).toBeLessThan(24);
+      });
+
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
+    });
   },
 };
 
