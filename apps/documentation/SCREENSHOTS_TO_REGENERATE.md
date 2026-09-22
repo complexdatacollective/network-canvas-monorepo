@@ -6,20 +6,21 @@ Image paths are relative to `apps/documentation/public`.
 ## September 2026 releases (Architect 8.3.0, Interviewer 8.3.0, Fresco 4.2.0)
 
 Rows marked 🔄 in the tables below changed with these releases. Capture them from
-the released builds. These affected images are not tracked in any table below:
+the released builds.
 
-| Image (`/assets/img/…`)                                                                        | What changed                                                           |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `architect/home-screen.png`, `architect/overview-screen.png`, `architect/preview-settings.png` | Header language switcher (`home-screen.png` still shows v7.6.0)        |
-| `architect/edit-node-type-web.png`, `architect/node-shape-variable-mapping.jpg`                | Regrouped node-type dialog, searchable icons, "Map attribute to shape" |
-| `key-concepts/forms/field.png`, `key-concepts/forms/form.png`                                  | Two-pane field dialog with participant preview                         |
-| `interface-documentation/categorical-bin/architect-other.png`                                  | Validation section on the "other" follow-up                            |
-| `interface-documentation/geospatial/initial-map-view.png`                                      | Single "Initial map view" control with a real map                      |
-| `key-concepts/assets/asset-library.png`, `key-concepts/assets/bg-asset.png`                    | Resources shown as a card grid (after PR #1974)                        |
-| `interviewer-guide/` — new capture of the in-interview settings menu                           | Interface language chooser (not shown anywhere yet)                    |
-| `fresco-images/user-management.png`                                                            | "Require Two-Factor Authentication" row, badge chips                   |
-| `fresco-images/configure-storage-s3.png`                                                       | Globe button in the setup header                                       |
-| `fresco-images/interviews-filtering.png`, `activity-feed.png`                                  | Check: top bar and badge chips may have changed                        |
+The Architect images are done: every one was recaptured from the 8.3.0 build
+(the `changeset-release/main` tree, which carries the release's version number),
+driving the bundled Sample Protocol template. The rows below, and the 🔄 rows
+that remain in the tables, are Interviewer and Fresco.
+
+These affected images are not tracked in any table below:
+
+| Image (`/assets/img/…`)                                              | What changed                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------- |
+| `interviewer-guide/` — new capture of the in-interview settings menu | Interface language chooser (not shown anywhere yet)  |
+| `fresco-images/user-management.png`                                  | "Require Two-Factor Authentication" row, badge chips |
+| `fresco-images/configure-storage-s3.png`                             | Globe button in the setup header                     |
+| `fresco-images/interviews-filtering.png`, `activity-feed.png`        | Check: top bar and badge chips may have changed      |
 
 ## Using Interviewer (Interviewer screenshots)
 
@@ -93,41 +94,41 @@ shot is shown in both views. To wire a new Web capture, drop it at
 `/assets/img/architect-guide/<name>.png` and add `web="true"` to that
 screenshot in the article.
 
-| Image (`/assets/img/architect-guide/…`) | Status                                                 |
-| --------------------------------------- | ------------------------------------------------------ |
-| `add-a-stage.png`                       | ✅ Captured                                            |
-| `information-interface.png`             | 🔄 Recapture — section outline                         |
-| `edit-item.png`                         | ✅ Captured                                            |
-| `completed-stage.png`                   | ✅ Captured                                            |
-| `node-type.png`                         | 🔄 Recapture — regrouped node-type dialog, icon search |
-| `node-type-shape.png` (Web-only)        | 🔄 Recapture — shape swatches                          |
-| `edit-prompt.png`                       | 🔄 Recapture — section outline                         |
-| `side-panel.png`                        | 🔄 Recapture — section outline                         |
-| `form-fields.png`                       | 🔄 Recapture — two-pane field dialog                   |
-| `input-control.png` (Web-only)          | 🔄 Recapture — two-pane field dialog                   |
-| `validation.png`                        | 🔄 Recapture — Validation section layout               |
-| `fields-inputs-prompts.png`             | ✅ Captured                                            |
-| `adding-roster.png`                     | ✅ Captured                                            |
-| `roster-sort.png`                       | ✅ Captured                                            |
-| `roster-search.png`                     | ✅ Captured                                            |
-| `ego-form.png`                          | ✅ Captured                                            |
-| `ego-form-fields.png`                   | ✅ Captured                                            |
-| `per-alter-form.png`                    | ✅ Captured                                            |
-| `sociogram-background.png`              | ✅ Captured                                            |
-| `sociogram-layout.png`                  | ✅ Captured                                            |
-| `edge-creation.png`                     | ✅ Captured                                            |
-| `dyad-skip.png`                         | ✅ Captured                                            |
-| `dyad-prompt.png`                       | ✅ Captured                                            |
-| `variable-toggling.png`                 | ✅ Captured                                            |
-| `catbin-variables.png`                  | 🔄 Recapture — options under the attribute             |
-| `filter-skip.png`                       | ✅ Captured                                            |
-| `skip.png`                              | ✅ Captured                                            |
-| `catbin-prompt.png`                     | 🔄 Recapture — options under the attribute             |
-| `followup.png`                          | 🔄 Recapture — Validation on "other"                   |
-| `narrative.png`                         | ✅ Captured                                            |
-| `edit-preset.png`                       | 🔄 Recapture — section outline                         |
-| `edit-preset2.png`                      | 🔄 Recapture — section outline                         |
-| `narrative-behaviors.png`               | ✅ Captured                                            |
+| Image (`/assets/img/architect-guide/…`) | Status                  |
+| --------------------------------------- | ----------------------- |
+| `add-a-stage.png`                       | ✅ Captured             |
+| `information-interface.png`             | ✅ Recaptured for 8.3.0 |
+| `edit-item.png`                         | ✅ Captured             |
+| `completed-stage.png`                   | ✅ Captured             |
+| `node-type.png`                         | ✅ Recaptured for 8.3.0 |
+| `node-type-shape.png` (Web-only)        | ✅ Recaptured for 8.3.0 |
+| `edit-prompt.png`                       | ✅ Recaptured for 8.3.0 |
+| `side-panel.png`                        | ✅ Recaptured for 8.3.0 |
+| `form-fields.png`                       | ✅ Recaptured for 8.3.0 |
+| `input-control.png` (Web-only)          | ✅ Recaptured for 8.3.0 |
+| `validation.png`                        | ✅ Recaptured for 8.3.0 |
+| `fields-inputs-prompts.png`             | ✅ Captured             |
+| `adding-roster.png`                     | ✅ Captured             |
+| `roster-sort.png`                       | ✅ Captured             |
+| `roster-search.png`                     | ✅ Captured             |
+| `ego-form.png`                          | ✅ Captured             |
+| `ego-form-fields.png`                   | ✅ Captured             |
+| `per-alter-form.png`                    | ✅ Captured             |
+| `sociogram-background.png`              | ✅ Captured             |
+| `sociogram-layout.png`                  | ✅ Captured             |
+| `edge-creation.png`                     | ✅ Captured             |
+| `dyad-skip.png`                         | ✅ Captured             |
+| `dyad-prompt.png`                       | ✅ Captured             |
+| `variable-toggling.png`                 | ✅ Captured             |
+| `catbin-variables.png`                  | ✅ Recaptured for 8.3.0 |
+| `filter-skip.png`                       | ✅ Captured             |
+| `skip.png`                              | ✅ Captured             |
+| `catbin-prompt.png`                     | ✅ Recaptured for 8.3.0 |
+| `followup.png`                          | ✅ Recaptured for 8.3.0 |
+| `narrative.png`                         | ✅ Captured             |
+| `edit-preset.png`                       | ✅ Recaptured for 8.3.0 |
+| `edit-preset2.png`                      | ✅ Recaptured for 8.3.0 |
+| `narrative-behaviors.png`               | ✅ Captured             |
 
 ## About Fresco
 
