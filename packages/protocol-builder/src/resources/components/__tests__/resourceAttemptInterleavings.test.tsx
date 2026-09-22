@@ -9,7 +9,7 @@ import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
 import {
-  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
+  DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ResourceDescriptor,
 } from '../../types.ts';
 import ResourcePreview, {
@@ -639,7 +639,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const arrayBuffer = vi.fn(() => Promise.resolve(new ArrayBuffer(0)));
       const huge = new File([''], 'huge.png', { type: 'image/png' });
       Object.defineProperty(huge, 'size', {
-        value: RESOURCE_UPLOAD_MAX_BYTE_LENGTH + 1,
+        value: DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH + 1,
       });
       Object.defineProperty(huge, 'arrayBuffer', { value: arrayBuffer });
       await user.upload(input, huge);
@@ -649,6 +649,64 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // pulls a file of any size into memory just to refuse it.
       expect(arrayBuffer).not.toHaveBeenCalled();
       expect(sources).toEqual([]);
+    },
+  },
+  {
+    surface: 'upload',
+    state: 'a host that stores less than the default limit',
+    input: 'a file above the host limit and below the default',
+    rule: "it is refused against the host's limit without being read",
+    check: async () => {
+      const user = userEvent.setup();
+      const sources: string[] = [];
+      renderResourceEditor({
+        client: (host) => stagingsInto(host, sources),
+        resourceUploadMaxByteLength: 1024,
+        children: imageField(),
+      });
+
+      const input = await openBrowser(user, 'Select an image');
+      const arrayBuffer = vi.fn(() => Promise.resolve(new ArrayBuffer(0)));
+      const over = new File([''], 'over.png', { type: 'image/png' });
+      Object.defineProperty(over, 'size', { value: 1025 });
+      Object.defineProperty(over, 'arrayBuffer', { value: arrayBuffer });
+      await user.upload(input, over);
+
+      expect(
+        await screen.findByText(
+          'That file is too large to import. Files can be up to 1.0 KB.',
+        ),
+      ).toBeVisible();
+      expect(arrayBuffer).not.toHaveBeenCalled();
+      expect(sources).toEqual([]);
+    },
+  },
+  {
+    surface: 'upload',
+    state: 'a host that stores more than the default limit',
+    input: 'a file above the default and within the host limit',
+    rule: 'it is imported rather than refused against the default',
+    check: async () => {
+      const user = userEvent.setup();
+      const sources: string[] = [];
+      renderResourceEditor({
+        client: (host) => stagingsInto(host, sources),
+        resourceUploadMaxByteLength:
+          DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH + 1024,
+        children: imageField(),
+      });
+
+      const input = await openBrowser(user, 'Select an image');
+      const large = new File(['large-png'], 'large.png', {
+        type: 'image/png',
+      });
+      Object.defineProperty(large, 'size', {
+        value: DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH + 1,
+      });
+      await user.upload(input, large);
+
+      await waitFor(() => expect(sources).toEqual(['large.png']));
+      expect(screen.queryByText(/too large to import/)).toBeNull();
     },
   },
   {

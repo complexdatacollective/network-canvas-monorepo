@@ -17,9 +17,10 @@ import {
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-rpc/uploads';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
+import type { AssetStore } from '../assets.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;

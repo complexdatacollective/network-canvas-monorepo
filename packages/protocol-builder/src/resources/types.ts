@@ -57,15 +57,19 @@ export type StageSecretRequest = Readonly<{
 }>;
 
 /**
- * The largest file the editor will read into memory to stage it.
+ * The largest file the editor reads into memory to stage it, for a host that
+ * names no limit of its own through `<ProtocolBuilder resourceUploadMaxByteLength>`.
  *
  * A limit the editor knows, not only one the host enforces: staging takes
  * bytes, so a control that waits for the host to refuse has already read the
  * whole file to learn it was too big — and the file a researcher picks by
- * mistake is exactly the one large enough to matter. A host may still refuse
- * something smaller, and that refusal is reported as any other is.
+ * mistake is exactly the one large enough to matter. That only holds while the
+ * editor's limit is the host's own, which is why each host supplies it: one
+ * value here would be too large for a host that stores less and too small for
+ * one that stores more. A host may still refuse something smaller, and that
+ * refusal is reported as any other is.
  */
-export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 500 * 1024 * 1024;
+export const DEFAULT_RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 500 * 1024 * 1024;
 
 /**
  * Reasons that are retryable by default: exactly the ones describing a

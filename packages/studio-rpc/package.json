@@ -14,7 +14,8 @@
     ".": "./src/contract.ts",
     "./client-session": "./src/clientSession.ts",
     "./protocol-builder": "./src/protocolBuilder.ts",
-    "./surfaces": "./src/surfaces.ts"
+    "./surfaces": "./src/surfaces.ts",
+    "./uploads": "./src/uploads.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -11,12 +11,12 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { useProtocolBuilderContext } from '../../state/context.ts';
 import { useResourceClient, type ResourceClient } from '../client.tsx';
-import {
-  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
-  type ResourceDescriptor,
-  type ResourceResult,
-  type StageUploadRequest,
+import type {
+  ResourceDescriptor,
+  ResourceResult,
+  StageUploadRequest,
 } from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
@@ -138,6 +138,7 @@ export default function ResourceUploadControl({
   disabled = false,
 }: ResourceUploadControlProps) {
   const resources = useResourceClient();
+  const { resourceUploadMaxByteLength } = useProtocolBuilderContext();
   const intl = useAppIntl();
   const { begin, busy, failure, retry } = useResourceAttempt();
   const inputId = useId();
@@ -207,8 +208,8 @@ export default function ResourceUploadControl({
       // control that waits for the host to refuse has already pulled a file
       // of any size into memory to be told what its own `size` said all
       // along — and the file picked by mistake is the large one.
-      if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
-        setRejected(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
+      if (file.size > resourceUploadMaxByteLength) {
+        setRejected(oversizeFileMessage(resourceUploadMaxByteLength));
         setReading(false);
         return;
       }
@@ -261,7 +262,7 @@ export default function ResourceUploadControl({
       // `busy` without ever being reported as nothing in between.
       setReading(false);
     },
-    [begin, kind, onStaged, resources],
+    [begin, kind, onStaged, resourceUploadMaxByteLength, resources],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

@@ -41,6 +41,8 @@ export type RenderResourceEditorOptions = ResourceHostSeed &
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
     /** Somebody else holds the stage, so this editor opens read-only. */
     readOnly?: boolean;
+    /** The limit the host names; the package's default when omitted. */
+    resourceUploadMaxByteLength?: number;
     /** The host's action chrome; a submit button, for a test that saves. */
     actions?: StageEditorShellProps['actions'];
     children: ReactNode;
@@ -89,7 +91,13 @@ const COLLABORATOR = {
 export function renderResourceEditor(
   options: RenderResourceEditorOptions,
 ): RenderedResourceEditor {
-  const { client: wrap, readOnly, actions, children } = options;
+  const {
+    client: wrap,
+    readOnly,
+    resourceUploadMaxByteLength,
+    actions,
+    children,
+  } = options;
   const host = createResourceHost({
     ...(options.stageType === undefined
       ? {}
@@ -132,7 +140,13 @@ export function renderResourceEditor(
 
   render(
     <DialogProvider>
-      <ProtocolBuilder client={client} protocolId={host.protocolId}>
+      <ProtocolBuilder
+        client={client}
+        protocolId={host.protocolId}
+        {...(resourceUploadMaxByteLength === undefined
+          ? {}
+          : { resourceUploadMaxByteLength })}
+      >
         <ResourceClientProvider editId={TEST_EDIT_ID}>
           <CaptureResourceClient />
           <StageEditSession target={{ sectionId: STAGE_SECTION }}>
