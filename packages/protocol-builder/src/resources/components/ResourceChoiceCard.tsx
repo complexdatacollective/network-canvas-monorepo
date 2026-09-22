@@ -57,7 +57,7 @@ export default function ResourceChoiceCard({
           className="mt-auto flex flex-wrap items-center gap-2"
         >
           <Badge
-            variant="outline"
+            appearance="outline"
             color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
           >
             {resourceKindLabel(descriptor.kind, intl)}
