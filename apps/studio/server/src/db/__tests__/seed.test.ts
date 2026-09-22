@@ -13,7 +13,7 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
-import { sha256Hex } from '../seed/rng.ts';
+import { seedTime, sha256Hex } from '../seed/rng.ts';
 
 const db = await reachableDb();
 
@@ -899,7 +899,8 @@ describe.skipIf(!db)('the seeded dataset', () => {
       count(
         pool,
         `select count(*)::int as n from studies
-         where deletion_requested_at is not null and purge_after <= now()`,
+         where deletion_requested_at is not null and purge_after <= $1`,
+        [seedTime(0)],
       ),
     ).resolves.toBe(0);
     await expect(
