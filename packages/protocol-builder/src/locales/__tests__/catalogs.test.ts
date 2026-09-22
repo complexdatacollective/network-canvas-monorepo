@@ -168,6 +168,7 @@ const AMERICAN_TO_BRITISH: ReadonlyMap<string, string> = new Map([
   ['recognizes', 'recognises'],
   ['recognized', 'recognised'],
   ['recognizable', 'recognisable'],
+  ['organization', 'organisation'],
 ]);
 
 const BRITISH_TO_AMERICAN: ReadonlyMap<string, string> = new Map(

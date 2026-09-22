@@ -8,6 +8,7 @@
   "protocolBuilder.codebookEntity.colorOutsidePalette": "Current colour ({color})",
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.colorSectionTitle": "Type colour",
+  "protocolBuilder.codebookEntity.nameHint": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organisation\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Works With\".} other {This name identifies the ego definition in the codebook and exported data.}}",
   "protocolBuilder.formFields.controlVisualAnalogScale": "Visual Analogue Scale",
   "protocolBuilder.geospatial.appearanceDescription": "Customise the colours, style, and features of the map.",
   "protocolBuilder.geospatial.colorHint": "Choose the colour used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a colour that remains easy to distinguish from the chosen Mapbox style.",

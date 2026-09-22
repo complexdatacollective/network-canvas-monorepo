@@ -103,7 +103,7 @@ after the fact is marked in place.
 | `arrayField`                | `form/rowDialog.tsx`, `form/DialogForm.tsx` (the row-editor failure), `form/arrayFields/cellRules.ts`, `arrayFields/arrayMessages.ts`                                                                                                                                                 | i18n-2b   |
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                                                                                                             | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                                                                                                                    | i18n-2b   |
-| `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                                                                                                         | i18n-2b   |
+| `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`, `form/arrayFields/cellRules.ts` (`duplicateLabelRow`), `codebook/editing.ts` (`minimumOptions`)                                                                                                                        | i18n-2b   |
 | `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                                                                                                                    | i18n-2b   |
 | `variablePicker`            | `fields/VariablePickerField.tsx`, `fields/VariableSpotlight.tsx`, `fields/AttributePill.tsx` (the `rename*` ids; all three added by the parity loop)                                                                                                                                  | i18n-2b   |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                                                                                                          | i18n-2b   |
@@ -184,6 +184,12 @@ has to have exactly one:
   home of each id. A refused save is NOT here: every refused codebook change,
   one held by a collaborator included, is read once by
   `codebook/compoundFailureCopy.ts`.
+- `codebook/editing.ts` — `option.minimumOptions`, beside its own
+  `codebookEditing` ids. The codebook refuses to save a categorical or ordinal
+  attribute with fewer options than `MINIMUM_VARIABLE_OPTIONS`, and the options
+  list's array-level rule (`form/arrayFields/Options.tsx`) says the same
+  sentence before the save is attempted, so the sentence is declared once where
+  the refusal is decided and the list imports it.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun a list with no
   word for its rows falls back to, in the row's own affordances and in a
   removal it refuses.
@@ -380,14 +386,12 @@ for something else or reopens a decision that has been made:
   picker only chooses; `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own option list until the
   sibling create buttons are folded into the picker.
-- **`attributeCodebookControls`** owns the words on its own buttons, and the
-  one sentence its dialogs carry that the editor inside them cannot say.
-  Almost everything a dialog it opens says is the codebook editor's
-  (`codebookVariable`, `variableValidation`), because the researcher is
-  looking at that editor by then. The exception is `attributeDeleted*`:
-  `VariableEditor` reads an attribute deleted under it as one whose TYPE
-  changed, so the only surface that can tell a researcher what actually
-  happened is the one that knows which attribute the editor was opened on.
+- **`attributeCodebookControls`** holds one sentence:
+  `rulesDroppedForNewKind`, the notice shown when changing the kind of answer an
+  invented attribute holds takes away rules already written for it. Only the
+  row knows which rules the change removed, so the notice is said there; the
+  rules themselves are named by the codebook editor's labels
+  (`variableValidation`).
 
 `stageName` moved out of a section and into the module the name's three hooks
 share. What a stage TITLE looks like is host chrome now — Architect draws the
