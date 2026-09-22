@@ -160,12 +160,12 @@ Source: `docs/get-started/planning-a-study/workflows.en.mdx`
 
 Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/guide-vercel.en.mdx` (both reference the same images)
 
-| Image                                   | Alt text / caption                                             | Status                  |
-| --------------------------------------- | -------------------------------------------------------------- | ----------------------- |
-| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                  | ✅ Recaptured for 4.2.0 |
-| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                  | ✅ Recaptured for 4.2.0 |
-| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                              | ✅ Recaptured for 4.2.0 |
-| `/assets/img/fresco-images/fresco4.png` | Import participants and optionally allow anonymous recruitment | ⬜ Not yet replaced     |
+| Image                                   | Alt text / caption                                                  | Status                  |
+| --------------------------------------- | ------------------------------------------------------------------- | ----------------------- |
+| `/assets/img/fresco-images/fresco1.png` | Enter a username and password                                       | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco2.png` | Paste your environment variable into the form                       | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco3.png` | Upload a protocol                                                   | ✅ Recaptured for 4.2.0 |
+| `/assets/img/fresco-images/fresco4.png` | The final setup step links to documentation and opens the dashboard | ✅ Recaptured for 4.2.0 |
 
 ---
 
