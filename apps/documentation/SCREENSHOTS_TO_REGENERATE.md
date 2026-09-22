@@ -8,18 +8,18 @@ Image paths are relative to `apps/documentation/public`.
 Rows marked 🔄 in the tables below changed with these releases. Capture them from
 the released builds. These affected images are not tracked in any table below:
 
-| Image (`/assets/img/…`)                                                                                      | What changed                                                           |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `architect/home-screen.png`, `architect/overview-screen.png`, `architect/preview-settings.png`               | Header language switcher (`home-screen.png` still shows v7.6.0)        |
-| `architect/edit-node-type-web.png`, `architect/node-shape-variable-mapping.jpg`                              | Regrouped node-type dialog, searchable icons, "Map attribute to shape" |
-| `key-concepts/forms/field.png`, `key-concepts/forms/form.png`                                                | Two-pane field dialog with participant preview                         |
-| `interface-documentation/categorical-bin/architect-other.png`                                                | Validation section on the "other" follow-up                            |
-| `interface-documentation/geospatial/initial-map-view.png`                                                    | Single "Initial map view" control with a real map                      |
-| `key-concepts/assets/asset-library.png`, `key-concepts/assets/bg-asset.png`                                  | Resources shown as a card grid (after PR #1974)                        |
-| `interviewer-guide/` — new capture of the in-interview settings menu                                         | Interface language chooser (not shown anywhere yet)                    |
-| `fresco-images/user-management.png`                                                                          | "Require Two-Factor Authentication" row, badge chips                   |
-| `fresco-images/configure-storage-s3.png`                                                                     | Globe button in the setup header                                       |
-| `fresco-images/protocols-page.png`, `participants-page.png`, `interviews-filtering.png`, `activity-feed.png` | Check: top bar and badge chips may have changed                        |
+| Image (`/assets/img/…`)                                                                        | What changed                                                           |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `architect/home-screen.png`, `architect/overview-screen.png`, `architect/preview-settings.png` | Header language switcher (`home-screen.png` still shows v7.6.0)        |
+| `architect/edit-node-type-web.png`, `architect/node-shape-variable-mapping.jpg`                | Regrouped node-type dialog, searchable icons, "Map attribute to shape" |
+| `key-concepts/forms/field.png`, `key-concepts/forms/form.png`                                  | Two-pane field dialog with participant preview                         |
+| `interface-documentation/categorical-bin/architect-other.png`                                  | Validation section on the "other" follow-up                            |
+| `interface-documentation/geospatial/initial-map-view.png`                                      | Single "Initial map view" control with a real map                      |
+| `key-concepts/assets/asset-library.png`, `key-concepts/assets/bg-asset.png`                    | Resources shown as a card grid (after PR #1974)                        |
+| `interviewer-guide/` — new capture of the in-interview settings menu                           | Interface language chooser (not shown anywhere yet)                    |
+| `fresco-images/user-management.png`                                                            | "Require Two-Factor Authentication" row, badge chips                   |
+| `fresco-images/configure-storage-s3.png`                                                       | Globe button in the setup header                                       |
+| `fresco-images/interviews-filtering.png`, `activity-feed.png`                                  | Check: top bar and badge chips may have changed                        |
 
 ## Using Interviewer (Interviewer screenshots)
 
@@ -141,13 +141,13 @@ Source: `docs/collect-data/fresco/about.en.mdx`
 
 Source: `docs/collect-data/fresco/using-fresco.en.mdx`
 
-| Image                                                   | Alt text                                | Status                                     |
-| ------------------------------------------------------- | --------------------------------------- | ------------------------------------------ |
-| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | ✅ Replaced                                |
-| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | ✅ Replaced                                |
-| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced                                |
-| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced                                |
-| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | 🔄 Recapture — 2FA requirement row, badges |
+| Image                                                   | Alt text                                | Status                                              |
+| ------------------------------------------------------- | --------------------------------------- | --------------------------------------------------- |
+| `/assets/img/fresco-images/protocols-page.png`          | The protocols page in the dashboard.    | 🔄 Check — top bar and badge chips may have changed |
+| `/assets/img/fresco-images/participants-page.png`       | The participants page in the dashboard. | 🔄 Check — top bar and badge chips may have changed |
+| `/assets/img/fresco-images/participants-add-single.png` | Adding a single participant             | ✅ Replaced                                         |
+| `/assets/img/fresco-images/csv-import.png`              | The CSV import dialog                   | ✅ Replaced                                         |
+| `/assets/img/fresco-images/settings-page.png`           | The settings page in the dashboard.     | 🔄 Recapture — 2FA requirement row, badges          |
 
 ## Workflows overview (Planning a Study)
 
