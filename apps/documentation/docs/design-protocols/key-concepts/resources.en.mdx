@@ -87,7 +87,17 @@ Interviewer supports MP3, AIFF, M4A, and MP4 audio file formats.
 
 Interviewer supports MP4 and MOV video file formats. Take special care when using video to make your files as small as possible.
 
+<AppOnly app="current">
+
 When you add a video to an [Information](/en/design-protocols/interface-documentation/information) stage, fill in the item's **Description**. A participant using a screen reader hears it as the video's name, in the same way that an image's description is read as its alternative text and an audio item's description names its player. If you leave it empty, the screen reader reads the video's file name instead, so write a short description for every video, as you would for images and audio.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Interviewer Classic does not pass an item's **Description** to its video or audio players, so a participant using a screen reader hears no name for them. Where that matters, introduce the video in a text item on the same screen.
+
+</AppOnly>
 
 ### Network
 
