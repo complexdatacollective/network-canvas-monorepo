@@ -5,7 +5,6 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import {
@@ -89,23 +88,6 @@ const messages = defineMessages({
 });
 
 const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
-
-/**
- * The rule that can actually refuse a save.
- *
- * The whole list is one field value, so this is where a rule about the list
- * itself belongs — a row cannot refuse anything, and the
- * protocol schema's own "Too small: expected array to have >=1 items" arrives
- * against a path rather than against the section the researcher is looking at.
- */
-const promptsValidation = {
-  custom: messageRuleValidation([
-    (value: unknown) =>
-      Array.isArray(value) && value.length > 0
-        ? undefined
-        : AT_LEAST_ONE_PROMPT,
-  ]),
-};
 
 export type PromptsSectionProps = Readonly<{
   /**
@@ -321,7 +303,7 @@ export default function PromptsSection({
           editorComponent={RowDialog}
           itemTemplate={rowTemplate(itemTemplate)}
           sortable
-          {...promptsValidation}
+          required={AT_LEAST_ONE_PROMPT}
         />
       </RowList>
     </BuilderSection>

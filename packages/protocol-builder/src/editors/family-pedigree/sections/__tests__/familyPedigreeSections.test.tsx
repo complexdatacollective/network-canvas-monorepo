@@ -1319,7 +1319,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     expect(
       await screen.findByText(
-        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+        'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
       ),
     ).toBeInTheDocument();
     // The dialog stays open, holding the prompt the researcher wrote, rather
@@ -1350,9 +1350,48 @@ describe('a codebook that changes while the pedigree is open', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        '"fm_name" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+        'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('withdraws the gone refusal once the attribute is in the codebook', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'preferred_name', {
+      name: 'preferred_name',
+      type: 'text',
+    });
+    removeFamilyMemberVariable(harness, 'fm_name');
+    expect(await harness.submit()).toBeNull();
+    await screen.findByText(/is no longer in the codebook/);
+
+    addFamilyMemberVariable(harness, 'fm_name', {
+      name: 'fm_name',
+      type: 'text',
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/is no longer in the codebook/),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).not.toBeNull();
+  });
+
+  it('holds an attribute invented from a slot without calling it gone', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await inventAttribute(
+      harness.user,
+      attributeField('Display label'),
+      'preferred_name',
+    );
+
+    await within(attributeField('Display label')).findByText('preferred_name');
+    expect(
+      screen.queryByText(/is no longer in the codebook/),
+    ).not.toBeInTheDocument();
+    expect(await harness.submit()).not.toBeNull();
   });
 
   /**
@@ -1716,10 +1755,8 @@ async function openFormField(
   return within(await screen.findByRole('dialog'));
 }
 
-/** Adds one value to the attribute list the codebook editor is showing. */
 async function addOption(
   harness: StageEditorHarness,
-  position: number,
   label: string,
   value: string,
 ): Promise<void> {
@@ -1727,12 +1764,15 @@ async function addOption(
     screen.getByRole('button', { name: 'Create new option' }),
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    await screen.findByRole('textbox', { name: 'Label' }),
     label,
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    screen.getByRole('textbox', { name: 'Value' }),
     value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
   );
 }
 
@@ -1827,26 +1867,17 @@ describe('what a family member form field’s attribute holds', () => {
     await within(attributeField('Attribute', dialog)).findByText(
       'household_role',
     );
-    // An attribute participants choose from IS its values, so a name and a
-    // control are not enough — the row sends the researcher to the editor that
-    // authors both.
     await harness.user.selectOptions(
       await field.findByRole('combobox', { name: 'Input control' }),
       'CheckboxGroup',
     );
-    await harness.user.click(
-      field.getByRole('button', {
-        name: 'Create this attribute and its values',
-      }),
+    await addOption(harness, 'Parent', 'parent');
+    await addOption(harness, 'Sibling', 'sibling');
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question text' }),
+      'Q?',
     );
-    expect(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-    ).toHaveValue('household_role');
-    await addOption(harness, 1, 'Parent', 'parent');
-    await addOption(harness, 2, 'Sibling', 'sibling');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
 
     const created = await waitFor(() => {
       const entry = Object.entries(familyMemberVariables(harness)).find(
@@ -1865,11 +1896,13 @@ describe('what a family member form field’s attribute holds', () => {
       ],
     });
 
-    // And the field is left collecting what was just created, so finishing the
-    // row would record a question against it rather than against nothing.
-    expect(
-      within(attributeField('Attribute', dialog)).getByText('household_role'),
-    ).toBeVisible();
+    expect(await savedFormRows(harness)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: created[0],
+        prompt: 'Q?',
+      },
+    ]);
   });
 
   /**
@@ -1945,19 +1978,13 @@ describe('what a family member form field’s attribute holds', () => {
     await addFormFieldCollecting(harness, diagnosedOn);
 
     const editing = await openFormField(harness, 0);
-    await harness.user.click(
-      await editing.findByRole('button', {
-        name: 'Set what this field accepts',
-      }),
-    );
-    await screen.findByRole('button', { name: 'Save attribute' });
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
+      within(
+        await editing.findByRole('region', { name: 'Control settings' }),
+      ).getByRole('combobox', { name: 'Date resolution' }),
       'year',
     );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
 
     // Written on the family member's attribute, beside the control they were
     // authored for — not on the form row, which holds only its question.
@@ -1973,10 +2000,6 @@ describe('what a family member form field’s attribute holds', () => {
         parameters: { type: 'year' },
       }),
     );
-    // The row is closed before the stage is read: the settings the researcher
-    // authored went to the attribute, and the row itself still holds nothing
-    // but its question.
-    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );

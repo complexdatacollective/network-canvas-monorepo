@@ -115,7 +115,7 @@ export default function StageDestinationPickerField({
       {problem !== undefined && (
         <p
           id={problemId}
-          className="text-destructive text-sm"
+          className="text-destructive-ink text-sm"
           data-destination-problem
         >
           {problem}

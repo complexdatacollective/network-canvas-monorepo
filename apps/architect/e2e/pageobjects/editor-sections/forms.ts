@@ -1,4 +1,4 @@
-import { expect, type Locator } from '@playwright/test';
+import { type Locator } from '@playwright/test';
 
 import { createAttribute } from './variables.js';
 
@@ -106,34 +106,11 @@ const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
   'Relative Date Picker': 'Date',
 };
 
-/**
- * The kinds of answer a name and a type alone cannot finish, so the dialog
- * sends the researcher to the codebook's own editor to invent one.
- *
- * `needsCodebookEditorToCreate` (`collectableTypes.ts`) decides this in the
- * app: a list of answers IS its values, which the schema refuses fewer than
- * two of, and a scale IS the two labels saying which end is which.
- */
-const NEEDS_CODEBOOK_EDITOR = new Set(['Categorical', 'Ordinal', 'Scalar']);
-
-/** The button that opens that editor, which is named for what it creates. */
-const createInEditorLabel = (variableType: string): string =>
-  variableType === 'Scalar'
-    ? 'Create this attribute and what it accepts'
-    : 'Create this attribute and its values';
-
 export type InventAttributeOptions = {
   variableName: string;
   variableType?: string;
   inputControl?: string;
-  /**
-   * Fills in whatever the codebook editor asks for beyond a name — the values
-   * of a list, the two ends of a scale. Called with the editor dialog, after
-   * the name it opened holding has been read back and before "Create
-   * attribute" is pressed. Only reached for the types in
-   * `NEEDS_CODEBOOK_EDITOR`.
-   */
-  inEditor?: (editor: Locator) => Promise<void>;
+  inRow?: (dialog: Locator) => Promise<void>;
 };
 
 /**
@@ -152,17 +129,14 @@ export type InventAttributeOptions = {
  * and the kind follows from it. It opens on its placeholder, so it is always
  * selected here rather than merely confirmed.
  *
- * Nothing reaches the codebook until something is submitted: for a kind a name
- * finishes, the row carries `_newVariableName`/`_component` and
- * `useCommitFormField` turns them into the attribute when the ROW is saved;
- * for the others, the editor's own "Create attribute" writes it and the row is
- * then pointed at what it made.
+ * Nothing reaches the codebook until something is submitted: the row carries
+ * `_newVariableName`/`_component` and `useCommitFormField` turns them into the
+ * attribute when the ROW is saved.
  */
 export async function inventAttributeInFieldDialog(
   dialog: Locator,
   opts: InventAttributeOptions,
 ): Promise<void> {
-  const page = dialog.page();
   const inputControl = opts.inputControl ?? 'Text Input';
   const variableType =
     opts.variableType ?? VARIABLE_TYPE_FOR_CONTROL[inputControl];
@@ -184,37 +158,10 @@ export async function inventAttributeInFieldDialog(
     dialog.locator('[data-field-name="variable"]'),
     opts.variableName,
   );
-  // Answered first: it is what tells the row which kind of answer the
-  // attribute holds, and so whether the codebook's own editor has to author it.
   const control = dialog.getByRole('combobox', {
     name: 'Input control',
     exact: true,
   });
   await control.selectOption({ label: inputControl });
-
-  if (NEEDS_CODEBOOK_EDITOR.has(variableType)) {
-    const openLabel = createInEditorLabel(variableType);
-    await dialog.getByRole('button', { name: openLabel, exact: true }).click();
-    // The editor is a dialog of its own, over the row's, and it takes the
-    // button's own words as its title (`AttributeCodebookControls`'s
-    // `editorTitle`) — which is what tells the two apart while both are open.
-    const editor = page.getByRole('dialog', { name: openLabel, exact: true });
-    // Read back rather than typed. The row carries the name the create row
-    // took and seeds the editor with it (`AttributeCodebookControls`'s
-    // `initialDraft={{ name: inventing.name }}`), and this is the only place
-    // the suite reads that seeding end to end — a helper that filled the box
-    // itself would pass just as well with it broken.
-    await expect(
-      editor.getByRole('textbox', { name: 'Attribute name', exact: true }),
-    ).toHaveValue(opts.variableName);
-    await opts.inEditor?.(editor);
-    await editor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    // Answered again only once the attribute exists: the row is bound to it
-    // now, so the control has narrowed to that kind's and been re-seeded from
-    // what the codebook editor gave it.
-    await editor.waitFor({ state: 'detached' });
-    await control.selectOption({ label: inputControl });
-  }
+  await opts.inRow?.(dialog);
 }

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import FieldErrors from './form/FieldErrors';
 import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
@@ -468,8 +469,8 @@ const THEME_SCOPES = [
 ] as const;
 
 /**
- * WCAG AA for normal-size text. The token exists to carry field errors, which
- * are body-size, so the large-text 3:1 allowance never applies to it.
+ * WCAG AA for normal-size text. Everything measured here is body-size or
+ * smaller, so the large-text 3:1 allowance never applies.
  */
 const AA_NORMAL_TEXT = 4.5;
 
@@ -536,7 +537,15 @@ const contrastRatio = (foreground: string, background: string) => {
 };
 
 /**
- * The destructive ink a tinted surface opts into, drawn in every theme.
+ * The destructive text an accent Surface draws, and the boxed field error it
+ * draws instead of plain error text, in every theme.
+ *
+ * An accent Surface points `--destructive-ink` (read by `text-destructive-ink`:
+ * required-field markers, inline error lines) at
+ * `--surface-accent-destructive`, which is `--destructive-strong`. A field
+ * error on an accent Surface is not drawn in that ink: `FieldErrors` boxes it,
+ * `--destructive-box-contrast` on `--destructive`, and that pair is measured
+ * here too.
  *
  * `--destructive-strong` is `--destructive` mixed toward the reader's own text
  * colour until it is legible on a tinted surface, and BOTH of those are
@@ -561,8 +570,9 @@ export const DestructiveInkPerTheme: Story = {
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
           Each row draws one theme’s <code>--destructive</code> fill and the{' '}
-          <code>--destructive-strong</code> ink a tinted surface opts into, both
-          on that theme’s accent surface.
+          <code>--surface-accent-destructive</code> ink an accent surface draws
+          destructive text with, on that theme’s first two accent steps, and the
+          boxed field error an accent surface draws.
         </Paragraph>
         <div className="space-y-4">
           {THEME_SCOPES.map((scope) => (
@@ -586,10 +596,29 @@ export const DestructiveInkPerTheme: Story = {
                 </span>
                 <span
                   data-testid={`ink-${scope.name}`}
-                  style={{ color: 'var(--destructive-strong)' }}
+                  style={{ color: 'var(--surface-accent-destructive)' }}
                 >
-                  --destructive-strong
+                  --surface-accent-destructive
                 </span>
+                <div
+                  className="rounded p-2"
+                  data-testid={`surface-1-${scope.name}`}
+                  style={{ background: 'var(--surface-accent-1)' }}
+                >
+                  <span
+                    data-testid={`ink-1-${scope.name}`}
+                    style={{ color: 'var(--surface-accent-destructive)' }}
+                  >
+                    --surface-accent-destructive
+                  </span>
+                </div>
+                <FieldErrors
+                  id={`box-${scope.name}`}
+                  name={`box-${scope.name}`}
+                  errors={['This value must be unique.']}
+                  show
+                  variant="box"
+                />
               </div>
             </div>
           ))}
@@ -625,13 +654,22 @@ export const DestructiveInkPerTheme: Story = {
     // The point of the token. A mixture that is merely made per scope is not
     // yet legible: at the one 78% weighting every scope started from, Studio
     // dark measured 4.32:1 and Interview 2.37:1, both under AA for the
-    // normal-size field errors this exists to carry. The weighting is now
+    // normal-size destructive text it carries. The weighting is now
     // chosen per scope, and this measures the result rather than trusting the
     // arithmetic behind it.
-    const ratios = THEME_SCOPES.map((scope) => ({
-      scope: scope.name,
-      ratio: contrastRatio(inkOf(scope.name), surfaceOf(scope.name)),
-    }));
+    const ratios = THEME_SCOPES.flatMap((scope) => [
+      {
+        scope: scope.name,
+        ratio: contrastRatio(inkOf(scope.name), surfaceOf(scope.name)),
+      },
+      {
+        scope: `${scope.name} step 1`,
+        ratio: contrastRatio(
+          inkOf(`1-${scope.name}`),
+          surfaceOf(`1-${scope.name}`),
+        ),
+      },
+    ]);
 
     // Asserted as a list rather than one expectation per scope so a failing
     // run names every scope that is short, and by how much, in one read.
@@ -639,7 +677,22 @@ export const DestructiveInkPerTheme: Story = {
       ratios
         .filter(({ ratio }) => ratio < AA_NORMAL_TEXT)
         .map(({ scope, ratio }) => `${scope} ${ratio.toFixed(2)}:1`),
-      '--destructive-strong is below AA on its own --surface-accent',
+      '--surface-accent-destructive is below AA on its own accent surface',
+    ).toEqual([]);
+
+    await expect(
+      THEME_SCOPES.map((scope) => {
+        const box = getComputedStyle(
+          canvas.getByTestId(`box-${scope.name}-field-error`),
+        );
+        return {
+          scope: scope.name,
+          ratio: contrastRatio(box.color, box.backgroundColor),
+        };
+      })
+        .filter(({ ratio }) => ratio < AA_NORMAL_TEXT)
+        .map(({ scope, ratio }) => `${scope} ${ratio.toFixed(2)}:1`),
+      'a boxed field error is below AA on its own fill',
     ).toEqual([]);
   },
 };

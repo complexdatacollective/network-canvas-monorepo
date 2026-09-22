@@ -34,9 +34,19 @@ export default function ScaleValuePopover({
     const track = () => {
       const positioner = positionerRef.current;
       if (positioner) {
+        // `fixed` resolves against the viewport only when no ancestor has a
+        // transform or filter; inside a dialog (whose open animation leaves
+        // `filter: blur(0px)` behind) it resolves against the dialog instead.
+        // Measure where the positioner's origin actually sits and offset from
+        // that, so the bubble lands on the thumb either way.
         const rect = anchor.getBoundingClientRect();
-        positioner.style.left = `${rect.left + rect.width / 2}px`;
-        positioner.style.top = `${rect.top}px`;
+        const current = positioner.getBoundingClientRect();
+        const originX =
+          current.left - (Number.parseFloat(positioner.style.left) || 0);
+        const originY =
+          current.top - (Number.parseFloat(positioner.style.top) || 0);
+        positioner.style.left = `${rect.left + rect.width / 2 - originX}px`;
+        positioner.style.top = `${rect.top - originY}px`;
       }
       frame = requestAnimationFrame(track);
     };

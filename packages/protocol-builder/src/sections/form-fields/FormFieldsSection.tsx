@@ -42,6 +42,10 @@ import {
   optionsShapeFor,
 } from '../../codebook/variableOptions.ts';
 import {
+  parametersForShape,
+  parameterShapeFor,
+} from '../../codebook/variableParameters.ts';
+import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../codebook/variableRoles.ts';
@@ -86,6 +90,9 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
+import AttributeParameterFields, {
+  ATTRIBUTE_PARAMETERS_FIELD,
+} from '../AttributeParameterFields.tsx';
 import AttributeValueFields, {
   ATTRIBUTE_OPTIONS_FIELD,
 } from '../AttributeValueFields.tsx';
@@ -95,14 +102,11 @@ import {
   allControlGroups,
   controlsForType,
   isCollectableType,
-  isOptionType,
-  needsCodebookEditorToCreate,
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
 import {
-  CREATE_FIRST_REFUSALS,
   INVENTED_TYPE_NOTICE,
   NEW_VARIABLE,
   NEW_VARIABLE_NAME,
@@ -418,14 +422,6 @@ const MALFORMED_FIELD = createMessageError(messages.malformedField);
 
 const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
-const CREATE_WITH_VALUES_FIRST = createMessageError(
-  CREATE_FIRST_REFUSALS.createWithValuesFirst,
-);
-
-const CREATE_WITH_SETTINGS_FIRST = createMessageError(
-  CREATE_FIRST_REFUSALS.createWithSettingsFirst,
-);
-
 const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
@@ -443,21 +439,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
-
-/**
- * The rules that can actually refuse a save.
- *
- * The whole list is one field value, so a rule about the list belongs here —
- * a row cannot refuse anything, and the schema's own "Too
- * small: expected array to have >=1 items" arrives against a path rather than
- * against the section the researcher is looking at. Completeness and the
- * one-field-per-attribute rule are the same story: both are schema failures
- * that would otherwise surface long after the researcher has moved on, and the
- * duplicate rule asks the question in exactly the schema's terms
- * (`duplicateFormFieldIndices`) so the two cannot disagree.
- */
-const atLeastOneField = (value: unknown) =>
-  Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD;
 
 /**
  * Said of an entry the list cannot even show.
@@ -791,11 +772,7 @@ export default function FormFieldsSection({
   const fieldsValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        // Before the one that counts it. Only the first rule to fail is shown,
-        // and "add at least one field" said of a value that is not a list
-        // sends the researcher to add a row to something that cannot hold one.
         everyEntryIsAField,
-        ...(optional ? [] : [atLeastOneField]),
         everyFieldComplete,
         noAttributeTwice,
         (value: unknown) =>
@@ -902,6 +879,7 @@ export default function FormFieldsSection({
             editorComponent={RowDialog}
             itemTemplate={rowTemplate()}
             sortable
+            required={optional ? false : AT_LEAST_ONE_FIELD}
             {...fieldsValidation}
           />
         </RowList>
@@ -930,6 +908,7 @@ function normalizeFormField(value: RowValues): RowValues {
     [NEW_VARIABLE_VALIDATION]: _validation,
     [INPUT_CONTROL]: _component,
     [ATTRIBUTE_OPTIONS_FIELD]: _options,
+    [ATTRIBUTE_PARAMETERS_FIELD]: _parameters,
     ...field
   } = cleaned;
   if (field.showValidationHints === false) delete field.showValidationHints;
@@ -962,12 +941,20 @@ function useExpandFormField(
       ];
       const asOpened =
         held === undefined ? undefined : Reflect.get(held, 'options');
+      const parametersAsOpened =
+        held === undefined ? undefined : Reflect.get(held, 'parameters');
       // Absent stays absent: a yes-or-no attribute that names no answers
       // carries no `options` key at all, and a row holding the key with
       // nothing under it is not the same row.
-      return asOpened === undefined
-        ? row
-        : { ...row, [ATTRIBUTE_OPTIONS_FIELD]: asOpened };
+      return {
+        ...row,
+        ...(asOpened === undefined
+          ? {}
+          : { [ATTRIBUTE_OPTIONS_FIELD]: asOpened }),
+        ...(parametersAsOpened === undefined
+          ? {}
+          : { [ATTRIBUTE_PARAMETERS_FIELD]: parametersAsOpened }),
+      };
     },
     [codebookSubject, protocolContext],
   );
@@ -1012,23 +999,6 @@ function useCommitFormField(
         value.variable === NEW_VARIABLE && component !== ''
           ? variableTypeForComponent(component)
           : undefined;
-      // A kind the codebook editor has to author cannot be created from a
-      // control alone; the refusal is filed on the control, which is where the
-      // kind was decided.
-      if (
-        inventedType !== undefined &&
-        needsCodebookEditorToCreate(inventedType)
-      ) {
-        return {
-          refused: {
-            fieldErrors: {
-              [INPUT_CONTROL]: isOptionType(inventedType)
-                ? CREATE_WITH_VALUES_FIRST
-                : CREATE_WITH_SETTINGS_FIRST,
-            },
-          },
-        };
-      }
       // Where the row is not inventing, `InputControlField` may be absent, and
       // a refusal filed against a field that is not in the document sends
       // `focusFirstError` nowhere — so that one goes above the fields instead.
@@ -1048,7 +1018,35 @@ function useCommitFormField(
 
       if (value.variable !== NEW_VARIABLE) {
         const variableId = asString(value.variable) ?? '';
-        const outcome = await setComponent(variableId, component);
+        const heldVariable =
+          codebookSubject === undefined
+            ? undefined
+            : variablesForSubject(protocolContext, codebookSubject)[variableId];
+        const shape = parameterShapeFor(heldVariable?.type, component);
+        const parametersBoundAsOpened =
+          context.openedOn.variable === variableId;
+        const parametersWriting =
+          shape === null
+            ? undefined
+            : parametersForShape(shape, value[ATTRIBUTE_PARAMETERS_FIELD]);
+        const parametersAsOpened =
+          shape === null
+            ? undefined
+            : parametersForShape(
+                shape,
+                parametersBoundAsOpened
+                  ? context.openedOn[ATTRIBUTE_PARAMETERS_FIELD]
+                  : heldVariable === undefined
+                    ? undefined
+                    : Reflect.get(heldVariable, 'parameters'),
+              );
+        const outcome = await setComponent(
+          variableId,
+          component,
+          shape !== null && !isEqual(parametersWriting, parametersAsOpened)
+            ? { parameters: parametersWriting }
+            : undefined,
+        );
         if (outcome.status === 'refused') {
           // Under the control the researcher chose it with, wherever that
           // control is still on screen. It is not always: an attribute a
@@ -1191,6 +1189,14 @@ function useCommitFormField(
         value[ATTRIBUTE_OPTIONS_FIELD],
         undefined,
       );
+      const inventedShape = parameterShapeFor(type, component);
+      const inventedParameters =
+        inventedShape === null
+          ? undefined
+          : parametersForShape(
+              inventedShape,
+              value[ATTRIBUTE_PARAMETERS_FIELD],
+            );
       const outcome = await createVariable({
         name,
         type,
@@ -1199,6 +1205,9 @@ function useCommitFormField(
           ? { validation }
           : {}),
         ...(isOptionListToWrite(invented) ? { options: invented } : {}),
+        ...(inventedParameters === undefined
+          ? {}
+          : { parameters: inventedParameters }),
       });
       if (outcome.status === 'refused') {
         // On the picker, which is where the name was typed and the only
@@ -1459,10 +1468,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const inventedName =
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
 
-  // Asked HERE rather than inside the field, because the field comes and goes
-  // and the question does not: the row is on its second binding by the time a
-  // control invented in the codebook editor is back on screen, and what the
-  // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
   // The kind of answer an invented attribute will hold, which the input
   // control decides — this dialog asks for no kind of its own. Empty until a
@@ -1501,14 +1506,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
       >
         <AttributePicker item={item} editIndex={editIndex} />
         <AttributeCodebookControls
-          subject={subject}
-          committedVariable={item.variable}
-          componentField={INPUT_CONTROL}
           {...(inventing
             ? {
                 inventing: {
                   type: newType,
-                  name: inventedName,
                   rulesField: NEW_VARIABLE_VALIDATION,
                 },
               }
@@ -1557,6 +1558,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         subject={subject}
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
+        revealWhenChosenIn={INPUT_CONTROL}
+        {...(inventing && newType !== '' ? { invented: newType } : {})}
+      />
+      <AttributeParameterFields
+        subject={subject}
+        variableId={control.chosen === '' ? undefined : control.chosen}
+        rowComponent={liveControl ?? ''}
+        revealWhenChosenIn={INPUT_CONTROL}
         {...(inventing && newType !== '' ? { invented: newType } : {})}
       />
       {/* Architect's own last section of this dialog
@@ -1567,11 +1576,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           row is still inventing has no record to write to, and its rules ride
           along with the create. */}
       {inventing
-        ? // A kind the codebook editor authors carries its rules along with
-          // that create, so a second rules surface here would have nowhere to
-          // go.
-          isCollectableType(newType) &&
-          !needsCodebookEditorToCreate(newType) && (
+        ? isCollectableType(newType) && (
             <DraftVariableValidationSection
               entity={subject?.entity ?? 'node'}
               variableType={newType}
@@ -1650,15 +1655,6 @@ type AttributeControl = Readonly<{
 
 /**
  * The row's input control, derived wherever the row itself is.
- *
- * Read by `FormFieldEditor` rather than by the field, because the field is not
- * always on screen and the question outlives it: an attribute that IS its
- * values or its end labels is authored in the codebook's own editor, and there
- * is nothing for a control to be chosen for while that is happening. The
- * row's `_component` survives that unmount — `useField` unregisters preserving
- * its value and `registerField` prefers that dormant value over the initial
- * one — so a control chosen for the attribute the row USED to collect would
- * come back as an answer about the one it collects now.
  */
 function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const intl = useAppIntl();
@@ -1809,17 +1805,6 @@ function InputControlField({
  * and it is the same write from the other end: the binding never changes, so
  * nothing about the row is different — only the codebook is — and saving
  * anything else in the row put the collaborator's change back.
- *
- * Held by the ROW rather than by the field, because the field is not on screen
- * for every one of those bindings. An attribute that IS its values or its end
- * labels is authored in the codebook's own editor, and there is nothing for a
- * control to be chosen for while that is happening: the field is unmounted for
- * the whole invention, and a memory kept inside it would be a fresh one that
- * read the previous binding's answer — a value the field never lost — as the
- * researcher's answer about the attribute they had just created. Writing while
- * the field is gone is what a dormant value is for: `setFieldValue` parks it
- * for the next registration, so the control comes back saying what the new
- * attribute says.
  *
  * A write through the store rather than a tombstone: the control is not being
  * discarded, it is being answered again, and the answer is the one the

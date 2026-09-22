@@ -40,6 +40,7 @@ function isMessageAst(value: unknown): value is MessageFormatElement[] {
       case 4: // Time.
         return (
           element.style === undefined ||
+          element.style === null ||
           typeof element.style === 'string' ||
           isRecord(element.style)
         );

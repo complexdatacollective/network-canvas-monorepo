@@ -15,11 +15,12 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // So the browser is found by what only it holds, and both descriptions are
 // read off the same components `data-source.ts` reads:
 // - the import control, a real `<input type="file">` labelled "Choose a file
-//   from your computer" (`ResourceUploadControl.tsx`) — every browser but an
-//   API key's has one, and it is there before any resource is;
+//   from your computer" (`ResourceUploadControl.tsx`, `sr-only` behind its
+//   label) — every browser but an API key's has one, and it is there before
+//   any resource is;
 // - the protocol's own resources, a `<ul>` named "Resources in this protocol"
-//   whose every row carries a `<button>` named for the resource
-//   (`ResourceBrowserDialog.tsx`) — present only once the protocol holds one,
+//   whose every row is a card `<button>` named for the resource
+//   (`ResourceChoiceCard.tsx`) — present only once the protocol holds one,
 //   which is exactly when something can be chosen from it.
 // Choosing a resource and importing a file both close the browser and select
 // what they landed on into the field that opened it

@@ -734,8 +734,33 @@ describe("Architect's in-process protocol-builder host", () => {
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(staged.data.descriptor.source).toBe('nook.png');
     expect(listed.data.resources).toContainEqual(
-      expect.objectContaining({ id, name: 'Nook', source }),
+      expect.objectContaining({ id, name: 'Nook', source: 'nook.png' }),
+    );
+
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [id] },
+    });
+    expect(written.promoted).toEqual([
+      expect.objectContaining({ id, status: 'committed', source }),
+    ]);
+    const committed = await client.resources.list({
+      protocolId: PROTOCOL_ID,
+      status: 'committed',
+    });
+    if (committed.status !== 'ok') throw new Error('listing failed');
+    expect(committed.data.resources).toContainEqual(
+      expect.objectContaining({ id, source }),
     );
   });
 
@@ -1210,6 +1235,52 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(
       getProtocol(store.getState())?.codebook.ego?.variables,
     ).toMatchObject({ ego_age: { name: 'ego_age' } });
+  });
+
+  it('writes an attribute onto a connection type created moments earlier, and names a list of values too short to hold', async () => {
+    const { store, client } = openProtocol();
+    const created = await client.create({
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookEdge',
+      document: { name: 'Edge', color: 'edge-color-seq-2', variables: {} },
+    });
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+    const withScale = (options: readonly unknown[]) => ({
+      ...held.document,
+      variables: { f: { name: 'f', type: 'ordinal', options } },
+    });
+
+    const refused = await safe(
+      client.submit({
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: created.sectionId,
+        document: withScale([]),
+        revision: held.revision,
+      }),
+    );
+    expect(refused.isSuccess).toBe(false);
+    expect(refused.definedError?.code).toBe('INVALID_SHAPE');
+
+    await client.submit({
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: created.sectionId,
+      document: withScale([
+        { label: 'Some', value: 1 },
+        { label: 'Lots', value: 2 },
+      ]),
+      revision: held.revision,
+    });
+    expect(
+      Object.values(getProtocol(store.getState())?.codebook.edge ?? {}).find(
+        (definition) => definition.name === 'Edge',
+      )?.variables,
+    ).toMatchObject({ f: { name: 'f', type: 'ordinal' } });
   });
 
   it('refuses to create an ego codebook the protocol already has', async () => {

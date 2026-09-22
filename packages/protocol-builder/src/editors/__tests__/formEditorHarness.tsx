@@ -74,23 +74,6 @@ export const openField = async (
 };
 
 /**
- * The same, for the LAST row carrying that control — the one a journey has
- * just added. Asked for by position from the end because each editor's fixture
- * arrives with a different number of fields, and the row just added is the one
- * past all of them whatever that number is.
- */
-const openLastField = async (
-  harness: Harness,
-  name: string,
-): Promise<RowDialog> => {
-  const triggers = screen.getAllByRole('button', { name });
-  const trigger = triggers[triggers.length - 1];
-  if (trigger === undefined) throw new Error(`There is no "${name}".`);
-  await harness.user.click(trigger);
-  return rowDialog(await screen.findByRole('dialog'));
-};
-
-/**
  * The row's Attribute picker, as the field the shared helpers work from.
  *
  * The control is a button that opens a window of attributes rather than a
@@ -428,9 +411,6 @@ export const authorsValuesFromField = async (
 /**
  * Sets, from the row that collects it, what a date attribute accepts — which
  * is no list of values at all.
- *
- * Two steps, because the settings belong to an attribute: there is nothing to
- * configure until it exists, and it is the row's save that creates it.
  */
 export const authorsDateSettingsFromField = async (
   harness: Harness,
@@ -444,6 +424,12 @@ export const authorsDateSettingsFromField = async (
     await dating.findByRole('combobox', { name: 'Input control' }),
     'DatePicker',
   );
+  await harness.user.selectOptions(
+    within(
+      await dating.findByRole('region', { name: 'Control settings' }),
+    ).getByRole('combobox', { name: 'Date resolution' }),
+    'year',
+  );
   await harness.user.type(
     dating.getByRole('textbox', { name: 'Question text' }),
     'When did you first meet?',
@@ -451,19 +437,6 @@ export const authorsDateSettingsFromField = async (
   await harness.user.click(dating.getByRole('button', { name: 'Add' }));
   await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
   const [dateId] = await savedAttribute(harness, subject, 'met_on');
-
-  const editing = await openLastField(harness, 'Edit field');
-  await harness.user.click(
-    await editing.findByRole('button', { name: 'Set what this field accepts' }),
-  );
-  await screen.findByRole('button', { name: 'Save attribute' });
-  await harness.user.selectOptions(
-    screen.getByRole('combobox', { name: 'Date resolution' }),
-    'year',
-  );
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Save attribute' }),
-  );
 
   await waitFor(() =>
     expect(

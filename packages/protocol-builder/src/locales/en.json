@@ -275,34 +275,6 @@
     "defaultMessage": "Create or select an attribute",
     "description": "Label of the control that picks (or adds) the codebook attribute this row stamps onto every node the prompt creates."
   },
-  "protocolBuilder.attributeCodebookControls.attributeDeletedDescription": {
-    "defaultMessage": "This attribute is no longer in the codebook, so these changes cannot be saved.",
-    "description": "Shown over an open attribute editor when someone else deleted the attribute it was opened on. The draft stays on screen; what it says is that there is nothing left to write it to."
-  },
-  "protocolBuilder.attributeCodebookControls.attributeDeletedTitle": {
-    "defaultMessage": "Attribute deleted",
-    "description": "Heading of the warning shown over an open attribute editor when someone else deleted the attribute it was opened on."
-  },
-  "protocolBuilder.attributeCodebookControls.createNeedsSettings": {
-    "defaultMessage": "An attribute answered on a scale needs a label at each end, so it is created together with them.",
-    "description": "The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here."
-  },
-  "protocolBuilder.attributeCodebookControls.createNeedsValues": {
-    "defaultMessage": "An attribute participants choose an answer from needs at least two values, so it is created together with them.",
-    "description": "Shown above the buttons when the researcher is inventing an attribute whose answers come from a list, explaining why they are sent to the codebook editor rather than being asked for a name here."
-  },
-  "protocolBuilder.attributeCodebookControls.createWithSettings": {
-    "defaultMessage": "Create this attribute and what it accepts",
-    "description": "The same button for inventing an attribute whose answer is not chosen from a list but still needs something a name cannot carry — a scale, whose two end labels say what each end means. Also the title of the dialog it opens."
-  },
-  "protocolBuilder.attributeCodebookControls.createWithValues": {
-    "defaultMessage": "Create this attribute and its values",
-    "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
-  },
-  "protocolBuilder.attributeCodebookControls.editParameters": {
-    "defaultMessage": "Set what this field accepts",
-    "description": "The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens."
-  },
   "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
     "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
@@ -824,12 +796,12 @@
     "description": "Heading of the page listing a protocol’s entity types and their attributes. The codebook is the protocol’s definition of what an interview records."
   },
   "protocolBuilder.codebookEntity.colorHint": {
-    "defaultMessage": "{entity, select, node {Choose a color reference for this node type.} edge {Choose a color reference for this edge type.} other {Choose a color reference for this ego definition.}}",
-    "description": "Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour."
+    "defaultMessage": "{entity, select, node {Choose a color for this node type.} edge {Choose a color for this edge type.} other {Choose a color for this ego definition.}}",
+    "description": "Guidance under the colour field. entity is node, edge or ego."
   },
   "protocolBuilder.codebookEntity.colorLabel": {
-    "defaultMessage": "Protocol color",
-    "description": "Label of the field choosing which position in the protocol’s palette this entity type is drawn in."
+    "defaultMessage": "{entity, select, node {Node color} other {Edge color}}",
+    "description": "Label of the field choosing the colour this entity type is drawn in. entity is node or edge; the ego has no colour."
   },
   "protocolBuilder.codebookEntity.colorOutsidePalette": {
     "defaultMessage": "Current color ({color})",
@@ -936,8 +908,8 @@
     "description": "Button on the ego card that opens its attribute list. The ego — the interview participant themselves — has attributes but no type properties, so the button offers those rather than editing a type."
   },
   "protocolBuilder.codebookEntity.nameHint": {
-    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data.} edge {This name identifies the edge type in the codebook and exported data.} other {This name identifies the ego definition in the codebook and exported data.}}",
-    "description": "Guidance under the name field, saying where the name is read back. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Works With\".} other {This name identifies the ego definition in the codebook and exported data.}}",
+    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated."
   },
   "protocolBuilder.codebookEntity.nameInvalid": {
     "defaultMessage": "{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}",
@@ -946,6 +918,10 @@
   "protocolBuilder.codebookEntity.nameLabel": {
     "defaultMessage": "{entity, select, node {Node type name} other {Edge type name}}",
     "description": "Label of the field holding the researcher’s own name for this entity type. entity is node or edge; the ego has no type name."
+  },
+  "protocolBuilder.codebookEntity.namePlaceholder": {
+    "defaultMessage": "{entity, select, node {Enter a name for this node type...} other {Enter a name for this edge type...}}",
+    "description": "Placeholder in the empty name field of the entity editor. entity is node or edge; the ego has no type name."
   },
   "protocolBuilder.codebookEntity.nameRequired": {
     "defaultMessage": "Enter a type name.",
@@ -1734,14 +1710,6 @@
   "protocolBuilder.formFields.controlVisualAnalogScale": {
     "defaultMessage": "Visual Analog Scale",
     "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line. Architect names this control VisualAnalogScale; the label is that name with its words separated."
-  },
-  "protocolBuilder.formFields.createWithSettingsFirst": {
-    "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
-    "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
-  },
-  "protocolBuilder.formFields.createWithValuesFirst": {
-    "defaultMessage": "Create this attribute and the values it offers before adding the field that collects it.",
-    "description": "Refusal shown under the control that decided the kind of answer when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone."
   },
   "protocolBuilder.formFields.description": {
     "defaultMessage": "Map attributes to input controls and define the validation rules for this form.",
@@ -4228,8 +4196,8 @@
     "description": "Name of the one option standing for the attribute a pedigree attribute control already holds, in a slot that uses a fixed set of values the interface owns (biological sex, relationship type, or gamete role), when that attribute still exists and is still a list of answers but the values it offers have been edited elsewhere and no longer match the fixed set. Shown in the select’s list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.pedigree.variableGoneRefusal": {
-    "defaultMessage": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
-    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated."
+    "defaultMessage": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
+    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. The attribute is not named, because once it is deleted only its internal identifier is left."
   },
   "protocolBuilder.pedigree.variableOptionsChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",

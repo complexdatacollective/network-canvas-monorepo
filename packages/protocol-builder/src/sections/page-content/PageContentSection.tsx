@@ -6,7 +6,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type { StageType } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../../form/absentValues.ts';
@@ -203,13 +202,6 @@ const messages = defineMessages({
 });
 
 const AT_LEAST_ONE_ITEM = createMessageError(messages.atLeastOne);
-
-const itemsValidation = {
-  custom: messageRuleValidation([
-    (value: unknown) =>
-      Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_ITEM,
-  ]),
-};
 
 /**
  * The words each variant uses, per variant rather than per key.
@@ -483,7 +475,7 @@ export default function PageContentSection({
           editorComponent={RowDialog}
           itemTemplate={rowTemplate()}
           sortable
-          {...itemsValidation}
+          required={AT_LEAST_ONE_ITEM}
         />
       </RowList>
     </BuilderSection>

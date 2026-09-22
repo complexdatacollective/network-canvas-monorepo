@@ -1,7 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Grid3x3, List, Pencil, Redo2, Undo2 } from 'lucide-react';
-import { createRef, type Ref, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  createRef,
+  type Ref,
+  useRef,
+  useState,
+} from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DropdownMenuItem } from '../DropdownMenu';
@@ -54,7 +60,7 @@ describe('SegmentedToolbar — composition', () => {
 
     const toolbar = screen.getByRole('toolbar', { name: 'Wide tools' });
     expect(toolbar).toHaveClass('overflow-x-auto');
-    expect(toolbar.parentElement).toHaveClass('max-w-full');
+    expect(toolbar.parentElement?.parentElement).toHaveClass('max-w-full');
   });
 
   it('renders composable styled buttons inside an accessible toolbar', () => {
@@ -144,7 +150,8 @@ describe('SegmentedToolbar — composition', () => {
       );
 
       expect(
-        screen.getByRole('toolbar', { name: `${size} tools` }).parentElement,
+        screen.getByRole('toolbar', { name: `${size} tools` }).parentElement
+          ?.parentElement,
       ).toHaveStyle({ borderRadius: radius });
     },
   );
@@ -623,6 +630,155 @@ describe('SegmentedToolbar — conditional motion', () => {
       'overflow-x-auto',
       'scrollbar-none',
       '[&::-webkit-scrollbar]:hidden',
+    );
+  });
+});
+
+describe('SegmentedToolbar — overflowing lane', () => {
+  const LANE_WIDTH = 352;
+  const CONTENT_WIDTH = 505;
+  const HIDDEN = CONTENT_WIDTH - LANE_WIDTH;
+
+  const layOutLane = (lane: HTMLElement, contentWidth: number) => {
+    let scrollLeft = 0;
+    Object.defineProperty(lane, 'clientWidth', {
+      configurable: true,
+      get: () => LANE_WIDTH,
+    });
+    Object.defineProperty(lane, 'scrollWidth', {
+      configurable: true,
+      get: () => contentWidth,
+    });
+    Object.defineProperty(lane, 'scrollLeft', {
+      configurable: true,
+      get: () => scrollLeft,
+      set: (next: number) => {
+        scrollLeft = Math.min(Math.max(next, 0), contentWidth - LANE_WIDTH);
+        lane.dispatchEvent(new Event('scroll'));
+      },
+    });
+    return () => scrollLeft;
+  };
+
+  const toolbar = (
+    label: string,
+    props: Partial<ComponentProps<typeof SegmentedToolbar>> = {},
+  ) => (
+    <SegmentedToolbar aria-label="Page actions" {...props}>
+      <ToolbarGroup aria-label="Page">
+        <ToolbarButton icon={<Pencil />}>Return to Stages</ToolbarButton>
+        <ToolbarButton icon={<List />}>{label}</ToolbarButton>
+      </ToolbarGroup>
+    </SegmentedToolbar>
+  );
+
+  it('rests at its trailing end when asked to, and fades the edge it hides', () => {
+    const { rerender } = render(toolbar('Download', { restAt: 'end' }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH);
+
+    rerender(toolbar('Print', { restAt: 'end' }));
+
+    expect(scrollLeft()).toBe(HIDDEN);
+    expect(frame).toHaveClass('scroll-area-viewport-x');
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe(`${HIDDEN}px`);
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('rests at its leading end by default, and fades the trailing edge', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      `${HIDDEN}px`,
+    );
+  });
+
+  it('fades the trailing edge once the researcher scrolls back to the start', () => {
+    const { rerender } = render(toolbar('Download', { restAt: 'end' }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    layOutLane(lane, CONTENT_WIDTH);
+    rerender(toolbar('Print', { restAt: 'end' }));
+
+    lane.scrollLeft = 0;
+
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      `${HIDDEN}px`,
+    );
+  });
+
+  it('stays where the researcher scrolled it when its parent re-renders', () => {
+    const { rerender } = render(toolbar('Download', { restAt: 'end' }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH);
+    rerender(toolbar('Print', { restAt: 'end' }));
+    expect(scrollLeft()).toBe(HIDDEN);
+
+    lane.scrollLeft = 0;
+    rerender(toolbar('Save', { restAt: 'end' }));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      lane.parentElement?.style.getPropertyValue(
+        '--scroll-area-overflow-x-end',
+      ),
+    ).toBe(`${HIDDEN}px`);
+  });
+
+  it('fades the edges of the lane itself, not the drag handle beside it', () => {
+    const { rerender } = render(toolbar('Download', { draggable: true }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const handle = screen.getByRole('button', { name: 'Move toolbar' });
+    layOutLane(lane, CONTENT_WIDTH);
+
+    rerender(toolbar('Print', { draggable: true }));
+
+    const faded = document.querySelector<HTMLElement>(
+      '.scroll-area-viewport-x',
+    );
+    expect(faded).toBe(lane.parentElement);
+    expect(faded).not.toContainElement(handle);
+    expect(faded?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      `${HIDDEN}px`,
+    );
+    expect(
+      handle.parentElement?.style.getPropertyValue(
+        '--scroll-area-overflow-x-end',
+      ),
+    ).toBe('');
+  });
+
+  it('draws no fade and moves nothing when every control fits', () => {
+    const { rerender } = render(toolbar('Download', { restAt: 'end' }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, LANE_WIDTH);
+
+    rerender(toolbar('Print', { restAt: 'end' }));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
     );
   });
 });

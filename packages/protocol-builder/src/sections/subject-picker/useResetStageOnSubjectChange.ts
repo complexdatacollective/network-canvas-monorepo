@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 
@@ -10,6 +11,8 @@ import {
   useStageEditorForm,
 } from '../../form/stageEditorContext.ts';
 import {
+  answeredPart,
+  stageAnswerAt,
   useAskStageHasAnyValue,
   useClearStageValue,
 } from '../../form/stageFormHooks.ts';
@@ -95,6 +98,18 @@ const heldStageKeys = (
     .filter((key) => key !== undefined),
 ];
 
+const survivesTheReset = (
+  storeApi: StageFormStoreApi,
+  committedFields: StageFormDraft,
+  key: string,
+  template: Readonly<Record<string, FieldValue>>,
+): boolean =>
+  key in template &&
+  isEqual(
+    stageAnswerAt(storeApi.getState(), committedFields, key),
+    answeredPart(template[key]),
+  );
+
 /**
  * Whether changing the subject would actually cost the researcher anything.
  *
@@ -112,17 +127,18 @@ const heldStageKeys = (
  * re-rendering for a question nobody has asked yet.
  */
 export function useSubjectChangeDiscards(): () => boolean {
-  const { storeApi, committedFields } = useStageEditorForm();
+  const { storeApi, committedFields, identity } = useStageEditorForm();
   const hasAnyValue = useAskStageHasAnyValue();
-  return useCallback(
-    () =>
-      hasAnyValue(
-        heldStageKeys(storeApi, committedFields).filter(
-          (key) => !SUBJECT_INDEPENDENT_FIELDS.includes(key),
-        ),
+  return useCallback(() => {
+    const template = getInterfaceTemplate(identity.type);
+    return hasAnyValue(
+      heldStageKeys(storeApi, committedFields).filter(
+        (key) =>
+          !SUBJECT_INDEPENDENT_FIELDS.includes(key) &&
+          !survivesTheReset(storeApi, committedFields, key, template),
       ),
-    [committedFields, hasAnyValue, storeApi],
-  );
+    );
+  }, [committedFields, hasAnyValue, identity.type, storeApi]);
 }
 
 /**

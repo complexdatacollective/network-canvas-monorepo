@@ -332,7 +332,7 @@ const NewStageScreen = ({
               }
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Heading
               level="h4"
               margin="none"
@@ -341,7 +341,7 @@ const NewStageScreen = ({
               {intl.formatMessage(messages.filterByCapabilities)}
             </Heading>
             <div
-              className="flex flex-wrap gap-1"
+              className="flex min-w-0 flex-wrap gap-1"
               role="group"
               aria-label={intl.formatMessage(
                 messages.interfaceCapabilityFilters,

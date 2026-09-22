@@ -672,7 +672,10 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
       return (
         <>
           {dialog.error && (
-            <Paragraph intent="smallText" className="text-destructive w-full">
+            <Paragraph
+              intent="smallText"
+              className="text-destructive-ink w-full"
+            >
               {dialog.error}
             </Paragraph>
           )}

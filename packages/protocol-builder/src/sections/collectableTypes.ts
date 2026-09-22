@@ -177,9 +177,7 @@ export const allControlGroups = (
  * The attribute types that ARE a list of answers.
  *
  * `categoricalOptionsSchema` requires at least two of them, so a categorical
- * or ordinal attribute cannot exist without its values — which is why these
- * two are invented through the codebook's own editor rather than from a name
- * and a type, and why a field collecting one offers a way back to that list.
+ * or ordinal attribute cannot exist without its values.
  */
 const OPTION_TYPES: readonly string[] = Object.freeze([
   'categorical',

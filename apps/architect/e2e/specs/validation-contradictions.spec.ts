@@ -259,68 +259,46 @@ test('the option editor rejects canonically equivalent labels', async ({
     fieldDialog.locator('[data-field-name="variable"]'),
     'venue',
   );
-  // An attribute a participant chooses an answer from IS its list of values —
-  // the schema refuses fewer than two — so it is invented in the codebook's
-  // own editor rather than from a name and a control. Driven here rather than
-  // through forms.ts's helper, which would wait for a successful create.
   await fieldDialog
     .getByRole('combobox', { name: 'Input control', exact: true })
     .selectOption({ label: 'Checkbox Group' });
-  const openEditor = 'Create this attribute and its values';
-  await fieldDialog
-    .getByRole('button', { name: openEditor, exact: true })
-    .click();
-  const attributeEditor = page.getByRole('dialog', {
-    name: openEditor,
+  const values = fieldDialog.getByRole('region', {
+    name: 'Choice values',
     exact: true,
   });
-  // Opened already holding the name the create row took, rather than asking
-  // for it a second time.
-  await expect(
-    attributeEditor.getByRole('textbox', {
-      name: 'Attribute name',
-      exact: true,
-    }),
-  ).toHaveValue('venue');
-
-  const addOption = attributeEditor.getByRole('button', {
-    name: 'Create new option',
-    exact: true,
-  });
-  const optionLabel = (position: number) =>
-    attributeEditor.getByRole('textbox', {
-      name: `Option ${position} label`,
-      exact: true,
-    });
-  const optionValue = (position: number) =>
-    attributeEditor.getByRole('textbox', {
-      name: `Option ${position} value`,
-      exact: true,
-    });
 
   // Written with explicit escapes so the source file's own encoding cannot
   // quietly normalise the decomposed spelling into the precomposed one.
   const PRECOMPOSED = 'Caf\u00e9';
   const DECOMPOSED = 'Cafe\u0301';
 
-  await addOption.click();
-  await optionLabel(1).fill(PRECOMPOSED);
-  await optionValue(1).fill('cafe_a');
-  await addOption.click();
-  await optionLabel(2).fill(DECOMPOSED);
-  await optionValue(2).fill('cafe_b');
+  for (const [label, value] of [
+    [PRECOMPOSED, 'cafe_a'],
+    [DECOMPOSED, 'cafe_b'],
+  ] as const) {
+    await values
+      .getByRole('button', { name: 'Create new option', exact: true })
+      .click();
+    await values
+      .getByRole('textbox', { name: 'Label', exact: true })
+      .fill(label);
+    await values
+      .getByRole('textbox', { name: 'Value', exact: true })
+      .fill(value);
+    await values
+      .getByRole('button', { name: 'Finish editing option', exact: true })
+      .click();
+  }
+  const prompt = fieldDialog.getByRole('textbox', { name: 'Question text' });
+  await prompt.click();
+  await prompt.fill('Where do you usually meet?');
 
-  const submit = attributeEditor.getByRole('button', {
-    name: 'Create attribute',
-    exact: true,
-  });
+  const submit = fieldDialog.getByRole('button', { name: 'Add', exact: true });
   await submit.click();
 
-  // Still there, because the editor refused rather than writing: a create that
-  // landed would have taken this dialog off screen.
   await expect(submit).toBeVisible();
   await expect(
-    attributeEditor.getByText('Every option needs a unique label.').first(),
+    fieldDialog.getByText('Every option needs a unique label.').first(),
   ).toBeVisible();
 
   const protocol = await readProtocolJson(architectPage);

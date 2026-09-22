@@ -298,6 +298,7 @@ test('the stage editor splits into two columns on the room the researcher can se
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
+  { path: '/protocol/summary', heading: 'Protocol Summary' },
 ] as const) {
   test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
     architectPage,
@@ -532,17 +533,22 @@ for (const viewport of VIEWPORTS) {
     // width and clipped "Cancel" off the left edge of the screen. It may now
     // scroll internally, but no part of the pill itself may sit outside the
     // viewport.
-    const bounds = await architectPage
-      .getByRole('toolbar', { name: 'Page actions' })
-      .evaluate((toolbar) => {
-        const pill = toolbar.parentElement;
-        if (!pill) throw new Error('toolbar has no pill container');
-        const box = pill.getBoundingClientRect();
-        return { left: box.left, right: box.right, width: window.innerWidth };
-      });
+    const toolbar = architectPage.getByRole('toolbar', {
+      name: 'Page actions',
+    });
+    const trailing = toolbar.getByRole('button', { name: 'Download' });
+    await expect(trailing).toBeVisible();
 
-    expect(bounds.left).toBeGreaterThanOrEqual(0);
-    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    const pill = await toolbar.boundingBox();
+    const control = await trailing.boundingBox();
+    if (!pill || !control) throw new Error('toolbar is not laid out');
+
+    expect(pill.x).toBeGreaterThanOrEqual(0);
+    expect(pill.x + pill.width).toBeLessThanOrEqual(viewport.width);
+    expect(control.x).toBeGreaterThanOrEqual(pill.x - 1);
+    expect(control.x + control.width).toBeLessThanOrEqual(
+      pill.x + pill.width + 1,
+    );
   });
 }
 

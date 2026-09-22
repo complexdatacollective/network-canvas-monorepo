@@ -277,6 +277,7 @@ export default function BackgroundSection() {
           <Field<typeof IntegerFieldControl>
             name={CIRCLES_FIELD}
             component={IntegerFieldControl}
+            className="w-36"
             label={intl.formatMessage(messages.backgroundCirclesLabel)}
             required={REQUIRED}
             {...circlesValidation}

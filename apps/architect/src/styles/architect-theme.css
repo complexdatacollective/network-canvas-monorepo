@@ -40,6 +40,12 @@
     --surface-accent-3-contrast: oklch(var(--white));
     --surface-accent-4: oklch(var(--slate-blue--dark));
     --surface-accent-4-contrast: oklch(var(--white));
+    --surface-accent-link: oklch(var(--white));
+    --surface-accent-destructive: color-mix(
+      in oklch,
+      var(--destructive) 8%,
+      oklch(var(--white))
+    );
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }

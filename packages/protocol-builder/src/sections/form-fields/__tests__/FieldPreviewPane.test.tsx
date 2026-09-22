@@ -178,6 +178,7 @@ const renderPreview = (
     locale?: string;
     probe?: boolean;
     onSubmit?: () => { success: true };
+    fields?: ReactNode;
   }> = {},
 ) => {
   const submitAuthoring = options.onSubmit ?? (() => ({ success: true }));
@@ -187,6 +188,7 @@ const renderPreview = (
     >
       <Form onSubmit={submitAuthoring}>
         {options.probe === true && <ParentResponseProbe />}
+        {options.fields}
         <FieldPreviewPane
           subject={'subject' in options ? options.subject : PERSON}
           {...(options.mode === undefined ? {} : { mode: options.mode })}
@@ -255,6 +257,24 @@ describe('FieldPreviewPane', () => {
 
     expect(screen.getByText('Not at all')).toBeVisible();
     expect(screen.getByText('Completely')).toBeVisible();
+  });
+
+  it('drops the attribute’s settings from the preview once the row has cleared them', () => {
+    renderPreview(
+      { variable: 'satisfaction' },
+      {
+        fields: (
+          <Field
+            name="_parameters"
+            label="Cleared settings"
+            component={InputField}
+          />
+        ),
+      },
+    );
+
+    expect(screen.queryByText('Not at all')).not.toBeInTheDocument();
+    expect(screen.queryByText('Completely')).not.toBeInTheDocument();
   });
 
   it('previews an invented attribute under the question being typed', () => {
@@ -383,6 +403,40 @@ describe('FieldPreviewPane', () => {
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
     expect(within(group).queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('previews the scale labels the row is writing for an invented attribute', () => {
+    const pane = renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      _parameters: { minLabel: 'Not close', maxLabel: 'Very close' },
+      prompt: 'How close are you?',
+    });
+
+    expect(within(pane).getByText('Not close')).toBeVisible();
+    expect(within(pane).getByText('Very close')).toBeVisible();
+  });
+
+  it('previews the values the row is writing for an invented list attribute', () => {
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'frequency',
+      _component: 'RadioGroup',
+      _options: [
+        { label: 'Daily', value: 'daily' },
+        { label: 'Weekly', value: 'weekly' },
+      ],
+      prompt: 'How often?',
+    });
+
+    const group = screen.getByRole('radiogroup', { name: 'How often?' });
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label') ?? radio.textContent),
+    ).toHaveLength(2);
+    expect(within(group).getByText('Daily')).toBeVisible();
   });
 
   it('starts the trial answer again when the row is bound to another attribute', () => {

@@ -2,6 +2,7 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
+  MINIMUM_VARIABLE_OPTIONS,
   NodeDefinitionSchema,
   type Variable,
   VariableSchema,
@@ -21,6 +22,8 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
+import { isOptionType } from '../sections/collectableTypes.ts';
+import { codebookRefusalMessage } from './compoundFailureCopy.ts';
 
 export type { CodebookSubject } from '../protocol-context.ts';
 
@@ -57,6 +60,13 @@ export type CodebookDraftIssue = Readonly<{
  * action produces them.
  */
 const messages = defineMessages({
+  minimumOptions: {
+    id: 'protocolBuilder.option.minimumOptions',
+    defaultMessage:
+      'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+    description:
+      'Shown under a list of options when the researcher tries to save an ordinal or categorical attribute with fewer than two of them. A boolean attribute is the codebook variable type that records a yes/no answer.',
+  },
   optionsIncomplete: {
     id: 'protocolBuilder.codebookEditing.optionsIncomplete',
     defaultMessage: 'Every option needs both a label and a value.',
@@ -96,14 +106,34 @@ const messages = defineMessages({
   },
 });
 
+export const minimumOptionsMessage = messages.minimumOptions;
+
 export class InvalidCodebookDraftError extends Error {
   readonly issues: readonly CodebookDraftIssue[];
+  readonly refusal: string | undefined;
 
-  constructor(message: string, issues: readonly CodebookDraftIssue[]) {
+  constructor(
+    message: string,
+    issues: readonly CodebookDraftIssue[],
+    refusal?: string,
+  ) {
     super(message);
     this.issues = Object.freeze([...issues]);
+    this.refusal = refusal;
   }
 }
+
+export const draftRefusalMessage = (error: InvalidCodebookDraftError): string =>
+  error.refusal ?? codebookRefusalMessage({ kind: 'invalidShape' });
+
+const researcherIssue = (
+  issue: CodebookDraftIssue,
+): InvalidCodebookDraftError =>
+  new InvalidCodebookDraftError(
+    'the variable draft is invalid',
+    Object.freeze([issue]),
+    issue.message,
+  );
 
 /**
  * Deliberately English. A variable's record id is minted by the host, never
@@ -291,18 +321,29 @@ const validateEntityDocument = (
 
 const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   const normalized = cloneDocument(draft);
+  const tooFew = tooFewOptionsIssue(normalized);
+  if (tooFew !== null) throw researcherIssue(tooFew);
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
   }
   const optionIssue = categoricalOptionIssue(result.data);
-  if (optionIssue !== null) {
-    throw new InvalidCodebookDraftError(
-      'the variable draft is invalid',
-      Object.freeze([optionIssue]),
-    );
-  }
+  if (optionIssue !== null) throw researcherIssue(optionIssue);
   return result.data;
+};
+
+const tooFewOptionsIssue = (
+  draft: Readonly<Record<string, unknown>>,
+): CodebookDraftIssue | null => {
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
+  const { options } = draft;
+  if (Array.isArray(options) && options.length >= MINIMUM_VARIABLE_OPTIONS) {
+    return null;
+  }
+  return Object.freeze({
+    path: Object.freeze(['options']),
+    message: createMessageError(messages.minimumOptions),
+  });
 };
 
 const categoricalOptionIssue = (

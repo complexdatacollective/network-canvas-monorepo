@@ -61,3 +61,70 @@ export const Editing: Story = {
 export const Spectating: Story = {
   args: { readOnly: true },
 };
+
+const withinScrollPort = (element: Element) => {
+  let port = element.parentElement;
+  while (
+    port !== null &&
+    !['auto', 'scroll'].includes(getComputedStyle(port).overflowY)
+  ) {
+    port = port.parentElement;
+  }
+  if (port === null) throw new Error('the dialog has no scrolling region');
+  const bounds = port.getBoundingClientRect();
+  const { top, bottom } = element.getBoundingClientRect();
+  return top >= bounds.top && bottom <= bounds.bottom;
+};
+
+const revealsTheValuesOfAnInventedAttribute = (control: string): Story => ({
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Create new form field' }),
+    );
+    const dialog = within(
+      await within(document.body).findByRole('dialog', {
+        name: 'Create form field',
+      }),
+    );
+    await userEvent.click(
+      dialog.getByRole('button', { name: 'Select attribute' }),
+    );
+    const picker = within(
+      await within(document.body).findByRole('dialog', { name: 'Attribute' }),
+    );
+    await userEvent.type(
+      picker.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      'closeness',
+    );
+    await userEvent.click(
+      picker.getByRole('option', {
+        name: 'Create new attribute called “closeness”.',
+      }),
+    );
+    await expect(
+      await dialog.findByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
+
+    const select = dialog.getByRole('combobox', { name: 'Input control' });
+    select.scrollIntoView({ block: 'end' });
+    await userEvent.selectOptions(select, control);
+
+    const values = await dialog.findByRole('heading', {
+      name: 'Choice values',
+    });
+    await waitFor(async () => {
+      await expect(withinScrollPort(values)).toBe(true);
+    });
+    await expect(withinScrollPort(select)).toBe(true);
+    await expect(select).toHaveFocus();
+  },
+});
+
+export const RevealingCategoricalValues: Story =
+  revealsTheValuesOfAnInventedAttribute('Checkbox Group');
+
+export const RevealingOrdinalValues: Story =
+  revealsTheValuesOfAnInventedAttribute('Radio Group');

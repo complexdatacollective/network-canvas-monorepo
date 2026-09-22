@@ -161,7 +161,7 @@ function RuleListItem({
             {description.problems.map((problem) => (
               <p
                 key={problem.code}
-                className="text-destructive text-sm"
+                className="text-destructive-ink text-sm"
                 data-rule-problem={problem.code}
               >
                 {problem.message}

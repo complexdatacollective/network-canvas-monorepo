@@ -76,6 +76,19 @@ describe('what the participant sees behind the nodes', () => {
     expect(frame?.className).toContain('aspect-video');
   });
 
+  it('opens a stage created from scratch on the ring count the interview draws', async () => {
+    renderStageEditor({
+      create: { type: 'Narrative', position: 0 },
+      sections: <Background />,
+    });
+
+    expect(
+      await screen.findByRole('spinbutton', {
+        name: 'Number of concentric circles',
+      }),
+    ).toHaveDisplayValue('4');
+  });
+
   it('changes the number of circles the researcher asked for', async () => {
     const harness = renderStageEditor(openCircles());
 

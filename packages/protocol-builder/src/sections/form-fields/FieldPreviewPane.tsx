@@ -36,6 +36,7 @@ import {
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { ATTRIBUTE_PARAMETERS_FIELD } from '../AttributeParameterFields.tsx';
 import { ATTRIBUTE_OPTIONS_FIELD } from '../AttributeValueFields.tsx';
 import { asText } from '../canvas/rowValues.ts';
 import {
@@ -114,6 +115,7 @@ const PREVIEW_DRAFT_FIELDS = [
   // preview is what the participant will be shown, and a researcher writing
   // the words on two buttons is looking at those buttons.
   '_options',
+  '_parameters',
   'prompt',
   'label',
   'hint',
@@ -340,7 +342,9 @@ export default function FieldPreviewPane({
   const parameters =
     mode === 'composer'
       ? (draft.parameters ?? attributeParameters)
-      : attributeParameters;
+      : Object.hasOwn(draft, ATTRIBUTE_PARAMETERS_FIELD)
+        ? draft[ATTRIBUTE_PARAMETERS_FIELD]
+        : attributeParameters;
   const rules = Reflect.get(codebookVariable ?? {}, 'validation');
   // Whatever the attribute offers, on the interview's own terms: it keeps a
   // boolean's two labels under the same key as a list's values, and decides

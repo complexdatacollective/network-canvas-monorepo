@@ -59,7 +59,7 @@ type Interleaving = Readonly<{
 const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';
 
 const OVERSIZE_FILE =
-  'That file is too large to import. Files can be up to 8.0 MB.';
+  'That file is too large to import. Files can be up to 100.0 MB.';
 
 /**
  * The extensions are joined by `Intl.ListFormat` rather than by a comma, so

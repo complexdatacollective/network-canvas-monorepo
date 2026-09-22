@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Surface from '../layout/Surface';
 import FieldErrors from './FieldErrors';
 
 describe('FieldErrors', () => {
@@ -109,5 +110,40 @@ describe('FieldErrors', () => {
 
     expect(screen.queryByTestId('name-field-error')).toBeNull();
     expect(document.getElementById('field-error')).not.toBeNull();
+  });
+  it.each([
+    { where: 'a default Surface', series: 'default' as const, boxed: false },
+    { where: 'an accent Surface', series: 'accent' as const, boxed: true },
+  ])('draws the error as a box only on $where', ({ series, boxed }) => {
+    render(
+      <Surface series={series}>
+        <FieldErrors id="field-error" name="label" show errors={['Required']} />
+      </Surface>,
+    );
+
+    const error = screen.getByTestId('label-field-error');
+    expect(error.classList.contains('bg-destructive')).toBe(boxed);
+    expect(error.classList.contains('text-destructive-box-contrast')).toBe(
+      boxed,
+    );
+    expect(error.classList.contains('text-destructive-ink')).toBe(!boxed);
+  });
+
+  it('keeps an explicit variant on an accent Surface', () => {
+    render(
+      <Surface series="accent">
+        <FieldErrors
+          id="field-error"
+          name="label"
+          show
+          errors={['Required']}
+          variant="text"
+        />
+      </Surface>,
+    );
+
+    expect(screen.getByTestId('label-field-error')).not.toHaveClass(
+      'bg-destructive',
+    );
   });
 });

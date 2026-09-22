@@ -44,11 +44,15 @@ import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import { variableValuesMessages } from '../codebookMessages.ts';
+import {
+  variableParametersMessages,
+  variableValuesMessages,
+} from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
   documentWithUpdatedVariable,
+  draftRefusalMessage,
   DuplicateVariableNameError,
   InvalidCodebookDraftError,
   type CodebookDraftIssue,
@@ -167,17 +171,6 @@ const messages = defineMessages({
       'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
     description:
       'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
-  },
-  parametersLegend: {
-    id: 'protocolBuilder.codebookVariable.parametersLegend',
-    defaultMessage: 'Control settings',
-    description:
-      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
-  },
-  parametersHint: {
-    id: 'protocolBuilder.codebookVariable.parametersHint',
-    defaultMessage: 'Configure the settings available for this input control.',
-    description: 'Guidance under the heading over an input control’s settings.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
@@ -691,7 +684,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         setFailure({ message: error.message, held: false });
         return;
       }
-      if (error instanceof InvalidCodebookDraftError) setIssues(error.issues);
+      if (error instanceof InvalidCodebookDraftError) {
+        setIssues(error.issues);
+        setFailure({ message: draftRefusalMessage(error), held: false });
+        return;
+      }
       setFailure({
         message: codebookRefusalMessage({ kind: 'unexplained' }),
         held: false,
@@ -906,7 +903,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             >
               <legend className="font-heading mb-2 font-bold">
                 {intl.formatMessage(variableValuesMessages.optionsLegend)}{' '}
-                <span className="text-destructive">*</span>
+                <span className="text-destructive-ink">*</span>
               </legend>
               <p className="text-muted mb-4 text-sm">
                 {intl.formatMessage(variableValuesMessages.optionsHint)}
@@ -928,20 +925,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       className="w-full overflow-visible!"
                     >
                       <div className="flex items-start gap-4">
-                        {/* The strong destructive ink is opted into HERE, on the
-                            field column, and not on the Surface: it is meant for
-                            destructive TEXT drawn on this tinted background —
-                            the required marker and a field's error — and
-                            `--destructive` is also the fill of the destructive
-                            remove button beside it, whose foreground stays
-                            `--destructive-contrast`. Tinting the whole surface
-                            repaints that fill without repainting the icon on
-                            it, which on the default dark theme lands at 2.85:1
-                            against white where the untouched pair reaches
-                            3.85:1 — under the 3:1 WCAG asks of a control. The
-                            button is outside this element, so it keeps its own
-                            pair. */}
-                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
+                        <div className="min-w-0 flex-1">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
@@ -1043,7 +1027,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {optionErrors.length > 0 && (
                 <ul
                   id={`${statusId}-option-errors`}
-                  className="text-destructive mt-3 list-disc pl-5"
+                  className="text-destructive-ink mt-3 list-disc pl-5"
                 >
                   {/* An option issue's message is a plain string carrying either
                       this package's own encoded descriptor or a wording the
@@ -1102,15 +1086,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                {intl.formatMessage(messages.parametersLegend)}
+                {intl.formatMessage(
+                  variableParametersMessages.parametersLegend,
+                )}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                {intl.formatMessage(messages.parametersHint)}
+                {intl.formatMessage(variableParametersMessages.parametersHint)}
               </p>
               {blockParameterErrors.length > 0 && (
                 <ul
                   id={`${statusId}-parameter-errors`}
-                  className="text-destructive mb-3 list-disc pl-5"
+                  className="text-destructive-ink mb-3 list-disc pl-5"
                 >
                   {/* Decoded here for the reason the option list above is: a
                       refusal about the whole block is held as an encoded

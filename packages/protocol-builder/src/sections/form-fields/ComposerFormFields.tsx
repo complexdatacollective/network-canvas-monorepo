@@ -66,6 +66,7 @@ import VariablePickerField, {
 } from '../../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { crossClassPickIssue } from '../../form/arrayFields/crossClassPick.ts';
+import RevealWhenChosen from '../../form/RevealWhenChosen.tsx';
 import {
   RowDialog,
   RowList,
@@ -100,16 +101,10 @@ import {
   useVariableChoices,
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
-import {
-  allControlGroups,
-  controlsForType,
-  isOptionType,
-  needsCodebookEditorToCreate,
-} from '../collectableTypes.ts';
+import { allControlGroups, controlsForType } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
 import {
-  CREATE_FIRST_REFUSALS,
   INVENTED_TYPE_NOTICE,
   NEW_VARIABLE,
   NEW_VARIABLE_NAME,
@@ -443,29 +438,6 @@ function ComposerFormRows({
           },
         };
       }
-      // An attribute the codebook editor has to author is only ever made
-      // there, so nothing here can create one from a name and a control. Said
-      // in its own words rather than left to the schema, which would answer a
-      // list of answers with a count of a list the researcher never saw — and
-      // a scale not at all, because a scale with no end labels is a protocol
-      // the schema accepts and a participant cannot read. Filed on the
-      // control, which is where the kind of answer was decided.
-      if (needsCodebookEditorToCreate(type)) {
-        return {
-          refused: {
-            fieldErrors: {
-              [COMPONENT_FIELD]: isOptionType(type)
-                ? createMessageError(
-                    CREATE_FIRST_REFUSALS.createWithValuesFirst,
-                  )
-                : createMessageError(
-                    CREATE_FIRST_REFUSALS.createWithSettingsFirst,
-                  ),
-            },
-          },
-        };
-      }
-
       // The rules go with the create, as Architect's own commit does: a
       // researcher who has just said this answer is required said it about the
       // attribute being made, and a second write afterwards is a save that can
@@ -1043,15 +1015,6 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
     /*
       The control the row was inventing with, first.
 
-      An invention that needs the codebook editor — a list of answers, a scale
-      — is created in there WITHOUT a control, because in this family the
-      control belongs to the stage and not to the attribute. So the codebook
-      has nothing to say about which control collects the attribute that has
-      just been made, and read in the order below the rule would answer with
-      the FIRST control the kind allows and quietly replace the `LikertScale`
-      the researcher chose — the very choice that decided the kind. It is kept
-      wherever the created kind can still render it.
-
       Otherwise the codebook's own control where the pairing allows it,
       because that is what the researcher already decided this attribute looks
       like; and failing both, the first control that can render it, so a field
@@ -1208,27 +1171,11 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
           </AlertDescription>
         </Alert>
       )}
-      {/*
-        The settings half is withheld because this field keeps its own control
-        and its own settings on the stage — written to the codebook they would
-        be authored against a control the codebook does not have, and the
-        variable schemas, split on `component`, refuse that outright.
-
-        The rules half is not: an attribute this row is inventing is authored
-        here and written with the create, which is what Architect does
-        (`Form/fieldCommit.ts:168-172`) and what keeps making an invented
-        answer required from taking a save, a reopen and a second dialog.
-      */}
       <AttributeCodebookControls
-        subject={subject}
-        committedVariable={item[VARIABLE_FIELD]}
-        componentField={COMPONENT_FIELD}
-        offerParameters={false}
         {...(inventing
           ? {
               inventing: {
                 type: attributeType ?? '',
-                name: inventedName,
                 rulesField: NEW_VARIABLE_VALIDATION,
               },
             }
@@ -1241,28 +1188,31 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <AttributeValueFields
         subject={subject}
         variableId={chosen === '' ? undefined : chosen}
+        revealWhenChosenIn={COMPONENT_FIELD}
         {...(inventing && attributeType !== undefined
           ? { invented: attributeType, rowComponent: control }
           : {})}
       />
       {shape !== null && (
-        <Field<typeof ComposerParametersField>
-          name={PARAMETERS_FIELD}
-          component={ComposerParametersField}
-          label={intl.formatMessage(messages.parametersLabel)}
-          hint={intl.formatMessage(messages.parametersHint)}
-          shape={shape}
-          {...(inherited === undefined ? {} : { inherited })}
-          {...(chosen === undefined || variables[chosen] === undefined
-            ? {}
-            : { inheritedFrom: variables[chosen].name })}
-          initialValue={
-            isRecord(item[PARAMETERS_FIELD])
-              ? item[PARAMETERS_FIELD]
-              : undefined
-          }
-          {...parametersValidation}
-        />
+        <RevealWhenChosen chosenIn={COMPONENT_FIELD} revealKey={shape}>
+          <Field<typeof ComposerParametersField>
+            name={PARAMETERS_FIELD}
+            component={ComposerParametersField}
+            label={intl.formatMessage(messages.parametersLabel)}
+            hint={intl.formatMessage(messages.parametersHint)}
+            shape={shape}
+            {...(inherited === undefined ? {} : { inherited })}
+            {...(chosen === undefined || variables[chosen] === undefined
+              ? {}
+              : { inheritedFrom: variables[chosen].name })}
+            initialValue={
+              isRecord(item[PARAMETERS_FIELD])
+                ? item[PARAMETERS_FIELD]
+                : undefined
+            }
+            {...parametersValidation}
+          />
+        </RevealWhenChosen>
       )}
       <Field<typeof InputField>
         name={LABEL_FIELD}
