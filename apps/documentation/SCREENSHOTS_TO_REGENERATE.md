@@ -5,6 +5,10 @@ Image paths are relative to `apps/documentation/public`.
 
 ## September 2026 releases (Architect 8.3.0, Interviewer 8.3.0, Fresco 4.2.0)
 
+Every image in the Building a protocol tutorial was recaptured for 8.3.0,
+not only the ones these releases changed: that article's screenshots all
+predated the new stage editor, so the whole set was retaken together.
+
 Every image these releases made stale has been recaptured from the release
 builds (the `changeset-release/main` tree, which carries the release version
 numbers): Architect and Interviewer 8.3.0 driving the bundled Sample Protocol,
@@ -90,10 +94,10 @@ screenshot in the article.
 
 | Image (`/assets/img/architect-guide/…`) | Status                  |
 | --------------------------------------- | ----------------------- |
-| `add-a-stage.png`                       | ✅ Captured             |
+| `add-a-stage.png`                       | ✅ Recaptured for 8.3.0 |
 | `information-interface.png`             | ✅ Recaptured for 8.3.0 |
-| `edit-item.png`                         | ✅ Captured             |
-| `completed-stage.png`                   | ✅ Captured             |
+| `edit-item.png`                         | ✅ Recaptured for 8.3.0 |
+| `completed-stage.png`                   | ✅ Recaptured for 8.3.0 |
 | `node-type.png`                         | ✅ Recaptured for 8.3.0 |
 | `node-type-shape.png` (Web-only)        | ✅ Recaptured for 8.3.0 |
 | `edit-prompt.png`                       | ✅ Recaptured for 8.3.0 |
@@ -101,28 +105,28 @@ screenshot in the article.
 | `form-fields.png`                       | ✅ Recaptured for 8.3.0 |
 | `input-control.png` (Web-only)          | ✅ Recaptured for 8.3.0 |
 | `validation.png`                        | ✅ Recaptured for 8.3.0 |
-| `fields-inputs-prompts.png`             | ✅ Captured             |
-| `adding-roster.png`                     | ✅ Captured             |
-| `roster-sort.png`                       | ✅ Captured             |
-| `roster-search.png`                     | ✅ Captured             |
-| `ego-form.png`                          | ✅ Captured             |
-| `ego-form-fields.png`                   | ✅ Captured             |
-| `per-alter-form.png`                    | ✅ Captured             |
-| `sociogram-background.png`              | ✅ Captured             |
-| `sociogram-layout.png`                  | ✅ Captured             |
-| `edge-creation.png`                     | ✅ Captured             |
-| `dyad-skip.png`                         | ✅ Captured             |
-| `dyad-prompt.png`                       | ✅ Captured             |
-| `variable-toggling.png`                 | ✅ Captured             |
+| `fields-inputs-prompts.png`             | ✅ Recaptured for 8.3.0 |
+| `adding-roster.png`                     | ✅ Recaptured for 8.3.0 |
+| `roster-sort.png`                       | ✅ Recaptured for 8.3.0 |
+| `roster-search.png`                     | ✅ Recaptured for 8.3.0 |
+| `ego-form.png`                          | ✅ Recaptured for 8.3.0 |
+| `ego-form-fields.png`                   | ✅ Recaptured for 8.3.0 |
+| `per-alter-form.png`                    | ✅ Recaptured for 8.3.0 |
+| `sociogram-background.png`              | ✅ Recaptured for 8.3.0 |
+| `sociogram-layout.png`                  | ✅ Recaptured for 8.3.0 |
+| `edge-creation.png`                     | ✅ Recaptured for 8.3.0 |
+| `dyad-skip.png`                         | ✅ Recaptured for 8.3.0 |
+| `dyad-prompt.png`                       | ✅ Recaptured for 8.3.0 |
+| `variable-toggling.png`                 | ✅ Recaptured for 8.3.0 |
 | `catbin-variables.png`                  | ✅ Recaptured for 8.3.0 |
-| `filter-skip.png`                       | ✅ Captured             |
-| `skip.png`                              | ✅ Captured             |
+| `filter-skip.png`                       | ✅ Recaptured for 8.3.0 |
+| `skip.png`                              | ✅ Recaptured for 8.3.0 |
 | `catbin-prompt.png`                     | ✅ Recaptured for 8.3.0 |
 | `followup.png`                          | ✅ Recaptured for 8.3.0 |
-| `narrative.png`                         | ✅ Captured             |
+| `narrative.png`                         | ✅ Recaptured for 8.3.0 |
 | `edit-preset.png`                       | ✅ Recaptured for 8.3.0 |
 | `edit-preset2.png`                      | ✅ Recaptured for 8.3.0 |
-| `narrative-behaviors.png`               | ✅ Captured             |
+| `narrative-behaviors.png`               | ✅ Recaptured for 8.3.0 |
 
 ## About Fresco
 
