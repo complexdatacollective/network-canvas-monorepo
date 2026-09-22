@@ -278,7 +278,7 @@ Everything else is managed from the dashboard. In particular, **add participants
 
 <TipBox>
 
-We use anonymous analytics to gather usage and error data from instances of Fresco to troubleshoot issues. No participant data, and no participant or interview identifiers, are collected or sent to us.
+We use anonymous analytics to gather usage and error data from instances of Fresco to troubleshoot issues. Fresco's own events carry no participant data or interview identifiers. The one thing that can reach us is a dashboard search term: searching the participants or interviews table puts what you typed in the page address, and the analytics library's page-view events carry that address. See [Does Fresco send data to third parties?](/en/collect-data/fresco/it-faq#does-fresco-send-data-to-third-parties) for the full picture, and turn analytics off in **Settings → Privacy** or with `DISABLE_ANALYTICS` if that is a problem for your deployment.
 
 If you would like to disable all analytics, turn on **Disable Analytics** in the **Privacy** section of the settings page. Alternatively, add a `DISABLE_ANALYTICS` environment variable set to `true` to your Vercel project's environment variables and redeploy; this disables analytics and locks the setting.
 
