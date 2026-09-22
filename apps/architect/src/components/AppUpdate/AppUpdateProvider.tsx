@@ -53,7 +53,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!registration) return undefined;
     const intervalId = window.setInterval(() => {
-      void registration.update();
+      // A periodic update check is best-effort. `update()` rejects whenever the
+      // browser cannot fetch the worker script — offline, a flaky connection, a
+      // CDN hiccup — which is expected for a PWA and not something the user can
+      // act on. Swallow it so it does not surface as an unhandled rejection.
+      void registration.update().catch(() => undefined);
     }, UPDATE_CHECK_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [registration]);
