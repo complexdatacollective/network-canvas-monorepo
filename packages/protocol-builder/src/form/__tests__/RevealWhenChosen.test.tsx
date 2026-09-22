@@ -16,7 +16,7 @@ const boxFor = (element: Element): Box => {
 function Form({
   shown,
   chosenIn = 'control',
-}: Readonly<{ shown: string | null; chosenIn?: string }>) {
+}: Readonly<{ shown: string | null; chosenIn?: string | null }>) {
   return (
     <div data-box="port" style={{ overflowY: 'auto' }}>
       <div data-field-name="control">
@@ -36,7 +36,10 @@ function Form({
         </div>
       </div>
       {shown !== null && (
-        <RevealWhenChosen chosenIn={chosenIn} revealKey={shown}>
+        <RevealWhenChosen
+          {...(chosenIn === null ? {} : { chosenIn })}
+          revealKey={shown}
+        >
           <section aria-label="Values" />
         </RevealWhenChosen>
       )}
@@ -168,6 +171,21 @@ describe('what a choice reveals below it', () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it('only passes what it wraps through when no field is named', async () => {
+    boxes.set('Values', { top: 700, bottom: 900 });
+    const { container, rerender, scrollBy } = renderForm();
+
+    screen.getByRole('combobox', { name: 'Control' }).focus();
+    rerender(<Form shown="choice" chosenIn={null} />);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('region', { name: 'Values' }).previousElementSibling,
+    ).toBe(container.querySelector('#pick-popup'));
   });
 
   it('leaves the form where it is when what appeared is already in view', async () => {

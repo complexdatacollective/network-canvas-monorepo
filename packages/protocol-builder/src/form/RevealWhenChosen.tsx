@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { prefersReducedMotion } from './stageSections.ts';
 
 type RevealWhenChosenProps = Readonly<{
-  chosenIn: string;
+  chosenIn?: string;
   revealKey: string;
   children: ReactNode;
 }>;
@@ -17,7 +17,7 @@ export default function RevealWhenChosen({
 
   useEffect(() => {
     const anchor = marker.current;
-    if (anchor === null) return;
+    if (anchor === null || chosenIn === undefined) return;
     const choice = controlChosenIn(anchor, chosenIn);
     if (choice === null) return;
     const frame = requestAnimationFrame(() => {
@@ -29,7 +29,7 @@ export default function RevealWhenChosen({
 
   return (
     <>
-      <span ref={marker} hidden />
+      {chosenIn !== undefined && <span ref={marker} hidden />}
       {children}
     </>
   );

@@ -178,6 +178,7 @@ const renderPreview = (
     locale?: string;
     probe?: boolean;
     onSubmit?: () => { success: true };
+    fields?: ReactNode;
   }> = {},
 ) => {
   const submitAuthoring = options.onSubmit ?? (() => ({ success: true }));
@@ -187,6 +188,7 @@ const renderPreview = (
     >
       <Form onSubmit={submitAuthoring}>
         {options.probe === true && <ParentResponseProbe />}
+        {options.fields}
         <FieldPreviewPane
           subject={'subject' in options ? options.subject : PERSON}
           {...(options.mode === undefined ? {} : { mode: options.mode })}
@@ -255,6 +257,24 @@ describe('FieldPreviewPane', () => {
 
     expect(screen.getByText('Not at all')).toBeVisible();
     expect(screen.getByText('Completely')).toBeVisible();
+  });
+
+  it('drops the attribute’s settings from the preview once the row has cleared them', () => {
+    renderPreview(
+      { variable: 'satisfaction' },
+      {
+        fields: (
+          <Field
+            name="_parameters"
+            label="Cleared settings"
+            component={InputField}
+          />
+        ),
+      },
+    );
+
+    expect(screen.queryByText('Not at all')).not.toBeInTheDocument();
+    expect(screen.queryByText('Completely')).not.toBeInTheDocument();
   });
 
   it('previews an invented attribute under the question being typed', () => {

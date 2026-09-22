@@ -342,7 +342,9 @@ export default function FieldPreviewPane({
   const parameters =
     mode === 'composer'
       ? (draft.parameters ?? attributeParameters)
-      : (draft[ATTRIBUTE_PARAMETERS_FIELD] ?? attributeParameters);
+      : Object.hasOwn(draft, ATTRIBUTE_PARAMETERS_FIELD)
+        ? draft[ATTRIBUTE_PARAMETERS_FIELD]
+        : attributeParameters;
   const rules = Reflect.get(codebookVariable ?? {}, 'validation');
   // Whatever the attribute offers, on the interview's own terms: it keeps a
   // boolean's two labels under the same key as a list's values, and decides

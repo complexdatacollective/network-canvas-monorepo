@@ -2424,6 +2424,48 @@ describe('the codebook an attribute a form field collects lives in', () => {
     });
   });
 
+  it('keeps the values typed for an invented attribute when the control moves to another list', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await inventThroughThePicker(harness, dialog, 'meeting_place');
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
+    });
+    await harness.user.selectOptions(control, 'CheckboxGroup');
+    await addInlineValue(harness, 'At home', 'home');
+    await addInlineValue(harness, 'At work', 'work');
+    await harness.user.selectOptions(control, 'RadioGroup');
+
+    const values = within(
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    );
+    expect(values.getByRole('button', { name: 'Edit option 1' })).toBeVisible();
+    expect(values.getByRole('button', { name: 'Edit option 2' })).toBeVisible();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    const [, created] = await waitFor(() => {
+      const entry = savedAttribute(harness, 'meeting_place');
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created).toMatchObject({
+      type: 'ordinal',
+      options: [
+        { label: 'At home', value: 'home' },
+        { label: 'At work', value: 'work' },
+      ],
+    });
+  });
+
   it('refuses a row that invents a categorical attribute without its values', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',

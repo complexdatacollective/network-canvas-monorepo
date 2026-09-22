@@ -98,36 +98,32 @@ export default function AttributeParameterFields({
 
   if (shape === null) return null;
 
-  const section = (
-    <Section
-      title={intl.formatMessage(variableParametersMessages.parametersLegend)}
-      description={intl.formatMessage(
-        variableParametersMessages.parametersHint,
-      )}
-    >
-      <Field<typeof ComposerParametersField>
-        key={invented === undefined ? variableId : `invented:${invented}`}
-        name={ATTRIBUTE_PARAMETERS_FIELD}
-        component={ComposerParametersField}
-        label={intl.formatMessage(variableParametersMessages.parametersLegend)}
-        labelHidden
-        shape={shape}
-        initialValue={
-          invented === undefined && isRecord(heldParameters)
-            ? heldParameters
-            : undefined
-        }
-        readOnly={readOnly}
-        {...validation}
-      />
-    </Section>
-  );
-
-  return revealWhenChosenIn === undefined ? (
-    section
-  ) : (
+  return (
     <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey={shape}>
-      {section}
+      <Section
+        title={intl.formatMessage(variableParametersMessages.parametersLegend)}
+        description={intl.formatMessage(
+          variableParametersMessages.parametersHint,
+        )}
+      >
+        <Field<typeof ComposerParametersField>
+          key={invented === undefined ? variableId : `invented:${invented}`}
+          name={ATTRIBUTE_PARAMETERS_FIELD}
+          component={ComposerParametersField}
+          label={intl.formatMessage(
+            variableParametersMessages.parametersLegend,
+          )}
+          labelHidden
+          shape={shape}
+          initialValue={
+            invented === undefined && isRecord(heldParameters)
+              ? heldParameters
+              : undefined
+          }
+          readOnly={readOnly}
+          {...validation}
+        />
+      </Section>
     </RevealWhenChosen>
   );
 }

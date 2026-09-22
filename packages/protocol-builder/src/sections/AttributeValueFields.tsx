@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -162,14 +162,6 @@ export default function AttributeValueFields({
   revealWhenChosenIn,
 }: AttributeValueFieldsProps) {
   const intl = useAppIntl();
-  const reveal = (shown: string, section: ReactElement) =>
-    revealWhenChosenIn === undefined ? (
-      section
-    ) : (
-      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey={shown}>
-        {section}
-      </RevealWhenChosen>
-    );
   const { readOnly } = useStageEditorForm();
   const protocolContext = useProtocolContext();
 
@@ -191,11 +183,15 @@ export default function AttributeValueFields({
   // change of question like any other.
   const heldSeed =
     picked === undefined ? undefined : Reflect.get(picked, 'options');
+  const inventedShape =
+    invented === undefined
+      ? undefined
+      : optionsShapeFor(invented, rowComponent);
   useDraftThatFollowsTheAttribute(
     optionsField,
-    invented === undefined
+    inventedShape === undefined
       ? `attribute:${variableId ?? ''}`
-      : `invented:${invented}`,
+      : `invented:${inventedShape}`,
     invented === undefined && isOptionList(heldSeed) ? heldSeed : undefined,
     invented !== undefined ||
       variableId === undefined ||
@@ -217,56 +213,53 @@ export default function AttributeValueFields({
     [protocolContext, subject, variableId, variables],
   );
 
-  // An attribute being invented: its two answers, on the same terms as an
-  // attribute that exists, because "edited where the question is asked, except
-  // immediately after you invent it" is a rule with a hole in it.
-  if (invented !== undefined) {
-    const inventedShape = optionsShapeFor(invented, rowComponent);
+  // An attribute being invented: its answers, on the same terms as an
+  // attribute that exists.
+  if (inventedShape !== undefined) {
     if (inventedShape === 'choice') {
-      return reveal(
-        'choice',
-        <Section
-          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
-          description={intl.formatMessage(variableValuesMessages.optionsHint)}
-        >
-          <Field<typeof Options>
-            name={optionsField}
-            component={Options}
-            label={intl.formatMessage(variableValuesMessages.optionsLegend)}
-            labelHidden
-            addButtonLabel={intl.formatMessage(
-              variableValuesMessages.addOption,
-            )}
-            readOnly={readOnly}
-            {...optionsValidation}
-          />
-        </Section>,
+      return (
+        <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="choice">
+          <Section
+            title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+            description={intl.formatMessage(variableValuesMessages.optionsHint)}
+          >
+            <Field<typeof Options>
+              name={optionsField}
+              component={Options}
+              label={intl.formatMessage(variableValuesMessages.optionsLegend)}
+              labelHidden
+              addButtonLabel={intl.formatMessage(
+                variableValuesMessages.addOption,
+              )}
+              readOnly={readOnly}
+              {...optionsValidation}
+            />
+          </Section>
+        </RevealWhenChosen>
       );
     }
-    return inventedShape === 'boolean'
-      ? reveal(
-          'boolean',
-          <Section
-            title={intl.formatMessage(variableValuesMessages.answersLegend)}
-            description={intl.formatMessage(variableValuesMessages.answersHint)}
-          >
-            <Field<typeof BooleanAnswersField>
-              name={optionsField}
-              component={BooleanAnswersField}
-              label={intl.formatMessage(variableValuesMessages.answersLegend)}
-              labelHidden
-              readOnly={readOnly}
-            />
-          </Section>,
-        )
-      : null;
+    return inventedShape === 'boolean' ? (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="boolean">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.answersLegend)}
+          description={intl.formatMessage(variableValuesMessages.answersHint)}
+        >
+          <Field<typeof BooleanAnswersField>
+            name={optionsField}
+            component={BooleanAnswersField}
+            label={intl.formatMessage(variableValuesMessages.answersLegend)}
+            labelHidden
+            readOnly={readOnly}
+          />
+        </Section>
+      </RevealWhenChosen>
+    ) : null;
   }
 
   if (picked === undefined || variableId === undefined) return null;
 
   // The row's control where the row is what records it, the codebook's
-  // otherwise — the same reading `AttributeCodebookControls` makes of the same
-  // question for the settings beside these.
+  // otherwise.
   const decidingComponent =
     rowComponent === undefined
       ? Reflect.get(picked, 'component')
@@ -279,41 +272,45 @@ export default function AttributeValueFields({
   // answers this attribute offers, and whether they are the researcher's to
   // change is a fact about this attribute rather than a different subject.
   if (locked !== undefined) {
-    return reveal(
-      'locked',
-      <Section
-        title={intl.formatMessage(variableValuesMessages.optionsLegend)}
-        description={intl.formatMessage(variableValuesMessages.optionsHint)}
-      >
-        <LockedOptions options={locked} />
-      </Section>,
+    return (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="locked">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+          description={intl.formatMessage(variableValuesMessages.optionsHint)}
+        >
+          <LockedOptions options={locked} />
+        </Section>
+      </RevealWhenChosen>
     );
   }
 
   // Keyed on the attribute, so the list on screen is seeded from the one the
   // row binds NOW rather than from the one it bound when the dialog opened.
   if (shape === 'choice') {
-    return reveal(
-      'choice',
-      <Section
-        title={intl.formatMessage(variableValuesMessages.optionsLegend)}
-        description={intl.formatMessage(variableValuesMessages.optionsHint)}
-      >
-        <Field<typeof Options>
-          key={variableId}
-          name={optionsField}
-          component={Options}
-          // The section above carries the visible heading, so the control's own
-          // name is said only to a screen reader — which still needs one, and
-          // read aloud it would otherwise repeat the heading immediately above.
-          label={intl.formatMessage(variableValuesMessages.optionsLegend)}
-          labelHidden
-          addButtonLabel={intl.formatMessage(variableValuesMessages.addOption)}
-          initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
-          readOnly={readOnly}
-          {...optionsValidation}
-        />
-      </Section>,
+    return (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="choice">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+          description={intl.formatMessage(variableValuesMessages.optionsHint)}
+        >
+          <Field<typeof Options>
+            key={variableId}
+            name={optionsField}
+            component={Options}
+            // The section above carries the visible heading, so the control's own
+            // name is said only to a screen reader — which still needs one, and
+            // read aloud it would otherwise repeat the heading immediately above.
+            label={intl.formatMessage(variableValuesMessages.optionsLegend)}
+            labelHidden
+            addButtonLabel={intl.formatMessage(
+              variableValuesMessages.addOption,
+            )}
+            initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
+            readOnly={readOnly}
+            {...optionsValidation}
+          />
+        </Section>
+      </RevealWhenChosen>
     );
   }
 
@@ -322,37 +319,39 @@ export default function AttributeValueFields({
   // editor shows it: drawn as the pair, one would gain a second answer the
   // researcher never wrote and four would lose two.
   if (heldBooleanAnswersReason(heldOptions) !== null) {
-    return reveal(
-      'heldBoolean',
+    return (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="heldBoolean">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.answersLegend)}
+          description={intl.formatMessage(variableValuesMessages.answersHint)}
+        >
+          <LockedOptions
+            options={readHeldBooleanAnswers(heldOptions).map((answer) => ({
+              label: answer.label,
+              value: String(answer.value),
+            }))}
+          />
+        </Section>
+      </RevealWhenChosen>
+    );
+  }
+
+  return (
+    <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="boolean">
       <Section
         title={intl.formatMessage(variableValuesMessages.answersLegend)}
         description={intl.formatMessage(variableValuesMessages.answersHint)}
       >
-        <LockedOptions
-          options={readHeldBooleanAnswers(heldOptions).map((answer) => ({
-            label: answer.label,
-            value: String(answer.value),
-          }))}
+        <Field<typeof BooleanAnswersField>
+          key={variableId}
+          name={optionsField}
+          component={BooleanAnswersField}
+          label={intl.formatMessage(variableValuesMessages.answersLegend)}
+          labelHidden
+          initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
+          readOnly={readOnly}
         />
-      </Section>,
-    );
-  }
-
-  return reveal(
-    'boolean',
-    <Section
-      title={intl.formatMessage(variableValuesMessages.answersLegend)}
-      description={intl.formatMessage(variableValuesMessages.answersHint)}
-    >
-      <Field<typeof BooleanAnswersField>
-        key={variableId}
-        name={optionsField}
-        component={BooleanAnswersField}
-        label={intl.formatMessage(variableValuesMessages.answersLegend)}
-        labelHidden
-        initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
-        readOnly={readOnly}
-      />
-    </Section>,
+      </Section>
+    </RevealWhenChosen>
   );
 }
