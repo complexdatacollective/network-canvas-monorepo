@@ -270,6 +270,7 @@
 
     --destructive: oklch(var(--tomato));
     --destructive-contrast: oklch(var(--white));
+    --destructive-box-contrast: var(--destructive-contrast);
     /* Redeclared here rather than inherited, like every other expression in
        this block: made at `:root` it would carry the default theme's ink into
        a studio region. See `--color-destructive-strong` in theme.css. 78%
@@ -542,6 +543,7 @@
      */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
     --destructive-contrast: oklch(0.16 0.03 var(--base-hue));
+    --destructive-box-contrast: var(--destructive-contrast);
     /* Remade against this block's own pair, for the reason stated at the top
        of it: the light expression re-resolved here would mix the bright fill
        toward near-black ink and darken the error into the surface.
@@ -550,8 +552,9 @@
        is a mid-lightness violet, so the 78% this theme's light block can
        afford leaves the ink on 4.32:1 — under AA for the normal-size field
        errors the token carries, and its deeper `--surface-accent-1` asks for
-       more. 56% measures 5.66:1 and 4.66:1 and is still plainly red. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures every
-       scope and fails below 4.5:1. */
+       more. 56% measures 5.66:1 and 4.66:1 and is still plainly red.
+       `DestructiveInkPerTheme` in `Colors.stories.tsx` measures every scope
+       and fails below 4.5:1. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 56%,

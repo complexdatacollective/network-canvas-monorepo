@@ -6,10 +6,10 @@ A destructive ink for tinted surfaces, `--destructive-strong`, declared in
 every theme.
 
 `--destructive` is a fill colour first. As text it clears WCAG AA on the page's
-own white (4.9:1) and fails on `--surface-accent` (3.8:1) — a field error
-inside an accent surface goes illegible at exactly the moment it has something
-to say. The new variable is that colour moved toward the reader's own `--text`
-until it is legible on the tint.
+own white (4.9:1) and fails on `--surface-accent` (3.8:1), so a required-field
+marker or an inline error line inside an accent surface was hard to read. The
+new variable is that colour moved toward the reader's own `--text` until it is
+legible on the tint.
 
 Destructive text now has its own token, `--destructive-ink`
 (`text-destructive-ink`), so a surface can change the colour of its error text
@@ -46,3 +46,9 @@ time, but the alias itself is declared once at `:root`. Fresco UI's Colors
 story measures the ink in all five scopes: it fails if any of them inherits the
 default theme's, and it fails if any of them draws below 4.5:1 on its own
 first two accent steps.
+
+A boxed field error now draws its text in `--destructive-box-contrast`
+(`text-destructive-box-contrast`) on `--destructive`. Every theme declares it
+as its `--destructive-contrast` except the default dark theme, where white on
+the brightened red is 3.85:1 and the new token is a dark ink at 5.06:1. The
+same Colors story measures the box in every scope and fails below 4.5:1.

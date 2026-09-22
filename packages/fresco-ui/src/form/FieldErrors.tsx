@@ -124,7 +124,7 @@ export default function FieldErrors({
           className={cx(
             'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:px-4 interview:py-2 mt-2 rounded-sm text-sm leading-snug',
             boxed
-              ? 'text-destructive-contrast bg-destructive px-4 py-2'
+              ? 'text-destructive-box-contrast bg-destructive px-4 py-2'
               : 'text-destructive-ink',
           )}
           key={displayed.signature} // Remount only when the displayed message actually changes

@@ -123,6 +123,9 @@ describe('FieldErrors', () => {
 
     const error = screen.getByTestId('label-field-error');
     expect(error.classList.contains('bg-destructive')).toBe(boxed);
+    expect(error.classList.contains('text-destructive-box-contrast')).toBe(
+      boxed,
+    );
     expect(error.classList.contains('text-destructive-ink')).toBe(!boxed);
   });
 

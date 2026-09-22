@@ -124,6 +124,7 @@
 
     --destructive: oklch(var(--neon-coral));
     --destructive-contrast: oklch(var(--white));
+    --destructive-box-contrast: var(--destructive-contrast);
     /* Redeclared (not inherited from :root) so the mix is made against the
        interview's own coral and white ink — see `--color-destructive-strong`
        in theme.css for why one copy at `:root` cannot serve every theme.
@@ -134,7 +135,8 @@
        it. The 78% every other scope starts from only reaches 2.37:1; the
        fill has to be carried most of the way to white before a normal-size
        field error clears AA, and 28% measures 5.31:1 on `--surface-accent` and
-       4.69:1 on `--surface-accent-1` while staying visibly pink. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures it. */
+       4.69:1 on `--surface-accent-1` while staying visibly pink.
+       `DestructiveInkPerTheme` in `Colors.stories.tsx` measures it. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 28%,

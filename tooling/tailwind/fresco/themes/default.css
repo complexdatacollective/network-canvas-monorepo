@@ -154,6 +154,10 @@
 
     --destructive: oklch(var(--tomato));
     --destructive-contrast: oklch(var(--white));
+    /* The ink a boxed field error draws on `--destructive`: its own token so
+       the dark block can change the box without changing every other
+       destructive fill. */
+    --destructive-box-contrast: var(--destructive-contrast);
     /* The destructive ink a tinted surface opts into — see
        `--color-destructive-strong` in theme.css for what it is for. Written in
        each theme scope rather than once in the token block because a custom
@@ -317,6 +321,10 @@
     /* State colors are brightened for legibility on dark while keeping hue. */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
     --destructive-contrast: oklch(var(--white));
+    /* White on the lifted fill is 3.85:1, under AA for a normal-size field
+       error; dark ink is 5.06:1, as studio's dark block does for the whole
+       token. */
+    --destructive-box-contrast: oklch(0.16 0.03 var(--base-hue));
     /* Redeclared, like the surface aliases above: the mixture has to be made
        against THIS scope's `--destructive` and `--text` — mixing toward the
        light theme's near-black ink darkens the error on a dark surface

@@ -249,15 +249,16 @@
   /* States */
   --color-destructive: var(--destructive);
   --color-destructive-contrast: var(--destructive-contrast);
+  --color-destructive-box-contrast: var(--destructive-box-contrast);
   /*
    * The destructive ink, moved toward the page's own text colour until it is
    * legible on a TINTED surface.
    *
    * `--destructive` is a fill colour first. As TEXT it is 4.9:1 on the page's
    * own white — a pass — and 3.8:1 on `--surface-accent`, which is not: a
-   * field error inside an accent surface fails WCAG AA at exactly the moment
-   * it has something to say. (`themes/studio.css` records the same arithmetic
-   * for its own surface.)
+   * required-field marker or inline error line inside an accent surface fails
+   * WCAG AA. (`themes/studio.css` records the same arithmetic for its own
+   * surface.)
    *
    * Mixed toward `--text` rather than darkened, because "further from the
    * surface" is downwards on a light theme and upwards on a dark one, and a

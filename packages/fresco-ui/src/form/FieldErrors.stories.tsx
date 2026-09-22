@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import Surface from '../layout/Surface';
 import FieldErrors from './FieldErrors';
 
 const meta = {
@@ -10,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Renders a field's validation messages. The default `text` variant is plain destructive text — inside the `interview` theme this automatically becomes a boxed destructive treatment with contrast text, but on other backgrounds it stays plain text. The `box` variant opts in to that same boxed treatment unconditionally, for hosts that render on a colored background (like Architect's Validations editor row) where plain destructive text would have poor contrast.",
+          'Renders a field\'s validation messages. With no `variant`, the messages are plain destructive text, except inside the `interview` theme or a `<Surface series="accent">`, where they are drawn as a destructive box with contrast text. Pass `variant="box"` to draw the box anywhere else plain destructive text would have poor contrast, or `variant="text"` to keep plain text on an accent Surface.',
       },
     },
   },
@@ -31,6 +32,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const OnAccentSurface: Story = {
+  render: (args) => (
+    <Surface series="accent">
+      <FieldErrors {...args} />
+    </Surface>
+  ),
+};
 
 export const Box: Story = {
   args: { variant: 'box' },
