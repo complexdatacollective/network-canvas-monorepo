@@ -37,7 +37,7 @@ Use this Interface to collect ordinal or interval scale data on alters. Although
 
 Due to size affordances, avoid using scales of more than six bins on this Interface. Larger scales cause bin labels to be difficult to read and the other visual components on the Interface become compromised.
 
-Bin labels themselves can be as long as your question needs, such as a full sentence. Each label shrinks, a step at a time, to fit the space its bin has rather than being cut off mid-word, and a screen reader always reads the whole label. Labels can use **bold** and _italic_ text for emphasis. Even so, short labels stay larger and are easier to read at a glance.
+Bin labels can be a good deal longer than a word or two — a short sentence is fine. Each label shrinks, a step at a time, to fit the space its bin has rather than being cut off mid-word, and a screen reader always reads the whole label. That shrinking has a smallest size, though: a label long enough to overflow its bin even at that size is clipped, which is most likely with a larger scale or on a small screen. Check your longest label in [preview](/en/design-protocols/preview-mode) at the size participants will use. Labels can use **bold** and _italic_ text for emphasis. Short labels stay larger and are easier to read at a glance.
 
 </BadPractice>
 
