@@ -30,6 +30,8 @@ The codebook organizes entities by entity type -- ego, node, and edge, and organ
 
 In both versions of Architect you can customize an entity type's name and color. Architect goes further for node types, letting you also set the shape and icon used to represent the node across interfaces.
 
+In Architect, a new node or edge type starts on the next color in the palette, so each type you add looks different from the last. A node type's icon is chosen from a searchable list of the Network Canvas icons followed by the Lucide icon set: type a few letters of an icon's name (for example "user plus") and pick it from the icons shown.
+
 ### Default node shape
 
 ![Editing a node type in Architect, where you can set its shape and icon in addition to its name and color](/assets/img/architect/edit-node-type-web.png)
@@ -43,8 +45,8 @@ In Architect you can also make a node type's shape **dynamic**, so that nodes wi
 To configure a mapping:
 
 1. Edit the node type and choose its default shape.
-2. Enable **Map variable to shape**.
-3. Select one of the node type's variables.
+2. Enable **Map attribute to shape**.
+3. Select one of the node type's attributes.
 4. Assign shapes to the values that should override the default.
 
 A node type's shape can be mapped from one variable at a time. The mapping works in one of two ways depending on the variable you choose:
@@ -52,14 +54,14 @@ A node type's shape can be mapped from one variable at a time. The mapping works
 - For **categorical**, **ordinal**, or **boolean** variables, you assign a shape to each discrete value. Any value you leave unmapped falls back to the default shape.
 - For **number** or **scalar** variables, you define up to two numeric **thresholds**. Values below the first threshold use the default shape, and each threshold sets the shape used at or above its value.
 
-The shapes available are the same as for the default shape: circle, square, and diamond.
+The shapes available are the same as for the default shape: circle, square, and diamond. You choose each one, including the default, by clicking its swatch, drawn in the node type's own color. Architect points out any values that are still unmapped and will use the default shape, and won't save a mapping for a number or scalar attribute until you have added at least one threshold.
 
 #### Boolean example: people and places
 
 Suppose a node type contains both people and places, identified by a boolean variable named `is_person`. To show people as circles and places as squares:
 
 1. Choose **Square** as the default shape.
-2. Enable **Map variable to shape** and select `is_person`.
+2. Enable **Map attribute to shape** and select `is_person`.
 3. Assign **Circle** to **True**.
 4. Leave **False** unmapped so that it uses the default square.
 
@@ -82,6 +84,8 @@ The default shape is also used when the selected variable has not been recorded.
 Each variable lists the name, type, [input control](/en/design-protocols/key-concepts/input-controls), and where it is used. You can navigate to any of the stages a variable is used in by clicking on one of the "used in" stage names just like the entity types.
 
 ![Entity types and variables both indicate which stages they are used in.](/assets/img/key-concepts/codebook/used-in.png)
+
+In Architect, changes you make to the codebook from inside a stage editor — such as creating an attribute, renaming it, or changing its options or validation rules — are saved to the codebook immediately. Cancelling your edits to the stage doesn't undo them, because an attribute belongs to every stage that uses it.
 
 If a variable is defined but later becomes obsolete, you can see this as an unused variable within the codebook, marked **not in use**. Only variables that are unused can be deleted from the codebook. Entity types can also only be deleted if they are unused in the protocol.
 

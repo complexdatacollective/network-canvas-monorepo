@@ -58,6 +58,12 @@ However, we recommend **not** hosting different studies on the same instance of 
 
 Fresco will then validate and upload your protocol. If it contains any assets (images, audio, video, or network files), Fresco will upload these to your configured storage provider and link them to your protocol.
 
+<TipBox>
+
+Fresco refuses a protocol file that is missing any of its resources, because a resource that never loads would surface to a participant mid-interview. The message names the missing resource as it is named in Architect. A protocol file whose contents are damaged is reported as damaged. To fix a protocol that is missing a resource, open it in Architect, add the missing file again from **Resources**, and download the protocol again before uploading it. See [Resources](/en/design-protocols/key-concepts/resources) for how Architect manages resource files.
+
+</TipBox>
+
 Once the process is finished, you will see your protocol listed on the protocols page. You can click on the protocol to view its details, and to see the unique URL that you will share with participants to conduct interviews.
 
 ## Generating synthetic test data
@@ -360,3 +366,19 @@ Once participants have completed interviews, you can export the data from the in
 Before an export begins, Fresco prompts you to choose the file types (CSV, GraphML, or both) and any export options you wish to use. To learn what the exported files contain — the entity files and their columns, the identifiers used to link them, and what each export option does — see the [Data Export guide](/en/analyze-data/data-export).
 
 If you would rather retrieve interview data automatically than download files from the dashboard by hand, Fresco also provides a read-only [Fresco API](/en/analyze-data/fresco-api).
+
+## Changing the interface language
+
+Fresco's researcher interface is available in **English**, **English (UK)**, and **Español** (Spanish). You can also choose **Automatic**, which follows the language preferences set in your browser and uses English when none of them is available. Automatic is shown with the language it currently resolves to, for example **Automatic (English)**.
+
+To change the language, click the globe button in the dashboard's top bar and choose a language from the list. On small screens, open the navigation menu and use the language entry there instead. The same globe button appears in the header of the sign-in and setup screens, so you can choose a language before you sign in.
+
+The new language applies immediately. While you are signed in, your choice is saved to your account, so it follows you when you sign in on another device. A language chosen on the sign-in screen is remembered only in that browser: it is not copied to your account when you sign in, and once you are signed in, a language saved to your account takes its place. A language chosen during setup is the exception, because it carries over to the account created by the setup wizard. If Fresco cannot save your choice, the language stays in use for the rest of your visit, and the language list offers to try saving it again.
+
+Changing the interface language translates Fresco's own interface, including messages, dialogs, and validation. It does not translate anything written in your protocol, such as prompts, stage names, and response options, and it does not change collected interview data.
+
+### Language in interviews
+
+The built-in interview controls, such as navigation, help, validation messages, and dialogs, are available in the same languages. An interview starts in the interface language Fresco would use in that browser: for a participant on their own device, that is normally the language their browser prefers, matched to one of the available languages, with English as the fallback. If a language has been chosen in Fresco in that browser (for example, on the sign-in screen), or a researcher is signed in to the dashboard in it, that choice is used instead.
+
+Participants can change the language during the interview from the **Interface language** option in the interview's **Settings** menu. This choice applies only to that visit to the interview. It does not change any researcher account's language preference, and it does not change protocol text or the answers already given.

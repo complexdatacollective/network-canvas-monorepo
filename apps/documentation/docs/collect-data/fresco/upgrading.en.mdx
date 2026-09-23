@@ -39,10 +39,20 @@ This means that it should always be clear if a new version of Fresco is safe to 
 
 This version information is accessible from several places:
 
-- **Main Dashboard**: You can find the version number of your Fresco instance on the main dashboard in the top left corner.
-- **Settings**: You can find the version number of your Fresco instance on the **Settings** page of your dashboard.
+- **Settings**: You can find the version number of your Fresco instance in the **App Details** section of the **Settings** page of your dashboard, which also tells you whether a newer version is available.
 - **GitHub**: You can find the version of your Fresco instance on your GitHub repository, inside the `package.json` file.
 - **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
+
+The health check endpoint, `/api/health`, does not report the version. If you monitored your instance's version through it, use the **Settings** page instead.
+
+## Upgrading to 4.2.0
+
+Most of Fresco 4.2.0 needs no action, but check the following before you upgrade.
+
+- **Passkeys must verify you.** Fresco now requires every passkey to confirm who you are with a PIN, fingerprint, or face, both when it is registered and each time you sign in. A passkey registered on a hardware security key that has no PIN will stop signing in after the upgrade. Before upgrading, each administrator who signs in with a passkey should use **Add passkey** under **Settings → User Management** to register a passkey that verifies them, or make sure another administrator can use **Reset Auth** on their account. See [Passkeys](/en/collect-data/fresco/accounts#passkeys).
+- **The health check no longer reports the version or uptime.** `/api/health` still answers liveness probes with the service status, so container health checks and load balancers keep working, but its response no longer includes the running Fresco version or process uptime. Update any monitoring that read either value from it. See [Health checks](/en/collect-data/fresco/advanced#health-checks).
+- **You can require two-factor authentication.** A new, optional `REQUIRE_TWO_FACTOR` environment variable makes two-factor authentication mandatory for every account that signs in with a password. Nothing changes unless you set it. See [Requiring two-factor authentication for everyone](/en/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone).
+- **Protocol import explains what is wrong.** A protocol file that is missing one of its resources is refused, as before, but the message now names the missing resource, and a protocol file whose contents are damaged is reported as damaged. Protocols you have already uploaded are not affected. See [Uploading protocols](/en/collect-data/fresco/using-fresco#uploading-protocols) for how to fix a protocol that is refused.
 
 ## UploadThing variable update (pre-2.0.0 upgrades only)
 
