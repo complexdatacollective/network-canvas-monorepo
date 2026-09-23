@@ -6,11 +6,7 @@ Novedades destacadas:
 - **Un editor de protocolos renovado en Architect**, con un nuevo esquema que muestra qué partes de una etapa aún deben configurarse, un selector de atributos con búsqueda y una vista previa de cada campo del formulario tal como lo verán sus participantes.
 - **Mayor seguridad de las cuentas en Fresco**: las llaves de acceso ahora verifican al usuario en cada uso, y las instalaciones pueden exigir la autenticación en dos pasos en todas las cuentas con contraseña.
 
-### Cómo actualizar
-
-Architect e Interviewer se actualizan automáticamente, sin necesidad de gestionar versiones manualmente. Si los ha instalado desde su navegador como aplicaciones web progresivas, las actualizaciones se cargan al reiniciarlas, y sus datos locales siguen seguros y bajo su control. Estas mejoras no afectan a sus protocolos: mejoran las interfaces de las aplicaciones sin cambiar la estructura de su instrumento.
-
-Para actualizar Fresco a la versión más reciente, siga las [instrucciones de actualización de nuestra documentación](https://documentation.networkcanvas.com/en/collect-data/fresco/upgrading).
+Estas mejoras no afectan a sus protocolos: mejoran las interfaces de las aplicaciones sin cambiar la estructura de su instrumento.
 
 ### ¿Qué abarca la compatibilidad con idiomas?
 

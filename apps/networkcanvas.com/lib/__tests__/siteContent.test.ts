@@ -199,14 +199,16 @@ describe('loadUpdates', () => {
     await Promise.all([
       writeFile(
         join(directory, 'updates.csv'),
-        `id,date,title_en,title_es
-older,2026-01-05,Older update,Novedad anterior
-newer,2026-03-10,Newer update,Novedad reciente
+        `id,date,title_en,title_en_gb,title_es
+older,2026-01-05,Older update,Older update (GB),Novedad anterior
+newer,2026-03-10,Newer update,Newer update (GB),Novedad reciente
 `,
       ),
       writeFile(join(directory, 'updates/older.en.md'), 'Older body\n'),
+      writeFile(join(directory, 'updates/older.en-GB.md'), 'Older body (GB)\n'),
       writeFile(join(directory, 'updates/older.es.md'), 'Cuerpo anterior\n'),
       writeFile(join(directory, 'updates/newer.en.md'), 'Newer body\n'),
+      writeFile(join(directory, 'updates/newer.en-GB.md'), 'Newer body (GB)\n'),
       writeFile(join(directory, 'updates/newer.es.md'), 'Cuerpo reciente\n'),
     ]);
   });
@@ -232,10 +234,18 @@ newer,2026-03-10,Newer update,Novedad reciente
     ]);
   });
 
-  it('uses the English body for British English', async () => {
-    const [newest] = await loadUpdates('en-GB', directory);
+  it('gives each English locale its own title and body', async () => {
+    const [american] = await loadUpdates('en-US', directory);
+    const [british] = await loadUpdates('en-GB', directory);
 
-    expect(newest).toMatchObject({ title: 'Newer update', body: 'Newer body' });
+    expect(american).toMatchObject({
+      title: 'Newer update',
+      body: 'Newer body',
+    });
+    expect(british).toMatchObject({
+      title: 'Newer update (GB)',
+      body: 'Newer body (GB)',
+    });
   });
 
   it('rejects an update without a body for the locale', async () => {
@@ -249,8 +259,8 @@ newer,2026-03-10,Newer update,Novedad reciente
   it('rejects a date that is not an ISO calendar date', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,title_en,title_es
-older,05/01/2026,Older update,Novedad anterior
+      `id,date,title_en,title_en_gb,title_es
+older,05/01/2026,Older update,Older update (GB),Novedad anterior
 `,
     );
 

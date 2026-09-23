@@ -84,7 +84,9 @@ describe('updates page', () => {
     const updates = await loadUpdates('en-US');
     await renderPage();
 
-    const headings = screen.getAllByRole('heading', { level: 2, hidden: true });
+    const headings = screen
+      .getAllByRole('heading', { level: 2, hidden: true })
+      .filter((heading) => heading.querySelector('button'));
     expect(headings).toHaveLength(updates.length);
     expect(updates.length).toBeGreaterThan(1);
 
@@ -99,6 +101,21 @@ describe('updates page', () => {
         'false',
       );
     }
+  });
+
+  it('explains how to upgrade before the list of updates', async () => {
+    await renderPage();
+
+    const upgrading = screen.getByRole('region', {
+      name: 'Upgrading',
+      hidden: true,
+    });
+    expect(upgrading).toHaveTextContent(
+      'Architect and Interviewer update automatically',
+    );
+    expect(upgrading).toHaveTextContent(
+      'To upgrade to the latest version of Fresco',
+    );
   });
 
   it('opens the update a link points at', async () => {

@@ -120,6 +120,7 @@ const updateRowSchema = z
     id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
     date: isoDate,
     title_en: requiredText,
+    title_en_gb: requiredText,
     title_es: requiredText,
   })
   .strict();
@@ -235,11 +236,11 @@ export async function loadUpdates(
   contentDirectory = join(process.cwd(), 'content'),
 ): Promise<Update[]> {
   const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
-  const language = locale === 'es' ? 'es' : 'en';
+  const bodySuffix = locale === 'en-US' ? 'en' : locale;
 
   const updates = await Promise.all(
     rows.map(async (row) => {
-      const filename = `updates/${row.id}.${language}.md`;
+      const filename = `updates/${row.id}.${bodySuffix}.md`;
       let body: string;
       try {
         body = await readFile(join(contentDirectory, filename), 'utf8');
@@ -250,7 +251,11 @@ export async function loadUpdates(
       return {
         id: row.id,
         date: row.date,
-        title: localized(locale, row.title_en, row.title_es),
+        title: {
+          'en-US': row.title_en,
+          'en-GB': row.title_en_gb,
+          'es': row.title_es,
+        }[locale],
         body: body.trim(),
       };
     }),

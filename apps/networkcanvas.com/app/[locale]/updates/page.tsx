@@ -16,6 +16,7 @@ import { UpdatesList } from '~/components/updates/UpdatesList';
 import { externalLinks } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadUpdates } from '~/lib/siteContent';
+import { documentationUrl } from '~/lib/siteUrls';
 
 type UpdatesPageProps = {
   params: Promise<{ locale: string }>;
@@ -50,6 +51,18 @@ function renderChangelogLink(chunks: ReactNode) {
       target="_blank"
       rel="noreferrer"
       className="font-bold"
+    >
+      {chunks}
+    </NativeLink>
+  );
+}
+
+function renderFrescoUpgradeLink(chunks: ReactNode) {
+  return (
+    <NativeLink
+      href={documentationUrl('/en/collect-data/fresco/upgrading')}
+      target="_blank"
+      rel="noreferrer"
     >
       {chunks}
     </NativeLink>
@@ -93,6 +106,18 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
           </Paragraph>
         </div>
         <Container>
+          <section
+            aria-labelledby="upgrading"
+            className="border-text/10 mx-auto max-w-3xl border-b pb-8"
+          >
+            <Heading level="h2" id="upgrading">
+              {t('upgrading.heading')}
+            </Heading>
+            <Paragraph>{t('upgrading.automatic')}</Paragraph>
+            <Paragraph margin="none">
+              {t.rich('upgrading.fresco', { link: renderFrescoUpgradeLink })}
+            </Paragraph>
+          </section>
           <UpdatesList updates={updates} />
         </Container>
         <Footer />

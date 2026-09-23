@@ -15,7 +15,6 @@ import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Link } from '~/lib/i18n/navigation';
 import type { Update } from '~/lib/siteContent';
 
@@ -107,9 +106,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
             >
               {update.body}
             </RenderMarkdown>
-            <Paragraph intent="smallText" margin="none" className="mt-6">
-              <NativeLink href={`#${update.id}`}>{t('permalink')}</NativeLink>
-            </Paragraph>
           </AccordionPanel>
         </AccordionItem>
       ))}

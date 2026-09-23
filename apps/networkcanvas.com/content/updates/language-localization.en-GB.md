@@ -10,7 +10,7 @@ These updates have no impact on your protocols: they improve the apps' interface
 
 ### What does language support cover?
 
-Language support applies to the app interfaces: controls, guidance, dialogs, and validation messages, including those a participant sees during an interview. It does not yet extend to the content of your protocols: questions, prompts, labels, and response options appear exactly as you wrote them in Architect, and your collected data is unaffected. Support for translating protocol content is coming in a future release.
+Language support applies to the app interfaces: controls, guidance, dialogues, and validation messages, including those a participant sees during an interview. It does not yet extend to the content of your protocols: questions, prompts, labels, and response options appear exactly as you wrote them in Architect, and your collected data is unaffected. Support for translating protocol content is coming in a future release.
 
 By default, each app follows the language your browser is set to. Choose a specific language from the globe icon to override this. Architect and Interviewer remember your choice on each device, and Fresco saves it to your user account.
 
