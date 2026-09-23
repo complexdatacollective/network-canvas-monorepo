@@ -9,13 +9,15 @@ Every image in the Building a protocol tutorial was recaptured for 8.3.0,
 not only the ones these releases changed: that article's screenshots all
 predated the new stage editor, so the whole set was retaken together.
 
-Every image these releases made stale has been recaptured from the release
-builds (the `changeset-release/main` tree, which carries the release version
-numbers): Architect and Interviewer 8.3.0 driving the bundled Sample Protocol,
+Every Architect and Fresco image these releases made stale has been recaptured
+from the release builds (the `changeset-release/main` tree, which carries the
+release version numbers): Architect 8.3.0 driving the bundled Sample Protocol,
 and Fresco 4.2.0 running locally against Postgres and MinIO, with the sample
-protocol imported and six participants and interviews. Interviewer also gained
+protocol imported and six participants and interviews. Interviewer's dashboard,
+setup and shell captures were recaptured the same way, and it gained
 `interviewer-guide/interview-settings.png`, a new capture of the in-interview
-settings menu, now shown in Using Interviewer.
+settings menu, now shown in Using Interviewer. Its in-interview captures are
+the exception, and are listed as outstanding below.
 
 One set is still outstanding: the **interview interface stage** captures below,
 and `finish.png` in the table above, were taken before 8.3 moved Exit into a
