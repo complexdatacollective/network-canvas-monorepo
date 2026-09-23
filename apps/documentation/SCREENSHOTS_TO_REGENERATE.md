@@ -17,8 +17,12 @@ protocol imported and six participants and interviews. Interviewer also gained
 `interviewer-guide/interview-settings.png`, a new capture of the in-interview
 settings menu, now shown in Using Interviewer.
 
-Nothing in this file is outstanding for the September 2026 releases. Rows kept
-below record what each image shows, for the next release that changes them.
+One set is still outstanding: the **interview interface stage** captures below
+were taken before 8.3 moved Exit into a settings popover, so they show the old
+rail with an exit icon at the top. `interviewer-ui.png`, which the navigation
+walkthrough depends on, has been recaptured; the stage shots need an interview
+driven through the sample protocol with representative data, which is a
+separate pass. Every other row is done.
 
 ## Using Interviewer (Interviewer screenshots)
 
@@ -61,23 +65,23 @@ directly at `/assets/img/interviewer-guide/`.
 
 **Interview interface stages** (version-swapped — each matches a 6.x shot of the same name in `sample-protocol/`):
 
-| Image (`/assets/img/interviewer-guide/…`) | Interface                          | Status      |
-| ----------------------------------------- | ---------------------------------- | ----------- |
-| `welcome-info.png`                        | Information (welcome stage)        | ✅ Captured |
-| `consent-form.png`                        | Ego Form (consent)                 | ✅ Captured |
-| `ego-form.png`                            | Ego Form (full)                    | ✅ Captured |
-| `quick-add.png`                           | Quick Add name generator           | ✅ Captured |
-| `side-panel.png`                          | Name generator with side panel     | ✅ Captured |
-| `using-forms.png`                         | Name generator using forms         | ✅ Captured |
-| `blue-nodes.png`                          | Multiple node types (clinic nodes) | ✅ Captured |
-| `small-roster.png`                        | Small roster name generator        | ✅ Captured |
-| `large-roster.png`                        | Large roster name generator        | ✅ Captured |
-| `per-alter-form.png`                      | Per-Alter Form                     | ✅ Captured |
-| `sociogram-positioning.png`               | Sociogram                          | ✅ Captured |
-| `dyad-census.png`                         | Dyad Census                        | ✅ Captured |
-| `cat-bin.png`                             | Categorical Bin                    | ✅ Captured |
-| `narrative.png`                           | Narrative                          | ✅ Captured |
-| `ordinal-bin.png`                         | Ordinal Bin (contact frequency)    | ✅ Captured |
+| Image (`/assets/img/interviewer-guide/…`) | Interface                          | Status                                           |
+| ----------------------------------------- | ---------------------------------- | ------------------------------------------------ |
+| `welcome-info.png`                        | Information (welcome stage)        | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `consent-form.png`                        | Ego Form (consent)                 | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `ego-form.png`                            | Ego Form (full)                    | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `quick-add.png`                           | Quick Add name generator           | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `side-panel.png`                          | Name generator with side panel     | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `using-forms.png`                         | Name generator using forms         | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `blue-nodes.png`                          | Multiple node types (clinic nodes) | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `small-roster.png`                        | Small roster name generator        | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `large-roster.png`                        | Large roster name generator        | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `per-alter-form.png`                      | Per-Alter Form                     | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `sociogram-positioning.png`               | Sociogram                          | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `dyad-census.png`                         | Dyad Census                        | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `cat-bin.png`                             | Categorical Bin                    | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `narrative.png`                           | Narrative                          | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `ordinal-bin.png`                         | Ordinal Bin (contact frequency)    | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
 
 ## Building a protocol (Architect screenshots)
 
