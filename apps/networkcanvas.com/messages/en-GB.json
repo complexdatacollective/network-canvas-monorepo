@@ -74,5 +74,8 @@
         "description": "Set up the multi-user platform for remote self-administered studies, centralised data management, and research teams."
       }
     }
+  },
+  "UpdatesPage": {
+    "introduction": "What's new in the Network Canvas apps, summarised release by release. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>."
   }
 }

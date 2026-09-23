@@ -166,6 +166,10 @@ describe('localized layout navigation', () => {
     expect(
       screen.getByRole('link', { name: 'Política de privacidad' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Novedades' })).toHaveAttribute(
+      'href',
+      '/es/updates/',
+    );
     expect(
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();

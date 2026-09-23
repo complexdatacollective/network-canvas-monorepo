@@ -1,10 +1,10 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { loadSiteContent } from '~/lib/siteContent';
+import { loadSiteContent, loadUpdates } from '~/lib/siteContent';
 
 const validFiles = {
   'latest-news.csv': `id,title_en,title_es,href
@@ -186,6 +186,76 @@ person,Person Name,Institution,Institución,person.jpg
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
       'latest-news.csv: dataset must contain at least one row',
+    );
+  });
+});
+
+describe('loadUpdates', () => {
+  let directory: string;
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
+    await mkdir(join(directory, 'updates'));
+    await Promise.all([
+      writeFile(
+        join(directory, 'updates.csv'),
+        `id,date,title_en,title_es
+older,2026-01-05,Older update,Novedad anterior
+newer,2026-03-10,Newer update,Novedad reciente
+`,
+      ),
+      writeFile(join(directory, 'updates/older.en.md'), 'Older body\n'),
+      writeFile(join(directory, 'updates/older.es.md'), 'Cuerpo anterior\n'),
+      writeFile(join(directory, 'updates/newer.en.md'), 'Newer body\n'),
+      writeFile(join(directory, 'updates/newer.es.md'), 'Cuerpo reciente\n'),
+    ]);
+  });
+
+  afterEach(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  it('orders updates newest first with the locale’s title and body', async () => {
+    await expect(loadUpdates('es', directory)).resolves.toEqual([
+      {
+        id: 'newer',
+        date: '2026-03-10',
+        title: 'Novedad reciente',
+        body: 'Cuerpo reciente',
+      },
+      {
+        id: 'older',
+        date: '2026-01-05',
+        title: 'Novedad anterior',
+        body: 'Cuerpo anterior',
+      },
+    ]);
+  });
+
+  it('uses the English body for British English', async () => {
+    const [newest] = await loadUpdates('en-GB', directory);
+
+    expect(newest).toMatchObject({ title: 'Newer update', body: 'Newer body' });
+  });
+
+  it('rejects an update without a body for the locale', async () => {
+    await rm(join(directory, 'updates/older.es.md'));
+
+    await expect(loadUpdates('es', directory)).rejects.toThrow(
+      'updates/older.es.md: missing update body',
+    );
+  });
+
+  it('rejects a date that is not an ISO calendar date', async () => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      `id,date,title_en,title_es
+older,05/01/2026,Older update,Novedad anterior
+`,
+    );
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      'updates.csv: row 2: date:',
     );
   });
 });

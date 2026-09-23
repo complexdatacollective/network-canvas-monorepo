@@ -34,6 +34,13 @@ export type TeamMember = {
   photo: string;
 };
 
+export type Update = {
+  id: string;
+  date: string;
+  title: string;
+  body: string;
+};
+
 export type SiteContent = {
   newsItems: NewsItem[];
   publications: Publication[];
@@ -103,6 +110,17 @@ const teamMemberRowSchema = z
     institution_en: requiredText,
     institution_es: requiredText,
     photo: publicImage,
+  })
+  .strict();
+
+const isoDate = z.iso.date();
+
+const updateRowSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
+    date: isoDate,
+    title_en: requiredText,
+    title_es: requiredText,
   })
   .strict();
 
@@ -210,4 +228,33 @@ export async function loadSiteContent(
       photo: row.photo,
     })),
   };
+}
+
+export async function loadUpdates(
+  locale: Locale,
+  contentDirectory = join(process.cwd(), 'content'),
+): Promise<Update[]> {
+  const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
+  const language = locale === 'es' ? 'es' : 'en';
+
+  const updates = await Promise.all(
+    rows.map(async (row) => {
+      const filename = `updates/${row.id}.${language}.md`;
+      let body: string;
+      try {
+        body = await readFile(join(contentDirectory, filename), 'utf8');
+      } catch (error) {
+        throw new Error(`${filename}: missing update body`, { cause: error });
+      }
+
+      return {
+        id: row.id,
+        date: row.date,
+        title: localized(locale, row.title_en, row.title_es),
+        body: body.trim(),
+      };
+    }),
+  );
+
+  return updates.toSorted((a, b) => b.date.localeCompare(a.date));
 }

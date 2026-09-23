@@ -1,0 +1,102 @@
+import type { Metadata } from 'next';
+import { hasLocale } from 'next-intl';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
+
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { Footer } from '~/components/layout/Footer';
+import { Header } from '~/components/layout/Header';
+import { Container } from '~/components/ui/Container';
+import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { UpdatesList } from '~/components/updates/UpdatesList';
+import { externalLinks } from '~/lib/content';
+import { routing } from '~/lib/i18n/routing';
+import { loadUpdates } from '~/lib/siteContent';
+
+type UpdatesPageProps = {
+  params: Promise<{ locale: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: UpdatesPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+
+  const t = await getTranslations({ locale, namespace: 'UpdatesPage' });
+
+  return {
+    title: t('metadata.title'),
+    description: t('metadata.description'),
+    alternates: {
+      canonical: `https://networkcanvas.com/${locale}/updates`,
+      languages: {
+        'en-US': 'https://networkcanvas.com/en-US/updates',
+        'en-GB': 'https://networkcanvas.com/en-GB/updates',
+        'es': 'https://networkcanvas.com/es/updates',
+      },
+    },
+  };
+}
+
+function renderChangelogLink(chunks: ReactNode) {
+  return (
+    <NativeLink
+      href={externalLinks.releases}
+      target="_blank"
+      rel="noreferrer"
+      className="font-bold"
+    >
+      {chunks}
+    </NativeLink>
+  );
+}
+
+export default async function UpdatesPage({ params }: UpdatesPageProps) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+
+  setRequestLocale(locale);
+
+  const [updates, t] = await Promise.all([
+    loadUpdates(locale),
+    getTranslations({ locale, namespace: 'UpdatesPage' }),
+  ]);
+
+  return (
+    <main className="relative isolate">
+      <HomepagePageBackground />
+      <div>
+        <Header />
+        <div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
+          className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center"
+        >
+          <Heading
+            level="h1"
+            variant="display-heading"
+            margin="none"
+            className="text-text"
+          >
+            {t('heading')}
+          </Heading>
+          <Paragraph
+            intent="lead"
+            margin="none"
+            className="text-text/75 mt-6 text-lg text-pretty"
+          >
+            {t.rich('introduction', { changelog: renderChangelogLink })}
+          </Paragraph>
+        </div>
+        <Container>
+          <UpdatesList updates={updates} />
+        </Container>
+        <Footer />
+      </div>
+    </main>
+  );
+}
