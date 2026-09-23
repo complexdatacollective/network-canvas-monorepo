@@ -185,7 +185,7 @@ Practical steps for GDPR alignment:
 - Obtain Data Processing Agreements from any external hosting, database, and storage providers you use.
 - Disable optional analytics if your policy requires it.
 
-The Network Canvas developers do not act as a Data Processor and therefore do not provide a DPA themselves — there is no data flow to them to cover.
+The Network Canvas developers hold none of your research data, so for interview data there is no flow to them and no DPA to provide. The exception is the optional analytics: while they are enabled, the events described above — including the page addresses, which can carry a dashboard search term — reach a PostHog project the development team manages, through a relay the project operates. A deployment that needs to be able to state that nothing at all reaches the developers should turn analytics off in **Settings → Privacy** or with `DISABLE_ANALYTICS`; one that keeps them on should account for that path in its own records, with PostHog as the processor.
 
 Fresco has **not** been certified for HIPAA. Deploying for HIPAA-regulated data would require a BAA with every involved provider, tightly controlled access, audit logging, and institutional sign-off. A fully self-hosted deployment (app + Postgres + MinIO, all on institutional infrastructure) avoids needing external BAAs but still requires the rest of the controls. Review with your compliance team before using Fresco for HIPAA-regulated data.
 

@@ -17,9 +17,9 @@ protocol imported and six participants and interviews. Interviewer also gained
 `interviewer-guide/interview-settings.png`, a new capture of the in-interview
 settings menu, now shown in Using Interviewer.
 
-One set is still outstanding: the **interview interface stage** captures below
-were taken before 8.3 moved Exit into a settings popover, so they show the old
-rail with an exit icon at the top. `interviewer-ui.png`, which the navigation
+One set is still outstanding: the **interview interface stage** captures below,
+and `finish.png` in the table above, were taken before 8.3 moved Exit into a
+settings popover, so they show the old rail with an exit icon at the top. `interviewer-ui.png`, which the navigation
 walkthrough depends on, has been recaptured; the stage shots need an interview
 driven through the sample protocol with representative data, which is a
 separate pass. Every other row is done.
@@ -43,25 +43,25 @@ directly at `/assets/img/interviewer-guide/`.
 
 **Dashboard / setup / shell:**
 
-| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status                  |
-| ----------------------------------------- | ------------------------------------------------------ | ----------------------- |
-| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | ✅ Recaptured for 8.3.0 |
-| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured             |
-| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured             |
-| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured             |
-| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured             |
-| `welcome.png`                             | First-run welcome screen — 8 only                      | ✅ Recaptured for 8.3.0 |
-| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | ✅ Recaptured for 8.3.0 |
-| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | ✅ Recaptured for 8.3.0 |
-| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | ✅ Recaptured for 8.3.0 |
-| `analytics.png`                           | Wizard analytics-preference step — 8 only              | ✅ Recaptured for 8.3.0 |
-| `settings.png`                            | Settings screen — 8 only                               | ✅ Recaptured for 8.3.0 |
-| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured             |
-| `finish.png`                              | Finish screen                                          | ✅ Captured             |
-| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured             |
-| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured             |
-| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured             |
-| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured             |
+| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status                                           |
+| ----------------------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | ✅ Recaptured for 8.3.0                          |
+| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured                                      |
+| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured                                      |
+| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured                                      |
+| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured                                      |
+| `welcome.png`                             | First-run welcome screen — 8 only                      | ✅ Recaptured for 8.3.0                          |
+| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | ✅ Recaptured for 8.3.0                          |
+| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | ✅ Recaptured for 8.3.0                          |
+| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | ✅ Recaptured for 8.3.0                          |
+| `analytics.png`                           | Wizard analytics-preference step — 8 only              | ✅ Recaptured for 8.3.0                          |
+| `settings.png`                            | Settings screen — 8 only                               | ✅ Recaptured for 8.3.0                          |
+| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured                                      |
+| `finish.png`                              | Finish screen                                          | 🔄 Recapture — pre-8.3 rail (exit icon, no gear) |
+| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured                                      |
+| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured                                      |
+| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured                                      |
+| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured                                      |
 
 **Interview interface stages** (version-swapped — each matches a 6.x shot of the same name in `sample-protocol/`):
 
