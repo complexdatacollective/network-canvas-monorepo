@@ -343,7 +343,9 @@ function reserveDeniedAuditAttempt(input: {
  * in-flight slot back without counting, because the window bounds how many
  * permanent denial rows one actor can cause and nothing else. The settlement
  * runs on the `Exit`, so it happens on every path out — which is what the two
- * `complete` calls in a `try` and a `catch` used to arrange by hand.
+ * `complete` calls in a `try` and a `catch` used to arrange by hand — and an
+ * interrupt that arrives while the reservation is still in flight waits for it
+ * and then returns the slot.
  */
 export const reservedDenial: <A, E, E2, R>(
   input: {
@@ -368,26 +370,34 @@ export const reservedDenial: <A, E, E2, R>(
   command: Effect.Effect<A, E, R>,
 ) {
   const principal = yield* Principal;
-  const reservation = yield* Effect.promise(() =>
-    reserveDeniedAuditAttempt({
-      actorId: principal.userId,
-      teamId: input.teamId,
-      operation: input.operation,
-    }),
-  );
-  if (!reservation.admitted) return yield* Effect.fail(input.refusal());
-  return yield* Effect.onExit(command, (exit: Exit.Exit<A, E>) =>
-    // Awaited rather than fired and forgotten: the in-flight slot has to be
-    // back, and a confirmed denial counted, before the next request asks — or
-    // a caller making permitted calls in sequence would run itself out of
-    // capacity, and one making denied calls in sequence would never reach the
-    // cap.
+  // Acquired uninterruptibly: once Valkey has counted the slot in flight, the
+  // release below is registered before an interrupt can land, so an
+  // interrupted request gives its slot back rather than holding it until the
+  // window's key expires (#1927 §10).
+  return yield* Effect.acquireUseRelease(
     Effect.promise(() =>
-      reservation.complete(
-        Exit.isFailure(exit) && input.isDenial(Cause.squash(exit.cause))
-          ? 'denied'
-          : 'other',
-      ),
+      reserveDeniedAuditAttempt({
+        actorId: principal.userId,
+        teamId: input.teamId,
+        operation: input.operation,
+      }),
     ),
+    (reservation): Effect.Effect<A, E | E2, R> =>
+      reservation.admitted ? command : Effect.fail(input.refusal()),
+    (reservation, exit) =>
+      reservation.admitted
+        ? // Awaited rather than fired and forgotten: the in-flight slot has
+          // to be back, and a confirmed denial counted, before the next
+          // request asks — or a caller making permitted calls in sequence
+          // would run itself out of capacity, and one making denied calls in
+          // sequence would never reach the cap.
+          Effect.promise(() =>
+            reservation.complete(
+              Exit.isFailure(exit) && input.isDenial(Cause.squash(exit.cause))
+                ? 'denied'
+                : 'other',
+            ),
+          )
+        : Effect.void,
   );
 });
