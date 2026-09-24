@@ -13,6 +13,7 @@ const tagVariants = cva({
     size: {
       sm: 'gap-2 px-2.5 py-0.5',
       md: 'gap-2 px-3 py-1',
+      lg: 'gap-2 px-4 py-2',
     },
     uppercase: {
       true: '',
@@ -25,6 +26,8 @@ const tagVariants = cva({
         '[--badge-color:var(--color-platinum)] [--badge-contrast:var(--surface-2-contrast)]',
       pressed:
         '[--badge-color:var(--text)] [--badge-contrast:var(--background)]',
+      pressedPrimary:
+        '[--badge-color:var(--primary)] [--badge-contrast:var(--primary-contrast)]',
     },
     interactive: {
       true: 'focusable cursor-pointer',
@@ -53,6 +56,7 @@ const dotVariants = cva({
     size: {
       sm: 'w-2.5',
       md: 'w-3',
+      lg: 'w-3.5',
     },
   },
   defaultVariants: { size: 'md' },
@@ -66,6 +70,8 @@ export type TagProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
   color?: TagColor | null;
   /** Renders the tag as a toggle button and marks it `aria-pressed`. */
   pressed?: boolean;
+  /** Colour of the pressed state. */
+  pressedTone?: 'text' | 'primary';
   /** Supplying this makes the tag interactive. */
   onPressedChange?: (pressed: boolean) => void;
   /** Muted display tone, for tags shown inside another control. */
@@ -83,6 +89,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
     children,
     color = null,
     pressed = false,
+    pressedTone = 'text',
     onPressedChange,
     light = false,
     uppercase = true,
@@ -101,7 +108,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
   return (
     <Badge
       ref={ref}
-      size="md"
+      size={size === 'lg' ? 'lg' : 'md'}
       uppercase={uppercase}
       appearance="filled"
       icon={
@@ -116,7 +123,13 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
       className={tagVariants({
         size,
         uppercase,
-        tone: pressed ? 'pressed' : light ? 'light' : 'default',
+        tone: pressed
+          ? pressedTone === 'primary'
+            ? 'pressedPrimary'
+            : 'pressed'
+          : light
+            ? 'light'
+            : 'default',
         interactive: interactive && !disabled,
         disabled,
         className,
