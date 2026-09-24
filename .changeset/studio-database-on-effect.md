@@ -9,7 +9,10 @@ A command cannot open a team's transaction without first proving it may act in
 that team, so an authorization check can no longer be skipped by a code path
 that forgot it. The protocol commands now check a caller's access to the
 protocol inside the same transaction as the edit, so access revoked while a
-request is in flight can no longer let that edit through.
+request is in flight can no longer let that edit through. Moving a stage in a
+draft that another editor has changed since it was read is now refused as a
+conflict the editor can retry after re-reading, instead of failing as a server
+error.
 
 `DATABASE_URL` must now be a `postgres://` URL. A bare socket path, a keyword
 connection string, a URL with credentials but no host, or an `sslmode` other

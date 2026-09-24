@@ -35,6 +35,21 @@ export class DraftStructureError extends Schema.TaggedError<DraftStructureError>
   }
 }
 
+/**
+ * The draft moved on since the caller read it: the revision it named is not
+ * the head. Its own error rather than a `DraftStructureError`, because it is
+ * the one structural refusal a caller can act on — re-read and retry — and the
+ * rpc plane answers it as a `Conflict` the client branches on.
+ */
+export class DraftRevisionConflict extends Schema.TaggedError<DraftRevisionConflict>()(
+  'DraftRevisionConflict',
+  { expected: Schema.String, current: Schema.String },
+) {
+  override get message(): string {
+    return `draft changed from revision ${this.expected} to ${this.current}`;
+  }
+}
+
 export type StructuralResult = { manifestSeq: bigint; manifestHash: string };
 
 export type HeadState = {
@@ -386,7 +401,7 @@ export const moveStage: (
   },
 ) => Effect.Effect<
   StructuralResult,
-  DraftStructureError | SqlError.SqlError,
+  DraftStructureError | DraftRevisionConflict | SqlError.SqlError,
   Transaction
 > = Effect.fn('protocol.store.moveStage')(function* (
   teamId: string,
@@ -399,8 +414,9 @@ export const moveStage: (
 ) {
   const head = yield* lockDraftHead(teamId, params.draftId);
   if (head.headSeq !== params.expectedRevision) {
-    return yield* new DraftStructureError({
-      reason: `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
+    return yield* new DraftRevisionConflict({
+      expected: String(params.expectedRevision),
+      current: String(head.headSeq),
     });
   }
   const orderId = sectionId({ kind: 'stageOrder' });

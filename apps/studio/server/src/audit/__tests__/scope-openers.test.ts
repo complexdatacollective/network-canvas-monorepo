@@ -9,6 +9,7 @@ import {
   enclosingSpan,
   moduleClauseTokens,
   productionFiles,
+  skipTypeArguments,
   spansOf,
 } from '../../__tests__/support/source-spans.ts';
 import { sourceTokens } from '../../__tests__/support/source-tokens.ts';
@@ -49,8 +50,9 @@ const MECHANISM = new Set([
  * Every way `source` opens a transaction other than through the two audit
  * seams, by the `Effect.fn` it sits in (`null` outside one) and the opener:
  * `TenantScope.open`, `MaintenanceScope.openTenant` and so on, `savepoint`,
- * and `withTransaction` — the `SqlClient`'s own, which would open one without
- * `pinSession`'s role and search path. A scope named without a member (handed
+ * `withTransaction` — the `SqlClient`'s own, which would open one without
+ * `pinSession`'s role and search path — and drizzle's `.transaction(`, which
+ * delegates to it. A scope named without a member (handed
  * on, aliased, destructured) is `TenantScope` alone, and a renaming import is
  * counted where it is, so a call under another name cannot go unseen.
  */
@@ -65,6 +67,15 @@ function openers(
   for (const [index, token] of tokens.entries()) {
     if (token.kind !== SyntaxKind.Identifier) continue;
     const inClause = clauses.has(index);
+    if (
+      token.raw === 'transaction' &&
+      tokens[index - 1]?.kind === SyntaxKind.DotToken &&
+      tokens[skipTypeArguments(tokens, index + 1)]?.kind ===
+        SyntaxKind.OpenParenToken
+    ) {
+      found.push({ span: enclosingSpan(spans, index), opener: 'transaction' });
+      continue;
+    }
     if (token.raw === 'withTransaction') {
       if (!inClause || tokens[index + 1]?.raw === 'as') {
         found.push({ span: enclosingSpan(spans, index), opener: token.raw });
@@ -121,6 +132,14 @@ const SERVER = 'apps/studio/server';
  * reason, and an entry whose opener has gone fails until it is removed.
  */
 const OPENERS: Record<string, { count: number; why: string }> = {
+  [`${SERVER}/src/db/tenant.ts › transaction`]: {
+    count: 2,
+    why: "the mechanism: `openOn`'s root transaction, which pins the role and search path first, and `savepoint`'s nested one on the same handle",
+  },
+  [`${SERVER}/src/auth/secrets-adapter.ts › transaction`]: {
+    count: 1,
+    why: "better-auth's own adapter transaction on its node-postgres handle (stage 6 moves it), wrapped only so writes inside it are sealed",
+  },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,
     why: 'the deployment-status read of the installation row, which belongs to no team',
@@ -313,6 +332,7 @@ describe('the opener collector', () => {
         yield* MaintenanceScope.openTenant(access, body);
         yield* savepoint(body);
         yield* sql.withTransaction(body);
+        yield* db.transaction((tx) => body);
       });
       const b = Effect.fnUntraced(function* () {
         yield* UntenantedScope.open(body);
@@ -325,6 +345,7 @@ describe('the opener collector', () => {
       { span: 'a', opener: 'MaintenanceScope.openTenant' },
       { span: 'a', opener: 'savepoint' },
       { span: 'a', opener: 'withTransaction' },
+      { span: 'a', opener: 'transaction' },
       { span: 'b', opener: 'UntenantedScope.open' },
       { span: null, opener: 'OwnerScope.open' },
       { span: null, opener: 'MaintenanceScope' },

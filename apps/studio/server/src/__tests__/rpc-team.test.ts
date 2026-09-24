@@ -2,7 +2,6 @@
 // → membership check → TenantScope → team-scoped rows.
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Exit } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -168,23 +167,18 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
 
     const opened = await client.call(client.rpc('protocols.draft', scope));
     expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
-    const staleMove = await client.callExit(
-      client.rpc('protocols.moveStage', {
-        ...scope,
-        stageId: stageA,
-        toIndex: 0,
-        expectedRevision: beforeMove.revision.sequence,
-      }),
+    const staleMove = await expectRpcFailure(
+      client.callExit(
+        client.rpc('protocols.moveStage', {
+          ...scope,
+          stageId: stageA,
+          toIndex: 0,
+          expectedRevision: beforeMove.revision.sequence,
+        }),
+      ),
+      'Conflict',
     );
-    // A stale revision is a store fault rather than a declared refusal, here as
-    // it was before the move to the rpc plane: `handleAuditedProtocolCommand`
-    // mapped `ProtocolCommandAuthorizationError` and the audited-command's
-    // team-not-found and rethrew everything else, which oRPC answered as an
-    // internal error. §6.1 gives it no row, so it stays a defect.
-    expect(Exit.isFailure(staleMove)).toBe(true);
-    if (Exit.isFailure(staleMove)) {
-      expect(Cause.hasDies(staleMove.cause)).toBe(true);
-    }
+    expect(staleMove.reason).toBe('staleRevision');
   });
 
   it('refuses a non-member team and an unknown team identically', async () => {

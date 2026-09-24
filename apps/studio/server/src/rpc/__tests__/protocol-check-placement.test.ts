@@ -140,11 +140,15 @@ function doesMoreThanTheCheck(
       index = closingParen(tokens, call);
       continue;
     }
-    const wrapper =
-      ['gen', 'fn', 'fnUntraced'].includes(token.raw) &&
-      tokens[index - 1]?.kind === SyntaxKind.DotToken &&
-      tokens[index - 2]?.raw === 'Effect';
-    if (!wrapper) return true;
+    // Plumbing is not work: a call on the `Effect` namespace (a generator
+    // wrapper, a log line, `asVoid`) or a `.pipe(` changes what the check
+    // returns, not what the scope does, so a scope holding only those beside
+    // the check is still a transaction of its own.
+    const plumbing =
+      token.raw === 'pipe' ||
+      (tokens[index - 1]?.kind === SyntaxKind.DotToken &&
+        tokens[index - 2]?.raw === 'Effect');
+    if (!plumbing) return true;
   }
   return false;
 }
@@ -258,6 +262,25 @@ describe('the placement collector', () => {
           access,
           Effect.gen(function* () {
             yield* requireProtocol(access, id);
+          }),
+        );`),
+    ).toEqual(['the scope opened around requireProtocol does nothing else']);
+  });
+
+  it('counts plumbing beside the check as nothing', () => {
+    // Both are the two-transaction shape with something inert added: a log
+    // line or a `.pipe(` does not make the scope do the work it guards.
+    expect(
+      placementProblems(`
+        yield* TenantScope.open(access, requireProtocol(access, id).pipe(Effect.asVoid));`),
+    ).toEqual(['the scope opened around requireProtocol does nothing else']);
+    expect(
+      placementProblems(`
+        yield* TenantScope.open(
+          access,
+          Effect.gen(function* () {
+            yield* requireProtocol(access, id);
+            yield* Effect.logDebug('checked');
           }),
         );`),
     ).toEqual(['the scope opened around requireProtocol does nothing else']);

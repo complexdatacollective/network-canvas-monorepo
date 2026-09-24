@@ -13,6 +13,15 @@ import { checkSchemaEffect, SCHEMA_LOCK_KEY } from './schema.ts';
 // it is meant to report inside. The second is the one `http/health.ts` gives
 // every check.
 //
+// The timeout interrupts the probe, not the query: `Effect.timeout` gives up
+// on the fiber, and the statement it sent stays on the server until it
+// completes. `schemaVerdict` reads `schemaFingerprint`, which a migration's
+// DDL holds `ACCESS EXCLUSIVE`, so during a migrate every timed-out probe
+// keeps one connection waiting behind the lock. Whoever mounts these behind
+// `/readyz` must give them a connection of their own, or a server-side
+// `statement_timeout` / `lock_timeout`, or a few probe intervals starve the
+// pool they share.
+//
 // The web and worker probes still run on node-postgres (`http/health.ts`'s
 // `databaseCheck` and `schemaCheckOnPool`, and `SchemaStatus.read`): those are
 // wired in `app.ts` and `programs/{serve,worker}.ts`, and the node pools pin

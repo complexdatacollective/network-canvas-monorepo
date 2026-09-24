@@ -4,7 +4,11 @@ import type { SqlError } from 'effect/unstable/sql';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { TeamAccess } from '@codaco/studio-contract/middleware/team-administration';
 import { ProtocolsRpcs } from '@codaco/studio-contract/rpc/protocols';
-import { Forbidden, NotFound } from '@codaco/studio-contract/schema/errors';
+import {
+  Conflict,
+  Forbidden,
+  NotFound,
+} from '@codaco/studio-contract/schema/errors';
 import {
   CreateProtocolResult,
   ManifestRevision,
@@ -20,6 +24,7 @@ import {
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from '../../protocol/commands.ts';
+import { DraftRevisionConflict } from '../../protocol/draft-structure.ts';
 import { getProtocolDraft, listProtocols } from '../../protocol/store.ts';
 import { seesEveryTeamStudy } from '../../study/tenancy.ts';
 import { withRequestId } from '../bridge.ts';
@@ -46,6 +51,18 @@ import { openTeam, requireProtocol } from '../team-scope.ts';
  * audited combinator raises, and `Forbidden` is the procedure's own declared
  * refusal. A store refusal and a database failure are faults.
  */
+const protocolRefusal = (
+  error: unknown,
+): Effect.Effect<never, ProtocolAuthorizationError | Forbidden | NotFound> => {
+  if (error instanceof ProtocolCommandAuthorizationError) {
+    return Effect.fail(new ProtocolAuthorizationError({}));
+  }
+  if (error instanceof Forbidden || error instanceof NotFound) {
+    return Effect.fail(error);
+  }
+  return Effect.die(error);
+};
+
 const refusals = <A, E, R>(
   command: Effect.Effect<
     A,
@@ -57,22 +74,40 @@ const refusals = <A, E, R>(
     R
   >,
 ): Effect.Effect<A, ProtocolAuthorizationError | Forbidden | NotFound, R> =>
+  command.pipe(Effect.catch(protocolRefusal));
+
+/**
+ * `refusals` for an edit against a revision the client named: another editor
+ * having moved the draft on is the one structural refusal a client can act on
+ * (re-read and retry), so it is the declared `Conflict`, not a fault.
+ */
+const draftRefusals = <A, E, R>(
+  command: Effect.Effect<
+    A,
+    | E
+    | DraftRevisionConflict
+    | ProtocolCommandAuthorizationError
+    | Forbidden
+    | NotFound
+    | SqlError.SqlError,
+    R
+  >,
+): Effect.Effect<
+  A,
+  ProtocolAuthorizationError | Forbidden | NotFound | Conflict,
+  R
+> =>
   command.pipe(
     Effect.catch(
       (
         error,
       ): Effect.Effect<
         never,
-        ProtocolAuthorizationError | Forbidden | NotFound
-      > => {
-        if (error instanceof ProtocolCommandAuthorizationError) {
-          return Effect.fail(new ProtocolAuthorizationError({}));
-        }
-        if (error instanceof Forbidden || error instanceof NotFound) {
-          return Effect.fail(error);
-        }
-        return Effect.die(error);
-      },
+        ProtocolAuthorizationError | Forbidden | NotFound | Conflict
+      > =>
+        error instanceof DraftRevisionConflict
+          ? Effect.fail(new Conflict({ reason: 'staleRevision' }))
+          : protocolRefusal(error),
     ),
   );
 
@@ -150,7 +185,7 @@ export const ProtocolsHandlers = (deps: RpcDeps) =>
       Effect.gen(function* () {
         const access = yield* openTeam(deps, yield* Principal, payload.teamId);
         return decodeRevision(
-          yield* refusals(
+          yield* draftRefusals(
             withRequestId(addAuditedInformationStage(access, payload)),
           ),
         );
@@ -159,7 +194,7 @@ export const ProtocolsHandlers = (deps: RpcDeps) =>
       Effect.gen(function* () {
         const access = yield* openTeam(deps, yield* Principal, payload.teamId);
         return decodeRevision(
-          yield* refusals(
+          yield* draftRefusals(
             withRequestId(moveAuditedProtocolStage(access, payload)),
           ),
         );

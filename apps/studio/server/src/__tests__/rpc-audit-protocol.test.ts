@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Cause, Effect, Exit } from 'effect';
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -180,21 +180,22 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         }),
       ),
     ).resolves.toEqual(moved);
-    // A stale revision is a store fault rather than a declared refusal, here
-    // as it was before the move to the rpc plane: the oRPC router answered it
-    // as an internal error, so on the Effect plane the call dies.
-    const staleMove = await client.callExit(
-      client.rpc('protocols.moveStage', {
-        ...scope,
-        stageId: stageA,
-        toIndex: 0,
-        expectedRevision: beforeMove.revision.sequence,
-      }),
+    // A stale revision is another editor having moved the draft on — the
+    // declared `Conflict` the client re-reads on, not a fault. (It used to
+    // die, and on this transport a dying tagged error escaped as a
+    // protocol-level `Defect` frame rather than the call's own `Exit`.)
+    const staleMove = await expectRpcFailure(
+      client.callExit(
+        client.rpc('protocols.moveStage', {
+          ...scope,
+          stageId: stageA,
+          toIndex: 0,
+          expectedRevision: beforeMove.revision.sequence,
+        }),
+      ),
+      'Conflict',
     );
-    expect(Exit.isFailure(staleMove)).toBe(true);
-    if (Exit.isFailure(staleMove)) {
-      expect(Cause.hasDies(staleMove.cause)).toBe(true);
-    }
+    expect(staleMove.reason).toBe('staleRevision');
 
     const sectionId = `stage:${stageA}`;
     const held = await builder.protocolBuilder.acquireLock({

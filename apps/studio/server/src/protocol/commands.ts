@@ -24,6 +24,7 @@ import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { lockActor } from '../team/store.ts';
 import {
   addStage,
+  type DraftRevisionConflict,
   type DraftStructureError,
   moveStage,
 } from './draft-structure.ts';
@@ -352,6 +353,7 @@ export const moveAuditedProtocolStage: (
   | ProtocolCommandAuthorizationError
   | ProtocolStoreError
   | DraftStructureError
+  | DraftRevisionConflict
   | Forbidden
   | NotFound
   | SqlError.SqlError,
