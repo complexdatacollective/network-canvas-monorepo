@@ -7,7 +7,7 @@ type OverlineHeadingProps = Omit<
   'level' | 'variant' | 'margin' | 'render'
 > &
   (
-    | { as?: 'h2' | 'h3' | 'legend'; htmlFor?: never }
+    | { as?: 'h2' | 'h3' | 'legend' | 'span'; htmlFor?: never }
     | { as: 'label'; htmlFor: string }
   );
 

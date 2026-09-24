@@ -6,13 +6,12 @@ import type { ReactNode } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { PageIntro } from '~/components/ui/PageIntro';
 import { UpdatesList } from '~/components/updates/UpdatesList';
 import { externalLinks } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
@@ -86,27 +85,13 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
       <HomepagePageBackground />
       <div>
         <Header activeItemId="updates" />
-        <div
-          id={SITE_NAVIGATION_SKIP_TARGET_ID}
-          className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center"
-        >
-          <Heading
-            level="h1"
-            variant="display-heading"
-            margin="none"
-            className="text-text"
-          >
-            {t('heading')}
-          </Heading>
-          <Paragraph
-            intent="lead"
-            margin="none"
-            className="text-text/75 mt-6 text-lg text-pretty"
-          >
-            {t.rich('introduction', { changelog: renderChangelogLink })}
-          </Paragraph>
-        </div>
-        <Container margin="none" className="tablet-landscape:mb-32 mt-12 mb-20">
+        <PageIntro
+          heading={t('heading')}
+          paragraphs={[
+            t.rich('introduction', { changelog: renderChangelogLink }),
+          ]}
+        />
+        <Container margin="bottom" className="mt-12">
           <UpdatesList updates={updates} />
           <section
             aria-labelledby="upgrading"

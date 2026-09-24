@@ -6,13 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
-import Surface from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { GallerySidebar } from '~/components/protocol-gallery/GallerySidebar';
 import { ProtocolGalleryCard } from '~/components/protocol-gallery/ProtocolGalleryCard';
 import { Container } from '~/components/ui/Container';
+import { EmptyResults } from '~/components/ui/EmptyResults';
 import {
   applyFacets,
   countFacetValues,
@@ -190,20 +189,10 @@ export function ProtocolGallery({
               className="[&_[data-stagger-item]]:size-full"
               emptyState={
                 hasActiveFilters ? (
-                  <Surface
-                    noContainer
-                    spacing="lg"
-                    shadow="sm"
-                    role="status"
-                    className="mx-auto max-w-lg"
-                  >
-                    <Heading level="h3" margin="none">
-                      {t('emptyHeading')}
-                    </Heading>
-                    <Paragraph margin="none" emphasis="muted" className="mt-3">
-                      {t('emptyDescription')}
-                    </Paragraph>
-                  </Surface>
+                  <EmptyResults
+                    heading={t('emptyHeading')}
+                    description={t('emptyDescription')}
+                  />
                 ) : (
                   // Without a filter, an empty collection can only mean the
                   // items have not been mounted yet.

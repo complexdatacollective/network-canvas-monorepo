@@ -5,9 +5,8 @@ import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Link } from '~/lib/i18n/navigation';
+import { SiteLink } from '~/components/ui/SiteLink';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
 
 function NewsLink({
@@ -19,19 +18,14 @@ function NewsLink({
   href: string;
   tabIndex?: number;
 }) {
-  const isInternal = href.startsWith('/');
-
   return (
-    <NativeLink
+    <SiteLink
       href={href}
-      render={isInternal ? <Link href={href} /> : undefined}
-      target={isInternal ? undefined : '_blank'}
-      rel={isInternal ? undefined : 'noreferrer'}
       tabIndex={tabIndex}
       className="text-cerulean-blue font-bold"
     >
       {children}
-    </NativeLink>
+    </SiteLink>
   );
 }
 

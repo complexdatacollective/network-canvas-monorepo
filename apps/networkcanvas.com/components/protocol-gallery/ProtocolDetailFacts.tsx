@@ -6,7 +6,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Tag from '@codaco/fresco-ui/Tag';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
-import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
 function DetailItem({

@@ -1,5 +1,5 @@
 import Tag from '@codaco/fresco-ui/Tag';
-import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
 import type { FacetOption } from '~/lib/galleryFacets';
 
 export function FacetGroup({

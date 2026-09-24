@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
 
 export function ProtocolCitation({
   citation,

@@ -14,7 +14,6 @@ import {
 import { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
@@ -22,7 +21,11 @@ import {
 import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Link } from '~/lib/i18n/navigation';
+import { foldText } from '@codaco/fresco-ui/utils/foldText';
+import { EmptyResults } from '~/components/ui/EmptyResults';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
+import { SiteLink } from '~/components/ui/SiteLink';
+import { tools } from '~/lib/content';
 import type { Update } from '~/lib/siteContent';
 import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
@@ -34,31 +37,14 @@ function MarkdownLink({
   children?: ReactNode;
 }) {
   if (!href) return <>{children}</>;
-  if (href.startsWith('/')) {
-    return <NativeLink render={<Link href={href} />}>{children}</NativeLink>;
-  }
-  if (href.startsWith('https://')) {
-    return (
-      <NativeLink href={href} target="_blank" rel="noreferrer">
-        {children}
-      </NativeLink>
-    );
-  }
-  return <NativeLink href={href}>{children}</NativeLink>;
+  return <SiteLink href={href}>{children}</SiteLink>;
 }
 
 const markdownComponents = { a: MarkdownLink };
 
-function normalizeForSearch(text: string) {
-  return text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase();
-}
-
 // Link destinations are not part of what a reader sees, so they do not match.
 function searchableText(update: Update) {
-  return normalizeForSearch(
+  return foldText(
     `${update.title} ${update.body.replace(/\]\([^)]*\)/g, ']')}`,
   );
 }
@@ -67,18 +53,16 @@ type AppFilter = 'all' | UpdateAppId;
 
 const appFilters: readonly AppFilter[] = ['all', ...updateAppIds];
 
-const appNames: Record<UpdateAppId, string> = {
-  architect: 'Architect',
-  interviewer: 'Interviewer',
-  fresco: 'Fresco',
-};
+function appName(id: UpdateAppId) {
+  return tools.find((tool) => tool.id === id)?.name ?? id;
+}
 
 function visibleUpdatesFor(
   updates: readonly (Update & { searchText: string })[],
   query: string,
   app: AppFilter,
 ) {
-  const terms = normalizeForSearch(query).split(/\s+/).filter(Boolean);
+  const terms = foldText(query).split(/\s+/).filter(Boolean);
   return updates.filter(
     (update) =>
       (app === 'all' || update.apps.includes(app)) &&
@@ -182,7 +166,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
               pressedTone="primary"
               uppercase={false}
             >
-              {filter === 'all' ? t('filter.all') : appNames[filter]}
+              {filter === 'all' ? t('filter.all') : appName(filter)}
             </Tag>
           ))}
         </div>
@@ -202,13 +186,11 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
           : null}
       </Paragraph>
       {visibleUpdates.length === 0 ? (
-        <div className="py-10 text-center">
-          <Heading level="h3" margin="none">
-            {t('search.emptyHeading')}
-          </Heading>
-          <Paragraph margin="none" emphasis="muted" className="mt-3">
-            {t('search.emptyDescription')}
-          </Paragraph>
+        <div className="py-6">
+          <EmptyResults
+            heading={t('search.emptyHeading')}
+            description={t('search.emptyDescription')}
+          />
         </div>
       ) : null}
       <Accordion<string>
@@ -224,29 +206,32 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                 <h2 {...props}>{children}</h2>
               )}
               id={update.id}
-              className="scroll-mt-24"
+              className="scroll-mt-8"
             >
-              <AccordionTrigger className="text-text items-start text-left text-3xl tracking-normal normal-case">
+              <AccordionTrigger
+                typography="inherit"
+                className="text-text items-start text-left"
+              >
                 <span className="flex flex-col gap-2">
                   {update.id === latestId ? (
-                    <Heading
-                      level="h4"
-                      variant="all-caps"
-                      margin="none"
-                      render={<span />}
-                      className="text-link"
-                    >
+                    <OverlineHeading as="span" className="text-link">
                       {t('latest')}
-                    </Heading>
+                    </OverlineHeading>
                   ) : null}
-                  <span className="text-pretty">{update.title}</span>
+                  <Heading
+                    level="h2"
+                    variant="subheading"
+                    margin="none"
+                    render={<span />}
+                  >
+                    {update.title}
+                  </Heading>
                   <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <Paragraph
                       render={<span />}
                       intent="meta"
                       emphasis="muted"
                       margin="none"
-                      className="font-normal"
                     >
                       <time dateTime={update.date}>
                         {t('published', {
@@ -262,7 +247,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                         <Fragment key={id}>
                           {' '}
                           <Tag size="sm" uppercase={false}>
-                            {appNames[id]}
+                            {appName(id)}
                           </Tag>
                         </Fragment>
                       ))}

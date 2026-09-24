@@ -11,7 +11,7 @@ import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FacetGroup } from '~/components/protocol-gallery/FacetGroup';
-import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
 import type { FacetOption } from '~/lib/galleryFacets';
 import { parseSortId, type SortId, sortIds } from '~/lib/gallerySort';
 
