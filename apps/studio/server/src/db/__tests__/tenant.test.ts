@@ -15,7 +15,14 @@ import {
 } from '../../__tests__/support/database.ts';
 import { Database } from '../client.ts';
 import { isLockUnavailable } from '../errors.ts';
-import { TenantScope, Transaction, unsafeMakeTeamAccess } from '../tenant.ts';
+import {
+  MaintenanceScope,
+  OwnerScope,
+  TenantScope,
+  Transaction,
+  UntenantedScope,
+  unsafeMakeTeamAccess,
+} from '../tenant.ts';
 
 // The tenant scope: the only way Studio opens a transaction on the application
 // client, and where the team boundary is stamped (#1927 sections 9, 10 and 21).
@@ -100,6 +107,18 @@ const onSecondClient = <A, E, R>(
   harness: TestDatabaseShape,
   body: Effect.Effect<A, E, R>,
 ) => Effect.provideService(body, Database, harness.secondApp);
+
+/** Whether the effect died, and with a defect whose message says `text`. */
+const diesWith = <A, E, R>(effect: Effect.Effect<A, E, R>, text: string) =>
+  Effect.map(
+    Effect.exit(effect),
+    (exit) =>
+      Exit.hasDies(exit) &&
+      Exit.isFailure(exit) &&
+      String(Cause.squash(exit.cause)).includes(text),
+  );
+
+const OTHER_TEAM = 'cannot be nested in one for team';
 
 /** A `FOR UPDATE NOWAIT` from a connection that is in no transaction of ours. */
 const contendFor = (harness: TestDatabaseShape, id: string) =>
@@ -286,6 +305,86 @@ describe.skipIf(!testDb)('the tenant scope', () => {
         }),
       );
 
+      it.effect('dies when a nested scope names another team', () =>
+        Effect.gen(function* () {
+          // A savepoint that commits keeps its `set_config(…, true)`, so
+          // without the refusal the outer transaction would go on stamped
+          // with the inner team while its `Transaction` names the outer one.
+          assert.isTrue(
+            yield* diesWith(
+              TenantScope.open(TEAM_A, TenantScope.open(TEAM_B, Effect.void)),
+              OTHER_TEAM,
+            ),
+          );
+          assert.isTrue(
+            yield* diesWith(
+              MaintenanceScope.openTenant(
+                TEAM_A,
+                MaintenanceScope.openTenant(TEAM_B, Effect.void),
+              ),
+              OTHER_TEAM,
+            ),
+          );
+
+          // The controls: the same team nests, and another team on another
+          // client is a transaction of its own rather than a savepoint.
+          yield* TenantScope.open(
+            TEAM_A,
+            TenantScope.open(TEAM_A, Effect.void),
+          );
+          yield* TenantScope.open(
+            TEAM_A,
+            Effect.flatMap(TestDatabase, (harness) =>
+              onSecondClient(harness, TenantScope.open(TEAM_B, Effect.void)),
+            ),
+          );
+        }),
+      );
+
+      it.effect('dies when an untenanted scope and a tenant one nest', () =>
+        Effect.gen(function* () {
+          // Inside a tenant scope an untenanted one would inherit the outer
+          // team; around one, the tenant scope would stamp a transaction
+          // whose `Transaction` says no team.
+          assert.isTrue(
+            yield* diesWith(
+              TenantScope.open(TEAM_A, UntenantedScope.open(Effect.void)),
+              OTHER_TEAM,
+            ),
+          );
+          assert.isTrue(
+            yield* diesWith(
+              UntenantedScope.open(TenantScope.open(TEAM_A, Effect.void)),
+              OTHER_TEAM,
+            ),
+          );
+          yield* UntenantedScope.open(UntenantedScope.open(Effect.void));
+        }),
+      );
+
+      it.effect(
+        'dies when the transaction it would nest in is not its own',
+        () =>
+          Effect.gen(function* () {
+            // The owner scope between the two replaces `Transaction` but not the
+            // application client's open transaction, so the inner scope would
+            // be a savepoint on the tenant transaction while the `Transaction`
+            // it compares against is the owner's — whose team, null, matches.
+            assert.isTrue(
+              yield* diesWith(
+                TenantScope.open(
+                  TEAM_A,
+                  OwnerScope.open(UntenantedScope.open(Effect.void)),
+                ),
+                'nested in the scope that opened it',
+              ),
+            );
+            // Opened on a client with no transaction of its own, the owner
+            // scope itself is a fresh transaction, and is allowed.
+            yield* TenantScope.open(TEAM_A, OwnerScope.open(Effect.void));
+          }),
+      );
+
       it.effect('rolls back a nested scope without ending the outer one', () =>
         Effect.gen(function* () {
           const [teamA] = yield* seedTeams();
@@ -426,11 +525,12 @@ describe('the tenant scope’s key', () => {
     // moment `TenantScope.open` accepts what it is given. Built, never run.
     // @ts-expect-error -- a tenant transaction takes a TeamAccess, never a team id
     const bare = TenantScope.open('team-a', Effect.void);
-    const forged = TenantScope.open(
-      // @ts-expect-error -- the brand is a non-exported unique symbol, so no literal carries it
-      { teamId: 'team-a', role: 'owner' },
-      Effect.void,
-    );
+    // Passed by name, not as a literal: a fresh literal would trip the
+    // excess-property check on `role` whatever `open` took, and satisfy the
+    // expectation without the brand being what refused it.
+    const lookAlike = { teamId: 'team-a', role: 'owner' as const };
+    // @ts-expect-error -- the brand is a non-exported unique symbol, so no look-alike carries it
+    const forged = TenantScope.open(lookAlike, Effect.void);
     assert.isTrue(Effect.isEffect(bare) && Effect.isEffect(forged));
   });
 });

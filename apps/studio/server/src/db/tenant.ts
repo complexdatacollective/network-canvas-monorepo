@@ -36,14 +36,17 @@ export {
 //
 // The rule this module exists to enforce is that **tenancy implies
 // authorization**. `TenantScope.open` takes a `TeamAccess`, never a bare team
-// id, and a `TeamAccess` can only be built by one of the named constructors in
-// `team/access.ts`, `study/access.ts`, `protocol-builder/tenancy.ts`,
-// `team/commands.ts` (an invitation the actor is not yet a member of) and
-// `jobs/team-access.ts` (worker-only). So a tenant transaction cannot be
-// opened without a membership check having happened, and the compiler says so
-// — which is a stronger guarantee than the coverage test the first draft of
-// the design proposed, because a coverage test cannot see a wrong id or a
-// check made too late (#1927 §21 F7).
+// id, and a `TeamAccess` is minted only at the named sites
+// `db/__tests__/team-access-policy.test.ts` lists: `openTeam`
+// (`rpc/team-scope.ts`), `resolveStudy` (`study/tenancy.ts`), `openSession`
+// (`protocol-builder/tenancy.ts`), `acceptInvitation` (`team/commands.ts` — an
+// invitation the actor is not yet a member of) and `maintenanceTeamAccess`
+// (`jobs/team-access.ts`, the maintenance role, which acts as the deployment
+// and has no membership to check). So a tenant transaction cannot be opened
+// without passing through one of those sites, and the compiler says so —
+// which is a stronger guarantee than the coverage test the first draft of the
+// design proposed, because a coverage test cannot see a wrong id or a check
+// made too late (#1927 §21 F7).
 
 export type IsolationLevel = 'repeatable read' | 'serializable';
 
@@ -87,30 +90,62 @@ const pinSession = (
   });
 
 /**
- * Dies when an isolation level is asked for inside an existing transaction.
- * Read off the fiber rather than tracked by hand: `SqlClient` keys
- * `TransactionConnection` per client, and its presence *is* "this fiber is
- * already in a transaction on this client".
+ * Dies when a scope would become a savepoint it cannot safely be. Read off the
+ * fiber rather than tracked by hand: `SqlClient` keys `TransactionConnection`
+ * per client, and its presence *is* "this fiber is already in a transaction on
+ * this client" — the case where `transaction` opens a savepoint rather than a
+ * transaction. A scope on a client with no transaction open is a transaction
+ * of its own, whatever else the fiber is inside, and is left alone.
+ *
+ * A savepoint shares the outer transaction's session state. An isolation
+ * level cannot be set on it at all (#1927 §21 F6). A team GUC set in it
+ * outlives it: `set_config(…, true)` is transaction-local, and a savepoint
+ * that is not rolled back leaves it in place — so a nested scope for another
+ * team, or an untenanted one inside a tenant one, would re-stamp or inherit
+ * the outer transaction's team while `Transaction.teamId` names the other.
+ * The outer `Transaction` has to be one this client opened, or there is no
+ * `teamId` to compare against. `savepoint` is the sanctioned nested form.
  */
-const refuseNestedIsolation = (
+const refuseUnsafeNesting = (
   service: DatabaseService,
+  teamId: string | null,
   options: ScopeOptions | undefined,
 ): Effect.Effect<void> =>
-  options?.isolation === undefined
-    ? Effect.void
-    : Effect.flatMap(
-        Effect.serviceOption(service.sql.transactionService),
-        (open) =>
-          Option.isSome(open)
-            ? Effect.die(
-                new Error(
-                  'an isolation level may only be set at the root of a transaction; ' +
-                    'this scope is nested, and Postgres refuses `set transaction` ' +
-                    'once the transaction has begun',
-                ),
-              )
-            : Effect.void,
-      );
+  Effect.flatMap(
+    Effect.serviceOption(service.sql.transactionService),
+    (open) => {
+      if (Option.isNone(open)) return Effect.void;
+      if (options?.isolation !== undefined) {
+        return Effect.die(
+          new Error(
+            'an isolation level may only be set at the root of a transaction; ' +
+              'this scope is nested, and Postgres refuses `set transaction` ' +
+              'once the transaction has begun',
+          ),
+        );
+      }
+      return Effect.flatMap(Effect.serviceOption(Transaction), (outer) => {
+        if (Option.isNone(outer) || outer.value.sql !== service.sql) {
+          return Effect.die(
+            new Error(
+              'a scope nested in a transaction on the same client must be ' +
+                'nested in the scope that opened it',
+            ),
+          );
+        }
+        if (outer.value.teamId !== teamId) {
+          return Effect.die(
+            new Error(
+              `a scope for team ${JSON.stringify(teamId)} cannot be nested in ` +
+                `one for team ${JSON.stringify(outer.value.teamId)}: the savepoint ` +
+                'shares the outer transaction’s team setting',
+            ),
+          );
+        }
+        return Effect.void;
+      });
+    },
+  );
 
 const openOn = <A, E, R>(
   service: DatabaseService,
@@ -118,7 +153,7 @@ const openOn = <A, E, R>(
   body: Effect.Effect<A, E, R>,
   options?: ScopeOptions,
 ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, Transaction>> =>
-  Effect.flatMap(refuseNestedIsolation(service, options), () =>
+  Effect.flatMap(refuseUnsafeNesting(service, teamId, options), () =>
     service.db.transaction(
       (tx) =>
         Effect.provideService(
@@ -162,17 +197,19 @@ export const TenantScope = {
 /**
  * A transaction on the **application** client with no team stamped.
  *
- * It exists for one read, and the comment is the reason it is named rather
- * than folded into `TenantScope.open`: `team.acceptInvitation` has to resolve
- * which team an invitation belongs to before anybody has proved they may act
- * in that team, because the browser sends the opaque invitation id and nothing
- * else (`team/store.ts` — `findInvitationTeam`).
+ * It is for work that precedes a team or belongs to none: resolving which
+ * team an invitation belongs to before anybody has proved they may act in it
+ * (`team.acceptInvitation` — the browser sends the opaque invitation id and
+ * nothing else), the installation row, the caller's own user row, the
+ * deployment state, the web process's clock probe and its sign-in mail job.
+ * `audit/__tests__/scope-openers.test.ts` pins every direct opener, which is
+ * why it is named rather than folded into `TenantScope.open`.
  *
  * It is strictly weaker than a tenant scope rather than a way around one. The
  * team GUC is unset, and every tenant policy reads it through
  * `NULLIF(current_setting(…, true), '')`, so a statement here matches no team's
- * rows at all — the tables it can reach are better-auth's, which carry no
- * policy. What it still does is pin the role and the search path, which a bare
+ * rows at all — what it can reach are the tables no tenant policy covers. What
+ * it still does is pin the role and the search path, which a bare
  * statement outside a transaction does not (fallback A, #1927 §20 Q6).
  */
 export const UntenantedScope = {
