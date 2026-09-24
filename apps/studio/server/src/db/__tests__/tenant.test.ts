@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { assert, layer } from '@effect/vitest';
 import { Cause, Effect, Exit, Option, Result } from 'effect';
 import type { SqlClient } from 'effect/unstable/sql';
-import { describe } from 'vitest';
+import { describe, test } from 'vitest';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
@@ -417,4 +417,20 @@ describe.skipIf(!testDb)('the tenant scope', () => {
       );
     },
   );
+});
+
+describe('the tenant scope’s key', () => {
+  test('is a TeamAccess, never a bare team id or a look-alike', () => {
+    // Checked by the package typecheck rather than at run time: an unused
+    // `@ts-expect-error` is itself an error, so either line fails the build the
+    // moment `TenantScope.open` accepts what it is given. Built, never run.
+    // @ts-expect-error -- a tenant transaction takes a TeamAccess, never a team id
+    const bare = TenantScope.open('team-a', Effect.void);
+    const forged = TenantScope.open(
+      // @ts-expect-error -- the brand is a non-exported unique symbol, so no literal carries it
+      { teamId: 'team-a', role: 'owner' },
+      Effect.void,
+    );
+    assert.isTrue(Effect.isEffect(bare) && Effect.isEffect(forged));
+  });
 });
