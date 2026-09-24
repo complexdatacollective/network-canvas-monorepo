@@ -25,7 +25,7 @@ export type PoolLimits = {
    * How many connections this pool may hold. Left to node-postgres's default
    * for a pool that serves requests; set by a pool whose whole job is one kind
    * of statement, so it cannot take a share of the database's connections that
-   * its work does not need (src/jobs/client.ts).
+   * its work does not need.
    */
   max?: number;
 };

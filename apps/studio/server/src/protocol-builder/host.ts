@@ -1428,8 +1428,8 @@ function stageList(order: SectionDoc): string[] {
  * Every section document at the draft's head, in one read.
  *
  * The hashes come from the head the caller already holds, so the statement is
- * `hash = ANY(...)` over that list rather than the `jsonb_each_text` join it
- * replaces — one bind of a string array instead of a jsonb document, and the
+ * `hash IN (...)` over that list (drizzle's `inArray`) rather than the
+ * `jsonb_each_text` join it replaces — bound hashes instead of a jsonb document, and the
  * section-to-hash mapping stays where it was read. Two sections holding the
  * same document share one row, which is why the rows are keyed by hash and the
  * sections are walked separately.

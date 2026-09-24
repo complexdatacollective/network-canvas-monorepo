@@ -761,14 +761,15 @@ were worth keeping — the retry ladder and its backoff, per-queue singletons,
 dead-letter copies, retention and deletion — with the differences, and the
 rulings behind them, tabulated in §2 of that README.
 
-A job is created inside the transaction that caused it. The command hands its
-own database client to the enqueue, so the job is inserted on that connection,
-inside that transaction, alongside the domain row and its audit event: a
-command that rolls back leaves no job, and a command that commits always leaves
-exactly one. Nothing enqueues after a commit, and `server/src/jobs/client.ts`
-and `server/src/jobs/jobs.ts` are the only modules that create a job at
-all — another source test holds the codebase to that, because an enqueue on its
-own connection reopens both windows this closes.
+A job is created inside the transaction that caused it. `Jobs.enqueue` requires
+the caller's `Transaction`, so the job is inserted on that connection, inside
+that transaction, alongside the domain row and its audit event: a command that
+rolls back leaves no job, and a command that commits always leaves exactly one.
+Nothing enqueues after a commit. `server/src/jobs/insert.ts` renders the one
+statement that creates a job and `server/src/jobs/worker.ts` is the only other
+module that inserts one (cron); `server/src/jobs/__tests__/source-policy.test.ts`
+holds the codebase to that, because an enqueue on its own connection reopens
+both windows this closes.
 
 Queues are declarations, not configuration and not rows. A queue is declared in
 `JOB_QUEUES` in `packages/studio-sync/src/jobs.ts`, and a `deadLetter` has to

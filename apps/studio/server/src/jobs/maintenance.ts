@@ -19,9 +19,11 @@ import { JobWorker } from './worker.ts';
 // stop (worker.ts) is what bounds the work already running.
 
 /**
- * Whether the deployment is in maintenance. Stage 3 provides the live
- * implementation over `deployment_state`; nothing here reads that table,
- * because the queue must not grow a second opinion about what maintenance is.
+ * Whether the deployment is in maintenance. The live implementation is
+ * stage 4's, over `deployment_state` (stage 3 added the table and its store,
+ * `db/deployment-state.ts`); until then the worker provides `layerOff`. Nothing
+ * here reads that table, because the queue must not grow a second opinion
+ * about what maintenance is.
  *
  * `read` cannot fail, which is a decision the live implementation inherits:
  * a read of `deployment_state` that errors has to answer with the last state

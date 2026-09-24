@@ -55,7 +55,8 @@ export function sqlState(error: unknown): string | undefined {
  *
  * `55P03` is checked first and the driver-independent tag second: the SQLSTATE
  * is what Postgres actually said, and the tag is the driver's classification of
- * it (`effect/unstable/sql/SqlError.ts` maps the state to `LockTimeoutError`).
+ * it (`@effect/sql-pg`'s `internal/sqlError.ts` maps the state to
+ * `LockTimeoutError`).
  * Reading only the tag would miss a refusal that reached us as a raw driver
  * error; reading only the state would miss one the driver classified without
  * preserving it.

@@ -150,12 +150,11 @@ function workerWith(env: StudioEnv, db: DbEnv) {
         Layer.provide(SchemaCurrent),
       );
 
-      // The maintenance client the queue runs on. Same database, same role and
-      // the same (absent) search path as the `DatabasePool` the summary
-      // writer's own pool is built from, which those two have to agree on: the
-      // handler's idempotency read goes through this client while the audit
-      // row is written through that pool, and two schemas apart the read would
-      // report every written summary as missing.
+      // The maintenance client the queue runs on, and the only client the
+      // handlers use: the denied-attempts summary reads its idempotency check
+      // and appends its audit row on this one client, so the two cannot
+      // disagree about the database, role or search path. The `DatabasePool`
+      // beside it serves the node-postgres schema gate and readiness checks.
       const QueueDatabase = MaintenanceDatabase.layer({
         url: db.url,
         applicationName: 'studio-worker',
