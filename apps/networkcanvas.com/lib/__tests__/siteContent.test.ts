@@ -199,9 +199,9 @@ describe('loadUpdates', () => {
     await Promise.all([
       writeFile(
         join(directory, 'updates.csv'),
-        `id,date,title_en,title_en_gb,title_es
-older,2026-01-05,Older update,Older update (GB),Novedad anterior
-newer,2026-03-10,Newer update,Newer update (GB),Novedad reciente
+        `id,date,apps,title_en,title_en_gb,title_es
+older,2026-01-05,fresco,Older update,Older update (GB),Novedad anterior
+newer,2026-03-10,architect|interviewer,Newer update,Newer update (GB),Novedad reciente
 `,
       ),
       writeFile(join(directory, 'updates/older.en.md'), 'Older body\n'),
@@ -222,12 +222,14 @@ newer,2026-03-10,Newer update,Newer update (GB),Novedad reciente
       {
         id: 'newer',
         date: '2026-03-10',
+        apps: ['architect', 'interviewer'],
         title: 'Novedad reciente',
         body: 'Cuerpo reciente',
       },
       {
         id: 'older',
         date: '2026-01-05',
+        apps: ['fresco'],
         title: 'Novedad anterior',
         body: 'Cuerpo anterior',
       },
@@ -256,11 +258,24 @@ newer,2026-03-10,Newer update,Newer update (GB),Novedad reciente
     );
   });
 
+  it('rejects an app it does not know', async () => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      `id,date,apps,title_en,title_en_gb,title_es
+older,2026-01-05,fresco|studio,Older update,Older update (GB),Novedad anterior
+`,
+    );
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      'updates.csv: row 2: apps:',
+    );
+  });
+
   it('rejects a date that is not an ISO calendar date', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,title_en,title_en_gb,title_es
-older,05/01/2026,Older update,Older update (GB),Novedad anterior
+      `id,date,apps,title_en,title_en_gb,title_es
+older,05/01/2026,fresco,Older update,Older update (GB),Novedad anterior
 `,
     );
 

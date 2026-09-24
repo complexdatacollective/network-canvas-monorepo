@@ -2,7 +2,7 @@
 
 import { Search, X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import {
   Accordion,
@@ -19,10 +19,12 @@ import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
+import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Link } from '~/lib/i18n/navigation';
 import type { Update } from '~/lib/siteContent';
+import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
 function MarkdownLink({
   href,
@@ -61,14 +63,27 @@ function searchableText(update: Update) {
   );
 }
 
-function matchingIds(
+type AppFilter = 'all' | UpdateAppId;
+
+const appFilters: readonly AppFilter[] = ['all', ...updateAppIds];
+
+const appNames: Record<UpdateAppId, string> = {
+  architect: 'Architect',
+  interviewer: 'Interviewer',
+  fresco: 'Fresco',
+};
+
+function visibleUpdatesFor(
   updates: readonly (Update & { searchText: string })[],
   query: string,
+  app: AppFilter,
 ) {
   const terms = normalizeForSearch(query).split(/\s+/).filter(Boolean);
-  return updates
-    .filter((update) => terms.every((term) => update.searchText.includes(term)))
-    .map((update) => update.id);
+  return updates.filter(
+    (update) =>
+      (app === 'all' || update.apps.includes(app)) &&
+      terms.every((term) => update.searchText.includes(term)),
+  );
 }
 
 function updateIdFromHash(updates: readonly Update[]) {
@@ -79,9 +94,10 @@ function updateIdFromHash(updates: readonly Update[]) {
 export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const t = useTranslations('UpdatesPage');
   const format = useFormatter();
-  const defaultOpenIds = updates[0] ? [updates[0].id] : [];
-  const [openIds, setOpenIds] = useState<string[]>(defaultOpenIds);
+  const latestId = updates[0]?.id;
+  const [openIds, setOpenIds] = useState<string[]>(latestId ? [latestId] : []);
   const [query, setQuery] = useState('');
+  const [app, setApp] = useState<AppFilter>('all');
   const searchable = useMemo(
     () =>
       updates.map((update) => ({
@@ -90,18 +106,20 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
       })),
     [updates],
   );
-  const searching = query.trim() !== '';
-  const visibleIds = searching
-    ? matchingIds(searchable, query)
-    : updates.map((update) => update.id);
-  const visibleUpdates = updates.filter((update) =>
-    visibleIds.includes(update.id),
-  );
+  const visibleUpdates = visibleUpdatesFor(searchable, query, app);
+  const narrowed = query.trim() !== '' || app !== 'all';
 
-  // Every match opens so the text that matched is on screen.
-  const changeQuery = (value: string) => {
-    setQuery(value);
-    setOpenIds(value.trim() ? matchingIds(searchable, value) : defaultOpenIds);
+  // Every search match opens so the text that matched is on screen; without a
+  // search, only the newest update left in view does.
+  const showUpdates = (nextQuery: string, nextApp: AppFilter) => {
+    setQuery(nextQuery);
+    setApp(nextApp);
+    const visible = visibleUpdatesFor(searchable, nextQuery, nextApp);
+    setOpenIds(
+      nextQuery.trim()
+        ? visible.map((update) => update.id)
+        : visible.slice(0, 1).map((update) => update.id),
+    );
   };
 
   // A link to one update has to reveal it even when it is collapsed.
@@ -110,6 +128,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
       const id = updateIdFromHash(updates);
       if (!id) return;
       setQuery('');
+      setApp('all');
       setOpenIds((current) =>
         current.includes(id) ? current : [...current, id],
       );
@@ -121,31 +140,53 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   }, [updates]);
 
   return (
-    <div className="mx-auto max-w-3xl pt-8">
-      <UnconnectedField
-        name="updates-search"
-        label={t('search.label')}
-        labelHidden
-        component={InputField}
-        type="search"
-        value={query}
-        onChange={(value) => changeQuery(value ?? '')}
-        placeholder={t('search.placeholder')}
-        className="w-full"
-        prefixComponent={<Search aria-hidden />}
-        suffixComponent={
-          query ? (
-            <IconButton
-              size="md"
-              variant="text"
-              aria-label={t('search.clear')}
-              icon={<X aria-hidden />}
-              onClick={() => changeQuery('')}
-            />
-          ) : undefined
-        }
-        size="md"
-      />
+    <div className="mx-auto max-w-4xl">
+      <div className="tablet-portrait:flex-row tablet-portrait:items-center flex flex-col gap-4">
+        {/* A field adds a bottom margin whenever a sibling follows it. */}
+        <div className="min-w-0 flex-1">
+          <UnconnectedField
+            name="updates-search"
+            label={t('search.label')}
+            labelHidden
+            component={InputField}
+            type="search"
+            value={query}
+            onChange={(value) => showUpdates(value ?? '', app)}
+            placeholder={t('search.placeholder')}
+            prefixComponent={<Search aria-hidden />}
+            suffixComponent={
+              query ? (
+                <IconButton
+                  size="md"
+                  variant="text"
+                  aria-label={t('search.clear')}
+                  icon={<X aria-hidden />}
+                  onClick={() => showUpdates('', app)}
+                />
+              ) : undefined
+            }
+            size="md"
+          />
+        </div>
+        <div
+          role="group"
+          aria-label={t('filter.label')}
+          className="tablet-portrait:flex-nowrap flex shrink-0 flex-wrap gap-2"
+        >
+          {appFilters.map((filter) => (
+            <Tag
+              key={filter}
+              pressed={app === filter}
+              onPressedChange={() => showUpdates(query, filter)}
+              size="lg"
+              pressedTone="primary"
+              uppercase={false}
+            >
+              {filter === 'all' ? t('filter.all') : appNames[filter]}
+            </Tag>
+          ))}
+        </div>
+      </div>
       <Paragraph
         margin="none"
         intent="meta"
@@ -153,7 +194,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
         aria-live="polite"
         className="mt-3"
       >
-        {searching
+        {narrowed
           ? t('search.results', {
               count: visibleUpdates.length,
               total: updates.length,
@@ -174,7 +215,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
         multiple
         value={openIds}
         onValueChange={setOpenIds}
-        className="divide-text/10 gap-0 divide-y"
+        className="divide-text/10 mt-2 gap-0 divide-y"
       >
         {visibleUpdates.map((update) => (
           <AccordionItem key={update.id} value={update.id} className="py-6">
@@ -185,33 +226,63 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
               id={update.id}
               className="scroll-mt-24"
             >
-              <AccordionTrigger className="text-text items-start text-left text-2xl tracking-normal normal-case">
-                <span className="flex flex-col gap-1">
+              <AccordionTrigger className="text-text items-start text-left text-3xl tracking-normal normal-case">
+                <span className="flex flex-col gap-2">
+                  {update.id === latestId ? (
+                    <Heading
+                      level="h4"
+                      variant="all-caps"
+                      margin="none"
+                      render={<span />}
+                      className="text-link"
+                    >
+                      {t('latest')}
+                    </Heading>
+                  ) : null}
                   <span className="text-pretty">{update.title}</span>
-                  <time
-                    dateTime={update.date}
-                    className="text-text/60 text-sm font-normal"
-                  >
-                    {t('published', {
-                      date: format.dateTime(new Date(update.date), {
-                        dateStyle: 'long',
-                        timeZone: 'UTC',
-                      }),
-                    })}
-                  </time>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <Paragraph
+                      render={<span />}
+                      intent="meta"
+                      emphasis="muted"
+                      margin="none"
+                      className="font-normal"
+                    >
+                      <time dateTime={update.date}>
+                        {t('published', {
+                          date: format.dateTime(new Date(update.date), {
+                            dateStyle: 'long',
+                            timeZone: 'UTC',
+                          }),
+                        })}
+                      </time>
+                    </Paragraph>
+                    <span className="flex flex-wrap gap-1.5">
+                      {update.apps.map((id) => (
+                        <Fragment key={id}>
+                          {' '}
+                          <Tag size="sm" uppercase={false}>
+                            {appNames[id]}
+                          </Tag>
+                        </Fragment>
+                      ))}
+                    </span>
+                  </span>
                 </span>
               </AccordionTrigger>
             </AccordionHeader>
             <AccordionPanel
-              className="mt-4"
+              className="mt-0"
               inert={!openIds.includes(update.id)}
             >
-              <RenderMarkdown
-                allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-                components={markdownComponents}
-              >
-                {update.body}
-              </RenderMarkdown>
+              <div className="pt-4">
+                <RenderMarkdown
+                  allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+                  components={markdownComponents}
+                >
+                  {update.body}
+                </RenderMarkdown>
+              </div>
             </AccordionPanel>
           </AccordionItem>
         ))}

@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -105,20 +106,26 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
             {t.rich('introduction', { changelog: renderChangelogLink })}
           </Paragraph>
         </div>
-        <Container>
+        <Container margin="none" className="tablet-landscape:mb-32 mt-12 mb-20">
+          <UpdatesList updates={updates} />
           <section
             aria-labelledby="upgrading"
-            className="border-text/10 mx-auto max-w-3xl border-b pb-8"
+            className="border-text/10 mx-auto max-w-4xl border-t pt-6"
           >
-            <Heading level="h2" id="upgrading">
-              {t('upgrading.heading')}
-            </Heading>
-            <Paragraph>{t('upgrading.automatic')}</Paragraph>
-            <Paragraph margin="none">
-              {t.rich('upgrading.fresco', { link: renderFrescoUpgradeLink })}
-            </Paragraph>
+            <Alert variant="info">
+              <AlertTitle id="upgrading" headingLevel="h2">
+                {t('upgrading.heading')}
+              </AlertTitle>
+              <AlertDescription>
+                <Paragraph>{t('upgrading.automatic')}</Paragraph>
+                <Paragraph margin="none">
+                  {t.rich('upgrading.fresco', {
+                    link: renderFrescoUpgradeLink,
+                  })}
+                </Paragraph>
+              </AlertDescription>
+            </Alert>
           </section>
-          <UpdatesList updates={updates} />
         </Container>
         <Footer />
       </div>

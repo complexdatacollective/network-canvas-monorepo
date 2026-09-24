@@ -121,6 +121,11 @@
       "results": "{count} of {total, plural, =1 {# update} other {# updates}}",
       "emptyHeading": "No updates found",
       "emptyDescription": "Try a different search."
+    },
+    "latest": "Latest update",
+    "filter": {
+      "label": "Filter by app",
+      "all": "All"
     }
   },
   "Team": {

@@ -73,12 +73,14 @@ async function renderPage(locale: 'en-US' | 'es' = 'en-US') {
   renderWithIntl(page, locale);
 }
 
-function entryTitles() {
+// Each entry heading also carries its date, apps and, for the newest, a
+// label, so an entry is identified by the title its heading contains.
+function entryTitles(titles: readonly string[]) {
   return screen
     .queryAllByRole('heading', { level: 2, hidden: true })
     .filter((heading) => heading.querySelector('button'))
-    .map(
-      (heading) => heading.querySelector('time')?.previousSibling?.textContent,
+    .map((heading) =>
+      titles.find((title) => heading.textContent?.includes(title)),
     );
 }
 
@@ -88,7 +90,7 @@ function updateTrigger(title: string) {
   return within(
     screen.getByRole('heading', {
       level: 2,
-      name: (name) => name.startsWith(title),
+      name: (name) => name.includes(title),
       hidden: true,
     }),
   ).getByRole('button', { hidden: true });
@@ -176,46 +178,52 @@ describe('updates page', () => {
   });
 
   it('narrows the list to updates that match every search word', async () => {
-    const [newest, older] = await loadUpdates('en-US');
+    const updates = await loadUpdates('en-US');
+    const titles = updates.map((update) => update.title);
+    const [newest, older] = updates;
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
       target: { value: 'schema  PROGRESSIVE' },
     });
 
-    expect(entryTitles()).toEqual([older!.title]);
+    expect(entryTitles(titles)).toEqual([older!.title]);
     expect(updateTrigger(older!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
     expect(screen.getByText('1 of 2 updates')).toBeInTheDocument();
-    expect(entryTitles()).not.toContain(newest!.title);
+    expect(entryTitles(titles)).not.toContain(newest!.title);
   });
 
   it('ignores accents when searching', async () => {
-    const [newest] = await loadUpdates('es');
+    const updates = await loadUpdates('es');
+    const titles = updates.map((update) => update.title);
+    const [newest] = updates;
     await renderPage('es');
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
       target: { value: 'LOCALIZACION' },
     });
 
-    expect(entryTitles()).toEqual([newest!.title]);
+    expect(entryTitles(titles)).toEqual([newest!.title]);
   });
 
   it('does not match link destinations', async () => {
+    const titles = (await loadUpdates('en-US')).map((update) => update.title);
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
       target: { value: 'community.networkcanvas' },
     });
 
-    expect(entryTitles()).toHaveLength(0);
+    expect(entryTitles(titles)).toHaveLength(0);
     expect(screen.getByText('No updates found')).toBeInTheDocument();
   });
 
   it('restores every update when the search is cleared', async () => {
     const updates = await loadUpdates('en-US');
+    const titles = updates.map((update) => update.title);
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
@@ -227,11 +235,51 @@ describe('updates page', () => {
       screen.getByRole('button', { name: 'Clear search', hidden: true }),
     );
 
-    expect(entryTitles()).toEqual(updates.map((update) => update.title));
+    expect(entryTitles(titles)).toEqual(updates.map((update) => update.title));
     expect(updateTrigger(updates[0]!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
+  });
+
+  it('labels only the newest update as the latest', async () => {
+    const [newest, older] = await loadUpdates('en-US');
+    await renderPage();
+
+    expect(updateTrigger(newest!.title)).toHaveTextContent(/^Latest update/);
+    expect(updateTrigger(older!.title)).not.toHaveTextContent('Latest update');
+    expect(updateTrigger(newest!.title)).toHaveTextContent(
+      'Architect Interviewer Fresco',
+    );
+  });
+
+  it('filters updates by app alongside the search', async () => {
+    const updates = await loadUpdates('en-US');
+    await renderPage();
+    const filters = screen.getByRole('group', {
+      name: 'Filter by app',
+      hidden: true,
+    });
+    const all = within(filters).getByRole('button', {
+      name: 'All',
+      hidden: true,
+    });
+    const fresco = within(filters).getByRole('button', {
+      name: 'Fresco',
+      hidden: true,
+    });
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(fresco);
+
+    expect(fresco).toHaveAttribute('aria-pressed', 'true');
+    expect(all).toHaveAttribute('aria-pressed', 'false');
+    const frescoUpdates = updates.filter((update) =>
+      update.apps.includes('fresco'),
+    );
+    expect(
+      screen.getByText(`${frescoUpdates.length} of ${updates.length} updates`),
+    ).toBeInTheDocument();
   });
 
   it('generates Spanish metadata and language alternates', async () => {

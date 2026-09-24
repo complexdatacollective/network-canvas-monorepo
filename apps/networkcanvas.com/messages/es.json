@@ -121,6 +121,11 @@
       "results": "{count} de {total, plural, =1 {# novedad} other {# novedades}}",
       "emptyHeading": "No se encontraron novedades",
       "emptyDescription": "Pruebe con otra búsqueda."
+    },
+    "latest": "Novedad más reciente",
+    "filter": {
+      "label": "Filtrar por aplicación",
+      "all": "Todas"
     }
   },
   "Team": {
