@@ -1,3 +1,4 @@
+import { and, eq } from 'drizzle-orm';
 import { Effect } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
@@ -7,13 +8,17 @@ import {
   type RateLimited,
 } from '@codaco/studio-contract/schema/errors';
 
+import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { Database } from '../db/client.ts';
+import { sqlErrorsOnly } from '../db/errors.ts';
 import {
   type TeamAccess,
-  type Transaction,
+  Transaction,
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import { isReachableByCaller } from '../protocol/store.ts';
+import { STUDY_ROLE_TABLES } from '../study/roles-schema.ts';
+import { STUDY_TABLES } from '../study/schema.ts';
 import {
   type ResolvedStudy,
   resolveStudy as resolveStudyTenant,
@@ -22,6 +27,10 @@ import {
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { chargeLimit, requirePool } from './bridge.ts';
 import type { RpcDeps } from './deps.ts';
+
+const { team_members: teamMembers } = AUTH_TABLES;
+const { studyRoleGrants } = STUDY_ROLE_TABLES;
+const { studies } = STUDY_TABLES;
 
 // Where a `TeamAccess` comes from on the rpc plane (#1927 §10).
 //
@@ -33,7 +42,9 @@ import type { RpcDeps } from './deps.ts';
 // rpc plane's two, `openTeam` and `resolveStudy`. The others are
 // `team/commands.ts` (an invitation whose actor is not yet a member),
 // `protocol-builder/tenancy.ts` (the editor host's own gate) and
-// `jobs/team-access.ts` (worker-only).
+// `jobs/team-access.ts` (the maintenance token, which `process-separation`
+// keeps out of the web process). `db/__tests__/team-access-policy.test.ts` pins
+// the whole set.
 //
 // The Promise-era `tenantDbFor` is gone with the last store that spoke
 // node-postgres: every team-scoped write now opens its own `TenantScope`, so
@@ -141,8 +152,18 @@ export const resolveStudy = Effect.fnUntraced(function* (
  * the grant it relied on can be revoked; taken here it is one transaction per
  * call, the check and the write see the same snapshot and hold the same locks,
  * and no caller can arrange otherwise because the type refuses the call
- * anywhere else. `rpc/__tests__/protocol-check-placement.test.ts` is the
- * source-level backstop for the callers that have not moved yet.
+ * anywhere else. `rpc/__tests__/protocol-check-placement.test.ts` backs it at
+ * the source level: every call sits in a scope whose body does more than
+ * check.
+ *
+ * Being inside the transaction is not enough on its own: the role `openTeam`
+ * put in `access` was read before it opened. So the rule is decided on the
+ * caller's membership row and grant rows as locked here, `FOR SHARE` — a
+ * demotion or a revocation in flight is waited out and then seen, and one
+ * that starts later waits for this transaction instead. A caller that also
+ * locks the membership row `FOR UPDATE` must take that lock first; asking for
+ * it after this share lock would be an upgrade two concurrent calls can
+ * deadlock on.
  *
  * The predicate is the store's own, so what `studies.list` omits and
  * `studies.get` refuses cannot be read — or edited — through the protocol
@@ -161,9 +182,50 @@ export const requireProtocol = Effect.fnUntraced(function* (
   Transaction | Principal
 > {
   const principal = yield* Principal;
+  const { tx } = yield* Transaction;
+  const members = yield* sqlErrorsOnly(
+    tx
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.team_id, access.teamId),
+          eq(teamMembers.user_id, principal.userId),
+        ),
+      )
+      .for('share', { of: teamMembers }),
+  );
+  const member = members[0];
+  if (member === undefined) return yield* new Forbidden({});
+  const seesEveryStudy = seesEveryTeamStudy(member.role);
+  if (!seesEveryStudy) {
+    // The grants that could make this line reachable, locked so none of them
+    // is revoked under the answer. A revocation already in flight is waited
+    // out here, and the predicate below — a later statement — no longer sees it.
+    yield* sqlErrorsOnly(
+      tx
+        .select({ id: studyRoleGrants.id })
+        .from(studyRoleGrants)
+        .innerJoin(
+          studies,
+          and(
+            eq(studies.id, studyRoleGrants.studyId),
+            eq(studies.teamId, studyRoleGrants.teamId),
+          ),
+        )
+        .where(
+          and(
+            eq(studyRoleGrants.teamId, access.teamId),
+            eq(studyRoleGrants.userId, principal.userId),
+            eq(studies.protocolId, protocolId),
+          ),
+        )
+        .for('share', { of: studyRoleGrants }),
+    );
+  }
   const reachable = yield* isReachableByCaller(access.teamId, protocolId, {
     actorUserId: principal.userId,
-    seesEveryStudy: seesEveryTeamStudy(access.role),
+    seesEveryStudy,
   });
   if (!reachable) return yield* new Forbidden({});
   return undefined;

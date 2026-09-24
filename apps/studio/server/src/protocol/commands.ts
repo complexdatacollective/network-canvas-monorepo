@@ -290,15 +290,18 @@ export const addAuditedInformationStage: (
     access,
     Effect.gen(function* () {
       const principal = yield* Principal;
-      // #1257's visibility rule, inside the write's own transaction rather
-      // than in a transaction of its own ahead of it: the check now answers
-      // about the same snapshot the write commits, so a grant revoked between
-      // the two can no longer let an edit through.
-      yield* requireProtocol(access, input.protocolId);
+      // The membership row first, `FOR UPDATE`: `requireProtocol` then
+      // re-reads it under a share lock this transaction already covers,
+      // rather than asking to upgrade one.
       yield* lockProtocolActorMembership({
         teamId: access.teamId,
         actorUserId: principal.userId,
       });
+      // #1257's visibility rule, inside the write's own transaction and on
+      // the locked role and grants rather than the ones `openTeam` read ahead
+      // of it: a demotion or revocation in flight can no longer let an edit
+      // through.
+      yield* requireProtocol(access, input.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId: access.teamId,
         protocolId: input.protocolId,
@@ -368,11 +371,11 @@ export const moveAuditedProtocolStage: (
     access,
     Effect.gen(function* () {
       const principal = yield* Principal;
-      yield* requireProtocol(access, input.protocolId);
       yield* lockProtocolActorMembership({
         teamId: access.teamId,
         actorUserId: principal.userId,
       });
+      yield* requireProtocol(access, input.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId: access.teamId,
         protocolId: input.protocolId,
