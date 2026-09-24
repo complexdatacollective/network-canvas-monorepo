@@ -146,6 +146,17 @@ describe('updates page', () => {
     );
   });
 
+  it('ignores a link whose fragment is not valid percent-encoding', async () => {
+    const [newest] = await loadUpdates('en-US');
+    window.history.replaceState(null, '', '/en-US/updates#%E0%A4');
+    await renderPage();
+
+    expect(updateTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
   it('opens an update when the address changes to point at it', async () => {
     const [, older] = await loadUpdates('en-US');
     await renderPage();

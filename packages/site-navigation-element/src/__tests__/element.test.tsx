@@ -68,6 +68,17 @@ describe('<nc-site-navigation>', () => {
     ).toBe('page');
   });
 
+  it('marks the Updates link active and keeps the locale in it', async () => {
+    const host = mount({ 'active-item': 'updates', 'locale': 'es' });
+    await rendered(host);
+
+    expect(
+      shadowLink(host, 'https://networkcanvas.com/es/updates/')?.getAttribute(
+        'aria-current',
+      ),
+    ).toBe('page');
+  });
+
   it('selects translated copy from the locale attribute', async () => {
     const host = mount({ locale: 'es' });
     await rendered(host);

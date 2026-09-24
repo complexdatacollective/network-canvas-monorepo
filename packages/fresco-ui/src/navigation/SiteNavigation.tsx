@@ -579,7 +579,12 @@ export default function SiteNavigation({
     site === 'website' ? '/' : destinations.networkCanvas;
   const documentationRootHref =
     site === 'documentation' ? '/' : destinations.documentation;
-  const updatesHref = appendPath(networkCanvasRootHref, '/updates');
+  // Another host cannot read the website's locale cookie, so the link says
+  // which language the visitor is already reading.
+  const updatesHref = appendPath(
+    networkCanvasRootHref,
+    site === 'website' ? '/updates' : `/${locale}/updates/`,
+  );
   const closeMenu = () => setOpen(false);
   // A fragment link only moves focus to a target the browser already considers
   // focusable; every other browser merely sets the sequential focus navigation

@@ -174,7 +174,7 @@ describe('SiteNavigation', () => {
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
     expect(screen.getByRole('link', { name: 'Novedades' })).toHaveAttribute(
       'href',
-      'https://networkcanvas.com/updates',
+      'https://networkcanvas.com/es/updates/',
     );
     expect(screen.getByRole('link', { name: 'Novedades' })).toHaveAttribute(
       'target',

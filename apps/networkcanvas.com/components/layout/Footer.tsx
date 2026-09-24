@@ -9,7 +9,11 @@ import { SiteLocaleSwitcher } from '~/components/layout/SiteLocaleSwitcher';
 import { Logo } from '~/components/ui/Logo';
 import { externalLinks, footerLinks } from '~/lib/content';
 import { isLocale } from '~/lib/i18n/locales';
-import { type SiteHost, websitePageHref } from '~/lib/siteUrls';
+import {
+  isSameSiteNavigationUrl,
+  type SiteHost,
+  websitePageHref,
+} from '~/lib/siteUrls';
 
 export function Footer({ host = 'website' }: { host?: SiteHost }) {
   const t = useTranslations('Footer');
@@ -18,8 +22,14 @@ export function Footer({ host = 'website' }: { host?: SiteHost }) {
     throw new Error(`Unsupported footer locale: ${String(locale)}`);
   }
 
+  const updatesHref = websitePageHref(locale, '/updates', host);
   const links: SiteFooterLink[] = [
-    { label: t('updates'), href: websitePageHref(locale, '/updates', host) },
+    {
+      label: t('updates'),
+      href: updatesHref,
+      // The shared footer opens links in a new tab unless told otherwise.
+      target: isSameSiteNavigationUrl(updatesHref, host) ? '_self' : undefined,
+    },
     ...footerLinks.map(({ id, href }) => ({ label: t(id), href })),
   ];
   const socialLinks: SiteFooterSocialLink[] = [

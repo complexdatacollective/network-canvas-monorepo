@@ -29,12 +29,12 @@ of loading it from a CDN.
 
 ## Attributes
 
-| Attribute     | Values                                                                                                     | Default        | Notes                                                  |
-| ------------- | ---------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------ |
-| `active-item` | `home` \| `community` \| `documentation` \| `protocolGallery` \| `resources` \| `software` \| `getStarted` | unset          | Highlights the matching link (`aria-current="page"`).  |
-| `locale`      | `en-US` \| `en-GB` \| `es`                                                                                 | `en-US`        | Selects the nav's translated copy.                     |
-| `skip-to-id`  | any element `id` on the host page                                                                          | `main-content` | Where the skip link jumps to. See **Skip link** below. |
-| `theme`       | `light` \| `dark` \| `auto`                                                                                | `auto`         | `auto` follows the page's `prefers-color-scheme`.      |
+| Attribute     | Values                                                                                                                  | Default        | Notes                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------ |
+| `active-item` | `home` \| `community` \| `documentation` \| `protocolGallery` \| `updates` \| `resources` \| `software` \| `getStarted` | unset          | Highlights the matching link (`aria-current="page"`).  |
+| `locale`      | `en-US` \| `en-GB` \| `es`                                                                                              | `en-US`        | Selects the nav's translated copy.                     |
+| `skip-to-id`  | any element `id` on the host page                                                                                       | `main-content` | Where the skip link jumps to. See **Skip link** below. |
+| `theme`       | `light` \| `dark` \| `auto`                                                                                             | `auto`         | `auto` follows the page's `prefers-color-scheme`.      |
 
 Attribute changes re-render the element live — updating `theme` or
 `active-item` after the element has connected takes effect immediately.

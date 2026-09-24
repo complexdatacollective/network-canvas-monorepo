@@ -71,7 +71,12 @@ function visibleUpdatesFor(
 }
 
 function updateIdFromHash(updates: readonly Update[]) {
-  const id = decodeURIComponent(window.location.hash.slice(1));
+  let id: string;
+  try {
+    id = decodeURIComponent(window.location.hash.slice(1));
+  } catch {
+    return undefined;
+  }
   return updates.some((update) => update.id === id) ? id : undefined;
 }
 
