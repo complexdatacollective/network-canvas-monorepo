@@ -248,6 +248,14 @@ describe('the worker process', () => {
     // handlers are the work itself.
     expect(reached(graph, JOB_EXECUTION)).toEqual(JOB_EXECUTION);
   });
+
+  it('is the process that holds the maintenance TeamAccess', () => {
+    // The positive half of the web process's case below, so that "the web
+    // process cannot reach it" is not satisfied by the module being gone.
+    expect(reached(graph, ['src/jobs/team-access.ts'])).toEqual([
+      'src/jobs/team-access.ts',
+    ]);
+  });
 });
 
 describe('the health routes', () => {
@@ -417,6 +425,24 @@ describe('the web process', () => {
     expect(
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
+  });
+
+  it('cannot mint a TeamAccess without a membership check', () => {
+    // `maintenanceTeamAccess` (src/jobs/team-access.ts) is the constructor
+    // that proves nothing, because the worker acts as the deployment rather
+    // than as a member (#1927 §10). Every mint this process holds has just
+    // looked up a membership (src/db/__tests__/team-access-policy.test.ts
+    // lists them); this one reaching it would be a tenant transaction one
+    // call away from any request. `audit/denial-summary.ts` is its one
+    // importer outside the job handlers, so it is named too.
+    //
+    // Mutation: import src/jobs/team-access.ts from src/programs/serve.ts.
+    expect(
+      reached(graph, [
+        'src/jobs/team-access.ts',
+        'src/audit/denial-summary.ts',
+      ]),
+    ).toEqual([]);
   });
 
   it('carries the queue’s schema installer nowhere near it', () => {

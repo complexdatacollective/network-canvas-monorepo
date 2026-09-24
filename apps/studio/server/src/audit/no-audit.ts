@@ -16,8 +16,9 @@ import {
 } from './transaction-policy.ts';
 
 /**
- * The sole production escape hatch for a reviewed tenant transaction that
- * intentionally emits no audit event. A new caller must first add an exact,
+ * The registry-checked way to open a tenant transaction that intentionally
+ * emits no audit event. The reads that open a scope directly are pinned
+ * instead, by `audit/__tests__/scope-openers.test.ts`. A new caller must first add an exact,
  * statically reasoned operation to `NO_AUDIT_TRANSACTION_POLICIES`.
  *
  * The registry check is kept as a runtime guard and **dies** rather than

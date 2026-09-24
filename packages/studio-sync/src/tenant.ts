@@ -61,8 +61,11 @@ export type TeamAccess = {
 
 /**
  * Mints a `TeamAccess`. **Not** a general constructor: a source-policy test
- * pins its call sites to the handful of modules that have just proved a
- * membership. Anywhere else it is exactly the hole the branded type closes.
+ * (`apps/studio/server/src/db/__tests__/team-access-policy.test.ts`) pins its
+ * production call sites, each with what it proved first — a membership, the
+ * locked invitation an invitee accepts, or, for the worker's maintenance
+ * access, nothing, which is why the web process cannot reach that one.
+ * Anywhere else it is exactly the hole the branded type closes.
  *
  * @internal
  */

@@ -1,10 +1,18 @@
 import type { AuditPolicy } from './policy.ts';
 
-// Every tenant-scoped transaction that is not an audited command must be named
-// here. `audit/no-audit.ts` checks this registry at runtime, and the source
-// policy test holds the registry and its callers to each other in both
-// directions: an operation opened without an entry fails at the first call,
-// and an entry nothing opens fails the suite.
+// Every transaction opened through `noAuditTransaction` or
+// `noAuditMaintenanceTransaction` (`audit/no-audit.ts`) is named here.
+// `no-audit.ts` checks this registry at runtime, and the source policy test
+// (`__tests__/policy.test.ts`) holds the registry and its callers to each other
+// in both directions: an operation opened without an entry fails at the first
+// call, and an entry nothing opens fails the suite.
+//
+// It is not the whole of "every transaction that is not an audited command".
+// A scope opened directly — `TenantScope.open`, `UntenantedScope.open`,
+// `MaintenanceScope.open` / `.openTenant`, `OwnerScope.open`, `savepoint`, or
+// a client's own `withTransaction` — passes through neither seam, and is
+// pinned by `__tests__/scope-openers.test.ts` instead: every production call
+// site, by file and span, each with the reason it needs no audit event.
 //
 // Ten `protocol.*` entries left with #1927 stage 3. They named transactions
 // the protocol store opened *for itself* — `protocol.create`,
