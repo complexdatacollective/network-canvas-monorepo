@@ -297,6 +297,14 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the stamp upsert, which must match the node-postgres `stampFingerprint` statement text for text',
   },
+  [`${SERVER}/db/readiness.ts › db.readiness.alive`]: {
+    count: 1,
+    why: 'the liveness probe’s `select 1`, no FROM clause',
+  },
+  [`${SERVER}/db/readiness.ts › db.readiness.migrationLockHeld`]: {
+    count: 1,
+    why: '`pg_locks` and `pg_database`, catalogue views drizzle does not model, matched on the advisory key’s two halves',
+  },
   [`${SERVER}/db/tenant.ts`]: {
     count: 3,
     why: '`set local role` and `set local search_path` (fallback A: rc.115 has no startup parameters), and the team GUC via `set_config`',
