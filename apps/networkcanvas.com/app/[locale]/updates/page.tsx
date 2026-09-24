@@ -110,7 +110,7 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
           <UpdatesList updates={updates} />
           <section
             aria-labelledby="upgrading"
-            className="border-text/10 mx-auto max-w-4xl border-t pt-6"
+            className="border-text/10 mx-auto max-w-4xl border-t pt-12"
           >
             <Alert variant="info">
               <AlertTitle id="upgrading" headingLevel="h2">
