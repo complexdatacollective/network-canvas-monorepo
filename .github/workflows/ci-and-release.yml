@@ -559,6 +559,11 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Each studio-server suite drops its scratch schema — about a hundred
+          # tables — with `DROP SCHEMA … CASCADE`, and parallel files do it at
+          # once. At the default of 64 the shared lock table runs out ("out of
+          # shared memory") in roughly two runs in three.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
@@ -884,6 +889,11 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Each studio-server suite drops its scratch schema — about a hundred
+          # tables — with `DROP SCHEMA … CASCADE`, and parallel files do it at
+          # once. At the default of 64 the shared lock table runs out ("out of
+          # shared memory") in roughly two runs in three.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
