@@ -33,6 +33,7 @@ export type SiteNavigationItemId =
   | 'community'
   | 'documentation'
   | 'protocolGallery'
+  | 'updates'
   | 'resources'
   | 'software'
   | 'getStarted';
@@ -61,7 +62,7 @@ type SoftwareId =
   | 'fresco';
 
 type ResourceLink = {
-  id: 'community' | 'documentation' | 'protocolGallery';
+  id: 'community' | 'documentation' | 'protocolGallery' | 'updates';
   label: string;
   href: string;
   active: boolean;
@@ -578,6 +579,7 @@ export default function SiteNavigation({
     site === 'website' ? '/' : destinations.networkCanvas;
   const documentationRootHref =
     site === 'documentation' ? '/' : destinations.documentation;
+  const updatesHref = appendPath(networkCanvasRootHref, '/updates');
   const closeMenu = () => setOpen(false);
   // A fragment link only moves focus to a target the browser already considers
   // focusable; every other browser merely sets the sequential focus navigation
@@ -628,6 +630,14 @@ export default function SiteNavigation({
       target: '_blank',
       rel: 'noreferrer',
     },
+    {
+      id: 'updates',
+      label: labels.updates,
+      href: updatesHref,
+      active: activeItemId === 'updates',
+      target: updatesHref.startsWith('/') ? undefined : '_blank',
+      rel: updatesHref.startsWith('/') ? undefined : 'noreferrer',
+    },
   ];
   const softwareLinks: SoftwareLink[] = (
     [
@@ -653,11 +663,11 @@ export default function SiteNavigation({
   const items: InternalNavigationItem[] = [
     ...resourceLinks.map((link) => ({
       ...link,
-      className: 'hidden @min-[80rem]:block',
+      className: 'hidden @min-[88rem]:block',
     })),
     {
       id: 'resources',
-      className: '@min-[80rem]:hidden',
+      className: '@min-[88rem]:hidden',
       render: (view) =>
         view === 'desktop' ? (
           <ResourcesMenu
