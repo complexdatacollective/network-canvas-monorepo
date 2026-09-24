@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 
 import { and, eq } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -13,9 +12,8 @@ import {
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
 
-import { seedTeam } from '../../__tests__/support/postgres.ts';
+import { insertTeam } from '../../__tests__/support/database.ts';
 import { testCipher } from '../../__tests__/support/secrets.ts';
-import { MaintenanceDatabase } from '../../db/client.ts';
 import { Transaction } from '../../db/tenant.ts';
 import { gcProtocolStore } from '../../jobs/handlers/protocol-store-gc.ts';
 import { PROTOCOL_TABLES } from '../schema.ts';
@@ -38,19 +36,18 @@ import {
   expireLease,
   makeStoreSchema,
   makeTestSyncServer,
+  type StoreSchema,
   storeDb,
 } from './helpers.ts';
 
 const { protocols } = PROTOCOL_TABLES;
 
 describe.skipIf(!storeDb)('team isolation', () => {
-  let db: pg.Pool;
-  let schema: string;
-  let dispose: () => Promise<void>;
-  let inTeam: <A, E>(
+  let store: StoreSchema;
+  const inTeam = <A, E>(
     teamId: string,
     body: Effect.Effect<A, E, Transaction>,
-  ) => Promise<A>;
+  ) => store.inTeam(teamId, body);
   const cipher = testCipher();
   const inA = <A, E>(body: Effect.Effect<A, E, Transaction>) =>
     inTeam('team-a', body);
@@ -58,34 +55,19 @@ describe.skipIf(!storeDb)('team isolation', () => {
     inTeam('team-b', body);
 
   /**
-   * The sweep. It is an Effect over its own maintenance client now
-   * (`src/jobs/handlers/protocol-store-gc.ts`), so the scratch schema
-   * goes in as a `search_path` rather than as a pool. Built per call —
-   * `local: true` — because a shared layer's pool would outlive the suite.
+   * The sweep: an Effect over the maintenance client
+   * (`src/jobs/handlers/protocol-store-gc.ts`), which the harness pins to the
+   * scratch schema.
    */
-  const sweep = () =>
-    Effect.runPromise(
-      Effect.provide(
-        gcProtocolStore(GC_OPTS),
-        MaintenanceDatabase.layer({
-          url: storeDb!.url,
-          maxConnections: 2,
-          applicationName: 'studio-tenancy-gc',
-          searchPath: schema,
-        }),
-        { local: true },
-      ),
-    );
+  const sweep = () => store.run(gcProtocolStore(GC_OPTS));
 
   beforeAll(async () => {
-    const scratch = await makeStoreSchema();
-    ({ db, schema, dispose } = scratch);
-    inTeam = scratch.inTeam;
-    await seedTeam(db, 'team-a');
-    await seedTeam(db, 'team-b');
+    store = await makeStoreSchema();
+    await store.run(insertTeam('team-a'));
+    await store.run(insertTeam('team-b'));
   });
   afterAll(async () => {
-    await dispose();
+    await store.dispose();
   });
 
   it('deduplicates identical section content per team, not globally', async () => {
@@ -101,11 +83,11 @@ describe.skipIf(!storeDb)('team isolation', () => {
     expect(headA.sectionHashes).toEqual(headB.sectionHashes);
 
     const settingsHash = headA.sectionHashes.settings!;
-    const rows = await db.query(
+    const rows = await store.rows(
       `SELECT team_id FROM sections WHERE hash = $1 ORDER BY team_id`,
       [settingsHash],
     );
-    expect(rows.rows).toEqual([{ team_id: 'team-a' }, { team_id: 'team-b' }]);
+    expect(rows).toEqual([{ team_id: 'team-a' }, { team_id: 'team-b' }]);
   });
 
   it('refuses reads across the team boundary', async () => {
@@ -168,7 +150,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
       createProtocol('team-a', cipher, { protocol: baseProtocol() }),
     );
     const studyId = randomUUID();
-    await db.query(
+    await store.affected(
       `INSERT INTO studies (id, team_id, name, state, participation_mode, protocol_id)
        VALUES ($1, 'team-a', 'Boundary', 'draft', 'managed', $2)`,
       [studyId, protocolId],
@@ -212,7 +194,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
     expect(reachableWithoutGrant).toBe(false);
     expect(fragmentWithoutGrant).toBe(false);
 
-    await db.query(
+    await store.affected(
       `INSERT INTO study_role_grants
          (id, team_id, study_id, user_id, role, granted_by_user_id)
        VALUES ($1, 'team-a', $2, $3, 'protocol_designer', 'tenancy-granter')`,
@@ -236,16 +218,14 @@ describe.skipIf(!storeDb)('team isolation', () => {
 
     await inA(discardDraft('team-a', a.draftId));
     await sweep();
-    await ageQuarantine(db, 'team-a');
+    await store.run(ageQuarantine('team-a'));
     await sweep();
 
-    const survivors = await db.query(
+    const survivors = await store.rows<{ team_id: string }>(
       `SELECT team_id FROM sections WHERE hash = $1`,
       [settingsHash],
     );
-    expect(
-      (survivors.rows as { team_id: string }[]).map((row) => row.team_id),
-    ).toEqual(['team-b']);
+    expect(survivors.map((row) => row.team_id)).toEqual(['team-b']);
     expect(await inB(getDraftDocument('team-b', b.draftId))).toEqual(shared);
   });
 
@@ -278,22 +258,22 @@ describe.skipIf(!storeDb)('team isolation', () => {
 
     // Reached through `drafts`: the superseded manifest is collectable.
     await sweep();
-    const manifests = await db.query(
-      `SELECT seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
+    const manifests = await store.rows(
+      `SELECT seq::text AS seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
       [draftId],
     );
-    expect(manifests.rows).toEqual([{ seq: '1' }]);
+    expect(manifests).toEqual([{ seq: '1' }]);
 
     // Discarding the draft leaves the team present only in `sections`, the
     // other half of the enumeration.
     await inGhost(discardDraft('team-ghost', draftId));
     await sweep();
-    await ageQuarantine(db, 'team-ghost');
+    await store.run(ageQuarantine('team-ghost'));
     await sweep();
-    const orphaned = await db.query(
+    const orphaned = await store.rows(
       `SELECT count(*)::int AS remaining FROM sections WHERE team_id = $1`,
       ['team-ghost'],
     );
-    expect(orphaned.rows[0]).toEqual({ remaining: 0 });
+    expect(orphaned[0]).toEqual({ remaining: 0 });
   });
 });

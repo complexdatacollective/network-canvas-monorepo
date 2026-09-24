@@ -21,9 +21,9 @@ import { CI } from './env.ts';
  * committed sha256 of these bytes together with the job schema's statements,
  * the same equality `applySchema` asserts before it pushes — so a tree whose
  * schema has moved without `sync-fingerprint` fails with the message that names the fix rather than
- * provisioning something the fingerprint does not describe. That check is new
- * to this path: `provisionScratchSchema` used to stamp the fingerprint
- * without confirming the DDL it had just executed hashed to it.
+ * provisioning something the fingerprint does not describe. The harness
+ * that preceded `TestDatabaseLive` stamped the fingerprint without confirming
+ * the DDL it had just executed hashed to it.
  *
  * On CI the rendered bytes are then shared between workers through a file
  * addressed by that fingerprint, and the guarantee is exact: **the entry can

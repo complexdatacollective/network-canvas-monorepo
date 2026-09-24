@@ -16,7 +16,7 @@ import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Two siblings
-// take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
+// take narrower pieces: secrets-adapter.ts its adapter types, scripts/seed/teams.ts
 // its password hasher.
 
 /**
@@ -160,7 +160,7 @@ export function createBetterAuthInstance(
       }),
     },
     // A third, always-available sign-in method alongside magic-link and
-    // social: the seeded admin account (src/db/seed.ts) needs somewhere to
+    // social: the seeded admin account (scripts/seed/seed.ts) needs somewhere to
     // authenticate with its known password, and open sign-up here matches
     // the same policy magic-link and social already carry (#1255) — access
     // control arrives with team invitations (#1256), not a gate here. Uses

@@ -1,8 +1,8 @@
 import process from 'node:process';
 
-import { SEED_ADMIN_PASSWORD } from '../src/db/seed/teams.ts';
 import { type DbEnv, isLocalDatabase, type StudioEnv } from '../src/env.ts';
 import type { KeyringApi } from '../src/secrets/keyring.ts';
+import { SEED_ADMIN_PASSWORD } from './seed/teams.ts';
 
 /**
  * The connection string is what gets destroyed, so it is what decides whether

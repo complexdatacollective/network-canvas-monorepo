@@ -7,13 +7,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
+import { OwnerScope } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { issueBootstrapToken, readInstallation } from '../setup/bootstrap.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-} from './support/postgres.ts';
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectPayloadRejected,
@@ -24,7 +26,6 @@ import { testCipher } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
 
 const env = readEnv();
-const db = await reachableDb();
 
 const INSTANCE_NAME = 'Department of Social Research';
 
@@ -34,8 +35,8 @@ type SetupInput = {
   owner: { name: string; email: string; password: string };
 };
 
-describe.skipIf(!db)('setup.complete', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
+describe.skipIf(!testDb)('setup.complete', () => {
+  let database: TestDatabaseRuntime;
   let studio: Studio;
   let composed: ReturnType<typeof composeStudio>;
   let client: RpcTestClient;
@@ -115,20 +116,18 @@ describe.skipIf(!db)('setup.complete', () => {
   };
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
     if (!env.auth) throw new Error('dev env must configure auth');
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
+    database = await openTestDatabase();
     const auth = createBetterAuthService(
       env.auth,
-      scratch.app,
+      database.appPool,
       () => Promise.resolve(),
       testCipher(),
     );
     studio = createStudio(env, {
       auth,
-      pool: scratch.app,
-      services: await scratch.services(),
+      pool: database.appPool,
+      services: database.services,
     });
     composed = composeStudio(env, studio);
     client = await createRpcClient(studio);
@@ -136,15 +135,15 @@ describe.skipIf(!db)('setup.complete', () => {
   afterAll(async () => {
     await client.dispose();
     await composed.dispose();
-    await scratch.dispose();
+    await database.dispose();
   });
 
   beforeEach(async () => {
     // Back to the state the schema step leaves: one ownerless installation
     // with a token outstanding. Accounts from earlier cases stay, which is
     // why each takes a fresh address.
-    await scratch.pool.query('delete from installation');
-    const issued = await scratch.asOwner(issueBootstrapToken());
+    await database.run(ownerAffected('delete from installation'));
+    const issued = await database.run(OwnerScope.open(issueBootstrapToken()));
     if (issued.kind !== 'issued') throw new Error('expected a token');
     token = issued.token;
   });
@@ -172,7 +171,9 @@ describe.skipIf(!db)('setup.complete', () => {
     );
 
     // A refusal writes nothing: no owner, and the real token still works.
-    const installation = await scratch.asOwner(readInstallation());
+    const installation = await database.run(
+      OwnerScope.open(readInstallation()),
+    );
     expect(installation?.ownerUserId).toBeNull();
     expect(installation?.name).toBeNull();
     expect((await status()).setup.required).toBe(true);
@@ -210,7 +211,9 @@ describe.skipIf(!db)('setup.complete', () => {
     expect(me.teams).toEqual([]);
     await signedIn.dispose();
 
-    const installation = await scratch.asOwner(readInstallation());
+    const installation = await database.run(
+      OwnerScope.open(readInstallation()),
+    );
     expect(installation).toEqual({
       name: INSTANCE_NAME,
       ownerUserId: me.userId,
@@ -250,7 +253,9 @@ describe.skipIf(!db)('setup.complete', () => {
     expect(forged.headers.get('Content-Type')).toContain(
       'application/problem+json',
     );
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBeNull();
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBeNull();
   });
 
   it('gives every request its own cookie holder', async () => {
@@ -298,9 +303,9 @@ describe.skipIf(!db)('setup.complete', () => {
       instanceName: INSTANCE_NAME,
       signedIn: false,
     });
-    expect((await scratch.asOwner(readInstallation()))?.name).toBe(
-      INSTANCE_NAME,
-    );
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.name,
+    ).toBe(INSTANCE_NAME);
   });
 
   it('is not there once the instance has an owner', async () => {
@@ -323,9 +328,9 @@ describe.skipIf(!db)('setup.complete', () => {
       ),
       'NotFound',
     );
-    expect((await scratch.asOwner(readInstallation()))?.name).toBe(
-      INSTANCE_NAME,
-    );
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.name,
+    ).toBe(INSTANCE_NAME);
   });
 
   it('adopts the account an interrupted setup left behind', async () => {
@@ -342,7 +347,9 @@ describe.skipIf(!db)('setup.complete', () => {
       body: JSON.stringify(account),
     });
     expect(signedUp.status).toBe(200);
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBeNull();
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBeNull();
 
     const response = await completeOverHttp({
       token,
@@ -358,9 +365,9 @@ describe.skipIf(!db)('setup.complete', () => {
     const signedIn = await createRpcClient(studio, { cookie });
     const me = await signedIn.call(signedIn.rpc('me', undefined));
     expect(me.email).toBe(account.email);
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBe(
-      me.userId,
-    );
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBe(me.userId);
     await signedIn.dispose();
   });
 
@@ -390,7 +397,9 @@ describe.skipIf(!db)('setup.complete', () => {
       'Conflict',
     );
     expect(refused.reason).toBe('emailTaken');
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBeNull();
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBeNull();
   });
 
   it('refuses input the contract does not allow', async () => {
@@ -402,7 +411,9 @@ describe.skipIf(!db)('setup.complete', () => {
       }),
     );
     expectPayloadRejected(blankName, 'instanceName');
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBeNull();
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBeNull();
 
     const shortPassword = await client.callExit(
       client.rpc('setup.complete', {
@@ -412,6 +423,8 @@ describe.skipIf(!db)('setup.complete', () => {
       }),
     );
     expectPayloadRejected(shortPassword, 'owner.password');
-    expect((await scratch.asOwner(readInstallation()))?.ownerUserId).toBeNull();
+    expect(
+      (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
+    ).toBeNull();
   });
 });

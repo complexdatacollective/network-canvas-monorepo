@@ -260,5 +260,90 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           );
         }),
     );
+
+    suite.effect(
+      'queues nothing for an invitation the payload does not describe',
+      () =>
+        Effect.gen(function* () {
+          const harness = yield* TestDatabase;
+          const { teamId, userId, access } = yield* seed(
+            'store-delivery-guard',
+          );
+          const invite = Effect.fnUntraced(function* () {
+            const invitationId = randomUUID();
+            const email = `guard-${randomUUID().slice(0, 8)}@example.com`;
+            const invitation = yield* TenantScope.open(
+              access,
+              store.createInvitation({
+                id: invitationId,
+                teamId,
+                email,
+                role: 'member',
+                inviterId: userId,
+              }),
+            );
+            return {
+              invitationId,
+              teamId,
+              email,
+              role: 'member' as const,
+              teamLabel: 'Guard Team',
+              inviterLabel: 'Guard Inviter',
+              expiresAt: invitation.expiresAt,
+            };
+          });
+          const refused = Effect.fnUntraced(function* (
+            payload: Parameters<typeof enqueueInvitationDelivery>[0],
+          ) {
+            const exit = yield* Effect.exit(
+              TenantScope.open(access, enqueueInvitationDelivery(payload)),
+            );
+            assert.include(
+              REASON(exit),
+              'invitation delivery enqueue did not match a live pending invitation',
+            );
+            const queued = yield* harness.onOwner(
+              harness.owner.sql<{ n: number }>`
+                select count(*)::int as n from team_invitation_deliveries
+                 where invitation_id = ${payload.invitationId}`,
+            );
+            assert.strictEqual(queued[0]?.n, 0);
+          });
+
+          yield* refused({ ...(yield* invite()), role: 'admin' });
+
+          const recipient = yield* invite();
+          yield* refused({ ...recipient, email: `x-${recipient.email}` });
+
+          const lifetime = yield* invite();
+          yield* refused({
+            ...lifetime,
+            expiresAt: new Date(lifetime.expiresAt.getTime() + 60_000),
+          });
+
+          const canceled = yield* invite();
+          yield* harness.onOwner(
+            harness.owner.sql`update team_invitations set status = 'canceled'
+                               where id = ${canceled.invitationId}`,
+          );
+          yield* refused(canceled);
+
+          // The payload matches the row exactly; the row has lapsed.
+          const lapsed = yield* invite();
+          const past = new Date(Date.now() - 60_000);
+          yield* harness.onOwner(
+            harness.owner.sql`update team_invitations set expires_at = ${past}
+                               where id = ${lapsed.invitationId}`,
+          );
+          yield* refused({ ...lapsed, expiresAt: past });
+
+          const untouched = yield* invite();
+          const delivery = yield* TenantScope.open(
+            access,
+            enqueueInvitationDelivery(untouched),
+          );
+          assert.strictEqual(delivery.invitationId, untouched.invitationId);
+        }),
+    );
   });
 });

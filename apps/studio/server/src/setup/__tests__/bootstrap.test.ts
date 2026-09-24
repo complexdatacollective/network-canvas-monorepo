@@ -17,6 +17,7 @@ import {
   TestDatabase,
   TestDatabaseLive,
   testDb,
+  maintenanceRows,
 } from '../../__tests__/support/database.ts';
 import { sqlState } from '../../db/errors.ts';
 import {
@@ -44,12 +45,6 @@ const RAISE_EXCEPTION = 'P0001';
 /** One statement as the application role, which is what `/setup` is served as. */
 const asApplication = (statement: string) =>
   UntenantedScope.open(
-    Effect.flatMap(Transaction, ({ sql }) => sql.unsafe(statement)),
-  );
-
-/** One statement as the maintenance role, which readiness and the sweep run as. */
-const asMaintenance = (statement: string) =>
-  MaintenanceScope.open(
     Effect.flatMap(Transaction, ({ sql }) => sql.unsafe(statement)),
   );
 
@@ -239,7 +234,7 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
           assert.strictEqual(
             refusal(
               yield* Effect.exit(
-                asMaintenance(
+                maintenanceRows(
                   `update installation set name = 'Renamed' where id = 1`,
                 ),
               ),

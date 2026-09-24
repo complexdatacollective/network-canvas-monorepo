@@ -13,7 +13,7 @@ import pg from 'pg';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
 
-import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { ownerRows, testDb } from '../../../__tests__/support/database.ts';
 import { reachableRedis } from '../../../__tests__/support/valkey.ts';
 import {
   CLAIMED_SUFFIX,
@@ -61,8 +61,6 @@ import {
 // clock is `TestClock`: the original injected a `now()` to reach the recovery
 // path — a claim whose write failed, retaken once it is stale — and virtual
 // time reaches it with no seam in production code.
-
-const db = await reachableDb();
 /**
  * A logical database of this file's own, the way support/valkey.ts gives every
  * limiter suite one. Not in its `REDIS_DATABASES` map because that map is
@@ -123,7 +121,7 @@ describe('the summary queue declaration', () => {
 
 /** Studio's schema, the queue and the in-memory store. */
 const suiteLayer = Layer.mergeAll(layerMemoryStore, layerJobs).pipe(
-  Layer.provideMerge(layerDeliveryHarness(db!)),
+  Layer.provideMerge(layerDeliveryHarness),
 );
 
 // There is no writer seam any more: `appendDeniedAuditSummary`
@@ -134,7 +132,7 @@ const suiteLayer = Layer.mergeAll(layerMemoryStore, layerJobs).pipe(
 // instead — a trigger on `audit_events`, which is a stronger oracle: the
 // write really is attempted and really does fail.
 
-describe.skipIf(!db)(
+describe.skipIf(!testDb)(
   'the denied-attempts summary job on the native queue',
   () => {
     layer(suiteLayer)('with Studio and the queue installed', (it) => {
@@ -165,21 +163,22 @@ describe.skipIf(!db)(
       const seedActor = Effect.fnUntraced(function* (
         name = 'Denied Researcher',
       ) {
-        const { scratch } = yield* DeliveryHarness;
         const teamId = `team-${randomUUID().slice(0, 8)}`;
         const actorId = `actor-${randomUUID().slice(0, 8)}`;
-        yield* Effect.promise(async () => {
-          await scratch.pool.query(
+        yield* Effect.orDie(
+          ownerRows(
             `INSERT INTO teams (id, name, slug) VALUES ($1, $1, $1)
              ON CONFLICT (id) DO NOTHING`,
             [teamId],
-          );
-          await scratch.pool.query(
+          ),
+        );
+        yield* Effect.orDie(
+          ownerRows(
             `INSERT INTO "user" (id, name, email, "emailVerified")
              VALUES ($1, $2, $3, true)`,
             [actorId, name, `${actorId}@example.org`],
-          );
-        });
+          ),
+        );
         return { teamId, actorId };
       });
 
@@ -283,15 +282,13 @@ describe.skipIf(!db)(
         );
 
       const summariesFor = Effect.fnUntraced(function* (teamId: string) {
-        const { scratch } = yield* DeliveryHarness;
-        return yield* Effect.promise(async () => {
-          const { rows } = await scratch.pool.query<AuditRow>(
+        return yield* Effect.orDie(
+          ownerRows<AuditRow>(
             `SELECT event_type, outcome, actor_id, details
                FROM audit_events WHERE team_id = $1`,
             [teamId],
-          );
-          return rows;
-        });
+          ),
+        );
       });
 
       /**
@@ -301,21 +298,21 @@ describe.skipIf(!db)(
        * and really does fail.
        */
       const refuseAuditInsert = Effect.fnUntraced(function* () {
-        const { scratch } = yield* DeliveryHarness;
-        yield* Effect.promise(() =>
-          scratch.pool.query(`
+        yield* Effect.orDie(
+          ownerRows(`
             create or replace function refuse_summary_append()
               returns trigger as $refuse$
             begin raise exception 'summary append rejected'; end;
-            $refuse$ language plpgsql;
+            $refuse$ language plpgsql`),
+        );
+        yield* Effect.orDie(
+          ownerRows(`
             create or replace trigger refuse_summary_append
               before insert on audit_events
               for each row execute function refuse_summary_append()`),
         );
-        return Effect.promise(() =>
-          scratch.pool.query(
-            'drop trigger refuse_summary_append on audit_events',
-          ),
+        return Effect.orDie(
+          ownerRows('drop trigger refuse_summary_append on audit_events'),
         );
       });
 
@@ -329,14 +326,18 @@ describe.skipIf(!db)(
        * produces.
        */
       const dieAtCommitFor = Effect.fnUntraced(function* (teamId: string) {
-        const { scratch } = yield* DeliveryHarness;
-        yield* Effect.promise(() =>
-          scratch.pool.query(`
+        yield* Effect.orDie(
+          ownerRows(`
             create or replace function die_at_commit()
               returns trigger as $die$
             begin raise exception 'the summary write has a bug'; end;
-            $die$ language plpgsql;
-            drop trigger if exists die_at_commit on audit_events;
+            $die$ language plpgsql`),
+        );
+        yield* Effect.orDie(
+          ownerRows('drop trigger if exists die_at_commit on audit_events'),
+        );
+        yield* Effect.orDie(
+          ownerRows(`
             create constraint trigger die_at_commit
               after insert on audit_events
               deferrable initially deferred
@@ -344,8 +345,8 @@ describe.skipIf(!db)(
               when (new.team_id = ${pg.escapeLiteral(teamId)})
               execute function die_at_commit()`),
         );
-        return Effect.promise(() =>
-          scratch.pool.query('drop trigger die_at_commit on audit_events'),
+        return Effect.orDie(
+          ownerRows('drop trigger die_at_commit on audit_events'),
         );
       });
 

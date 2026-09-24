@@ -15,20 +15,23 @@ import { randomUUID } from 'node:crypto';
 
 import type { PgClient } from '@effect/sql-pg';
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Predicate, Schema } from 'effect';
+import { Effect, Layer, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 import { describe, expect } from 'vitest';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import {
+  NOT_REFUSED,
+  ownerRows,
+  refusalOf,
   TestDatabase,
   TestDatabaseLive,
   testDb,
+  maintenanceRows,
+  tenantRows,
 } from '../../__tests__/support/database.ts';
-import { sqlState } from '../../db/errors.ts';
 import {
-  MaintenanceScope,
   savepoint,
   TenantScope,
   Transaction,
@@ -79,100 +82,6 @@ const versionOf: Record<Team, string> = {
   [TEAM_B]: randomUUID(),
 };
 
-/**
- * Walks a failure's cause chain, squashing Effect causes, handing every link to
- * `read`. Nothing here can be read off the top: both `SqlError` and drizzle's
- * wrapper replace the message with their own, and the driver's own fields
- * (`constraint`, `detail`) live on the `Error` at the bottom that
- * `@effect/sql-pg` builds from the backend's `ErrorResponse`. `db/errors.ts`
- * walks the same chain for the SQLSTATE but does not export the walk.
- */
-function walkCause(error: unknown, read: (link: object) => void): void {
-  let current: unknown = error;
-  // Bounded: a cause chain is short, and a cycle would otherwise hang the
-  // worker rather than fail a case.
-  for (let depth = 0; depth < 32; depth += 1) {
-    if (!Predicate.isObject(current)) return;
-    if (Cause.isCause(current)) {
-      current = Cause.squash(current);
-      continue;
-    }
-    read(current);
-    if (!('cause' in current)) return;
-    current = current.cause;
-  }
-}
-
-/** Every message down the chain, joined: a trigger's own words are at the end. */
-function messagesOf(error: unknown): string {
-  const parts: string[] = [];
-  walkCause(error, (link) => {
-    if ('message' in link && Predicate.isString(link.message)) {
-      parts.push(link.message);
-    }
-  });
-  return parts.join('\n');
-}
-
-/** The first `string` value of `key` anywhere down the chain. */
-function fieldOf(
-  error: unknown,
-  key: 'constraint' | 'detail',
-): string | undefined {
-  let found: string | undefined;
-  walkCause(error, (link) => {
-    if (found !== undefined) return;
-    if (key in link) {
-      const value: unknown = Reflect.get(link, key);
-      if (Predicate.isString(value)) found = value;
-    }
-  });
-  return found;
-}
-
-const NOT_REFUSED = 'no failure';
-
-type Refusal = {
-  /** The SQLSTATE, read through the chain by `db/errors.ts`. */
-  readonly state: string;
-  /** The constraint the backend named, for a CHECK, unique or foreign key. */
-  readonly constraint: string;
-  /** The backend's DETAIL line, which names the row a foreign key could not find. */
-  readonly detail: string;
-  /** Every message down the chain, which is where a trigger's words arrive. */
-  readonly message: string;
-};
-
-/**
- * What Postgres said when it refused a statement, captured in one run so a case
- * that reads two of these fields does not issue the statement twice.
- *
- * Read off the `Exit`'s whole cause rather than through `Effect.result`,
- * because three of the promises here are **deferred to commit** and
- * `SqlClient`'s transaction wrapper runs the COMMIT as `Effect.orDie` — so a
- * constraint that fires at commit arrives as a defect, which `Effect.result`
- * leaves untouched. Every assertion below names the words or the SQLSTATE it
- * expects, so a defect that is not the refusal fails the case on the value.
- */
-const refusalOf = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-): Effect.Effect<Refusal, never, R> =>
-  Effect.map(Effect.exit(effect), (exit) =>
-    Exit.isFailure(exit)
-      ? {
-          state: sqlState(exit.cause) ?? 'no sqlstate',
-          constraint: fieldOf(exit.cause, 'constraint') ?? 'no constraint',
-          detail: fieldOf(exit.cause, 'detail') ?? 'no detail',
-          message: messagesOf(exit.cause),
-        }
-      : {
-          state: NOT_REFUSED,
-          constraint: NOT_REFUSED,
-          detail: NOT_REFUSED,
-          message: NOT_REFUSED,
-        },
-  );
-
 const stateOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.map(refusalOf(effect), (refusal) => refusal.state);
 
@@ -181,40 +90,6 @@ const constraintOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 
 const failureOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.map(refusalOf(effect), (refusal) => refusal.message);
-
-/**
- * One raw statement as the connecting login, in a transaction of its own. The
- * development superuser bypasses the row-level security policies but not the
- * triggers: exactly the fixture tool and the cross-team oracle these cases
- * want. Role-sensitive probes open a `TenantScope` or a `MaintenanceScope`
- * instead — the successors of the `app` and `maintenance` pools.
- */
-const asOwner = <A extends object = Row>(
-  statement: string,
-  params: ReadonlyArray<unknown> = [],
-): Effect.Effect<ReadonlyArray<A>, SqlError.SqlError, TestDatabase> =>
-  Effect.flatMap(TestDatabase, (harness) =>
-    harness.onOwner(harness.owner.sql.unsafe<A>(statement, params)),
-  );
-
-/** One statement on the application client, in a tenant transaction of its own. */
-const asTenant = <A extends object = Row>(
-  statement: string,
-  params: ReadonlyArray<unknown> = [],
-) =>
-  TenantScope.open(
-    access(TEAM_A),
-    Effect.flatMap(Transaction, ({ sql }) => sql.unsafe<A>(statement, params)),
-  );
-
-/** The same, on the worker's client, which is excepted from the tenant policies. */
-const asMaintenance = <A extends object = Row>(
-  statement: string,
-  params: ReadonlyArray<unknown> = [],
-) =>
-  MaintenanceScope.open(
-    Effect.flatMap(Transaction, ({ sql }) => sql.unsafe<A>(statement, params)),
-  );
 
 const columnList = (row: Row) =>
   Object.keys(row)
@@ -228,7 +103,7 @@ const placeholders = (row: Row) =>
 
 /** Inserts `row` as the connecting login and answers with the row it wrote. */
 const insert = (table: string, row: Row) =>
-  asOwner(
+  ownerRows(
     `INSERT INTO ${table} (${columnList(row)})
      VALUES (${placeholders(row)})
      RETURNING 1 AS written`,
@@ -375,7 +250,7 @@ const newNode = Effect.fnUntraced(function* (
 });
 
 const closeStudy = (studyId: string) =>
-  asOwner(
+  ownerRows(
     `UPDATE studies SET state = 'closed', closed_at = now(),
          went_live_at = COALESCE(went_live_at, now()) WHERE id = $1`,
     [studyId],
@@ -567,7 +442,7 @@ describe.skipIf(!testDb)('network schema', () => {
             const { sessionId } = yield* newFixture();
             const nodeId = yield* newNode(sessionId);
 
-            const rows = yield* asOwner(
+            const rows = yield* ownerRows(
               `SELECT attributes, secure_attributes, stage_id, prompt_ids
                FROM nodes WHERE session_id = $1 AND node_id = $2`,
               [sessionId, nodeId],
@@ -605,7 +480,7 @@ describe.skipIf(!testDb)('network schema', () => {
               yield* insert('nodes', nodeRow(sessionId, { node_id: rosterId })),
             ).toHaveLength(1);
 
-            const stored = yield* asOwner<{ node_id: string }>(
+            const stored = yield* ownerRows<{ node_id: string }>(
               `SELECT node_id FROM nodes WHERE session_id = $1`,
               [sessionId],
             );
@@ -634,7 +509,7 @@ describe.skipIf(!testDb)('network schema', () => {
                 stage_id: 'stage-3',
               });
 
-              const stored = yield* asOwner<{
+              const stored = yield* ownerRows<{
                 secure_attributes: unknown;
                 prompt_ids: ReadonlyArray<string>;
                 stage_id: string;
@@ -693,7 +568,7 @@ describe.skipIf(!testDb)('network schema', () => {
             const row = edgeRow(sessionId, from, to);
             yield* insert('edges', row);
 
-            const stored = yield* asOwner(
+            const stored = yield* ownerRows(
               `SELECT attributes, secure_attributes FROM edges WHERE edge_id = $1`,
               [row.edge_id],
             );
@@ -857,7 +732,7 @@ describe.skipIf(!testDb)('network schema', () => {
 
               // The refused commit took the flip with it, so the session is still
               // collectable rather than frozen with nothing to export.
-              const after = yield* asOwner<{ status: string }>(
+              const after = yield* ownerRows<{ status: string }>(
                 `SELECT status FROM interview_sessions WHERE id = $1`,
                 [fixture.sessionId],
               );
@@ -915,7 +790,7 @@ describe.skipIf(!testDb)('network schema', () => {
               // `$1` is bound as `text[]`, so the comparison against a `uuid`
               // column names the cast the old text-protocol driver did not
               // need.
-              const stored = yield* asOwner<{ id: string }>(
+              const stored = yield* ownerRows<{ id: string }>(
                 `SELECT id FROM interview_sessions WHERE id = ANY($1::uuid[])`,
                 [[orphan, withSnapshot]],
               );
@@ -948,7 +823,7 @@ describe.skipIf(!testDb)('network schema', () => {
               ),
             ).toHaveLength(1);
 
-            const stored = yield* asOwner<{
+            const stored = yield* ownerRows<{
               payload: unknown;
               created_at: unknown;
             }>(
@@ -1138,7 +1013,7 @@ describe.skipIf(!testDb)('network schema', () => {
 
               expect(
                 yield* failureOf(
-                  asOwner(
+                  ownerRows(
                     `UPDATE session_snapshots SET payload_hash = 'x' WHERE session_id = $1`,
                     [fixture.sessionId],
                   ),
@@ -1147,7 +1022,7 @@ describe.skipIf(!testDb)('network schema', () => {
               // Even a no-op update: immutability is not about what changed.
               expect(
                 yield* failureOf(
-                  asOwner(
+                  ownerRows(
                     `UPDATE session_snapshots SET schema_version = schema_version WHERE session_id = $1`,
                     [fixture.sessionId],
                   ),
@@ -1156,7 +1031,8 @@ describe.skipIf(!testDb)('network schema', () => {
 
               expect(
                 yield* failureOf(
-                  asTenant(
+                  tenantRows(
+                    TEAM_A,
                     `DELETE FROM session_snapshots WHERE session_id = $1`,
                     [fixture.sessionId],
                   ),
@@ -1208,7 +1084,7 @@ describe.skipIf(!testDb)('network schema', () => {
             const fixture = yield* newFixture();
             const before = Date.now();
             yield* insert('session_stats', statsRow(fixture));
-            const stored = yield* asOwner<{ computed_at: unknown }>(
+            const stored = yield* ownerRows<{ computed_at: unknown }>(
               `SELECT computed_at FROM session_stats WHERE session_id = $1`,
               [fixture.sessionId],
             );
@@ -1332,7 +1208,7 @@ describe.skipIf(!testDb)('network schema', () => {
             ).toContain(READ_ONLY);
             expect(
               yield* failureOf(
-                asOwner(
+                ownerRows(
                   `UPDATE nodes SET type = 'place' WHERE session_id = $1`,
                   [sessionId],
                 ),
@@ -1399,7 +1275,7 @@ describe.skipIf(!testDb)('network schema', () => {
                 ),
               ).toBe('finalized');
 
-              const stats = yield* asOwner<{ node_count: number }>(
+              const stats = yield* ownerRows<{ node_count: number }>(
                 `SELECT node_count FROM session_stats WHERE session_id = $1`,
                 [fixture.sessionId],
               );
@@ -1468,7 +1344,7 @@ describe.skipIf(!testDb)('network schema', () => {
                 ),
               ).toBe('finalized');
 
-              const stats = yield* asOwner<{ node_count: number }>(
+              const stats = yield* ownerRows<{ node_count: number }>(
                 `SELECT node_count FROM session_stats WHERE session_id = $1`,
                 [fixture.sessionId],
               );
@@ -1484,15 +1360,15 @@ describe.skipIf(!testDb)('network schema', () => {
 
             expect(
               yield* failureOf(
-                asOwner(`UPDATE nodes SET session_id = $2 WHERE node_id = $1`, [
-                  nodeId,
-                  theirs.sessionId,
-                ]),
+                ownerRows(
+                  `UPDATE nodes SET session_id = $2 WHERE node_id = $1`,
+                  [nodeId, theirs.sessionId],
+                ),
               ),
             ).toContain('a network row cannot change session or team');
             expect(
               yield* failureOf(
-                asOwner(`UPDATE nodes SET team_id = $2 WHERE node_id = $1`, [
+                ownerRows(`UPDATE nodes SET team_id = $2 WHERE node_id = $1`, [
                   nodeId,
                   TEAM_B,
                 ]),
@@ -1502,7 +1378,7 @@ describe.skipIf(!testDb)('network schema', () => {
             // Everything else about an in-progress session's node stays
             // editable.
             expect(
-              yield* asOwner(
+              yield* ownerRows(
                 `UPDATE nodes SET type = 'place' WHERE node_id = $1
                  RETURNING node_id`,
                 [nodeId],
@@ -1528,13 +1404,15 @@ describe.skipIf(!testDb)('network schema', () => {
               // is an AFTER ROW constraint trigger, which fires before this
               // statement-level guard.
               expect(
-                yield* asTenant(
+                yield* tenantRows(
+                  TEAM_A,
                   `DELETE FROM edges WHERE session_id = $1 RETURNING edge_id`,
                   [fixture.sessionId],
                 ),
               ).toHaveLength(1);
               expect(
-                yield* asTenant(
+                yield* tenantRows(
+                  TEAM_A,
                   `DELETE FROM nodes WHERE session_id = $1 RETURNING node_id`,
                   [fixture.sessionId],
                 ),
@@ -1552,9 +1430,11 @@ describe.skipIf(!testDb)('network schema', () => {
 
               expect(
                 yield* failureOf(
-                  asTenant(`DELETE FROM nodes WHERE session_id = $1`, [
-                    fixture.sessionId,
-                  ]),
+                  tenantRows(
+                    TEAM_A,
+                    `DELETE FROM nodes WHERE session_id = $1`,
+                    [fixture.sessionId],
+                  ),
                 ),
               ).toContain(READ_ONLY);
               expect(
@@ -1607,7 +1487,7 @@ describe.skipIf(!testDb)('network schema', () => {
               ),
             ).toHaveLength(1);
 
-            const survivors = yield* asOwner<{ session_id: string }>(
+            const survivors = yield* ownerRows<{ session_id: string }>(
               `SELECT session_id FROM nodes WHERE session_id = ANY($1::uuid[])`,
               [bothSessions],
             );
@@ -1622,7 +1502,7 @@ describe.skipIf(!testDb)('network schema', () => {
             const fixture = yield* newFixture();
             yield* newNode(fixture.sessionId);
             expect(
-              yield* asMaintenance(
+              yield* maintenanceRows(
                 `DELETE FROM nodes WHERE session_id = $1 RETURNING node_id`,
                 [fixture.sessionId],
               ),
@@ -1648,7 +1528,8 @@ describe.skipIf(!testDb)('network schema', () => {
             yield* refresh;
 
             expect(
-              yield* asTenant(
+              yield* tenantRows(
+                TEAM_A,
                 `DELETE FROM session_degree_hist WHERE session_id = $1
                  RETURNING degree`,
                 [fixture.sessionId],
@@ -1664,7 +1545,8 @@ describe.skipIf(!testDb)('network schema', () => {
             yield* finalize(fixture.sessionId);
             expect(
               yield* failureOf(
-                asTenant(
+                tenantRows(
+                  TEAM_A,
                   `DELETE FROM session_degree_hist WHERE session_id = $1`,
                   [fixture.sessionId],
                 ),
@@ -1688,7 +1570,8 @@ describe.skipIf(!testDb)('network schema', () => {
               const { sessionId } = yield* newFixture(TEAM_B);
 
               const rejection = yield* refusalOf(
-                asTenant(
+                tenantRows(
+                  TEAM_A,
                   `INSERT INTO nodes (team_id, session_id, node_id, type)
                    VALUES ($1, $2, 'n1', 'person')`,
                   [TEAM_B, sessionId],
@@ -1699,7 +1582,7 @@ describe.skipIf(!testDb)('network schema', () => {
               expect(rejection.message).toContain('row-level security policy');
               expect(rejection.message).not.toContain('read-only');
 
-              const written = yield* asOwner(
+              const written = yield* ownerRows(
                 `SELECT node_id FROM nodes WHERE session_id = $1`,
                 [sessionId],
               );

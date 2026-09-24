@@ -304,6 +304,27 @@ describe('the migrate process', () => {
       ]),
     ).toEqual([]);
   });
+
+  it('applies the schema on the Effect driver, with no node-postgres pool', () => {
+    // The schema, the stamp and the bootstrap token all go through one
+    // `OwnerDatabase` client. `pg` itself is still in this graph, but only as
+    // `import type` in db/schema.ts and jobs/install.ts, whose node-postgres
+    // `checkSchema`, `stampFingerprint` and `installJobSchema` are
+    // scripts/apply.ts's — erased from the bundle, and not something this walk
+    // can tell from a runtime import, so it is not asserted either way.
+    //
+    // Mutation: import src/db/pool.ts from src/programs/migrate.ts.
+    expect(
+      reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
+    ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
+    expect(
+      reached(graph, [
+        'drizzle-orm/node-postgres',
+        'src/db/pool.ts',
+        'src/db/database-pool.ts',
+      ]),
+    ).toEqual([]);
+  });
 });
 
 describe('the web process', () => {
@@ -430,8 +451,9 @@ describe('the rotation process', () => {
     // one entry reaches the Effect driver and nothing else, so #1927 stage 3's
     // retreat from node-postgres is asserted somewhere rather than nowhere.
     // Rotation was already maintenance-only Effect code; the pools that keep
-    // `pg` in the other three graphs — db/pool.ts and db/database-pool.ts —
-    // are not in this one.
+    // `pg` in the web and worker graphs — db/pool.ts and db/database-pool.ts —
+    // are not in this one, and it carries no `import type` of `pg` either,
+    // which the migrate graph still does.
     //
     // Mutation: import src/db/pool.ts from src/programs/rotate-secrets.ts.
     expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);

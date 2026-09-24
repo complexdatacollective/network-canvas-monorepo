@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Effect, Layer, ManagedRuntime, type Context } from 'effect';
+import { Context, Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -25,20 +25,16 @@ import {
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { createStudio } from '../app.ts';
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
-import { AuditSignal } from '../audit/signal.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
-import { Database } from '../db/client.ts';
 import {
   type TeamAccess,
   TenantScope,
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
-import { Jobs } from '../jobs/jobs.ts';
 import {
   createProtocolBuilderRuntime,
   IDLE_MS,
@@ -53,15 +49,15 @@ import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+  tenantRows,
+} from './support/database.ts';
 import { createRpcClient, type RpcTestClient } from './support/rpc.ts';
 import { testCipher, testKeyringEntry } from './support/secrets.ts';
-
-const db = await reachableDb();
 
 const TEAM_ID = 'protocol-builder-team';
 
@@ -165,26 +161,27 @@ function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
   throw new Error('the sample protocol has no stage with one variable prompt');
 }
 
-describe.skipIf(!db)('the protocol-builder host surface', () => {
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('the protocol-builder host surface', () => {
+  let database: TestDatabaseRuntime;
   let clients: Map<Researcher, ReturnType<typeof clientFor>>;
   let protocolId: string;
   let draftId: string;
-  /** The team's database, as the host's own sessions reach it. */
-  let tenantDb: TenantDb;
   /**
-   * The Effect half of the same scratch schema: the router's handlers are
-   * promises, and everything under them is Effect, so the suite builds the
-   * application client the program will build and hands the router its
-   * context — exactly as `programs/serve.ts` does.
+   * The Effect half of the suite: the router's handlers are promises, and
+   * everything under them is Effect, so the router is handed the context the
+   * program builds — exactly as `programs/serve.ts` does.
    */
   let services: Context.Context<StudioServices>;
   let runEffect: <A, E>(
     effect: Effect.Effect<A, E, StudioServices>,
   ) => Promise<A>;
-  let disposeServices: () => Promise<void>;
   /** The team this suite acts in, as a proved access. */
   const access: TeamAccess = unsafeMakeTeamAccess(TEAM_ID, 'owner');
+  /** Rows as the host's own sessions reach them: the app role, in this team. */
+  const teamRows = <A extends object = Record<string, unknown>>(
+    text: string,
+    params: ReadonlyArray<unknown> = [],
+  ) => database.run(tenantRows<A>(TEAM_ID, text, params));
   let reference: VariableReference;
   let unstrippable: VariableReference;
   /** A protocol whose researcher has given the participant no attributes. */
@@ -287,50 +284,26 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     Promise.resolve(revoked.has(userId) ? null : { role: 'owner' });
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    await provisionScratchSchema(scratch.pool);
-    await seedTeam(scratch.pool, TEAM_ID);
-    // The scratch schema every unqualified name in this suite resolves to.
-    // `@effect/sql-pg` rc.115 cannot set it as a startup parameter, so the
-    // client carries it as `DatabaseConfig.searchPath` and `db/tenant.ts`
-    // emits `set local search_path` inside every transaction it opens.
-    const schema = (
-      await scratch.pool.query<{ schema: string }>(
-        'select current_schema() as schema',
-      )
-    ).rows[0]!.schema;
-    const effectRuntime = ManagedRuntime.make(
-      Layer.mergeAll(
-        Database.layer({
-          url: db.url,
-          searchPath: schema,
-          maxConnections: 10,
-          applicationName: 'studio-test-protocol-builder',
-        }),
-        AuditSignal.layer,
-        // Nothing on this router enqueues, and nothing here seals: the two are
-        // present because the `/rpc` route asks for the whole data layer, and
-        // the recording queue is what makes "nothing enqueued" observable
-        // rather than assumed.
-        Jobs.layerRecording,
-        Layer.succeed(SecretsCipher)(testCipher()),
-      ),
-    );
-    disposeServices = () => effectRuntime.dispose();
-    services = await effectRuntime.runPromise(Effect.context<StudioServices>());
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM_ID));
+    // The services carry the test keyring the router and the rpc plane below
+    // are built with, so everything that seals or opens a key agrees on it.
+    services = Context.add(database.services, SecretsCipher, testCipher());
     runEffect = (effect) => Effect.runPromiseWith(services)(effect);
     for (const who of [ADA, GRACE]) {
-      await scratch.pool.query(
-        `INSERT INTO "user" (id, name, email, "emailVerified")
-         VALUES ($1, $2, $3, true)`,
-        [who.principal.userId, who.principal.name, who.principal.email],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [who.principal.userId, who.principal.name, who.principal.email],
+        ),
       );
-      await scratch.pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, 'owner')`,
-        [who.memberId, TEAM_ID, who.principal.userId],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'owner')`,
+          [who.memberId, TEAM_ID, who.principal.userId],
+        ),
       );
     }
 
@@ -342,7 +315,6 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     ) as CurrentProtocol;
     reference = strippableVariable(protocol);
     unstrippable = soleVariablePrompt(protocol);
-    tenantDb = createTenantDb(scratch.app, TEAM_ID);
     const created = await runEffect(
       TenantScope.open(
         access,
@@ -388,7 +360,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         // bootstrap's (#1909), and an unset one is "no installation to
         // report".
         readInstallation: () => Promise.resolve(null),
-        pool: scratch.app,
+        pool: database.appPool,
         services,
         protocolBuilder: createProtocolBuilderRuntime(() => now),
         assetStore,
@@ -407,7 +379,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       },
       deployment: { mode: 'self-hosted', billing: false },
       readInstallation: () => Promise.resolve(null),
-      pool: scratch.app,
+      pool: database.appPool,
       services,
       protocolBuilder: runtime,
       assetStore,
@@ -433,7 +405,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
             listMemberships: memberships,
             getMembership: membership,
           }),
-          pool: scratch.app,
+          pool: database.appPool,
           services,
         },
       ),
@@ -442,8 +414,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
   afterAll(async () => {
     await adaRpc.dispose();
-    await disposeServices?.();
-    await dispose?.();
+    await database?.dispose();
   });
 
   it('refuses a submit from a caller that does not hold the lock', async () => {
@@ -907,12 +878,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(entry).toEqual({ name: 'Sealed token', type: 'apikey' });
 
     // Exactly one sealed row, and it opens to what was staged.
-    const sealed = await tenantDb.query(
+    const sealed = await teamRows(
       `SELECT key_id FROM protocol_asset_keys
        WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
       [TEAM_ID, protocolId, resourceId],
     );
-    expect(sealed.rowCount).toBe(1);
+    expect(sealed).toHaveLength(1);
     await expect(
       runEffect(
         TenantScope.open(
@@ -929,16 +900,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     // No section row anywhere holds it — not the head manifest, not the
     // revision the promotion replaced, and not the event log a watcher
     // replays from.
-    const sections = await tenantDb.query(
+    const sections = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM sections`,
     );
-    for (const row of sections.rows as { doc: string }[]) {
+    for (const row of sections) {
       expect(row.doc).not.toContain(SECRET);
     }
-    const events = await tenantDb.query(
+    const events = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM protocol_events WHERE doc IS NOT NULL`,
     );
-    for (const row of events.rows as { doc: string }[]) {
+    for (const row of events) {
       expect(row.doc).not.toContain(SECRET);
     }
 
@@ -1016,10 +987,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
 
     // The placeholder the shape check was given is never written.
-    const sections = await tenantDb.query(
+    const sections = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM sections`,
     );
-    for (const row of sections.rows as { doc: string }[]) {
+    for (const row of sections) {
       expect(row.doc).not.toContain(SECRET);
       expect(row.doc).not.toContain(ASSET_KEY_PLACEHOLDER);
     }

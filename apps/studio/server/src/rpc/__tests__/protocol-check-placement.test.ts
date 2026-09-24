@@ -52,22 +52,20 @@ describe('the protocol reachability check', () => {
     ]);
   });
 
-  it('runs in a transaction of its own for exactly the unconverted commands', () => {
+  it('never runs in a transaction of its own', () => {
     // A handler that opens `TenantScope` around `requireProtocol` and then runs
-    // a Promise command is taking two transactions, so the check answers about
-    // a snapshot the write does not share. That is today's behaviour and no
-    // weaker than it was — but it is the TOCTOU §10 closes, so every file still
-    // doing it is named here, and the list empties as the commands convert.
+    // a command that opens its own transaction is taking two, so the check
+    // answers about a snapshot the write does not share — the TOCTOU §10
+    // closes. The last two (`protocols.addInformationStage` and
+    // `protocols.moveStage`) converted in stage 3: `protocol/commands.ts` now
+    // calls `requireProtocol` inside the command's own transaction. The list is
+    // empty and stays so.
     const handlers = resolve(SERVER_ROOT, 'rpc/handlers');
     const separate = typescriptFiles(handlers).filter((file) =>
       /TenantScope\.open\(\s*access,\s*requireProtocol\(/.test(
         readFileSync(file, 'utf8'),
       ),
     );
-    expect(separate.map((file) => relative(SERVER_ROOT, file))).toEqual([
-      // `protocols.addInformationStage` and `protocols.moveStage`, whose
-      // commands are still Promises that own their transactions.
-      'rpc/handlers/protocols.ts',
-    ]);
+    expect(separate.map((file) => relative(SERVER_ROOT, file))).toEqual([]);
   });
 });

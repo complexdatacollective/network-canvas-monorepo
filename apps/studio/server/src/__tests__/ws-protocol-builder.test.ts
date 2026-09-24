@@ -12,9 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { createORPCClient, getEventMeta } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
-import { Effect, Layer, ManagedRuntime, type Context } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
-import type pg from 'pg';
+import { Context, Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
@@ -24,26 +22,22 @@ import { type contract } from '@codaco/studio-rpc';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 
 import { createStudio } from '../app.ts';
-import { AuditSignal } from '../audit/signal.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
-import { Database } from '../db/client.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import { Jobs } from '../jobs/jobs.ts';
 import { createProtocol } from '../protocol/store.ts';
-import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import { testCipher } from './support/secrets.ts';
 import { startStudioServer } from './support/serve.ts';
 
-const db = await reachableDb();
 const env = readEnv();
 
 const TEAM_ID = 'protocol-builder-ws-team';
@@ -63,424 +57,413 @@ type StudioClient = RouterContractClient<typeof contract>;
 /** A client and the socket under it, which a test may kill without warning. */
 type Connected = { client: StudioClient; socket: WebSocket };
 
-describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
-  let dispose: () => Promise<void>;
-  /** The Effect client the router's own handlers run against. */
-  let effectRuntime: ManagedRuntime.ManagedRuntime<
-    StudioServices,
-    SqlError.SqlError
-  >;
-  let server: Awaited<ReturnType<typeof startStudioServer>>;
-  let sockets: WebSocket[];
-  let protocolId: string;
-  let origin: string;
-  let url: string;
+describe.skipIf(!testDb || !env.auth)(
+  'the protocol-builder host over /ws',
+  () => {
+    let database: TestDatabaseRuntime;
+    let server: Awaited<ReturnType<typeof startStudioServer>>;
+    let sockets: WebSocket[];
+    let protocolId: string;
+    let origin: string;
+    let url: string;
 
-  function handshake(from: string) {
-    return { origin: from };
-  }
-
-  /**
-   * A client on its own socket.
-   *
-   * A browser cannot put a header on a WebSocket handshake, so a tab names
-   * itself on the upgrade URL and its locks belong to that name; a socket that
-   * names no tab is its own owner, for as long as it is connected.
-   */
-  async function connect(tab?: string): Promise<Connected> {
-    const socket = new WebSocket(
-      tab === undefined
-        ? url
-        : `${url}?${CLIENT_SESSION_PARAM}=${encodeURIComponent(tab)}`,
-      handshake(origin),
-    );
-    socket.binaryType = 'arraybuffer';
-    sockets.push(socket);
-    await new Promise<void>((resolve, reject) => {
-      socket.once('open', resolve);
-      socket.once('error', reject);
-    });
-    const link = new RPCLink({
-      // The `ws` client implements the event-target surface the adapter uses;
-      // its declarations are Node's rather than the DOM's, and this test is
-      // the only place the two meet.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      connect: () => socket as unknown as globalThis.WebSocket,
-    });
-    return { client: createORPCClient(link), socket };
-  }
-
-  /**
-   * A stage section of the calling test's own, so nothing here locks a section
-   * another test left held.
-   */
-  async function createStage(client: StudioClient, label: string) {
-    const created = await client.protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: { type: 'Information', label, title: label, items: [] },
-    });
-    return created.sectionId;
-  }
-
-  /**
-   * Everything a stream has delivered so far, collected in the background.
-   *
-   * A dropped socket is noticed by the server rather than reported to the
-   * test, so the tests below wait for what the server publishes when it
-   * notices — the presence list without the connection that died.
-   */
-  function collect(stream: AsyncIterable<ProtocolEvent>): ProtocolEvent[] {
-    const events: ProtocolEvent[] = [];
-    void (async () => {
-      try {
-        for await (const event of stream) events.push(event);
-      } catch {
-        // The socket closing is the only way these streams end.
-      }
-    })();
-    return events;
-  }
-
-  /** Waits for something the server does of its own accord, or fails saying so. */
-  async function until(
-    predicate: () => boolean,
-    what: string,
-    timeoutMs = 10_000,
-  ): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
-    while (!predicate()) {
-      if (Date.now() > deadline)
-        throw new Error(`timed out waiting for ${what}`);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+    function handshake(from: string) {
+      return { origin: from };
     }
-  }
 
-  beforeAll(async () => {
-    if (!db || !env.auth) throw new Error('unreachable: guarded by skipIf');
-    const scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    await provisionScratchSchema(scratch.pool);
-    await seedTeam(scratch.pool, TEAM_ID);
-    await scratch.pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ($1, $2, $3, true)`,
-      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
-    );
-    await scratch.pool.query(
-      `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ($1, $2, $3, 'owner')`,
-      ['pb-ws-member', TEAM_ID, PRINCIPAL.userId],
-    );
-
-    const protocol = JSON.parse(
-      readFileSync(
-        fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
-        'utf8',
-      ),
-    ) as CurrentProtocol;
-    // The Effect half of the same scratch schema. `@effect/sql-pg` rc.115
-    // cannot set a `search_path` startup parameter, so the client carries it
-    // as `DatabaseConfig.searchPath` and every transaction it opens pins it.
-    const schema = (
-      await scratch.pool.query<{ schema: string }>(
-        'select current_schema() as schema',
-      )
-    ).rows[0]!.schema;
-    effectRuntime = ManagedRuntime.make(
-      Layer.mergeAll(
-        Database.layer({
-          url: db.url,
-          searchPath: schema,
-          maxConnections: 10,
-          applicationName: 'studio-test-ws-protocol-builder',
-        }),
-        AuditSignal.layer,
-        // Nothing on this router enqueues, and nothing here seals: the two are
-        // present because the `/rpc` route asks for the whole data layer, and
-        // the recording queue is what makes "nothing enqueued" observable
-        // rather than assumed.
-        Jobs.layerRecording,
-        Layer.succeed(SecretsCipher)(testCipher()),
-      ),
-    );
-    const services: Context.Context<StudioServices> =
-      await effectRuntime.runPromise(Effect.context<StudioServices>());
-    const created = await Effect.runPromiseWith(services)(
-      TenantScope.open(
-        unsafeMakeTeamAccess(TEAM_ID, 'owner'),
-        createProtocol(TEAM_ID, testCipher(), { protocol }),
-      ),
-    );
-    protocolId = created.protocolId;
-
-    // Self-hosted rather than the dev default: the managed topology refuses
-    // anything that has not come through its proxy, and this suite is the
-    // socket rather than the ingress boundary.
-    const serverEnv = { ...env, deploymentMode: 'self-hosted' } as const;
-    const studio = createStudio(serverEnv, {
-      auth: stubAuthService({
-        getSession: () => Promise.resolve(PRINCIPAL),
-        listMemberships: () =>
-          Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
-      }),
-      pool: scratch.app as pg.Pool,
-      services,
-    });
-    server = await startStudioServer(serverEnv, studio);
-    origin = new URL(env.auth.baseUrl).origin;
-    url = `${server.origin.replace('http://', 'ws://')}/ws`;
-    sockets = [];
-  });
-
-  afterAll(async () => {
-    for (const socket of sockets ?? []) socket.close();
-    await server?.dispose();
-    await effectRuntime?.dispose();
-    await dispose?.();
-  });
-
-  it('refuses a socket from another origin', async () => {
-    const refused = new WebSocket(url, handshake('http://evil.example'));
-    const code = await new Promise<number | string>((resolve) => {
-      refused.once('unexpected-response', (_req, res) =>
-        resolve(res.statusCode ?? 0),
+    /**
+     * A client on its own socket.
+     *
+     * A browser cannot put a header on a WebSocket handshake, so a tab names
+     * itself on the upgrade URL and its locks belong to that name; a socket that
+     * names no tab is its own owner, for as long as it is connected.
+     */
+    async function connect(tab?: string): Promise<Connected> {
+      const socket = new WebSocket(
+        tab === undefined
+          ? url
+          : `${url}?${CLIENT_SESSION_PARAM}=${encodeURIComponent(tab)}`,
+        handshake(origin),
       );
-      refused.once('open', () => resolve('opened'));
-      refused.once('error', (error) => resolve(error.message));
-    });
-    refused.close();
-    expect(code).toBe(403);
-  });
-
-  it('serves unary calls and a resumable watch over one socket', async () => {
-    const { client } = await connect();
-    const sections = await client.protocolBuilder.listSections({ protocolId });
-    expect(sections.sectionIds).toContain('stageOrder');
-
-    const stream = await client.protocolBuilder.watchProtocol({ protocolId });
-    const created = await client.protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: {
-        type: 'Information',
-        label: 'Made over the socket',
-        title: 'Made over the socket',
-        items: [],
-      },
-    });
-
-    // The live half: the write above reaches the open stream, and its event
-    // carries the cursor a dropped socket would resume from.
-    const live: { cursor: string | undefined; sectionId: unknown }[] = [];
-    for await (const event of stream) {
-      if (event.type !== 'revision') continue;
-      live.push({
-        cursor: getEventMeta(event)?.id,
-        sectionId: event.sectionId,
+      socket.binaryType = 'arraybuffer';
+      sockets.push(socket);
+      await new Promise<void>((resolve, reject) => {
+        socket.once('open', resolve);
+        socket.once('error', reject);
       });
-      if (live.length === 2) break;
+      const link = new RPCLink({
+        // The `ws` client implements the event-target surface the adapter uses;
+        // its declarations are Node's rather than the DOM's, and this test is
+        // the only place the two meet.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        connect: () => socket as unknown as globalThis.WebSocket,
+      });
+      return { client: createORPCClient(link), socket };
     }
-    expect(live.map((entry) => entry.sectionId)).toEqual([
-      created.sectionId,
-      'stageOrder',
-    ]);
-    const resumeFrom = live[0]?.cursor;
-    expect(resumeFrom).toBeDefined();
 
-    // The resume half, on a second socket: from that cursor the stream starts
-    // with the very next event and never repeats the one it resumed from.
-    const { client: second } = await connect();
-    const replay = await second.protocolBuilder.watchProtocol({
-      protocolId,
-      since: resumeFrom,
-    });
-    for await (const event of replay) {
-      expect(event.type).toBe('revision');
-      if (event.type !== 'revision') break;
-      expect(event.sectionId).toBe('stageOrder');
-      expect(getEventMeta(event)?.id).toBe(live[1]?.cursor);
-      break;
+    /**
+     * A stage section of the calling test's own, so nothing here locks a section
+     * another test left held.
+     */
+    async function createStage(client: StudioClient, label: string) {
+      const created = await client.protocolBuilder.create({
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: { type: 'Information', label, title: label, items: [] },
+      });
+      return created.sectionId;
     }
-  });
 
-  /**
-   * Two tabs of one researcher are two connections, so the second has to be
-   * able to say who has the section — and it learns that from the stream, on a
-   * socket that served none of the calls that took the lock.
-   */
-  it('tells a second socket which connection took a section', async () => {
-    const { client: watcher } = await connect();
-    const { client: holder } = await connect();
-    const stream = await watcher.protocolBuilder.watchProtocol({ protocolId });
-    const locks: LockEvent[] = [];
-    const draining = (async () => {
-      for await (const event of stream) {
-        if (event.type === 'lock') locks.push(event);
-        if (locks.length === 2) break;
+    /**
+     * Everything a stream has delivered so far, collected in the background.
+     *
+     * A dropped socket is noticed by the server rather than reported to the
+     * test, so the tests below wait for what the server publishes when it
+     * notices — the presence list without the connection that died.
+     */
+    function collect(stream: AsyncIterable<ProtocolEvent>): ProtocolEvent[] {
+      const events: ProtocolEvent[] = [];
+      void (async () => {
+        try {
+          for await (const event of stream) events.push(event);
+        } catch {
+          // The socket closing is the only way these streams end.
+        }
+      })();
+      return events;
+    }
+
+    /** Waits for something the server does of its own accord, or fails saying so. */
+    async function until(
+      predicate: () => boolean,
+      what: string,
+      timeoutMs = 10_000,
+    ): Promise<void> {
+      const deadline = Date.now() + timeoutMs;
+      while (!predicate()) {
+        if (Date.now() > deadline)
+          throw new Error(`timed out waiting for ${what}`);
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
-    })();
+    }
 
-    // The watcher takes one section itself first, so the lock event for the
-    // other one can be compared against its own connection rather than merely
-    // looking plausible.
-    await watcher.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'assets',
-    });
-    await holder.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
-    await draining;
+    beforeAll(async () => {
+      if (!testDb || !env.auth)
+        throw new Error('unreachable: guarded by skipIf');
+      database = await openTestDatabase();
+      await database.run(insertTeam(TEAM_ID));
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+          [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+        ),
+      );
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'owner')`,
+          ['pb-ws-member', TEAM_ID, PRINCIPAL.userId],
+        ),
+      );
 
-    const own = locks.find((event) => event.sectionId === 'assets')?.holder;
-    const theirs = locks.find(
-      (event) => event.sectionId === 'stageOrder',
-    )?.holder;
-    expect(own?.sessionId).toBeDefined();
-    expect(theirs?.userId).toBe(PRINCIPAL.userId);
-    expect(theirs?.displayName).toBe(PRINCIPAL.name);
-    expect(theirs?.mode).toBe('editing');
-    expect(theirs?.sectionId).toBe('stageOrder');
-    // Two tabs of one researcher are two owners, so the identity the event
-    // carries is the socket's rather than the person's.
-    expect(theirs?.sessionId).not.toBe(own?.sessionId);
+      const protocol = JSON.parse(
+        readFileSync(
+          fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
+          'utf8',
+        ),
+      ) as CurrentProtocol;
+      // The protocol is sealed with the test keyring, so the services the
+      // router runs on carry that same cipher.
+      const services = Context.add(
+        database.services,
+        SecretsCipher,
+        testCipher(),
+      );
+      const created = await Effect.runPromiseWith(services)(
+        TenantScope.open(
+          unsafeMakeTeamAccess(TEAM_ID, 'owner'),
+          createProtocol(TEAM_ID, testCipher(), { protocol }),
+        ),
+      );
+      protocolId = created.protocolId;
 
-    // The connection the event named is the one the lease is actually under:
-    // asking for the same section answers read-only behind that same identity.
-    const behind = await watcher.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'stageOrder',
+      // Self-hosted rather than the dev default: the managed topology refuses
+      // anything that has not come through its proxy, and this suite is the
+      // socket rather than the ingress boundary.
+      const serverEnv = { ...env, deploymentMode: 'self-hosted' } as const;
+      const studio = createStudio(serverEnv, {
+        auth: stubAuthService({
+          getSession: () => Promise.resolve(PRINCIPAL),
+          listMemberships: () =>
+            Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
+        }),
+        pool: database.appPool,
+        services,
+      });
+      server = await startStudioServer(serverEnv, studio);
+      origin = new URL(env.auth.baseUrl).origin;
+      url = `${server.origin.replace('http://', 'ws://')}/ws`;
+      sockets = [];
     });
-    expect(behind.lock).toBe('readOnly');
-    if (behind.lock !== 'readOnly') return;
-    expect(behind.holder.sessionId).toBe(theirs?.sessionId);
 
-    // Given back before the test ends: the stage index and the asset manifest
-    // are the sections a create and a promoting write have to take, so a test
-    // that keeps them refuses every later one in this suite.
-    await holder.protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: 'stageOrder',
+    afterAll(async () => {
+      for (const socket of sockets ?? []) socket.close();
+      await server?.dispose();
+      await database?.dispose();
     });
-    await watcher.protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: 'assets',
-    });
-  });
 
-  /**
-   * A tab that loses its socket is the same tab when it comes back, and the
-   * section it had open is still its own: the lock owner is the tab the client
-   * names on its upgrade, never the connection that carried the call. A
-   * network blip is a reconnection in progress, and losing a lock under an
-   * open editor is not a thing that may happen.
-   */
-  it('keeps a section for the tab that took it when its socket dies', async () => {
-    const tab = 'pb-ws-reconnecting-tab';
-    const first = await connect(tab);
-    // A colleague on a socket of its own: what it is refused after the drop is
-    // what makes the section still the dead tab's rather than nobody's.
-    const stranger = await connect();
-    const watched = collect(
-      await stranger.client.protocolBuilder.watchProtocol({ protocolId }),
-    );
-    const sectionId = await createStage(first.client, 'Held across a drop');
-    // The channel is what renews this tab's lease, and what strands its owner
-    // when the socket under it dies.
-    collect(await first.client.protocolBuilder.watchProtocol({ protocolId }));
+    it('refuses a socket from another origin', async () => {
+      const refused = new WebSocket(url, handshake('http://evil.example'));
+      const code = await new Promise<number | string>((resolve) => {
+        refused.once('unexpected-response', (_req, res) =>
+          resolve(res.statusCode ?? 0),
+        );
+        refused.once('open', () => resolve('opened'));
+        refused.once('error', (error) => resolve(error.message));
+      });
+      refused.close();
+      expect(code).toBe(403);
+    });
 
-    const held = await first.client.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
-    expect(held.lock).toBe('held');
-    if (held.lock !== 'held') throw new Error('unreachable');
-    await until(
-      () => lockHolder(watched, sectionId) !== undefined,
-      'the lock event to reach the colleague',
-    );
-    const connection = lockHolder(watched, sectionId)?.sessionId;
-    if (connection === undefined) throw new Error('the lock named no holder');
-    await until(
-      () => isPresent(watched, connection),
-      'the first socket to be present',
-    );
+    it('serves unary calls and a resumable watch over one socket', async () => {
+      const { client } = await connect();
+      const sections = await client.protocolBuilder.listSections({
+        protocolId,
+      });
+      expect(sections.sectionIds).toContain('stageOrder');
 
-    // A drop rather than a close: no close frame, so the server learns of it
-    // the way it learns of a network blip.
-    first.socket.terminate();
-    await until(
-      () => !isPresent(watched, connection),
-      'the server to notice the socket died',
-    );
+      const stream = await client.protocolBuilder.watchProtocol({ protocolId });
+      const created = await client.protocolBuilder.create({
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Made over the socket',
+          title: 'Made over the socket',
+          items: [],
+        },
+      });
 
-    const behind = await stranger.client.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
-    expect(behind.lock).toBe('readOnly');
-    if (behind.lock !== 'readOnly') throw new Error('unreachable');
-    expect(behind.holder.userId).toBe(PRINCIPAL.userId);
+      // The live half: the write above reaches the open stream, and its event
+      // carries the cursor a dropped socket would resume from.
+      const live: { cursor: string | undefined; sectionId: unknown }[] = [];
+      for await (const event of stream) {
+        if (event.type !== 'revision') continue;
+        live.push({
+          cursor: getEventMeta(event)?.id,
+          sectionId: event.sectionId,
+        });
+        if (live.length === 2) break;
+      }
+      expect(live.map((entry) => entry.sectionId)).toEqual([
+        created.sectionId,
+        'stageOrder',
+      ]);
+      const resumeFrom = live[0]?.cursor;
+      expect(resumeFrom).toBeDefined();
 
-    // The tab comes back on a new socket, names itself, and finds the section
-    // still its own — and writes it, which is the whole point of keeping it.
-    const second = await connect(tab);
-    collect(await second.client.protocolBuilder.watchProtocol({ protocolId }));
-    const resumed = await second.client.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
+      // The resume half, on a second socket: from that cursor the stream starts
+      // with the very next event and never repeats the one it resumed from.
+      const { client: second } = await connect();
+      const replay = await second.protocolBuilder.watchProtocol({
+        protocolId,
+        since: resumeFrom,
+      });
+      for await (const event of replay) {
+        expect(event.type).toBe('revision');
+        if (event.type !== 'revision') break;
+        expect(event.sectionId).toBe('stageOrder');
+        expect(getEventMeta(event)?.id).toBe(live[1]?.cursor);
+        break;
+      }
     });
-    expect(resumed.lock).toBe('held');
-    if (resumed.lock !== 'held') throw new Error('unreachable');
-    const written = await second.client.protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId,
-      document: { ...resumed.document, label: 'Renamed after the reconnect' },
-      revision: resumed.revision,
-    });
-    expect(written.revision.sequence).toBeGreaterThan(
-      resumed.revision.sequence,
-    );
-    const read = await second.client.protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
-    expect(read.document.label).toBe('Renamed after the reconnect');
-  });
 
-  /**
-   * A tab id the server would not store is no identity at all: the caller
-   * falls back to its connection, which is what a client naming nothing gets
-   * (the test above), so two such sockets are two owners rather than one.
-   */
-  it('falls back to the connection for a socket whose tab id it cannot use', async () => {
-    const unusable = 'not a tab id!';
-    const first = await connect(unusable);
-    const second = await connect(unusable);
-    const sectionId = await createStage(first.client, 'Named by no usable tab');
+    /**
+     * Two tabs of one researcher are two connections, so the second has to be
+     * able to say who has the section — and it learns that from the stream, on a
+     * socket that served none of the calls that took the lock.
+     */
+    it('tells a second socket which connection took a section', async () => {
+      const { client: watcher } = await connect();
+      const { client: holder } = await connect();
+      const stream = await watcher.protocolBuilder.watchProtocol({
+        protocolId,
+      });
+      const locks: LockEvent[] = [];
+      const draining = (async () => {
+        for await (const event of stream) {
+          if (event.type === 'lock') locks.push(event);
+          if (locks.length === 2) break;
+        }
+      })();
 
-    const held = await first.client.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
+      // The watcher takes one section itself first, so the lock event for the
+      // other one can be compared against its own connection rather than merely
+      // looking plausible.
+      await watcher.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId: 'assets',
+      });
+      await holder.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId: 'stageOrder',
+      });
+      await draining;
+
+      const own = locks.find((event) => event.sectionId === 'assets')?.holder;
+      const theirs = locks.find(
+        (event) => event.sectionId === 'stageOrder',
+      )?.holder;
+      expect(own?.sessionId).toBeDefined();
+      expect(theirs?.userId).toBe(PRINCIPAL.userId);
+      expect(theirs?.displayName).toBe(PRINCIPAL.name);
+      expect(theirs?.mode).toBe('editing');
+      expect(theirs?.sectionId).toBe('stageOrder');
+      // Two tabs of one researcher are two owners, so the identity the event
+      // carries is the socket's rather than the person's.
+      expect(theirs?.sessionId).not.toBe(own?.sessionId);
+
+      // The connection the event named is the one the lease is actually under:
+      // asking for the same section answers read-only behind that same identity.
+      const behind = await watcher.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId: 'stageOrder',
+      });
+      expect(behind.lock).toBe('readOnly');
+      if (behind.lock !== 'readOnly') return;
+      expect(behind.holder.sessionId).toBe(theirs?.sessionId);
+
+      // Given back before the test ends: the stage index and the asset manifest
+      // are the sections a create and a promoting write have to take, so a test
+      // that keeps them refuses every later one in this suite.
+      await holder.protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: 'stageOrder',
+      });
+      await watcher.protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: 'assets',
+      });
     });
-    expect(held.lock).toBe('held');
-    // Had the server taken the id, both sockets would be one owner and this
-    // would have been the holder's own section handed back to it.
-    const behind = await second.client.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
+
+    /**
+     * A tab that loses its socket is the same tab when it comes back, and the
+     * section it had open is still its own: the lock owner is the tab the client
+     * names on its upgrade, never the connection that carried the call. A
+     * network blip is a reconnection in progress, and losing a lock under an
+     * open editor is not a thing that may happen.
+     */
+    it('keeps a section for the tab that took it when its socket dies', async () => {
+      const tab = 'pb-ws-reconnecting-tab';
+      const first = await connect(tab);
+      // A colleague on a socket of its own: what it is refused after the drop is
+      // what makes the section still the dead tab's rather than nobody's.
+      const stranger = await connect();
+      const watched = collect(
+        await stranger.client.protocolBuilder.watchProtocol({ protocolId }),
+      );
+      const sectionId = await createStage(first.client, 'Held across a drop');
+      // The channel is what renews this tab's lease, and what strands its owner
+      // when the socket under it dies.
+      collect(await first.client.protocolBuilder.watchProtocol({ protocolId }));
+
+      const held = await first.client.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(held.lock).toBe('held');
+      if (held.lock !== 'held') throw new Error('unreachable');
+      await until(
+        () => lockHolder(watched, sectionId) !== undefined,
+        'the lock event to reach the colleague',
+      );
+      const connection = lockHolder(watched, sectionId)?.sessionId;
+      if (connection === undefined) throw new Error('the lock named no holder');
+      await until(
+        () => isPresent(watched, connection),
+        'the first socket to be present',
+      );
+
+      // A drop rather than a close: no close frame, so the server learns of it
+      // the way it learns of a network blip.
+      first.socket.terminate();
+      await until(
+        () => !isPresent(watched, connection),
+        'the server to notice the socket died',
+      );
+
+      const behind = await stranger.client.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(behind.lock).toBe('readOnly');
+      if (behind.lock !== 'readOnly') throw new Error('unreachable');
+      expect(behind.holder.userId).toBe(PRINCIPAL.userId);
+
+      // The tab comes back on a new socket, names itself, and finds the section
+      // still its own — and writes it, which is the whole point of keeping it.
+      const second = await connect(tab);
+      collect(
+        await second.client.protocolBuilder.watchProtocol({ protocolId }),
+      );
+      const resumed = await second.client.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(resumed.lock).toBe('held');
+      if (resumed.lock !== 'held') throw new Error('unreachable');
+      const written = await second.client.protocolBuilder.submit({
+        protocolId,
+        requestId: randomUUID(),
+        sectionId,
+        document: { ...resumed.document, label: 'Renamed after the reconnect' },
+        revision: resumed.revision,
+      });
+      expect(written.revision.sequence).toBeGreaterThan(
+        resumed.revision.sequence,
+      );
+      const read = await second.client.protocolBuilder.getSection({
+        protocolId,
+        sectionId,
+      });
+      expect(read.document.label).toBe('Renamed after the reconnect');
     });
-    expect(behind.lock).toBe('readOnly');
-    if (behind.lock !== 'readOnly') throw new Error('unreachable');
-    expect(behind.holder.userId).toBe(PRINCIPAL.userId);
-    expect(behind.holder.displayName).toBe(PRINCIPAL.name);
-  });
-});
+
+    /**
+     * A tab id the server would not store is no identity at all: the caller
+     * falls back to its connection, which is what a client naming nothing gets
+     * (the test above), so two such sockets are two owners rather than one.
+     */
+    it('falls back to the connection for a socket whose tab id it cannot use', async () => {
+      const unusable = 'not a tab id!';
+      const first = await connect(unusable);
+      const second = await connect(unusable);
+      const sectionId = await createStage(
+        first.client,
+        'Named by no usable tab',
+      );
+
+      const held = await first.client.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(held.lock).toBe('held');
+      // Had the server taken the id, both sockets would be one owner and this
+      // would have been the holder's own section handed back to it.
+      const behind = await second.client.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(behind.lock).toBe('readOnly');
+      if (behind.lock !== 'readOnly') throw new Error('unreachable');
+      expect(behind.holder.userId).toBe(PRINCIPAL.userId);
+      expect(behind.holder.displayName).toBe(PRINCIPAL.name);
+    });
+  },
+);
 
 type LockEvent = Extract<ProtocolEvent, { type: 'lock' }>;
 type PresenceEvent = Extract<ProtocolEvent, { type: 'presence' }>;

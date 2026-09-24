@@ -22,14 +22,16 @@
 //   duration               = each session's elapsed time divided evenly across
 //                            the stages it entered, summed
 //   missing items          = nodes from that stage carrying no attributes
-import type pg from 'pg';
+import { Effect } from 'effect';
 
-export async function seedMonitoringRollups(
-  client: pg.PoolClient,
+import { Transaction } from '../../src/db/tenant.ts';
+
+export const seedMonitoringRollups = Effect.fnUntraced(function* (
   teamId: string,
   recomputedAt: Date,
-): Promise<void> {
-  await client.query(
+) {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe(
     `insert into study_wave_rollups (
        team_id, study_id, wave_id, invited_count, onboarding_started_count,
        consented_count, session_started_count, session_completed_count,
@@ -68,7 +70,7 @@ export async function seedMonitoringRollups(
     [teamId, recomputedAt],
   );
 
-  await client.query(
+  yield* sql.unsafe(
     `insert into study_stage_rollups (
        team_id, study_id, wave_id, stage_id, entered_count, completed_count,
        abandoned_count, duration_ms_sum, duration_ms_count, missing_item_count,
@@ -103,4 +105,4 @@ export async function seedMonitoringRollups(
      group by ss.team_id, ss.study_id, ss.wave_id, ss.stage_id`,
     [teamId, recomputedAt],
   );
-}
+});

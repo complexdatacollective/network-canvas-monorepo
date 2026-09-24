@@ -3,7 +3,6 @@
 // #1897 extends this file — when logs, spans, metrics, error reports and
 // analytics gain sinks, each one gets its cases here, against the rule stated
 // at the top of `../exclusion.ts`.
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -88,13 +87,14 @@ describe('assertNoAssetKeyValues', () => {
 });
 
 describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
-  let db: pg.Pool;
+  let store: StoreSchema;
   let inTeam: StoreSchema['inTeam'];
   let dispose: () => Promise<void>;
   const cipher = testCipher();
 
   beforeAll(async () => {
-    ({ db, inTeam, dispose } = await makeStoreSchema());
+    store = await makeStoreSchema();
+    ({ inTeam, dispose } = store);
   });
   afterAll(async () => {
     await dispose();
@@ -149,12 +149,14 @@ describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
     // carries a key. If the check were not wired into the assembly exits,
     // both reads below would hand the key back.
     const assets = sectionId({ kind: 'assets' });
-    await db.query('ALTER TABLE sections DISABLE TRIGGER sections_immutable');
-    await db.query(
+    await store.affected(
+      'ALTER TABLE sections DISABLE TRIGGER sections_immutable',
+    );
+    await store.affected(
       'ALTER TABLE sections DISABLE TRIGGER sections_hold_no_asset_keys',
     );
     try {
-      const updated = await db.query(
+      const updated = await store.affected(
         `UPDATE sections s
             SET doc = jsonb_set(s.doc, $1::text[], to_jsonb($2::text))
            FROM manifests m, drafts d
@@ -165,10 +167,12 @@ describe.skipIf(!storeDb)('documents leaving the protocol store', () => {
             AND s.team_id = d.team_id`,
         [[ASSET_ID, 'value'], API_KEY, draftId, assets],
       );
-      expect(updated.rowCount).toBe(1);
+      expect(updated).toBe(1);
     } finally {
-      await db.query('ALTER TABLE sections ENABLE TRIGGER sections_immutable');
-      await db.query(
+      await store.affected(
+        'ALTER TABLE sections ENABLE TRIGGER sections_immutable',
+      );
+      await store.affected(
         'ALTER TABLE sections ENABLE TRIGGER sections_hold_no_asset_keys',
       );
     }

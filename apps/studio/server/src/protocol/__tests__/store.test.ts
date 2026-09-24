@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
 import { Effect, Exit } from 'effect';
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -15,6 +14,7 @@ import {
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
 
+import { TestDatabase } from '../../__tests__/support/database.ts';
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import { type ScopeOptions, Transaction } from '../../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
@@ -43,6 +43,7 @@ import {
   baseProtocol,
   makeStoreSchema,
   makeTestSyncServer,
+  type StoreSchema,
   storeDb,
   waitForLockWait,
 } from './helpers.ts';
@@ -50,8 +51,7 @@ import {
 const { sections } = SYNC_TABLES;
 
 describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
-  let db: pg.Pool;
-  let dispose: () => Promise<void>;
+  let store: StoreSchema;
   /** One team-stamped transaction on the Effect application client. */
   let run: <A, E>(
     body: Effect.Effect<A, E, Transaction>,
@@ -63,13 +63,12 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   const cipher = testCipher();
 
   beforeAll(async () => {
-    const schema = await makeStoreSchema();
-    ({ db, dispose } = schema);
-    run = (body, options) => schema.inTeam(TEST_TEAM_ID, body, options);
-    runExit = (body) => schema.exitInTeam(TEST_TEAM_ID, body);
+    store = await makeStoreSchema();
+    run = (body, options) => store.inTeam(TEST_TEAM_ID, body, options);
+    runExit = (body) => store.exitInTeam(TEST_TEAM_ID, body);
   });
   afterAll(async () => {
-    await dispose();
+    await store.dispose();
   });
 
   const create = (protocol: CurrentProtocol, ids?: Record<string, string>) =>
@@ -94,12 +93,12 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       run(createProtocol(TEST_TEAM_ID, cipher, params)),
     ).resolves.toEqual({ protocolId, draftId, created: false });
 
-    const rows = await db.query(
+    const rows = await store.rows(
       `SELECT count(*)::int AS count FROM protocol_drafts
        WHERE protocol_id = $1 AND draft_id = $2`,
       [protocolId, draftId],
     );
-    expect(rows.rows[0]).toEqual({ count: 1 });
+    expect(rows[0]).toEqual({ count: 1 });
   });
 
   it('createProtocol reports idempotence twice inside one transaction', async () => {
@@ -392,10 +391,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(document.stages.map((stage) => stage.id)).toEqual([
       'nameGenerator1',
     ]);
-    const row = await db.query(`SELECT 1 FROM sections WHERE hash = $1`, [
+    const row = await store.rows(`SELECT 1 FROM sections WHERE hash = $1`, [
       removedHash,
     ]);
-    expect(row.rowCount).toBe(1);
+    expect(row).toHaveLength(1);
 
     await expect(
       run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' })),
@@ -594,41 +593,76 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const sync = makeTestSyncServer();
     const lease = await run(sync.acquire(draftId, 'settings', 'commit-tab'));
 
-    const blocker = await db.connect();
-    await blocker.query('BEGIN');
-    await blocker.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
-      draftId,
-    ]);
+    // The blocker is one owner transaction held open across the steps below:
+    // it takes the row lock, writes a newer head once the case has read the
+    // current one, and commits only when the case says so.
+    const locked = Promise.withResolvers<void>();
+    const headRead = Promise.withResolvers<{
+      headSeq: bigint;
+      headManifestHash: string;
+      advanced: Record<string, string>;
+    }>();
+    const written = Promise.withResolvers<void>();
+    const commit = Promise.withResolvers<void>();
+    const blocker = store.run(
+      Effect.gen(function* () {
+        const harness = yield* TestDatabase;
+        const { sql } = harness.owner;
+        yield* harness.onOwner(
+          Effect.gen(function* () {
+            yield* sql.unsafe(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
+              draftId,
+            ]);
+            locked.resolve();
+            const { headSeq, headManifestHash, advanced } =
+              yield* Effect.promise(() => headRead.promise);
+            yield* sql.unsafe(
+              `INSERT INTO sections (team_id, hash, doc)
+               VALUES ($1, 'advanced-hash', '{}'::jsonb)`,
+              [TEST_TEAM_ID],
+            );
+            yield* sql.unsafe(
+              `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
+               VALUES ($1, $5, $2, 'advanced-manifest', $3, $4::jsonb)`,
+              [
+                draftId,
+                String(headSeq + 1n),
+                headManifestHash,
+                JSON.stringify(advanced),
+                TEST_TEAM_ID,
+              ],
+            );
+            yield* sql.unsafe(
+              `UPDATE drafts SET head_seq = $2, head_manifest_hash = 'advanced-manifest'
+               WHERE id = $1`,
+              [draftId, String(headSeq + 1n)],
+            );
+            written.resolve();
+            yield* Effect.promise(() => commit.promise);
+          }),
+        );
+      }),
+    );
+    // A blocker that fails rejects the step the case is waiting on, rather
+    // than leaving it to hang until the timeout.
+    const step = (gate: Promise<void>) => Promise.race([gate, blocker]);
+
+    await step(locked.promise);
     const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
     const advanced = { ...head.sectionHashes, settings: 'advanced-hash' };
-    await blocker.query(
-      `INSERT INTO sections (team_id, hash, doc)
-       VALUES ($1, 'advanced-hash', '{}'::jsonb)`,
-      [TEST_TEAM_ID],
-    );
-    await blocker.query(
-      `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
-       VALUES ($1, $5, $2, 'advanced-manifest', $3, $4)`,
-      [
-        draftId,
-        String(head.headSeq + 1n),
-        head.headManifestHash,
-        advanced,
-        TEST_TEAM_ID,
-      ],
-    );
-    await blocker.query(
-      `UPDATE drafts SET head_seq = $2, head_manifest_hash = 'advanced-manifest'
-       WHERE id = $1`,
-      [draftId, String(head.headSeq + 1n)],
-    );
+    headRead.resolve({
+      headSeq: head.headSeq,
+      headManifestHash: head.headManifestHash,
+      advanced,
+    });
+    await step(written.promise);
 
     const pending = run(
       removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' }),
     );
-    await waitForLockWait(db);
-    await blocker.query('COMMIT');
-    blocker.release();
+    await store.run(waitForLockWait());
+    commit.resolve();
+    await blocker;
 
     const result = await pending;
     expect(result.manifestSeq).toBe(head.headSeq + 2n);
@@ -740,11 +774,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       'leases',
     ]) {
       const column = table === 'drafts' ? 'id' : 'draft_id';
-      const res = await db.query(
+      const res = await store.rows(
         `SELECT 1 FROM ${table} WHERE ${column} = $1`,
         [draftId],
       );
-      expect(res.rowCount, table).toBe(0);
+      expect(res, table).toHaveLength(0);
     }
   });
 
@@ -775,12 +809,12 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         type: 'apikey',
       });
 
-      const sealed = await db.query(
+      const sealed = await store.rows(
         `SELECT key_id FROM protocol_asset_keys
          WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
         [TEST_TEAM_ID, protocolId, 'mapKey'],
       );
-      expect(sealed.rowCount).toBe(1);
+      expect(sealed).toHaveLength(1);
       await expect(
         run(
           openAssetKey(cipher, {
@@ -797,10 +831,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
       // The whole table, because a key must not be at rest in any revision of
       // any section — not only in the manifest the draft happens to point at.
-      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
-      const all = (docs.rows as { doc: string }[])
-        .map((row) => row.doc)
-        .join('\n');
+      const docs = await store.rows<{ doc: string }>(
+        `SELECT doc::text AS doc FROM sections`,
+      );
+      const all = docs.map((row) => row.doc).join('\n');
       expect(all).not.toContain(KEY);
     });
 
@@ -926,10 +960,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       // And the commit did not put the key back: the merged document the
       // validator saw carried a placeholder, which is never written. The whole
       // table, because the commit wrote a new revision of the section.
-      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
-      const all = (docs.rows as { doc: string }[])
-        .map((row) => row.doc)
-        .join('\n');
+      const docs = await store.rows<{ doc: string }>(
+        `SELECT doc::text AS doc FROM sections`,
+      );
+      const all = docs.map((row) => row.doc).join('\n');
       expect(all).not.toContain(KEY);
       expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
     });

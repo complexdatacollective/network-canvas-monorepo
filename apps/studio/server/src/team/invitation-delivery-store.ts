@@ -6,11 +6,13 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import type { TeamRole } from '@codaco/studio-rpc';
 
+import { AUTH_TABLES } from '../db/auth-schema.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
 import { INVITATION_DELIVERY_TABLES } from './invitation-delivery-schema.ts';
 
 const { invitationDeliveries } = INVITATION_DELIVERY_TABLES;
+const { team_invitations: invitations } = AUTH_TABLES;
 
 export type EnqueueInvitationDeliveryInput = {
   invitationId: string;
@@ -51,17 +53,10 @@ const EXPIRY_TOLERANCE_SECONDS = 0.001;
  * are the only two the caller supplies, and they are the audit context the
  * combinator owns rather than anything the caller chose.
  *
- * The statement is raw because the builder has no path to `INSERT … SELECT`
- * with a correlated source: drizzle's insert takes values or a select, and the
- * predicate here has to compare the inserted columns against the very row it
- * is selecting from. It is the one hand-written statement in this module, and
- * it goes through the transaction's own `sql` client — same connection, same
- * commit — rather than through the builder.
- *
- * It reads back no timestamp: `expires_at` is written straight from the
- * invitation row, and the only instant that crosses the boundary is the
- * caller's bound `$8`, compared inside SQL. So the raw path's `timestamptz`
- * decoding (epoch milliseconds on rc.115) never applies here.
+ * `.returning()` is what tells a queued row from a refused one: `ON CONFLICT
+ * DO NOTHING` and a predicate that matches no invitation both write nothing,
+ * and without it the builder answers with the driver's result object either
+ * way.
  */
 export const enqueueInvitationDelivery: (
   input: EnqueueInvitationDeliveryInput,
@@ -69,38 +64,43 @@ export const enqueueInvitationDelivery: (
   Effect.fn('team.store.enqueueInvitationDelivery')(function* (
     input: EnqueueInvitationDeliveryInput,
   ) {
-    const { tx, sql: client } = yield* Transaction;
+    const { tx } = yield* Transaction;
     const deliveryId = randomUUID();
-    const inserted = yield* client.unsafe<EnqueuedInvitationDelivery>(
-      `INSERT INTO team_invitation_deliveries (
-       id, invitation_id, team_id, email, role, team_label, inviter_label,
-       expires_at
-     )
-     SELECT $1, invitation.id, invitation.team_id, invitation.email,
-            invitation.role, $6, $7, invitation.expires_at
-       FROM team_invitations invitation
-      WHERE invitation.id = $2
-        AND invitation.team_id = $3
-        AND lower(invitation.email) = lower($4)
-        AND invitation.role = $5
-        AND invitation.status = 'pending'
-        AND invitation.expires_at > clock_timestamp()
-        AND abs(extract(
-              epoch FROM invitation.expires_at - $8::timestamptz
-            )) < ${EXPIRY_TOLERANCE_SECONDS}
-     ON CONFLICT (invitation_id) DO NOTHING
-     RETURNING id AS "deliveryId", invitation_id AS "invitationId"`,
-      [
-        deliveryId,
-        input.invitationId,
-        input.teamId,
-        input.email,
-        input.role,
-        input.teamLabel,
-        input.inviterLabel,
-        input.expiresAt,
-      ],
-    );
+    const inserted = yield* tx
+      .insert(invitationDeliveries)
+      .select((query) =>
+        query
+          .select({
+            id: sql`${deliveryId}::uuid`.as('id'),
+            invitationId: invitations.id,
+            teamId: invitations.team_id,
+            email: invitations.email,
+            role: sql<string>`${invitations.role}`.as('role'),
+            teamLabel: sql`${input.teamLabel}::text`.as('team_label'),
+            inviterLabel: sql`${input.inviterLabel}::text`.as('inviter_label'),
+            expiresAt: invitations.expires_at,
+          })
+          .from(invitations)
+          .where(
+            and(
+              eq(invitations.id, input.invitationId),
+              eq(invitations.team_id, input.teamId),
+              sql`lower(${invitations.email}) = lower(${input.email})`,
+              eq(invitations.role, input.role),
+              eq(invitations.status, 'pending'),
+              sql`${invitations.expires_at} > clock_timestamp()`,
+              sql`abs(extract(
+                  epoch FROM ${invitations.expires_at}
+                            - ${input.expiresAt}::timestamptz
+                )) < ${EXPIRY_TOLERANCE_SECONDS}`,
+            ),
+          ),
+      )
+      .onConflictDoNothing({ target: invitationDeliveries.invitationId })
+      .returning({
+        deliveryId: invitationDeliveries.id,
+        invitationId: invitationDeliveries.invitationId,
+      });
     const row = inserted[0];
     if (row !== undefined) return row;
 

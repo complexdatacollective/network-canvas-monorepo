@@ -10,21 +10,19 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Layer, Predicate, Result, Schema } from 'effect';
-import type { SqlError, Statement } from 'effect/unstable/sql';
+import { Effect, Layer } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
+  ownerAffected,
+  ownerRows,
+  refusalOf,
   TestDatabase,
   TestDatabaseLive,
   testDb,
+  ownerInsert,
+  tenantRows,
 } from '../../__tests__/support/database.ts';
-import { sqlState } from '../../db/errors.ts';
-import {
-  TenantScope,
-  Transaction,
-  unsafeMakeTeamAccess,
-} from '../../db/tenant.ts';
 
 const TEAMS = ['team-a', 'team-b'] as const;
 type Team = (typeof TEAMS)[number];
@@ -43,116 +41,9 @@ type Row = Record<string, unknown>;
  */
 type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
-/**
- * The membership a tenant scope stands for. These cases have no command to
- * prove one, exactly as `audit/__tests__/store.test.ts` has none.
- */
-const access = (teamId: string) => unsafeMakeTeamAccess(teamId, 'owner');
-
-/** The first string value of `key` anywhere down a failure's cause chain. */
-function fieldOf(error: unknown, key: string): string | undefined {
-  let current: unknown = error;
-  for (let depth = 0; depth < 32; depth += 1) {
-    if (!Predicate.isObject(current)) return undefined;
-    if (Cause.isCause(current)) {
-      current = Cause.squash(current);
-      continue;
-    }
-    if (key in current) {
-      const value: unknown = Reflect.get(current, key);
-      if (Predicate.isString(value)) return value;
-    }
-    if (!('cause' in current)) return undefined;
-    current = current.cause;
-  }
-  return undefined;
-}
-
-type Refusal = {
-  /** The SQLSTATE Postgres reported. */
-  readonly state: string;
-  /** The constraint it named. */
-  readonly constraint: string;
-};
-
-/**
- * What a refused statement carried, or the literal `'no failure'` in both
- * fields when it was not refused at all — so a case that stops refusing fails
- * on the value rather than passing vacuously.
- *
- * Both fields come out of one run: asking for the SQLSTATE and the constraint
- * through two helpers would execute the statement twice.
- */
-const refusalOf = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-): Effect.Effect<Refusal, never, R> =>
-  Effect.map(Effect.result(effect), (result) =>
-    Result.isFailure(result)
-      ? {
-          state: sqlState(result.failure) ?? 'no SQLSTATE',
-          constraint: fieldOf(result.failure, 'constraint') ?? 'no constraint',
-        }
-      : { state: 'no failure', constraint: 'no failure' },
-  );
-
-/**
- * How many rows a statement affected. An INSERT, UPDATE or DELETE with no
- * RETURNING hands back no rows, so the count the node-postgres suite read off
- * `pg.Result` is taken from the driver's own result instead, decoded rather
- * than trusted.
- */
-const readRowCount = Schema.decodeUnknownSync(
-  Schema.Struct({ rowCount: Schema.Number }),
-);
-
-const affectedBy = <A extends object>(
-  statement: Statement.Statement<A>,
-): Effect.Effect<number, SqlError.SqlError> =>
-  Effect.map(statement.raw, (result) => readRowCount(result).rowCount);
-
-/**
- * The connecting login is the development superuser, so it bypasses the
- * row-level security policies but not the triggers: exactly the fixture tool
- * these cases want. Role-sensitive probes open a `TenantScope` instead.
- */
-const ownerRows = <A extends object>(
-  text: string,
-  params?: ReadonlyArray<unknown>,
-): Effect.Effect<ReadonlyArray<A>, SqlError.SqlError, TestDatabase> =>
-  Effect.flatMap(TestDatabase, (harness) =>
-    harness.onOwner(harness.owner.sql.unsafe<A>(text, params)),
-  );
-
-const ownerAffected = (
-  text: string,
-  params?: ReadonlyArray<unknown>,
-): Effect.Effect<number, SqlError.SqlError, TestDatabase> =>
-  Effect.flatMap(TestDatabase, (harness) =>
-    harness.onOwner(affectedBy(harness.owner.sql.unsafe<Row>(text, params))),
-  );
-
-/** The same statement as the application role, stamped with team A. */
-const tenantRows = <A extends object>(
-  text: string,
-  params?: ReadonlyArray<unknown>,
-) =>
-  TenantScope.open(
-    access(TEAM_A),
-    Effect.flatMap(Transaction, ({ sql }) => sql.unsafe<A>(text, params)),
-  );
-
-const insert = (table: string, row: Row) => {
-  const columns = Object.keys(row);
-  return ownerAffected(
-    `INSERT INTO ${table} (${columns.map((name) => `"${name}"`).join(', ')})
-       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
-    Object.values(row),
-  );
-};
-
 const newStudy = Effect.fnUntraced(function* (teamId: string = TEAM_A) {
   const id = randomUUID();
-  yield* insert('studies', { id, team_id: teamId, name: 'A study' });
+  yield* ownerInsert('studies', { id, team_id: teamId, name: 'A study' });
   return id;
 });
 
@@ -204,7 +95,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           Effect.gen(function* () {
             const studyId = yield* newStudy();
             const row = grantRow(studyId);
-            yield* insert('study_role_grants', row);
+            yield* ownerInsert('study_role_grants', row);
 
             const stored = yield* ownerRows<{ pii_access: boolean }>(
               `SELECT pii_access FROM study_role_grants WHERE id = $1`,
@@ -225,7 +116,10 @@ describe.skipIf(!testDb)('study role grants schema', () => {
         Effect.gen(function* () {
           const studyId = yield* newStudy();
           expect(
-            yield* insert('study_role_grants', grantRow(studyId, { role })),
+            yield* ownerInsert(
+              'study_role_grants',
+              grantRow(studyId, { role }),
+            ),
           ).toBe(1);
         }),
       );
@@ -262,7 +156,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           const studyId = yield* newStudy();
           expect(
             (yield* refusalOf(
-              insert('study_role_grants', grantRow(studyId, overrides)),
+              ownerInsert('study_role_grants', grantRow(studyId, overrides)),
             )).constraint,
           ).toBe(constraint);
         }),
@@ -273,14 +167,14 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           const studyId = yield* newStudy();
           const otherStudyId = yield* newStudy();
           const userId = 'user-researcher';
-          yield* insert(
+          yield* ownerInsert(
             'study_role_grants',
             grantRow(studyId, { user_id: userId }),
           );
 
           expect(
             (yield* refusalOf(
-              insert(
+              ownerInsert(
                 'study_role_grants',
                 grantRow(studyId, { user_id: userId, role: 'coordinator' }),
               ),
@@ -289,7 +183,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
 
           // The same person may hold a different role on a different study.
           expect(
-            yield* insert(
+            yield* ownerInsert(
               'study_role_grants',
               grantRow(otherStudyId, { user_id: userId, role: 'data_viewer' }),
             ),
@@ -302,12 +196,12 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           const studyId = yield* newStudy(TEAM_A);
           expect(
             yield* refusalOf(
-              insert(
+              ownerInsert(
                 'study_role_grants',
                 grantRow(studyId, { team_id: TEAM_B }),
               ),
             ),
-          ).toEqual({
+          ).toMatchObject({
             state: '23503',
             constraint: 'study_role_grants_study_fk',
           });
@@ -318,9 +212,9 @@ describe.skipIf(!testDb)('study role grants schema', () => {
         Effect.gen(function* () {
           expect(
             yield* refusalOf(
-              insert('study_role_grants', grantRow(randomUUID())),
+              ownerInsert('study_role_grants', grantRow(randomUUID())),
             ),
-          ).toEqual({
+          ).toMatchObject({
             state: '23503',
             constraint: 'study_role_grants_study_fk',
           });
@@ -334,6 +228,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           expect(
             (yield* refusalOf(
               tenantRows(
+                TEAM_A,
                 `INSERT INTO study_role_grants
                    (id, team_id, study_id, user_id, role, granted_by_user_id)
                  VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
@@ -348,13 +243,14 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           expect(
             yield* refusalOf(
               tenantRows(
+                TEAM_A,
                 `INSERT INTO study_role_grants
                    (id, team_id, study_id, user_id, role, granted_by_user_id)
                  VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
                 [randomUUID(), TEAM_A, studyOf[TEAM_B]],
               ),
             ),
-          ).toEqual({
+          ).toMatchObject({
             state: '23503',
             constraint: 'study_role_grants_study_fk',
           });
@@ -370,7 +266,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
       it.effect('shows a team only its own grants', () =>
         Effect.gen(function* () {
           const grantId = randomUUID();
-          yield* insert('study_role_grants', {
+          yield* ownerInsert('study_role_grants', {
             id: grantId,
             team_id: TEAM_B,
             study_id: studyOf[TEAM_B],
@@ -380,6 +276,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           });
 
           const visible = yield* tenantRows<{ id: string }>(
+            TEAM_A,
             `SELECT id FROM study_role_grants WHERE id = $1`,
             [grantId],
           );
@@ -400,7 +297,7 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           Effect.gen(function* () {
             const studyId = yield* newStudy();
             const row = grantRow(studyId);
-            yield* insert('study_role_grants', row);
+            yield* ownerInsert('study_role_grants', row);
 
             // Changing someone's role is an UPDATE, and PII access is granted
             // on top of an existing role rather than by reissuing the grant.

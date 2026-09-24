@@ -12,13 +12,12 @@ import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 // introspects against what Drizzle declares — a jobs table in `public` would
 // be dropped as unmanaged on the next push.
 //
-// Two functions because two drivers do the same work for two lifetimes. The
-// node-postgres one is what `applySchema` and `studio-api migrate` call: both
-// already hold one client inside one transaction and apply everything through
-// it. The Effect one is for a program that owns a client and creates the
-// schema through a scope (the suites' harness does). They share
-// the statements, so the bytes cannot drift between the path that installs a
-// deployment and the path that installs a suite's scratch schema.
+// Two functions because two drivers do the same work. The node-postgres one is
+// what `applySchema` (scripts/apply.ts) calls, inside the one transaction it
+// opens on the client drizzle-kit's push needs. The Effect one runs inside an
+// open `Transaction`: `studio-api migrate` (src/db/migrate.ts) and the suites'
+// harness install through it. They share the statements, so the bytes cannot
+// drift between the checkout's apply and the deployed one.
 
 /**
  * The queue's DDL and grants as single commands.
@@ -61,9 +60,9 @@ export async function installJobSchema(
 }
 
 /**
- * The same install over an open `Transaction` — stage 3's path, and the one
- * the queue's own suites use now that they build a client rather than a
- * `pg.Pool`. `Transaction` and not the client itself, for the reason
+ * The same install over an open `Transaction` — what `studio-api migrate`
+ * runs, and the one the queue's own suites use now that they build a client
+ * rather than a `pg.Pool`. `Transaction` and not the client itself, for the reason
  * `Jobs.enqueue` takes it: the requirement is what says this runs inside a
  * transaction somebody else opened.
  */

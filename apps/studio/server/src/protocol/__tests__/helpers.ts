@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, type Effect, Exit, ManagedRuntime } from 'effect';
+import { Cause, Duration, Effect, Exit } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
-import type pg from 'pg';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import {
@@ -13,11 +12,15 @@ import {
 } from '@codaco/studio-sync/server';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  type Refusal,
+  refusalOf,
+  type TestDatabaseRuntime,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import { Database } from '../../db/client.ts';
 import {
   type ScopeOptions,
@@ -26,7 +29,7 @@ import {
   unsafeMakeTeamAccess,
 } from '../../db/tenant.ts';
 
-export const storeDb = await reachableDb();
+export const storeDb = testDb;
 
 export const TEST_TEAM_ID = 'team-test';
 
@@ -55,40 +58,57 @@ export const GC_OPTS = {
 };
 
 /** Backdates the sweep quarantine so a GC run can collect immediately. */
-export async function ageQuarantine(
-  db: pg.Pool,
-  teamId?: string,
-): Promise<void> {
-  await db.query(
+export const ageQuarantine = (teamId?: string) =>
+  ownerAffected(
     `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'
      ${teamId === undefined ? '' : 'WHERE team_id = $1'}`,
     teamId === undefined ? [] : [teamId],
   );
-}
+
+type InTeam = <A, E>(
+  teamId: string,
+  body: Effect.Effect<A, E, Transaction>,
+  options?: ScopeOptions,
+) => Promise<A>;
 
 export type StoreSchema = {
-  /** The connecting login: fixtures, oracles, and the cross-team reads. */
-  db: pg.Pool;
-  /** The application role's node-postgres pool, which the sync server uses. */
-  app: pg.Pool;
-  maintenance: pg.Pool;
   /** The scratch schema, which every client here is pinned to. */
   schema: string;
+  /** Runs one effect against the scratch schema and its clients. */
+  run: TestDatabaseRuntime['run'];
+  /** One statement as the connecting login: fixtures and cross-team oracles. */
+  rows: <A extends object = Record<string, unknown>>(
+    statement: string,
+    params?: ReadonlyArray<unknown>,
+  ) => Promise<ReadonlyArray<A>>;
+  /** The same, counting the rows it affected. */
+  affected: (
+    statement: string,
+    params?: ReadonlyArray<unknown>,
+  ) => Promise<number>;
+  /** The same, reporting what Postgres said when it refused the statement. */
+  refusal: (
+    statement: string,
+    params?: ReadonlyArray<unknown>,
+  ) => Promise<Refusal>;
   /**
-   * One team-stamped transaction on the **Effect** application client, which
-   * is how the store is called now: every function requires `Transaction`,
-   * and only a scope provides it.
+   * One team-stamped transaction on the application client, which is how the
+   * store is called: every function requires `Transaction`, and only a scope
+   * provides it.
    *
    * A failure comes back as a rejection carrying the failure value itself —
    * `ProtocolStoreError`, `DraftStructureError`, a `SqlError` — so a case
    * still reads `await expect(...).rejects.toThrow(...)` and is asserting on
    * the store's own error rather than on a wrapper.
    */
-  inTeam: <A, E>(
-    teamId: string,
-    body: Effect.Effect<A, E, Transaction>,
-    options?: ScopeOptions,
-  ) => Promise<A>;
+  inTeam: InTeam;
+  /**
+   * The same on the harness's second application client. The first holds one
+   * connection, so two transactions that must be open at once — to contend
+   * for a lock in the database rather than queue for the connection — put
+   * one here.
+   */
+  inTeamOnSecondApp: InTeam;
   /** The same transaction, as an `Exit`, for a case that inspects rollback. */
   exitInTeam: <A, E>(
     teamId: string,
@@ -100,44 +120,18 @@ export type StoreSchema = {
 
 /**
  * The store under test runs as the application role, as it does in Studio;
- * `db` is the connecting login, for fixtures and cross-team oracles.
- *
- * Two clients over one scratch schema, deliberately: the protocol store is an
- * Effect over `@effect/sql-pg` now, and the sync server it is tested beside is
- * still node-postgres over a `TenantDb`. The schema is the seam — the Effect
- * client is pinned to it with `searchPath` (fallback A, #1927 §20 Q6), which
- * is the same stand-in `__tests__/support/database.ts` uses, and the pg pools
- * carry it on the connection string.
+ * `rows`/`affected`/`refusal` are the connecting login, for fixtures and
+ * cross-team oracles. The sync server the store is tested beside takes the
+ * same `Transaction`, so both run in one scope.
  */
 export async function makeStoreSchema(): Promise<StoreSchema> {
-  if (!storeDb) throw new Error('unreachable: probe guaranteed a database');
-  const db = storeDb;
-  const scratch = await createScratchSchema(db);
-  let schema: string;
+  const database = await openTestDatabase();
   try {
-    await provisionScratchSchema(scratch.pool);
-    await seedTeam(scratch.pool, TEST_TEAM_ID);
-    const current = await scratch.pool.query<{ schema: string }>(
-      'select current_schema() as schema',
-    );
-    const name = current.rows[0]?.schema;
-    if (name === undefined) throw new Error('no current schema');
-    schema = name;
+    await database.run(insertTeam(TEST_TEAM_ID));
   } catch (error) {
-    await scratch.dispose();
+    await database.dispose();
     throw error;
   }
-
-  // Two connections: a case that holds a row lock in one transaction and
-  // waits for it in another needs both at once.
-  const runtime = ManagedRuntime.make(
-    Database.layer({
-      url: db.url,
-      maxConnections: 2,
-      applicationName: 'studio-protocol-store-test',
-      searchPath: schema,
-    }),
-  );
 
   // The membership these stand in for is proved by the commands in
   // production; a store suite has no command to prove it.
@@ -147,31 +141,40 @@ export async function makeStoreSchema(): Promise<StoreSchema> {
     teamId: string,
     body: Effect.Effect<A, E, Transaction>,
     options?: ScopeOptions,
-  ) => runtime.runPromiseExit(TenantScope.open(access(teamId), body, options));
+  ) =>
+    database.run(Effect.exit(TenantScope.open(access(teamId), body, options)));
 
-  const inTeam = async <A, E>(
-    teamId: string,
-    body: Effect.Effect<A, E, Transaction>,
-    options?: ScopeOptions,
-  ): Promise<A> => {
-    const exit = await exitInTeam(teamId, body, options);
+  // The failure value, not a wrapper: `Cause.squash` yields the error the
+  // store failed with, which is what the cases assert on.
+  const settle = <A, E>(exit: Exit.Exit<A, E>): A => {
     if (Exit.isSuccess(exit)) return exit.value;
-    // The failure value, not a wrapper: `Cause.squash` yields the error the
-    // store failed with, which is what the cases assert on.
     throw Cause.squash(exit.cause);
   };
 
   return {
-    db: scratch.pool,
-    app: scratch.app,
-    maintenance: scratch.maintenance,
-    schema,
-    inTeam,
+    schema: database.harness.schema,
+    run: database.run,
+    rows: (statement, params) => database.run(ownerRows(statement, params)),
+    affected: (statement, params) =>
+      database.run(ownerAffected(statement, params)),
+    refusal: (statement, params) =>
+      database.run(refusalOf(ownerRows(statement, params))),
+    inTeam: async (teamId, body, options) =>
+      settle(await exitInTeam(teamId, body, options)),
+    inTeamOnSecondApp: async (teamId, body, options) =>
+      settle(
+        await database.run(
+          Effect.exit(
+            Effect.provideService(
+              TenantScope.open(access(teamId), body, options),
+              Database,
+              database.harness.secondApp,
+            ),
+          ),
+        ),
+      ),
     exitInTeam,
-    dispose: async () => {
-      await runtime.dispose();
-      await scratch.dispose();
-    },
+    dispose: database.dispose,
   };
 }
 
@@ -251,14 +254,15 @@ export function baseProtocol(): CurrentProtocol {
   } as unknown as CurrentProtocol;
 }
 
-export async function waitForLockWait(db: pg.Pool): Promise<void> {
+/** Polls, as the connecting login, until some backend is blocked on a lock. */
+export const waitForLockWait = Effect.fnUntraced(function* () {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const res = await db.query(
+    const [row] = yield* ownerRows<{ waiting: number }>(
       `SELECT count(*)::int AS waiting FROM pg_stat_activity
        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
     );
-    if ((res.rows[0] as { waiting: number }).waiting > 0) return;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    if ((row?.waiting ?? 0) > 0) return;
+    yield* Effect.sleep(Duration.millis(25));
   }
-  throw new Error('no backend ever blocked on a lock');
-}
+  yield* Effect.die(new Error('no backend ever blocked on a lock'));
+});

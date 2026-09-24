@@ -2,11 +2,14 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
 import { Context, Effect, Layer } from 'effect';
-import type pg from 'pg';
 
-import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import {
+  ownerRows,
+  refusalOf,
+  testDb,
+} from '../../../__tests__/support/database.ts';
 import { MaintenanceDatabase } from '../../../db/client.ts';
-import { MaintenanceScope } from '../../../db/tenant.ts';
+import { MaintenanceScope, Transaction } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
 import {
   asApp,
@@ -43,20 +46,16 @@ import {
 // is the singleton policy's, which `__tests__/queue.test.ts` holds.
 //
 // Every tenant table is FORCEd under row-level security, so the fixtures below
-// seed through the maintenance pool — the identity whose policy clause admits
+// seed through the maintenance client — the identity whose policy clause admits
 // every team — rather than the connecting login, which the policy refuses like
 // anyone else.
-
-const db = await reachableDb();
 
 /**
  * `layerDeliveryHarness` is the general "Studio's schema and the queue's, side
  * by side" harness rather than anything about deliveries: the sweep needs
  * Studio's tables and the job needs the queue's.
  */
-const suiteLayer = layerJobs.pipe(
-  Layer.provideMerge(layerDeliveryHarness(db!)),
-);
+const suiteLayer = layerJobs.pipe(Layer.provideMerge(layerDeliveryHarness));
 
 /** The one team whose section a published version pins; see `clearStore`. */
 const PINNED_TEAM = 'gc-team-pinned';
@@ -66,44 +65,33 @@ const TEMPLATE_PINNED_TEAM = 'gc-team-template-pinned';
 
 const A_DAY_MS = 24 * 60 * 60 * 1000;
 
+/** One raw statement inside the scope a helper below opened. */
+const statement = <Row extends object>(
+  text: string,
+  values: ReadonlyArray<unknown> = [],
+) => Effect.flatMap(Transaction, ({ sql }) => sql.unsafe<Row>(text, values));
+
 /**
- * One transaction on a pool connection, for the two fixtures that need one: a
- * version and the sections it pins have to be written together, because
+ * One maintenance transaction, for the two fixtures that need one: a version
+ * and the sections it pins have to be written together, because
  * `version_sections_pins_are_frozen` (and its template twin) refuses a pin the
  * version's own transaction did not write — a pin added after publication
  * would change what the version assembles to while its frozen manifest stayed
  * unchanged.
  */
-const inOneTransaction = (
-  pool: pg.Pool,
-  body: (client: pg.PoolClient) => Promise<void>,
-): Effect.Effect<void> =>
-  Effect.promise(async () => {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await body(client);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  });
+const inOneTransaction = <A, E, R>(body: Effect.Effect<A, E, R>) =>
+  Effect.orDie(asMaintenance(MaintenanceScope.open(body)));
 
-describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
+describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
   layer(suiteLayer)('with Studio and the queue installed', (it) => {
     /** A statement on the identity the sweep itself runs as. */
     const query = Effect.fnUntraced(function* <Row extends object>(
       text: string,
       values: unknown[] = [],
     ) {
-      const { scratch } = yield* DeliveryHarness;
-      return yield* Effect.promise(async () => {
-        const { rows } = await scratch.maintenance.query<Row>(text, values);
-        return rows;
-      });
+      return yield* Effect.orDie(
+        asMaintenance(MaintenanceScope.open(statement<Row>(text, values))),
+      );
     });
 
     /**
@@ -114,10 +102,8 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
      * and counted nowhere.
      */
     const clearStore = Effect.gen(function* () {
-      const { scratch, schema } = yield* DeliveryHarness;
-      yield* Effect.promise(async () => {
-        await scratch.pool.query(`DELETE FROM ${schema}.jobs`);
-      });
+      const { schema } = yield* DeliveryHarness;
+      yield* Effect.orDie(ownerRows(`DELETE FROM ${schema}.jobs`));
       yield* query('DELETE FROM command_log');
       yield* query('DELETE FROM leases');
       yield* query('DELETE FROM manifests');
@@ -284,12 +270,12 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         // before the handler's own, and what this case pins is that the
         // refusal still arrives as the diagnosis rather than as a bare
         // `SqlError` about a statement no caller wrote.
-        const { scratch, studioSchema } = yield* DeliveryHarness;
+        const { studioSchema } = yield* DeliveryHarness;
         const login = `gc_nomaint_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
-        yield* Effect.promise(() =>
-          scratch.pool.query(`CREATE ROLE ${login} LOGIN PASSWORD 'gc'`),
+        yield* Effect.orDie(
+          ownerRows(`CREATE ROLE ${login} LOGIN PASSWORD 'gc'`),
         );
-        const url = new URL(db!.url);
+        const url = new URL(testDb!.url);
         url.username = login;
         url.password = 'gc';
 
@@ -320,9 +306,7 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
           }),
         ).pipe(
           Effect.ensuring(
-            Effect.promise(async () => {
-              await scratch.pool.query(`DROP ROLE IF EXISTS ${login}`);
-            }),
+            Effect.orDie(ownerRows(`DROP ROLE IF EXISTS ${login}`)),
           ),
         );
 
@@ -475,41 +459,42 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
     it.effect('keeps a section a published version pins', () =>
       Effect.gen(function* () {
         yield* clearStore;
-        const { scratch } = yield* DeliveryHarness;
         const hash = yield* seedSection({
           teamId: PINNED_TEAM,
           unreferencedInterval: '96 hours',
         });
-        yield* Effect.promise(() =>
-          scratch.pool.query(
+        yield* Effect.orDie(
+          ownerRows(
             `INSERT INTO teams (id, name, slug) VALUES ($1, 'Pinned', $1)
              ON CONFLICT (id) DO NOTHING`,
             [PINNED_TEAM],
           ),
         );
         // One transaction, for the reason `inOneTransaction` records.
-        yield* inOneTransaction(scratch.maintenance, async (client) => {
-          const protocolId = randomUUID();
-          const versionId = randomUUID();
-          await client.query(
-            `INSERT INTO protocols (id, team_id, name)
-             VALUES ($1, $2, 'Pinned')`,
-            [protocolId, PINNED_TEAM],
-          );
-          await client.query(
-            `INSERT INTO protocol_versions
-               (id, protocol_id, team_id, version_number, version_hash,
-                manifest, schema_version, source_manifest_hash)
-             VALUES ($1, $2, $3, 1, 'v1', '{}'::jsonb, 8, 'src')`,
-            [versionId, protocolId, PINNED_TEAM],
-          );
-          await client.query(
-            `INSERT INTO version_sections
-               (version_id, team_id, section_id, section_hash)
-             VALUES ($1, $2, 'settings', $3)`,
-            [versionId, PINNED_TEAM, hash],
-          );
-        });
+        const protocolId = randomUUID();
+        const versionId = randomUUID();
+        yield* inOneTransaction(
+          Effect.gen(function* () {
+            yield* statement(
+              `INSERT INTO protocols (id, team_id, name)
+               VALUES ($1, $2, 'Pinned')`,
+              [protocolId, PINNED_TEAM],
+            );
+            yield* statement(
+              `INSERT INTO protocol_versions
+                 (id, protocol_id, team_id, version_number, version_hash,
+                  manifest, schema_version, source_manifest_hash)
+               VALUES ($1, $2, $3, 1, 'v1', '{}'::jsonb, 8, 'src')`,
+              [versionId, protocolId, PINNED_TEAM],
+            );
+            yield* statement(
+              `INSERT INTO version_sections
+                 (version_id, team_id, section_id, section_hash)
+               VALUES ($1, $2, 'settings', $3)`,
+              [versionId, PINNED_TEAM, hash],
+            );
+          }),
+        );
 
         // Marked unreferenced before the pin existed, and old enough to
         // collect. Two separate things keep it: the `version_sections` arm of
@@ -534,40 +519,41 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         // costs: the delete hits the pin's foreign key and aborts the tenant's
         // whole pass, on every pass after, since the pin can never be retracted.
         yield* clearStore;
-        const { scratch } = yield* DeliveryHarness;
         const hash = yield* seedSection({
           teamId: TEMPLATE_PINNED_TEAM,
           unreferencedInterval: '96 hours',
         });
         // One transaction, for the same reason the protocol version's pin is.
-        yield* inOneTransaction(scratch.maintenance, async (client) => {
-          const templateId = randomUUID();
-          const versionId = randomUUID();
-          await client.query(
-            `INSERT INTO templates (id, team_id, kind, name)
-             VALUES ($1, $2, 'protocol', 'Holds one section')`,
-            [templateId, TEMPLATE_PINNED_TEAM],
-          );
-          await client.query(
-            `INSERT INTO template_versions
-               (id, team_id, template_id, version_number, manifest,
-                manifest_hash, schema_version)
-             VALUES ($1, $2, $3, 1, $4, $5, 8)`,
-            [
-              versionId,
-              TEMPLATE_PINNED_TEAM,
-              templateId,
-              JSON.stringify({ settings: hash }),
-              createHash('sha256').update(hash).digest('hex'),
-            ],
-          );
-          await client.query(
-            `INSERT INTO template_version_sections
-               (version_id, team_id, section_id, section_hash)
-             VALUES ($1, $2, 'settings', $3)`,
-            [versionId, TEMPLATE_PINNED_TEAM, hash],
-          );
-        });
+        const templateId = randomUUID();
+        const versionId = randomUUID();
+        yield* inOneTransaction(
+          Effect.gen(function* () {
+            yield* statement(
+              `INSERT INTO templates (id, team_id, kind, name)
+               VALUES ($1, $2, 'protocol', 'Holds one section')`,
+              [templateId, TEMPLATE_PINNED_TEAM],
+            );
+            yield* statement(
+              `INSERT INTO template_versions
+                 (id, team_id, template_id, version_number, manifest,
+                  manifest_hash, schema_version)
+               VALUES ($1, $2, $3, 1, $4, $5, 8)`,
+              [
+                versionId,
+                TEMPLATE_PINNED_TEAM,
+                templateId,
+                JSON.stringify({ settings: hash }),
+                createHash('sha256').update(hash).digest('hex'),
+              ],
+            );
+            yield* statement(
+              `INSERT INTO template_version_sections
+                 (version_id, team_id, section_id, section_hash)
+               VALUES ($1, $2, 'settings', $3)`,
+              [versionId, TEMPLATE_PINNED_TEAM, hash],
+            );
+          }),
+        );
 
         // Marked unreferenced before the template existed and older than the
         // grace, so nothing but the `template_version_sections` arm stands
@@ -729,22 +715,20 @@ describe.skipIf(!db)('the protocol store sweep on the native queue', () => {
         // is what makes that true, and this is the only case that asks it to.
         // It is here rather than beside the sweep's own statements because the
         // suite that used to hold it was the Promise sweep's.
-        const { scratch } = yield* DeliveryHarness;
-        const refused = yield* Effect.promise(() =>
-          scratch.maintenance
-            .query(
-              // A different document, because the trigger's `WHEN` clause
-              // fires on a changed `doc` — rewriting a row with what it
-              // already holds changes nothing and is allowed.
-              `UPDATE sections SET doc = '{"rewritten":true}'::jsonb WHERE hash = $1`,
-              [hash],
-            )
-            .then(
-              () => 'the update was allowed',
-              (error: unknown) => String(error),
+        const refused = yield* refusalOf(
+          asMaintenance(
+            MaintenanceScope.open(
+              statement(
+                // A different document, because the trigger's `WHEN` clause
+                // fires on a changed `doc` — rewriting a row with what it
+                // already holds changes nothing and is allowed.
+                `UPDATE sections SET doc = '{"rewritten":true}'::jsonb WHERE hash = $1`,
+                [hash],
+              ),
             ),
+          ),
         );
-        assert.include(refused, 'section documents are immutable');
+        assert.include(refused.message, 'section documents are immutable');
       }),
     );
   });

@@ -3,8 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { Console, Effect, Layer, Schema } from 'effect';
 
 import { OwnerDatabase } from '../db/client.ts';
-import { migrateDatabase, type SchemaDdl } from '../db/migrate.ts';
-import { createOwnerPool } from '../db/pool.ts';
+import { migrateDatabaseEffect, type SchemaDdl } from '../db/migrate.ts';
 import { OwnerScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
@@ -29,8 +28,11 @@ import { reportingRefusals } from './command.ts';
 // A one-shot `Effect` rather than a launched Layer: it runs to completion and
 // `NodeRuntime.runMain`'s teardown turns the outcome into the exit code — 0
 // when the schema is in place, 1 for a refusal, whose message is printed as
-// the failure. Stage 3 rewrites its body onto the Effect database clients;
-// this stage only moves the shell.
+// the failure.
+//
+// Everything it writes goes through one `OwnerDatabase` client, built once in
+// the program's scope and shared by the schema application and the bootstrap
+// token: one client value per identity per program (src/db/client.ts).
 
 /** What every refusal from this command is: a message for whoever typed it. */
 class MigrateRefused extends Schema.TaggedError<MigrateRefused>()(
@@ -67,7 +69,7 @@ const readSchemaDdl = Effect.tryPromise({
   try: async () =>
     // Typed at the parse site: `@total-typescript/ts-reset` types `JSON.parse`
     // as `unknown`, so the shape has to be stated before use; `verifySchemaDdl`
-    // inside `migrateDatabase` checks the fingerprint it carries.
+    // inside `migrateDatabaseEffect` checks the fingerprint it carries.
     JSON.parse(
       await readFile(new URL('./schema-ddl.json', import.meta.url), 'utf8'),
     ) as SchemaDdl,
@@ -87,18 +89,19 @@ const migrate = Effect.gen(function* () {
   yield* Console.log(`Network Canvas Studio migrate ${STUDIO_VERSION}`);
   const ddl = yield* readSchemaDdl;
 
-  const pool = yield* Effect.acquireRelease(
-    Effect.sync(() => createOwnerPool(db)),
-    (owner) => Effect.promise(() => owner.end()),
+  const owner = yield* Layer.build(OwnerDatabase.layer({ url: db.url })).pipe(
+    Effect.catch((cause) => new MigrateFailed({ cause })),
   );
 
-  yield* Effect.tryPromise({
-    try: () =>
-      migrateDatabase(pool, ddl, {
-        log: (line) => Effect.runSync(Console.log(line)),
-      }),
-    catch: (cause) => new MigrateFailed({ cause }),
-  });
+  // Defects too: a DDL document from another build is refused by a throw
+  // inside the program, and it is reported like any other failed step.
+  yield* migrateDatabaseEffect(ddl, {
+    log: (line) => Effect.runSync(Console.log(line)),
+  }).pipe(
+    Effect.catch((cause) => new MigrateFailed({ cause })),
+    Effect.catchDefect((cause) => new MigrateFailed({ cause })),
+    Effect.provide(owner),
+  );
 
   // After the schema, before anything runs against it (#1900): the check
   // `apply-schema` runs in a checkout, so a database restored from a backup
@@ -115,12 +118,12 @@ const migrate = Effect.gen(function* () {
   // First-run bootstrap (#1909): on a database nobody owns yet, issue the
   // token `/setup` spends and print it once — rotating any earlier one, so a
   // lost token is recovered by running this again. An owned instance issues
-  // nothing and prints nothing. After `migrateDatabase`, because the
+  // nothing and prints nothing. After `migrateDatabaseEffect`, because the
   // installation table exists only once its transaction has committed, and on
   // the OWNER scope, because neither application role holds INSERT on it —
   // arming an instance is deliberately not something the server can do.
   const token = yield* OwnerScope.open(issueBootstrapToken()).pipe(
-    Effect.provide(OwnerDatabase.layer({ url: db.url })),
+    Effect.provide(owner),
     Effect.catch((cause) => new MigrateFailed({ cause })),
   );
   printBootstrapToken(token, env.auth?.baseUrl);

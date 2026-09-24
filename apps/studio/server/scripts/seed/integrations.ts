@@ -2,9 +2,10 @@
 // and their delivery outbox, the usability experiments the grant runs, and the
 // in-app feedback reports.
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
 
-import type { SecretsCipherApi } from '../../secrets/cipher.ts';
+import { Transaction } from '../../src/db/tenant.ts';
+import type { SecretsCipherApi } from '../../src/secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededSession } from './network.ts';
 import {
@@ -61,11 +62,10 @@ const TOKEN_PLANS: TokenPlan[] = [
  * Team-owned service tokens. The custodian is always an owner or admin of the
  * team: a token's accountable human has to be someone who could have issued it.
  */
-export async function seedApiTokens(
-  client: pg.PoolClient,
+export const seedApiTokens = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
-): Promise<void> {
+) {
   const rows: SeedRowValue[][] = [];
   const eligible = custodians(team);
   const scopedStudy = studies.find((study) => study.key === 'live');
@@ -102,8 +102,7 @@ export async function seedApiTokens(
     ]);
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'api_tokens',
     [
       'id',
@@ -125,7 +124,7 @@ export async function seedApiTokens(
     ],
     rows,
   );
-}
+});
 
 const WEBHOOK_EVENT_TYPES = [
   'session.completed',
@@ -222,14 +221,14 @@ type WebhookDisablement = {
  * has real rows to read. The plaintexts are returned so the dump-and-search
  * test knows what to look for.
  */
-export async function seedWebhooks(
-  client: pg.PoolClient,
+export const seedWebhooks = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
   sessions: SeededSession[],
   withdrawals: SeedWithdrawal[],
   cipher: SecretsCipherApi,
-): Promise<string[]> {
+) {
+  const { sql } = yield* Transaction;
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
   const disablements: WebhookDisablement[] = [];
@@ -339,8 +338,7 @@ export async function seedWebhooks(
     }
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'webhook_subscriptions',
     [
       'id',
@@ -361,8 +359,7 @@ export async function seedWebhooks(
     ],
     subscriptionRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'webhook_deliveries',
     [
       'id',
@@ -382,7 +379,7 @@ export async function seedWebhooks(
   );
 
   for (const disablement of disablements) {
-    await client.query(
+    yield* sql.unsafe(
       `update webhook_subscriptions
        set state = 'disabled', consecutive_failures = $3,
            last_failure_at = $4, disabled_at = $5, updated_at = $5
@@ -398,15 +395,14 @@ export async function seedWebhooks(
   }
 
   return plaintextSecrets;
-}
+});
 
 /** Two experiments per team: one still running, one already stopped. */
-export async function seedExperiments(
-  client: pg.PoolClient,
+export const seedExperiments = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
   sessions: SeededSession[],
-): Promise<void> {
+) {
   const experimentRows: SeedRowValue[][] = [];
   const assignmentRows: SeedRowValue[][] = [];
   const exposureRows: SeedRowValue[][] = [];
@@ -488,8 +484,7 @@ export async function seedExperiments(
     }
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'experiments',
     [
       'id',
@@ -505,8 +500,7 @@ export async function seedExperiments(
     ],
     experimentRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'experiment_assignments',
     [
       'id',
@@ -519,8 +513,7 @@ export async function seedExperiments(
     ],
     assignmentRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'experiment_exposures',
     [
       'id',
@@ -534,14 +527,13 @@ export async function seedExperiments(
     ],
     exposureRows,
   );
-}
+});
 
 /** Three to eight reports per team, at least one sent without its context. */
-export async function seedFeedback(
-  client: pg.PoolClient,
+export const seedFeedback = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
-): Promise<void> {
+) {
   const rows: SeedRowValue[][] = [];
   const createdAt = seedTime(-120 + team.index);
   const count = faker.number.int({ min: 3, max: 8 });
@@ -582,8 +574,7 @@ export async function seedFeedback(
     ]);
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'feedback_reports',
     [
       'id',
@@ -602,4 +593,4 @@ export async function seedFeedback(
     ],
     rows,
   );
-}
+});

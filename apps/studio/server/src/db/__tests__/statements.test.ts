@@ -1,13 +1,18 @@
-import type pg from 'pg';
+import { layer } from '@effect/vitest';
+import { Effect } from 'effect';
+import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
 import {
-  createScratchSchema,
-  reachableDb,
-  type ScratchSchema,
-  sqlState,
-} from '../../__tests__/support/postgres.ts';
+  openTestDatabase,
+  ownerRows,
+  refusalOf,
+  TestDatabase,
+  TestDatabaseLive,
+  type TestDatabaseRuntime,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import { scratchSchemaDdl } from '../../__tests__/support/schema-ddl.ts';
 import { jobSchemaGrantsSql, jobSchemaSql } from '../../jobs/schema.ts';
 import { SIDECARS } from '../schema.ts';
@@ -17,8 +22,6 @@ import { splitStatements } from '../statements.ts';
 // is visible in the test, and on the corpora Studio actually applies — where a
 // cut in the wrong place is a syntax error at deployment time rather than a
 // failing unit case.
-
-const db = await reachableDb();
 
 /** Rendering the DDL imports drizzle-kit and diffs the whole schema. */
 const RENDER_TIMEOUT_MS = 180_000;
@@ -201,7 +204,7 @@ $body$ LANGUAGE plpgsql;`;
  * or truncated shows up as a missing function, trigger, policy or index rather
  * than as a table that happens to exist.
  */
-async function catalogue(pool: pg.Pool, schema: string) {
+async function catalogue(pool: pg.ClientBase, schema: string) {
   const list = async (sql: string) =>
     (await pool.query<{ entry: string }>(sql, [schema])).rows.map(
       (row) => row.entry,
@@ -245,67 +248,42 @@ async function catalogue(pool: pg.Pool, schema: string) {
   };
 }
 
-let preparedCount = 0;
-
-/**
- * Runs one statement through Parse/Bind/Execute — the only path
- * `@effect/sql-pg` has, and the one that refuses a multi-command string.
- *
- * Naming the statement is what selects that path: node-pg sends an unnamed
- * query on the simple-query protocol, which takes a whole script happily, and
- * an empty `values` array does not change that. Every execution below would
- * otherwise pass whether or not the splitter had cut anything.
- */
-async function prepare(
-  connection: pg.Pool | pg.PoolClient,
-  text: string,
-): Promise<pg.QueryResult> {
-  preparedCount += 1;
-  return connection.query({ text, name: `split_statements_${preparedCount}` });
-}
-
-async function schemaNameOf(pool: pg.Pool): Promise<string> {
-  const current = await pool.query<{ schema: string }>(
-    'select current_schema() as schema',
-  );
-  return current.rows[0]!.schema;
-}
-
-describe.skipIf(!db)('splitStatements against Postgres', () => {
-  /** Provisioned by executing the whole DDL string in one query. */
-  let whole: ScratchSchema;
-  /** Provisioned by executing the split statements, one query each. */
-  let split: ScratchSchema;
-  /** A job schema, installed statement by statement beside `split`. */
-  let jobSchema: string;
+// This comparison stays on node-postgres: its reference side is the whole DDL
+// sent as one multi-command simple query, a path `@effect/sql-pg` does not have.
+describe.skipIf(!testDb)('splitStatements against Postgres', () => {
+  /**
+   * The reference: the whole DDL string in one simple query. That is the one
+   * path `@effect/sql-pg` does not have, so it is sent on node-postgres, into a
+   * sibling of the scratch schema named so a crashed run's sweep reclaims it.
+   */
+  let whole: { client: pg.Client; schema: string } | undefined;
+  /** `TestDatabaseLive`'s schema, applied one split statement at a time. */
+  let split: TestDatabaseRuntime | undefined;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    whole = await createScratchSchema(db);
-    split = await createScratchSchema(db);
-    jobSchema = `${split.jobSchema}_split`;
-
-    const ddl = await scratchSchemaDdl();
-    await whole.pool.query(ddl);
-    for (const statement of splitStatements(ddl)) {
-      await split.pool.query(statement);
-    }
+    if (!testDb) throw new Error('unreachable: probe guaranteed a database');
+    split = await openTestDatabase();
+    const client = new pg.Client({ connectionString: testDb.url });
+    await client.connect();
+    whole = { client, schema: `${split.harness.schema}_whole` };
+    await client.query(`create schema "${whole.schema}"`);
+    await client.query(`set search_path to "${whole.schema}"`);
+    await client.query(await scratchSchemaDdl());
   }, RENDER_TIMEOUT_MS);
 
   afterAll(async () => {
-    await split.pool
-      .query(`drop schema if exists "${jobSchema}" cascade`)
+    await whole?.client
+      .query(`drop schema if exists "${whole.schema}" cascade`)
       .catch(() => undefined);
-    await whole.dispose().catch(() => undefined);
-    await split.dispose().catch(() => undefined);
+    await whole?.client.end().catch(() => undefined);
+    await split?.dispose().catch(() => undefined);
   });
 
   it('builds the same schema as executing the whole script', async () => {
-    const expected = await catalogue(
-      whole.pool,
-      await schemaNameOf(whole.pool),
-    );
-    const actual = await catalogue(split.pool, await schemaNameOf(split.pool));
+    if (!whole || !split)
+      throw new Error('unreachable: beforeAll provisioned both');
+    const expected = await catalogue(whole.client, whole.schema);
+    const actual = await catalogue(whole.client, split.harness.schema);
 
     // Not a vacuous comparison: two empty schemas would also be equal.
     expect(expected.tables.length).toBeGreaterThan(0);
@@ -316,65 +294,81 @@ describe.skipIf(!db)('splitStatements against Postgres', () => {
 
     expect(actual).toEqual(expected);
   });
+});
 
-  it('cuts a multi-command string into commands a prepared statement accepts', async () => {
-    // The refusal this module exists for, observed rather than quoted.
-    const script = 'select 1 as a; select 2 as b';
-    const refused = await prepare(whole.pool, script).then(
-      () => undefined,
-      (error: unknown) => error,
+describe.skipIf(!testDb)('splitStatements on the Effect driver', () => {
+  layer(TestDatabaseLive)('over a provisioned schema', (suite) => {
+    suite.effect(
+      'cuts a multi-command string into commands the driver accepts',
+      () =>
+        Effect.gen(function* () {
+          // The refusal this module exists for, observed rather than quoted:
+          // `@effect/sql-pg` runs every statement through Parse/Bind/Execute,
+          // which refuses a multi-command string.
+          const script = 'select 1 as a; select 2 as b';
+          const refused = yield* refusalOf(ownerRows(script));
+          expect(refused.state).toBe('42601');
+
+          const [first, second] = splitStatements(script);
+          expect(yield* ownerRows(first!)).toEqual([{ a: 1 }]);
+          expect(yield* ownerRows(second!)).toEqual([{ b: 2 }]);
+        }),
     );
-    expect(sqlState(refused)).toBe('42601');
 
-    const [first, second] = splitStatements(script);
-    expect((await prepare(whole.pool, first!)).rows).toEqual([{ a: 1 }]);
-    expect((await prepare(whole.pool, second!)).rows).toEqual([{ b: 2 }]);
-  });
+    suite.effect('installs the job schema one statement at a time', () =>
+      Effect.gen(function* () {
+        // The corpus this module exists for: the queue's DDL carries a
+        // dollar-quoted plpgsql trigger body full of semicolons, and every
+        // statement of it has to reach the server through the driver's only
+        // path. Installed into a sibling of the scratch schema rather than
+        // into `studio_jobs`, so the run cannot touch the developer's own
+        // queue.
+        const harness = yield* TestDatabase;
+        const jobSchema = `${harness.jobSchema}_split`;
+        const statements = [
+          ...splitStatements(jobSchemaSql(jobSchema)),
+          ...splitStatements(jobSchemaGrantsSql(jobSchema)),
+        ];
+        expect(statements.length).toBeGreaterThan(5);
 
-  it('installs the job schema one statement at a time', async () => {
-    // The corpus this module exists for: the queue's DDL carries a
-    // dollar-quoted plpgsql trigger body full of semicolons, and every
-    // statement of it has to reach the server through Parse/Bind/Execute,
-    // which is the only path `@effect/sql-pg` has. Installed into a sibling of
-    // the scratch schema rather than into `studio_jobs`, so the run cannot
-    // touch the developer's own queue.
-    const statements = [
-      ...splitStatements(jobSchemaSql(jobSchema)),
-      ...splitStatements(jobSchemaGrantsSql(jobSchema)),
-    ];
-    expect(statements.length).toBeGreaterThan(5);
+        yield* harness.onOwner(
+          Effect.forEach(
+            statements,
+            (statement) => harness.owner.sql.unsafe(statement),
+            { discard: true },
+          ),
+        );
 
-    const client = await split.pool.connect();
-    try {
-      await client.query('begin');
-      for (const statement of statements) {
-        await prepare(client, statement);
-      }
-      await client.query('commit');
-    } catch (error) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+        // The trigger function is what a cut through a plpgsql body would
+        // have cost: the tables would still be there, and nothing would wake
+        // a worker.
+        const functions = yield* ownerRows<{ proname: string }>(
+          `select p.proname
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = $1`,
+          [jobSchema],
+        );
+        expect(functions.map((row) => row.proname)).toEqual(['notify_job']);
 
-    // The trigger function is what a cut through a plpgsql body would have
-    // cost: the tables would still be there, and nothing would wake a worker.
-    const functions = await split.pool.query<{ proname: string }>(
-      `select p.proname
-         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname = $1`,
-      [jobSchema],
+        const tables = yield* ownerRows<{ tablename: string }>(
+          `select tablename from pg_tables where schemaname = $1 order by 1`,
+          [jobSchema],
+        );
+        expect(tables.map((row) => row.tablename)).toEqual([
+          'job_schedules',
+          'jobs',
+        ]);
+      }).pipe(
+        Effect.ensuring(
+          Effect.flatMap(TestDatabase, (harness) =>
+            Effect.ignore(
+              ownerRows(
+                `drop schema if exists "${harness.jobSchema}_split" cascade`,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-    expect(functions.rows.map((row) => row.proname)).toEqual(['notify_job']);
-
-    const tables = await split.pool.query<{ tablename: string }>(
-      `select tablename from pg_tables where schemaname = $1 order by 1`,
-      [jobSchema],
-    );
-    expect(tables.rows.map((row) => row.tablename)).toEqual([
-      'job_schedules',
-      'jobs',
-    ]);
   });
 });

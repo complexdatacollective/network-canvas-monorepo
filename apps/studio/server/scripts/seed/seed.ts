@@ -1,30 +1,31 @@
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
-import { refreshProjectionsForSessionsOnClient } from '../network/projections.ts';
+import { OwnerScope, Transaction } from '../../src/db/tenant.ts';
+import { refreshProjectionsForSessions } from '../../src/network/projections.ts';
 import {
   createSecretsCipher,
   type SecretsCipherApi,
-} from '../secrets/cipher.ts';
-import type { KeyringApi } from '../secrets/keyring.ts';
-import { seedAssets, seedTemplates } from './seed/assets.ts';
-import { seedAuditEvents } from './seed/audit.ts';
+} from '../../src/secrets/cipher.ts';
+import type { KeyringApi } from '../../src/secrets/keyring.ts';
+import { seedAssets, seedTemplates } from './assets.ts';
+import { seedAuditEvents } from './audit.ts';
 import {
   seedApiTokens,
   seedExperiments,
   seedFeedback,
   seedWebhooks,
-} from './seed/integrations.ts';
-import { seedScheduling } from './seed/messaging.ts';
-import { seedMonitoringRollups } from './seed/monitoring.ts';
+} from './integrations.ts';
+import { seedScheduling } from './messaging.ts';
+import { seedMonitoringRollups } from './monitoring.ts';
 import {
   earliestSessionByParticipant,
   seedSessionsAndNetworks,
-} from './seed/network.ts';
-import { seedProtocolLine, type SeededVersion } from './seed/protocols.ts';
-import { seedBytes, seedTime } from './seed/rng.ts';
+} from './network.ts';
+import { seedProtocolLine, type SeededVersion } from './protocols.ts';
+import { seedBytes, seedTime } from './rng.ts';
 import {
   closeStudy,
   publishConsentDocuments,
@@ -32,13 +33,13 @@ import {
   seedConsentDocuments,
   seedParticipantConsents,
   seedStudies,
-} from './seed/studies.ts';
+} from './studies.ts';
 import {
   SEED_ADMIN_EMAIL,
   SEED_ADMIN_PASSWORD,
   seedAdminOAuthAccount,
   seedTeams,
-} from './seed/teams.ts';
+} from './teams.ts';
 
 // The deploy-time and dev-boot seed (#1256 tracks real onboarding — until
 // then, this is how a fresh instance gets something to look at): wipes every
@@ -156,8 +157,9 @@ const SCALES: Record<
  * every `pnpm dev` boot and every test seed starts from, that is half a second
  * for nothing.
  */
-async function wipe(client: pg.ClientBase): Promise<void> {
-  await client.query(`
+const wipe = Effect.fnUntraced(function* () {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe(`
     do $$
     declare
       r record;
@@ -175,22 +177,20 @@ async function wipe(client: pg.ClientBase): Promise<void> {
       end loop;
     end $$;
   `);
-}
+});
 
 /**
  * Every tenant table is FORCE ROW LEVEL SECURITY, which binds the schema owner
  * the seed connects as. Re-stamping the transaction-local team GUC before each
  * team's rows keeps the seed inside the real policy — a forgotten `team_id`
  * fails here rather than in production — while staying in one transaction,
- * which `SET ROLE studio_maintenance` would also allow but a `TenantDb` per
+ * which `SET ROLE studio_maintenance` would also allow but a `TenantScope` per
  * team would not.
  */
-async function scopeToTeam(
-  client: pg.ClientBase,
-  teamId: string,
-): Promise<void> {
-  await client.query(`select set_config('${TEAM_GUC}', $1, true)`, [teamId]);
-}
+const scopeToTeam = Effect.fnUntraced(function* (teamId: string) {
+  const { sql } = yield* Transaction;
+  yield* sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
+});
 
 /**
  * Fires every pending deferred constraint check now, under the team GUC that
@@ -204,10 +204,11 @@ async function scopeToTeam(
  * earlier teams' children. The development superuser bypasses the policy,
  * which is exactly why that failure would surface first in a deployment.
  */
-async function settleDeferredChecks(client: pg.ClientBase): Promise<void> {
-  await client.query('set constraints all immediate');
-  await client.query('set constraints all deferred');
-}
+const settleDeferredChecks = Effect.fnUntraced(function* () {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe('set constraints all immediate');
+  yield* sql.unsafe('set constraints all deferred');
+});
 
 type SeedTotals = {
   teams: number;
@@ -220,20 +221,19 @@ type SeedTotals = {
   plaintextSecrets: string[];
 };
 
-async function populate(
-  client: pg.PoolClient,
+const populate = Effect.fnUntraced(function* (
   adminPassword: string,
   scale: (typeof SCALES)[SeedScale],
   cipher: SecretsCipherApi,
-): Promise<SeedTotals> {
-  await wipe(client);
+) {
+  yield* wipe();
 
-  const teams = await seedTeams(client, adminPassword);
+  const teams = yield* seedTeams(adminPassword);
   // One linked Google account for the admin, so every one of the three secret
   // stores has rows in a seeded database. Beside the team seeding rather than
   // inside it: the tokens are sealed, and `seedTeams` has no business knowing
   // about the cipher.
-  const oauthTokens = await seedAdminOAuthAccount(client, cipher, {
+  const oauthTokens = yield* seedAdminOAuthAccount(cipher, {
     userId: teams[0]!.adminUserId,
     createdAt: seedTime(-399),
   });
@@ -249,20 +249,19 @@ async function populate(
   };
 
   for (const team of teams) {
-    await scopeToTeam(client, team.id);
+    yield* scopeToTeam(team.id);
 
-    const line = await seedProtocolLine(client, team.id, cipher);
+    const line = yield* seedProtocolLine(team.id, cipher);
     totals.plaintextSecrets.push(line.plaintextAssetKey);
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );
 
-    const studies = await seedStudies(client, team, line, scale);
-    const consent = await seedConsentDocuments(client, team, studies);
+    const studies = yield* seedStudies(team, line, scale);
+    const consent = yield* seedConsentDocuments(team, studies);
     const consentDocuments = consent.byStudy;
-    const templates = await seedTemplates(client, team, line);
-    await seedAssets(
-      client,
+    const templates = yield* seedTemplates(team, line);
+    yield* seedAssets(
       team,
       line.versions,
       templates,
@@ -270,49 +269,40 @@ async function populate(
       studies,
     );
     // After the pins: a consent document takes pins only while it is a draft.
-    await publishConsentDocuments(client, team, consent.publications);
+    yield* publishConsentDocuments(team, consent.publications);
 
-    const sessions = await seedSessionsAndNetworks(
-      client,
+    const sessions = yield* seedSessionsAndNetworks(
       team,
       studies,
       versionsById,
-      refreshProjectionsForSessionsOnClient,
+      refreshProjectionsForSessions,
       scale,
     );
-    await recordLinkRedemptions(client, team.id);
-    const withdrawals = await seedParticipantConsents(
-      client,
+    yield* recordLinkRedemptions(team.id);
+    const withdrawals = yield* seedParticipantConsents(
       team,
       studies,
       consentDocuments,
       earliestSessionByParticipant(sessions),
     );
 
-    await seedScheduling(client, team, studies);
-    await seedApiTokens(client, team, studies);
+    yield* seedScheduling(team, studies);
+    yield* seedApiTokens(team, studies);
     totals.plaintextSecrets.push(
-      ...(await seedWebhooks(
-        client,
-        team,
-        studies,
-        sessions,
-        withdrawals,
-        cipher,
-      )),
+      ...(yield* seedWebhooks(team, studies, sessions, withdrawals, cipher)),
     );
-    await seedExperiments(client, team, studies, sessions);
-    await seedFeedback(client, team, studies);
-    await seedMonitoringRollups(client, team.id, seedTime(0));
-    totals.auditEvents += await seedAuditEvents(client, team, line);
+    yield* seedExperiments(team, studies, sessions);
+    yield* seedFeedback(team, studies);
+    yield* seedMonitoringRollups(team.id, seedTime(0));
+    totals.auditEvents += yield* seedAuditEvents(team, line);
 
     // Last for this team: every closed guard refuses writes to an archived
     // study's waves, participants, sessions and networks, so the archive is
     // only sealed once all of them are written.
     for (const study of studies) {
-      if (study.state === 'closed') await closeStudy(client, team.id, study);
+      if (study.state === 'closed') yield* closeStudy(team.id, study);
     }
-    await settleDeferredChecks(client);
+    yield* settleDeferredChecks();
 
     totals.studies += studies.length;
     for (const study of studies) {
@@ -326,12 +316,9 @@ async function populate(
   }
 
   return totals;
-}
+});
 
-export async function seed(
-  pool: pg.Pool,
-  options: SeedOptions,
-): Promise<SeedResult> {
+export const seed = Effect.fn('db.seed')(function* (options: SeedOptions) {
   const adminPassword = options.adminPassword ?? SEED_ADMIN_PASSWORD;
   const scale = SCALES[options.scale ?? 'demo'];
   faker.seed(FAKER_SEED);
@@ -349,18 +336,7 @@ export async function seed(
     options.reproducible === true ? { random: seedBytes } : {},
   );
 
-  const client = await pool.connect();
-  let totals: SeedTotals;
-  try {
-    await client.query('begin');
-    totals = await populate(client, adminPassword, scale, cipher);
-    await client.query('commit');
-  } catch (error) {
-    await client.query('rollback');
-    throw error;
-  } finally {
-    client.release();
-  }
+  const totals = yield* OwnerScope.open(populate(adminPassword, scale, cipher));
 
   const credentials =
     adminPassword === SEED_ADMIN_PASSWORD
@@ -378,5 +354,5 @@ export async function seed(
   // oxlint-disable-next-line no-console -- the deploy-time and dev-boot seed's own progress output
   console.log(lines.join('\n'));
 
-  return { plaintextSecrets: totals.plaintextSecrets };
-}
+  return { plaintextSecrets: totals.plaintextSecrets } satisfies SeedResult;
+});

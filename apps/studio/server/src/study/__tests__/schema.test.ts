@@ -12,23 +12,23 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Layer, Predicate, Result, Schema } from 'effect';
-import type { SqlError, Statement } from 'effect/unstable/sql';
+import { Effect, Layer, Schema } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 import { describe, expect } from 'vitest';
 
 import {
+  ownerAffected,
+  ownerRows,
+  refusalOf,
   TestDatabase,
   TestDatabaseLive,
   testDb,
+  erasing,
+  maintenanceAffected,
+  ownerInsert,
+  tenantAffected,
 } from '../../__tests__/support/database.ts';
-import { sqlState } from '../../db/errors.ts';
-import {
-  MaintenanceScope,
-  TenantScope,
-  Transaction,
-  unsafeMakeTeamAccess,
-} from '../../db/tenant.ts';
-import { ERASURE_GUC, MAX_WAVES_PER_STUDY } from '../schema.ts';
+import { MAX_WAVES_PER_STUDY } from '../schema.ts';
 
 const TEAMS = ['team-a', 'team-b'] as const;
 type Team = (typeof TEAMS)[number];
@@ -48,135 +48,7 @@ type Row = Record<string, unknown>;
 type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
 /**
- * The membership a tenant scope stands for. A schema suite has no command to
- * prove one, exactly as `audit/__tests__/store.test.ts` has none.
- */
-const access = (teamId: string) => unsafeMakeTeamAccess(teamId, 'owner');
-
-/**
- * Every message down a failure's cause chain, joined. A trigger's own words
- * reach us as the driver's message, which `SqlError` replaces with its own —
- * so the top message alone would never name the trigger that refused.
- */
-function messagesOf(error: unknown): string {
-  const parts: string[] = [];
-  let current: unknown = error;
-  for (let depth = 0; depth < 32; depth += 1) {
-    if (!Predicate.isObject(current)) break;
-    if (Cause.isCause(current)) {
-      current = Cause.squash(current);
-      continue;
-    }
-    if ('message' in current && Predicate.isString(current.message)) {
-      parts.push(current.message);
-    }
-    if (!('cause' in current)) break;
-    current = current.cause;
-  }
-  return parts.join('\n');
-}
-
-/** The first string value of `key` anywhere down a failure's cause chain. */
-function fieldOf(error: unknown, key: string): string | undefined {
-  let current: unknown = error;
-  for (let depth = 0; depth < 32; depth += 1) {
-    if (!Predicate.isObject(current)) return undefined;
-    if (Cause.isCause(current)) {
-      current = Cause.squash(current);
-      continue;
-    }
-    if (key in current) {
-      const value: unknown = Reflect.get(current, key);
-      if (Predicate.isString(value)) return value;
-    }
-    if (!('cause' in current)) return undefined;
-    current = current.cause;
-  }
-  return undefined;
-}
-
-type Refusal = {
-  /** The SQLSTATE Postgres reported. */
-  readonly state: string;
-  /** The constraint it named, for a CHECK, unique or foreign-key violation. */
-  readonly constraint: string;
-  /** Its DETAIL line, which names the table a foreign key could not find. */
-  readonly detail: string;
-  /** Every message down the chain, where a trigger's own words arrive. */
-  readonly message: string;
-};
-
-const NOT_REFUSED: Refusal = {
-  state: 'no failure',
-  constraint: 'no failure',
-  detail: 'no failure',
-  message: 'no failure',
-};
-
-/**
- * What a refused statement carried, or the literal `'no failure'` in every
- * field when it was not refused at all — so a case that stops refusing fails on
- * the value rather than passing vacuously.
- *
- * One reading rather than four helpers, because each of them would have to run
- * the statement again, and a statement here is a write.
- */
-const refusalOf = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-): Effect.Effect<Refusal, never, R> =>
-  Effect.map(Effect.result(effect), (result) =>
-    Result.isFailure(result)
-      ? {
-          state: sqlState(result.failure) ?? 'no SQLSTATE',
-          constraint: fieldOf(result.failure, 'constraint') ?? 'no constraint',
-          detail: fieldOf(result.failure, 'detail') ?? 'no detail',
-          message: messagesOf(result.failure),
-        }
-      : NOT_REFUSED,
-  );
-
-/**
- * How many rows a statement affected. An INSERT, UPDATE or DELETE with no
- * RETURNING hands back no rows, so the count the node-postgres suite read off
- * `pg.Result` is taken from the driver's own result instead, decoded rather
- * than trusted.
- */
-const readRowCount = Schema.decodeUnknownSync(
-  Schema.Struct({ rowCount: Schema.Number }),
-);
-
-const affectedBy = <A extends object>(
-  statement: Statement.Statement<A>,
-): Effect.Effect<number, SqlError.SqlError> =>
-  Effect.map(statement.raw, (result) => readRowCount(result).rowCount);
-
-/**
- * The connecting login is the development superuser, so it bypasses the
- * row-level security policies but not the triggers: exactly the fixture tool
- * these cases want. Role-sensitive probes open a `TenantScope` or a
- * `MaintenanceScope` instead.
- *
- * Every statement runs in a transaction of its own, the way each `pool.query`
- * did — a refusal must not abort a transaction the next probe is sharing.
- */
-const ownerRows = <A extends object>(
-  text: string,
-  params?: ReadonlyArray<unknown>,
-): Effect.Effect<ReadonlyArray<A>, SqlError.SqlError, TestDatabase> =>
-  Effect.flatMap(TestDatabase, (harness) =>
-    harness.onOwner(harness.owner.sql.unsafe<A>(text, params)),
-  );
-
-const ownerAffected = (
-  text: string,
-  params?: ReadonlyArray<unknown>,
-): Effect.Effect<number, SqlError.SqlError, TestDatabase> =>
-  Effect.flatMap(TestDatabase, (harness) =>
-    harness.onOwner(affectedBy(harness.owner.sql.unsafe<Row>(text, params))),
-  );
-
-/**
- * The same read, decoded. `@effect/sql-pg` rc.115 hands a `timestamptz` back as
+ * `ownerRows`, decoded. `@effect/sql-pg` rc.115 hands a `timestamptz` back as
  * epoch milliseconds where drizzle's own column mapper hands back a `Date`, so
  * the two cases that read an instant through a raw statement say so rather than
  * trusting the driver to keep doing it.
@@ -189,50 +61,6 @@ const ownerDecoded = <S extends Schema.ConstraintDecoder<unknown>>(
   const decode = Schema.decodeUnknownSync(schema);
   return Effect.map(ownerRows<Row>(text, params), (rows) =>
     rows.map((row) => decode(row)),
-  );
-};
-
-/** One statement as the application role, stamped with team A. */
-const tenantAffected = (text: string, params?: ReadonlyArray<unknown>) =>
-  TenantScope.open(
-    access(TEAM_A),
-    Effect.flatMap(Transaction, ({ sql }) =>
-      affectedBy(sql.unsafe<Row>(text, params)),
-    ),
-  );
-
-/** One statement as the maintenance role, which stamps no team. */
-const maintenanceAffected = (text: string, params?: ReadonlyArray<unknown>) =>
-  MaintenanceScope.open(
-    Effect.flatMap(Transaction, ({ sql }) =>
-      affectedBy(sql.unsafe<Row>(text, params)),
-    ),
-  );
-
-/**
- * A tenant transaction that also presents the erasure marker, the way the
- * audited erasure command will.
- */
-const erasing = (
-  participantId: string,
-  text: string,
-  params: ReadonlyArray<unknown>,
-) =>
-  TenantScope.open(
-    access(TEAM_A),
-    Effect.gen(function* () {
-      const { sql } = yield* Transaction;
-      yield* sql`select set_config(${ERASURE_GUC}, ${participantId}, true)`;
-      return yield* affectedBy(sql.unsafe<Row>(text, params));
-    }),
-  );
-
-const insert = (table: string, row: Row) => {
-  const columns = Object.keys(row);
-  return ownerAffected(
-    `INSERT INTO ${table} (${columns.map((name) => `"${name}"`).join(', ')})
-       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
-    Object.values(row),
   );
 };
 
@@ -306,7 +134,7 @@ const linkRow = (
 
 const newStudy = Effect.fnUntraced(function* (overrides: Row = {}) {
   const row = studyRow(overrides);
-  yield* insert('studies', row);
+  yield* ownerInsert('studies', row);
   return row.id as string;
 });
 
@@ -315,7 +143,7 @@ const newWave = Effect.fnUntraced(function* (
   overrides: Row = {},
 ) {
   const row = waveRow(studyId, overrides);
-  yield* insert('study_waves', row);
+  yield* ownerInsert('study_waves', row);
   return row.id as string;
 });
 
@@ -324,7 +152,7 @@ const newParticipant = Effect.fnUntraced(function* (
   overrides: Row = {},
 ) {
   const row = participantRow(studyId, overrides);
-  yield* insert('participants', row);
+  yield* ownerInsert('participants', row);
   return row.id as string;
 });
 
@@ -334,7 +162,7 @@ const newSession = Effect.fnUntraced(function* (
   overrides: Row = {},
 ) {
   const row = sessionRow(studyId, waveId, overrides);
-  yield* insert('interview_sessions', row);
+  yield* ownerInsert('interview_sessions', row);
   return row.id as string;
 });
 
@@ -344,7 +172,7 @@ const newVersion = Effect.fnUntraced(function* (
   versionNumber: number,
 ) {
   const versionId = randomUUID();
-  yield* insert('protocol_versions', {
+  yield* ownerInsert('protocol_versions', {
     id: versionId,
     protocol_id: protocolId,
     team_id: TEAM_A,
@@ -364,7 +192,7 @@ const newVersion = Effect.fnUntraced(function* (
  */
 const newProtocolLine = Effect.fnUntraced(function* () {
   const protocolId = randomUUID();
-  yield* insert('protocols', {
+  yield* ownerInsert('protocols', {
     id: protocolId,
     team_id: TEAM_A,
     name: `Another protocol ${protocolId.slice(0, 8)}`,
@@ -550,7 +378,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
         ])('rejects %s', ([, overrides, constraint]) =>
           Effect.gen(function* () {
             expect(
-              (yield* refusalOf(insert('studies', studyRow(overrides))))
+              (yield* refusalOf(ownerInsert('studies', studyRow(overrides))))
                 .constraint,
             ).toBe(constraint);
           }),
@@ -559,7 +387,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
         it.effect('accepts the states the checks exist to admit', () =>
           Effect.gen(function* () {
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'studies',
                 studyRow({
                   state: 'closed',
@@ -569,7 +397,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ),
             ).toBe(1);
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'studies',
                 studyRow({
                   state: 'paused',
@@ -581,11 +409,12 @@ describe.skipIf(!testDb)('study spine schema', () => {
             // Past draft without the go-live record that the mode freeze guards:
             // the evidence cannot be omitted by the transition that creates it.
             expect(
-              (yield* refusalOf(insert('studies', studyRow({ state: 'live' }))))
-                .constraint,
+              (yield* refusalOf(
+                ownerInsert('studies', studyRow({ state: 'live' })),
+              )).constraint,
             ).toBe('studies_went_live_at_check');
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'studies',
                 studyRow({
                   deletion_requested_at: new Date(),
@@ -599,7 +428,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
         it.effect('refuses a protocol pin from another team', () =>
           Effect.gen(function* () {
             const refusal = yield* refusalOf(
-              insert(
+              ownerInsert(
                 'studies',
                 studyRow({ team_id: TEAM_A, protocol_id: protocolOf[TEAM_B] }),
               ),
@@ -752,7 +581,9 @@ describe.skipIf(!testDb)('study spine schema', () => {
             ).toContain('studies are deleted only by the maintenance purge');
             expect(
               (yield* refusalOf(
-                tenantAffected(`DELETE FROM studies WHERE id = $1`, [studyId]),
+                tenantAffected(TEAM_A, `DELETE FROM studies WHERE id = $1`, [
+                  studyId,
+                ]),
               )).message,
             ).toContain('studies are deleted only by the maintenance purge');
             expect(
@@ -944,7 +775,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const studyId = yield* newStudy();
             expect(
               (yield* refusalOf(
-                insert('study_waves', waveRow(studyId, overrides)),
+                ownerInsert('study_waves', waveRow(studyId, overrides)),
               )).constraint,
             ).toBe(constraint);
           }),
@@ -956,11 +787,14 @@ describe.skipIf(!testDb)('study spine schema', () => {
             yield* newWave(studyId, { wave_number: 1 });
             expect(
               (yield* refusalOf(
-                insert('study_waves', waveRow(studyId, { wave_number: 1 })),
+                ownerInsert(
+                  'study_waves',
+                  waveRow(studyId, { wave_number: 1 }),
+                ),
               )).constraint,
             ).toBe('study_waves_study_id_wave_number_unique');
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'study_waves',
                 waveRow(studyId, { wave_number: 2 }),
               ),
@@ -976,7 +810,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             // later must update this case rather than silently subsume it.
             const studyId = yield* newStudy();
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'study_waves',
                 waveRow(studyId, { wave_number: MAX_WAVES_PER_STUDY + 1 }),
               ),
@@ -992,7 +826,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             // the key to `protocol_versions` would fail too and either could
             // report.
             const refusal = yield* refusalOf(
-              insert(
+              ownerInsert(
                 'study_waves',
                 waveRow(studyId, {
                   team_id: TEAM_B,
@@ -1011,7 +845,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const studyId = yield* newStudy();
             const refusal = yield* refusalOf(
-              insert(
+              ownerInsert(
                 'study_waves',
                 waveRow(studyId, { protocol_version_id: versionOf[TEAM_B] }),
               ),
@@ -1036,7 +870,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               // `protocol_id` says it belongs to a different line.
               expect(
                 (yield* refusalOf(
-                  insert(
+                  ownerInsert(
                     'study_waves',
                     waveRow(studyId, { protocol_version_id: other.versionId }),
                   ),
@@ -1058,11 +892,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
               // pins nothing is the state every Draft wave starts in.
               const draftId = yield* newStudy({ protocol_id: null });
               expect(
-                (yield* refusalOf(insert('study_waves', waveRow(draftId))))
+                (yield* refusalOf(ownerInsert('study_waves', waveRow(draftId))))
                   .message,
               ).toContain(refused);
               expect(
-                yield* insert(
+                yield* ownerInsert(
                   'study_waves',
                   waveRow(draftId, { protocol_version_id: null }),
                 ),
@@ -1129,9 +963,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ).toContain('closed studies are read-only');
               expect(
                 (yield* refusalOf(
-                  tenantAffected(`DELETE FROM study_waves WHERE id = $1`, [
-                    waveId,
-                  ]),
+                  tenantAffected(
+                    TEAM_A,
+                    `DELETE FROM study_waves WHERE id = $1`,
+                    [waveId],
+                  ),
                 )).message,
               ).toContain('closed studies are read-only');
 
@@ -1148,9 +984,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const openStudyId = yield* newStudy();
               const openWaveId = yield* newWave(openStudyId);
               expect(
-                yield* tenantAffected(`DELETE FROM study_waves WHERE id = $1`, [
-                  openWaveId,
-                ]),
+                yield* tenantAffected(
+                  TEAM_A,
+                  `DELETE FROM study_waves WHERE id = $1`,
+                  [openWaveId],
+                ),
               ).toBe(1);
 
               expect(secondWaveId).toBeTruthy();
@@ -1261,7 +1099,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const studyId = yield* newStudy();
             expect(
               (yield* refusalOf(
-                insert('participants', participantRow(studyId, overrides)),
+                ownerInsert('participants', participantRow(studyId, overrides)),
               )).constraint,
             ).toBe(constraint);
           }),
@@ -1271,7 +1109,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const studyId = yield* newStudy();
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'participants',
                 participantRow(studyId, {
                   timezone: 'America/Argentina/Buenos_Aires',
@@ -1341,7 +1179,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const studyId = yield* newStudy();
             expect(
               (yield* refusalOf(
-                insert('participants', participantRow(studyId, overrides)),
+                ownerInsert('participants', participantRow(studyId, overrides)),
               )).constraint,
             ).toBe(constraint);
           }),
@@ -1359,7 +1197,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 referral: 'clinic',
               }),
             });
-            yield* insert('participants', row);
+            yield* ownerInsert('participants', row);
 
             const stored = yield* ownerRows<{
               email: string;
@@ -1405,7 +1243,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             Effect.gen(function* () {
               const studyId = yield* newStudy({ team_id: TEAM_A });
               const refusal = yield* refusalOf(
-                insert(
+                ownerInsert(
                   'participants',
                   participantRow(studyId, { team_id: TEAM_B }),
                 ),
@@ -1441,9 +1279,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
               expect(
                 (yield* refusalOf(
-                  tenantAffected(`DELETE FROM participants WHERE id = $1`, [
-                    participantId,
-                  ]),
+                  tenantAffected(
+                    TEAM_A,
+                    `DELETE FROM participants WHERE id = $1`,
+                    [participantId],
+                  ),
                 )).message,
               ).toContain(
                 'participant rows are deleted only by an audited erasure or the maintenance purge',
@@ -1460,17 +1300,23 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             expect(
               (yield* refusalOf(
-                erasing(bystander, `DELETE FROM participants WHERE id = $1`, [
-                  target,
-                ]),
+                erasing(
+                  TEAM_A,
+                  bystander,
+                  `DELETE FROM participants WHERE id = $1`,
+                  [target],
+                ),
               )).message,
             ).toContain(
               'participant rows are deleted only by an audited erasure or the maintenance purge',
             );
             expect(
-              yield* erasing(target, `DELETE FROM participants WHERE id = $1`, [
+              yield* erasing(
+                TEAM_A,
                 target,
-              ]),
+                `DELETE FROM participants WHERE id = $1`,
+                [target],
+              ),
             ).toBe(1);
 
             const survivors = yield* ownerRows<{ id: string }>(
@@ -1577,7 +1423,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const { studyId, waveId } = yield* newTrio();
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyId, waveId, overrides),
                 ),
@@ -1592,7 +1438,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             Effect.gen(function* () {
               const { studyId, waveId } = yield* newTrio();
               expect(
-                yield* insert(
+                yield* ownerInsert(
                   'interview_sessions',
                   sessionRow(studyId, waveId, {
                     delivery_mode: 'researcher_led',
@@ -1614,7 +1460,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
               // Naming study A leaves the participant unfindable...
               const namingA = yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyA, waveA, { participant_id: participantB }),
                 ),
@@ -1625,7 +1471,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               );
               // ...and naming study B leaves the wave unfindable.
               const namingB = yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyB, waveA, { participant_id: participantB }),
                 ),
@@ -1637,7 +1483,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
               const participantA = yield* newParticipant(studyA);
               expect(
-                yield* insert(
+                yield* ownerInsert(
                   'interview_sessions',
                   sessionRow(studyA, waveA, { participant_id: participantA }),
                 ),
@@ -1657,7 +1503,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyId, waveId, {
                     protocol_version_id: secondVersionId,
@@ -1673,7 +1519,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             });
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyId, unpinnedWaveId),
                 ),
@@ -1706,7 +1552,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const otherParticipantId = yield* newParticipant(studyId);
               const link = Effect.fnUntraced(function* (overrides: Row) {
                 const row = linkRow(studyId, waveId, overrides);
-                yield* insert('interview_links', row);
+                yield* ownerInsert('interview_links', row);
                 return row.id as string;
               });
               const ownLink = yield* link({
@@ -1796,7 +1642,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const { studyId, waveId } = yield* newTrio();
             const refusal = yield* refusalOf(
-              insert(
+              ownerInsert(
                 'interview_sessions',
                 sessionRow(studyId, waveId, {
                   team_id: TEAM_B,
@@ -1820,7 +1666,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_sessions',
                   sessionRow(studyId, waveId, {
                     participant_id: participantId,
@@ -1831,10 +1677,16 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             // The index is partial, so anonymous sessions are unlimited.
             expect(
-              yield* insert('interview_sessions', sessionRow(studyId, waveId)),
+              yield* ownerInsert(
+                'interview_sessions',
+                sessionRow(studyId, waveId),
+              ),
             ).toBe(1);
             expect(
-              yield* insert('interview_sessions', sessionRow(studyId, waveId)),
+              yield* ownerInsert(
+                'interview_sessions',
+                sessionRow(studyId, waveId),
+              ),
             ).toBe(1);
           }),
         );
@@ -1864,6 +1716,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               expect(
                 (yield* refusalOf(
                   tenantAffected(
+                    TEAM_A,
                     `DELETE FROM interview_sessions WHERE id = $1`,
                     [sessionId],
                   ),
@@ -1874,6 +1727,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               expect(
                 (yield* refusalOf(
                   erasing(
+                    TEAM_A,
                     bystander,
                     `DELETE FROM interview_sessions WHERE id = $1`,
                     [sessionId],
@@ -1886,12 +1740,14 @@ describe.skipIf(!testDb)('study spine schema', () => {
               // finalization had to write is the session's child, and no key
               // cascades.
               yield* erasing(
+                TEAM_A,
                 participantId,
                 `DELETE FROM session_snapshots WHERE session_id = $1`,
                 [sessionId],
               );
               expect(
                 yield* erasing(
+                  TEAM_A,
                   participantId,
                   `DELETE FROM interview_sessions WHERE id = $1`,
                   [sessionId],
@@ -1945,7 +1801,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             expect(
               (yield* refusalOf(
-                insert('interview_sessions', sessionRow(studyId, waveId)),
+                ownerInsert('interview_sessions', sessionRow(studyId, waveId)),
               )).message,
             ).toContain('closed studies are read-only');
             expect(
@@ -1965,7 +1821,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const { studyId, waveId } = yield* newTrio();
             const row = linkRow(studyId, waveId);
-            yield* insert('interview_links', row);
+            yield* ownerInsert('interview_links', row);
 
             const stored = yield* ownerRows<Row>(
               `SELECT kind, participant_id, expires_at, revoked_at, redemption_count,
@@ -2012,7 +1868,10 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const { studyId, waveId } = yield* newTrio();
             expect(
               (yield* refusalOf(
-                insert('interview_links', linkRow(studyId, waveId, overrides)),
+                ownerInsert(
+                  'interview_links',
+                  linkRow(studyId, waveId, overrides),
+                ),
               )).constraint,
             ).toBe(constraint);
           }),
@@ -2024,7 +1883,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_links',
                   linkRow(studyId, waveId, { kind: 'participant' }),
                 ),
@@ -2032,7 +1891,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             ).toBe('interview_links_kind_check');
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_links',
                   linkRow(studyId, waveId, {
                     kind: 'anonymous',
@@ -2042,7 +1901,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               )).constraint,
             ).toBe('interview_links_kind_check');
             expect(
-              yield* insert(
+              yield* ownerInsert(
                 'interview_links',
                 linkRow(studyId, waveId, {
                   kind: 'participant',
@@ -2062,11 +1921,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 kind: 'participant',
                 participant_id: participantId,
               });
-              yield* insert('interview_links', first);
+              yield* ownerInsert('interview_links', first);
 
               expect(
                 (yield* refusalOf(
-                  insert(
+                  ownerInsert(
                     'interview_links',
                     linkRow(studyId, waveId, {
                       kind: 'participant',
@@ -2081,7 +1940,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 [first.id],
               );
               expect(
-                yield* insert(
+                yield* ownerInsert(
                   'interview_links',
                   linkRow(studyId, waveId, {
                     kind: 'participant',
@@ -2096,14 +1955,14 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const { studyId, waveId } = yield* newTrio();
             const tokenHash = randomBytes(32);
-            yield* insert(
+            yield* ownerInsert(
               'interview_links',
               linkRow(studyId, waveId, { token_hash: tokenHash }),
             );
 
             expect(
               (yield* refusalOf(
-                insert(
+                ownerInsert(
                   'interview_links',
                   linkRow(studyId, waveId, { token_hash: tokenHash }),
                 ),
@@ -2119,7 +1978,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const studyB = yield* newStudy();
 
             const refusal = yield* refusalOf(
-              insert('interview_links', linkRow(studyB, waveA)),
+              ownerInsert('interview_links', linkRow(studyB, waveA)),
             );
             expect(refusal.state).toBe('23503');
             expect(refusal.detail).toContain(
@@ -2137,7 +1996,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 kind: 'participant',
                 participant_id: participantId,
               });
-              yield* insert('interview_links', row);
+              yield* ownerInsert('interview_links', row);
               const bystander = yield* newParticipant(studyId);
 
               expect(
@@ -2157,9 +2016,11 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
               expect(
                 (yield* refusalOf(
-                  tenantAffected(`DELETE FROM interview_links WHERE id = $1`, [
-                    row.id,
-                  ]),
+                  tenantAffected(
+                    TEAM_A,
+                    `DELETE FROM interview_links WHERE id = $1`,
+                    [row.id],
+                  ),
                 )).message,
               ).toContain(
                 'interview links are deleted only by an audited erasure or the maintenance purge',
@@ -2167,6 +2028,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               expect(
                 (yield* refusalOf(
                   erasing(
+                    TEAM_A,
                     bystander,
                     `DELETE FROM interview_links WHERE id = $1`,
                     [row.id],
@@ -2177,6 +2039,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               );
               expect(
                 yield* erasing(
+                  TEAM_A,
                   participantId,
                   `DELETE FROM interview_links WHERE id = $1`,
                   [row.id],

@@ -29,7 +29,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { Effect } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
-import type pg from 'pg';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
@@ -144,45 +143,6 @@ export const refreshProjectionsForSessions: (ids: {
   yield* sql.unsafe(DEGREE_HISTOGRAM_SQL, [ids.teamId, sessionIds]);
   yield* sql.unsafe(SESSION_STATS_SQL, [ids.teamId, sessionIds]);
 }, sqlErrorsOnly);
-
-/**
- * The delete the Effect path above builds, as statement text.
- *
- * Only the node-postgres path below uses it: that path has no builder to
- * render through, because the builder it would need is bound to an Effect
- * transaction it is not running in.
- */
-const DELETE_DEGREE_HISTOGRAM_SQL = `DELETE FROM session_degree_hist
-   WHERE team_id = $1 AND session_id = ANY($2::uuid[])`;
-
-/**
- * The same three statements against a node-postgres client, for the seed.
- *
- * The seed writes its whole run inside one `pg` transaction, and the rows it
- * projects — the teams, studies, waves and sessions those statements read —
- * are uncommitted for the length of it. A statement issued on any other
- * connection cannot see them, so the Effect path above is not merely
- * inconvenient here but wrong: `@effect/sql-pg` speaks the wire protocol
- * itself and cannot adopt an open `pg` connection, so an Effect transaction
- * would be a second connection reading a snapshot the seed's rows are not in.
- * The seed stays on node-postgres for the reason #1927 §9 gives (drizzle-kit's
- * `pushSchema` has no Effect driver), and this is its path to the same three
- * statements.
- *
- * It lives here rather than in `db/seed/network.ts` because ADR #1246 makes
- * `src/network/` the only directory permitted to touch the rollup tables, and
- * `__tests__/boundary.test.ts` enforces that.
- */
-export const refreshProjectionsForSessionsOnClient = async (
-  client: pg.ClientBase,
-  ids: { teamId: string; sessionIds: readonly string[] },
-): Promise<void> => {
-  if (ids.sessionIds.length === 0) return;
-  const sessionIds = [...ids.sessionIds];
-  await client.query(DELETE_DEGREE_HISTOGRAM_SQL, [ids.teamId, sessionIds]);
-  await client.query(DEGREE_HISTOGRAM_SQL, [ids.teamId, sessionIds]);
-  await client.query(SESSION_STATS_SQL, [ids.teamId, sessionIds]);
-};
 
 /** Recomputes one session's rollups from its rows, inside the caller's transaction. */
 export const refreshSessionProjections: (ids: {

@@ -1,7 +1,9 @@
+import { Effect } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
-import { migrateDatabase } from '../db/migrate.ts';
+import { OwnerDatabase } from '../db/client.ts';
+import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { RATE_LIMITS } from '../rate-limit/scopes.ts';
 import {
   type Entrypoint,
@@ -64,7 +66,12 @@ describe.skipIf(!db || !redis)('two API processes on one limiter', () => {
       if (!db || !redis) throw new Error('unreachable: the probes guaranteed');
       const scratch = await createScratchDatabase(db);
       try {
-        await migrateDatabase(scratch.pool, await renderSchemaDdl());
+        const ddl = await renderSchemaDdl();
+        await Effect.runPromise(
+          migrateDatabaseEffect(ddl).pipe(
+            Effect.provide(OwnerDatabase.layer({ url: scratch.db.url })),
+          ),
+        );
 
         const env = {
           DATABASE_URL: scratch.db.url,

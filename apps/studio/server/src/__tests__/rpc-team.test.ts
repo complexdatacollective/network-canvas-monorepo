@@ -1,5 +1,5 @@
 // The tenancy spine end to end through the RPC boundary: explicit teamId input
-// → membership check → TenantDb → team-scoped rows.
+// → membership check → TenantScope → team-scoped rows.
 import { randomUUID } from 'node:crypto';
 
 import { Cause, Exit } from 'effect';
@@ -18,11 +18,12 @@ import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -30,7 +31,6 @@ import {
 } from './support/rpc.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
-const db = await reachableDb();
 const redis = await reachableRedis(REDIS_DATABASES.rpcPlane);
 
 // The payloads are branded, so a test builds its identifiers through the
@@ -51,35 +51,35 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'session-1',
 };
 
-describe.skipIf(!db)('team-scoped procedures', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('team-scoped procedures', () => {
+  let database: TestDatabaseRuntime;
   let memberships: Record<string, { role: string }>;
   let client: RpcTestClient;
   let anonymousClient: RpcTestClient;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    await provisionScratchSchema(scratch.pool);
+    database = await openTestDatabase();
     for (const teamId of ['team-a', 'team-b']) {
-      await seedTeam(scratch.pool, teamId);
+      await database.run(insertTeam(teamId));
     }
-    await scratch.pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ($1, $2, $3, true)`,
-      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+    await database.run(
+      ownerAffected(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+      ),
     );
     // A team Admin throughout: this file is about the tenancy spine, and the
     // protocol surface is addressed by lines no study owns, which #1257's rule
     // shows to an Admin or Owner alone (rpc-protocols.test.ts is where that
     // rule is asserted).
     for (const teamId of ['team-a', 'team-b']) {
-      await scratch.pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, 'admin')`,
-        [`membership-${teamId}`, teamId, PRINCIPAL.userId],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'admin')`,
+          [`membership-${teamId}`, teamId, PRINCIPAL.userId],
+        ),
       );
     }
     memberships = { 'team-a': { role: 'admin' } };
@@ -91,22 +91,22 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        pool: scratch.app,
-        services: await scratch.services(),
+        pool: database.appPool,
+        services: database.services,
       }),
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: stubAuthService(),
-        pool: scratch.app,
-        services: await scratch.services(),
+        pool: database.appPool,
+        services: database.services,
       }),
     );
   });
   afterAll(async () => {
     await client.dispose();
     await anonymousClient.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('creates and lists protocols within a member team', async () => {
@@ -234,8 +234,8 @@ describe.skipIf(!db)('team-scoped procedures', () => {
                 }),
               getMembership: () => Promise.resolve({ role: 'admin' }),
             }),
-            pool: scratch.app,
-            services: await scratch.services(),
+            pool: database.appPool,
+            services: database.services,
             limits: { rpc_user: { max: 2, windowMs: 60_000 } },
           },
         ),

@@ -11,6 +11,8 @@ import {
   TestDatabase,
   TestDatabaseLive,
   testDb,
+  maintenanceRows,
+  tenantRows,
 } from '../../__tests__/support/database.ts';
 import { Database } from '../../db/client.ts';
 import { sqlState } from '../../db/errors.ts';
@@ -235,22 +237,9 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             // transaction it ran in, so a shared one would report the abort
             // rather than the privilege check for every statement after it.
             const asTenant = (statement: string) =>
-              stateOf(
-                TenantScope.open(
-                  access(team),
-                  Effect.flatMap(Transaction, ({ sql }) =>
-                    sql.unsafe(statement),
-                  ),
-                ),
-              );
+              stateOf(tenantRows(team, statement));
             const asMaintenance = (statement: string) =>
-              stateOf(
-                MaintenanceScope.open(
-                  Effect.flatMap(Transaction, ({ sql }) =>
-                    sql.unsafe(statement),
-                  ),
-                ),
-              );
+              stateOf(maintenanceRows(statement));
 
             expect(
               yield* asTenant(

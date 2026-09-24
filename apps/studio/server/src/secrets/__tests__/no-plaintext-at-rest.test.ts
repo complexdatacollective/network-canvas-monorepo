@@ -1,13 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { layer } from '@effect/vitest';
+import { Context, Effect, Layer } from 'effect';
+import { describe, expect, test } from 'vitest';
 
+import { seed } from '../../../scripts/seed/seed.ts';
 import {
-  createScratchSchema,
   dumpSchemaRows,
-  provisionScratchSchema,
-  reachableDb,
-} from '../../__tests__/support/postgres.ts';
+  ownerRows,
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import { testKeyring } from '../../__tests__/support/secrets.ts';
-import { seed } from '../../db/seed.ts';
 
 // The acceptance criterion of #1900, asked of the database rather than of the
 // code that writes it: a dump of a seeded Studio contains no webhook signing
@@ -18,8 +21,6 @@ import { seed } from '../../db/seed.ts';
 // because the failure worth catching is a secret somewhere nobody thought to
 // look: copied into an audit event's payload, a queued job, a section
 // document, a webhook delivery's body.
-
-const db = await reachableDb();
 
 /** A tiny seed and a full dump of it; both run once for the whole file. */
 const SEEDING_TIMEOUT_MS = 360_000;
@@ -84,7 +85,7 @@ describe('the needles the dump is searched for', () => {
   // assertion in this file vacuous, and would fail silently rather than loudly.
   const secret = 'whsec_2f1c9d0b8a7e6f5d4c3b2a190807f6e5';
 
-  it('finds the secret wherever it sits inside an encoded blob', () => {
+  test('finds the secret wherever it sits inside an encoded blob', () => {
     for (const encoding of ['base64', 'base64url'] as const) {
       for (const offset of [0, 1, 2, 3, 4, 5]) {
         const blob = Buffer.concat([
@@ -101,81 +102,95 @@ describe('the needles the dump is searched for', () => {
     }
   });
 
-  it('keeps every needle long enough to mean something', () => {
+  test('keeps every needle long enough to mean something', () => {
     for (const { label, needle } of encodings(secret)) {
       expect(needle.length, label).toBeGreaterThan(16);
     }
   });
 });
 
-describe.skipIf(!db)('a seeded database at rest', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
-  let plaintextSecrets: string[] = [];
-  /** Every row of both schemas, as one string. */
-  let dump = '';
-  let participantEmail = '';
+class SeededDump extends Context.Service<
+  SeededDump,
+  {
+    readonly plaintextSecrets: readonly string[];
+    /** Every row of both schemas, as one string. */
+    readonly dump: string;
+    readonly participantEmail: string;
+  }
+>()('@studio/test/no-plaintext-at-rest/SeededDump') {}
 
-  beforeAll(async () => {
-    if (!db) return;
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
-    ({ plaintextSecrets } = await seed(scratch.pool, {
+const SeededDumpLive = Layer.effect(
+  SeededDump,
+  Effect.gen(function* () {
+    const { plaintextSecrets } = yield* seed({
       secrets: testKeyring(),
       scale: 'tiny',
-    }));
-
-    const studio = await dumpSchemaRows(scratch.pool);
-    // The queue installs into a schema of its own, so a secret that reached a
-    // job payload would not be in the first dump at all.
-    const jobs = await dumpSchemaRows(scratch.pool, {
-      schema: scratch.jobSchema,
     });
-    dump = [...studio.values(), ...jobs.values()]
+
+    const harness = yield* TestDatabase;
+    const studio = yield* dumpSchemaRows();
+    const jobs = yield* dumpSchemaRows({ schema: harness.jobSchema });
+    const dump = [...studio.values(), ...jobs.values()]
       .map((rows) => rows.join('\n'))
       .join('\n');
 
-    const participant = await scratch.pool.query<{ email: string }>(
+    const participant = yield* ownerRows<{ email: string }>(
       `select email from participants where email is not null order by email limit 1`,
     );
-    participantEmail = participant.rows[0]?.email ?? '';
-  }, SEEDING_TIMEOUT_MS);
+    return {
+      plaintextSecrets,
+      dump,
+      participantEmail: participant[0]?.email ?? '',
+    };
+  }).pipe(Effect.orDie),
+).pipe(Layer.provideMerge(TestDatabaseLive));
 
-  afterAll(async () => {
-    await scratch?.dispose();
-  }, 60_000);
+describe.skipIf(!testDb)('a seeded database at rest', () => {
+  layer(SeededDumpLive, { timeout: SEEDING_TIMEOUT_MS })((it) => {
+    it.effect(
+      'dumps something to search, and every secret the seed wrote',
+      () =>
+        Effect.gen(function* () {
+          const { dump, plaintextSecrets } = yield* SeededDump;
+          expect(dump.length).toBeGreaterThan(100_000);
+          // All three kinds, or the search below would pass while one of them was
+          // not written at all: webhook secrets, the admin's three OAuth tokens,
+          // and one API key per seeded team.
+          const prefixes = ['whsec_', 'sk.seed-', 'ya29.', '1//', 'eyJ'];
+          expect(
+            prefixes.filter(
+              (prefix) =>
+                !plaintextSecrets.some((secret) => secret.startsWith(prefix)),
+            ),
+          ).toEqual([]);
+        }),
+    );
 
-  it('dumps something to search, and every secret the seed wrote', () => {
-    expect(dump.length).toBeGreaterThan(100_000);
-    // All three kinds, or the search below would pass while one of them was
-    // not written at all: webhook secrets, the admin's three OAuth tokens,
-    // and one API key per seeded team.
-    const prefixes = ['whsec_', 'sk.seed-', 'ya29.', '1//', 'eyJ'];
-    expect(
-      prefixes.filter(
-        (prefix) =>
-          !plaintextSecrets.some((secret) => secret.startsWith(prefix)),
-      ),
-    ).toEqual([]);
-  });
+    it.effect('holds a participant email in the clear', () =>
+      Effect.gen(function* () {
+        const { dump, participantEmail } = yield* SeededDump;
+        // The positive control, and the reason the assertion below can fail: the
+        // same search, over the same dump, finds a value that IS stored plainly.
+        // Without it, a dump that came back empty — a broken query, a schema name
+        // typo — would read as a clean result. It is also the ruling of
+        // 2026-09-14 stated as a test: contact details are not encrypted.
+        expect(participantEmail).toMatch(/@/);
+        expect(dump).toContain(participantEmail);
+      }),
+    );
 
-  it('holds a participant email in the clear', () => {
-    // The positive control, and the reason the assertion below can fail: the
-    // same search, over the same dump, finds a value that IS stored plainly.
-    // Without it, a dump that came back empty — a broken query, a schema name
-    // typo — would read as a clean result. It is also the ruling of
-    // 2026-09-14 stated as a test: contact details are not encrypted.
-    expect(participantEmail).toMatch(/@/);
-    expect(dump).toContain(participantEmail);
-  });
-
-  it('holds no secret in any encoding', () => {
-    const found: string[] = [];
-    for (const secret of plaintextSecrets) {
-      for (const { label, needle } of encodings(secret)) {
-        // The needle, never the secret, in the failure message.
-        if (dump.includes(needle)) found.push(`${label}:${needle.length}`);
-      }
-    }
-    expect(found).toEqual([]);
+    it.effect('holds no secret in any encoding', () =>
+      Effect.gen(function* () {
+        const { dump, plaintextSecrets } = yield* SeededDump;
+        const found: string[] = [];
+        for (const secret of plaintextSecrets) {
+          for (const { label, needle } of encodings(secret)) {
+            // The needle, never the secret, in the failure message.
+            if (dump.includes(needle)) found.push(`${label}:${needle.length}`);
+          }
+        }
+        expect(found).toEqual([]);
+      }),
+    );
   });
 });

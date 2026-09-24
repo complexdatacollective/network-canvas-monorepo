@@ -2,7 +2,9 @@
 // row-level security (ADR #1246 recorded that Postgres refuses COPY FROM for
 // one). Chunked so a batch never exceeds the wire protocol's 65 535 bound
 // parameters.
-import type pg from 'pg';
+import { Effect } from 'effect';
+
+import { Transaction } from '../../src/db/tenant.ts';
 
 const MAX_BIND_PARAMETERS = 65_535;
 
@@ -28,12 +30,12 @@ export type SeedRowValue =
  * they must be literals in this source — never anything a caller derived from
  * data.
  */
-export async function insertRows(
-  client: pg.ClientBase,
+export const insertRows = Effect.fnUntraced(function* (
   table: string,
   columns: readonly string[],
   rows: readonly SeedRowValue[][],
-): Promise<void> {
+) {
+  const { sql } = yield* Transaction;
   if (rows.length === 0) return;
   const perChunk = Math.max(
     1,
@@ -52,9 +54,9 @@ export async function insertRows(
       });
       return `(${placeholders.join(', ')})`;
     });
-    await client.query(
+    yield* sql.unsafe(
       `insert into ${table} (${columns.join(', ')}) values ${tuples.join(', ')}`,
       values,
     );
   }
-}
+});

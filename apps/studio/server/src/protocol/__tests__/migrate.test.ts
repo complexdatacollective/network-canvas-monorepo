@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import type { Effect } from 'effect';
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -22,6 +21,7 @@ import {
   baseProtocol,
   makeStoreSchema,
   makeTestSyncServer,
+  type StoreSchema,
   storeDb,
 } from './helpers.ts';
 
@@ -41,18 +41,16 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
 };
 
 describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
-  let db: pg.Pool;
-  let dispose: () => Promise<void>;
+  let store: StoreSchema;
   let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
   const cipher = testCipher();
 
   beforeAll(async () => {
-    const schema = await makeStoreSchema();
-    ({ db, dispose } = schema);
-    run = (body) => schema.inTeam(TEST_TEAM_ID, body);
+    store = await makeStoreSchema();
+    run = (body) => store.inTeam(TEST_TEAM_ID, body);
   });
   afterAll(async () => {
-    await dispose();
+    await store.dispose();
   });
 
   async function seedV7Version(): Promise<{
@@ -61,12 +59,12 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   }> {
     const protocolId = randomUUID();
     const draftId = randomUUID();
-    await db.query(
+    await store.affected(
       `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
       [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
     );
     await run(makeTestSyncServer().createDraft(draftId, V7_SECTIONS));
-    await db.query(
+    await store.affected(
       `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
        VALUES ($1, $2, $3)`,
       [draftId, TEST_TEAM_ID, protocolId],
@@ -83,7 +81,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const versions = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(versions[0]!.schemaVersion).toBe(7);
 
-    const frozenBefore = await db.query(
+    const frozenBefore = await store.rows(
       `SELECT manifest FROM protocol_versions WHERE id = $1`,
       [versionId],
     );
@@ -122,13 +120,11 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       migratedFromVersionId: versionId,
     });
 
-    const frozenAfter = await db.query(
+    const frozenAfter = await store.rows(
       `SELECT manifest FROM protocol_versions WHERE id = $1`,
       [versionId],
     );
-    expect(canonicalize(frozenAfter.rows[0])).toBe(
-      canonicalize(frozenBefore.rows[0]),
-    );
+    expect(canonicalize(frozenAfter[0])).toBe(canonicalize(frozenBefore[0]));
   });
 
   it('migrates a version whose API key is sealed, and leaves it sealed', async () => {
@@ -170,10 +166,10 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       type: 'apikey',
     });
 
-    const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
-    const all = (docs.rows as { doc: string }[])
-      .map((row) => row.doc)
-      .join('\n');
+    const docs = await store.rows<{ doc: string }>(
+      `SELECT doc::text AS doc FROM sections`,
+    );
+    const all = docs.map((row) => row.doc).join('\n');
     expect(all).not.toContain(KEY);
     expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
 

@@ -15,8 +15,7 @@
 // `CONFLICT`.
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Exit } from 'effect';
-import type pg from 'pg';
+import { Cause, Effect, Exit } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -31,17 +30,19 @@ import {
 
 import { createStudio } from '../app.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { MaintenanceScope, OwnerScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
 import { issueBootstrapToken } from '../setup/bootstrap.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
+  insertTeam,
+  openTestDatabase,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
   uniqueTeamId,
-} from './support/postgres.ts';
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -50,7 +51,6 @@ import {
 import { reachableDeniedAuditStore } from './support/valkey.ts';
 
 const env = readEnv();
-const db = await reachableDb();
 /**
  * The process-wide store, not one of the scratch logical databases: the one
  * limiter case below counts against subjects that are fresh UUIDs, so it needs
@@ -185,8 +185,8 @@ describe('refusals that need no database', () => {
   );
 });
 
-describe.skipIf(!db)('the error map', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
+describe.skipIf(!testDb)('the error map', () => {
+  let database: TestDatabaseRuntime;
   let client: RpcTestClient;
   const disposals: (() => Promise<void>)[] = [];
   /** What the session's team lookup answers, per team, for this file's actor. */
@@ -203,11 +203,13 @@ describe.skipIf(!db)('the error map', () => {
     claimed?: string | null;
   }): Promise<TeamId> {
     const teamId = uniqueTeamId('rpc-errors');
-    await seedTeam(scratch.pool, teamId);
+    await database.run(insertTeam(teamId));
     if (roles.row) {
-      await scratch.pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role) VALUES ($1, $2, $3, $4)`,
-        [`${teamId}-actor`, teamId, PRINCIPAL.userId, roles.row],
+      await database.run(
+        ownerRows(
+          `INSERT INTO team_members (id, team_id, user_id, role) VALUES ($1, $2, $3, $4)`,
+          [`${teamId}-actor`, teamId, PRINCIPAL.userId, roles.row],
+        ),
       );
     }
     if (roles.claimed) claimed[teamId] = { role: roles.claimed };
@@ -221,13 +223,17 @@ describe.skipIf(!db)('the error map', () => {
   ): Promise<{ memberId: MemberId; userId: string }> {
     const userId = `member-${randomUUID()}`;
     const memberId = `${teamId}-target`;
-    await scratch.pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ($1, $2, $3, true)`,
-      [userId, 'Target Researcher', `${userId}@example.test`],
+    await database.run(
+      ownerRows(
+        `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ($1, $2, $3, true)`,
+        [userId, 'Target Researcher', `${userId}@example.test`],
+      ),
     );
-    await scratch.pool.query(
-      `INSERT INTO team_members (id, team_id, user_id, role) VALUES ($1, $2, $3, $4)`,
-      [memberId, teamId, userId, role],
+    await database.run(
+      ownerRows(
+        `INSERT INTO team_members (id, team_id, user_id, role) VALUES ($1, $2, $3, $4)`,
+        [memberId, teamId, userId, role],
+      ),
     );
     return { memberId: MemberId.make(memberId), userId };
   }
@@ -237,16 +243,18 @@ describe.skipIf(!db)('the error map', () => {
     email: string,
   ): Promise<TeamInvitationId> {
     const invitationId = randomUUID();
-    await scratch.pool.query(
-      `INSERT INTO team_invitations (id, team_id, email, role, status, expires_at, inviter_id)
-       VALUES ($1, $2, $3, 'member', 'pending', $4, $5)`,
-      [
-        invitationId,
-        teamId,
-        email,
-        new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        PRINCIPAL.userId,
-      ],
+    await database.run(
+      ownerRows(
+        `INSERT INTO team_invitations (id, team_id, email, role, status, expires_at, inviter_id)
+         VALUES ($1, $2, $3, 'member', 'pending', $4, $5)`,
+        [
+          invitationId,
+          teamId,
+          email,
+          new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          PRINCIPAL.userId,
+        ],
+      ),
     );
     return TeamInvitationId.make(invitationId);
   }
@@ -256,8 +264,8 @@ describe.skipIf(!db)('the error map', () => {
     const settled = await createRpcClient(
       createStudio(env, {
         auth: stubAuthService(auth),
-        pool: scratch.app,
-        services: await scratch.services(),
+        pool: database.appPool,
+        services: database.services,
       }),
     );
     disposals.push(settled.dispose);
@@ -265,12 +273,12 @@ describe.skipIf(!db)('the error map', () => {
   }
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
-    await scratch.pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ($1, $2, $3, true)`,
-      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+    database = await openTestDatabase();
+    await database.run(
+      ownerRows(
+        `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ($1, $2, $3, true)`,
+        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+      ),
     );
     client = await clientAs({
       getSession: () => Promise.resolve(PRINCIPAL),
@@ -288,7 +296,7 @@ describe.skipIf(!db)('the error map', () => {
 
   afterAll(async () => {
     for (const dispose of disposals) await dispose();
-    await scratch.dispose();
+    await database.dispose();
   });
 
   // §6.1 row 3: `FORBIDDEN` for a non-member, an unknown team, an unreachable
@@ -419,7 +427,7 @@ describe.skipIf(!db)('the error map', () => {
       teamId,
       `held-${randomUUID()}@example.test`,
     );
-    const held = await holdInvitation(scratch.maintenance, invitationId);
+    const held = await holdInvitation(database, invitationId);
 
     try {
       const refused = await expectRpcFailure(
@@ -540,8 +548,8 @@ describe.skipIf(!db)('the error map', () => {
     let token: string;
 
     beforeEach(async () => {
-      await scratch.pool.query('delete from installation');
-      const issued = await scratch.asOwner(issueBootstrapToken());
+      await database.run(ownerRows('delete from installation'));
+      const issued = await database.run(OwnerScope.open(issueBootstrapToken()));
       if (issued.kind !== 'issued') throw new Error('expected a token');
       token = issued.token;
     });
@@ -564,7 +572,7 @@ describe.skipIf(!db)('the error map', () => {
     // Row 6: an instance with no installation row at all is closed, exactly as
     // an owned one is — neither can be set up from here.
     it('reports an instance with nothing to set up as not found', async () => {
-      await scratch.pool.query('delete from installation');
+      await database.run(ownerRows('delete from installation'));
 
       await expectRpcFailure(
         client.callExit(
@@ -603,22 +611,40 @@ describe.skipIf(!db)('the error map', () => {
 
 /**
  * Holds an invitation row the way a delivery attempt inside its SMTP call holds
- * it, and hands back the means to let go. On the maintenance pool, because that
- * is the role a delivery attempt runs as.
+ * it, and hands back the means to let go. In a maintenance scope, because that
+ * is the role a delivery attempt runs as; the transaction stays open until
+ * `release`, and resolves only once the row is locked.
  */
 async function holdInvitation(
-  pool: pg.Pool,
+  database: TestDatabaseRuntime,
   invitationId: string,
 ): Promise<{ release: () => Promise<void> }> {
-  const held = await pool.connect();
-  await held.query('BEGIN');
-  await held.query(`SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`, [
-    invitationId,
-  ]);
+  let reportLocked: () => void = () => undefined;
+  const locked = new Promise<void>((settle) => {
+    reportLocked = settle;
+  });
+  let letGo: () => void = () => undefined;
+  const released = new Promise<void>((settle) => {
+    letGo = settle;
+  });
+  const holding = database.run(
+    MaintenanceScope.open(
+      Effect.gen(function* () {
+        const { sql } = yield* Transaction;
+        yield* sql.unsafe(
+          `SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`,
+          [invitationId],
+        );
+        reportLocked();
+        yield* Effect.promise(() => released);
+      }),
+    ),
+  );
+  await Promise.race([locked, holding]);
   return {
     release: async () => {
-      await held.query('COMMIT').catch(() => undefined);
-      held.release();
+      letGo();
+      await holding.catch(() => undefined);
     },
   };
 }

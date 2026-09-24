@@ -1,27 +1,28 @@
+import { layer } from '@effect/vitest';
 import { verifyPassword } from 'better-auth/crypto';
-import { getTableColumns } from 'drizzle-orm';
-import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Context, Effect, Layer } from 'effect';
+import { describe, expect } from 'vitest';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
 
-import { CI } from '../../__tests__/support/env.ts';
+import { seedTime, sha256Hex } from '../../../scripts/seed/rng.ts';
 import {
-  createScratchSchema,
+  SEED_ADMIN_EMAIL,
+  SEED_ADMIN_PASSWORD,
+  seed,
+} from '../../../scripts/seed/seed.ts';
+import {
   dumpSchemaRows,
-  provisionScratchSchema,
-  reachableDb,
-} from '../../__tests__/support/postgres.ts';
+  ownerRows,
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
+import { CI } from '../../__tests__/support/env.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
-import { AUDIT_TABLES } from '../../audit/schema.ts';
-import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
-import { SEED_AUDIT_COLUMNS } from '../seed/audit.ts';
-import { sha256Hex } from '../seed/rng.ts';
-
-const db = await reachableDb();
 
 // Seeding the whole model takes seconds on a quiet machine and well over a
-// minute on the CI runner (see SEED_BUDGET_MS). One `beforeAll` below builds
+// minute on the CI runner (see SEED_BUDGET_MS). One layer below builds
 // the corpus every case in this file reads; the only other seed here runs at
 // `tiny`.
 //
@@ -58,131 +59,138 @@ const SEED_BUDGET_MS = 60_000;
  */
 const MAX_DEMO_ROWS = 80_000;
 
-async function count(
-  pool: pg.Pool,
-  sql: string,
-  values: unknown[] = [],
-): Promise<number> {
-  const result = await pool.query<{ n: number }>(sql, values);
-  return result.rows[0]?.n ?? -1;
-}
+const count = (statement: string, values: ReadonlyArray<unknown> = []) =>
+  Effect.map(
+    ownerRows<{ n: number }>(statement, values),
+    (rows) => rows[0]?.n ?? -1,
+  );
 
-// The populated corpus, seeded once into a shared scratch schema. It is
-// declared first so that its timing case measures a seed into a database
-// this file has not already churned eight schemas through.
-describe.skipIf(!db)('the seeded dataset', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
-  let pool: pg.Pool;
-  let elapsedMs = 0;
-  let adminId = '';
-  let plaintextSecrets: string[] = [];
+/** The demo corpus every case below reads, seeded once. */
+class SeededCorpus extends Context.Service<
+  SeededCorpus,
+  {
+    readonly plaintextSecrets: readonly string[];
+    readonly adminId: string;
+    readonly elapsedMs: number;
+  }
+>()('@studio/test/seed/SeededCorpus') {}
 
-  beforeAll(async () => {
-    if (!db) return;
-    scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    await provisionScratchSchema(pool);
+const SeededCorpusLive = Layer.effect(
+  SeededCorpus,
+  Effect.gen(function* () {
     const started = performance.now();
-    ({ plaintextSecrets } = await seed(pool, { secrets: testKeyring() }));
-    elapsedMs = performance.now() - started;
-    const admin = await pool.query<{ id: string }>(
+    const { plaintextSecrets } = yield* seed({ secrets: testKeyring() });
+    const elapsedMs = performance.now() - started;
+    const admin = yield* ownerRows<{ id: string }>(
       `select id from "user" where email = $1`,
       [SEED_ADMIN_EMAIL],
     );
-    adminId = admin.rows[0]!.id;
-  }, SEEDING_TIMEOUT_MS);
+    return { plaintextSecrets, adminId: admin[0]!.id, elapsedMs };
+  }).pipe(Effect.orDie),
+).pipe(Layer.provideMerge(TestDatabaseLive));
 
-  // Its own bound rather than the 30s global. This disposes a pool that a
-  // timed-out `beforeAll` may have left mid-flight, so holding cleanup to a
-  // bound shorter than the seeding it cleans up after turns one failure into
-  // two and loses the schema.
-  afterAll(async () => {
-    await scratch?.dispose();
-  }, 60_000);
+// The populated corpus, seeded once into a shared scratch schema. It is
+// declared first so that its timing case measures a seed into a database
+// this file has not already churned schemas through.
+describe.skipIf(!testDb)('the seeded dataset', () => {
+  layer(SeededCorpusLive, { timeout: SEEDING_TIMEOUT_MS })((it) => {
+    it.effect.skipIf(CI)(
+      'finishes inside the dev-boot budget at demo scale',
+      () =>
+        Effect.gen(function* () {
+          const { elapsedMs } = yield* SeededCorpus;
+          expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
+        }),
+    );
 
-  it.skipIf(CI)('finishes inside the dev-boot budget at demo scale', () => {
-    expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
-  });
-
-  it('stays the size that seeds in seconds', async () => {
-    const tables = await pool.query<{ name: string }>(
-      `select tablename as name from pg_tables
+    it.effect('stays the size that seeds in seconds', () =>
+      Effect.gen(function* () {
+        const tables = yield* ownerRows<{ name: string }>(
+          `select tablename as name from pg_tables
        where schemaname = current_schema() and tablename <> 'schemaFingerprint'`,
+        );
+        let total = 0;
+        for (const { name } of tables) {
+          total += yield* count(`select count(*)::int as n from "${name}"`);
+        }
+        expect(total).toBeGreaterThan(10_000);
+        expect(total).toBeLessThan(MAX_DEMO_ROWS);
+      }),
     );
-    let total = 0;
-    for (const { name } of tables.rows) {
-      total += await count(pool, `select count(*)::int as n from "${name}"`);
-    }
-    expect(total).toBeGreaterThan(10_000);
-    expect(total).toBeLessThan(MAX_DEMO_ROWS);
-  });
 
-  it('leaves the instance owned, so first-run setup is closed', async () => {
-    // A dev boot reseeds on every `pnpm dev`, and a seeded instance is one
-    // somebody already set up (#1909): `/setup` must not be standing open in
-    // front of a database full of synthetic studies.
-    const installation = await pool.query<{
-      name: string | null;
-      owner_user_id: string | null;
-      bootstrap_token_hash: string | null;
-    }>('select name, owner_user_id, bootstrap_token_hash from installation');
+    it.effect('leaves the instance owned, so first-run setup is closed', () =>
+      Effect.gen(function* () {
+        const { adminId } = yield* SeededCorpus;
+        // A dev boot reseeds on every `pnpm dev`, and a seeded instance is one
+        // somebody already set up (#1909): `/setup` must not be standing open in
+        // front of a database full of synthetic studies.
+        const installation = yield* ownerRows<{
+          name: string | null;
+          owner_user_id: string | null;
+          bootstrap_token_hash: string | null;
+        }>(
+          'select name, owner_user_id, bootstrap_token_hash from installation',
+        );
 
-    expect(installation.rows).toEqual([
-      {
-        name: 'Studio (development)',
-        owner_user_id: adminId,
-        bootstrap_token_hash: null,
-      },
-    ]);
-  });
-
-  it('covers every study state and both participation modes', async () => {
-    const states = await pool.query<{ state: string }>(
-      `select distinct state from studies order by state`,
+        expect(installation).toEqual([
+          {
+            name: 'Studio (development)',
+            owner_user_id: adminId,
+            bootstrap_token_hash: null,
+          },
+        ]);
+      }),
     );
-    expect(states.rows.map((row) => row.state)).toEqual([
-      'closed',
-      'draft',
-      'live',
-      'paused',
-    ]);
-    const modes = await pool.query<{ mode: string }>(
-      `select distinct participation_mode as mode from studies order by 1`,
+
+    it.effect('covers every study state and both participation modes', () =>
+      Effect.gen(function* () {
+        const states = yield* ownerRows<{ state: string }>(
+          `select distinct state from studies order by state`,
+        );
+        expect(states.map((row) => row.state)).toEqual([
+          'closed',
+          'draft',
+          'live',
+          'paused',
+        ]);
+        const modes = yield* ownerRows<{ mode: string }>(
+          `select distinct participation_mode as mode from studies order by 1`,
+        );
+        expect(modes.map((row) => row.mode)).toEqual(['anonymous', 'managed']);
+
+        // The deletion marker and its consistency check both need a live example.
+        expect(
+          yield* count(`select count(*)::int as n from studies
+         where deletion_requested_at is not null and purge_after is not null`),
+        ).toBeGreaterThan(0);
+      }),
     );
-    expect(modes.rows.map((row) => row.mode)).toEqual(['anonymous', 'managed']);
 
-    // The deletion marker and its consistency check both need a live example.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies
-         where deletion_requested_at is not null and purge_after is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
-
-  it('numbers every study’s waves densely from one', async () => {
-    // Dense from one is exactly: the lowest number is 1, the highest equals
-    // the count, and no number repeats.
-    const gaps = await pool.query<{ id: string }>(
-      `select s.id from studies s
+    it.effect('numbers every study’s waves densely from one', () =>
+      Effect.gen(function* () {
+        // Dense from one is exactly: the lowest number is 1, the highest equals
+        // the count, and no number repeats.
+        const gaps = yield* ownerRows<{ id: string }>(
+          `select s.id from studies s
        join study_waves w on w.study_id = s.id
        group by s.id
        having min(w.wave_number) <> 1
            or max(w.wave_number) <> count(*)
            or count(distinct w.wave_number) <> count(*)`,
+        );
+        expect(gaps).toEqual([]);
+        expect(
+          yield* count(`select count(*)::int as n from study_waves`),
+        ).toBeGreaterThan(0);
+      }),
     );
-    expect(gaps.rows).toEqual([]);
-    await expect(
-      count(pool, `select count(*)::int as n from study_waves`),
-    ).resolves.toBeGreaterThan(0);
-  });
 
-  it('pins every collecting wave to a version of its own study’s protocol line', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n
+    it.effect(
+      'pins every collecting wave to a version of its own study’s protocol line',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n
          from study_waves w
          join studies s on s.id = w.study_id
          where s.state in ('live', 'paused', 'closed')
@@ -191,55 +199,53 @@ describe.skipIf(!db)('the seeded dataset', () => {
                   select 1 from protocol_versions v
                   where v.id = w.protocol_version_id
                     and v.protocol_id = s.protocol_id
-                    and v.team_id = s.team_id))`,
-      ),
-    ).resolves.toBe(0);
-    // A draft study may carry a protocol line, but its waves pin nothing.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n
+                    and v.team_id = s.team_id))`),
+          ).toBe(0);
+          // A draft study may carry a protocol line, but its waves pin nothing.
+          expect(
+            yield* count(`select count(*)::int as n
          from study_waves w join studies s on s.id = w.study_id
-         where s.state = 'draft' and w.protocol_version_id is not null`,
-      ),
-    ).resolves.toBe(0);
-  });
+         where s.state = 'draft' and w.protocol_version_id is not null`),
+          ).toBe(0);
+        }),
+    );
 
-  it('publishes every version before the sessions that pin it, and every line before its studies', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions s
+    it.effect(
+      'publishes every version before the sessions that pin it, and every line before its studies',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions s
          join protocol_versions v on v.id = s.protocol_version_id
-         where v.published_at > s.started_at`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies st
+         where v.published_at > s.started_at`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from studies st
          join protocols p on p.id = st.protocol_id
-         where p.created_at > st.created_at`,
-      ),
-    ).resolves.toBe(0);
-  });
+         where p.created_at > st.created_at`),
+          ).toBe(0);
+        }),
+    );
 
-  // A session pinning anything but its wave's version was asserted here too,
-  // which `interview_sessions_version_wave_pin` already refuses on INSERT —
-  // and refuses more strictly, since it rejects the two-NULL pair that
-  // `IS DISTINCT FROM` accepts. The seed inserts every session, so a violation
-  // aborts the transaction and fails `beforeAll` rather than reaching a case.
-  // The trigger is proven where it lives, in study/__tests__/schema.test.ts.
+    // A session pinning anything but its wave's version was asserted here too,
+    // which `interview_sessions_version_wave_pin` already refuses on INSERT —
+    // and refuses more strictly, since it rejects the two-NULL pair that
+    // `IS DISTINCT FROM` accepts. The seed inserts every session, so a violation
+    // aborts the transaction and fails `beforeAll` rather than reaching a case.
+    // The trigger is proven where it lives, in study/__tests__/schema.test.ts.
 
-  it('keeps anonymous studies single-wave, participant-free and unattributed', async () => {
-    const anonymous = await pool.query<{
-      waves: number;
-      participants: number;
-      attributed: number;
-      sessions: number;
-      researcher_led: number;
-    }>(
-      `select
+    it.effect(
+      'keeps anonymous studies single-wave, participant-free and unattributed',
+      () =>
+        Effect.gen(function* () {
+          const anonymous = yield* ownerRows<{
+            waves: number;
+            participants: number;
+            attributed: number;
+            sessions: number;
+            researcher_led: number;
+          }>(
+            `select
          (select count(*)::int from study_waves w where w.study_id = s.id) as waves,
          (select count(*)::int from participants p where p.study_id = s.id) as participants,
          (select count(*)::int from interview_sessions i
@@ -248,310 +254,272 @@ describe.skipIf(!db)('the seeded dataset', () => {
          (select count(*)::int from interview_sessions i
            where i.study_id = s.id and i.delivery_mode <> 'self_administered') as researcher_led
        from studies s where s.participation_mode = 'anonymous'`,
+          );
+          expect(anonymous.length).toBeGreaterThan(0);
+          for (const row of anonymous) {
+            expect(row.waves).toBe(1);
+            expect(row.participants).toBe(0);
+            expect(row.attributed).toBe(0);
+            expect(row.researcher_led).toBe(0);
+            expect(row.sessions).toBeGreaterThan(0);
+          }
+        }),
     );
-    expect(anonymous.rows.length).toBeGreaterThan(0);
-    for (const row of anonymous.rows) {
-      expect(row.waves).toBe(1);
-      expect(row.participants).toBe(0);
-      expect(row.attributed).toBe(0);
-      expect(row.researcher_led).toBe(0);
-      expect(row.sessions).toBeGreaterThan(0);
-    }
-  });
 
-  it('gives every session exactly one rollup row that agrees with its graph', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions s
-         where (select count(*) from session_stats st where st.session_id = s.id) <> 1`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from session_stats st
+    it.effect(
+      'gives every session exactly one rollup row that agrees with its graph',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions s
+         where (select count(*) from session_stats st where st.session_id = s.id) <> 1`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from session_stats st
          where st.node_count
                <> (select count(*) from nodes n where n.session_id = st.session_id)
             or st.edge_count
-               <> (select count(*) from edges e where e.session_id = st.session_id)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from session_stats st
+               <> (select count(*) from edges e where e.session_id = st.session_id)`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from session_stats st
          where st.node_count <> coalesce(
            (select sum(h.node_count) from session_degree_hist h
-             where h.session_id = st.session_id), 0)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(pool, `select count(*)::int as n from session_degree_hist`),
-    ).resolves.toBeGreaterThan(0);
-  });
-
-  it('freezes a snapshot for every completed session and for no other', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions s
-         where (select count(*) from session_snapshots sn where sn.session_id = s.id)
-               <> (case when s.status = 'completed' then 1 else 0 end)`,
-      ),
-    ).resolves.toBe(0);
-    const statuses = await pool.query<{ status: string }>(
-      `select distinct status from interview_sessions order by status`,
+             where h.session_id = st.session_id), 0)`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from session_degree_hist`),
+          ).toBeGreaterThan(0);
+        }),
     );
-    expect(statuses.rows.map((row) => row.status)).toEqual([
-      'abandoned',
-      'completed',
-      'in_progress',
-    ]);
-  });
 
-  it('grants the creating admin a manager role on every study', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies s
+    it.effect(
+      'freezes a snapshot for every completed session and for no other',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions s
+         where (select count(*) from session_snapshots sn where sn.session_id = s.id)
+               <> (case when s.status = 'completed' then 1 else 0 end)`),
+          ).toBe(0);
+          const statuses = yield* ownerRows<{ status: string }>(
+            `select distinct status from interview_sessions order by status`,
+          );
+          expect(statuses.map((row) => row.status)).toEqual([
+            'abandoned',
+            'completed',
+            'in_progress',
+          ]);
+        }),
+    );
+
+    it.effect('grants the creating admin a manager role on every study', () =>
+      Effect.gen(function* () {
+        const { adminId } = yield* SeededCorpus;
+        expect(
+          yield* count(
+            `select count(*)::int as n from studies s
          where not exists (
            select 1 from study_role_grants g
            where g.study_id = s.id and g.team_id = s.team_id
              and g.user_id = $1 and g.role = 'manager')`,
-        [adminId],
-      ),
-    ).resolves.toBe(0);
+            [adminId],
+          ),
+        ).toBe(0);
 
-    const roles = await pool.query<{ role: string }>(
-      `select distinct role from study_role_grants order by role`,
-    );
-    expect(roles.rows.map((row) => row.role)).toEqual([
-      'coordinator',
-      'data_viewer',
-      'manager',
-      'protocol_designer',
-    ]);
-    // The PII flag is orthogonal to the role, so both values appear inside one
-    // study rather than only across the corpus.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from (
+        const roles = yield* ownerRows<{ role: string }>(
+          `select distinct role from study_role_grants order by role`,
+        );
+        expect(roles.map((row) => row.role)).toEqual([
+          'coordinator',
+          'data_viewer',
+          'manager',
+          'protocol_designer',
+        ]);
+        // The PII flag is orthogonal to the role, so both values appear inside one
+        // study rather than only across the corpus.
+        expect(
+          yield* count(`select count(*)::int as n from (
            select study_id from study_role_grants
            group by study_id
-           having bool_or(pii_access) and bool_or(not pii_access)) mixed`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
+           having bool_or(pii_access) and bool_or(not pii_access)) mixed`),
+        ).toBeGreaterThan(0);
+      }),
+    );
 
-  it('writes plain contact columns and codes well-formed', async () => {
-    // Every participant is reachable by email, and every address is stored in
-    // the one normalised spelling the opt-out join depends on.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
-         where email is null or email <> lower(btrim(email))`,
-      ),
-    ).resolves.toBe(0);
-    // Some but not all carry a phone, so the corpus holds both the
-    // SMS-reachable and the email-only case …
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants where phone is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants where phone is null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    // … and every phone that is there is E.164, which is the only form an SMS
-    // provider takes.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
-         where phone is not null and phone !~ '^\\+[1-9][0-9]{6,14}$'`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
-         where name is null or name !~ '[^[:space:]]'`,
-      ),
-    ).resolves.toBe(0);
-    // The attribute bag is an object with something in it: a seed that wrote
-    // `{}` everywhere would satisfy the column's own check and give a filter
-    // in the UI nothing to bite on.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
+    it.effect('writes plain contact columns and codes well-formed', () =>
+      Effect.gen(function* () {
+        // Every participant is reachable by email, and every address is stored in
+        // the one normalised spelling the opt-out join depends on.
+        expect(
+          yield* count(`select count(*)::int as n from participants
+         where email is null or email <> lower(btrim(email))`),
+        ).toBe(0);
+        // Some but not all carry a phone, so the corpus holds both the
+        // SMS-reachable and the email-only case …
+        expect(
+          yield* count(
+            `select count(*)::int as n from participants where phone is not null`,
+          ),
+        ).toBeGreaterThan(0);
+        expect(
+          yield* count(
+            `select count(*)::int as n from participants where phone is null`,
+          ),
+        ).toBeGreaterThan(0);
+        // … and every phone that is there is E.164, which is the only form an SMS
+        // provider takes.
+        expect(
+          yield* count(`select count(*)::int as n from participants
+         where phone is not null and phone !~ '^\\+[1-9][0-9]{6,14}$'`),
+        ).toBe(0);
+        expect(
+          yield* count(`select count(*)::int as n from participants
+         where name is null or name !~ '[^[:space:]]'`),
+        ).toBe(0);
+        // The attribute bag is an object with something in it: a seed that wrote
+        // `{}` everywhere would satisfy the column's own check and give a filter
+        // in the UI nothing to bite on.
+        expect(
+          yield* count(`select count(*)::int as n from participants
          where jsonb_typeof(attributes) <> 'object'
             or attributes->>'cohort' is null
-            or attributes->>'referral' is null`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
-         where participant_code !~ '^P-[0-9]{4}$' or enrolled_at is null`,
-      ),
-    ).resolves.toBe(0);
-    // A southern-hemisphere zone is in the mix, so DST arithmetic has
-    // something to bite on.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participants
-         where timezone in ('Australia/Sydney', 'Pacific/Auckland')`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
+            or attributes->>'referral' is null`),
+        ).toBe(0);
+        expect(
+          yield* count(`select count(*)::int as n from participants
+         where participant_code !~ '^P-[0-9]{4}$' or enrolled_at is null`),
+        ).toBe(0);
+        // A southern-hemisphere zone is in the mix, so DST arithmetic has
+        // something to bite on.
+        expect(
+          yield* count(`select count(*)::int as n from participants
+         where timezone in ('Australia/Sydney', 'Pacific/Auckland')`),
+        ).toBeGreaterThan(0);
+      }),
+    );
 
-  it('captures consent inside a session only where the participant interviewed, and never before it began', async () => {
-    // Both shapes the column exists for appear: remote onboarding, captured
-    // inside the participant's first session minutes after it started, and
-    // researcher-led onboarding, captured outside any session.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consents where session_id is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consents where session_id is null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consents c
+    it.effect(
+      'captures consent inside a session only where the participant interviewed, and never before it began',
+      () =>
+        Effect.gen(function* () {
+          // Both shapes the column exists for appear: remote onboarding, captured
+          // inside the participant's first session minutes after it started, and
+          // researcher-led onboarding, captured outside any session.
+          expect(
+            yield* count(
+              `select count(*)::int as n from participant_consents where session_id is not null`,
+            ),
+          ).toBeGreaterThan(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n from participant_consents where session_id is null`,
+            ),
+          ).toBeGreaterThan(0);
+          expect(
+            yield* count(`select count(*)::int as n from participant_consents c
          join interview_sessions s on s.id = c.session_id
          where s.participant_id is distinct from c.participant_id
             or c.granted_at < s.started_at
             or exists (
               select 1 from interview_sessions earlier
               where earlier.participant_id = c.participant_id
-                and earlier.started_at < s.started_at)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consents c
+                and earlier.started_at < s.started_at)`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from participant_consents c
          where c.session_id is null
            and exists (select 1 from interview_sessions s
-                       where s.participant_id = c.participant_id)`,
-      ),
-    ).resolves.toBe(0);
-  });
-
-  it('records consent for most participants, with withdrawals and declines', async () => {
-    const consented = await count(
-      pool,
-      `select count(*)::int as n from participant_consents`,
+                       where s.participant_id = c.participant_id)`),
+          ).toBe(0);
+        }),
     );
-    expect(consented).toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consents where withdrawn_at is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consent_item_responses r
+
+    it.effect(
+      'records consent for most participants, with withdrawals and declines',
+      () =>
+        Effect.gen(function* () {
+          const consented = yield* count(
+            `select count(*)::int as n from participant_consents`,
+          );
+          expect(consented).toBeGreaterThan(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n from participant_consents where withdrawn_at is not null`,
+            ),
+          ).toBeGreaterThan(0);
+          expect(
+            yield* count(`select count(*)::int as n from participant_consent_item_responses r
          join consent_items i on i.id = r.consent_item_id
-         where not r.affirmed and not i.required`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    // A required item is never declined: the grant could not exist if it were.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from participant_consent_item_responses r
+         where not r.affirmed and not i.required`),
+          ).toBeGreaterThan(0);
+          // A required item is never declined: the grant could not exist if it were.
+          expect(
+            yield* count(`select count(*)::int as n from participant_consent_item_responses r
          join consent_items i on i.id = r.consent_item_id
-         where not r.affirmed and i.required`,
-      ),
-    ).resolves.toBe(0);
-    // One study carries a superseded v1 beside its published v2.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from (
+         where not r.affirmed and i.required`),
+          ).toBe(0);
+          // One study carries a superseded v1 beside its published v2.
+          expect(
+            yield* count(`select count(*)::int as n from (
            select study_id from consent_documents
            group by study_id
-           having bool_or(state = 'retired') and bool_or(state = 'published')) supers`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
+           having bool_or(state = 'retired') and bool_or(state = 'published')) supers`),
+          ).toBeGreaterThan(0);
+        }),
+    );
 
-  it('suppresses exactly the deliveries enqueued after their address opted out', async () => {
-    // A suppressed delivery names an address that had opted out by the time
-    // it was enqueued …
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from message_deliveries d
+    it.effect(
+      'suppresses exactly the deliveries enqueued after their address opted out',
+      () =>
+        Effect.gen(function* () {
+          // A suppressed delivery names an address that had opted out by the time
+          // it was enqueued …
+          expect(
+            yield* count(`select count(*)::int as n from message_deliveries d
          where d.suppressed_at is not null
            and not exists (
              select 1 from participant_contact_optouts o
              where o.team_id = d.team_id and o.channel = d.channel
                and o.recipient_address = d.recipient_address
-               and o.opted_out_at <= d.created_at)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from message_deliveries where suppressed_at is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    // … nothing enqueued after an opt-out went anywhere but the suppression
-    // list, and what was enqueued before it went out as it would have.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from message_deliveries d
+               and o.opted_out_at <= d.created_at)`),
+          ).toBe(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n from message_deliveries where suppressed_at is not null`,
+            ),
+          ).toBeGreaterThan(0);
+          // … nothing enqueued after an opt-out went anywhere but the suppression
+          // list, and what was enqueued before it went out as it would have.
+          expect(
+            yield* count(`select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
           and o.recipient_address = d.recipient_address
-         where o.opted_out_at <= d.created_at and d.suppressed_at is null`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from message_deliveries d
+         where o.opted_out_at <= d.created_at and d.suppressed_at is null`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
           and o.recipient_address = d.recipient_address
-         where o.opted_out_at > d.created_at and d.suppressed_at is null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    const events = await pool.query<{ kind: string }>(
-      `select distinct kind from message_delivery_events order by kind`,
+         where o.opted_out_at > d.created_at and d.suppressed_at is null`),
+          ).toBeGreaterThan(0);
+          const events = yield* ownerRows<{ kind: string }>(
+            `select distinct kind from message_delivery_events order by kind`,
+          );
+          const kinds = events.map((row) => row.kind);
+          expect(kinds).toContain('bounced');
+          expect(kinds).toContain('complained');
+        }),
     );
-    const kinds = events.rows.map((row) => row.kind);
-    expect(kinds).toContain('bounced');
-    expect(kinds).toContain('complained');
-  });
 
-  it('makes every service token answerable to an owner or admin of its team', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from api_tokens t
+    it.effect(
+      'makes every service token answerable to an owner or admin of its team',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from api_tokens t
          where not exists (
            select 1 from team_members m
            where m.team_id = t.team_id and m.user_id = t.custodian_user_id
@@ -559,35 +527,38 @@ describe.skipIf(!db)('the seeded dataset', () => {
             or not exists (
            select 1 from team_members m
            where m.team_id = t.team_id and m.user_id = t.created_by_user_id
-             and m.role in ('owner', 'admin'))`,
-      ),
-    ).resolves.toBe(0);
-    const shapes = await pool.query<{
-      readonly_no_pii: number;
-      write_pii: number;
-      study_scoped: number;
-      revoked: number;
-    }>(
-      `select
+             and m.role in ('owner', 'admin'))`),
+          ).toBe(0);
+          const shapes = yield* ownerRows<{
+            readonly_no_pii: number;
+            write_pii: number;
+            study_scoped: number;
+            revoked: number;
+          }>(
+            `select
          count(*) filter (where access_level = 'read' and not includes_pii)::int as readonly_no_pii,
          count(*) filter (where access_level = 'write' and includes_pii)::int as write_pii,
          count(*) filter (where scope_kind = 'study')::int as study_scoped,
          count(*) filter (where revoked_at is not null)::int as revoked
        from api_tokens`,
+          );
+          const shape = shapes[0]!;
+          expect(shape.readonly_no_pii).toBeGreaterThan(0);
+          expect(shape.write_pii).toBeGreaterThan(0);
+          expect(shape.study_scoped).toBeGreaterThan(0);
+          expect(shape.revoked).toBeGreaterThan(0);
+        }),
     );
-    const shape = shapes.rows[0]!;
-    expect(shape.readonly_no_pii).toBeGreaterThan(0);
-    expect(shape.write_pii).toBeGreaterThan(0);
-    expect(shape.study_scoped).toBeGreaterThan(0);
-    expect(shape.revoked).toBeGreaterThan(0);
-  });
 
-  it('keeps the wave rollups equal to a recomputation from the sessions', async () => {
-    // Written as joins and grouping rather than as the seed's scalar
-    // subqueries, so this is a second expression of the definition rather than
-    // the same query twice.
-    const drift = await pool.query<{ wave_id: string }>(
-      `with links as (
+    it.effect(
+      'keeps the wave rollups equal to a recomputation from the sessions',
+      () =>
+        Effect.gen(function* () {
+          // Written as joins and grouping rather than as the seed's scalar
+          // subqueries, so this is a second expression of the definition rather than
+          // the same query twice.
+          const drift = yield* ownerRows<{ wave_id: string }>(
+            `with links as (
          select wave_id, count(*)::int as invited
          from interview_links group by wave_id
        ),
@@ -628,28 +599,26 @@ describe.skipIf(!db)('the seeded dataset', () => {
           or r.onboarding_started_count is distinct from coalesce(s.onboarding, 0)
           or r.consented_count is distinct from coalesce(c.consented, 0)
           or r.delivery_failed_count is distinct from coalesce(f.failed, 0)`,
+          );
+          expect(drift).toEqual([]);
+          // One rollup per wave, and the numbers are not all zero.
+          expect(
+            yield* count(`select count(*)::int as n from study_waves w
+         where not exists (select 1 from study_wave_rollups r where r.wave_id = w.id)`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from study_wave_rollups
+         where session_completed_count > 0`),
+          ).toBeGreaterThan(0);
+        }),
     );
-    expect(drift.rows).toEqual([]);
-    // One rollup per wave, and the numbers are not all zero.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from study_waves w
-         where not exists (select 1 from study_wave_rollups r where r.wave_id = w.id)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from study_wave_rollups
-         where session_completed_count > 0`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
 
-  it('keeps the stage rollups equal to a recomputation from the nodes', async () => {
-    const drift = await pool.query<{ wave_id: string; stage_id: string }>(
-      `with entered as (
+    it.effect(
+      'keeps the stage rollups equal to a recomputation from the nodes',
+      () =>
+        Effect.gen(function* () {
+          const drift = yield* ownerRows<{ wave_id: string; stage_id: string }>(
+            `with entered as (
          select s.wave_id, n.stage_id, s.id as session_id, s.status,
                 count(*) filter (where n.attributes = '{}'::jsonb)::int as missing
          from nodes n
@@ -674,29 +643,28 @@ describe.skipIf(!db)('the seeded dataset', () => {
           or r.abandoned_count is distinct from e.abandoned_count
           or r.missing_item_count is distinct from e.missing_item_count
           or r.duration_ms_count is distinct from e.entered_count`,
+          );
+          expect(drift).toEqual([]);
+          expect(
+            yield* count(`select count(*)::int as n from study_stage_rollups`),
+          ).toBeGreaterThan(0);
+        }),
     );
-    expect(drift.rows).toEqual([]);
-    await expect(
-      count(pool, `select count(*)::int as n from study_stage_rollups`),
-    ).resolves.toBeGreaterThan(0);
-  });
 
-  it('issues one live link per managed participant per collecting wave', async () => {
-    // Every participant link belongs to a wave of a live or paused study, and
-    // no participant holds two live links on one wave (the partial unique
-    // index proves the second half; this proves the first).
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_links l
+    it.effect(
+      'issues one live link per managed participant per collecting wave',
+      () =>
+        Effect.gen(function* () {
+          // Every participant link belongs to a wave of a live or paused study, and
+          // no participant holds two live links on one wave (the partial unique
+          // index proves the second half; this proves the first).
+          expect(
+            yield* count(`select count(*)::int as n from interview_links l
          join studies s on s.id = l.study_id and s.team_id = l.team_id
-         where l.kind = 'participant' and s.state not in ('live', 'paused')`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n
+         where l.kind = 'participant' and s.state not in ('live', 'paused')`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n
          from study_waves w
          join studies s on s.id = w.study_id
          join participants p on p.study_id = s.id
@@ -704,284 +672,282 @@ describe.skipIf(!db)('the seeded dataset', () => {
            and not exists (
              select 1 from interview_links l
              where l.wave_id = w.id and l.participant_id = p.id
-               and l.kind = 'participant')`,
-      ),
-    ).resolves.toBe(0);
-    // Exactly one open link per anonymous study.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies s
+               and l.kind = 'participant')`),
+          ).toBe(0);
+          // Exactly one open link per anonymous study.
+          expect(
+            yield* count(`select count(*)::int as n from studies s
          where s.participation_mode = 'anonymous'
            and (select count(*) from interview_links l
-                 where l.study_id = s.id and l.kind = 'anonymous') <> 1`,
-      ),
-    ).resolves.toBe(0);
-  });
+                 where l.study_id = s.id and l.kind = 'anonymous') <> 1`),
+          ).toBe(0);
+        }),
+    );
 
-  it('records on every link exactly the redemptions its sessions are', async () => {
-    // A visit through a link is a session, so the link's count is its
-    // session count and its last redemption the newest session's start — for
-    // both kinds, and zero where no session cites the link.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_links l
+    it.effect(
+      'records on every link exactly the redemptions its sessions are',
+      () =>
+        Effect.gen(function* () {
+          // A visit through a link is a session, so the link's count is its
+          // session count and its last redemption the newest session's start — for
+          // both kinds, and zero where no session cites the link.
+          expect(
+            yield* count(`select count(*)::int as n from interview_links l
          left join (
            select link_id, count(*)::int as n, max(started_at) as newest
            from interview_sessions where link_id is not null group by link_id
          ) s on s.link_id = l.id
          where l.redemption_count <> coalesce(s.n, 0)
-            or l.last_redeemed_at is distinct from s.newest`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_links
-         where kind = 'anonymous' and redemption_count = 0`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_links
-         where kind = 'participant' and redemption_count > 0`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
+            or l.last_redeemed_at is distinct from s.newest`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from interview_links
+         where kind = 'anonymous' and redemption_count = 0`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from interview_links
+         where kind = 'participant' and redemption_count > 0`),
+          ).toBeGreaterThan(0);
+        }),
+    );
 
-  it('parks each in-progress session at a stage and each completed one past the last', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions
-         where status = 'in_progress' and current_stage_id is null`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions
-         where status = 'completed' and current_stage_id is not null`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions
-         where status = 'in_progress'`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
+    it.effect(
+      'parks each in-progress session at a stage and each completed one past the last',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions
+         where status = 'in_progress' and current_stage_id is null`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions
+         where status = 'completed' and current_stage_id is not null`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions
+         where status = 'in_progress'`),
+          ).toBeGreaterThan(0);
+        }),
+    );
 
-  it('writes assets whose recorded size and class match their content, and leaves a sweepable tail', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from assets
-         where hash !~ '^[0-9a-f]{64}$' or byte_size <= 0 or origin <> 'seed'`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from assets a
+    it.effect(
+      'writes assets whose recorded size and class match their content, and leaves a sweepable tail',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from assets
+         where hash !~ '^[0-9a-f]{64}$' or byte_size <= 0 or origin <> 'seed'`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from assets a
          where a.unreferenced_at is not null
            and exists (select 1 from asset_references r
-                        where r.team_id = a.team_id and r.asset_hash = a.hash)`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from assets where unreferenced_at is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(pool, `select count(*)::int as n from asset_references`),
-    ).resolves.toBeGreaterThan(0);
-  });
+                        where r.team_id = a.team_id and r.asset_hash = a.hash)`),
+          ).toBe(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n from assets where unreferenced_at is not null`,
+            ),
+          ).toBeGreaterThan(0);
+          expect(
+            yield* count(`select count(*)::int as n from asset_references`),
+          ).toBeGreaterThan(0);
+        }),
+    );
 
-  it('starts every session after its participant enrolled and its link was issued', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions s
+    it.effect(
+      'starts every session after its participant enrolled and its link was issued',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions s
          join participants p on p.id = s.participant_id
-         where p.enrolled_at is not null and s.started_at < p.enrolled_at`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from interview_sessions s
+         where p.enrolled_at is not null and s.started_at < p.enrolled_at`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions s
          join interview_links l on l.id = s.link_id
-         where s.started_at < l.created_at`,
-      ),
-    ).resolves.toBe(0);
-  });
+         where s.started_at < l.created_at`),
+          ).toBe(0);
+        }),
+    );
 
-  it('dates every asset before its pins, and a frozen version’s pin at its publication', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from asset_references r
+    it.effect(
+      'dates every asset before its pins, and a frozen version’s pin at its publication',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from asset_references r
          join assets a on a.hash = r.asset_hash and a.team_id = r.team_id
-         where a.created_at > r.created_at`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from asset_references r
+         where a.created_at > r.created_at`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from asset_references r
          join protocol_versions v on v.id::text = r.referrer_id
          where r.referrer_kind = 'protocol_version'
-           and r.created_at <> v.published_at`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from asset_references r
+           and r.created_at <> v.published_at`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from asset_references r
          join template_versions v on v.id::text = r.referrer_id
          where r.referrer_kind = 'template_version'
-           and r.created_at <> v.published_at`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from asset_references r
+           and r.created_at <> v.published_at`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from asset_references r
          join consent_documents d on d.id::text = r.referrer_id
          where r.referrer_kind = 'consent_document'
-           and (r.created_at < d.created_at or r.created_at > d.published_at)`,
-      ),
-    ).resolves.toBe(0);
-  });
+           and (r.created_at < d.created_at or r.created_at > d.published_at)`),
+          ).toBe(0);
+        }),
+    );
 
-  it('hashes every consent document over the canonical form of what it retains', async () => {
-    // content_hash is the digest of the canonical (title, body, items), items
-    // by key, so a document's evidence can be recomputed from the row.
-    const rows = await pool.query<{
-      title: string;
-      body: unknown;
-      content_hash: string;
-      items: { key: string; prompt: string; required: boolean }[];
-    }>(
-      `select d.title, d.body, d.content_hash,
+    it.effect(
+      'hashes every consent document over the canonical form of what it retains',
+      () =>
+        Effect.gen(function* () {
+          // content_hash is the digest of the canonical (title, body, items), items
+          // by key, so a document's evidence can be recomputed from the row.
+          const rows = yield* ownerRows<{
+            title: string;
+            body: unknown;
+            content_hash: string;
+            items: { key: string; prompt: string; required: boolean }[];
+          }>(
+            `select d.title, d.body, d.content_hash,
               (select json_agg(json_build_object(
                         'key', i.key, 'prompt', i.prompt, 'required', i.required)
                       order by i.key)
                from consent_items i
                where i.consent_document_id = d.id and i.team_id = d.team_id) as items
        from consent_documents d`,
+          );
+          expect(rows.length).toBeGreaterThan(0);
+          for (const row of rows) {
+            expect(
+              sha256Hex(
+                canonicalize({
+                  title: row.title,
+                  body: row.body,
+                  items: row.items,
+                }),
+              ),
+            ).toBe(row.content_hash);
+          }
+        }),
     );
-    expect(rows.rowCount).toBeGreaterThan(0);
-    for (const row of rows.rows) {
-      expect(
-        sha256Hex(
-          canonicalize({ title: row.title, body: row.body, items: row.items }),
-        ),
-      ).toBe(row.content_hash);
-    }
-  });
 
-  it('hashes every template manifest over the canonical form it stores', async () => {
-    const rows = await pool.query<{ manifest: unknown; manifest_hash: string }>(
-      `select manifest, manifest_hash from template_versions`,
+    it.effect(
+      'hashes every template manifest over the canonical form it stores',
+      () =>
+        Effect.gen(function* () {
+          const rows = yield* ownerRows<{
+            manifest: unknown;
+            manifest_hash: string;
+          }>(`select manifest, manifest_hash from template_versions`);
+          expect(rows.length).toBeGreaterThan(0);
+          for (const row of rows) {
+            expect(sha256Hex(canonicalize(row.manifest))).toBe(
+              row.manifest_hash,
+            );
+          }
+        }),
     );
-    expect(rows.rowCount).toBeGreaterThan(0);
-    for (const row of rows.rows) {
-      expect(sha256Hex(canonicalize(row.manifest))).toBe(row.manifest_hash);
-    }
-  });
 
-  it('keeps the pending deletion pending, and attempts every dispatched prompt', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies
-         where deletion_requested_at is not null and purge_after <= now()`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies where deletion_requested_at is not null`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-    // A delivery behind a dispatched occurrence was attempted: it has a
-    // provider and a terminal timestamp, never a pending outbox row.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from message_deliveries d
+    it.effect(
+      'keeps the pending deletion pending, and attempts every dispatched prompt',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(
+              `select count(*)::int as n from studies
+         where deletion_requested_at is not null and purge_after <= $1`,
+              [seedTime(0)],
+            ),
+          ).toBe(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n from studies where deletion_requested_at is not null`,
+            ),
+          ).toBeGreaterThan(0);
+          // A delivery behind a dispatched occurrence was attempted: it has a
+          // provider and a terminal timestamp, never a pending outbox row.
+          expect(
+            yield* count(`select count(*)::int as n from message_deliveries d
          join schedule_occurrences o on o.id = d.occurrence_id
          where o.state = 'dispatched'
            and (d.provider is null
-                or coalesce(d.sent_at, d.failed_at, d.suppressed_at, d.uncertain_at) is null)`,
-      ),
-    ).resolves.toBe(0);
-  });
-
-  it('hashes every snapshot over the canonical form of the payload it stores', async () => {
-    // jsonb keeps no key order, so the evidence must be checkable from the
-    // payload as it is read back.
-    const rows = await pool.query<{ payload: unknown; payload_hash: string }>(
-      `select payload, payload_hash from session_snapshots limit 25`,
+                or coalesce(d.sent_at, d.failed_at, d.suppressed_at, d.uncertain_at) is null)`),
+          ).toBe(0);
+        }),
     );
-    expect(rows.rowCount).toBeGreaterThan(0);
-    for (const row of rows.rows) {
-      expect(sha256Hex(canonicalize(row.payload))).toBe(row.payload_hash);
-    }
-  });
 
-  it('resolves every occurrence from a schedule that already existed', async () => {
-    // An occurrence's created_at is when the resolver produced it, which
-    // cannot precede the schedule it was resolved from.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from schedule_occurrences o
+    it.effect(
+      'hashes every snapshot over the canonical form of the payload it stores',
+      () =>
+        Effect.gen(function* () {
+          // jsonb keeps no key order, so the evidence must be checkable from the
+          // payload as it is read back.
+          const rows = yield* ownerRows<{
+            payload: unknown;
+            payload_hash: string;
+          }>(`select payload, payload_hash from session_snapshots limit 25`);
+          expect(rows.length).toBeGreaterThan(0);
+          for (const row of rows) {
+            expect(sha256Hex(canonicalize(row.payload))).toBe(row.payload_hash);
+          }
+        }),
+    );
+
+    it.effect(
+      'resolves every occurrence from a schedule that already existed',
+      () =>
+        Effect.gen(function* () {
+          // An occurrence's created_at is when the resolver produced it, which
+          // cannot precede the schedule it was resolved from.
+          expect(
+            yield* count(`select count(*)::int as n from schedule_occurrences o
          join study_schedules s on s.id = o.schedule_id and s.team_id = o.team_id
-         where o.created_at < s.created_at`,
-      ),
-    ).resolves.toBe(0);
-  });
+         where o.created_at < s.created_at`),
+          ).toBe(0);
+        }),
+    );
 
-  it('stamps every study’s last update no earlier than its latest transition', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from studies
+    it.effect(
+      'stamps every study’s last update no earlier than its latest transition',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n from studies
          where updated_at < greatest(
            created_at,
            coalesce(went_live_at, created_at),
            coalesce(paused_at, created_at),
            coalesce(closed_at, created_at),
            coalesce(deletion_requested_at, created_at)
-         )`,
-      ),
-    ).resolves.toBe(0);
-  });
+         )`),
+          ).toBe(0);
+        }),
+    );
 
-  it('backs every webhook event with a row of the kind it names, enqueued after it', async () => {
-    // A payload is thin, but the resource it names exists — in the study
-    // the payload cites, of the subscription's own team — and the event was
-    // enqueued no earlier than the moment that row records.
-    const cases: [string, string, string][] = [
-      ['session.completed', 'interview_sessions', 'completed_at'],
-      ['session.abandoned', 'interview_sessions', 'abandoned_at'],
-      ['participant.enrolled', 'participants', 'enrolled_at'],
-      ['wave.opened', 'study_waves', 'opens_at'],
-      ['consent.withdrawn', 'participant_consents', 'withdrawn_at'],
-    ];
-    for (const [eventType, table, occurredAt] of cases) {
-      await expect(
-        count(
-          pool,
-          `select count(*)::int as n from webhook_deliveries d
+    it.effect(
+      'backs every webhook event with a row of the kind it names, enqueued after it',
+      () =>
+        Effect.gen(function* () {
+          // A payload is thin, but the resource it names exists — in the study
+          // the payload cites, of the subscription's own team — and the event was
+          // enqueued no earlier than the moment that row records.
+          const cases: [string, string, string][] = [
+            ['session.completed', 'interview_sessions', 'completed_at'],
+            ['session.abandoned', 'interview_sessions', 'abandoned_at'],
+            ['participant.enrolled', 'participants', 'enrolled_at'],
+            ['wave.opened', 'study_waves', 'opens_at'],
+            ['consent.withdrawn', 'participant_consents', 'withdrawn_at'],
+          ];
+          for (const [eventType, table, occurredAt] of cases) {
+            expect(
+              yield* count(
+                `select count(*)::int as n from webhook_deliveries d
            left join ${table} r
              on r.id = (d.payload->>'resourceId')::uuid
             and r.team_id = d.team_id
@@ -989,191 +955,214 @@ describe.skipIf(!db)('the seeded dataset', () => {
             and r.${occurredAt} is not null
             and r.${occurredAt} <= d.created_at
            where d.event_type = $1 and r.id is null`,
-          [eventType],
-        ),
-      ).resolves.toBe(0);
-    }
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from webhook_deliveries d
+                [eventType],
+              ),
+            ).toBe(0);
+          }
+          expect(
+            yield* count(`select count(*)::int as n from webhook_deliveries d
          join webhook_subscriptions s on s.id = d.subscription_id
          where s.study_id is not null
-           and (d.payload->>'studyId')::uuid <> s.study_id`,
-      ),
-    ).resolves.toBe(0);
-  });
-
-  it('leaves every webhook delivery one its own subscription asked for', async () => {
-    // The corpus still covers both subscription states, and reaches the
-    // disabled one the way the dispatcher does: deliveries first, disablement
-    // afterwards. Written the other way round, none of those deliveries could
-    // exist — webhook_deliveries_subscription_wants_event admits a delivery
-    // only while its subscription is active and only for a type it asks for.
-    const states = await pool.query<{ state: string }>(
-      `select distinct state from webhook_subscriptions order by state`,
+           and (d.payload->>'studyId')::uuid <> s.study_id`),
+          ).toBe(0);
+        }),
     );
-    expect(states.rows.map((row) => row.state)).toEqual(['active', 'disabled']);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from webhook_deliveries d
-         join webhook_subscriptions s
-           on s.id = d.subscription_id and s.team_id = d.team_id
-         where not (d.event_type = any(s.event_types))`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from webhook_deliveries d
-         join webhook_subscriptions s
-           on s.id = d.subscription_id and s.team_id = d.team_id
-         where s.state = 'disabled'`,
-      ),
-    ).resolves.toBeGreaterThan(0);
-  });
 
-  it('seals every webhook secret under the current key and can open it again', async () => {
-    const keyring = testKeyring();
-    // Every row names the current entry, never an older one: the seed writes
-    // under whatever is current, which is the state `rotate-secrets` leaves
-    // behind and the state the boot check expects to find.
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from webhook_subscriptions
+    it.effect(
+      'leaves every webhook delivery one its own subscription asked for',
+      () =>
+        Effect.gen(function* () {
+          // The corpus still covers both subscription states, and reaches the
+          // disabled one the way the dispatcher does: deliveries first, disablement
+          // afterwards. Written the other way round, none of those deliveries could
+          // exist — webhook_deliveries_subscription_wants_event admits a delivery
+          // only while its subscription is active and only for a type it asks for.
+          const states = yield* ownerRows<{ state: string }>(
+            `select distinct state from webhook_subscriptions order by state`,
+          );
+          expect(states.map((row) => row.state)).toEqual([
+            'active',
+            'disabled',
+          ]);
+          expect(
+            yield* count(`select count(*)::int as n from webhook_deliveries d
+         join webhook_subscriptions s
+           on s.id = d.subscription_id and s.team_id = d.team_id
+         where not (d.event_type = any(s.event_types))`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from webhook_deliveries d
+         join webhook_subscriptions s
+           on s.id = d.subscription_id and s.team_id = d.team_id
+         where s.state = 'disabled'`),
+          ).toBeGreaterThan(0);
+        }),
+    );
+
+    it.effect(
+      'seals every webhook secret under the current key and can open it again',
+      () =>
+        Effect.gen(function* () {
+          const { plaintextSecrets } = yield* SeededCorpus;
+          const keyring = testKeyring();
+          // Every row names the current entry, never an older one: the seed writes
+          // under whatever is current, which is the state `rotate-secrets` leaves
+          // behind and the state the boot check expects to find.
+          expect(
+            yield* count(
+              `select count(*)::int as n from webhook_subscriptions
          where secret_key_id <> $1`,
-        [keyring.currentId],
-      ),
-    ).resolves.toBe(0);
+              [keyring.currentId],
+            ),
+          ).toBe(0);
 
-    const subscriptions = await pool.query<{
-      id: string;
-      team_id: string;
-      secret_ciphertext: Buffer;
-      secret_key_id: string;
-    }>(
-      `select id, team_id, secret_ciphertext, secret_key_id
+          const subscriptions = yield* ownerRows<{
+            id: string;
+            team_id: string;
+            secret_ciphertext: Uint8Array;
+            secret_key_id: string;
+          }>(
+            `select id, team_id, secret_ciphertext, secret_key_id
        from webhook_subscriptions order by id limit 1`,
-    );
-    const row = subscriptions.rows[0];
-    expect(row).toBeDefined();
-    if (!row) throw new Error('unreachable: the seed writes subscriptions');
+          );
+          const row = subscriptions[0];
+          expect(row).toBeDefined();
+          if (!row)
+            throw new Error('unreachable: the seed writes subscriptions');
 
-    // The round trip is the assertion that matters: the bytes in the column
-    // are a real envelope over a real secret, bound to this row's identity,
-    // not opaque filler that happens to be the right length.
-    const opened = testCipher(keyring).openWebhookSecret(
-      { teamId: row.team_id, subscriptionId: row.id },
-      { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+          // The round trip is the assertion that matters: the bytes in the column
+          // are a real envelope over a real secret, bound to this row's identity,
+          // not opaque filler that happens to be the right length.
+          const opened = testCipher(keyring).openWebhookSecret(
+            { teamId: row.team_id, subscriptionId: row.id },
+            { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+          );
+          expect(plaintextSecrets).toContain(opened);
+          expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
+          // The column does not hold what the round trip returned.
+          expect(
+            Buffer.from(row.secret_ciphertext).toString('utf8'),
+          ).not.toContain(opened);
+        }),
     );
-    expect(plaintextSecrets).toContain(opened);
-    expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
-    // The column does not hold what the round trip returned.
-    expect(row.secret_ciphertext.toString('utf8')).not.toContain(opened);
-  });
 
-  it('links a Google account for the admin with its tokens sealed', async () => {
-    const keyring = testKeyring();
-    const rows = await pool.query<{
-      accountId: string;
-      accessToken: string;
-      refreshToken: string;
-      idToken: string;
-    }>(
-      `select "accountId", "accessToken", "refreshToken", "idToken"
+    it.effect(
+      'links a Google account for the admin with its tokens sealed',
+      () =>
+        Effect.gen(function* () {
+          const { plaintextSecrets, adminId } = yield* SeededCorpus;
+          const keyring = testKeyring();
+          const rows = yield* ownerRows<{
+            accountId: string;
+            accessToken: string;
+            refreshToken: string;
+            idToken: string;
+          }>(
+            `select "accountId", "accessToken", "refreshToken", "idToken"
        from account where "providerId" = 'google' and "userId" = $1`,
-      [adminId],
+            [adminId],
+          );
+          expect(rows.length).toBe(1);
+          const row = rows[0]!;
+
+          const cipher = testCipher(keyring);
+          for (const column of [
+            'accessToken',
+            'refreshToken',
+            'idToken',
+          ] as const) {
+            const stored = row[column];
+            expect(
+              stored.startsWith(`studio-secret:${keyring.currentId}:`),
+            ).toBe(true);
+            // The round trip, as for the webhook secrets: the column holds a real
+            // envelope bound to this account and column, not opaque filler.
+            const opened = cipher.openOAuthToken(
+              { providerId: 'google', accountId: row.accountId, column },
+              stored,
+            );
+            expect(plaintextSecrets).toContain(opened);
+            expect(stored).not.toContain(opened);
+          }
+        }),
     );
-    expect(rows.rowCount).toBe(1);
-    const row = rows.rows[0]!;
 
-    const cipher = testCipher(keyring);
-    for (const column of ['accessToken', 'refreshToken', 'idToken'] as const) {
-      const stored = row[column];
-      expect(stored.startsWith(`studio-secret:${keyring.currentId}:`)).toBe(
-        true,
-      );
-      // The round trip, as for the webhook secrets: the column holds a real
-      // envelope bound to this account and column, not opaque filler.
-      const opened = cipher.openOAuthToken(
-        { providerId: 'google', accountId: row.accountId, column },
-        stored,
-      );
-      expect(plaintextSecrets).toContain(opened);
-      expect(stored).not.toContain(opened);
-    }
-  });
+    it.effect(
+      'seals one protocol API key per team and stores no value in a section',
+      () =>
+        Effect.gen(function* () {
+          const { plaintextSecrets } = yield* SeededCorpus;
+          const keyring = testKeyring();
+          const teams = yield* count(`select count(*)::int as n from teams`);
+          expect(
+            yield* count(`select count(*)::int as n from protocol_asset_keys`),
+          ).toBe(teams);
+          expect(
+            yield* count(
+              `select count(*)::int as n from protocol_asset_keys where key_id <> $1`,
+              [keyring.currentId],
+            ),
+          ).toBe(0);
 
-  it('seals one protocol API key per team and stores no value in a section', async () => {
-    const keyring = testKeyring();
-    const teams = await count(pool, `select count(*)::int as n from teams`);
-    await expect(
-      count(pool, `select count(*)::int as n from protocol_asset_keys`),
-    ).resolves.toBe(teams);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n from protocol_asset_keys where key_id <> $1`,
-        [keyring.currentId],
-      ),
-    ).resolves.toBe(0);
-
-    const stored = await pool.query<{
-      team_id: string;
-      protocol_id: string;
-      asset_id: string;
-      ciphertext: Buffer;
-      key_id: string;
-    }>(
-      `select team_id, protocol_id, asset_id, ciphertext, key_id
+          const stored = yield* ownerRows<{
+            team_id: string;
+            protocol_id: string;
+            asset_id: string;
+            ciphertext: Uint8Array;
+            key_id: string;
+          }>(
+            `select team_id, protocol_id, asset_id, ciphertext, key_id
        from protocol_asset_keys order by team_id limit 1`,
-    );
-    const row = stored.rows[0]!;
-    const opened = testCipher(keyring).openAssetKey(
-      {
-        teamId: row.team_id,
-        protocolId: row.protocol_id,
-        assetId: row.asset_id,
-      },
-      { ciphertext: row.ciphertext, keyId: row.key_id },
-    );
-    expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
-    expect(plaintextSecrets).toContain(opened);
+          );
+          const row = stored[0]!;
+          const opened = testCipher(keyring).openAssetKey(
+            {
+              teamId: row.team_id,
+              protocolId: row.protocol_id,
+              assetId: row.asset_id,
+            },
+            { ciphertext: row.ciphertext, keyId: row.key_id },
+          );
+          expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
+          expect(plaintextSecrets).toContain(opened);
 
-    // The manifest entry survives in the stored document; only its value is
-    // gone. Asked of every section row, because a key must not be at rest in
-    // any revision — not only the one the draft currently points at.
-    const apikeyEntries = `from sections s, jsonb_each(s.doc) e
+          // The manifest entry survives in the stored document; only its value is
+          // gone. Asked of every section row, because a key must not be at rest in
+          // any revision — not only the one the draft currently points at.
+          const apikeyEntries = `from sections s, jsonb_each(s.doc) e
        where jsonb_typeof(e.value) = 'object' and e.value ->> 'type' = 'apikey'`;
-    await expect(
-      count(pool, `select count(*)::int as n ${apikeyEntries}`),
-    ).resolves.toBeGreaterThan(0);
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n ${apikeyEntries} and e.value ? 'value'`,
-      ),
-    ).resolves.toBe(0);
-  });
+          expect(
+            yield* count(`select count(*)::int as n ${apikeyEntries}`),
+          ).toBeGreaterThan(0);
+          expect(
+            yield* count(
+              `select count(*)::int as n ${apikeyEntries} and e.value ? 'value'`,
+            ),
+          ).toBe(0);
+        }),
+    );
 
-  it('appends a dense audit sequence per team and no unbacked outbox rows', async () => {
-    const sequences = await pool.query<{ team_id: string; ok: boolean }>(
-      `select team_id,
+    it.effect(
+      'appends a dense audit sequence per team and no unbacked outbox rows',
+      () =>
+        Effect.gen(function* () {
+          const sequences = yield* ownerRows<{ team_id: string; ok: boolean }>(
+            `select team_id,
               (min(sequence) = 1 and max(sequence) = count(*)) as ok
        from audit_events group by team_id`,
+          );
+          expect(sequences.length).toBeGreaterThan(0);
+          expect(sequences.every((row) => row.ok)).toBe(true);
+          // Neither outbox has a production writer yet, so the seed leaves both
+          // empty rather than inventing rows that bypass invariants no code states.
+          expect(
+            yield* count(`select count(*)::int as n from audit_alert_outbox`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n from audit_export_jobs`),
+          ).toBe(0);
+        }),
     );
-    expect(sequences.rows.length).toBeGreaterThan(0);
-    expect(sequences.rows.every((row) => row.ok)).toBe(true);
-    // Neither outbox has a production writer yet, so the seed leaves both
-    // empty rather than inventing rows that bypass invariants no code states.
-    await expect(
-      count(pool, `select count(*)::int as n from audit_alert_outbox`),
-    ).resolves.toBe(0);
-    await expect(
-      count(pool, `select count(*)::int as n from audit_export_jobs`),
-    ).resolves.toBe(0);
   });
 });
 
@@ -1191,7 +1180,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
  */
 const IRREPRODUCIBLE = {
   // better-auth's `hashPassword` draws a fresh scrypt salt per call, and
-  // `AuditStore.append` allocates an event id with `randomUUID()`; both are
+  // the audit store's `append` allocates an event id with `randomUUID()`; both are
   // documented where they are written (`seed/teams.ts`, `seed/audit.ts`).
   account: ['password'],
   audit_events: ['id'],
@@ -1205,103 +1194,93 @@ const IRREPRODUCIBLE = {
   schemaFingerprint: ['appliedAt'],
 } as const;
 
-describe.skipIf(!db)('seed', () => {
-  it(
-    'writes byte-identical data on two runs',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const dumps: Map<string, string[]>[] = [];
-      for (let run = 0; run < 2; run += 1) {
-        const { pool, dispose } = await createScratchSchema(db);
-        try {
-          await provisionScratchSchema(pool);
-          // The only thing that makes two dumps comparable: without it the
-          // secret envelopes take fresh CSPRNG nonces, as they do in a
-          // deployment.
-          await seed(pool, {
+/**
+ * One reproducible tiny seed into a scratch schema of its own, dumped.
+ *
+ * `Layer.fresh`, because inside `layer(…)` a plain `Effect.provide` resolves
+ * through the suite's memo map and hands back the schema already built: the
+ * second run would seed over the first, and the case would stop proving the
+ * seed is independent of what a database held before it.
+ */
+const seedAndDump = Effect.gen(function* () {
+  const { schema } = yield* TestDatabase;
+  // The only thing that makes two dumps comparable: without it the
+  // secret envelopes take fresh CSPRNG nonces, as they do in a
+  // deployment.
+  yield* seed({
+    secrets: testKeyring(),
+    scale: 'tiny',
+    reproducible: true,
+  });
+  return {
+    schema,
+    dump: yield* dumpSchemaRows({ omitColumns: IRREPRODUCIBLE }),
+  };
+}).pipe(Effect.provide(Layer.fresh(TestDatabaseLive)));
+
+describe.skipIf(!testDb)('seed', () => {
+  layer(TestDatabaseLive, { timeout: SEEDING_TIMEOUT_MS })((it) => {
+    it.effect(
+      'writes byte-identical data on two runs',
+      () =>
+        Effect.gen(function* () {
+          const firstRun = yield* seedAndDump;
+          const secondRun = yield* seedAndDump;
+          expect(secondRun.schema).not.toBe(firstRun.schema);
+          const first = firstRun.dump;
+          const second = secondRun.dump;
+
+          // Reported as a list of table names and the first row that differs,
+          // rather than as one `toEqual` over the corpus: a failure has to be
+          // readable, and the corpus is tens of thousands of rows.
+          expect([...second.keys()]).toEqual([...first.keys()]);
+          const differences = [...first].flatMap(([table, rows]) => {
+            const other = second.get(table) ?? [];
+            if (rows.length !== other.length) {
+              return [`${table}: ${rows.length} rows, then ${other.length}`];
+            }
+            const index = rows.findIndex((row, at) => row !== other[at]);
+            return index === -1
+              ? []
+              : [`${table}: row ${index}\n  ${rows[index]}\n  ${other[index]}`];
+          });
+          expect(differences).toEqual([]);
+          // The dump is worth comparing: a helper that returned nothing would
+          // make every line above pass.
+          expect([...first.values()].flat().length).toBeGreaterThan(1000);
+        }),
+      SEEDING_TIMEOUT_MS,
+    );
+
+    it.effect(
+      'hashes a per-instance admin password when one is given',
+      () =>
+        Effect.gen(function* () {
+          yield* seed({
             secrets: testKeyring(),
             scale: 'tiny',
-            reproducible: true,
+            adminPassword: 'chosen-for-this-instance',
           });
-          dumps.push(
-            await dumpSchemaRows(pool, { omitColumns: IRREPRODUCIBLE }),
+
+          const account = yield* ownerRows<{ password: string }>(
+            `select password from account
+             where "providerId" = 'credential'
+               and "userId" = (select id from "user" where email = $1)`,
+            [SEED_ADMIN_EMAIL],
           );
-        } finally {
-          await dispose();
-        }
-      }
-
-      const [first, second] = dumps as [
-        Map<string, string[]>,
-        Map<string, string[]>,
-      ];
-      // Reported as a list of table names and the first row that differs,
-      // rather than as one `toEqual` over the corpus: a failure has to be
-      // readable, and the corpus is tens of thousands of rows.
-      expect([...second.keys()]).toEqual([...first.keys()]);
-      const differences = [...first].flatMap(([table, rows]) => {
-        const other = second.get(table) ?? [];
-        if (rows.length !== other.length) {
-          return [`${table}: ${rows.length} rows, then ${other.length}`];
-        }
-        const index = rows.findIndex((row, at) => row !== other[at]);
-        return index === -1
-          ? []
-          : [`${table}: row ${index}\n  ${rows[index]}\n  ${other[index]}`];
-      });
-      expect(differences).toEqual([]);
-      // The dump is worth comparing: a helper that returned nothing would
-      // make every line above pass.
-      expect([...first.values()].flat().length).toBeGreaterThan(1000);
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-
-  it(
-    'hashes a per-instance admin password when one is given',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const { pool, dispose } = await createScratchSchema(db);
-      try {
-        await provisionScratchSchema(pool);
-        await seed(pool, {
-          secrets: testKeyring(),
-          scale: 'tiny',
-          adminPassword: 'chosen-for-this-instance',
-        });
-
-        const account = await pool.query<{ password: string }>(
-          `select password from account
-         where "providerId" = 'credential'
-           and "userId" = (select id from "user" where email = $1)`,
-          [SEED_ADMIN_EMAIL],
-        );
-        const hash = account.rows[0]!.password;
-        await expect(
-          verifyPassword({ hash, password: 'chosen-for-this-instance' }),
-        ).resolves.toBe(true);
-        await expect(
-          verifyPassword({ hash, password: SEED_ADMIN_PASSWORD }),
-        ).resolves.toBe(false);
-      } finally {
-        await dispose();
-      }
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-});
-
-// The seed is the one place a second writer of the append-only audit log
-// exists, because it runs on node-postgres inside its own `pg` transaction
-// while `audit/store.ts` runs on `@effect/sql-pg` (see that file's header for
-// why they cannot be the same code). This is what stops them drifting: a
-// column added to `audit_events` without being added to the seed's insert
-// fails here, rather than silently writing a row the store would not have.
-describe('the seed audit writer', () => {
-  it('writes exactly the columns audit_events declares', () => {
-    const declared = Object.values(getTableColumns(AUDIT_TABLES.auditEvents))
-      .map((column) => column.name)
-      .toSorted();
-    expect([...SEED_AUDIT_COLUMNS].toSorted()).toEqual(declared);
+          const hash = account[0]!.password;
+          expect(
+            yield* Effect.promise(() =>
+              verifyPassword({ hash, password: 'chosen-for-this-instance' }),
+            ),
+          ).toBe(true);
+          expect(
+            yield* Effect.promise(() =>
+              verifyPassword({ hash, password: SEED_ADMIN_PASSWORD }),
+            ),
+          ).toBe(false);
+        }),
+      SEEDING_TIMEOUT_MS,
+    );
   });
 });

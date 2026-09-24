@@ -1,5 +1,4 @@
 import { Effect } from 'effect';
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -23,6 +22,7 @@ import {
   makeStoreSchema,
   makeTestSyncServer,
   readFixtureProtocol,
+  type StoreSchema,
   storeDb,
 } from './helpers.ts';
 
@@ -48,18 +48,21 @@ const setDescription = (draftId: string, description: string) =>
   });
 
 describe.skipIf(!storeDb)('publishDraft', () => {
-  let db: pg.Pool;
-  let dispose: () => Promise<void>;
+  let store: StoreSchema;
   let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
+  /** The same, on a second connection, for a transaction that must overlap. */
+  let runAlongside: <A, E>(
+    body: Effect.Effect<A, E, Transaction>,
+  ) => Promise<A>;
   const cipher = testCipher();
 
   beforeAll(async () => {
-    const schema = await makeStoreSchema();
-    ({ db, dispose } = schema);
-    run = (body) => schema.inTeam(TEST_TEAM_ID, body);
+    store = await makeStoreSchema();
+    run = (body) => store.inTeam(TEST_TEAM_ID, body);
+    runAlongside = (body) => store.inTeamOnSecondApp(TEST_TEAM_ID, body);
   });
   afterAll(async () => {
-    await dispose();
+    await store.dispose();
   });
 
   it('freezes the head manifest verbatim into an immutable version', async () => {
@@ -83,25 +86,20 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       migratedFromVersionId: null,
     });
 
-    const stored = await db.query(
-      `SELECT manifest FROM protocol_versions WHERE id = $1`,
-      [result.versionId],
-    );
-    const manifest = (
-      stored.rows[0] as {
-        manifest: { hash: string; section_hashes: Record<string, string> };
-      }
-    ).manifest;
+    const [stored] = await store.rows<{
+      manifest: { hash: string; section_hashes: Record<string, string> };
+    }>(`SELECT manifest FROM protocol_versions WHERE id = $1`, [
+      result.versionId,
+    ]);
+    const manifest = stored!.manifest;
     expect(manifest.hash).toBe(head.headManifestHash);
     expect(manifest.section_hashes).toEqual(head.sectionHashes);
 
-    const pins = await db.query(
+    const [pins] = await store.rows<{ pins: number }>(
       `SELECT count(*)::int AS pins FROM version_sections WHERE version_id = $1`,
       [result.versionId],
     );
-    expect((pins.rows[0] as { pins: number }).pins).toBe(
-      Object.keys(head.sectionHashes).length,
-    );
+    expect(pins?.pins).toBe(Object.keys(head.sectionHashes).length);
 
     expect(
       await run(getVersionDocument(TEST_TEAM_ID, result.versionId)),
@@ -236,14 +234,16 @@ describe.skipIf(!storeDb)('publishDraft', () => {
 
     const [a, b] = await Promise.all([
       run(createDraftFromVersion(TEST_TEAM_ID, { versionId: base.versionId })),
-      run(createDraftFromVersion(TEST_TEAM_ID, { versionId: base.versionId })),
+      runAlongside(
+        createDraftFromVersion(TEST_TEAM_ID, { versionId: base.versionId }),
+      ),
     ]);
     await run(setDescription(a.draftId, 'variant a'));
     await run(setDescription(b.draftId, 'variant b'));
 
     const results = await Promise.all([
       run(publishDraft(TEST_TEAM_ID, { draftId: a.draftId })),
-      run(publishDraft(TEST_TEAM_ID, { draftId: b.draftId })),
+      runAlongside(publishDraft(TEST_TEAM_ID, { draftId: b.draftId })),
     ]);
     const numbers = results
       .map((result) => {
@@ -261,38 +261,52 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const result = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (result.status !== 'published') throw new Error(result.status);
 
-    await expect(
-      db.query(`UPDATE protocol_versions SET label = 'x' WHERE id = $1`, [
-        result.versionId,
-      ]),
-    ).rejects.toThrow(/immutable/);
-    await expect(
-      db.query(`DELETE FROM protocol_versions WHERE id = $1`, [
-        result.versionId,
-      ]),
-    ).rejects.toThrow(/immutable/);
-    await expect(
-      db.query(`DELETE FROM version_sections WHERE version_id = $1`, [
-        result.versionId,
-      ]),
-    ).rejects.toThrow(/immutable/);
+    expect(
+      (
+        await store.refusal(
+          `UPDATE protocol_versions SET label = 'x' WHERE id = $1`,
+          [result.versionId],
+        )
+      ).message,
+    ).toMatch(/immutable/);
+    expect(
+      (
+        await store.refusal(`DELETE FROM protocol_versions WHERE id = $1`, [
+          result.versionId,
+        ])
+      ).message,
+    ).toMatch(/immutable/);
+    expect(
+      (
+        await store.refusal(
+          `DELETE FROM version_sections WHERE version_id = $1`,
+          [result.versionId],
+        )
+      ).message,
+    ).toMatch(/immutable/);
 
-    const pin = await db.query(
+    const [pin] = await store.rows<{ section_hash: string }>(
       `SELECT section_hash FROM version_sections WHERE version_id = $1 LIMIT 1`,
       [result.versionId],
     );
-    const pinnedHash = (pin.rows[0] as { section_hash: string }).section_hash;
-    await expect(
-      db.query(`DELETE FROM sections WHERE hash = $1`, [pinnedHash]),
-    ).rejects.toThrow(/violates foreign key/);
+    const pinnedHash = pin!.section_hash;
+    expect(
+      (
+        await store.refusal(`DELETE FROM sections WHERE hash = $1`, [
+          pinnedHash,
+        ])
+      ).message,
+    ).toMatch(/violates foreign key/);
 
-    await expect(
-      db.query(
-        `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
+    expect(
+      (
+        await store.refusal(
+          `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
          VALUES ($1, $2, 'stage:smuggled', $3)`,
-        [result.versionId, TEST_TEAM_ID, pinnedHash],
-      ),
-    ).rejects.toThrow(/immutable/);
+          [result.versionId, TEST_TEAM_ID, pinnedHash],
+        )
+      ).message,
+    ).toMatch(/immutable/);
   });
 
   // Every other case here runs on the trimmed baseProtocol; these cover a real
@@ -336,11 +350,11 @@ describe.skipIf(!storeDb)('publishDraft', () => {
           ),
         ).resolves.toBe(value);
       }
-      const pins = await db.query<{ pins: number }>(
+      const [pins] = await store.rows<{ pins: number }>(
         `SELECT count(*)::int AS pins FROM version_sections WHERE version_id = $1`,
         [result.versionId],
       );
-      expect(pins.rows[0]?.pins).toBe(sectionCount);
+      expect(pins?.pins).toBe(sectionCount);
       expect(await run(publishDraft(TEST_TEAM_ID, { draftId }))).toMatchObject({
         status: 'unchanged',
         versionId: result.versionId,

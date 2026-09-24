@@ -5,7 +5,7 @@
 // sha256 of the bytes it generated, so a later upload of the same bytes lands
 // on the same key — until then `/storage/:hash` honestly 404s in development.
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
 
@@ -128,11 +128,10 @@ export type SeededTemplateVersion = {
  * sections are the team's own — the content-addressed store is shared with
  * protocols, so a template version pins section hashes that already exist.
  */
-export async function seedTemplates(
-  client: pg.PoolClient,
+export const seedTemplates = Effect.fnUntraced(function* (
   team: SeedTeam,
   line: SeededProtocolLine,
-): Promise<SeededTemplateVersion[]> {
+) {
   const templateRows: SeedRowValue[][] = [];
   const versionRows: SeedRowValue[][] = [];
   const pinRows: SeedRowValue[][] = [];
@@ -191,8 +190,7 @@ export async function seedTemplates(
     created.push({ templateId, versionId, publishedAt });
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'templates',
     [
       'id',
@@ -210,8 +208,7 @@ export async function seedTemplates(
     ],
     templateRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'template_versions',
     [
       'id',
@@ -227,29 +224,27 @@ export async function seedTemplates(
   );
   // The pins must land in the same transaction as their version:
   // `template_version_sections_insert_frozen` proves the version's xmin.
-  await insertRows(
-    client,
+  yield* insertRows(
     'template_version_sections',
     ['version_id', 'team_id', 'section_id', 'section_hash'],
     pinRows,
   );
 
   return created;
-}
+});
 
 /**
  * Three to eight assets per team, each pinned by one to three referrers, with
  * roughly one in seven left unreferenced and marked for the sweep so garbage
  * collection has something to find.
  */
-export async function seedAssets(
-  client: pg.PoolClient,
+export const seedAssets = Effect.fnUntraced(function* (
   team: SeedTeam,
   versions: SeededVersion[],
   templates: SeededTemplateVersion[],
   consentDocuments: SeedConsentDocument[],
   studies: SeedStudy[],
-): Promise<void> {
+) {
   const assetRows: SeedRowValue[][] = [];
   const referenceRows: SeedRowValue[][] = [];
   const createdAt = shiftDays(studies[0]?.createdAt ?? seedTime(-320), 5);
@@ -338,8 +333,7 @@ export async function seedAssets(
     }
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'assets',
     [
       'team_id',
@@ -356,10 +350,9 @@ export async function seedAssets(
     ],
     assetRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'asset_references',
     ['team_id', 'asset_hash', 'referrer_kind', 'referrer_id', 'created_at'],
     referenceRows,
   );
-}
+});

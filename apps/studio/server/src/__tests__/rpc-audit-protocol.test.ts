@@ -2,9 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Cause, Exit } from 'effect';
-import type { Context } from 'effect';
-import type pg from 'pg';
+import { Cause, Effect, Exit } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -19,22 +17,21 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../rpc.ts';
-import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
+  insertTeam,
+  openTestDatabase,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
   uniqueTeamId,
-} from './support/postgres.ts';
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
 
-const db = await reachableDb();
 const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-protocol-team'));
 
 /**
@@ -70,38 +67,28 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'rpc-audit-protocol-owner-session',
 };
 
-describe.skipIf(!db)('audited protocol RPC', () => {
-  let pool: pg.Pool;
-  let appPool: pg.Pool;
-  /**
-   * The Effect data layer over this scratch schema, which is what every
-   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
-   * than built per Studio: the clients underneath it are connection pools.
-   */
-  let services: Context.Context<StudioServices>;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('audited protocol RPC', () => {
+  let database: TestDatabaseRuntime;
   let client: RpcTestClient;
   let builder: ReturnType<typeof builderClientFor>;
   let extraClients: RpcTestClient[];
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    appPool = scratch.app;
-    services = await scratch.services();
-    dispose = scratch.dispose;
-    await provisionScratchSchema(pool);
-    await seedTeam(pool, TEAM_ID);
-    await pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ($1, $2, $3, true)`,
-      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM_ID));
+    await database.run(
+      ownerRows(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+      ),
     );
-    await pool.query(
-      `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ('rpc-audit-protocol-owner-member', $1, $2, 'owner')`,
-      [TEAM_ID, PRINCIPAL.userId],
+    await database.run(
+      ownerRows(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ('rpc-audit-protocol-owner-member', $1, $2, 'owner')`,
+        [TEAM_ID, PRINCIPAL.userId],
+      ),
     );
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),
@@ -113,7 +100,11 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       listMemberships: () =>
         Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
     });
-    const studio = createStudio(readEnv(), { auth, pool: appPool, services });
+    const studio = createStudio(readEnv(), {
+      auth,
+      pool: database.appPool,
+      services: database.services,
+    });
     client = await createRpcClient(studio);
     builder = builderClientFor(studio, PRINCIPAL);
     extraClients = [];
@@ -122,7 +113,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
   afterAll(async () => {
     await client.dispose();
     for (const extra of extraClients) await extra.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('records each current protocol mutation once without command contents', async () => {
@@ -140,12 +131,14 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       draftId,
     });
     expect(
-      await pool.query(
-        `SELECT event_type FROM audit_events
-         WHERE team_id = $1 AND resource_id = $2`,
-        [TEAM_ID, protocolId],
+      await database.run(
+        ownerRows(
+          `SELECT event_type FROM audit_events
+           WHERE team_id = $1 AND resource_id = $2`,
+          [TEAM_ID, protocolId],
+        ),
       ),
-    ).toHaveProperty('rows', [{ event_type: 'protocol.created' }]);
+    ).toEqual([{ event_type: 'protocol.created' }]);
     // The caller may retry after losing the first response. Returning the
     // existing identity is not a second creation and must not add an event.
     await expect(
@@ -223,22 +216,24 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       committed,
     );
 
-    const events = await pool.query<{
-      event_type: string;
-      event_version: number;
-      category: string;
-      resource_label: string;
-      request_id: string;
-      details: unknown;
-    }>(
-      `SELECT event_type, event_version, category, resource_label,
-              request_id::text, details
-       FROM audit_events
-       WHERE team_id = $1 AND resource_id = $2
-       ORDER BY sequence`,
-      [TEAM_ID, protocolId],
+    const events = await database.run(
+      ownerRows<{
+        event_type: string;
+        event_version: number;
+        category: string;
+        resource_label: string;
+        request_id: string;
+        details: unknown;
+      }>(
+        `SELECT event_type, event_version, category, resource_label,
+                request_id::text, details
+         FROM audit_events
+         WHERE team_id = $1 AND resource_id = $2
+         ORDER BY sequence`,
+        [TEAM_ID, protocolId],
+      ),
     );
-    expect(events.rows).toEqual([
+    expect(events).toEqual([
       {
         event_type: 'protocol.created',
         event_version: 1,
@@ -304,10 +299,8 @@ describe.skipIf(!db)('audited protocol RPC', () => {
         },
       },
     ]);
-    expect(new Set(events.rows.map(({ request_id }) => request_id)).size).toBe(
-      5,
-    );
-    expect(JSON.stringify(events.rows)).not.toContain('Secret value');
+    expect(new Set(events.map(({ request_id }) => request_id)).size).toBe(5);
+    expect(JSON.stringify(events)).not.toContain('Secret value');
   });
 
   it('rolls protocol state back when its audit insert fails', async () => {
@@ -329,16 +322,20 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     });
     if (held.lock !== 'held') throw new Error('expected to hold the section');
 
-    await pool.query(`
-      CREATE FUNCTION reject_protocol_audit_insert() RETURNS trigger AS $$
-      BEGIN
-        RAISE EXCEPTION 'protocol audit insert rejected';
-      END;
-      $$ LANGUAGE plpgsql;
-      CREATE TRIGGER reject_protocol_audit_insert
-        BEFORE INSERT ON audit_events
-        FOR EACH ROW EXECUTE FUNCTION reject_protocol_audit_insert();
-    `);
+    await database.run(
+      ownerRows(`
+        CREATE FUNCTION reject_protocol_audit_insert() RETURNS trigger AS $$
+        BEGIN
+          RAISE EXCEPTION 'protocol audit insert rejected';
+        END;
+        $$ LANGUAGE plpgsql`),
+    );
+    await database.run(
+      ownerRows(`
+        CREATE TRIGGER reject_protocol_audit_insert
+          BEFORE INSERT ON audit_events
+          FOR EACH ROW EXECUTE FUNCTION reject_protocol_audit_insert()`),
+    );
     const submitInput = {
       protocolId,
       requestId: randomUUID(),
@@ -350,10 +347,12 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       const { error } = await safe(builder.protocolBuilder.submit(submitInput));
       expect(error).not.toBeNull();
     } finally {
-      await pool.query(`
-        DROP TRIGGER reject_protocol_audit_insert ON audit_events;
-        DROP FUNCTION reject_protocol_audit_insert();
-      `);
+      await database.run(
+        ownerRows('DROP TRIGGER reject_protocol_audit_insert ON audit_events'),
+      );
+      await database.run(
+        ownerRows('DROP FUNCTION reject_protocol_audit_insert()'),
+      );
     }
 
     const afterFailure = await client.call(
@@ -363,12 +362,14 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     expect(afterFailure.sections[sectionId]).not.toMatchObject({
       label: 'Must roll back',
     });
-    const eventCount = await pool.query<{ count: number }>(
-      `SELECT count(*)::int AS count FROM audit_events
-       WHERE team_id = $1 AND resource_id = $2`,
-      [TEAM_ID, protocolId],
+    const eventCount = await database.run(
+      ownerRows<{ count: number }>(
+        `SELECT count(*)::int AS count FROM audit_events
+         WHERE team_id = $1 AND resource_id = $2`,
+        [TEAM_ID, protocolId],
+      ),
     );
-    expect(eventCount.rows).toEqual([{ count: 2 }]);
+    expect(eventCount).toEqual([{ count: 2 }]);
 
     // The write receipt rolled back too, so a retry carrying the same request
     // id is a real first write rather than a replay of one that never
@@ -380,11 +381,13 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       },
     });
     expect(
-      await pool.query(
-        `SELECT id FROM audit_events WHERE team_id = $1 AND resource_id = $2`,
-        [TEAM_ID, protocolId],
+      await database.run(
+        ownerRows(
+          `SELECT id FROM audit_events WHERE team_id = $1 AND resource_id = $2`,
+          [TEAM_ID, protocolId],
+        ),
       ),
-    ).toHaveProperty('rowCount', 3);
+    ).toHaveLength(3);
   });
 
   it('re-authorizes membership after waiting for the audit lock', async () => {
@@ -399,18 +402,22 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       locale: null,
       sessionId: 'rpc-audit-revoked-session',
     };
-    await pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ($1, $2, $3, true)`,
-      [actor.userId, actor.name, actor.email],
+    await database.run(
+      ownerRows(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [actor.userId, actor.name, actor.email],
+      ),
     );
     // An Admin, so the middleware admits the request and the refusal below can
     // only come from the locked membership re-read inside the transaction —
     // which is what this test is about.
-    await pool.query(
-      `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ($1, $2, $3, 'admin')`,
-      [memberId, TEAM_ID, actor.userId],
+    await database.run(
+      ownerRows(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'admin')`,
+        [memberId, TEAM_ID, actor.userId],
+      ),
     );
 
     let reportMiddlewareAuthorization: () => void = () => undefined;
@@ -419,8 +426,8 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     });
     const revokedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: appPool,
-        services,
+        pool: database.appPool,
+        services: database.services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(actor),
           getMembership: () => {
@@ -433,45 +440,50 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     extraClients.push(revokedClient);
     const protocolId = ProtocolId.make(randomUUID());
     const draftId = DraftId.make(randomUUID());
-    const holder = await pool.connect();
-    try {
-      await holder.query('BEGIN');
-      await holder.query(`SELECT 1 FROM teams WHERE id = $1 FOR UPDATE`, [
-        TEAM_ID,
-      ]);
-
-      const request = revokedClient.callExit(
-        revokedClient.rpc('protocols.create', {
-          teamId: TEAM_ID,
-          protocolId,
-          draftId,
-          name: 'Must not be created',
+    const { harness } = database;
+    // One owner transaction holds the team row while the request runs, and
+    // revokes the membership before letting go; a failure rolls it back.
+    const { request } = await database.run(
+      harness.onOwner(
+        Effect.gen(function* () {
+          yield* harness.owner.sql.unsafe(
+            `SELECT 1 FROM teams WHERE id = $1 FOR UPDATE`,
+            [TEAM_ID],
+          );
+          const pending = revokedClient.callExit(
+            revokedClient.rpc('protocols.create', {
+              teamId: TEAM_ID,
+              protocolId,
+              draftId,
+              name: 'Must not be created',
+            }),
+          );
+          yield* Effect.promise(() => middlewareAuthorized);
+          yield* harness.owner.sql.unsafe(
+            `DELETE FROM team_members WHERE id = $1`,
+            [memberId],
+          );
+          return { request: pending };
         }),
-      );
-      await middlewareAuthorized;
-      await holder.query(`DELETE FROM team_members WHERE id = $1`, [memberId]);
-      await holder.query('COMMIT');
+      ),
+    );
 
-      // The protocol tier's own refusal for a membership that lost its role
-      // under the lock, which is what the oRPC plane flattened into
-      // `FORBIDDEN`.
-      await expectRpcFailure(request, 'ProtocolAuthorizationError');
-      expect(
-        await pool.query(`SELECT id FROM protocols WHERE id = $1`, [
-          protocolId,
-        ]),
-      ).toHaveProperty('rowCount', 0);
-      expect(
-        await pool.query(
+    // The protocol tier's own refusal for a membership that lost its role
+    // under the lock, which is what the oRPC plane flattened into
+    // `FORBIDDEN`.
+    await expectRpcFailure(request, 'ProtocolAuthorizationError');
+    expect(
+      await database.run(
+        ownerRows(`SELECT id FROM protocols WHERE id = $1`, [protocolId]),
+      ),
+    ).toHaveLength(0);
+    expect(
+      await database.run(
+        ownerRows(
           `SELECT id FROM audit_events WHERE team_id = $1 AND resource_id = $2`,
           [TEAM_ID, protocolId],
         ),
-      ).toHaveProperty('rowCount', 0);
-    } catch (error) {
-      await holder.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      holder.release();
-    }
+      ),
+    ).toHaveLength(0);
   });
 });

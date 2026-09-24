@@ -9,9 +9,10 @@
 // and the zone it was resolved under — so the rows are the right shape for the
 // resolver to take over.
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
 
-import { normalizeContactAddress } from '../../study/contact.ts';
+import { Transaction } from '../../src/db/tenant.ts';
+import { normalizeContactAddress } from '../../src/study/contact.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import {
   seedHex,
@@ -129,11 +130,11 @@ function instantFor(date: string, minute: number, timeZone: string): Date {
  * kinds rotate by team, so all three recurrences and all three anchors appear
  * across the corpus.
  */
-async function seedSchedule(
-  client: pg.PoolClient,
+const seedSchedule = Effect.fnUntraced(function* (
   team: SeedTeam,
   study: SeedStudy,
-): Promise<SeededSchedule> {
+) {
+  const { sql } = yield* Transaction;
   const id = seedUuid();
   const wave = study.waves[0]!;
   const recurrenceKind =
@@ -170,7 +171,7 @@ async function seedSchedule(
     // enrolment-anchored run is resolved against an existing schedule.
     createdAt: shiftDays(study.createdAt, 14),
   };
-  await client.query(
+  yield* sql.unsafe(
     `insert into study_schedules (
        id, team_id, study_id, wave_id, name, state,
        anchor_kind, anchor_date, anchor_offset_minutes,
@@ -213,7 +214,7 @@ async function seedSchedule(
     ],
   );
   return plan;
-}
+});
 
 /**
  * The local days, counted from the anchor's local date, on which `schedule`
@@ -278,12 +279,11 @@ function anchorInstant(
   return shiftMinutes(base, schedule.anchorOffsetMinutes);
 }
 
-async function seedOccurrences(
-  client: pg.PoolClient,
+const seedOccurrences = Effect.fnUntraced(function* (
   team: SeedTeam,
   study: SeedStudy,
   schedule: SeededSchedule,
-): Promise<SeededOccurrence[]> {
+) {
   const rows: SeedRowValue[][] = [];
   const occurrences: SeededOccurrence[] = [];
 
@@ -354,8 +354,7 @@ async function seedOccurrences(
     }
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'schedule_occurrences',
     [
       'id',
@@ -375,7 +374,7 @@ async function seedOccurrences(
     rows,
   );
   return occurrences;
-}
+});
 
 type SeededTemplate = {
   id: string;
@@ -386,10 +385,7 @@ type SeededTemplate = {
 };
 
 /** Every kind on every channel at team level, plus one Spanish override. */
-async function seedMessageTemplates(
-  client: pg.PoolClient,
-  team: SeedTeam,
-): Promise<SeededTemplate[]> {
+const seedMessageTemplates = Effect.fnUntraced(function* (team: SeedTeam) {
   const rows: SeedRowValue[][] = [];
   const templates: SeededTemplate[] = [];
   // Before the first participant enrols and is invited (around 305 days
@@ -425,8 +421,7 @@ async function seedMessageTemplates(
   }
   push('prompt', 'email', 'es');
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'message_templates',
     [
       'id',
@@ -445,7 +440,7 @@ async function seedMessageTemplates(
     rows,
   );
   return templates;
-}
+});
 
 type DeliveryOutcome =
   | 'sent'
@@ -467,13 +462,12 @@ function outcomeFor(index: number): DeliveryOutcome {
  * with: every delivery to an opted-out address is suppressed, and every
  * suppressed delivery's blind index has a matching opt-out row.
  */
-async function seedDeliveries(
-  client: pg.PoolClient,
+const seedDeliveries = Effect.fnUntraced(function* (
   team: SeedTeam,
   study: SeedStudy,
   templates: SeededTemplate[],
   occurrences: SeededOccurrence[],
-): Promise<void> {
+) {
   const optedOut = study.participants.slice(0, 2);
   // When each opted out: a delivery enqueued before that moment went out
   // normally, and only the ones after it are suppressed, so the outbox and
@@ -656,8 +650,7 @@ async function seedDeliveries(
     });
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'message_deliveries',
     [
       'id',
@@ -682,8 +675,7 @@ async function seedDeliveries(
     ],
     deliveryRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'message_delivery_events',
     [
       'id',
@@ -698,23 +690,21 @@ async function seedDeliveries(
     ],
     eventRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'participant_contact_optouts',
     ['team_id', 'channel', 'recipient_address', 'source', 'opted_out_at'],
     optOutRows,
   );
-}
+});
 
-export async function seedScheduling(
-  client: pg.PoolClient,
+export const seedScheduling = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
-): Promise<void> {
-  const templates = await seedMessageTemplates(client, team);
+) {
+  const templates = yield* seedMessageTemplates(team);
   const live = studies.find((study) => study.key === 'live');
   if (live === undefined) return;
-  const schedule = await seedSchedule(client, team, live);
-  const occurrences = await seedOccurrences(client, team, live, schedule);
-  await seedDeliveries(client, team, live, templates, occurrences);
-}
+  const schedule = yield* seedSchedule(team, live);
+  const occurrences = yield* seedOccurrences(team, live, schedule);
+  yield* seedDeliveries(team, live, templates, occurrences);
+});

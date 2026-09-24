@@ -1,5 +1,5 @@
 // The study sidebar's counts end to end: study id → the team resolved from the
-// caller's memberships (`requireStudy`) → TenantDb → one statement over the
+// caller's memberships (`requireStudy`) → TenantScope → one statement over the
 // study's own rows.
 //
 // It runs against the seeded corpus rather than hand-built fixtures because
@@ -9,32 +9,33 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
-import type { Context } from 'effect';
-import type pg from 'pg';
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { StudyId } from '@codaco/studio-contract/schema/ids';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { seed } from '../../scripts/seed/seed.ts';
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
-import { seed } from '../db/seed.ts';
+import {
+  TenantScope,
+  Transaction,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import type { StudioServices } from '../rpc/deps.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-} from './support/postgres.ts';
+  openTestDatabase,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
 import { testKeyring } from './support/secrets.ts';
-
-const db = await reachableDb();
 
 // Seeding the whole model takes seconds; this file seeds once, in beforeAll.
 const SEEDING_TIMEOUT_MS = 180_000;
@@ -51,26 +52,13 @@ const PRINCIPAL: SessionPrincipal = {
 
 type SeededStudy = { id: string; teamId: string; protocolId: string | null };
 
-/** One scalar, as its own statement: the oracle never reuses the handler's SQL. */
-async function count(
-  pool: pg.Pool,
-  sql: string,
-  values: unknown[],
-): Promise<number> {
-  const result = await pool.query<{ n: number }>(sql, values);
-  return result.rows[0]?.n ?? -1;
-}
-
-describe.skipIf(!db)('studies.counts', () => {
-  let dispose: () => Promise<void>;
-  let ownerPool: pg.Pool;
-  let appPool: pg.Pool;
+describe.skipIf(!testDb)('studies.counts', () => {
   /**
-   * The Effect data layer over this scratch schema, which is what every
-   * `/rpc` handler runs its reads and writes on. Held beside the pool rather
+   * The scratch schema and the Effect data layer over it, which is what every
+   * `/rpc` handler runs its reads and writes on. Shared by every Studio rather
    * than built per Studio: the clients underneath it are connection pools.
    */
-  let services: Context.Context<StudioServices>;
+  let database: TestDatabaseRuntime;
   /** An Admin of the study's team: sees every study the team owns. */
   let client: RpcTestClient;
   /** A plain Member of the same team holding no study-role grant. */
@@ -81,37 +69,41 @@ describe.skipIf(!db)('studies.counts', () => {
   let collectingStudy: SeededStudy;
   let otherTeamStudy: SeededStudy;
 
+  /** One scalar, as its own statement: the oracle never reuses the handler's SQL. */
+  const count = async (sql: string, values: unknown[]): Promise<number> => {
+    const rows = await database.run(ownerRows<{ n: number }>(sql, values));
+    return rows[0]?.n ?? -1;
+  };
+
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    ownerPool = scratch.pool;
-    appPool = scratch.app;
-    services = await scratch.services();
-    await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool, { secrets: testKeyring() });
+    database = await openTestDatabase();
+    await database.run(seed({ secrets: testKeyring() }));
 
     // The managed study with the most collected sessions, so every count under
     // test is non-zero: an assertion that 0 equals 0 would hold however wrong
     // the query is, and only a managed study enrols participants at all. Its
     // team is the one the caller belongs to.
-    const busiest = await scratch.pool.query<SeededStudy>(
-      `select s.id, s.team_id as "teamId", s.protocol_id as "protocolId"
+    const busiest = await database.run(
+      ownerRows<SeededStudy>(
+        `select s.id, s.team_id as "teamId", s.protocol_id as "protocolId"
        from studies s
        where s.participation_mode = 'managed'
        order by (select count(*) from interview_sessions i
                   where i.study_id = s.id) desc, s.id
        limit 1`,
+      ),
     );
-    collectingStudy = busiest.rows[0]!;
+    collectingStudy = busiest[0]!;
     memberTeamId = collectingStudy.teamId;
 
-    const other = await scratch.pool.query<SeededStudy>(
-      `select s.id, s.team_id as "teamId", s.protocol_id as "protocolId"
-       from studies s where s.team_id <> $1 order by s.id limit 1`,
-      [memberTeamId],
+    const other = await database.run(
+      ownerRows<SeededStudy>(
+        `select s.id, s.team_id as "teamId", s.protocol_id as "protocolId"
+         from studies s where s.team_id <> $1 order by s.id limit 1`,
+        [memberTeamId],
+      ),
     );
-    otherTeamStudy = other.rows[0]!;
+    otherTeamStudy = other[0]!;
 
     // The same person under two team roles: the visibility rule (#1257) is a
     // property of the role, and it is the role that decides whether a count
@@ -127,22 +119,22 @@ describe.skipIf(!db)('studies.counts', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth: memberOf('admin'),
-        pool: scratch.app,
-        services,
+        pool: database.appPool,
+        services: database.services,
       }),
     );
     ungrantedClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: memberOf('member'),
-        pool: scratch.app,
-        services,
+        pool: database.appPool,
+        services: database.services,
       }),
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: stubAuthService(),
-        pool: scratch.app,
-        services,
+        pool: database.appPool,
+        services: database.services,
       }),
     );
   }, SEEDING_TIMEOUT_MS);
@@ -151,7 +143,7 @@ describe.skipIf(!db)('studies.counts', () => {
     await client.dispose();
     await ungrantedClient.dispose();
     await anonymousClient.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('counts the rows of that study, recomputed one table at a time', async () => {
@@ -166,23 +158,19 @@ describe.skipIf(!db)('studies.counts', () => {
     // run twice.
     expect(counts).toEqual({
       versions: await count(
-        ownerPool,
         `select count(*)::int as n from protocol_versions
          where protocol_id = $1 and team_id = $2`,
         [collectingStudy.protocolId, memberTeamId],
       ),
       participants: await count(
-        ownerPool,
         `select count(*)::int as n from participants where study_id = $1`,
         [collectingStudy.id],
       ),
       waves: await count(
-        ownerPool,
         `select count(*)::int as n from study_waves where study_id = $1`,
         [collectingStudy.id],
       ),
       sessions: await count(
-        ownerPool,
         `select count(*)::int as n from interview_sessions where study_id = $1`,
         [collectingStudy.id],
       ),
@@ -206,17 +194,14 @@ describe.skipIf(!db)('studies.counts', () => {
     // on `versions` while silently reporting the team's totals for the other
     // three. These are the totals it must NOT return.
     const teamParticipants = await count(
-      ownerPool,
       `select count(*)::int as n from participants where team_id = $1`,
       [memberTeamId],
     );
     const teamSessions = await count(
-      ownerPool,
       `select count(*)::int as n from interview_sessions where team_id = $1`,
       [memberTeamId],
     );
     const teamWaves = await count(
-      ownerPool,
       `select count(*)::int as n from study_waves where team_id = $1`,
       [memberTeamId],
     );
@@ -230,9 +215,16 @@ describe.skipIf(!db)('studies.counts', () => {
     // nothing is published against it. Zero is the true answer, and the row
     // must still be found — an absent study and an empty one are different.
     const studyId = StudyId.make(randomUUID());
-    await createTenantDb(appPool, memberTeamId).query(
-      `insert into studies (id, team_id, name) values ($1, $2, $3)`,
-      [studyId, memberTeamId, 'Study without a protocol line'],
+    await database.run(
+      TenantScope.open(
+        unsafeMakeTeamAccess(memberTeamId, 'owner'),
+        Effect.flatMap(Transaction, ({ sql }) =>
+          sql.unsafe(
+            `insert into studies (id, team_id, name) values ($1, $2, $3)`,
+            [studyId, memberTeamId, 'Study without a protocol line'],
+          ),
+        ),
+      ),
     );
 
     await expect(
@@ -252,7 +244,7 @@ describe.skipIf(!db)('studies.counts', () => {
     // is asserted first, so the refusal below is about tenancy rather than a
     // mistyped fixture.
     await expect(
-      count(ownerPool, `select count(*)::int as n from studies where id = $1`, [
+      count(`select count(*)::int as n from studies where id = $1`, [
         otherTeamStudy.id,
       ]),
     ).resolves.toBe(1);

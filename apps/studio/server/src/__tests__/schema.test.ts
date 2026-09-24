@@ -5,6 +5,8 @@ import { Effect, Layer } from 'effect';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
 import {
   applySchema,
   computeSchemaFingerprint,
@@ -33,14 +35,17 @@ import { installJobSchemaEffect } from '../jobs/install.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { jobSchemaGrantsSql, jobSchemaSql } from '../jobs/schema.ts';
 import {
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  refusalOf,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
+import {
   createScratchDatabase,
-  createScratchSchema,
   enqueueAsApplication,
-  provisionScratchSchema,
-  reachableDb,
 } from './support/postgres.ts';
-
-const db = await reachableDb();
 
 function readManifestScripts(): Record<string, string> {
   const manifest = JSON.parse(
@@ -407,12 +412,30 @@ async function withScratch<
   // database's own URL.
   run: (pool: pg.Pool, scratch: Scratch) => Promise<void>,
 ): Promise<void> {
-  if (!db) throw new Error('unreachable: probe guaranteed db');
-  const scratch = await make(db);
+  if (!testDb) throw new Error('unreachable: probe guaranteed db');
+  const scratch = await make(testDb);
   try {
     await run(scratch.pool, scratch);
   } finally {
     await scratch.dispose();
+  }
+}
+
+/**
+ * A scratch schema of its own for one case, dropped afterwards.
+ *
+ * `checkSchema` is the node-postgres verdict, so it is read through the
+ * harness's application-role pool — the role the schema gate reads it as —
+ * while fixtures and oracles go through the owner.
+ */
+async function withTestDatabase(
+  run: (database: TestDatabaseRuntime) => Promise<void>,
+): Promise<void> {
+  const database = await openTestDatabase();
+  try {
+    await run(database);
+  } finally {
+    await database.dispose();
   }
 }
 
@@ -448,18 +471,18 @@ async function nativeSchemaCatalogue(
 
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
-describe.skipIf(!db)('schema verification', () => {
+describe.skipIf(!testDb)('schema verification', () => {
   it('reads current on a provisioned schema carrying every table', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
+    await withTestDatabase(async (database) => {
+      expect(await checkSchema(database.appPool)).toEqual({ kind: 'current' });
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
-
-      const tables = await pool.query<{ table_name: string }>(
-        `select table_name from information_schema.tables
-         where table_schema = current_schema()`,
+      const tables = await database.run(
+        ownerRows<{ table_name: string }>(
+          `select table_name from information_schema.tables
+           where table_schema = current_schema()`,
+        ),
       );
-      expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
+      expect(tables.map((r) => r.table_name).toSorted()).toEqual([
         'account',
         'api_tokens',
         'asset_references',
@@ -524,21 +547,21 @@ describe.skipIf(!db)('schema verification', () => {
         'webhook_subscriptions',
       ]);
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
-        tables.rows
+        tables
           .map((r) => r.table_name)
           .filter((name) => name !== 'schemaFingerprint')
           .toSorted(),
       );
 
-      const recorded = await pool.query('select * from "schemaFingerprint"');
-      expect(recorded.rowCount).toBe(1);
+      const recorded = await database.run(
+        ownerRows('select * from "schemaFingerprint"'),
+      );
+      expect(recorded).toHaveLength(1);
     });
   });
 
   it('leaves every revoked table privilege revoked once provisioned', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
-
+    await withTestDatabase(async (database) => {
       // Table-level revocations only; a column-level GRANT that re-admits one
       // column after them does not make the table privilege held again.
       const revocations = [
@@ -550,12 +573,14 @@ describe.skipIf(!db)('schema verification', () => {
       for (const [, privileges, table, roles] of revocations) {
         for (const privilege of privileges!.split(',').map((p) => p.trim())) {
           for (const role of roles!.split(',').map((r) => r.trim())) {
-            const held = await pool.query<{ held: boolean }>(
-              `select has_table_privilege($1, $2, $3) as held`,
-              [role, table, privilege],
+            const held = await database.run(
+              ownerRows<{ held: boolean }>(
+                `select has_table_privilege($1, $2, $3) as held`,
+                [role, table, privilege],
+              ),
             );
             expect(
-              held.rows[0]?.held,
+              held[0]?.held,
               `${role} still holds ${privilege} on ${table}`,
             ).toBe(false);
           }
@@ -570,15 +595,15 @@ describe.skipIf(!db)('schema verification', () => {
   // rather than by rebuilding the name here, because that field is what a
   // suite builds a client against.
   it('provisions the job schema beside the scratch schema', async () => {
-    await withScratch(createScratchSchema, async (pool, scratch) => {
-      await provisionScratchSchema(pool);
-
-      const tables = await pool.query<{ table_name: string }>(
-        `select table_name from information_schema.tables
-          where table_schema = $1 order by 1`,
-        [scratch.jobSchema],
+    await withTestDatabase(async (database) => {
+      const tables = await database.run(
+        ownerRows<{ table_name: string }>(
+          `select table_name from information_schema.tables
+            where table_schema = $1 order by 1`,
+          [database.harness.jobSchema],
+        ),
       );
-      const names = tables.rows.map((row) => row.table_name);
+      const names = tables.map((row) => row.table_name);
       expect(names).toContain('jobs');
       expect(names).toContain('job_schedules');
     });
@@ -589,19 +614,19 @@ describe.skipIf(!db)('schema verification', () => {
   // client — and the only thing keeping them the same schema is that they
   // send the same split statements. Proved by installing through the Effect path into a sibling
   // and comparing the catalogue, because a difference here would not surface
-  // until a worker claimed a job against a table it had created itself.
+  // until a worker claimed a job against a table it had created itself. In a
+  // scratch database, because `applySchema` is the node-postgres installer
+  // and the scratch-schema harness installs its sibling through the Effect
+  // driver.
   it('installs the same schema through the Effect path', async () => {
-    await withScratch(createScratchSchema, async (pool, scratch) => {
-      await provisionScratchSchema(pool);
-      const throughNodePostgres = await nativeSchemaCatalogue(
-        pool,
-        scratch.jobSchema,
-      );
+    await withScratch(createScratchDatabase, async (pool, scratch) => {
+      await applySchema(pool);
+      const throughNodePostgres = await nativeSchemaCatalogue(pool, JOB_SCHEMA);
       // Not merely equal: both non-empty, so a catalogue query that returned
       // nothing would not read as agreement.
       expect(throughNodePostgres.length).toBeGreaterThan(0);
 
-      const sibling = `${scratch.jobSchema}_effect`;
+      const sibling = `${JOB_SCHEMA}_effect`;
       try {
         await Effect.runPromise(
           MaintenanceScope.open(installJobSchemaEffect(sibling)).pipe(
@@ -611,7 +636,10 @@ describe.skipIf(!db)('schema verification', () => {
             Effect.provide(
               Layer.effect(MaintenanceDatabase, OwnerDatabase).pipe(
                 Layer.provide(
-                  OwnerDatabase.layer({ url: db!.url, maxConnections: 2 }),
+                  OwnerDatabase.layer({
+                    url: scratch.db.url,
+                    maxConnections: 2,
+                  }),
                 ),
               ),
             ),
@@ -628,19 +656,38 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('reports a never-provisioned database as absent', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
+    await withTestDatabase(async (database) => {
+      // The harness provisions on open, so the schema is emptied back to the
+      // state it was created in before the pool reads it.
+      const { schema } = database.harness;
+      await database.run(ownerAffected(`drop schema ${schema} cascade`));
+      await database.run(ownerAffected(`create schema ${schema}`));
+      await database.run(
+        ownerAffected(`grant usage on schema ${schema} to ${TENANT_ROLES.app}`),
+      );
+      // A schema the pool could not see into would read as absent too.
+      expect(
+        await database.run(
+          ownerRows<{ usable: boolean }>(
+            `select has_schema_privilege($1, $2, 'USAGE') as usable`,
+            [TENANT_ROLES.app, schema],
+          ),
+        ),
+      ).toEqual([{ usable: true }]);
+
+      expect(await checkSchema(database.appPool)).toEqual({ kind: 'absent' });
     });
   });
 
   it('detects a database built from different SQL', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query('update "schemaFingerprint" set "fingerprint" = $1', [
-        'deadbeef'.repeat(8),
-      ]);
+    await withTestDatabase(async (database) => {
+      await database.run(
+        ownerAffected('update "schemaFingerprint" set "fingerprint" = $1', [
+          'deadbeef'.repeat(8),
+        ]),
+      );
 
-      const state = await checkSchema(pool);
+      const state = await checkSchema(database.appPool);
       expect(state.kind).toBe('stale');
       expect(state).toMatchObject({
         reason: 'mismatch',
@@ -650,11 +697,10 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('refuses a database carrying the tables with no fingerprint', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query('drop table "schemaFingerprint"');
+    await withTestDatabase(async (database) => {
+      await database.run(ownerAffected('drop table "schemaFingerprint"'));
 
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkSchema(database.appPool)).toMatchObject({
         kind: 'stale',
         reason: 'unstamped',
         found: null,
@@ -663,11 +709,10 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('treats an empty fingerprint table as unstamped', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query('delete from "schemaFingerprint"');
+    await withTestDatabase(async (database) => {
+      await database.run(ownerAffected('delete from "schemaFingerprint"'));
 
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkSchema(database.appPool)).toMatchObject({
         kind: 'stale',
         reason: 'unstamped',
       });
@@ -675,14 +720,13 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('refuses an unstamped database that kept only some of the tables', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
-      await pool.query('drop table "schemaFingerprint"');
+    await withTestDatabase(async (database) => {
+      await database.run(ownerAffected('drop table "schemaFingerprint"'));
       // Leaves "verification" and "rateLimit" behind: a database no longer
       // recognisable by the "user" table alone, but still not ours to stamp.
-      await pool.query('drop table "user" cascade');
+      await database.run(ownerAffected('drop table "user" cascade'));
 
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkSchema(database.appPool)).toMatchObject({
         kind: 'stale',
         reason: 'unstamped',
       });
@@ -693,35 +737,36 @@ describe.skipIf(!db)('schema verification', () => {
 // The per-user UI-language preference (2026-09-04 localization design §5.2):
 // nullable — NULL means "no preference; negotiate from the browser" — with
 // the house 2–35 character bound on non-null tags.
-describe.skipIf(!db)('the user locale column', () => {
+describe.skipIf(!testDb)('the user locale column', () => {
   it('accepts NULL and plausible tags, refusing out-of-range lengths', async () => {
-    await withScratch(createScratchSchema, async (pool) => {
-      await provisionScratchSchema(pool);
+    await withTestDatabase(async (database) => {
       const insert = (id: string, locale: string | null) =>
-        pool.query(
+        ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified", locale)
            VALUES ($1, $1, $1 || '@example.org', true, $2)`,
           [id, locale],
         );
 
-      await insert('locale-null', null);
-      await insert('locale-en', 'en');
-      await insert('locale-en-gb', 'en-GB');
+      await database.run(insert('locale-null', null));
+      await database.run(insert('locale-en', 'en'));
+      await database.run(insert('locale-en-gb', 'en-GB'));
       // The widest tag the registry-shaped bound admits.
-      await insert('locale-max', 'a'.repeat(35));
-      await expect(insert('locale-short', 'e')).rejects.toMatchObject({
-        constraint: 'user_locale_length_check',
-      });
-      await expect(insert('locale-long', 'a'.repeat(36))).rejects.toMatchObject(
-        { constraint: 'user_locale_length_check' },
-      );
+      await database.run(insert('locale-max', 'a'.repeat(35)));
+      expect(
+        await database.run(refusalOf(insert('locale-short', 'e'))),
+      ).toMatchObject({ constraint: 'user_locale_length_check' });
+      expect(
+        await database.run(refusalOf(insert('locale-long', 'a'.repeat(36)))),
+      ).toMatchObject({ constraint: 'user_locale_length_check' });
 
       // The accepted values actually landed, distinguishably.
-      const stored = await pool.query<{ id: string; locale: string | null }>(
-        `select id, locale from "user"
-         where id like 'locale-%' order by id`,
+      const stored = await database.run(
+        ownerRows<{ id: string; locale: string | null }>(
+          `select id, locale from "user"
+           where id like 'locale-%' order by id`,
+        ),
       );
-      expect(stored.rows).toEqual([
+      expect(stored).toEqual([
         { id: 'locale-en', locale: 'en' },
         { id: 'locale-en-gb', locale: 'en-GB' },
         { id: 'locale-max', locale: 'a'.repeat(35) },
@@ -732,7 +777,7 @@ describe.skipIf(!db)('the user locale column', () => {
 });
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
-describe.skipIf(!db)('schema application', () => {
+describe.skipIf(!testDb)('schema application', () => {
   it('keys accounts on (providerId, accountId), uniquely', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);

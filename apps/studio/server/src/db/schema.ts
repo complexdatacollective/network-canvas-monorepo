@@ -281,8 +281,9 @@ export function schemaProblemMessage(
  * available at any price. The Effect pair below is what the deployed
  * `studio-api migrate` runs, because that process carries no `pg` at all.
  *
- * They read and write the same two statements, and `db/__tests__/migrate.test.ts`
- * holds them to the same verdicts.
+ * They read and write the same two statements. `db/__tests__/migrate.test.ts`
+ * applies through the Effect pair and reads the result back through the
+ * node-postgres `checkSchema`, so both are held to the same databases.
  */
 export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
   client: SqlClient.SqlClient,
