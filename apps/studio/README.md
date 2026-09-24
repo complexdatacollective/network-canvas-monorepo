@@ -594,14 +594,15 @@ through composite foreign keys (`(study_id, team_id)`, and
 same study as its siblings), and section
 documents deduplicate **per team**: identical content in two teams is two rows,
 because a shared row would leak content across the boundary. The data layer
-only speaks through a `TenantDb` (`@codaco/studio-sync/tenant`), a pool handle
-pinned to one team: the `ProtocolStore` and `SyncServer` constructors take one
-instead of a pool, every statement carries an explicit team predicate, and
-every statement runs inside a transaction that stamps `app.team_id` as a
-transaction-local GUC. A team's id enters a request explicitly — `requireTeam`
-in `server/src/rpc.ts` resolves the procedure input's `teamId` against the
-caller's membership (`AuthService.getMembership`) and yields the pinned
-`TenantDb`; the session's active team is never the authorization input.
+reaches a team's rows only inside a `TenantScope` transaction
+(`server/src/db/tenant.ts`), which stamps `app.team_id` as a transaction-local
+GUC before any statement in its body runs; every statement also carries an
+explicit team predicate. `TenantScope.open` takes a `TeamAccess` — a branded
+token (`@codaco/studio-sync/tenant`) minted only by the few modules that have
+just checked a membership — never a bare team id. A team's id enters a request
+explicitly — `openTeam` in `server/src/rpc/team-scope.ts` resolves the
+procedure input's `teamId` against the caller's membership and yields the
+`TeamAccess`; the session's active team is never the authorization input.
 
 Beneath that, Postgres row-level security enforces the same boundary
 (`@codaco/studio-sync/rls`). Every tenant table carries a `team_isolation`
@@ -619,7 +620,8 @@ collection is the one deliberately cross-team caller: it runs on a
 `studio_maintenance` pool — the one role the policies admit across every
 team, a policy clause rather than a `BYPASSRLS` role because only a superuser
 can create one of those and managed Postgres offers none — enumerates tenants
-from the swept tables, sweeps each under that team's `TenantDb`, and refuses
+from the swept tables, sweeps each in a `MaintenanceScope.openTenant`
+transaction stamped with that team, and refuses
 any other role, under which it would report a clean sweep without having
 visited anyone. Every background job runs that way: the worker process
 (see [Background work](#background-work)) runs protocol-store garbage

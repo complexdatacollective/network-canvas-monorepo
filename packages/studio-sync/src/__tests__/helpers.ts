@@ -26,7 +26,7 @@ import {
   type ResumeResult,
   type SectionValidator,
 } from '../server.ts';
-import { createTenantDb, type TenantDb, Transaction } from '../tenant.ts';
+import { Transaction } from '../tenant.ts';
 import { CI, PGPORT } from './test-env.ts';
 
 export const TEST_TEAM_ID = 'team-test';
@@ -257,7 +257,6 @@ export type SyncHarness = {
   db: pg.Pool;
   app: pg.Pool;
   maintenance: pg.Pool;
-  tenantDb: TenantDb;
   /** Opens one team-stamped transaction and runs the effect inside it. */
   run: RunTenant;
   server: SyncFacade;
@@ -305,7 +304,6 @@ export async function makeServer(
     db,
     app,
     maintenance,
-    tenantDb: createTenantDb(app, TEST_TEAM_ID),
     run,
     server: makeSyncFacade(run, ttlMs === undefined ? {} : { ttlMs }),
     dispose: async () => {

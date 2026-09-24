@@ -384,10 +384,6 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the readiness probe’s `select 1` on the process’s node-postgres pool',
   },
-  [`${SYNC}/tenant.ts`]: {
-    count: 4,
-    why: '`createTenantDb`, the node-postgres tenant transaction; no server code opens one any more, and its last consumer is studio-sync’s own rls suite',
-  },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,
     why: 'the reachability probe and the scratch databases the process suites point child processes at',

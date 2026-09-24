@@ -2,9 +2,10 @@
 // production bundle beside schema.ts: import nothing beyond drizzle-orm.
 //
 // Every tenant table carries one permissive policy: a row is visible, and may
-// be written, only when its team_id equals the transaction-local GUC that
-// TenantDb.transaction() stamps (tenant.ts) — or when the current role is the
-// maintenance role, which is how garbage collection visits every tenant.
+// be written, only when its team_id equals the transaction-local GUC that a
+// tenant transaction stamps (the server's TenantScope) — or when the current
+// role is the maintenance role, which is how garbage collection visits every
+// tenant.
 //
 // The policy alone is decorative for a table owner (owners bypass RLS unless
 // the table is FORCEd) and for a superuser (who bypasses it regardless). The

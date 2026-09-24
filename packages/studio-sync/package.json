@@ -33,7 +33,6 @@
     "@noble/hashes": "^2.3.0",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
-    "pg": "^8.23.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -42,6 +41,7 @@
     "@types/pg": "^8.20.4",
     "drizzle-kit": "catalog:",
     "fast-check": "^4.9.0",
+    "pg": "^8.23.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

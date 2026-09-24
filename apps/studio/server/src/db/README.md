@@ -266,8 +266,7 @@ schema, which drizzle does not model — and each one is named in
 `__tests__/raw-sql-policy.test.ts` with its reason. Two groups on that list are
 there for history rather than necessity: the queue handlers #1957 ported from
 their pg-boss originals text for text, and the node-postgres residue (the
-scripts' schema helpers, the readiness probe, `createTenantDb`) that stage 6
-retires.
+scripts' schema helpers, the readiness probe) that stage 6 retires.
 Two rules for the builder: **every write whose outcome is inspected ends in
 `.returning()`** (without it the driver's result object comes back typed as a
 row array, and `result[0]` is `undefined`), and **every builder span applies
