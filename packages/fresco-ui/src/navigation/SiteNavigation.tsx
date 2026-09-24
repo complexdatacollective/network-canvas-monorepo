@@ -623,20 +623,20 @@ export default function SiteNavigation({
       rel: documentationRootHref.startsWith('/') ? undefined : 'noreferrer',
     },
     {
-      id: 'protocolGallery',
-      label: labels.protocolGallery,
-      href: destinations.protocolGallery,
-      active: activeItemId === 'protocolGallery',
-      target: '_blank',
-      rel: 'noreferrer',
-    },
-    {
       id: 'updates',
       label: labels.updates,
       href: updatesHref,
       active: activeItemId === 'updates',
       target: updatesHref.startsWith('/') ? undefined : '_blank',
       rel: updatesHref.startsWith('/') ? undefined : 'noreferrer',
+    },
+    {
+      id: 'protocolGallery',
+      label: labels.protocolGallery,
+      href: destinations.protocolGallery,
+      active: activeItemId === 'protocolGallery',
+      target: '_blank',
+      rel: 'noreferrer',
     },
   ];
   const softwareLinks: SoftwareLink[] = (
