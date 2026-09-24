@@ -84,7 +84,7 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
     <main className="relative isolate">
       <HomepagePageBackground />
       <div>
-        <Header />
+        <Header activeItemId="updates" />
         <div
           id={SITE_NAVIGATION_SKIP_TARGET_ID}
           className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center"

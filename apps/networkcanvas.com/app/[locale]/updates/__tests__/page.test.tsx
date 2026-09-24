@@ -1,4 +1,10 @@
-import { act, cleanup, screen, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  within,
+} from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -60,11 +66,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function renderPage() {
+async function renderPage(locale: 'en-US' | 'es' = 'en-US') {
   const page = await UpdatesPage({
-    params: Promise.resolve({ locale: 'en-US' }),
+    params: Promise.resolve({ locale }),
   });
-  renderWithIntl(page, 'en-US');
+  renderWithIntl(page, locale);
+}
+
+function entryTitles() {
+  return screen
+    .queryAllByRole('heading', { level: 2, hidden: true })
+    .filter((heading) => heading.querySelector('button'))
+    .map(
+      (heading) => heading.querySelector('time')?.previousSibling?.textContent,
+    );
 }
 
 // jsdom cannot compute the styles of the accordion's animated panels, so role
@@ -158,6 +173,65 @@ describe('updates page', () => {
         hidden: true,
       }),
     ).toHaveAttribute('href', '/en-US/summer-2026-update');
+  });
+
+  it('narrows the list to updates that match every search word', async () => {
+    const [newest, older] = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'schema  PROGRESSIVE' },
+    });
+
+    expect(entryTitles()).toEqual([older!.title]);
+    expect(updateTrigger(older!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('1 of 2 updates')).toBeInTheDocument();
+    expect(entryTitles()).not.toContain(newest!.title);
+  });
+
+  it('ignores accents when searching', async () => {
+    const [newest] = await loadUpdates('es');
+    await renderPage('es');
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'LOCALIZACION' },
+    });
+
+    expect(entryTitles()).toEqual([newest!.title]);
+  });
+
+  it('does not match link destinations', async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'community.networkcanvas' },
+    });
+
+    expect(entryTitles()).toHaveLength(0);
+    expect(screen.getByText('No updates found')).toBeInTheDocument();
+  });
+
+  it('restores every update when the search is cleared', async () => {
+    const updates = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'no such words anywhere' },
+    });
+    expect(screen.getByText('No updates found')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Clear search', hidden: true }),
+    );
+
+    expect(entryTitles()).toEqual(updates.map((update) => update.title));
+    expect(updateTrigger(updates[0]!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 
   it('generates Spanish metadata and language alternates', async () => {
