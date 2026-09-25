@@ -1,6 +1,10 @@
+import { Effect } from 'effect';
+
+import { OwnerDatabase } from '../src/db/client.ts';
 import { createOwnerPool } from '../src/db/pool.ts';
+import { OwnerScope } from '../src/db/tenant.ts';
 import { readEnv } from '../src/env.ts';
-import { verifySecretKeysOrExit } from '../src/secrets/boot.ts';
+import { verifySecretKeysOrExit } from '../src/secrets/services.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
@@ -46,7 +50,19 @@ try {
   // is part of it, and on every run, because an ownerless instance whose token
   // was lost is recovered by running this again. An owned instance issues
   // nothing and prints nothing.
-  printBootstrapToken(await issueBootstrapToken(pool), env.auth?.baseUrl);
+  // The apply above stays on node-postgres — one multi-command simple query is
+  // what makes it one transaction — but the token is issued through the same
+  // owner scope the `migrate` command uses, so both lanes arm an instance with
+  // exactly the same statements under exactly the same identity.
+  printBootstrapToken(
+    await Effect.runPromise(
+      OwnerScope.open(issueBootstrapToken()).pipe(
+        Effect.provide(OwnerDatabase.layer({ url: env.db.url })),
+        Effect.scoped,
+      ),
+    ),
+    env.auth?.baseUrl,
+  );
 } finally {
   await pool.end();
 }

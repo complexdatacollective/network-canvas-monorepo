@@ -3,17 +3,32 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
+import type { Effect } from 'effect';
+import { ManagedRuntime } from 'effect';
+
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { Database } from '../src/db/client.ts';
 import { createOwnerPool, createPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
+import {
+  TenantScope,
+  type Transaction,
+  unsafeMakeTeamAccess,
+} from '../src/db/tenant.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
-import { ProtocolStore } from '../src/protocol/store.ts';
+import {
+  createProtocol,
+  diffVersions,
+  getDraftDocument,
+  getDraftSections,
+  getVersionSections,
+  publishDraft,
+} from '../src/protocol/store.ts';
 import { createSecretsCipher } from '../src/secrets/cipher.ts';
 import { applySchema } from './apply.ts';
 import { loadEnvFiles } from './load-env-files.ts';
@@ -143,6 +158,20 @@ const url = new URL(env.db.url);
 const owner = createOwnerPool(env.db);
 const pool = createPool(env.db);
 
+const TEAM_ID = 'demo-team';
+
+// The store is an Effect over `@effect/sql-pg` now, and every one of its
+// functions requires the caller's `Transaction`. This demo has no command
+// layer to open one, so it opens a tenant scope per call — which is exactly
+// what the `ProtocolStore` it replaced did per method.
+const runtime = ManagedRuntime.make(
+  Database.layer({ url: env.db.url, applicationName: 'studio-protocol-demo' }),
+);
+// The membership a command proves in production; a demo has no command.
+const access = unsafeMakeTeamAccess(TEAM_ID, 'owner');
+const inTeam = <A, E>(body: Effect.Effect<A, E, Transaction>): Promise<A> =>
+  runtime.runPromise(TenantScope.open(access, body));
+
 try {
   const schema = await checkSchema(owner);
   if (schema.kind === 'stale') {
@@ -158,11 +187,11 @@ try {
   );
 
   await pool.query(
-    `INSERT INTO teams (id, name, slug) VALUES ('demo-team', 'Demo', 'demo-team')
+    `INSERT INTO teams (id, name, slug) VALUES ($1, 'Demo', $1)
      ON CONFLICT (id) DO NOTHING`,
+    [TEAM_ID],
   );
-  const tenantDb = createTenantDb(pool, 'demo-team');
-  const store = new ProtocolStore(tenantDb, createSecretsCipher(env.secrets));
+  const cipher = createSecretsCipher(env.secrets);
 
   // ── 1 ──────────────────────────────────────────────────────────────────
   step(1, 'The protocol document');
@@ -180,8 +209,10 @@ try {
 
   // ── 2 ──────────────────────────────────────────────────────────────────
   step(2, 'Sectionized into a draft');
-  const { protocolId, draftId } = await store.createProtocol({ protocol });
-  const created = await store.getDraftSections(draftId);
+  const { protocolId, draftId } = await inTeam(
+    createProtocol(TEAM_ID, cipher, { protocol }),
+  );
+  const created = await inTeam(getDraftSections(TEAM_ID, draftId));
   const sectionIds = Object.keys(created.sections);
   console.log(`  protocol  ${protocolId}`);
   console.log(`  draft     ${draftId}`);
@@ -216,7 +247,7 @@ try {
 
   // ── 3 ──────────────────────────────────────────────────────────────────
   step(3, 'Assembled back — the contract every consumer sees');
-  const assembled = await store.getDraftDocument(draftId);
+  const assembled = await inTeam(getDraftDocument(TEAM_ID, draftId));
   console.log(
     `  identical to the input document: ${
       canonicalize(assembled) === canonicalize(protocol) ? 'yes' : 'NO'
@@ -225,12 +256,14 @@ try {
 
   // ── 4 ──────────────────────────────────────────────────────────────────
   step(4, 'Published');
-  const first = await store.publishDraft({ draftId, label: 'demo v1' });
+  const first = await inTeam(
+    publishDraft(TEAM_ID, { draftId, label: 'demo v1' }),
+  );
   if (first.status !== 'published') {
     console.error(`  expected a publish, got ${first.status}`);
     process.exit(1);
   }
-  const v1 = await store.getVersionSections(first.versionId);
+  const v1 = await inTeam(getVersionSections(TEAM_ID, first.versionId));
   console.log(
     `  version ${first.versionNumber} · hash ${short(first.versionHash)} · ${Object.keys(v1.sectionHashes).length} sections pinned`,
   );
@@ -266,19 +299,19 @@ try {
 
   // Live section edits belong to the sync engine's lease path, which has no
   // client here, so the edit is made structurally instead.
-  await removeStage(tenantDb, { draftId, stageId: stages.stageId });
-  const advanced = await addStage(tenantDb, {
-    draftId,
-    stage: edited,
-    index: stages.index,
-  });
-  const head = await store.getDraftSections(draftId);
+  await inTeam(removeStage(TEAM_ID, { draftId, stageId: stages.stageId }));
+  const advanced = await inTeam(
+    addStage(TEAM_ID, { draftId, stage: edited, index: stages.index }),
+  );
+  const head = await inTeam(getDraftSections(TEAM_ID, draftId));
   const pinnedHashes = new Set(Object.values(v1.sectionHashes));
   const shared = Object.values(head.sectionHashes).filter((hash) =>
     pinnedHashes.has(hash),
   ).length;
 
-  const second = await store.publishDraft({ draftId, label: 'demo v2' });
+  const second = await inTeam(
+    publishDraft(TEAM_ID, { draftId, label: 'demo v2' }),
+  );
   if (second.status !== 'published') {
     console.error(`  expected a publish, got ${second.status}`);
     process.exit(1);
@@ -298,11 +331,14 @@ try {
 
   // ── 6 ──────────────────────────────────────────────────────────────────
   step(6, 'Structural diff, in plaintext');
-  const changes = await store.diffVersions(first.versionId, second.versionId);
+  const changes = await inTeam(
+    diffVersions(TEAM_ID, first.versionId, second.versionId),
+  );
   const labels = new Map<string, string>();
-  for (const [id, doc] of Object.entries(
-    (await store.getVersionSections(second.versionId)).sections,
-  )) {
+  const secondSections = await inTeam(
+    getVersionSections(TEAM_ID, second.versionId),
+  );
+  for (const [id, doc] of Object.entries(secondSections.sections)) {
     const ref = parseSectionId(id);
     if (ref.kind === 'stage' && typeof doc.label === 'string') {
       labels.set(ref.stageId, doc.label);
@@ -322,6 +358,7 @@ Inspect what was written:
 
 Published versions cannot be deleted, so db:reset is how you clear them.`);
 } finally {
+  await runtime.dispose();
   await pool.end();
   await owner.end();
 }

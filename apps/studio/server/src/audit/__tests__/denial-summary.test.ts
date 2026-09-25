@@ -1,104 +1,108 @@
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import { assert, layer } from '@effect/vitest';
+import { Effect, Exit } from 'effect';
+import { describe } from 'vitest';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
-import { createDeniedAuditSummaryWriter } from '../denial-summary.ts';
+import { appendDeniedAuditSummary } from '../denial-summary.ts';
 
 // What a suppressed window becomes in the log. Who calls this changed with
 // #1909 — it is the worker's summary job now, not the web process at shutdown
-// (src/jobs/__tests__/denied-attempts-summary.test.ts covers that end to end)
-// — but what it writes did not, and the row it writes is immutable, which is
-// the property this file exists for.
+// (src/jobs/handlers/__tests__/denied-attempts-summary.test.ts covers that end
+// to end) — and how it writes changed with #1927 stage 3: the node-postgres
+// writer seam is gone, and the append goes through `audit/store.ts` on the
+// worker's own maintenance client. What it writes did not change, and the row
+// it writes is immutable, which is the property this file exists for.
 
-const db = await reachableDb();
+const FIRST = '2026-08-31T10:00:10.000Z';
+const LAST = '2026-08-31T10:00:30.000Z';
 
-describe.skipIf(!db)('a denied-attempts summary', () => {
-  let pool: pg.Pool;
-  let maintenance: pg.Pool;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('a denied-attempts summary', () => {
+  layer(TestDatabaseLive)('on the maintenance client', (suite) => {
+    suite.effect(
+      'is one immutable event naming how many attempts were suppressed',
+      () =>
+        Effect.gen(function* () {
+          const harness = yield* TestDatabase;
+          const teamId = `denied-summary-${randomUUID().slice(0, 8)}`;
+          yield* harness.onOwner(
+            harness.owner.sql`insert into teams (id, name, slug)
+                              values (${teamId}, 'Summary Team', ${teamId})`,
+          );
 
-  beforeAll(async () => {
-    if (!db) throw new Error('unreachable: the probe guaranteed a database');
-    ({ pool, maintenance, dispose } = await createScratchSchema(db));
-    await provisionScratchSchema(pool);
-  });
+          const actor: SessionPrincipal = {
+            kind: 'user',
+            userId: `actor-${randomUUID().slice(0, 8)}`,
+            email: 'denied-summary@example.com',
+            emailVerified: true,
+            name: 'Denied Summary Actor',
+            locale: null,
+            // No session to name: the attempts this summarises were made in
+            // sessions that ended before the window did.
+            sessionId: '',
+          };
 
-  afterAll(async () => {
-    await dispose();
-  });
+          yield* appendDeniedAuditSummary({
+            teamId,
+            operation: 'team.updateMemberRole',
+            actor,
+            summary: {
+              suppressedCount: 2,
+              firstSuppressedAt: Date.parse(FIRST),
+              lastSuppressedAt: Date.parse(LAST),
+            },
+          });
 
-  it('is one immutable event naming how many attempts were suppressed', async () => {
-    const teamId = `denied-summary-${randomUUID().slice(0, 8)}`;
-    await seedTeam(pool, teamId);
-    const principal: SessionPrincipal = {
-      kind: 'user',
-      userId: `actor-${randomUUID().slice(0, 8)}`,
-      email: 'denied-summary@example.com',
-      emailVerified: true,
-      name: 'Denied Summary Actor',
-      locale: null,
-      sessionId: '',
-    };
+          const events = yield* harness.onOwner(
+            harness.owner.sql<{
+              id: string;
+              event_type: string;
+              category: string;
+              outcome: string;
+              actor_id: string;
+              actor_label: string;
+              team_label: string;
+              details: Record<string, unknown>;
+            }>`select id, event_type, category, outcome, actor_id, actor_label,
+                      team_label, details
+                 from audit_events where team_id = ${teamId}`,
+          );
+          assert.lengthOf(events, 1);
+          const event = events[0]!;
+          assert.strictEqual(
+            event.event_type,
+            'security.denied_attempts.rate_limited',
+          );
+          assert.strictEqual(event.category, 'security');
+          assert.strictEqual(event.outcome, 'denied');
+          assert.strictEqual(event.actor_id, actor.userId);
+          assert.strictEqual(event.actor_label, actor.name);
+          // The label read under `FOR UPDATE` by the same store function
+          // `audited` uses, so a summary names its team exactly as every other
+          // event in the log does.
+          assert.strictEqual(event.team_label, 'Summary Team');
+          assert.deepStrictEqual(event.details, {
+            operation: 'team.updateMemberRole',
+            suppressedCount: 2,
+            firstSuppressedAt: FIRST,
+            lastSuppressedAt: LAST,
+          });
 
-    // The maintenance pool, because a summary is written into a team no
-    // request pinned — the attempts it describes are minutes old and the
-    // sessions that made them are gone.
-    const write = createDeniedAuditSummaryWriter(
-      {
-        tenantDb: createTenantDb(maintenance, teamId),
-        principal,
-        requestId: randomUUID(),
-      },
-      'team.updateMemberRole',
+          const amended = yield* Effect.exit(
+            harness.onOwner(
+              harness.owner
+                .sql`update audit_events set outcome = 'failed' where id = ${event.id}`,
+            ),
+          );
+          assert.isTrue(Exit.isFailure(amended));
+        }),
+      { timeout: 30_000 },
     );
-    await write({
-      suppressedCount: 2,
-      firstSuppressedAt: Date.parse('2026-08-31T10:00:10.000Z'),
-      lastSuppressedAt: Date.parse('2026-08-31T10:00:30.000Z'),
-    });
-
-    const events = await pool.query<{
-      id: string;
-      event_type: string;
-      category: string;
-      outcome: string;
-      actor_id: string;
-      details: unknown;
-    }>(
-      `SELECT id, event_type, category, outcome, actor_id, details
-         FROM audit_events WHERE team_id = $1`,
-      [teamId],
-    );
-    expect(events.rows).toEqual([
-      {
-        id: expect.any(String),
-        event_type: 'security.denied_attempts.rate_limited',
-        category: 'security',
-        outcome: 'denied',
-        actor_id: principal.userId,
-        details: {
-          operation: 'team.updateMemberRole',
-          suppressedCount: 2,
-          firstSuppressedAt: '2026-08-31T10:00:10.000Z',
-          lastSuppressedAt: '2026-08-31T10:00:30.000Z',
-        },
-      },
-    ]);
-
-    await expect(
-      pool.query(`UPDATE audit_events SET outcome = 'failed' WHERE id = $1`, [
-        events.rows[0]!.id,
-      ]),
-    ).rejects.toThrow('audit events are immutable');
   });
 });

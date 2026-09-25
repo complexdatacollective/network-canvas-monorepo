@@ -4,7 +4,7 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Cause, DateTime, Duration, Effect, Exit, Fiber, Option } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Database } from '../database.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
 import { exitSqlState, isUniqueViolationCause } from '../errors.ts';
 import { JobWorker, type JobOutcome } from '../worker.ts';
 import {
@@ -31,7 +31,7 @@ import {
 // So this file runs in *wall* time (`excludeTestServices: true`, as
 // `notify.test.ts` does): a claim that waits on a lock waits on a real one, and
 // the oracle is a real budget. The contention comes from a raw `pg` connection
-// opened beside the queue's own pools — the harness's three `Database` values
+// opened beside the queue's own pools — the harness's three `MaintenanceDatabase` values
 // share nothing with it, which is the point: a second connection is the only
 // way to hold a row lock the worker's claim then has to deal with.
 
@@ -89,7 +89,11 @@ describe.skipIf(!db)('the queue under real contention', () => {
       const clear = clearQueue;
 
       const ownerSql = (statement: string) =>
-        asOwner(Effect.flatMap(Database, ({ sql }) => sql.unsafe(statement)));
+        asOwner(
+          Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
+            sql.unsafe(statement),
+          ),
+        );
 
       /** A delivery of its own, optionally deferred so its order is pinned. */
       const enqueueAt = (startAfter?: DateTime.Utc) =>

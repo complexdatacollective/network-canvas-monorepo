@@ -1,27 +1,38 @@
 import { randomUUID } from 'node:crypto';
 
-import { Result, Schema } from 'effect';
-import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { layer } from '@effect/vitest';
+import { Cause, Effect, Predicate, Result, Schema } from 'effect';
+import { describe, expect } from 'vitest';
 
 import { AuditListInput } from '@codaco/studio-contract/schema/audit';
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
+import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+  maintenanceRows,
+  tenantRows,
+} from '../../__tests__/support/database.ts';
+import { Database } from '../../db/client.ts';
+import { sqlState } from '../../db/errors.ts';
+import {
+  MaintenanceScope,
+  TenantScope,
+  Transaction,
+  unsafeMakeTeamAccess,
+} from '../../db/tenant.ts';
 import type { AuditEventInput } from '../events.ts';
 import {
+  append,
   AUDIT_SEQUENCE_LOCK_SEED,
   AUDIT_TEAM_LOCK_KEY_SQL,
-  AuditStore,
+  facets,
+  get,
+  list,
+  lockTeam,
+  rowsOf,
 } from '../store.ts';
-
-const db = await reachableDb();
-const store = new AuditStore();
 
 // The schema audit.list actually validates its payload with, decoded exactly
 // as the rpc server decodes it rather than through a second copy of the bound:
@@ -32,6 +43,80 @@ function auditListInputIssues(input: unknown) {
   const result = decodeAuditListInput(input);
   return Result.isFailure(result) ? [result.failure] : [];
 }
+
+/**
+ * The store takes tenancy from the open transaction, so every case names its
+ * team by opening a scope. The membership these stand in for is proved by the
+ * commands in production; a store suite has no command to prove it.
+ */
+const access = (teamId: string) => unsafeMakeTeamAccess(teamId, 'owner');
+
+/**
+ * One transaction as the connecting login, carrying the `Transaction` service
+ * the store requires. There is no `OwnerScope` — the owner is not a tenant
+ * identity — so the cases that need the store on the owner's own connection
+ * (the sequence allocator reading across teams, the cross-team oracle) open it
+ * here, pinning the same search path `TestDatabase.onOwner` does.
+ */
+const ownerScope = <A, E, R>(
+  teamId: string | null,
+  body: Effect.Effect<A, E, R>,
+) =>
+  Effect.flatMap(TestDatabase, ({ owner, schema }) =>
+    owner.db.transaction((tx) =>
+      Effect.gen(function* () {
+        yield* owner.sql.unsafe(`set local search_path to ${schema}`);
+        if (teamId !== null) {
+          yield* owner.sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
+        }
+        return yield* body;
+      }).pipe(
+        Effect.provideService(
+          Transaction,
+          Transaction.of({ tx, sql: owner.sql, teamId }),
+        ),
+      ),
+    ),
+  );
+
+/**
+ * The SQLSTATE a refused statement carried, or the literal `'no failure'` when
+ * it was not refused at all — so a case that stops refusing fails on the value
+ * rather than passing vacuously.
+ */
+const stateOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.map(Effect.result(effect), (result) =>
+    Result.isFailure(result) ? sqlState(result.failure) : 'no failure',
+  );
+
+/**
+ * Every message down a failure's cause chain, joined. A trigger's own words
+ * reach us as the driver's message, which both `SqlError` and drizzle's
+ * wrapper replace with their own — so the top message alone would never name
+ * the trigger that refused.
+ */
+function messagesOf(error: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 32; depth += 1) {
+    if (!Predicate.isObject(current)) break;
+    if (Cause.isCause(current)) {
+      current = Cause.squash(current);
+      continue;
+    }
+    if ('message' in current && Predicate.isString(current.message)) {
+      parts.push(current.message);
+    }
+    if (!('cause' in current)) break;
+    current = current.cause;
+  }
+  return parts.join('\n');
+}
+
+const failureOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.map(Effect.result(effect), (result) =>
+    Result.isFailure(result) ? messagesOf(result.failure) : 'no failure',
+  );
 
 function invitationEvent(teamId: string): AuditEventInput {
   return {
@@ -55,437 +140,711 @@ function invitationEvent(teamId: string): AuditEventInput {
   };
 }
 
-async function append(tenantDb: TenantDb, teamId: string) {
-  return tenantDb.transaction((client) =>
-    store.append(client, invitationEvent(teamId)),
-  );
-}
-
-async function appendAsOwner(pool: pg.Pool, teamId: string) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const event = await store.append(client, invitationEvent(teamId));
-    await client.query('COMMIT');
-    return event;
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 /**
  * A row placed exactly where a test needs it, which `append` cannot do:
  * `occurred_at` defaults to the insert's own clock, and `event_type` is
  * confined to what this build registers. `at` plus `offset` names an instant
  * to the microsecond — an interval literal rather than a float, so the value
- * stored is the one written. Takes the owner pool: the point is to write what
- * no producer in this build can.
+ * stored is the one written. Runs on the owner's connection: the point is to
+ * write what no producer in this build can.
  */
-function insertRawEvent(
-  pool: pg.Pool,
+const insertRawEvent = (
   teamId: string,
   sequence: number,
   row: { eventType?: string; at?: Date; offset?: string },
-) {
-  return pool.query(
-    `INSERT INTO audit_events (
-       id, team_id, team_label, sequence, occurred_at, event_type,
-       event_version, category, outcome, actor_kind, actor_id, actor_label,
-       request_id, details)
-     VALUES (gen_random_uuid(), $1, $1, $2,
-             COALESCE($3::timestamptz, statement_timestamp()) + $4::interval,
-             $5, 1, 'audit', 'succeeded', 'system', NULL, 'Studio',
-             gen_random_uuid(), '{}'::jsonb)`,
-    [
-      teamId,
-      sequence,
-      row.at ?? null,
-      row.offset ?? '0 microseconds',
-      row.eventType ?? 'audit.system_retention',
-    ],
+) =>
+  Effect.flatMap(TestDatabase, (harness) =>
+    harness.onOwner(
+      harness.owner.sql.unsafe(
+        `INSERT INTO audit_events (
+           id, team_id, team_label, sequence, occurred_at, event_type,
+           event_version, category, outcome, actor_kind, actor_id, actor_label,
+           request_id, details)
+         VALUES (gen_random_uuid(), $1, $1, $2,
+                 COALESCE($3::timestamptz, statement_timestamp()) + $4::interval,
+                 $5, 1, 'audit', 'succeeded', 'system', NULL, 'Studio',
+                 gen_random_uuid(), '{}'::jsonb)`,
+        [
+          teamId,
+          sequence,
+          row.at ?? null,
+          row.offset ?? '0 microseconds',
+          row.eventType ?? 'audit.system_retention',
+        ],
+      ),
+    ),
   );
-}
 
-describe.skipIf(!db)('immutable audit store', () => {
-  let pool: pg.Pool;
-  let app: pg.Pool;
-  let maintenance: pg.Pool;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('immutable audit store', () => {
+  layer(TestDatabaseLive, { excludeTestServices: true })(
+    'over a scratch schema',
+    (it) => {
+      it.effect(
+        'lets runtime roles append and read but not mutate history',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-privileges';
+            const harness = yield* TestDatabase;
 
-  beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
-    await provisionScratchSchema(pool);
-    for (const teamId of [
-      'audit-a',
-      'audit-b',
-      'audit-privileges',
-      'audit-concurrency',
-      'audit-lock-a',
-      'audit-lock-b',
-      'audit-predicate-low',
-      'audit-predicate-high',
-      'audit-timestamp',
-      'audit-facets',
-      'audit-bounds',
-      'audit-window',
-    ]) {
-      await seedTeam(pool, teamId);
-    }
-  });
+            const first = yield* TenantScope.open(
+              access(team),
+              append(invitationEvent(team)),
+            );
+            expect(first.sequence).toBe('1');
+            expect(first.teamLabel).toBe(team);
 
-  afterAll(async () => {
-    await dispose();
-  });
+            // The worker appends a team's event under an explicit tenant scope,
+            // which is the only state in which it may touch audit_events.
+            const second = yield* MaintenanceScope.openTenant(
+              access(team),
+              append(invitationEvent(team)),
+            );
+            expect(second.sequence).toBe('2');
 
-  it('lets runtime roles append and read but not mutate history', async () => {
-    const tenant = createTenantDb(app, 'audit-privileges');
-    const first = await append(tenant, 'audit-privileges');
-    expect(first.sequence).toBe('1');
-    expect(first.teamLabel).toBe('audit-privileges');
-    const maintenanceTenant = createTenantDb(maintenance, 'audit-privileges');
-    expect((await append(maintenanceTenant, 'audit-privileges')).sequence).toBe(
-      '2',
-    );
-    expect(
-      await tenant.transaction((client) =>
-        store.listForTeam(client, 'audit-privileges'),
-      ),
-    ).toHaveLength(2);
+            expect(
+              yield* TenantScope.open(access(team), list(team)),
+            ).toHaveLength(2);
 
-    const privileges = await pool.query<{
-      role: string;
-      update: boolean;
-      delete: boolean;
-      truncate: boolean;
-    }>(
-      `SELECT role,
-              has_table_privilege(role, 'audit_events', 'UPDATE') AS update,
-              has_table_privilege(role, 'audit_events', 'DELETE') AS delete,
-              has_table_privilege(role, 'audit_events', 'TRUNCATE') AS truncate
-       FROM unnest(ARRAY['studio_app', 'studio_maintenance']) AS role
-       ORDER BY role`,
-    );
-    expect(privileges.rows).toEqual([
-      { role: 'studio_app', update: false, delete: false, truncate: false },
-      {
-        role: 'studio_maintenance',
-        update: false,
-        delete: false,
-        truncate: false,
-      },
-    ]);
+            const privileges = yield* harness.onOwner(
+              harness.owner.sql<{
+                role: string;
+                update: boolean;
+                delete: boolean;
+                truncate: boolean;
+              }>`SELECT role,
+                      has_table_privilege(role, 'audit_events', 'UPDATE') AS update,
+                      has_table_privilege(role, 'audit_events', 'DELETE') AS delete,
+                      has_table_privilege(role, 'audit_events', 'TRUNCATE') AS truncate
+               FROM unnest(ARRAY['studio_app', 'studio_maintenance']) AS role
+               ORDER BY role`,
+            );
+            expect([...privileges]).toEqual([
+              {
+                role: 'studio_app',
+                update: false,
+                delete: false,
+                truncate: false,
+              },
+              {
+                role: 'studio_maintenance',
+                update: false,
+                delete: false,
+                truncate: false,
+              },
+            ]);
 
-    await expect(
-      tenant.query(`UPDATE audit_events SET actor_label = 'changed'`),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(
-      tenant.query(`DELETE FROM audit_events`),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(app.query(`TRUNCATE audit_events`)).rejects.toMatchObject({
-      code: '42501',
-    });
-    await expect(
-      maintenance.query(`UPDATE audit_events SET actor_label = 'changed'`),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(
-      maintenance.query(`DELETE FROM audit_events`),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(
-      maintenance.query(`TRUNCATE audit_events`),
-    ).rejects.toMatchObject({ code: '42501' });
+            // Each refusal opens its own scope: the first one aborts the
+            // transaction it ran in, so a shared one would report the abort
+            // rather than the privilege check for every statement after it.
+            const asTenant = (statement: string) =>
+              stateOf(tenantRows(team, statement));
+            const asMaintenance = (statement: string) =>
+              stateOf(maintenanceRows(statement));
 
-    await expect(
-      pool.query(`UPDATE audit_events SET actor_label = 'changed'`),
-    ).rejects.toThrow('audit events are immutable');
-    await expect(pool.query(`DELETE FROM audit_events`)).rejects.toThrow(
-      'audit events are immutable',
-    );
-  });
+            expect(
+              yield* asTenant(
+                `UPDATE audit_events SET actor_label = 'changed'`,
+              ),
+            ).toBe('42501');
+            expect(yield* asTenant(`DELETE FROM audit_events`)).toBe('42501');
+            expect(yield* asTenant(`TRUNCATE audit_events`)).toBe('42501');
+            expect(
+              yield* asMaintenance(
+                `UPDATE audit_events SET actor_label = 'changed'`,
+              ),
+            ).toBe('42501');
+            expect(yield* asMaintenance(`DELETE FROM audit_events`)).toBe(
+              '42501',
+            );
+            expect(yield* asMaintenance(`TRUNCATE audit_events`)).toBe('42501');
 
-  it('enforces application-team RLS and explicit team query predicates', async () => {
-    const tenantA = createTenantDb(app, 'audit-a');
-    const tenantB = createTenantDb(app, 'audit-b');
-    await append(tenantA, 'audit-a');
-    await append(tenantB, 'audit-b');
-
-    expect(
-      await tenantA.transaction((client) =>
-        store.listForTeam(client, 'audit-a'),
-      ),
-    ).toHaveLength(1);
-    expect(await app.query(`SELECT id FROM audit_events`)).toHaveProperty(
-      'rowCount',
-      0,
-    );
-    const maintenanceClient = await maintenance.connect();
-    try {
-      expect(
-        await store.listForTeam(maintenanceClient, 'audit-a'),
-      ).toHaveLength(0);
-      await expect(
-        store.append(maintenanceClient, invitationEvent('audit-a')),
-      ).rejects.toMatchObject({ code: '42501' });
-    } finally {
-      maintenanceClient.release();
-    }
-    await expect(
-      tenantA.transaction((client) =>
-        store.append(client, invitationEvent('audit-b')),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-
-    const ownerClient = await pool.connect();
-    try {
-      expect(await store.listForTeam(ownerClient, 'audit-a')).toHaveLength(1);
-      expect(await store.listForTeam(ownerClient, 'audit-b')).toHaveLength(1);
-    } finally {
-      ownerClient.release();
-    }
-  });
-
-  it('records the insertion statement time rather than transaction start', async () => {
-    const tenant = createTenantDb(app, 'audit-timestamp');
-    const { transactionStarted, occurredAt } = await tenant.transaction(
-      async (client) => {
-        const started = await client.query<{ value: Date }>(
-          `SELECT transaction_timestamp() AS value`,
-        );
-        await client.query(`SELECT pg_sleep(0.02)`);
-        const event = await store.append(
-          client,
-          invitationEvent('audit-timestamp'),
-        );
-        return {
-          transactionStarted: started.rows[0]?.value,
-          occurredAt: event.occurredAt,
-        };
-      },
-    );
-    expect(transactionStarted).toBeInstanceOf(Date);
-    expect(occurredAt.getTime()).toBeGreaterThan(
-      transactionStarted?.getTime() ?? Number.POSITIVE_INFINITY,
-    );
-  });
-
-  it('keeps the unique sequence index and a separate chronological index', async () => {
-    const indexes = await pool.query<{ indexname: string }>(
-      `SELECT indexname FROM pg_indexes
-       WHERE schemaname = current_schema() AND tablename = 'audit_events'`,
-    );
-    const names = indexes.rows.map(({ indexname }) => indexname);
-    expect(names).toContain('audit_events_team_id_sequence_idx');
-    expect(names).toContain(
-      'audit_events_team_id_occurred_at_sequence_desc_idx',
-    );
-    expect(names).not.toContain('audit_events_team_id_sequence_desc_idx');
-  });
-
-  it('allocates a complete unique sequence under same-team concurrency', async () => {
-    const tenant = createTenantDb(app, 'audit-concurrency');
-    const inserted = await Promise.all(
-      Array.from({ length: 12 }, () => append(tenant, 'audit-concurrency')),
-    );
-    expect(
-      inserted
-        .map(({ sequence }) => BigInt(sequence))
-        .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
-    ).toEqual(Array.from({ length: 12 }, (_, index) => BigInt(index + 1)));
-  });
-
-  it('serializes one team lock without making another team contend', async () => {
-    const holder = await app.connect();
-    const contender = await app.connect();
-    try {
-      await holder.query('BEGIN');
-      await contender.query('BEGIN');
-      await holder.query(
-        `SELECT pg_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL})`,
-        ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+            // The connecting login keeps every privilege, so only the trigger
+            // stands between it and a rewritten history.
+            expect(
+              yield* failureOf(
+                harness.onOwner(
+                  harness.owner
+                    .sql`UPDATE audit_events SET actor_label = 'changed'`,
+                ),
+              ),
+            ).toContain('audit events are immutable');
+            expect(
+              yield* failureOf(
+                harness.onOwner(harness.owner.sql`DELETE FROM audit_events`),
+              ),
+            ).toContain('audit events are immutable');
+          }),
       );
 
-      const sameTeam = await contender.query<{ acquired: boolean }>(
-        `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
-        ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      it.effect(
+        'enforces application-team RLS and explicit team query predicates',
+        () =>
+          Effect.gen(function* () {
+            yield* TenantScope.open(
+              access('audit-a'),
+              append(invitationEvent('audit-a')),
+            );
+            yield* TenantScope.open(
+              access('audit-b'),
+              append(invitationEvent('audit-b')),
+            );
+
+            expect(
+              yield* TenantScope.open(access('audit-a'), list('audit-a')),
+            ).toHaveLength(1);
+
+            // A read with no team predicate at all, inside team A's scope:
+            // the policy, not the predicate, is what hides team B's row.
+            const unpredicated = yield* TenantScope.open(
+              access('audit-a'),
+              Effect.flatMap(
+                Transaction,
+                ({ sql }) => sql<{ id: string }>`SELECT id FROM audit_events`,
+              ),
+            );
+            expect(unpredicated).toHaveLength(1);
+
+            // A maintenance scope stamps no team, and audit_events has no
+            // maintenance escape: it reads nothing and may write nothing.
+            expect(yield* MaintenanceScope.open(list('audit-a'))).toHaveLength(
+              0,
+            );
+            expect(
+              yield* stateOf(
+                MaintenanceScope.open(append(invitationEvent('audit-a'))),
+              ),
+            ).toBe('42501');
+
+            expect(
+              yield* stateOf(
+                TenantScope.open(
+                  access('audit-a'),
+                  append(invitationEvent('audit-b')),
+                ),
+              ),
+            ).toBe('42501');
+
+            // The connecting login is not confined by the policy, so on that
+            // connection the explicit team predicate is the only thing that
+            // separates the two teams' histories.
+            expect(yield* ownerScope(null, list('audit-a'))).toHaveLength(1);
+            expect(yield* ownerScope(null, list('audit-b'))).toHaveLength(1);
+          }),
       );
-      expect(sameTeam.rows).toEqual([{ acquired: false }]);
 
-      const otherTeam = await contender.query<{ acquired: boolean }>(
-        `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
-        ['audit-lock-b', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      it.effect(
+        'records the insertion statement time rather than transaction start',
+        () =>
+          TenantScope.open(
+            access('audit-timestamp'),
+            Effect.gen(function* () {
+              const { sql } = yield* Transaction;
+              // `@effect/sql-pg` decodes `timestamptz` to epoch milliseconds,
+              // where drizzle's own column mapper hands back a `Date` — so the
+              // instant read through a raw statement is a number, and decoding
+              // it says so rather than trusting the driver to keep doing it.
+              const started = yield* rowsOf(
+                Schema.Struct({ value: Schema.Number }),
+                sql`SELECT transaction_timestamp() AS value`,
+              );
+              yield* sql`SELECT pg_sleep(0.02)`;
+              const event = yield* append(invitationEvent('audit-timestamp'));
+
+              const transactionStarted = started[0]?.value;
+              expect(event.occurredAt).toBeInstanceOf(Date);
+              expect(event.occurredAt.getTime()).toBeGreaterThan(
+                transactionStarted ?? Number.POSITIVE_INFINITY,
+              );
+            }),
+          ),
       );
-      expect(otherTeam.rows).toEqual([{ acquired: true }]);
-    } finally {
-      await contender.query('ROLLBACK').catch(() => undefined);
-      await holder.query('ROLLBACK').catch(() => undefined);
-      contender.release();
-      holder.release();
-    }
-  });
 
-  it('allocates from the explicit team even when another team is further ahead', async () => {
-    for (let index = 0; index < 5; index += 1) {
-      await appendAsOwner(pool, 'audit-predicate-high');
-    }
-    expect((await appendAsOwner(pool, 'audit-predicate-low')).sequence).toBe(
-      '1',
-    );
-    expect((await appendAsOwner(pool, 'audit-predicate-low')).sequence).toBe(
-      '2',
-    );
-  });
+      // The one writer that does not want the statement's own clock: the
+      // synthetic-data seed dates its whole corpus from one anchor, so the log
+      // agrees with the rows it describes. Left out, the column's
+      // `statement_timestamp()` default applies — which is why the two are one
+      // case: the option has to be honoured *and* absent has to mean now.
+      it.effect(
+        'records the instant a writer names, and now when it does not',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-anchored';
+            const anchor = new Date('2021-06-05T12:34:56.789Z');
 
-  it('reports every distinct action and actor, and flags a hit cap', async () => {
-    const tenant = createTenantDb(app, 'audit-facets');
-    await append(tenant, 'audit-facets');
-    // The one actor shape no producer in this build can append: the CHECK
-    // constraint permits a system actor with no id, and the facet scan has to
-    // reach it even though the ascending walk over actor_id never can.
-    await pool.query(
-      `INSERT INTO audit_events (
-         id, team_id, team_label, sequence, event_type, event_version,
-         category, outcome, actor_kind, actor_id, actor_label, request_id,
-         details)
-       VALUES (gen_random_uuid(), $1, $1, 2, 'audit.system_retention', 1,
-               'audit', 'succeeded', 'system', NULL, 'Studio',
-               gen_random_uuid(), '{}'::jsonb)`,
-      ['audit-facets'],
-    );
+            const anchored = yield* TenantScope.open(
+              access(team),
+              append(invitationEvent(team), { occurredAt: anchor }),
+            );
+            expect(anchored.occurredAt.toISOString()).toBe(
+              anchor.toISOString(),
+            );
 
-    const facets = await tenant.transaction((client) =>
-      store.facetsForTeam(client, 'audit-facets', 10),
-    );
-    expect(facets.eventTypes.toSorted()).toEqual([
-      'audit.system_retention',
-      'team.invitation.created',
-    ]);
-    expect(facets.actors).toContainEqual({
-      kind: 'system',
-      id: null,
-      label: 'Studio',
-    });
-    expect(facets.actors).toContainEqual({
-      kind: 'user',
-      id: 'actor',
-      label: 'Audit actor',
-    });
-    expect(facets.truncated).toBe(false);
+            const before = Date.now();
+            const live = yield* TenantScope.open(
+              access(team),
+              append(invitationEvent(team)),
+            );
+            expect(live.occurredAt.getTime()).toBeGreaterThanOrEqual(
+              before - 1,
+            );
 
-    // Below the real cardinality the list is cut and says so, rather than
-    // silently pretending the team has only one action.
-    const capped = await tenant.transaction((client) =>
-      store.facetsForTeam(client, 'audit-facets', 1),
-    );
-    expect(capped.eventTypes).toHaveLength(1);
-    expect(capped.actors).toHaveLength(1);
-    expect(capped.truncated).toBe(true);
-  });
+            // Stored, not merely returned: the row reads back the same way.
+            const stored = yield* TenantScope.open(access(team), list(team));
+            expect(stored.map((row) => row.occurredAt.toISOString())).toContain(
+              anchor.toISOString(),
+            );
+          }),
+      );
 
-  it('filters the list by the actor pair, including an actor with no id', async () => {
-    const tenant = createTenantDb(app, 'audit-facets');
-    const systemOnly = await tenant.transaction((client) =>
-      store.listForTeam(client, 'audit-facets', {
-        actor: { kind: 'system', id: null },
-      }),
-    );
-    expect(systemOnly.map((row) => row.sequence)).toEqual(['2']);
+      it.effect(
+        'keeps the unique sequence index and a separate chronological index',
+        () =>
+          Effect.gen(function* () {
+            const harness = yield* TestDatabase;
+            const indexes = yield* harness.onOwner(
+              harness.owner.sql<{
+                indexname: string;
+              }>`SELECT indexname FROM pg_indexes
+                 WHERE schemaname = current_schema() AND tablename = 'audit_events'`,
+            );
+            const names = indexes.map(({ indexname }) => indexname);
+            expect(names).toContain('audit_events_team_id_sequence_idx');
+            expect(names).toContain(
+              'audit_events_team_id_occurred_at_sequence_desc_idx',
+            );
+            expect(names).not.toContain(
+              'audit_events_team_id_sequence_desc_idx',
+            );
+          }),
+      );
 
-    const userOnly = await tenant.transaction((client) =>
-      store.listForTeam(client, 'audit-facets', {
-        actor: { kind: 'user', id: 'actor' },
-      }),
-    );
-    expect(userOnly.map((row) => row.sequence)).toEqual(['1']);
-  });
+      it.effect(
+        'allocates a complete unique sequence under same-team concurrency',
+        () =>
+          Effect.gen(function* () {
+            if (testDb === null) {
+              throw new Error('unreachable: probe guaranteed a database');
+            }
+            const harness = yield* TestDatabase;
+            const team = 'audit-concurrency';
 
-  // The action menu is built from the team's whole history, which can hold
-  // event types this build never registered, so the filter input has to accept
-  // every event_type the table can store. The CHECK constraint is the only
-  // authority on that length; a narrower input schema would show an event in
-  // the feed, offer it in the menu, and then refuse the selection as a bad
-  // request.
-  it('accepts a filter on the longest event type the table can store', async () => {
-    const longest = `audit.${'e'.repeat(122)}`;
-    expect(longest).toHaveLength(128);
-    await insertRawEvent(pool, 'audit-bounds', 1, { eventType: longest });
-    // One character further is refused by the table, so 128 really is the
-    // ceiling this bound has to reach and no further.
-    await expect(
-      insertRawEvent(pool, 'audit-bounds', 2, { eventType: `${longest}e` }),
-    ).rejects.toThrow(/audit_events_identifier_lengths_check/);
+            // The suite's application client holds one connection on purpose,
+            // so twelve appends through it would queue on the pool rather than
+            // on the team lock. This case is about the lock, so it brings a
+            // client that can actually run them at once.
+            const inserted = yield* Effect.forEach(
+              Array.from({ length: 12 }, (_, index) => index),
+              () =>
+                TenantScope.open(access(team), append(invitationEvent(team))),
+              { concurrency: 'unbounded' },
+            ).pipe(
+              Effect.provide(
+                Database.layer({
+                  url: testDb.url,
+                  searchPath: harness.schema,
+                  maxConnections: 12,
+                  applicationName: 'studio-test-audit-concurrency',
+                }),
+              ),
+            );
 
-    expect(
-      auditListInputIssues({
-        teamId: 'audit-bounds',
-        eventTypes: [longest],
-        // The same table caps actor_id at 255 characters.
-        actor: { kind: 'user', id: 'a'.repeat(255) },
-      }),
-    ).toEqual([]);
+            expect(
+              inserted
+                .map(({ sequence }) => BigInt(sequence))
+                .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+            ).toEqual(
+              Array.from({ length: 12 }, (_, index) => BigInt(index + 1)),
+            );
+          }),
+      );
 
-    const tenant = createTenantDb(app, 'audit-bounds');
-    const offered = await tenant.transaction((client) =>
-      store.facetsForTeam(client, 'audit-bounds', 10),
-    );
-    expect(offered.eventTypes).toContain(longest);
-    const filtered = await tenant.transaction((client) =>
-      store.listForTeam(client, 'audit-bounds', { eventTypes: [longest] }),
-    );
-    expect(filtered.map((row) => row.eventType)).toEqual([longest]);
-  });
+      it.effect(
+        'serializes one team lock without making another team contend',
+        () =>
+          Effect.gen(function* () {
+            const harness = yield* TestDatabase;
 
-  // `occurred_at` is `statement_timestamp()`, which Postgres keeps to the
-  // microsecond, so no millisecond-precision cutoff can name the last instant
-  // of a day. The window is half-open instead: the caller passes the instant
-  // the next period begins, and everything before it belongs to the period
-  // that instant closes.
-  it('closes the occurred_at window on the instant the next period begins', async () => {
-    // The bounds the activity screen sends for "to: 5 March 2026" — the
-    // viewer's local midnights. Both these and the stored values are absolute
-    // instants, so whatever timezone the server keeps never enters the
-    // comparison: the day filtered on is the viewer's own.
-    const dayStart = new Date('2026-03-05T00:00:00');
-    const nextDayStart = new Date('2026-03-06T00:00:00');
+            // The contender is a second application client, which keys its own
+            // transaction connection: its statements cannot land inside the
+            // holder's transaction, which is what makes the answer meaningful.
+            const tryLock = (teamId: string) =>
+              TenantScope.open(
+                access(teamId),
+                Effect.flatMap(Transaction, ({ sql }) =>
+                  sql.unsafe<{ acquired: boolean }>(
+                    `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
+                    [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
+                  ),
+                ),
+              ).pipe(Effect.provideService(Database, harness.secondApp));
 
-    await insertRawEvent(pool, 'audit-window', 1, { at: dayStart });
-    await insertRawEvent(pool, 'audit-window', 2, {
-      at: nextDayStart,
-      offset: '-500 microseconds',
-    });
-    await insertRawEvent(pool, 'audit-window', 3, { at: nextDayStart });
+            const contended = yield* TenantScope.open(
+              access('audit-lock-a'),
+              Effect.gen(function* () {
+                yield* lockTeam('audit-lock-a');
+                return {
+                  sameTeam: yield* tryLock('audit-lock-a'),
+                  otherTeam: yield* tryLock('audit-lock-b'),
+                };
+              }),
+            );
 
-    const tenant = createTenantDb(app, 'audit-window');
-    const withinDay = await tenant.transaction((client) =>
-      store.listForTeam(client, 'audit-window', {
-        occurredFrom: dayStart,
-        occurredTo: nextDayStart,
-      }),
-    );
-    // Sequence 2 sits 500 microseconds before midnight, inside the day and
-    // past anything a millisecond bound could express. Sequence 3 is midnight
-    // itself, which opens the next day rather than closing this one.
-    expect(withinDay.map((row) => row.sequence)).toEqual(['2', '1']);
+            expect([...contended.sameTeam]).toEqual([{ acquired: false }]);
+            expect([...contended.otherTeam]).toEqual([{ acquired: true }]);
+          }),
+      );
 
-    // The cutoff this replaced, kept as the reason it had to: an inclusive
-    // end-of-day rounded to the millisecond drops sequence 2, so the day the
-    // viewer asked for silently loses its last event.
-    const millisecondCutoff = await tenant.transaction((client) =>
-      store.listForTeam(client, 'audit-window', {
-        occurredFrom: dayStart,
-        occurredTo: new Date('2026-03-05T23:59:59.999'),
-      }),
-    );
-    expect(millisecondCutoff.map((row) => row.sequence)).toEqual(['1']);
-  });
+      it.effect(
+        'allocates from the explicit team even when another team is further ahead',
+        () =>
+          Effect.gen(function* () {
+            for (let index = 0; index < 5; index += 1) {
+              yield* ownerScope(
+                'audit-predicate-high',
+                append(invitationEvent('audit-predicate-high')),
+              );
+            }
+            const first = yield* ownerScope(
+              'audit-predicate-low',
+              append(invitationEvent('audit-predicate-low')),
+            );
+            expect(first.sequence).toBe('1');
+            const second = yield* ownerScope(
+              'audit-predicate-low',
+              append(invitationEvent('audit-predicate-low')),
+            );
+            expect(second.sequence).toBe('2');
+          }),
+      );
 
-  it('has no foreign key that could cascade mutable rows into history', async () => {
-    const foreignKeys = await pool.query(
-      `SELECT conname FROM pg_constraint
-       WHERE conrelid = 'audit_events'::regclass AND contype = 'f'`,
-    );
-    expect(foreignKeys.rowCount).toBe(0);
-  });
+      it.effect(
+        'reports every distinct action and actor, and flags a hit cap',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-facets';
+            const harness = yield* TestDatabase;
+            yield* TenantScope.open(
+              access(team),
+              append(invitationEvent(team)),
+            );
+
+            // The one actor shape no producer in this build can append: the
+            // CHECK constraint permits a system actor with no id, and the facet
+            // scan has to reach it even though the ascending walk over actor_id
+            // never can.
+            yield* harness.onOwner(
+              harness.owner.sql.unsafe(
+                `INSERT INTO audit_events (
+                   id, team_id, team_label, sequence, event_type, event_version,
+                   category, outcome, actor_kind, actor_id, actor_label,
+                   request_id, details)
+                 VALUES (gen_random_uuid(), $1, $1, 2, 'audit.system_retention', 1,
+                         'audit', 'succeeded', 'system', NULL, 'Studio',
+                         gen_random_uuid(), '{}'::jsonb)`,
+                [team],
+              ),
+            );
+
+            const reported = yield* TenantScope.open(
+              access(team),
+              facets(team, 10),
+            );
+            expect(reported.eventTypes.toSorted()).toEqual([
+              'audit.system_retention',
+              'team.invitation.created',
+            ]);
+            expect(reported.actors).toContainEqual({
+              kind: 'system',
+              id: null,
+              label: 'Studio',
+            });
+            expect(reported.actors).toContainEqual({
+              kind: 'user',
+              id: 'actor',
+              label: 'Audit actor',
+            });
+            expect(reported.truncated).toBe(false);
+
+            // Below the real cardinality the list is cut and says so, rather
+            // than silently pretending the team has only one action.
+            const capped = yield* TenantScope.open(
+              access(team),
+              facets(team, 1),
+            );
+            expect(capped.eventTypes).toHaveLength(1);
+            expect(capped.actors).toHaveLength(1);
+            expect(capped.truncated).toBe(true);
+          }),
+      );
+
+      // The cap is two independent walks, and the flag is their disjunction —
+      // so a team whose actions are capped while its actors are not, and the
+      // mirror of it, are the only shapes that can tell one walk's bound from
+      // the other's.
+      it.effect('flags a cap reached by either walk on its own', () =>
+        Effect.gen(function* () {
+          const actions = 'audit-facet-actions';
+          yield* insertRawEvent(actions, 1, { eventType: 'audit.one' });
+          yield* insertRawEvent(actions, 2, { eventType: 'audit.two' });
+          // Both rows carry the same system actor, so only the action walk
+          // can be the one that overflows.
+          const byAction = yield* TenantScope.open(
+            access(actions),
+            facets(actions, 1),
+          );
+          expect(byAction.eventTypes).toHaveLength(1);
+          expect(byAction.actors).toHaveLength(1);
+          expect(byAction.truncated).toBe(true);
+
+          const actors = 'audit-facet-actors';
+          yield* TenantScope.open(
+            access(actors),
+            append({ ...invitationEvent(actors), actorId: 'actor-one' }),
+          );
+          yield* TenantScope.open(
+            access(actors),
+            append({ ...invitationEvent(actors), actorId: 'actor-two' }),
+          );
+          // One event type, two actors: now only the actor walk can overflow.
+          const byActor = yield* TenantScope.open(
+            access(actors),
+            facets(actors, 1),
+          );
+          expect(byActor.eventTypes).toHaveLength(1);
+          expect(byActor.actors).toHaveLength(1);
+          expect(byActor.truncated).toBe(true);
+
+          // And at a cap the team does reach, neither walk claims more.
+          const whole = yield* TenantScope.open(
+            access(actors),
+            facets(actors, 10),
+          );
+          expect(whole.eventTypes).toEqual(['team.invitation.created']);
+          expect(
+            whole.actors
+              .map(({ id }) => id ?? '')
+              .toSorted((a, b) => a.localeCompare(b)),
+          ).toEqual(['actor-one', 'actor-two']);
+          expect(whole.truncated).toBe(false);
+        }),
+      );
+
+      it.effect(
+        'filters the list by the actor pair, including an actor with no id',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-facets';
+            const systemOnly = yield* TenantScope.open(
+              access(team),
+              list(team, { actor: { kind: 'system', id: null } }),
+            );
+            expect(systemOnly.map((row) => row.sequence)).toEqual(['2']);
+
+            const userOnly = yield* TenantScope.open(
+              access(team),
+              list(team, { actor: { kind: 'user', id: 'actor' } }),
+            );
+            expect(userOnly.map((row) => row.sequence)).toEqual(['1']);
+          }),
+      );
+
+      // The page the feed asks for: newest first, cut to the caller's limit,
+      // and continued from the last sequence it was given. The cursor is a
+      // base-10 string on the wire and a bigint in the predicate, so this is
+      // also the only case that proves that conversion.
+      it.effect(
+        'pages backwards from a cursor, within the asked-for limit',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-paging';
+            for (let index = 0; index < 3; index += 1) {
+              yield* TenantScope.open(
+                access(team),
+                append(invitationEvent(team)),
+              );
+            }
+
+            const firstPage = yield* TenantScope.open(
+              access(team),
+              list(team, { limit: 2 }),
+            );
+            expect(firstPage.map((row) => row.sequence)).toEqual(['3', '2']);
+
+            const nextPage = yield* TenantScope.open(
+              access(team),
+              list(team, { limit: 2, beforeSequence: '2' }),
+            );
+            expect(nextPage.map((row) => row.sequence)).toEqual(['1']);
+
+            // The cursor is exclusive, so a cursor at the oldest row ends the
+            // feed rather than repeating it.
+            expect(
+              yield* TenantScope.open(
+                access(team),
+                list(team, { beforeSequence: '1' }),
+              ),
+            ).toEqual([]);
+          }),
+      );
+
+      // The action menu is built from the team's whole history, which can hold
+      // event types this build never registered, so the filter input has to
+      // accept every event_type the table can store. The CHECK constraint is
+      // the only authority on that length; a narrower input schema would show
+      // an event in the feed, offer it in the menu, and then refuse the
+      // selection as a bad request.
+      it.effect(
+        'accepts a filter on the longest event type the table can store',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-bounds';
+            const longest = `audit.${'e'.repeat(122)}`;
+            expect(longest).toHaveLength(128);
+            yield* insertRawEvent(team, 1, { eventType: longest });
+
+            // One character further is refused by the table, so 128 really is
+            // the ceiling this bound has to reach and no further.
+            const refused = yield* Effect.result(
+              insertRawEvent(team, 2, { eventType: `${longest}e` }),
+            );
+            expect(Result.isFailure(refused)).toBe(true);
+            if (Result.isFailure(refused)) {
+              expect(sqlState(refused.failure)).toBe('23514');
+              expect(messagesOf(refused.failure)).toContain(
+                'audit_events_identifier_lengths_check',
+              );
+            }
+
+            expect(
+              auditListInputIssues({
+                teamId: team,
+                eventTypes: [longest],
+                // The same table caps actor_id at 255 characters.
+                actor: { kind: 'user', id: 'a'.repeat(255) },
+              }),
+            ).toEqual([]);
+
+            const offered = yield* TenantScope.open(
+              access(team),
+              facets(team, 10),
+            );
+            expect(offered.eventTypes).toContain(longest);
+
+            const filtered = yield* TenantScope.open(
+              access(team),
+              list(team, { eventTypes: [longest] }),
+            );
+            expect(filtered.map((row) => row.eventType)).toEqual([longest]);
+          }),
+      );
+
+      // `occurred_at` is `statement_timestamp()`, which Postgres keeps to the
+      // microsecond, so no millisecond-precision cutoff can name the last
+      // instant of a day. The window is half-open instead: the caller passes
+      // the instant the next period begins, and everything before it belongs
+      // to the period that instant closes.
+      it.effect(
+        'closes the occurred_at window on the instant the next period begins',
+        () =>
+          Effect.gen(function* () {
+            const team = 'audit-window';
+            // The bounds the activity screen sends for "to: 5 March 2026" —
+            // the viewer's local midnights. Both these and the stored values
+            // are absolute instants, so whatever timezone the server keeps
+            // never enters the comparison: the day filtered on is the viewer's
+            // own.
+            const dayStart = new Date('2026-03-05T00:00:00');
+            const nextDayStart = new Date('2026-03-06T00:00:00');
+
+            yield* insertRawEvent(team, 1, { at: dayStart });
+            yield* insertRawEvent(team, 2, {
+              at: nextDayStart,
+              offset: '-500 microseconds',
+            });
+            yield* insertRawEvent(team, 3, { at: nextDayStart });
+
+            const withinDay = yield* TenantScope.open(
+              access(team),
+              list(team, {
+                occurredFrom: dayStart,
+                occurredTo: nextDayStart,
+              }),
+            );
+            // Sequence 2 sits 500 microseconds before midnight, inside the day
+            // and past anything a millisecond bound could express. Sequence 3
+            // is midnight itself, which opens the next day rather than closing
+            // this one.
+            expect(withinDay.map((row) => row.sequence)).toEqual(['2', '1']);
+
+            // The cutoff this replaced, kept as the reason it had to: an
+            // inclusive end-of-day rounded to the millisecond drops sequence 2,
+            // so the day the viewer asked for silently loses its last event.
+            const millisecondCutoff = yield* TenantScope.open(
+              access(team),
+              list(team, {
+                occurredFrom: dayStart,
+                occurredTo: new Date('2026-03-05T23:59:59.999'),
+              }),
+            );
+            expect(millisecondCutoff.map((row) => row.sequence)).toEqual(['1']);
+          }),
+      );
+
+      // `get` reads one row by id, and the two directions are worth keeping
+      // apart: a row the team owns comes back whole, and an id that matches
+      // nothing is `null` rather than an empty row the caller would render.
+      it.effect('returns a stored event by id, and null for no match', () =>
+        Effect.gen(function* () {
+          const team = 'audit-get';
+          const stored = yield* TenantScope.open(
+            access(team),
+            append(invitationEvent(team)),
+          );
+
+          const found = yield* TenantScope.open(
+            access(team),
+            get(team, stored.id),
+          );
+          expect(found?.id).toBe(stored.id);
+          expect(found?.sequence).toBe(stored.sequence);
+          expect(found?.details).toEqual({ role: 'member' });
+
+          expect(
+            yield* TenantScope.open(access(team), get(team, randomUUID())),
+          ).toBeNull();
+
+          // Another team's id is no more reachable than an absent one. Asked
+          // inside a tenant scope the policy alone would hide it, so the
+          // question is put on the connecting login's connection, which the
+          // policy does not confine: there the team predicate is the only
+          // thing that can answer it.
+          expect(
+            yield* TenantScope.open(
+              access('audit-a'),
+              get('audit-a', stored.id),
+            ),
+          ).toBeNull();
+          expect(yield* ownerScope(null, get('audit-a', stored.id))).toBeNull();
+          expect((yield* ownerScope(null, get(team, stored.id)))?.id).toBe(
+            stored.id,
+          );
+        }),
+      );
+
+      it.effect(
+        'has no foreign key that could cascade mutable rows into history',
+        () =>
+          Effect.gen(function* () {
+            const harness = yield* TestDatabase;
+            const foreignKeys = yield* harness.onOwner(
+              harness.owner.sql<{
+                conname: string;
+              }>`SELECT conname FROM pg_constraint
+                 WHERE conrelid = 'audit_events'::regclass AND contype = 'f'`,
+            );
+            expect(foreignKeys).toHaveLength(0);
+          }),
+      );
+    },
+  );
 });

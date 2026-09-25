@@ -3,8 +3,8 @@ import { DateTime, Deferred, Duration, Effect, Fiber, Random } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { MaintenanceScope } from '../../db/tenant.ts';
 import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
-import { withTransaction } from '../database.ts';
 import {
   backoffSeconds,
   type JobOutcome,
@@ -457,7 +457,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           // a case could suspend it at — the statement is the real one, and
           // the row underneath it is the real reclaimed row.
           const answered = yield* asMaintenance(
-            withTransaction(returnToQueue(schema, jobId, 1)),
+            MaintenanceScope.open(returnToQueue(schema, jobId, 1)),
           );
 
           yield* Deferred.succeed(secondHeld, undefined);

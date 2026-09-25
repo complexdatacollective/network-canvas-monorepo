@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import type pg from 'pg';
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -19,23 +19,24 @@ import {
 
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-
-const db = await reachableDb();
 
 const TEAM_ID = TeamId.make('rpc-protocols-team');
 
@@ -72,10 +73,8 @@ type CreatedStudy = {
   draftId: DraftId;
 };
 
-describe.skipIf(!db)('the protocol RPC surface', () => {
-  let pool: pg.Pool;
-  let maintenance: pg.Pool;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('the protocol RPC surface', () => {
+  let database: TestDatabaseRuntime;
   let clients: Map<Researcher, RpcTestClient>;
   /**
    * The same researchers on the protocol-builder host, which is still an oRPC
@@ -122,13 +121,8 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
   };
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    maintenance = scratch.maintenance;
-    dispose = scratch.dispose;
-    await provisionScratchSchema(pool);
-    await seedTeam(pool, TEAM_ID);
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM_ID));
 
     clients = new Map();
     builderClients = new Map();
@@ -136,15 +130,19 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     // visible to the other, which is what makes a refusal mean anything.
     const protocolBuilder = createProtocolBuilderRuntime();
     for (const who of [ADMIN, MEMBER]) {
-      await pool.query(
-        `INSERT INTO "user" (id, name, email, "emailVerified")
-         VALUES ($1, $2, $3, true)`,
-        [who.principal.userId, who.principal.name, who.principal.email],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [who.principal.userId, who.principal.name, who.principal.email],
+        ),
       );
-      await pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, $4)`,
-        [who.memberId, TEAM_ID, who.principal.userId, who.role],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, $4)`,
+          [who.memberId, TEAM_ID, who.principal.userId, who.role],
+        ),
       );
       const auth = stubAuthService({
         getSession: () => Promise.resolve(who.principal),
@@ -153,7 +151,11 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
         listMemberships: () =>
           Promise.resolve([{ teamId: TEAM_ID, role: who.role }]),
       });
-      const studio = createStudio(readEnv(), { auth, pool: scratch.app });
+      const studio = createStudio(readEnv(), {
+        auth,
+        pool: database.appPool,
+        services: database.services,
+      });
       clients.set(who, await createRpcClient(studio));
       builderClients.set(
         who,
@@ -175,17 +177,23 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     ungranted = await createStudy('Ungranted study');
     // The maintenance role is the one that may write a fixture row across
     // teams without a pinned tenant.
-    await maintenance.query(
-      `INSERT INTO study_role_grants
-         (id, team_id, study_id, user_id, role, granted_by_user_id)
-       VALUES ($1, $2, $3, $4, 'protocol_designer', $5)`,
-      [
-        randomUUID(),
-        TEAM_ID,
-        granted.studyId,
-        MEMBER.principal.userId,
-        ADMIN.principal.userId,
-      ],
+    await database.run(
+      MaintenanceScope.open(
+        Effect.flatMap(Transaction, ({ sql }) =>
+          sql.unsafe(
+            `INSERT INTO study_role_grants
+               (id, team_id, study_id, user_id, role, granted_by_user_id)
+             VALUES ($1, $2, $3, $4, 'protocol_designer', $5)`,
+            [
+              randomUUID(),
+              TEAM_ID,
+              granted.studyId,
+              MEMBER.principal.userId,
+              ADMIN.principal.userId,
+            ],
+          ),
+        ),
+      ),
     );
 
     orphan = {
@@ -203,7 +211,7 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
 
   afterAll(async () => {
     for (const client of clients.values()) await client.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('lists every line for an Admin and only granted lines for a Member', async () => {
@@ -349,16 +357,17 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     );
 
     expect(
-      await pool.query(`SELECT id FROM protocols WHERE id = $1`, [
-        input.protocolId,
-      ]),
-    ).toHaveProperty('rowCount', 0);
-    expect(
-      await pool.query(
-        `SELECT draft_id FROM protocol_drafts WHERE draft_id = $1`,
-        [input.draftId],
+      await database.run(
+        ownerRows(`SELECT id FROM protocols WHERE id = $1`, [input.protocolId]),
       ),
-    ).toHaveProperty('rowCount', 0);
+    ).toHaveLength(0);
+    expect(
+      await database.run(
+        ownerRows(`SELECT draft_id FROM protocol_drafts WHERE draft_id = $1`, [
+          input.draftId,
+        ]),
+      ),
+    ).toHaveLength(0);
 
     // The same request from an Admin creates the line, so the refusal is the
     // role and not the input.

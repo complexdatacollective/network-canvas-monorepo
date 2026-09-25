@@ -3,16 +3,18 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-} from '../../__tests__/support/postgres.ts';
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
 import { readEnv } from '../../env.ts';
 import {
   type OAuthTokenColumn,
   parseOAuthTokenKeyId,
-  type SecretsCipher,
+  type SecretsCipherApi,
 } from '../../secrets/cipher.ts';
 import { SecretUnreadableError } from '../../secrets/envelope.ts';
 import { createBetterAuthInstance } from '../better-auth.ts';
@@ -25,7 +27,6 @@ import { createBetterAuthInstance } from '../better-auth.ts';
 // database by a route the wrapper does not cover.
 
 const env = readEnv();
-const db = await reachableDb();
 
 const TOKEN_COLUMNS: readonly OAuthTokenColumn[] = [
   'accessToken',
@@ -46,29 +47,29 @@ const TOKENS = {
 
 type StoredTokens = Record<OAuthTokenColumn, string | null>;
 
-describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
+describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
+  let database: TestDatabaseRuntime | undefined;
 
   beforeAll(async () => {
-    if (!db) return;
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
+    database = await openTestDatabase();
   });
 
   afterAll(async () => {
-    await scratch?.dispose();
+    await database?.dispose();
   });
 
   /**
    * A better-auth instance on the scratch schema, wired through the real
-   * constructor so the adapter under test is the one the server builds.
+   * constructor so the adapter under test is the one the server builds. Its
+   * adapter still runs on node-postgres, so it takes the harness's
+   * application-role pool.
    */
-  function contextFor(cipher: SecretsCipher) {
+  function contextFor(cipher: SecretsCipherApi) {
     if (!env.auth) throw new Error('dev env must configure auth');
-    if (!scratch) throw new Error('the scratch schema was not provisioned');
+    if (!database) throw new Error('the scratch schema was not provisioned');
     return createBetterAuthInstance(
       env.auth,
-      scratch.pool,
+      database.appPool,
       () => Promise.resolve(),
       cipher,
     ).$context;
@@ -76,10 +77,12 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
 
   /** What is actually on disk — read around the adapter, never through it. */
   async function storedTokens(accountId: string): Promise<StoredTokens> {
-    if (!scratch) throw new Error('the scratch schema was not provisioned');
-    const { rows } = await scratch.pool.query<StoredTokens>(
-      'select "accessToken", "refreshToken", "idToken" from account where "accountId" = $1',
-      [accountId],
+    if (!database) throw new Error('the scratch schema was not provisioned');
+    const rows = await database.run(
+      ownerRows<StoredTokens>(
+        'select "accessToken", "refreshToken", "idToken" from account where "accountId" = $1',
+        [accountId],
+      ),
     );
     if (rows.length !== 1) {
       throw new Error(`expected one account row, found ${rows.length}`);
@@ -91,11 +94,18 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
     accountId: string,
     value: string,
   ): Promise<void> {
-    if (!scratch) throw new Error('the scratch schema was not provisioned');
-    await scratch.pool.query(
-      'update account set "accessToken" = $1 where "accountId" = $2',
-      [value, accountId],
+    if (!database) throw new Error('the scratch schema was not provisioned');
+    const updated = await database.run(
+      ownerAffected(
+        'update account set "accessToken" = $1 where "accountId" = $2',
+        [value, accountId],
+      ),
     );
+    if (updated !== 1) {
+      throw new Error(
+        `expected to overwrite one account row, found ${updated}`,
+      );
+    }
   }
 
   /**
@@ -103,7 +113,7 @@ describe.skipIf(!db)('OAuth tokens sealed inside the auth adapter', () => {
    * inside `runWithTransaction`, so the account write goes through the
    * transaction's adapter rather than the one better-auth was configured with.
    */
-  async function signUpWithGoogle(cipher: SecretsCipher) {
+  async function signUpWithGoogle(cipher: SecretsCipherApi) {
     const ctx = await contextFor(cipher);
     const email = `${randomUUID()}@example.com`;
     const accountId = randomUUID();

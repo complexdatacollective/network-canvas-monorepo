@@ -4,8 +4,15 @@
 // The rule the second half serves: a job is created by the transaction that
 // caused it. An enqueue on a connection of its own reopens the two windows the
 // transactional path closes — a committed change with no job, and a job for a
-// change that rolled back — so the statement that creates one lives in the two
-// modules that are handed a caller's transaction and nowhere else.
+// change that rolled back — so the statement that creates one lives in the one
+// module that renders it and nowhere else.
+//
+// There used to be a third case here, asserting that the node-postgres twin
+// (`src/jobs/client.ts`) never fetched a connection of its own. It is gone
+// with the twin: the guarantee is structural now, because `Jobs.enqueue`
+// requires `Transaction` and only a scope (`src/db/tenant.ts`) provides one —
+// which `src/jobs/__tests__/transaction.test.ts` proves three ways, including
+// the type-level half a source scan could never reach.
 //
 // The rule the first half serves is narrower: pg-boss was removed with the
 // native queue (#1957), and a dependency that is gone from the manifest can
@@ -17,11 +24,6 @@ import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
-
-import {
-  sourceTokens,
-  tokenName,
-} from '../../__tests__/support/source-tokens.ts';
 
 const REPO_ROOT = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -38,9 +40,6 @@ const SERVER_MANIFEST = 'apps/studio/server/package.json';
 
 /** The one renderer of the statement both enqueue paths send. */
 const ENQUEUE_MODULE = 'apps/studio/server/src/jobs/insert.ts';
-
-/** The node-postgres twin, which sends that statement on a caller's client. */
-const CLIENT_MODULE = 'apps/studio/server/src/jobs/client.ts';
 
 /** The worker, whose only insert is the dead-letter copy; see below. */
 const WORKER_MODULE = 'apps/studio/server/src/jobs/worker.ts';
@@ -60,24 +59,6 @@ function scannedFiles(): { path: string; source: string }[] {
       source: readFileSync(path, 'utf8'),
     })),
   );
-}
-
-/**
- * Every `receiver.member(` call for the named members, as `member` — the
- * tokenizer rather than a regular expression, so a mention in a comment or a
- * string cannot add to or hide from the inventory.
- */
-function memberCalls(source: string, members: string[]): string[] {
-  const tokens = sourceTokens(source);
-  const calls: string[] = [];
-  for (const [index, token] of tokens.entries()) {
-    const name = tokenName(token);
-    if (name === undefined || !members.includes(name)) continue;
-    if (tokens[index - 1]?.raw !== '.') continue;
-    if (tokens[index + 1]?.raw !== '(') continue;
-    calls.push(name);
-  }
-  return calls;
 }
 
 function importsPgBoss(source: string): boolean {
@@ -142,11 +123,9 @@ describe('job source policy', () => {
       .map(({ path }) => path)
       .toSorted();
 
-    // `insert.ts` renders the statement; `jobs.ts` sends it on the
-    // `Transaction` the caller opened and `client.ts` sends that same
-    // rendered statement on the `pg.PoolClient` a command hands it. Neither
-    // sender holds SQL of its own, which is why only the renderer appears
-    // here (the next case is the positive half).
+    // `insert.ts` renders the statement and `jobs.ts` sends it on the
+    // `Transaction` the caller opened. The sender holds no SQL of its own,
+    // which is why only the renderer appears here.
     //
     // The worker's is listed rather than filtered out, the way the old suite
     // listed the S3 `send` calls: it is not an enqueue at all but the
@@ -154,27 +133,5 @@ describe('job source policy', () => {
     // transaction that settles the job it copies. A fourth file appearing here
     // has to be classified in this comment before it can land.
     expect(inserters).toEqual([ENQUEUE_MODULE, WORKER_MODULE].toSorted());
-  });
-
-  it('creates that job on the caller’s own connection', () => {
-    const client = readFileSync(resolve(REPO_ROOT, CLIENT_MODULE), 'utf8');
-
-    // The node-postgres half of the transaction guarantee. The Effect half is
-    // structural — `Jobs.enqueue` requires `Transaction`, and only
-    // `withTransaction` provides it, proved three ways in
-    // `src/jobs/__tests__/transaction.test.ts` — but this path takes a
-    // `pg.PoolClient` as an argument, so nothing in the types stops it from
-    // fetching a connection of its own instead. It may not: a client it
-    // connected for itself would commit the job separately from the domain row
-    // the command is writing.
-    expect(memberCalls(client, ['connect'])).toEqual([]);
-    expect(client).not.toMatch(/new\s+pg\.Pool\b/);
-
-    // And it does send the shared statement rather than one of its own, which
-    // is what keeps the columns frozen onto a job at enqueue the same however
-    // the job was created.
-    expect(client).toMatch(
-      /import\s*\{[^}]*\binsertJobStatement\b[^}]*\}\s*from\s*'\.\/insert\.ts'/,
-    );
   });
 });

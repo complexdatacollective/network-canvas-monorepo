@@ -3,12 +3,11 @@ import type { JobQueueName } from '@codaco/studio-sync/jobs';
 import { type JobPayload, resolvedQueue } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
-// The one statement that creates a job, rendered as text and bound values so
-// that both enqueue paths send exactly it: `Jobs.enqueue` (jobs.ts) over the
-// Effect transaction, and the web process's node-postgres twin
-// (src/jobs/client.ts) on a command's `pg.PoolClient`. It lives apart from
-// jobs.ts so the web process's module graph reaches no `@effect/sql-pg` for
-// it — that process runs its commands on node-postgres until stage 3 of #1927.
+// The one statement that creates a job, rendered as text and bound values:
+// `Jobs.enqueue` (jobs.ts) sends it on the caller's Effect transaction. It is
+// rendered here, apart from the service, because the source policy
+// (`__tests__/source-policy.test.ts`) pins which modules may create a job, and
+// one module holding the statement is what makes that pin meaningful.
 
 /** One `INSERT … RETURNING id`, in the shape both enqueue paths can send. */
 export type JobInsertStatement = {

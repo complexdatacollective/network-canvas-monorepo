@@ -4,7 +4,7 @@ import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
-import { type Keyring, parseKeyring } from '../secrets/keyring.ts';
+import { type KeyringApi, parseKeyring } from '../secrets/keyring.ts';
 import type { EnvironmentVariables } from './schema.ts';
 
 export type S3Env = {
@@ -62,7 +62,7 @@ export type StudioEnv = {
    * not read back, and both entrypoints refuse again at boot for the key ids
    * already in use.
    */
-  secrets: Keyring | undefined;
+  secrets: KeyringApi | undefined;
   /**
    * The shared rate-limit store (#1909). Undefined means no store: every limit
    * is disabled and the limiter says so at boot, which is the same posture the
@@ -167,13 +167,9 @@ export function isLocalDatabase(url: string): boolean {
  * one a hosting provider's socket configuration produces — which the guard
  * used to tolerate rather than refuse.
  *
- * Two formats carry no `options` by construction, and are accepted for that
- * reason rather than by an exception: the bare socket form
- * (`/var/run/postgresql studio_dev`), whose whole grammar is a path and a
- * database name, and a libpq keyword DSN (`host=… dbname=… options=…`), which
- * the parser reads as one long database name because node-postgres does not
- * accept keyword DSNs at all — pg would never honour an `options` written
- * that way.
+ * Two formats carry no `options` by construction — the bare socket form
+ * (`/var/run/postgresql studio_dev`) and a libpq keyword DSN — and pass this
+ * guard; `assertClientCanParse` below refuses both for another reason.
  */
 function assertPinnedRoleSurvives(url: string): void {
   // Not caught: a string this throws on is one pg would throw on too, at the
@@ -186,6 +182,58 @@ function assertPinnedRoleSurvives(url: string): void {
       'instead of studio_app and studio_maintenance, bypassing row-level ' +
       'security. Remove `options` from the connection string.',
   );
+}
+
+/** The Unix-socket spelling both drivers read, with a host to hold a password. */
+const SOCKET_URL_EXAMPLE =
+  'postgres://studio@localhost/studio?host=/var/run/postgresql';
+
+/**
+ * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl`
+ * option, which Studio's clients never pass (`PgConnection.ts` `parseUrl`).
+ * `prefer` and `allow` — libpq's defaults — are refused by the client.
+ */
+const CLIENT_SSL_MODES = new Set([
+  'disable',
+  'require',
+  'verify-ca',
+  'verify-full',
+]);
+
+/**
+ * Refuses a connection string the server's own database client would refuse
+ * at its first statement, while node-postgres — still under better-auth and the
+ * readiness probe — would accept it and leave the process half working.
+ *
+ * `@effect/sql-pg` parses `DATABASE_URL` with `new URL`, so what node-postgres
+ * also accepts — a bare socket path (`/var/run/postgresql studio_dev`), a libpq
+ * keyword DSN, and an authority carrying credentials but no host
+ * (`postgres://user@/db`) — fails with "Invalid connection URL"; so does an
+ * `sslmode` outside `CLIENT_SSL_MODES`. Refused here instead, at boot, with the
+ * spelling that works.
+ */
+function assertClientCanParse(url: string): void {
+  let parsed: URL | undefined;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = undefined;
+  }
+  if (parsed?.protocol !== 'postgres:' && parsed?.protocol !== 'postgresql:') {
+    throw new Error(
+      'DATABASE_URL must be a postgres:// URL. A socket path, a keyword ' +
+        'connection string, or a URL with credentials but no host cannot be ' +
+        "read by the server's database client. For a Unix socket, name its " +
+        `directory in the \`host\` parameter: ${SOCKET_URL_EXAMPLE}`,
+    );
+  }
+  const sslmode = parsed.searchParams.get('sslmode');
+  if (sslmode !== null && !CLIENT_SSL_MODES.has(sslmode)) {
+    throw new Error(
+      `DATABASE_URL has sslmode=${sslmode}, which the server's database ` +
+        `client does not accept. Use one of ${[...CLIENT_SSL_MODES].join(', ')}.`,
+    );
+  }
 }
 
 /**
@@ -226,6 +274,13 @@ function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
     // that the file was never used.
     throw new Error(
       'DATABASE_PASSWORD_FILE is set, but DATABASE_URL is not a URL a password can be inserted into (a socket path or keyword connection string has nowhere to put one). Use a postgres:// URL, or drop DATABASE_PASSWORD_FILE and configure the password the way that connection form expects.',
+    );
+  }
+  if (parsed.hostname === '') {
+    // The URL setter below is a silent no-op on an empty host, so this would
+    // otherwise connect with no password and fail as an authentication error.
+    throw new Error(
+      `DATABASE_PASSWORD_FILE is set, but DATABASE_URL names no host to attach the password to. For a Unix socket, keep a host in the URL and name the socket's directory in the \`host\` parameter: ${SOCKET_URL_EXAMPLE}`,
     );
   }
   if (parsed.password !== '') {
@@ -391,7 +446,7 @@ function resolveSecrets(
   raw: EnvironmentVariables,
   db: DbEnv | undefined,
   readSecretsFile: (path: string) => string,
-): Keyring | undefined {
+): KeyringApi | undefined {
   if (raw.STUDIO_SECRETS_KEY && raw.STUDIO_SECRETS_KEY_FILE) {
     // Never a guess about which one was meant: the two would usually hold the
     // same keyring, and the time they do not is the time it matters.
@@ -465,7 +520,10 @@ export function resolve(
 
   const databaseUrl = resolveDatabaseUrl(raw);
   const db = databaseUrl ? { url: databaseUrl } : undefined;
-  if (db) assertPinnedRoleSurvives(db.url);
+  if (db) {
+    assertPinnedRoleSurvives(db.url);
+    assertClientCanParse(db.url);
+  }
 
   // The marker travels with a publicly-known signing secret, a console mailer,
   // and a boot that applies the schema to whatever DATABASE_URL names. An

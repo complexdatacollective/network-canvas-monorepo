@@ -70,41 +70,15 @@ export class KeyringError extends Error {
   }
 }
 
-/**
- * Parsed key material. Roots are held as `KeyObject`s in a private field so
- * they are not enumerable, not serialisable, and not reachable from anything
- * that stringifies an object graph; `toJSON` and the inspect hook below make
- * the safe behaviour explicit rather than incidental.
- */
-export class Keyring {
-  readonly #roots: ReadonlyMap<string, KeyObject>;
-  readonly #currentId: string;
-
-  /**
-   * Takes already-validated entries, current first: `parseKeyring` below is
-   * the only caller, so every Keyring in the process came through the parse.
-   */
-  constructor(entries: readonly { id: string; key: KeyObject }[]) {
-    if (entries.length === 0) {
-      throw new KeyringError('The secrets keyring is empty.');
-    }
-    this.#roots = new Map(entries.map((entry) => [entry.id, entry.key]));
-    this.#currentId = entries[0]!.id;
-  }
-
+/** Parsed key material, as everything that seals or opens a secret sees it. */
+export type KeyringApi = {
   /** The key everything is sealed under; every other id is readable only. */
-  get currentId(): string {
-    return this.#currentId;
-  }
+  readonly currentId: string;
 
-  has(id: string): boolean {
-    return this.#roots.has(id);
-  }
+  has(id: string): boolean;
 
   /** Current first, then the rest in the order the value listed them. */
-  ids(): string[] {
-    return [...this.#roots.keys()];
-  }
+  ids(): string[];
 
   /**
    * Internal to `src/secrets`: `envelope.ts` is the only caller, and there is
@@ -114,37 +88,68 @@ export class Keyring {
    * read under another even with the same root, and why a key id is an
    * identity rather than a label.
    */
-  subkey(purpose: SecretPurpose, id: string): KeyObject {
-    const root = this.#roots.get(id);
-    if (!root) {
-      throw new KeyringError(
-        `The secrets keyring cannot produce key id "${id}".`,
-      );
-    }
-    const info = JSON.stringify(['studio-secrets.v1', purpose, id]);
-    const bytes = Buffer.from(hkdfSync('sha256', root, '', info, KEY_BYTES));
-    const key = createSecretKey(bytes);
-    bytes.fill(0);
-    return key;
-  }
+  subkey(purpose: SecretPurpose, id: string): KeyObject;
 
-  toJSON(): Record<string, never> {
-    return {};
-  }
+  toJSON(): Record<string, never>;
 
-  [inspect.custom](): string {
-    const ids = this.ids()
-      .map((id) => `'${id}'`)
-      .join(', ');
-    return `Keyring { ids: [ ${ids} ], current: '${this.#currentId}' }`;
+  [inspect.custom](): string;
+};
+
+/**
+ * Takes already-validated entries, current first: `parseKeyring` below is the
+ * only caller, so every keyring in the process came through the parse.
+ *
+ * A closure rather than a class, so the roots live in a `Map` that only the
+ * functions returned here close over: nothing reaches them by walking
+ * properties, cloning the value, or stringifying an object graph. `toJSON` and
+ * the inspect hook state what the two printers do with it, rather than leaving
+ * the safe behaviour to be incidental.
+ */
+function makeKeyring(
+  entries: readonly { id: string; key: KeyObject }[],
+): KeyringApi {
+  if (entries.length === 0) {
+    throw new KeyringError('The secrets keyring is empty.');
   }
+  const roots = new Map(entries.map((entry) => [entry.id, entry.key]));
+  const currentId = entries[0]!.id;
+  const ids = (): string[] => [...roots.keys()];
+
+  return {
+    currentId,
+
+    has: (id) => roots.has(id),
+
+    ids,
+
+    subkey: (purpose, id) => {
+      const root = roots.get(id);
+      if (!root) {
+        throw new KeyringError(
+          `The secrets keyring cannot produce key id "${id}".`,
+        );
+      }
+      const info = JSON.stringify(['studio-secrets.v1', purpose, id]);
+      const bytes = Buffer.from(hkdfSync('sha256', root, '', info, KEY_BYTES));
+      const key = createSecretKey(bytes);
+      bytes.fill(0);
+      return key;
+    },
+
+    toJSON: () => ({}),
+
+    [inspect.custom]: () =>
+      `Keyring { ids: [ ${ids()
+        .map((id) => `'${id}'`)
+        .join(', ')} ], current: '${currentId}' }`,
+  };
 }
 
 /**
  * Reads the configured value. Every failure is a `KeyringError` naming the
  * position or the id and nothing else — see the error's own comment.
  */
-export function parseKeyring(text: string): Keyring {
+export function parseKeyring(text: string): KeyringApi {
   const entries = text.split(ENTRY_SEPARATOR).filter((entry) => entry !== '');
   if (entries.length === 0) {
     throw new KeyringError(
@@ -196,5 +201,5 @@ export function parseKeyring(text: string): Keyring {
     bytes.fill(0);
   }
 
-  return new Keyring(parsed);
+  return makeKeyring(parsed);
 }

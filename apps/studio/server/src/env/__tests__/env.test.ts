@@ -286,6 +286,26 @@ describe('the database password file', () => {
     expect(() => readEnv()).toThrow(/not a URL a password can be inserted/);
   });
 
+  it('refuses a socket URL with no host to hold the password', () => {
+    // The WHATWG password setter does nothing on an empty host, so this would
+    // otherwise connect without the password and fail as an authentication
+    // error nowhere near the cause.
+    vi.stubEnv('DATABASE_URL', 'postgres:///studio?host=/var/run/postgresql');
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(() => readEnv()).toThrow(/names no host to attach the password to/);
+  });
+
+  it('inserts the password into a socket URL that keeps a host', () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgres://studio@localhost/studio?host=/var/run/postgresql',
+    );
+    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    expect(readEnv().db?.url).toBe(
+      'postgres://studio:s3cret@localhost/studio?host=/var/run/postgresql',
+    );
+  });
+
   it('refuses a file it cannot read, naming it', () => {
     vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
     vi.stubEnv('DATABASE_PASSWORD_FILE', '/nonexistent/postgres-password');
@@ -584,25 +604,50 @@ describe('the pinned role', () => {
     );
   });
 
-  it('accepts the two formats that cannot carry the parameter', () => {
+  it('refuses the forms the server’s database client cannot read', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
 
-    // The bare socket form: its whole grammar is a socket directory and a
-    // database name, so there is nowhere in it to write a parameter.
-    vi.stubEnv('DATABASE_URL', '/var/run/postgresql studio_dev');
-    expect(readEnv().db?.url).toBe('/var/run/postgresql studio_dev');
+    // node-postgres reads all three; `@effect/sql-pg` parses the string with
+    // `new URL`, and every statement on a client built from one of these fails
+    // with "Invalid connection URL". Refused at boot instead, naming the
+    // spelling that works.
+    for (const url of [
+      '/var/run/postgresql studio_dev',
+      'host=/var/run/postgresql dbname=studio_dev',
+      'postgres://postgres:spike@/studio_dev',
+    ]) {
+      vi.stubEnv('DATABASE_URL', url);
+      expect(() => readEnv(), url).toThrow(
+        /DATABASE_URL must be a postgres:\/\/ URL[\s\S]*postgres:\/\/studio@localhost\/studio\?host=\/var\/run\/postgresql/,
+      );
+    }
+  });
 
-    // A libpq keyword DSN, which node-postgres does not accept at all: its
-    // parser reads the whole string as one long database name, so the
-    // `options=` written here is inert rather than tolerated. Asserting the
-    // `options` spelling specifically, because the review that asked for this
-    // guard believed pg honoured it.
+  it('refuses an sslmode the server’s database client does not accept', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    // `prefer` is libpq's default and node-postgres takes it; the Effect
+    // client refuses it without an explicit `ssl` option.
+    vi.stubEnv('DATABASE_URL', 'postgres://u@db.example/studio?sslmode=prefer');
+    expect(() => readEnv()).toThrow(/sslmode=prefer/);
     vi.stubEnv(
       'DATABASE_URL',
-      'host=/var/run/postgresql dbname=studio_dev options=-crole%3Dpostgres',
+      'postgres://u@db.example/studio?sslmode=verify-full',
     );
-    expect(readEnv().db?.url).toContain('options=');
+    expect(readEnv().db?.url).toContain('sslmode=verify-full');
+  });
+
+  it('accepts a Unix socket named by the host parameter', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    for (const url of [
+      'postgres://studio@localhost/studio_dev?host=/var/run/postgresql',
+      'postgres:///studio_dev?host=/var/run/postgresql',
+    ]) {
+      vi.stubEnv('DATABASE_URL', url);
+      expect(readEnv().db?.url, url).toBe(url);
+    }
   });
 });
 

@@ -2,20 +2,22 @@ import { Context, Effect, Layer } from 'effect';
 
 import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
 import {
-  DeniedAuditSummaryWriteFailed,
-  DeniedAuditSummaryWriter,
-  type DeniedAuditSummaryWrite,
-} from './audit-writer.ts';
-import {
   DeniedAttemptsStore,
   DeniedAttemptsStoreFailed,
   type WindowFields,
 } from './store.ts';
 
-// Test implementations of this handler's two seams, beside the seams rather
-// than in the suite: the in-memory store is the only place the claim's
-// semantics are written down twice, and a reader comparing it with the Lua in
-// store.ts should not have to go looking for it.
+// The test implementation of this handler's one remaining seam, beside the
+// seam rather than in the suite: the in-memory store is the only place the
+// claim's semantics are written down twice, and a reader comparing it with the
+// Lua in store.ts should not have to go looking for it.
+//
+// There used to be a second pair here, standing in for the audit writer. The
+// writer is gone (`audit/denial-summary.ts` appends through the audit store on
+// the worker's own client), and with it the doubles: a suite that wants the
+// audit write to fail installs a trigger that refuses the insert, which is
+// what `audit/__tests__/audited.test.ts` already does and is a stronger oracle
+// than a layer that says it failed.
 //
 // Two things the memory store deliberately does not model, so that a case
 // whose subject is either of them belongs against a real Valkey instead:
@@ -150,66 +152,3 @@ export const layerMemoryStore: Layer.Layer<
     );
   }),
 );
-
-/** What a recording writer was asked to write. */
-export class RecordedSummaries extends Context.Service<
-  RecordedSummaries,
-  {
-    readonly written: DeniedAuditSummaryWrite[];
-    /**
-     * How the next writes answer. Settable so a case can fail one write and
-     * let the next succeed, which is what the recovery path needs.
-     */
-    readonly setBehaviour: (
-      behaviour: (
-        write: DeniedAuditSummaryWrite,
-        call: number,
-      ) => Effect.Effect<void, DeniedAuditSummaryWriteFailed>,
-    ) => Effect.Effect<void>;
-  }
->()('@studio/jobs/handlers/test/RecordedSummaries') {}
-
-/** A writer that records instead of writing, and fails when told to. */
-export const layerRecordingWriter: Layer.Layer<
-  DeniedAuditSummaryWriter | RecordedSummaries
-> = Layer.effectContext(
-  Effect.sync(() => {
-    const written: DeniedAuditSummaryWrite[] = [];
-    let behaviour: (
-      write: DeniedAuditSummaryWrite,
-      call: number,
-    ) => Effect.Effect<void, DeniedAuditSummaryWriteFailed> = () => Effect.void;
-    return Context.make(
-      DeniedAuditSummaryWriter,
-      DeniedAuditSummaryWriter.of({
-        write: (write) =>
-          Effect.suspend(() => {
-            written.push(write);
-            return behaviour(write, written.length);
-          }),
-      }),
-    ).pipe(
-      Context.add(
-        RecordedSummaries,
-        RecordedSummaries.of({
-          written,
-          setBehaviour: (next) =>
-            Effect.sync(() => {
-              behaviour = next;
-            }),
-        }),
-      ),
-    );
-  }),
-);
-
-/** A writer every call of which fails; the "the audit log is gone" case. */
-export const layerRefusingWriter: Layer.Layer<DeniedAuditSummaryWriter> =
-  Layer.succeed(DeniedAuditSummaryWriter)(
-    DeniedAuditSummaryWriter.of({
-      write: () =>
-        Effect.fail(
-          new DeniedAuditSummaryWriteFailed({ message: 'database is gone' }),
-        ),
-    }),
-  );

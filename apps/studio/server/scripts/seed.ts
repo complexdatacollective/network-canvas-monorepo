@@ -3,8 +3,9 @@ import { parseArgs } from 'node:util';
 
 import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
-import { seed, type SeedScale } from '../src/db/seed.ts';
 import { readEnv } from '../src/env.ts';
+import { seedDatabase } from './apply.ts';
+import type { SeedScale } from './seed/seed.ts';
 import { confirmDestructiveTarget } from './target-guard.ts';
 
 // The deploy-time seed step, run once per deployment rather than once per
@@ -45,7 +46,7 @@ try {
     console.error(schemaProblemMessage(state, 'development'));
     process.exit(1);
   }
-  await seed(pool, {
+  await seedDatabase(db, {
     secrets,
     adminPassword: env.seedAdminPassword,
     scale,

@@ -1,6 +1,8 @@
 import { Cause, DateTime, Effect, Ref } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
+import type { NotFound } from '@codaco/studio-contract/schema/errors';
+
 import {
   CLAIMED_SUFFIX,
   DENIAL_KEY_PREFIX,
@@ -8,23 +10,17 @@ import {
   type DeniedAuditWindow,
   parseDenialWindowKey,
 } from '../../audit/denial-rate-limit.ts';
+import { appendDeniedAuditSummary } from '../../audit/denial-summary.ts';
 import {
   DENIED_AUDIT_OPERATIONS,
   type DeniedAuditOperation,
 } from '../../audit/events.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
-import {
-  type Database,
-  Transaction,
-  withTenantTransaction,
-  withTransaction,
-} from '../database.ts';
+import { type MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { causeError, deepestMessage } from '../errors.ts';
+import { maintenanceTeamAccess } from '../team-access.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
-import {
-  DeniedAuditSummaryWriter,
-  type DeniedAuditSummaryWriteFailed,
-} from './denied-attempts/audit-writer.ts';
 import {
   DeniedAttemptsStore,
   type DeniedAttemptsStoreFailed,
@@ -35,7 +31,7 @@ import {
 // Effect: the same job src/jobs/handlers/denied-attempts-summary.ts runs
 // today, with pg-boss's job metadata replaced by `HandledJob`, its two
 // non-Effect dependencies behind the tags in `denied-attempts/`, and its
-// node-postgres reads replaced by the queue's own `Database`.
+// node-postgres reads replaced by the queue's own maintenance client.
 //
 // Two things accumulate in Valkey between runs and this is what drains both.
 //
@@ -136,7 +132,7 @@ function isDeniedAuditOperation(
  * keys are hashed to keep out of that store, and the same rule holds here.
  */
 const loadActor = Effect.fnUntraced(function* (actorId: string) {
-  const rows = yield* withTransaction(
+  const rows = yield* MaintenanceScope.open(
     Effect.flatMap(
       Transaction,
       ({ sql }) => sql<ActorRow>`
@@ -177,8 +173,8 @@ const summaryAlreadyWritten = Effect.fnUntraced(function* (
   // carries a stricter policy than the other tenant tables (src/audit/schema.ts)
   // with no maintenance escape at all, so a read without the team stamped on
   // the transaction sees nothing and would report every summary as missing.
-  const rows = yield* withTenantTransaction(
-    window.teamId,
+  const rows = yield* MaintenanceScope.openTenant(
+    maintenanceTeamAccess(window.teamId),
     Effect.flatMap(
       Transaction,
       ({ sql }) => sql<{ present: boolean }>`
@@ -225,13 +221,10 @@ export const deniedAttemptsSummary = (
     written: Ref.Ref<number>,
   ): Effect.fn.Return<
     void,
-    | SqlError.SqlError
-    | DeniedAttemptsStoreFailed
-    | DeniedAuditSummaryWriteFailed,
-    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+    SqlError.SqlError | NotFound | DeniedAttemptsStoreFailed,
+    MaintenanceDatabase | DeniedAttemptsStore
   > {
     const store = yield* DeniedAttemptsStore;
-    const writer = yield* DeniedAuditSummaryWriter;
     const actor = yield* loadActor(window.actorId);
     if (!actor) {
       // The account was deleted between the attempts and this run. The event
@@ -251,7 +244,7 @@ export const deniedAttemptsSummary = (
       summary.firstSuppressedAt,
     );
     if (!already) {
-      yield* writer.write({
+      yield* appendDeniedAuditSummary({
         teamId: window.teamId,
         operation,
         actor,
@@ -265,7 +258,7 @@ export const deniedAttemptsSummary = (
   const summariseWindows = Effect.fnUntraced(function* (): Effect.fn.Return<
     number,
     DeniedAttemptsStoreFailed,
-    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+    MaintenanceDatabase | DeniedAttemptsStore
   > {
     const store = yield* DeniedAttemptsStore;
     const closedBefore =
@@ -365,7 +358,7 @@ export const deniedAttemptsSummary = (
   ): Effect.fn.Return<
     JobOutcome,
     DeniedAttemptsStoreFailed,
-    Database | DeniedAttemptsStore | DeniedAuditSummaryWriter
+    MaintenanceDatabase | DeniedAttemptsStore
   > {
     const store = yield* DeniedAttemptsStore;
     // The attempt rides on both lines the way the original's `logJobOutcome`

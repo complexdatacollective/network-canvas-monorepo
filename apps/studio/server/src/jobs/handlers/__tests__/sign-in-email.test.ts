@@ -3,6 +3,7 @@ import { DateTime, Effect, Layer, Random } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { MaintenanceDatabase } from '../../../db/client.ts';
 import { MailFailed, Mailer } from '../../../mail/mailer.ts';
 import {
   asOwner,
@@ -14,7 +15,6 @@ import {
   QueueHarness,
   readJobs,
 } from '../../__tests__/support.ts';
-import { Database } from '../../database.ts';
 import { resolvedQueue } from '../../queues.ts';
 import type { JobStep } from '../../worker.ts';
 import { signInEmail } from '../sign-in-email.ts';
@@ -189,7 +189,7 @@ describe.skipIf(!db)('the sign-in email handler', () => {
           // fabricated — the columns beside it are the enqueue's own.
           yield* asOwner(
             Effect.flatMap(
-              Database,
+              MaintenanceDatabase,
               ({ sql }) => sql`
                 UPDATE ${sql(schema)}.jobs
                    SET payload = ${JSON.stringify({ email: MAGIC_LINK.email })}::jsonb

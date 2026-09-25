@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Exit } from 'effect';
-import type pg from 'pg';
+import { Effect, Exit } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
@@ -11,26 +10,28 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
+  insertTeam,
+  openTestDatabase,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
   uniqueTeamId,
-} from './support/postgres.ts';
+} from './support/database.ts';
 import {
   createRpcClient,
   expectPayloadRejected,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-
-const db = await reachableDb();
+import { reachableDeniedAuditStore } from './support/valkey.ts';
 
 const TEAM = TeamId.make(uniqueTeamId('audit-list-team'));
 const OTHER_TEAM = TeamId.make(uniqueTeamId('audit-list-other'));
 const T0 = '2026-08-30T10:00:00.000Z';
 const T1 = '2026-08-30T11:00:00.000Z';
 const T2 = '2026-08-30T12:00:00.000Z';
+
+const limiterStore = await reachableDeniedAuditStore();
 
 function principal(userId: string, name: string): SessionPrincipal {
   return {
@@ -67,13 +68,14 @@ type SeededEvent = {
 };
 
 async function insertEvent(
-  pool: pg.Pool,
+  database: TestDatabaseRuntime,
   teamId: string,
   event: SeededEvent,
 ): Promise<AuditEventId> {
   const id = AuditEventId.make(randomUUID());
-  await pool.query(
-    `INSERT INTO audit_events (
+  await database.run(
+    ownerRows(
+      `INSERT INTO audit_events (
        id, team_id, team_label, sequence, occurred_at, event_type,
        event_version, category, outcome, actor_kind, actor_id, actor_label,
        subject_type, subject_id, subject_label,
@@ -82,57 +84,30 @@ async function insertEvent(
        $1, $2, $2, $3, $4::timestamptz, $5, $6, $7, $8, $19, $9, $10,
        $11, $12, $13, $14, $15, $16, $17::uuid, $18::jsonb
      )`,
-    [
-      id,
-      teamId,
-      event.sequence,
-      event.occurredAt,
-      event.eventType,
-      event.eventVersion,
-      event.category,
-      event.outcome,
-      event.actorId,
-      event.actorLabel,
-      event.subject?.type ?? null,
-      event.subject?.id ?? null,
-      event.subject?.label ?? null,
-      event.resource?.type ?? null,
-      event.resource?.id ?? null,
-      event.resource?.label ?? null,
-      randomUUID(),
-      JSON.stringify(event.details),
-      event.actorKind ?? 'user',
-    ],
+      [
+        id,
+        teamId,
+        event.sequence,
+        event.occurredAt,
+        event.eventType,
+        event.eventVersion,
+        event.category,
+        event.outcome,
+        event.actorId,
+        event.actorLabel,
+        event.subject?.type ?? null,
+        event.subject?.id ?? null,
+        event.subject?.label ?? null,
+        event.resource?.type ?? null,
+        event.resource?.id ?? null,
+        event.resource?.label ?? null,
+        randomUUID(),
+        JSON.stringify(event.details),
+        event.actorKind ?? 'user',
+      ],
+    ),
   );
   return id;
-}
-
-/**
- * The application pool with a client budget, so a chosen transaction fails at
- * the first thing an audited append does: acquire a client. An audit read
- * spends one budgeted client on the transaction that decides authorization,
- * which leaves the denial append — the next transaction the request opens —
- * with nothing.
- */
-function poolWithClientBudget(
-  pool: pg.Pool,
-  budget: number,
-  message: string,
-): pg.Pool {
-  let remaining = budget;
-  return new Proxy(pool, {
-    get(target, property, receiver) {
-      if (property === 'connect') {
-        return () => {
-          if (remaining <= 0) return Promise.reject(new Error(message));
-          remaining -= 1;
-          return target.connect();
-        };
-      }
-      const value = Reflect.get(target, property, receiver);
-      return typeof value === 'function' ? value.bind(target) : value;
-    },
-  });
 }
 
 /** The structured `detail` of a `process.emitWarning` call, parsed. */
@@ -148,19 +123,22 @@ function warningDetail(options: string | object | undefined): unknown {
 }
 
 /** The next free per-team sequence, so a direct seed cannot collide. */
-async function nextSequence(pool: pg.Pool, teamId: string): Promise<number> {
-  const rows = await pool.query<{ next: string }>(
-    `SELECT COALESCE(MAX(sequence), 0) + 1 AS next
-     FROM audit_events WHERE team_id = $1`,
-    [teamId],
+async function nextSequence(
+  database: TestDatabaseRuntime,
+  teamId: string,
+): Promise<number> {
+  const rows = await database.run(
+    ownerRows<{ next: number }>(
+      `SELECT (COALESCE(MAX(sequence), 0) + 1)::int AS next
+       FROM audit_events WHERE team_id = $1`,
+      [teamId],
+    ),
   );
-  return Number(rows.rows[0]?.next ?? 1);
+  return rows[0]?.next ?? 1;
 }
 
-describe.skipIf(!db)('audit list/get RPC', () => {
-  let pool: pg.Pool;
-  let appPool: pg.Pool;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('audit list/get RPC', () => {
+  let database: TestDatabaseRuntime;
   let currentPrincipal: SessionPrincipal;
   let memberships: Record<string, string | undefined>;
   let client: RpcTestClient;
@@ -177,15 +155,16 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     return id;
   };
 
+  /** One statement as the connecting login, in its own transaction. */
+  const query = <A extends object = Record<string, unknown>>(
+    statement: string,
+    params?: ReadonlyArray<unknown>,
+  ) => database.run(ownerRows<A>(statement, params));
+
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    appPool = scratch.app;
-    dispose = scratch.dispose;
-    await provisionScratchSchema(pool);
-    await seedTeam(pool, TEAM);
-    await seedTeam(pool, OTHER_TEAM);
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM));
+    await database.run(insertTeam(OTHER_TEAM));
 
     currentPrincipal = OWNER;
     memberships = {
@@ -200,12 +179,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       [ADMIN, 'admin'],
       [MEMBER, 'member'],
     ] as const) {
-      await pool.query(
+      await query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
         [seat.userId, seat.name, seat.email],
       );
-      await pool.query(
+      await query(
         `INSERT INTO team_members (id, team_id, user_id, role)
          VALUES ($1, $2, $3, $4)`,
         [`${seat.userId}-member`, TEAM, seat.userId, role],
@@ -221,7 +200,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        pool: appPool,
+        pool: database.appPool,
+        services: database.services,
       }),
     );
     extraClients = [];
@@ -315,9 +295,9 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     ];
     eventIds = {};
     for (const seed of seeds) {
-      eventIds[seed.sequence] = await insertEvent(pool, TEAM, seed);
+      eventIds[seed.sequence] = await insertEvent(database, TEAM, seed);
     }
-    otherTeamEventId = await insertEvent(pool, OTHER_TEAM, {
+    otherTeamEventId = await insertEvent(database, OTHER_TEAM, {
       sequence: 1,
       occurredAt: T0,
       eventType: 'team.invitation.created',
@@ -338,7 +318,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
   afterAll(async () => {
     await client.dispose();
     for (const extra of extraClients) await extra.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('lists newest-first with registry titles and a generic unknown-pair row', async () => {
@@ -388,7 +368,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
     // A concurrent insert between pages must not shift the already-cursored
     // window.
-    eventIds[7] = await insertEvent(pool, TEAM, {
+    eventIds[7] = await insertEvent(database, TEAM, {
       sequence: 7,
       occurredAt: T2,
       eventType: 'team.invitation.created',
@@ -562,14 +542,14 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       'Forbidden',
     );
 
-    const denials = await pool.query<{ details: { procedure: string } }>(
+    const denials = await query<{ details: { procedure: string } }>(
       `SELECT details FROM audit_events
        WHERE team_id = $1 AND event_type = 'audit.read_denied'
          AND actor_id = $2
        ORDER BY sequence`,
       [TEAM, MEMBER.userId],
     );
-    expect(denials.rows.map((row) => row.details.procedure)).toEqual([
+    expect(denials.map((row) => row.details.procedure)).toEqual([
       'audit.list',
       'audit.get',
     ]);
@@ -589,12 +569,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       'Forbidden',
     );
 
-    const rows = await pool.query(
+    const rows = await query(
       `SELECT 1 FROM audit_events WHERE actor_id = 'audit-outsider'
        UNION ALL
        SELECT 1 FROM audit_events WHERE team_id = 'unknown-team'`,
     );
-    expect(rows.rowCount).toBe(0);
+    expect(rows).toHaveLength(0);
     currentPrincipal = OWNER;
   });
 
@@ -606,8 +586,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     // Not a literal: the denial tests above append through the real store, so
     // the seeded 1–7 are already followed by audit.read_denied rows and a
     // hard-coded sequence collides with the per-team unique index.
-    const systemSequence = await nextSequence(pool, TEAM);
-    await insertEvent(pool, TEAM, {
+    const systemSequence = await nextSequence(database, TEAM);
+    await insertEvent(database, TEAM, {
       sequence: systemSequence,
       occurredAt: T2,
       eventType: 'audit.system_retention',
@@ -714,13 +694,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       'Forbidden',
     );
 
-    const denials = await pool.query<{ details: { procedure: string } }>(
+    const denials = await query<{ details: { procedure: string } }>(
       `SELECT details FROM audit_events
        WHERE team_id = $1 AND event_type = 'audit.read_denied'
          AND actor_id = $2 AND details->>'procedure' = 'audit.filterOptions'`,
       [TEAM, MEMBER.userId],
     );
-    expect(denials.rowCount).toBe(1);
+    expect(denials).toHaveLength(1);
     currentPrincipal = OWNER;
   });
 
@@ -792,12 +772,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     // it serializes behind the role change and sees the committed role.
     const demoted = principal('audit-demoted-user', 'Audit Demoted');
     const memberId = 'audit-demoted-member';
-    await pool.query(
+    await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
       [demoted.userId, demoted.name, demoted.email],
     );
-    await pool.query(
+    await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
        VALUES ($1, $2, $3, 'owner')`,
       [memberId, TEAM, demoted.userId],
@@ -809,7 +789,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const demotedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: appPool,
+        pool: database.appPool,
+        services: database.services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(demoted),
           // Still owner: this is the stale read the request carries forward.
@@ -822,43 +803,42 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     );
     extraClients.push(demotedClient);
 
-    const holder = await pool.connect();
-    try {
-      // Hold the membership row so the demotion is guaranteed to be in flight
-      // while the request is past requireTeam but before it reads any rows.
-      await holder.query('BEGIN');
-      await holder.query(
-        `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
-        [memberId],
-      );
+    const { harness } = database;
+    // Hold the membership row so the demotion is guaranteed to be in flight
+    // while the request is past requireTeam but before it reads any rows. One
+    // owner transaction, committed when the body returns, rolled back if it
+    // fails.
+    const { request } = await database.run(
+      harness.onOwner(
+        Effect.gen(function* () {
+          yield* harness.owner.sql.unsafe(
+            `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
+            [memberId],
+          );
+          const pending = demotedClient.callExit(
+            demotedClient.rpc('audit.list', { teamId: TEAM }),
+          );
+          yield* Effect.promise(() => middlewareAuthorized);
+          yield* harness.owner.sql.unsafe(
+            `UPDATE team_members SET role = 'member' WHERE id = $1`,
+            [memberId],
+          );
+          return { request: pending };
+        }),
+      ),
+    );
 
-      const request = demotedClient.callExit(
-        demotedClient.rpc('audit.list', { teamId: TEAM }),
-      );
-      await middlewareAuthorized;
-      await holder.query(
-        `UPDATE team_members SET role = 'member' WHERE id = $1`,
-        [memberId],
-      );
-      await holder.query('COMMIT');
-
-      await expectRpcFailure(request, 'Forbidden');
-    } catch (error) {
-      await holder.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      holder.release();
-    }
+    await expectRpcFailure(request, 'Forbidden');
 
     // The denial is audited like any other audit.read refusal.
     expect(
-      await pool.query(
+      await query(
         `SELECT id FROM audit_events
          WHERE team_id = $1 AND actor_id = $2
            AND event_type = 'audit.read_denied'`,
         [TEAM, demoted.userId],
       ),
-    ).toHaveProperty('rowCount', 1);
+    ).toHaveLength(1);
   });
 
   it('re-reads a promotion committed after the middleware read the role', async () => {
@@ -869,12 +849,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     // in an immutable log for a refusal that never happened.
     const promoted = principal('audit-promoted-user', 'Audit Promoted');
     const memberId = 'audit-promoted-member';
-    await pool.query(
+    await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
       [promoted.userId, promoted.name, promoted.email],
     );
-    await pool.query(
+    await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
        VALUES ($1, $2, $3, 'member')`,
       [memberId, TEAM, promoted.userId],
@@ -886,7 +866,8 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     const promotedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: appPool,
+        pool: database.appPool,
+        services: database.services,
         auth: stubAuthService({
           getSession: () => Promise.resolve(promoted),
           // Still member: this is the stale read the request carries forward.
@@ -899,43 +880,40 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     );
     extraClients.push(promotedClient);
 
-    const holder = await pool.connect();
-    try {
-      // Hold the membership row so the promotion is guaranteed to be in
-      // flight while the request is past requireTeam but before it authorizes.
-      await holder.query('BEGIN');
-      await holder.query(
-        `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
-        [memberId],
-      );
+    const { harness } = database;
+    // Hold the membership row so the promotion is guaranteed to be in flight
+    // while the request is past requireTeam but before it authorizes.
+    const { request } = await database.run(
+      harness.onOwner(
+        Effect.gen(function* () {
+          yield* harness.owner.sql.unsafe(
+            `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
+            [memberId],
+          );
+          const pending = promotedClient.call(
+            promotedClient.rpc('audit.list', { teamId: TEAM }),
+          );
+          yield* Effect.promise(() => middlewareAuthorized);
+          yield* harness.owner.sql.unsafe(
+            `UPDATE team_members SET role = 'owner' WHERE id = $1`,
+            [memberId],
+          );
+          return { request: pending };
+        }),
+      ),
+    );
 
-      const request = promotedClient.call(
-        promotedClient.rpc('audit.list', { teamId: TEAM }),
-      );
-      await middlewareAuthorized;
-      await holder.query(
-        `UPDATE team_members SET role = 'owner' WHERE id = $1`,
-        [memberId],
-      );
-      await holder.query('COMMIT');
-
-      const data = await request;
-      expect(data.items.length).toBeGreaterThan(0);
-    } catch (error) {
-      await holder.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      holder.release();
-    }
+    const data = await request;
+    expect(data.items.length).toBeGreaterThan(0);
 
     expect(
-      await pool.query(
+      await query(
         `SELECT id FROM audit_events
          WHERE team_id = $1 AND actor_id = $2
            AND event_type = 'audit.read_denied'`,
         [TEAM, promoted.userId],
       ),
-    ).toHaveProperty('rowCount', 0);
+    ).toHaveLength(0);
   });
 
   it('signals when a denial event is lost before it can be appended', async () => {
@@ -946,12 +924,12 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     // locking the team, reading the team row — has to be covered here.
     const unrecorded = principal('audit-lost-denial-user', 'Audit Lost');
     const memberId = 'audit-lost-denial-member';
-    await pool.query(
+    await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
       [unrecorded.userId, unrecorded.name, unrecorded.email],
     );
-    await pool.query(
+    await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
        VALUES ($1, $2, $3, 'member')`,
       [memberId, TEAM, unrecorded.userId],
@@ -962,16 +940,30 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       .mockImplementation(() => undefined);
     const unrecordedClient = await createRpcClient(
       createStudio(readEnv(), {
-        // One client for the transaction that decides the denial; the append
-        // that must record it then cannot acquire one.
-        pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),
+        pool: database.appPool,
         auth: stubAuthService({
           getSession: () => Promise.resolve(unrecorded),
           getMembership: () => Promise.resolve({ role: 'member' }),
         }),
+        services: database.services,
       }),
     );
     extraClients.push(unrecordedClient);
+
+    // The append refused by the database rather than starved of a connection.
+    // Starving one used to work because the denial event was written through
+    // the same `pg.Pool` the read borrowed; the append goes through the Effect
+    // client now, so a client budget on the pool no longer reaches it — and a
+    // trigger is the stronger oracle anyway, since the insert really is
+    // attempted and really does fail.
+    await query(`
+      create or replace function refuse_read_denial() returns trigger as $refuse$
+      begin raise exception 'audit read denial rejected'; end;
+      $refuse$ language plpgsql`);
+    await query(`
+      create or replace trigger refuse_read_denial
+        before insert on audit_events
+        for each row execute function refuse_read_denial()`);
 
     let calls: (typeof warning)['mock']['calls'];
     try {
@@ -984,6 +976,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       calls = [...warning.mock.calls];
     } finally {
       warning.mockRestore();
+      await query('drop trigger refuse_read_denial on audit_events');
     }
 
     const lost = calls.filter(
@@ -993,8 +986,10 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
     );
     expect(lost).toHaveLength(1);
+    // `AuditSignal` owns the wording now (`audit/signal.ts`), which is what
+    // makes one code mean one sentence wherever it is emitted from.
     expect(lost[0]?.[0]).toBe(
-      'Required audit.read_denied event was not recorded; the read stayed denied.',
+      'An audit read denial could not be recorded; the read was still denied.',
     );
     expect(warningDetail(lost[0]?.[1])).toEqual({
       eventType: 'audit.read_denied',
@@ -1002,16 +997,91 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       teamId: TEAM,
       actorId: unrecorded.userId,
       requestId: expect.any(String),
-      causeName: 'Error',
-      causeMessage: 'test client budget exhausted',
+      // The failure the DATABASE reported, not the wrapper's: the operator
+      // needs to know why the append was lost, and `@effect/sql-pg`'s own
+      // message is always `PgConnection: Query failed`.
+      //
+      // Mutation: `error.message` in place of `deepestMessage(error)` in
+      // `rpc/audit-read.ts` — the detail then reads `PgConnection: Query
+      // failed` and this fails.
+      causeName: 'effect/sql/SqlError',
+      causeMessage: expect.stringContaining('audit read denial rejected'),
     });
 
     // The signal exists precisely because nothing was recorded.
     expect(
-      await pool.query(
+      await query(
         `SELECT id FROM audit_events WHERE team_id = $1 AND actor_id = $2`,
         [TEAM, unrecorded.userId],
       ),
-    ).toHaveProperty('rowCount', 0);
+    ).toHaveLength(0);
   });
+
+  it.skipIf(!limiterStore)(
+    'spends the denial window only on denial events that committed',
+    async () => {
+      // A member's read is predicted to be denied, so its window slot is
+      // reserved before the read opens. A denial whose append was lost wrote
+      // nothing, and must not count towards the five the window allows —
+      // or a run of append failures would suppress the next real denial.
+      const lost = principal(`audit-window-${randomUUID()}`, 'Audit Window');
+      await query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [lost.userId, lost.name, lost.email],
+      );
+      await query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'member')`,
+        [`${lost.userId}-member`, TEAM, lost.userId],
+      );
+      const lostClient = await createRpcClient(
+        createStudio(readEnv(), {
+          pool: database.appPool,
+          auth: stubAuthService({
+            getSession: () => Promise.resolve(lost),
+            getMembership: () => Promise.resolve({ role: 'member' }),
+          }),
+          services: database.services,
+        }),
+      );
+      extraClients.push(lostClient);
+
+      await query(`
+        create or replace function refuse_window_denial() returns trigger as $refuse$
+        begin raise exception 'audit read denial rejected'; end;
+        $refuse$ language plpgsql`);
+      await query(`
+        create or replace trigger refuse_window_denial
+          before insert on audit_events
+          for each row execute function refuse_window_denial()`);
+      const warning = vi
+        .spyOn(process, 'emitWarning')
+        .mockImplementation(() => undefined);
+      try {
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          await expectRpcFailure(
+            lostClient.callExit(lostClient.rpc('audit.list', { teamId: TEAM })),
+            'Forbidden',
+          );
+        }
+      } finally {
+        warning.mockRestore();
+        await query('drop trigger refuse_window_denial on audit_events');
+      }
+
+      await expectRpcFailure(
+        lostClient.callExit(lostClient.rpc('audit.list', { teamId: TEAM })),
+        'Forbidden',
+      );
+      expect(
+        await query(
+          `SELECT id FROM audit_events
+           WHERE team_id = $1 AND actor_id = $2
+             AND event_type = 'audit.read_denied'`,
+          [TEAM, lost.userId],
+        ),
+      ).toHaveLength(1);
+    },
+  );
 });

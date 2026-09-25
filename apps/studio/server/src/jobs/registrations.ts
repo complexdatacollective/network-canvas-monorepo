@@ -3,11 +3,10 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { type MaintenanceDatabase } from '../db/client.ts';
 import { Environment } from '../env.ts';
 import { type Mailer } from '../mail/mailer.ts';
-import { type Database } from './database.ts';
 import { deniedAttemptsSummary } from './handlers/denied-attempts-summary.ts';
-import type { DeniedAuditSummaryWriter } from './handlers/denied-attempts/audit-writer.ts';
 import type { DeniedAttemptsStore } from './handlers/denied-attempts/store.ts';
 import { invitationDelivery } from './handlers/invitation-delivery.ts';
 import { protocolStoreGc } from './handlers/protocol-store-gc.ts';
@@ -62,12 +61,7 @@ export class QueueUnavailable extends Schema.TaggedError<QueueUnavailable>()(
 export const JobHandlersLive: Layer.Layer<
   never,
   Cron.CronParseError | SqlError.SqlError | QueueUnavailable,
-  | JobWorker
-  | Database
-  | Mailer
-  | Environment
-  | DeniedAttemptsStore
-  | DeniedAuditSummaryWriter
+  JobWorker | MaintenanceDatabase | Mailer | Environment | DeniedAttemptsStore
 > = Layer.effectDiscard(
   Effect.gen(function* () {
     const worker = yield* JobWorker;

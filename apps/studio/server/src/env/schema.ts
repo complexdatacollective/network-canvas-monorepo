@@ -306,9 +306,9 @@ export const EnvironmentSchema = Schema.Struct({
 
   DATABASE_URL: variable(NonEmptyString, {
     group: 'Database',
-    summary: 'Postgres connection string, `pg.Pool`’s native format.',
+    summary: 'Postgres connection string, as a `postgres://` URL.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead.',
+      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead. It must be a `postgres://` URL: a bare socket path, a keyword connection string, a URL with credentials but no host, or an `sslmode` other than `disable`, `require`, `verify-ca` or `verify-full` is refused at boot, because the server’s database client cannot read one. For a Unix socket, keep `localhost` as the host and name the socket’s directory in the `host` parameter — `postgres://studio@localhost/studio?host=/var/run/postgresql` — so a password from `DATABASE_PASSWORD_FILE` has somewhere to go.',
     example: 'postgres://user@host:5432/studio',
   }),
 

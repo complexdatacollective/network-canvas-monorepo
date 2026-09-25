@@ -7,52 +7,57 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { contentHash } from '../apply.ts';
 import { SyncClient } from '../client.ts';
-import { SyncServer } from '../server.ts';
-import type { TenantDb } from '../tenant.ts';
 import {
   dbAvailable,
   expireLease,
   makeDraft,
   makeServer,
-  testSyncTransactionExecutor,
+  type RunTenant,
+  type SyncFacade,
 } from './helpers.ts';
 
 /**
- * A server whose next getSection parks until released — the deterministic
- * stand-in for a slow read overtaken by a concurrent commit.
+ * A facade whose next getSection parks until released — the deterministic
+ * stand-in for a slow read overtaken by a concurrent commit. It wraps the
+ * shared facade rather than subclassing a server: the operations are Effects
+ * now, and what the client actually holds is this transport.
  */
-class GatedServer extends SyncServer {
-  private gate: PromiseWithResolvers<void> | null = null;
-  private arrival: PromiseWithResolvers<void> | null = null;
-
-  /** Park the next getSection; `reached` resolves once that call arrives. */
-  armGetSection() {
-    const gate = Promise.withResolvers<void>();
-    const arrival = Promise.withResolvers<void>();
-    this.gate = gate;
-    this.arrival = arrival;
-    return { reached: arrival.promise, release: () => gate.resolve() };
-  }
-
-  override async getSection(hash: string) {
-    const gate = this.gate;
-    if (gate) {
-      this.gate = null;
-      this.arrival?.resolve();
-      await gate.promise;
-    }
-    return super.getSection(hash);
-  }
+function gatedFacade(server: SyncFacade) {
+  let gate: PromiseWithResolvers<void> | null = null;
+  let arrival: PromiseWithResolvers<void> | null = null;
+  return {
+    ...server,
+    /** Park the next getSection; `reached` resolves once that call arrives. */
+    armGetSection() {
+      const nextGate = Promise.withResolvers<void>();
+      const nextArrival = Promise.withResolvers<void>();
+      gate = nextGate;
+      arrival = nextArrival;
+      return {
+        reached: nextArrival.promise,
+        release: () => nextGate.resolve(),
+      };
+    },
+    async getSection(hash: string) {
+      const parked = gate;
+      if (parked !== null) {
+        gate = null;
+        arrival?.resolve();
+        await parked.promise;
+      }
+      return server.getSection(hash);
+    },
+  };
 }
 
 describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   let db: Pool;
   let dispose: () => Promise<void>;
-  let tenantDb: TenantDb;
-  let server: SyncServer;
+  let run: RunTenant;
+  let server: SyncFacade;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server, dispose } = await makeServer('sync_resume'));
+    ({ db, run, server, dispose } = await makeServer('sync_resume'));
   });
 
   afterAll(async () => {
@@ -121,7 +126,7 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
     sleeper.edit('stage-1', [{ op: 'set', key: 'note', value: 'also mine' }]);
 
     // The laptop sleeps; the lease expires; a colleague takes over and edits.
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
     const colleague = new SyncClient('tab-colleague', server, draft);
     expect(await colleague.openSection('stage-1')).toBe(true);
     colleague.edit('stage-1', [
@@ -161,10 +166,7 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   });
 
   it('reconnect discards a resume snapshot a concurrent push has overtaken', async () => {
-    const gated = new GatedServer(
-      tenantDb,
-      testSyncTransactionExecutor(tenantDb),
-    );
+    const gated = gatedFacade(server);
     const draft = await makeDraft(gated);
     const client = new SyncClient(randomUUID(), gated, draft);
     expect(await client.openSection('stage-1')).toBe(true);

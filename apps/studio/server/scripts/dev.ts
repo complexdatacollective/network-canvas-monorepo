@@ -150,7 +150,7 @@ function bootstrapObjectStore(): void {
 }
 
 // Every `pnpm dev` boot starts from a clean, freshly seeded database: Studio
-// has no real users yet, so reproducible synthetic data (src/db/seed.ts) beats
+// has no real users yet, so reproducible synthetic data (scripts/seed/) beats
 // whatever was left over from the last session. The target is the database the
 // server process will connect to — the same files, in the same order, so a
 // `.env` override of DATABASE_URL is reset and seeded rather than the default
@@ -181,7 +181,7 @@ async function resetAndSeed(): Promise<void> {
   try {
     // The database this resets is local by construction, so the seed can
     // take the pinned PRNG's nonces and write the same rows every boot.
-    await resetSchemaAndSeed(pool, { secrets, reproducible: true });
+    await resetSchemaAndSeed(pool, db, { secrets, reproducible: true });
     console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();

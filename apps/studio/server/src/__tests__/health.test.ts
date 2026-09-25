@@ -6,7 +6,8 @@ import type pg from 'pg';
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
 import { createAssetStore } from '../assets.ts';
-import { migrateDatabase } from '../db/migrate.ts';
+import { OwnerDatabase } from '../db/client.ts';
+import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { createOwnerPool } from '../db/pool.ts';
 import { resolve } from '../env/resolve.ts';
 import {
@@ -325,7 +326,12 @@ describe.skipIf(!db)('the web process against a real database', () => {
         await before.dispose();
       }
 
-      await migrateDatabase(scratch.pool, await renderSchemaDdl());
+      const ddl = await renderSchemaDdl();
+      await Effect.runPromise(
+        migrateDatabaseEffect(ddl).pipe(
+          Effect.provide(OwnerDatabase.layer({ url: scratch.db.url })),
+        ),
+      );
 
       // A second app, because the first one's pool is pinned to studio_app and
       // was refused at connect before that role existed.

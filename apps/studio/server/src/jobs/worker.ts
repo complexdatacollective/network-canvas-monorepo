@@ -22,8 +22,9 @@ import type { SqlClient, SqlError } from 'effect/unstable/sql';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
+import { MaintenanceDatabase } from '../db/client.ts';
+import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
-import { Database, Transaction, withTransaction } from './database.ts';
 import {
   causeError,
   deepestMessage,
@@ -262,10 +263,18 @@ export class JobWorker extends Context.Service<
       cron: string,
       queue: Queue,
       payload: JobPayload<Queue>,
-    ) => Effect.Effect<void, Cron.CronParseError | SqlError.SqlError, Database>;
+    ) => Effect.Effect<
+      void,
+      Cron.CronParseError | SqlError.SqlError,
+      MaintenanceDatabase
+    >;
     readonly dropUndeclaredSchedules: (
       names: readonly string[],
-    ) => Effect.Effect<readonly string[], SqlError.SqlError, Database>;
+    ) => Effect.Effect<
+      readonly string[],
+      SqlError.SqlError,
+      MaintenanceDatabase
+    >;
     /** True once the worker has read the queue tables at least once. */
     readonly ready: Effect.Effect<boolean>;
     /**
@@ -279,7 +288,7 @@ export class JobWorker extends Context.Service<
     readonly queueDepths: Effect.Effect<
       readonly QueueDepth[],
       SqlError.SqlError,
-      Database
+      MaintenanceDatabase
     >;
     /**
      * One claim-run-settle step, run to completion. This is what the poll
@@ -287,11 +296,19 @@ export class JobWorker extends Context.Service<
      */
     readonly drainOnce: (
       queue: JobQueueName,
-    ) => Effect.Effect<JobStep, SqlError.SqlError, Database>;
+    ) => Effect.Effect<JobStep, SqlError.SqlError, MaintenanceDatabase>;
     /** One expiry pass; forked on a timer when `background` is not false. */
-    readonly reapExpired: Effect.Effect<number, SqlError.SqlError, Database>;
+    readonly reapExpired: Effect.Effect<
+      number,
+      SqlError.SqlError,
+      MaintenanceDatabase
+    >;
     /** One retention pass; forked on a timer likewise. */
-    readonly deleteExpired: Effect.Effect<number, SqlError.SqlError, Database>;
+    readonly deleteExpired: Effect.Effect<
+      number,
+      SqlError.SqlError,
+      MaintenanceDatabase
+    >;
     /**
      * One cron pass. `false` means another replica held the advisory lock,
      * which is the only other outcome a second worker is allowed to have.
@@ -299,13 +316,13 @@ export class JobWorker extends Context.Service<
     readonly tickSchedules: Effect.Effect<
       boolean,
       SqlError.SqlError,
-      Database | Jobs
+      MaintenanceDatabase | Jobs
     >;
   }
 >()('@studio/jobs/JobWorker') {
   static readonly layer = (
     config: JobWorkerConfig,
-  ): Layer.Layer<JobWorker, never, Database | Jobs> =>
+  ): Layer.Layer<JobWorker, never, MaintenanceDatabase | Jobs> =>
     Layer.effect(JobWorker, make(config));
 }
 
@@ -638,7 +655,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       // partial unique index is what stops the second, and being stopped by it
       // is "nothing to claim" rather than an error (errors.ts).
       const claimedOrRaced = yield* Effect.exit(
-        withTransaction(claim(queue, now)),
+        MaintenanceScope.open(claim(queue, now)),
       );
       if (
         Exit.isFailure(claimedOrRaced) &&
@@ -661,7 +678,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       if (handler === undefined) {
         // Claimed by a worker that does not work this queue. Put it back rather
         // than fail it: another replica may have the handler.
-        const returned = yield* withTransaction(
+        const returned = yield* MaintenanceScope.open(
           returnToQueue(schema, jobId, claimed.attempts),
         );
         if (!returned) yield* leaseLost(queue, jobId, claimed.attempts);
@@ -683,7 +700,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
       const settledAt = yield* clock.now;
       if (Exit.isSuccess(exit)) {
-        const fenced = yield* withTransaction(
+        const fenced = yield* MaintenanceScope.open(
           settleSuccess(jobId, claimed.attempts, exit.value, settledAt),
         );
         if (!fenced) {
@@ -713,7 +730,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
       const error = causeError(exit.cause);
       if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
-        const fenced = yield* withTransaction(
+        const fenced = yield* MaintenanceScope.open(
           settleDead(jobId, claimed.attempts, describe(error), settledAt),
         );
         if (!fenced) {
@@ -728,7 +745,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       }
 
       const message = describe(error);
-      const step = yield* withTransaction(
+      const step = yield* MaintenanceScope.open(
         settleFailure(
           queue,
           jobId,
@@ -833,7 +850,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
     let settled = 0;
     for (;;) {
-      const reaped = yield* withTransaction(onePass);
+      const reaped = yield* MaintenanceScope.open(onePass);
       settled += reaped;
       if (reaped < EXPIRY_BATCH_SIZE) return settled;
     }
@@ -847,7 +864,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
    */
   const deleteExpired = Effect.fn('JobWorker.deleteExpired')(function* () {
     const now = yield* clock.now;
-    return yield* withTransaction(
+    return yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         let deleted = 0;
@@ -885,7 +902,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     const now = yield* clock.now;
     const encoded = yield* Effect.orDie(payloadCodec(queue).decode(payload));
     const nextRunAt = Cron.next(parsed.success, DateTime.toDate(now));
-    yield* withTransaction(
+    yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         // An upsert, so every replica registers the same row and the last to
@@ -925,7 +942,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const dropUndeclaredSchedules = Effect.fnUntraced(function* (
     names: readonly string[],
   ) {
-    return yield* withTransaction(
+    return yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         const rows = yield* sql<{
@@ -946,7 +963,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const tickSchedules = Effect.fn('JobWorker.tickSchedules')(function* () {
     const now = yield* clock.now;
     const jobs = yield* Jobs;
-    return yield* withTransaction(
+    return yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         const held = yield* sql<{ locked: boolean }>`
@@ -1016,7 +1033,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   });
 
   const queueDepths = Effect.fnUntraced(function* () {
-    const depths: readonly QueueDepth[] = yield* withTransaction(
+    const depths: readonly QueueDepth[] = yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
         // `count(*)::int`: rc.115 decodes a bare `count(*)` as a `bigint`.
@@ -1268,7 +1285,7 @@ const forkListener = Effect.fnUntraced(function* (
   wake: ReadonlyMap<string, Latch.Latch>,
   listening: MutableRef.MutableRef<boolean>,
 ) {
-  const { sql } = yield* Database;
+  const { sql } = yield* MaintenanceDatabase;
   const channel = jobNotifyChannel(schema);
   // Losses since the last acquire. It decides the backoff step and the level a
   // loss is logged at, so the two cannot disagree about what "still down"

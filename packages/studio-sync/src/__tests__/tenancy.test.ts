@@ -4,31 +4,36 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  type SyncServer,
   UnknownDraftError,
   UnknownSectionDocumentError,
   UnknownSectionError,
 } from '../server.ts';
-import { createTenantDb } from '../tenant.ts';
 import {
   DEFAULT_SECTIONS,
   TEST_TEAM_ID,
   dbAvailable,
   makeDraft,
   makeServer,
-  makeTestSyncServer,
+  makeSyncFacade,
+  type SyncFacade,
 } from './helpers.ts';
+
+const OTHER_TEAM_ID = 'team-other';
 
 describe.skipIf(!dbAvailable)('team isolation', () => {
   let db: Pool;
   let dispose: () => Promise<void>;
-  let server: SyncServer;
-  let otherServer: SyncServer;
+  let server: SyncFacade;
+  let otherServer: SyncFacade;
 
   beforeAll(async () => {
-    let app: Pool;
-    ({ db, app, server, dispose } = await makeServer('sync_tenancy'));
-    otherServer = makeTestSyncServer(createTenantDb(app, 'team-other'));
+    let run;
+    ({ db, run, server, dispose } = await makeServer('sync_tenancy'));
+    // The same database, the same client, a different team stamped on every
+    // transaction — which is the only thing standing between the two.
+    otherServer = makeSyncFacade((body, options) =>
+      run(body, { ...options, teamId: OTHER_TEAM_ID }),
+    );
   });
   afterAll(async () => {
     await dispose();

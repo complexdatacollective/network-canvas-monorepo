@@ -2,7 +2,7 @@ import { Cause, Duration, Effect, Layer, Metric, Schedule } from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
-import type { Database } from './database.ts';
+import type { MaintenanceDatabase } from '../db/client.ts';
 import { resolvedQueues } from './queues.ts';
 import { JOB_STATES } from './schema.ts';
 import { JobWorker } from './worker.ts';
@@ -128,7 +128,7 @@ export const JobQueueMetrics = {
    */
   layer: (
     config: JobQueueMetricsConfig = {},
-  ): Layer.Layer<never, never, JobWorker | Database> =>
+  ): Layer.Layer<never, never, JobWorker | MaintenanceDatabase> =>
     Layer.effectDiscard(
       Effect.gen(function* () {
         const options = {

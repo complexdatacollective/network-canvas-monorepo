@@ -9,15 +9,18 @@ import {
 } from '@effect/vitest';
 import { DateTime, Duration, Effect, Exit, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
+import pg from 'pg';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
 
-import { reachableDb } from '../../../__tests__/support/postgres.ts';
+import { ownerRows, testDb } from '../../../__tests__/support/database.ts';
 import { reachableRedis } from '../../../__tests__/support/valkey.ts';
 import {
   CLAIMED_SUFFIX,
   DeniedAuditRateLimiter,
 } from '../../../audit/denial-rate-limit.ts';
+import { MaintenanceDatabase } from '../../../db/client.ts';
+import { MaintenanceScope } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
 import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
 import {
@@ -30,13 +33,11 @@ import {
   layerJobs,
   onWorker,
 } from '../../__tests__/support.ts';
-import { Database, withTransaction } from '../../database.ts';
 import { causeError } from '../../errors.ts';
 import { Jobs } from '../../jobs.ts';
 import { resolvedQueue } from '../../queues.ts';
 import type { HandledJob } from '../../worker.ts';
 import { deniedAttemptsSummary } from '../denied-attempts-summary.ts';
-import { DeniedAuditSummaryWriter } from '../denied-attempts/audit-writer.ts';
 import {
   DeniedAttemptsStore,
   DeniedAttemptsStoreFailed,
@@ -44,9 +45,6 @@ import {
 import {
   DeniedAttemptsMemory,
   layerMemoryStore,
-  layerRecordingWriter,
-  layerRefusingWriter,
-  RecordedSummaries,
 } from '../denied-attempts/testing.ts';
 
 // `src/jobs/__tests__/denied-attempts-summary.test.ts`, ported to the native
@@ -63,8 +61,6 @@ import {
 // clock is `TestClock`: the original injected a `now()` to reach the recovery
 // path — a claim whose write failed, retaken once it is stale — and virtual
 // time reaches it with no seam in production code.
-
-const db = await reachableDb();
 /**
  * A logical database of this file's own, the way support/valkey.ts gives every
  * limiter suite one. Not in its `REDIS_DATABASES` map because that map is
@@ -123,21 +119,20 @@ describe('the summary queue declaration', () => {
   });
 });
 
-/** Studio's schema, the queue, the in-memory store and the real audit writer. */
-const suiteLayer = Layer.mergeAll(
-  layerMemoryStore,
-  Layer.unwrap(
-    Effect.map(DeliveryHarness, (harness) =>
-      // The writer is the live one, over the scratch schema's maintenance
-      // pool: the cases assert about rows in `audit_events`, so the write has
-      // to be the real one. Only the cases about a write that fails replace it.
-      DeniedAuditSummaryWriter.layer(harness.scratch.maintenance),
-    ),
-  ),
-  layerJobs,
-).pipe(Layer.provideMerge(layerDeliveryHarness(db!)));
+/** Studio's schema, the queue and the in-memory store. */
+const suiteLayer = Layer.mergeAll(layerMemoryStore, layerJobs).pipe(
+  Layer.provideMerge(layerDeliveryHarness),
+);
 
-describe.skipIf(!db)(
+// There is no writer seam any more: `appendDeniedAuditSummary`
+// (`audit/denial-summary.ts`) writes through the audit store on the same
+// `MaintenanceDatabase` the handler reads through, which is what closed the
+// two-pool hazard the seam's own documentation named. The cases that used to
+// install a recording or refusing writer therefore make the DATABASE refuse
+// instead — a trigger on `audit_events`, which is a stronger oracle: the
+// write really is attempted and really does fail.
+
+describe.skipIf(!testDb)(
   'the denied-attempts summary job on the native queue',
   () => {
     layer(suiteLayer)('with Studio and the queue installed', (it) => {
@@ -168,21 +163,22 @@ describe.skipIf(!db)(
       const seedActor = Effect.fnUntraced(function* (
         name = 'Denied Researcher',
       ) {
-        const { scratch } = yield* DeliveryHarness;
         const teamId = `team-${randomUUID().slice(0, 8)}`;
         const actorId = `actor-${randomUUID().slice(0, 8)}`;
-        yield* Effect.promise(async () => {
-          await scratch.pool.query(
+        yield* Effect.orDie(
+          ownerRows(
             `INSERT INTO teams (id, name, slug) VALUES ($1, $1, $1)
              ON CONFLICT (id) DO NOTHING`,
             [teamId],
-          );
-          await scratch.pool.query(
+          ),
+        );
+        yield* Effect.orDie(
+          ownerRows(
             `INSERT INTO "user" (id, name, email, "emailVerified")
              VALUES ($1, $2, $3, true)`,
             [actorId, name, `${actorId}@example.org`],
-          );
-        });
+          ),
+        );
         return { teamId, actorId };
       });
 
@@ -280,21 +276,78 @@ describe.skipIf(!db)(
         Effect.flatMap(DeliveryHarness, (harness) =>
           Effect.provideService(
             deniedAttemptsSummary({ keyPrefix, windowMs: WINDOW_MS })(job()),
-            Database,
+            MaintenanceDatabase,
             harness.maintenance,
           ),
         );
 
       const summariesFor = Effect.fnUntraced(function* (teamId: string) {
-        const { scratch } = yield* DeliveryHarness;
-        return yield* Effect.promise(async () => {
-          const { rows } = await scratch.pool.query<AuditRow>(
+        return yield* Effect.orDie(
+          ownerRows<AuditRow>(
             `SELECT event_type, outcome, actor_id, details
                FROM audit_events WHERE team_id = $1`,
             [teamId],
-          );
-          return rows;
-        });
+          ),
+        );
+      });
+
+      /**
+       * A trigger that refuses every `audit_events` insert, and the means to
+       * drop it. The mechanism `audit/__tests__/audited.test.ts` uses, and a
+       * stronger oracle than a writer double: the write really is attempted
+       * and really does fail.
+       */
+      const refuseAuditInsert = Effect.fnUntraced(function* () {
+        yield* Effect.orDie(
+          ownerRows(`
+            create or replace function refuse_summary_append()
+              returns trigger as $refuse$
+            begin raise exception 'summary append rejected'; end;
+            $refuse$ language plpgsql`),
+        );
+        yield* Effect.orDie(
+          ownerRows(`
+            create or replace trigger refuse_summary_append
+              before insert on audit_events
+              for each row execute function refuse_summary_append()`),
+        );
+        return Effect.orDie(
+          ownerRows('drop trigger refuse_summary_append on audit_events'),
+        );
+      });
+
+      /**
+       * A DEFERRED constraint trigger for one team, and the means to drop it.
+       *
+       * It fires at COMMIT rather than at the insert, and
+       * `SqlClient.makeWithTransaction` runs COMMIT as `Effect.orDie` — so the
+       * failure reaches the handler as a defect rather than as a typed
+       * `SqlError`. That is the shape this case needs and nothing else here
+       * produces.
+       */
+      const dieAtCommitFor = Effect.fnUntraced(function* (teamId: string) {
+        yield* Effect.orDie(
+          ownerRows(`
+            create or replace function die_at_commit()
+              returns trigger as $die$
+            begin raise exception 'the summary write has a bug'; end;
+            $die$ language plpgsql`),
+        );
+        yield* Effect.orDie(
+          ownerRows('drop trigger if exists die_at_commit on audit_events'),
+        );
+        yield* Effect.orDie(
+          ownerRows(`
+            create constraint trigger die_at_commit
+              after insert on audit_events
+              deferrable initially deferred
+              for each row
+              when (new.team_id = ${pg.escapeLiteral(teamId)})
+              execute function die_at_commit()`),
+        );
+        return Effect.orDie(
+          ownerRows('drop trigger die_at_commit on audit_events'),
+        );
       });
 
       /** The details of the one summary written for a team. */
@@ -396,12 +449,11 @@ describe.skipIf(!db)(
               windowStart: at.closedAt,
             });
 
-            // A writer whose every call fails: the claim is taken, the write
-            // is not. The run still completes — nothing retries this job.
+            // The audit insert refused: the claim is taken, the write is not.
+            // The run still completes — nothing retries this job.
+            const drop = yield* refuseAuditInsert();
             assert.strictEqual(
-              yield* runSummary(keyPrefix).pipe(
-                Effect.provide(layerRefusingWriter),
-              ),
+              yield* runSummary(keyPrefix).pipe(Effect.ensuring(drop)),
               'completed',
             );
 
@@ -585,18 +637,11 @@ describe.skipIf(!db)(
               windowStart: at.closedAt,
             });
 
-            const recorded = yield* Effect.provide(
-              Effect.gen(function* () {
-                yield* runSummary(keyPrefix);
-                return yield* RecordedSummaries;
-              }),
-              layerRecordingWriter,
-            );
+            yield* runSummary(keyPrefix);
 
             // Dropped rather than written, because the event schema enumerates
             // the operation — and dropped for good, not left to be retried
             // forever.
-            assert.lengthOf(recorded.written, 0);
             assert.deepStrictEqual(yield* summariesFor(teamId), []);
             assert.isFalse(yield* memory.exists(key));
             assert.isFalse(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
@@ -619,15 +664,8 @@ describe.skipIf(!db)(
             windowStart: at.closedAt,
           });
 
-          const recorded = yield* Effect.provide(
-            Effect.gen(function* () {
-              yield* runSummary(keyPrefix);
-              return yield* RecordedSummaries;
-            }),
-            layerRecordingWriter,
-          );
+          yield* runSummary(keyPrefix);
 
-          assert.lengthOf(recorded.written, 0);
           assert.deepStrictEqual(yield* summariesFor(teamId), []);
           assert.isFalse(yield* memory.exists(key));
           assert.isFalse(yield* memory.exists(`${key}${CLAIMED_SUFFIX}`));
@@ -741,34 +779,26 @@ describe.skipIf(!db)(
               windowStart: at.closedAt,
             });
 
+            // A DEFECT rather than a typed failure, which is the distinction
+            // this case exists for — and produced by a deferred constraint
+            // trigger on the first team's rows. `SqlClient.makeWithTransaction`
+            // runs COMMIT as `Effect.orDie`, so a constraint that fires at
+            // commit arrives as a defect however typed the statement was.
             const logs = collectLogs();
-            const recorded = yield* Effect.provide(
-              Effect.gen(function* () {
-                const writer = yield* RecordedSummaries;
-                yield* writer.setBehaviour((_, call) =>
-                  call === 1
-                    ? Effect.die(new Error('the writer has a bug'))
-                    : Effect.void,
-                );
-                const outcome = yield* runSummary(keyPrefix).pipe(
-                  Effect.provide(logs.layer),
-                );
-                assert.strictEqual(outcome, 'completed');
-                return writer;
-              }),
-              layerRecordingWriter,
+            const drop = yield* dieAtCommitFor(first.teamId);
+            const outcome = yield* runSummary(keyPrefix).pipe(
+              Effect.provide(logs.layer),
+              Effect.ensuring(drop),
             );
+            assert.strictEqual(outcome, 'completed');
 
-            // Both windows were reached: the defect in the first did not end
-            // the pass.
-            assert.lengthOf(recorded.written, 2);
-            assert.deepInclude(recorded.written[1], {
-              teamId: second.teamId,
-              summary: {
-                suppressedCount: 7,
-                firstSuppressedAt: at.closedAt + 1_000,
-                lastSuppressedAt: at.closedAt + 7_000,
-              },
+            // The second window was reached and written: the defect in the
+            // first did not end the pass.
+            assert.deepStrictEqual(yield* summariesFor(first.teamId), []);
+            assert.deepInclude(yield* onlySummary(second.teamId), {
+              suppressedCount: 7,
+              firstSuppressedAt: new Date(at.closedAt + 1_000).toISOString(),
+              lastSuppressedAt: new Date(at.closedAt + 7_000).toISOString(),
             });
             // The one that died keeps its claim for a later run; the one that
             // was written gives its claim up, and only it is counted.
@@ -803,7 +833,7 @@ describe.skipIf(!db)(
                 'denied-attempts-summary',
                 deniedAttemptsSummary({ keyPrefix, windowMs: WINDOW_MS }),
               );
-              yield* withTransaction(
+              yield* MaintenanceScope.open(
                 jobs.enqueue('denied-attempts-summary', {}),
               );
               return yield* worker.drainOnce('denied-attempts-summary');

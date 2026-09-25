@@ -1,19 +1,31 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Deferred, Duration, Effect, Layer, Option } from 'effect';
-import pg from 'pg';
+import {
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Layer,
+  Option,
+  Scope,
+} from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  type ScratchSchema,
-} from '../../__tests__/support/postgres.ts';
+  TestDatabase,
+  TestDatabaseLive,
+} from '../../__tests__/support/database.ts';
+import {
+  Database,
+  type DatabaseService,
+  MaintenanceDatabase,
+  OwnerDatabase,
+} from '../../db/client.ts';
 import { splitStatements } from '../../db/statements.ts';
+import { MaintenanceScope } from '../../db/tenant.ts';
 import type { DbEnv } from '../../env.ts';
 import { JobClock } from '../clock.ts';
-import { Database, withTransaction } from '../database.ts';
 import { type EnqueueOptions, Jobs } from '../jobs.ts';
 import { type JobPayload, resolvedQueue } from '../queues.ts';
 import {
@@ -28,18 +40,23 @@ import {
   type JobWorkerConfig,
 } from '../worker.ts';
 
-// One scratch job schema per suite, with a client per identity. The three
-// identities are three `Database` *values* rather than three tags — today
-// there is one `Database` tag and one `identity` field, and a program picks
-// which one it runs as by providing the service. Stage 3 splits them into
-// `Database` / `MaintenanceDatabase` / `OwnerDatabase` for the same reason
-// `PgClient.layer` cannot serve two: a tag holds one value.
+// One scratch job schema per suite, with a client per identity, built from the
+// three tags stage 3 owns: `Database` (the application role), then
+// `MaintenanceDatabase` and `OwnerDatabase` (src/db/client.ts).
+//
+// The queue is maintenance work, so every scope it opens is a
+// `MaintenanceScope` and reads the `MaintenanceDatabase` tag. `asApp` /
+// `asMaintenance` / `asOwner` below therefore put the *chosen* identity's
+// client under that one tag: it is how one scope function is exercised as each
+// of the three roles, and it is what lets `grants.test.ts` assert what
+// `studio_app` may not do with a job. A harness-only substitution — the worker
+// program provides the maintenance client and nothing else.
 
 export type QueueHarnessShape = {
   readonly schema: string;
-  readonly app: Database['Service'];
-  readonly maintenance: Database['Service'];
-  readonly owner: Database['Service'];
+  readonly app: DatabaseService;
+  readonly maintenance: DatabaseService;
+  readonly owner: DatabaseService;
 };
 
 export class QueueHarness extends Context.Service<
@@ -54,7 +71,7 @@ export class QueueHarness extends Context.Service<
  * splitting on `;` would cut it in half.
  */
 const installSchema = Effect.fnUntraced(function* (schema: string) {
-  const { sql } = yield* Database;
+  const { sql } = yield* MaintenanceDatabase;
   for (const statement of [
     ...splitStatements(jobSchemaSql(schema)),
     ...splitStatements(jobSchemaGrantsSql(schema)),
@@ -63,12 +80,14 @@ const installSchema = Effect.fnUntraced(function* (schema: string) {
   }
 });
 
-const client = (identity: 'app' | 'maintenance' | 'owner', db: DbEnv) =>
-  Database.layer(identity, {
-    url: db.url,
-    maxConnections: 4,
-    applicationName: `studio-test-${identity}`,
-  });
+const clientConfig = (
+  identity: 'app' | 'maintenance' | 'owner',
+  db: DbEnv,
+) => ({
+  url: db.url,
+  maxConnections: 4,
+  applicationName: `studio-test-${identity}`,
+});
 
 /**
  * A scratch schema with the queue installed, its grants applied, and a client
@@ -81,23 +100,39 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
       const schema = `studio_test_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
       // Built into this layer's own scope rather than `Effect.provide`d, which
       // would close each pool the moment the effect that built it finished.
-      const build = (identity: 'app' | 'maintenance' | 'owner') =>
-        Effect.map(Effect.orDie(Layer.build(client(identity, db))), (context) =>
-          Context.get(context, Database),
-        );
-      const owner = yield* build('owner');
-      const app = yield* build('app');
-      const maintenance = yield* build('maintenance');
+      const owner = Context.get(
+        yield* Effect.orDie(
+          Layer.build(OwnerDatabase.layer(clientConfig('owner', db))),
+        ),
+        OwnerDatabase,
+      );
+      const app = Context.get(
+        yield* Effect.orDie(
+          Layer.build(Database.layer(clientConfig('app', db))),
+        ),
+        Database,
+      );
+      const maintenance = Context.get(
+        yield* Effect.orDie(
+          Layer.build(
+            MaintenanceDatabase.layer(clientConfig('maintenance', db)),
+          ),
+        ),
+        MaintenanceDatabase,
+      );
 
-      const asOwner = <A, E>(effect: Effect.Effect<A, E, Database>) =>
-        Effect.provideService(effect, Database, owner);
+      const asOwner = <A, E>(
+        effect: Effect.Effect<A, E, MaintenanceDatabase>,
+      ) => Effect.provideService(effect, MaintenanceDatabase, owner);
 
-      yield* Effect.orDie(asOwner(withTransaction(installSchema(schema))));
+      yield* Effect.orDie(
+        asOwner(MaintenanceScope.open(installSchema(schema))),
+      );
 
       yield* Effect.addFinalizer(() =>
         Effect.orDie(
           asOwner(
-            Effect.flatMap(Database, ({ sql }) =>
+            Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
               sql.unsafe(dropJobSchemaSql(schema)),
             ),
           ),
@@ -111,33 +146,36 @@ export const layerQueueHarness = (db: DbEnv): Layer.Layer<QueueHarness> =>
 /** Runs an effect as the role that serves requests. */
 export const asApp = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.app),
+    Effect.provideService(effect, MaintenanceDatabase, harness.app),
   );
 
 /** Runs an effect as the role the worker runs as. */
 export const asMaintenance = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.maintenance),
+    Effect.provideService(effect, MaintenanceDatabase, harness.maintenance),
   );
 
 /** Runs an effect as the connecting login; the suites' oracle connection. */
 export const asOwner = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, Exclude<R, Database> | QueueHarness> =>
+): Effect.Effect<A, E, Exclude<R, MaintenanceDatabase> | QueueHarness> =>
   Effect.flatMap(QueueHarness, (harness) =>
-    Effect.provideService(effect, Database, harness.owner),
+    Effect.provideService(effect, MaintenanceDatabase, harness.owner),
   );
 
-/** The maintenance client under the `Database` tag, for a worker layer. */
-const layerMaintenanceDatabase: Layer.Layer<Database, never, QueueHarness> =
-  Layer.effect(
-    Database,
-    Effect.map(QueueHarness, (harness) => harness.maintenance),
-  );
+/** The harness's maintenance client, for a worker layer. */
+const layerMaintenanceDatabase: Layer.Layer<
+  MaintenanceDatabase,
+  never,
+  QueueHarness
+> = Layer.effect(
+  MaintenanceDatabase,
+  Effect.map(QueueHarness, (harness) => harness.maintenance),
+);
 
 /**
  * The worker as the suites build it: on the maintenance client, with every
@@ -152,7 +190,7 @@ export const layerWorker = (
    * `JobClock.layerOffset(…)`.
    */
   clock: Layer.Layer<never> = JobClock.layerTest,
-): Layer.Layer<JobWorker | Jobs | Database, never, QueueHarness> =>
+): Layer.Layer<JobWorker | Jobs | MaintenanceDatabase, never, QueueHarness> =>
   Layer.unwrap(
     Effect.map(QueueHarness, (harness) =>
       JobWorker.layer({
@@ -196,7 +234,7 @@ export const readJobs = Effect.fnUntraced(function* (queue?: string) {
   const { schema } = yield* QueueHarness;
   return yield* asOwner(
     Effect.flatMap(
-      Database,
+      MaintenanceDatabase,
       ({ sql }) =>
         sql<JobRow>`
           SELECT id, queue, state, policy, attempts, payload, singleton_key,
@@ -245,12 +283,12 @@ export const layerJobs: Layer.Layer<Jobs, never, QueueHarness> = Layer.unwrap(
 export const clearQueue = Effect.gen(function* () {
   const { schema } = yield* QueueHarness;
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(`DELETE FROM ${schema}.jobs`),
     ),
   );
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(`DELETE FROM ${schema}.job_schedules`),
     ),
   );
@@ -263,7 +301,7 @@ export const enqueue = <Queue extends JobQueueName>(
   options?: EnqueueOptions,
 ) =>
   Effect.flatMap(Jobs, (jobs) =>
-    asApp(withTransaction(jobs.enqueue(queue, payload, options))),
+    asApp(MaintenanceScope.open(jobs.enqueue(queue, payload, options))),
   );
 
 /** One job on the delivery queue, which is the queue most cases drive. */
@@ -282,7 +320,7 @@ export const updateJob = Effect.fnUntraced(function* (
 ) {
   const { schema } = yield* QueueHarness;
   yield* asOwner(
-    Effect.flatMap(Database, ({ sql }) =>
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
       sql.unsafe(
         `UPDATE ${schema}.jobs SET ${assignment} WHERE id = '${jobId}'`,
       ),
@@ -302,7 +340,7 @@ export const readSchedules = Effect.fnUntraced(function* () {
   const { schema } = yield* QueueHarness;
   return yield* asOwner(
     Effect.flatMap(
-      Database,
+      MaintenanceDatabase,
       ({ sql }) => sql<ScheduleRow>`
         SELECT name, cron, queue, next_run_at
           FROM ${sql(schema)}.job_schedules
@@ -383,64 +421,75 @@ export type Holder = {
 };
 
 /**
- * An open transaction on a raw `pg` connection of its own, for the length of
- * `use`. The harness's three `Database` values share nothing with it, which is
- * the point: a second connection is the only way to hold a row lock — or an
- * advisory one — that the queue's own statements then have to deal with, and
- * an Effect transaction on the calling fiber would route those statements onto
- * the holder's connection instead.
+ * An open transaction on a connection of its own, for the length of `use`: a
+ * one-connection client built from `url` for this call alone, so the
+ * harness's three clients share nothing with it, which is the point. A second
+ * connection is the only way to hold a row lock — or an advisory one — that
+ * the queue's own statements then have to deal with, and the transaction is
+ * begun on a reserved connection rather than through `withTransaction`,
+ * which would route every statement the calling fiber then ran through that
+ * client onto the holder's connection instead.
  *
  * Always ended: a case that left a row locked would take every later case in
  * its file down with it, so the release rolls back whatever the case did not
- * finish itself.
+ * finish itself, before the client and its connection are closed.
  */
 export const holding = <A, E, R>(
   url: string,
   use: (holder: Holder) => Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> =>
   Effect.acquireUseRelease(
-    Effect.promise(async () => {
-      const pool = new pg.Pool({ connectionString: url, max: 1 });
-      // node-postgres turns an unhandled pool `error` into an uncaught
-      // exception, which would take the whole run down rather than this case.
-      pool.on('error', () => undefined);
-      const held = await pool.connect();
-      await held.query('BEGIN');
-      return { pool, held };
-    }),
-    ({ held }) =>
-      use({
-        query: (statement, parameters) =>
-          Effect.promise(async () => {
-            await held.query(statement, parameters ? [...parameters] : []);
+    Scope.make(),
+    (scope) =>
+      Effect.flatMap(
+        Scope.provide(scope)(
+          Effect.gen(function* () {
+            const { sql } = Context.get(
+              yield* Effect.orDie(
+                Layer.build(
+                  OwnerDatabase.layer({
+                    url,
+                    maxConnections: 1,
+                    applicationName: 'studio-test-holder',
+                  }),
+                ),
+              ),
+              OwnerDatabase,
+            );
+            const held = yield* Effect.orDie(sql.reserve);
+            yield* Effect.acquireRelease(
+              Effect.orDie(held.executeRaw('BEGIN', [])),
+              // The case ended the transaction itself, or the connection is
+              // gone. Either way the lock is released, which is all this is
+              // for.
+              () => Effect.ignore(held.executeRaw('ROLLBACK', [])),
+            );
+            return held;
           }),
-        blockedByMe: Effect.promise(async () => {
-          // `pg_backend_pid()` runs on this connection, so this counts the
-          // backends blocked by *this* transaction and nothing else.
-          const { rows } = await held.query<{ blocked: number }>(
-            `SELECT count(*)::int AS blocked
-               FROM pg_stat_activity
-              WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
-          );
-          return rows[0]?.blocked ?? 0;
-        }),
-        finish: (how) =>
-          Effect.promise(async () => {
-            await held.query(how);
+        ),
+        (held) =>
+          use({
+            query: (statement, parameters) =>
+              Effect.orDie(held.executeRaw(statement, parameters ?? [])),
+            blockedByMe: Effect.orDie(
+              Effect.map(
+                // `pg_backend_pid()` runs on this connection, so this counts
+                // the backends blocked by *this* transaction and nothing else.
+                held.execute(
+                  `SELECT count(*)::int AS blocked
+                     FROM pg_stat_activity
+                    WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
+                  [],
+                  undefined,
+                ),
+                (rows: ReadonlyArray<{ readonly blocked?: number }>) =>
+                  rows[0]?.blocked ?? 0,
+              ),
+            ),
+            finish: (how) => Effect.orDie(held.executeRaw(how, [])),
           }),
-      }),
-    ({ pool, held }) =>
-      Effect.promise(async () => {
-        try {
-          await held.query('ROLLBACK');
-        } catch {
-          // The case ended the transaction itself, or the connection is gone.
-          // Either way the lock is released, which is all this is for.
-        } finally {
-          held.release();
-          await pool.end();
-        }
-      }),
+      ),
+    (scope, exit) => Scope.close(scope, exit),
   );
 
 /** How often the waits below ask again. */
@@ -537,15 +586,15 @@ export function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
 }
 
 // The delivery suite needs Studio's own schema as well as the queue's, so it
-// reuses the pg-based scratch-schema helpers every other Studio suite uses and
-// installs the queue into a sibling schema. The pg pools stay available for
-// fixtures and oracles; the queue and the handler run on the Effect clients,
-// which carry `search_path` so the unqualified Studio tables resolve.
+// is built on `TestDatabaseLive`, which provisions both: the Studio scratch
+// schema and its `_ejobs` job sibling, with a client per identity whose
+// `search_path` resolves the unqualified Studio tables. The queue and the
+// handler run on those clients, and `TestDatabase` is provided beside the
+// harness for fixtures and oracles (`ownerRows`, `onOwner`).
 
 export type DeliveryHarnessShape = QueueHarnessShape & {
   /** The Studio schema these clients resolve unqualified names against. */
   readonly studioSchema: string;
-  readonly scratch: ScratchSchema;
 };
 
 export class DeliveryHarness extends Context.Service<
@@ -553,69 +602,20 @@ export class DeliveryHarness extends Context.Service<
   DeliveryHarnessShape
 >()('@studio/jobs/test/DeliveryHarness') {}
 
-export const layerDeliveryHarness = (
-  db: DbEnv,
-): Layer.Layer<DeliveryHarness | QueueHarness> =>
-  Layer.effectContext(
-    Effect.gen(function* () {
-      const scratch = yield* Effect.promise(async () => {
-        const created = await createScratchSchema(db);
-        await provisionScratchSchema(created.pool);
-        return created;
-      });
-      const studioSchema = yield* Effect.promise(async () => {
-        const { rows } = await scratch.pool.query<{ schema: string }>(
-          'select current_schema() as schema',
-        );
-        return rows[0]!.schema;
-      });
-      // A sibling of the Studio schema, named so the `studio_test_%` sweep in
-      // scripts/apply.ts reclaims it after a crashed run — the same rule
-      // pg-boss's scratch schema follows.
-      const schema = `${studioSchema}_ejobs`;
-
-      const build = (identity: 'app' | 'maintenance' | 'owner') =>
-        Effect.map(
-          Effect.orDie(
-            Layer.build(
-              Database.layer(identity, {
-                url: db.url,
-                maxConnections: 6,
-                applicationName: `studio-test-${identity}`,
-                searchPath: studioSchema,
-              }),
-            ),
-          ),
-          (context) => Context.get(context, Database),
-        );
-      const owner = yield* build('owner');
-      const app = yield* build('app');
-      const maintenance = yield* build('maintenance');
-
-      yield* Effect.orDie(
-        Effect.provideService(
-          withTransaction(installSchema(schema)),
-          Database,
-          owner,
-        ),
-      );
-
-      yield* Effect.addFinalizer(() =>
-        Effect.promise(async () => {
-          await scratch.dispose();
-        }),
-      );
-
-      const shape: DeliveryHarnessShape = {
-        schema,
-        studioSchema,
-        app,
-        maintenance,
-        owner,
-        scratch,
-      };
-      return Context.make(DeliveryHarness, DeliveryHarness.of(shape)).pipe(
-        Context.add(QueueHarness, QueueHarness.of(shape)),
-      );
-    }),
-  );
+export const layerDeliveryHarness: Layer.Layer<
+  DeliveryHarness | QueueHarness | TestDatabase
+> = Layer.effectContext(
+  Effect.map(TestDatabase, (harness) => {
+    const shape: DeliveryHarnessShape = {
+      schema: harness.jobSchema,
+      studioSchema: harness.schema,
+      app: harness.app,
+      maintenance: harness.maintenance,
+      owner: harness.owner,
+    };
+    return Context.make(DeliveryHarness, DeliveryHarness.of(shape)).pipe(
+      Context.add(QueueHarness, QueueHarness.of(shape)),
+      Context.add(TestDatabase, harness),
+    );
+  }),
+).pipe(Layer.provide(TestDatabaseLive));

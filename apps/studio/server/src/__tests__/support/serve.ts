@@ -10,6 +10,7 @@ import { Environment, type StudioEnv } from '../../env.ts';
 import type { HealthChecks } from '../../http/health.ts';
 import { Routes } from '../../http/router.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
+import { studioServices } from './services.ts';
 
 // The composed stack, for the suites that need more than the Hono residue:
 // the health routes, the problem-JSON rewrite and the WebSocket upgrade all
@@ -45,6 +46,7 @@ export async function startStudioServer(
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(ServerLive),
     Layer.provide(EnvironmentLive),
+    Layer.provide(studioServices(studio)),
   );
 
   const scope = Scope.makeUnsafe();
@@ -76,6 +78,7 @@ export function composeStudio(
     Routes(studio, checks).pipe(
       Layer.provide(WebSocketDrain.layerTest),
       Layer.provide(Layer.succeed(Environment, env)),
+      Layer.provide(studioServices(studio)),
     ),
     { disableLogger: true },
   );

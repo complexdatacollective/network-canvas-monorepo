@@ -9,14 +9,24 @@
 // while the caller is alive (runtime.ts), and every write re-reads the lease
 // row inside its own transaction — that read, not the epoch a client presents,
 // is what decides whether a write is admitted.
-import type pg from 'pg';
+//
+// Every function here opens the transaction it needs, as the Promise-era host
+// did, and nothing takes a connection as an argument: the sync server, the
+// draft structure and the event log all require the open `Transaction`, so a
+// lease change and the rows it admits land together because they run in one
+// scope rather than because a caller remembered to pass one client.
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import type {
   Presence,
   ResourceDescriptor,
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import {
   assembledProtocol,
   entityTypeReferences,
@@ -30,21 +40,25 @@ import {
   sectionShapeIssues,
   type SectionIssue,
 } from '@codaco/studio-sync/section-validation';
+import type { Lease, UnknownSectionError } from '@codaco/studio-sync/server';
 import {
   parseSectionId,
   sectionId as makeSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
-  runAuditedCommand,
-  type AuditedCommandContext,
-  type LockedAuditedCommandContext,
-} from '../audit/command.ts';
-import type { AuditEventInput } from '../audit/events.ts';
-import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
-import type { Principal } from '../auth/service.ts';
+  audited,
+  changed,
+  unchanged,
+  type AuditedResult,
+  type AuditEventBody,
+} from '../audit/audited.ts';
+import { noAuditTransaction } from '../audit/no-audit.ts';
+import type { Database } from '../db/client.ts';
+import { sqlErrorsOnly, sqlErrorsOnlyBeside } from '../db/errors.ts';
+import { TenantScope, type TeamAccess, Transaction } from '../db/tenant.ts';
+import { RequestId } from '../http/middleware/request-id.ts';
 import {
   sealAssetKeys,
   stripAssetKeyValues,
@@ -53,32 +67,51 @@ import {
 import {
   lockProtocolActorMembership,
   lockProtocolDraft,
-  protocolEventContext,
 } from '../protocol/commands.ts';
 import {
   advanceDraftManifest,
   fenceDraftLeases,
   lockDraftHead,
+  type DraftStructureError,
   type HeadState,
 } from '../protocol/draft-structure.ts';
-import { createProtocolSyncServer } from '../protocol/sync.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import {
+  createProtocolSyncServer,
+  SYNC_TRANSACTION_POLICIES,
+} from '../protocol/sync.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import {
   appendProtocolEvents,
   type LoggedProtocolEvent,
   type ProtocolEventRecord,
 } from './events.ts';
+import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
 import {
-  lockedWriteReceipt,
+  readWriteReceipt,
   recordWriteReceipt,
   type WriteReceipt,
 } from './writeReceipts.ts';
+
+const { drafts, leases, manifests, sections } = SYNC_TABLES;
+const { protocolEvents } = PROTOCOL_BUILDER_TABLES;
+
+/**
+ * Studio's sync server. One value for the process: it holds no database handle
+ * and opens no transaction, so there is nothing per-session to build.
+ */
+const sync = createProtocolSyncServer();
 
 /** One caller on one protocol: the tenant, the draft, and the lock owner. */
 export type ProtocolBuilderSession = {
   protocolId: string;
   draftId: string;
-  tenantDb: TenantDb;
+  /**
+   * The key that opens this session's transactions, minted by `openSession`
+   * from the membership the protocol was found through (#1927 §10). A team id
+   * on its own would open nothing: `TenantScope.open` takes the branded proof,
+   * so a session cannot exist without a membership check having happened.
+   */
+  access: TeamAccess;
   /**
    * Seals an `apikey` asset's value as the manifest naming it is written, and
    * opens it again for a preview (#1900). On the session because the write
@@ -86,8 +119,13 @@ export type ProtocolBuilderSession = {
    * through, and because sealing binds the team and protocol the session
    * already resolved.
    */
-  cipher: SecretsCipher;
-  principal: Principal;
+  cipher: SecretsCipherApi;
+  /**
+   * The contract's principal, branded once by `openSession`. It is what
+   * `audited` records the actor as, so the value an event names and the value
+   * a lock owner is built from are one.
+   */
+  principal: Principal['Service'];
   requestId: string;
   /**
    * The connection this call arrived on, which is the presence identity. A
@@ -232,27 +270,34 @@ function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
   return makeSectionId({ kind: 'codebookEdge', typeId: subject.type });
 }
 
-const SECTION_AT_HEAD = `
-  SELECT m.section_hashes ->> $2 AS hash,
-         d.head_seq,
-         s.doc,
-         (SELECT e.manifest_seq FROM protocol_events e
-           WHERE e.draft_id = d.id AND e.team_id = d.team_id
-             AND e.kind = 'revision' AND e.section_id = $2
-             AND e.content_hash = m.section_hashes ->> $2
-           ORDER BY e.cursor DESC LIMIT 1) AS section_seq
-  FROM drafts d
-  JOIN manifests m
-    ON m.draft_id = d.id AND m.team_id = d.team_id AND m.seq = d.head_seq
-  LEFT JOIN sections s
-    ON s.team_id = d.team_id AND s.hash = m.section_hashes ->> $2
-  WHERE d.id = $1 AND d.team_id = $3`;
+/** The head manifest's hash for one section, as a SQL fragment. */
+const sectionHashAtHead = (sectionId: string) =>
+  sql<string | null>`${manifests.sectionHashes} ->> ${sectionId}`;
+
+/**
+ * The manifest sequence this section last reached *through this host*.
+ *
+ * `::text` rather than the column's own decoding: a correlated subquery in a
+ * `sql` fragment carries no column codec, and node-postgres hands an `int8`
+ * back as a string. Widened to a bigint beside the draft's head below, which
+ * is what a section written by another path — the command surface Studio still
+ * serves — falls back to.
+ */
+const sectionSequenceAtHead = (sectionId: string) =>
+  sql<string | null>`(
+    SELECT ${protocolEvents.manifestSeq}::text FROM ${protocolEvents}
+     WHERE ${protocolEvents.draftId} = ${drafts.id}
+       AND ${protocolEvents.teamId} = ${drafts.teamId}
+       AND ${protocolEvents.kind} = 'revision'
+       AND ${protocolEvents.sectionId} = ${sectionId}
+       AND ${protocolEvents.contentHash} = ${manifests.sectionHashes} ->> ${sectionId}
+     ORDER BY ${protocolEvents.cursor} DESC LIMIT 1)`;
 
 type SectionRow = {
   hash: string | null;
-  head_seq: string;
+  headSeq: bigint;
   doc: SectionDoc | null;
-  section_seq: string | null;
+  sectionSeq: string | null;
 };
 
 /**
@@ -269,59 +314,147 @@ function toSectionAtRevision(row: SectionRow): SectionAtRevision | undefined {
   return {
     document: row.doc,
     revision: {
-      sequence: BigInt(row.section_seq ?? row.head_seq),
+      sequence: row.sectionSeq === null ? row.headSeq : BigInt(row.sectionSeq),
       contentHash: row.hash,
     },
   };
 }
 
-export async function readSection(
+/**
+ * The section at the draft's head, in the caller's own transaction. Every
+ * write reads it under the draft-head lock it has already taken; the two
+ * read-only procedures open a scope of their own around it.
+ */
+const headSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
-): Promise<SectionAtRevision | undefined> {
-  const result = await session.tenantDb.query(SECTION_AT_HEAD, [
-    session.draftId,
-    sectionId,
-    session.tenantDb.teamId,
-  ]);
-  const row = result.rows[0] as SectionRow | undefined;
-  return row === undefined ? undefined : toSectionAtRevision(row);
-}
-
-export async function listSectionIds(
+) => Effect.Effect<
+  SectionAtRevision | undefined,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocolBuilder.headSection')(function* (
   session: ProtocolBuilderSession,
-): Promise<ProtocolSectionId[]> {
-  const result = await session.tenantDb.query(
-    `SELECT jsonb_object_keys(m.section_hashes) AS section_id
-     FROM drafts d
-     JOIN manifests m
-       ON m.draft_id = d.id AND m.team_id = d.team_id AND m.seq = d.head_seq
-     WHERE d.id = $1 AND d.team_id = $2`,
-    [session.draftId, session.tenantDb.teamId],
-  );
-  return (result.rows as { section_id: string }[]).map((row) =>
-    makeSectionId(parseSectionId(row.section_id)),
-  );
-}
+  sectionId: ProtocolSectionId,
+) {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({
+      hash: sectionHashAtHead(sectionId),
+      headSeq: drafts.headSeq,
+      doc: sections.doc,
+      sectionSeq: sectionSequenceAtHead(sectionId),
+    })
+    .from(drafts)
+    .innerJoin(
+      manifests,
+      and(
+        eq(manifests.draftId, drafts.id),
+        eq(manifests.teamId, drafts.teamId),
+        eq(manifests.seq, drafts.headSeq),
+      ),
+    )
+    .leftJoin(
+      sections,
+      and(
+        eq(sections.teamId, drafts.teamId),
+        eq(sections.hash, sectionHashAtHead(sectionId)),
+      ),
+    )
+    .where(
+      and(
+        eq(drafts.id, session.draftId),
+        eq(drafts.teamId, session.access.teamId),
+      ),
+    );
+  const row = rows[0];
+  return row === undefined ? undefined : toSectionAtRevision(row);
+}, sqlErrorsOnly);
 
-type LeaseRow = { owner: string; epoch: string; live: boolean };
+export const readSection: (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+) => Effect.Effect<SectionAtRevision | undefined, SqlError.SqlError, Database> =
+  Effect.fn('protocolBuilder.readSection')(function* (
+    session: ProtocolBuilderSession,
+    sectionId: ProtocolSectionId,
+  ) {
+    return yield* TenantScope.open(
+      session.access,
+      headSection(session, sectionId),
+    );
+  });
+
+export const listSectionIds: (
+  session: ProtocolBuilderSession,
+) => Effect.Effect<ProtocolSectionId[], SqlError.SqlError, Database> =
+  Effect.fn('protocolBuilder.listSectionIds')(function* (
+    session: ProtocolBuilderSession,
+  ) {
+    return yield* TenantScope.open(
+      session.access,
+      Effect.gen(function* () {
+        const { tx } = yield* Transaction;
+        // The manifest's own map, read whole and keyed in TypeScript. The
+        // `jsonb_object_keys` this replaces returned one row per key, which
+        // was the same list by a longer route.
+        const rows = yield* tx
+          .select({ sectionHashes: manifests.sectionHashes })
+          .from(drafts)
+          .innerJoin(
+            manifests,
+            and(
+              eq(manifests.draftId, drafts.id),
+              eq(manifests.teamId, drafts.teamId),
+              eq(manifests.seq, drafts.headSeq),
+            ),
+          )
+          .where(
+            and(
+              eq(drafts.id, session.draftId),
+              eq(drafts.teamId, session.access.teamId),
+            ),
+          );
+        return Object.keys(rows[0]?.sectionHashes ?? {}).map((id) =>
+          makeSectionId(parseSectionId(id)),
+        );
+      }).pipe(sqlErrorsOnly),
+    );
+  });
+
+type LeaseRow = { owner: string; epoch: bigint; live: boolean };
 
 /** The lease row, locked for the rest of the transaction. */
-async function lockLease(
-  client: pg.PoolClient,
+const lockLease: (
   teamId: string,
   draftId: string,
   sectionId: string,
-): Promise<LeaseRow | undefined> {
-  const result = await client.query(
-    `SELECT owner, epoch, expires_at > clock_timestamp() AS live
-     FROM leases
-     WHERE draft_id = $1 AND section_id = $2 AND team_id = $3
-     FOR UPDATE`,
-    [draftId, sectionId, teamId],
-  );
-  return result.rows[0] as LeaseRow | undefined;
-}
+) => Effect.Effect<LeaseRow | undefined, SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.lockLease')(function* (
+    teamId: string,
+    draftId: string,
+    sectionId: string,
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({
+        owner: leases.owner,
+        epoch: leases.epoch,
+        // Wall clock, not the transaction's start time: a transaction that
+        // waited on the draft-head lock past the TTL would otherwise read an
+        // expired lease as live.
+        live: sql<boolean>`${leases.expiresAt} > clock_timestamp()`,
+      })
+      .from(leases)
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.sectionId, sectionId),
+          eq(leases.teamId, teamId),
+        ),
+      )
+      .for('update');
+    return rows[0];
+  }, sqlErrorsOnly);
 
 /**
  * The presence recorded for whoever holds the lease now.
@@ -329,22 +462,33 @@ async function lockLease(
  * Read from the log rather than from this process's memory, so a server that
  * did not serve the acquisition still names the holder.
  */
-async function lockedHolder(
-  client: pg.PoolClient,
+const lockedHolder: (
   teamId: string,
   draftId: string,
   lease: LeaseRow | undefined,
-): Promise<Presence | undefined> {
-  if (lease === undefined || !lease.live) return undefined;
-  const result = await client.query(
-    `SELECT holder FROM protocol_events
-     WHERE draft_id = $1 AND team_id = $2 AND kind = 'lock' AND owner = $3
-     ORDER BY cursor DESC LIMIT 1`,
-    [draftId, teamId, lease.owner],
-  );
-  const row = result.rows[0] as { holder: Presence | null } | undefined;
-  return row?.holder ?? undefined;
-}
+) => Effect.Effect<Presence | undefined, SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.lockedHolder')(function* (
+    teamId: string,
+    draftId: string,
+    lease: LeaseRow | undefined,
+  ) {
+    if (lease === undefined || !lease.live) return undefined;
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({ holder: protocolEvents.holder })
+      .from(protocolEvents)
+      .where(
+        and(
+          eq(protocolEvents.draftId, draftId),
+          eq(protocolEvents.teamId, teamId),
+          eq(protocolEvents.kind, 'lock'),
+          eq(protocolEvents.owner, lease.owner),
+        ),
+      )
+      .orderBy(desc(protocolEvents.cursor))
+      .limit(1);
+    return rows[0]?.holder ?? undefined;
+  }, sqlErrorsOnly);
 
 /**
  * The sections of `ids` an editor holds that this write may not write through,
@@ -357,38 +501,31 @@ async function lockedHolder(
  * lives in its form rather than in the draft head, so a write under one of
  * them is undone by that editor's next whole-section submit.
  */
-async function blockedBy(
-  client: pg.PoolClient,
+const blockedBy: (
   session: ProtocolBuilderSession,
   ids: Iterable<ProtocolSectionId>,
   owned: ReadonlySet<ProtocolSectionId>,
-): Promise<SectionHolder[]> {
+) => Effect.Effect<SectionHolder[], SqlError.SqlError, Transaction> = Effect.fn(
+  'protocolBuilder.blockedBy',
+)(function* (
+  session: ProtocolBuilderSession,
+  ids: Iterable<ProtocolSectionId>,
+  owned: ReadonlySet<ProtocolSectionId>,
+) {
   const owner = sessionOwner(session);
-  const teamId = session.tenantDb.teamId;
+  const teamId = session.access.teamId;
   const blocked: SectionHolder[] = [];
+  // One statement per section on the caller's connection, and no scope of its
+  // own: a savepoint per row is exactly what `savepoint` warns against.
   for (const sectionId of ids) {
-    const lease = await lockLease(client, teamId, session.draftId, sectionId);
+    const lease = yield* lockLease(teamId, session.draftId, sectionId);
     if (lease === undefined || !lease.live) continue;
     if (lease.owner === owner && owned.has(sectionId)) continue;
-    const holder = await lockedHolder(client, teamId, session.draftId, lease);
+    const holder = yield* lockedHolder(teamId, session.draftId, lease);
     blocked.push({ sectionId, ...(holder === undefined ? {} : { holder }) });
   }
   return blocked;
-}
-
-async function headSection(
-  client: pg.PoolClient,
-  session: ProtocolBuilderSession,
-  sectionId: ProtocolSectionId,
-): Promise<SectionAtRevision | undefined> {
-  const result = await client.query(SECTION_AT_HEAD, [
-    session.draftId,
-    sectionId,
-    session.tenantDb.teamId,
-  ]);
-  const row = result.rows[0] as SectionRow | undefined;
-  return row === undefined ? undefined : toSectionAtRevision(row);
-}
+});
 
 /**
  * Takes the section, or reports who has it. `undefined` is "no such section".
@@ -397,40 +534,41 @@ async function headSection(
  * allocates the lock event's cursor, so no watcher can see two acquisitions in
  * the opposite order to the leases they took.
  */
-export async function acquireLock(
+export const acquireLock: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
-): Promise<AcquireResult> {
+) => Effect.Effect<
+  AcquireResult,
+  UnknownSectionError | DraftStructureError | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.acquireLock')(function* (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+) {
   const owner = sessionOwner(session);
-  const teamId = session.tenantDb.teamId;
-  const sync = createProtocolSyncServer(session.tenantDb);
-  return runNoAuditTenantTransaction(
-    session.tenantDb,
+  const teamId = session.access.teamId;
+  return yield* noAuditTransaction(
     'protocolBuilder.acquireLock',
-    async (client): Promise<AcquireResult> => {
-      await lockDraftHead(client, teamId, session.draftId);
-      const state = await headSection(client, session, sectionId);
+    session.access,
+    Effect.gen(function* () {
+      yield* lockDraftHead(teamId, session.draftId);
+      const state = yield* headSection(session, sectionId);
       if (state === undefined) return { outcome: undefined, events: [] };
 
-      const lease = await sync.acquire(
-        session.draftId,
-        sectionId,
-        owner,
-        client,
-      );
+      // The sync package has no `db/errors.ts` of its own, so its spans
+      // publish the drizzle wrapper — whose message interpolates the query and
+      // every bind parameter. Unwrapped here, at the one boundary that
+      // consumes them, beside the typed refusal `acquire` answers with. The
+      // type arguments are written out because `E` cannot be inferred from a
+      // union that already contains both database shapes.
+      const lease = yield* sqlErrorsOnlyBeside<
+        Lease | null,
+        UnknownSectionError,
+        Transaction
+      >(sync.acquire(session.draftId, sectionId, owner));
       if (lease === null) {
-        const held = await lockLease(
-          client,
-          teamId,
-          session.draftId,
-          sectionId,
-        );
-        const holder = await lockedHolder(
-          client,
-          teamId,
-          session.draftId,
-          held,
-        );
+        const held = yield* lockLease(teamId, session.draftId, sectionId);
+        const holder = yield* lockedHolder(teamId, session.draftId, held);
         return {
           outcome: {
             lock: 'readOnly',
@@ -445,117 +583,139 @@ export async function acquireLock(
               mode: 'editing',
               sectionId,
             },
-          },
+          } satisfies AcquireOutcome,
           events: [],
         };
       }
-      const events = await appendProtocolEvents(
-        client,
-        teamId,
-        session.draftId,
-        [
-          {
-            kind: 'lock',
-            sectionId,
-            owner,
-            holder: sessionPresence(session, 'editing', sectionId),
-          },
-        ],
-      );
+      const events = yield* appendProtocolEvents(teamId, session.draftId, [
+        {
+          kind: 'lock',
+          sectionId,
+          owner,
+          holder: sessionPresence(session, 'editing', sectionId),
+        },
+      ]);
       return {
-        outcome: { lock: 'held', ...state },
+        outcome: { lock: 'held', ...state } satisfies AcquireOutcome,
         events,
         lease: { epoch: lease.epoch },
       };
-    },
+    }),
   );
-}
+});
+
+/**
+ * The heartbeat the lease keeper drives, in a transaction of its own.
+ *
+ * The keeper runs from a timer and has no transaction to give — one opened
+ * there would stamp no team — so this is where a renewal becomes one. It is a
+ * lease transition and nothing else, which is why it runs under the registry
+ * entry that says lease renewal is excluded from the team audit log.
+ *
+ * `null` is the update matching no row: a lease that expired or was taken
+ * over. A rejection is the storage not answering at all, which the keeper
+ * tells apart and retries on the next tick.
+ */
+export const renewLease: (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+  epoch: bigint,
+) => Effect.Effect<Lease | null, SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.renewLease',
+)(function* (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+  epoch: bigint,
+) {
+  return yield* noAuditTransaction(
+    SYNC_TRANSACTION_POLICIES.renew,
+    session.access,
+    sqlErrorsOnly(
+      sync.renew(session.draftId, sectionId, sessionOwner(session), epoch),
+    ),
+  );
+});
 
 /**
  * Gives the section back, if this caller has it. Releasing something the
  * caller does not hold changes nothing and logs nothing.
  */
-export async function releaseLock(
+export const releaseLock: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
-): Promise<Published<undefined>> {
+) => Effect.Effect<
+  Published<undefined>,
+  DraftStructureError | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.releaseLock')(function* (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+) {
   const owner = sessionOwner(session);
-  const teamId = session.tenantDb.teamId;
-  const sync = createProtocolSyncServer(session.tenantDb);
-  return runNoAuditTenantTransaction(
-    session.tenantDb,
+  const teamId = session.access.teamId;
+  return yield* noAuditTransaction(
     'protocolBuilder.releaseLock',
-    async (client): Promise<Published<undefined>> => {
-      await lockDraftHead(client, teamId, session.draftId);
-      const lease = await lockLease(client, teamId, session.draftId, sectionId);
+    session.access,
+    Effect.gen(function* () {
+      yield* lockDraftHead(teamId, session.draftId);
+      const lease = yield* lockLease(teamId, session.draftId, sectionId);
       if (lease === undefined || !lease.live || lease.owner !== owner) {
         return { outcome: undefined, events: [] };
       }
-      await sync.release(
-        session.draftId,
-        sectionId,
-        owner,
-        BigInt(lease.epoch),
-        client,
+      yield* sqlErrorsOnly(
+        sync.release(session.draftId, sectionId, owner, lease.epoch),
       );
-      const events = await appendProtocolEvents(
-        client,
-        teamId,
-        session.draftId,
-        [{ kind: 'lock', sectionId }],
-      );
+      const events = yield* appendProtocolEvents(teamId, session.draftId, [
+        { kind: 'lock', sectionId },
+      ]);
       return { outcome: undefined, events };
-    },
+    }),
   );
-}
+});
 
 /**
  * Releases everything one connection still holds. A dropped socket must not
  * leave colleagues waiting out a lease they can see nobody using.
  */
-export async function releaseConnection(
+export const releaseConnection: (
   session: ProtocolBuilderSession,
   sectionIds: readonly ProtocolSectionId[],
-): Promise<Published<undefined>> {
+) => Effect.Effect<
+  Published<undefined>,
+  DraftStructureError | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.releaseConnection')(function* (
+  session: ProtocolBuilderSession,
+  sectionIds: readonly ProtocolSectionId[],
+) {
   const owner = sessionOwner(session);
-  const teamId = session.tenantDb.teamId;
-  const sync = createProtocolSyncServer(session.tenantDb);
+  const teamId = session.access.teamId;
   if (sectionIds.length === 0) return { outcome: undefined, events: [] };
-  return runNoAuditTenantTransaction(
-    session.tenantDb,
+  return yield* noAuditTransaction(
     'protocolBuilder.releaseConnection',
-    async (client): Promise<Published<undefined>> => {
-      await lockDraftHead(client, teamId, session.draftId);
+    session.access,
+    Effect.gen(function* () {
+      yield* lockDraftHead(teamId, session.draftId);
       const records: ProtocolEventRecord[] = [];
       for (const sectionId of sectionIds) {
-        const lease = await lockLease(
-          client,
-          teamId,
-          session.draftId,
-          sectionId,
-        );
+        const lease = yield* lockLease(teamId, session.draftId, sectionId);
         if (lease === undefined || !lease.live || lease.owner !== owner) {
           continue;
         }
-        await sync.release(
-          session.draftId,
-          sectionId,
-          owner,
-          BigInt(lease.epoch),
-          client,
+        yield* sqlErrorsOnly(
+          sync.release(session.draftId, sectionId, owner, lease.epoch),
         );
         records.push({ kind: 'lock', sectionId });
       }
-      const events = await appendProtocolEvents(
-        client,
+      const events = yield* appendProtocolEvents(
         teamId,
         session.draftId,
         records,
       );
       return { outcome: undefined, events };
-    },
+    }),
   );
-}
+});
 
 type WrittenSections = {
   head: HeadState;
@@ -573,12 +733,19 @@ type WrittenSections = {
  * Lands every write as one manifest revision and logs one event per section,
  * all carrying that revision's sequence.
  */
-async function writeSections(
-  client: pg.PoolClient,
+const writeSections: (
+  session: ProtocolBuilderSession,
+  written: WrittenSections,
+) => Effect.Effect<
+  { revision: Revision; events: LoggedProtocolEvent[] },
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocolBuilder.writeSections')(function* (
   session: ProtocolBuilderSession,
   { head, writes, revisionOf }: WrittenSections,
-): Promise<{ revision: Revision; events: LoggedProtocolEvent[] }> {
-  const teamId = session.tenantDb.teamId;
+) {
+  const { tx } = yield* Transaction;
+  const teamId = session.access.teamId;
   const added: Record<string, SectionDoc> = {};
   const removed: string[] = [];
   for (const [sectionId, document] of writes) {
@@ -601,8 +768,7 @@ async function writeSections(
       // stored shape, which validation admits) names a key nobody promoted,
       // and the inspect path reports that as "never promoted" rather than
       // failing.
-      await sealAssetKeys(
-        client,
+      yield* sealAssetKeys(
         session.cipher,
         { teamId, protocolId: session.protocolId },
         stripped.values,
@@ -614,30 +780,44 @@ async function writeSections(
     writes.set(ASSETS, stripped.doc);
   }
   if (removed.length > 0) {
-    await fenceDraftLeases(client, teamId, session.draftId, removed);
+    yield* fenceDraftLeases(teamId, session.draftId, removed);
   }
-  const result = await advanceDraftManifest(
-    client,
+  const result = yield* advanceDraftManifest(
     teamId,
     session.draftId,
     head,
     added,
     removed,
   );
-  const manifest = await client.query(
-    `SELECT section_hashes FROM manifests
-     WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
-    [session.draftId, String(result.manifestSeq), teamId],
-  );
-  const sectionHashes = (
-    manifest.rows[0] as { section_hashes: Record<string, string> }
-  ).section_hashes;
+  const manifestRows = yield* tx
+    .select({ sectionHashes: manifests.sectionHashes })
+    .from(manifests)
+    .where(
+      and(
+        eq(manifests.draftId, session.draftId),
+        eq(manifests.seq, result.manifestSeq),
+        eq(manifests.teamId, teamId),
+      ),
+    );
+  const manifestRow = manifestRows[0];
+  if (manifestRow === undefined) {
+    // `advanceDraftManifest` has just written it in this transaction, so its
+    // absence is a database that is not the one this code was written for.
+    return yield* Effect.die(
+      new Error(
+        `draft ${session.draftId} has no manifest at seq ${String(result.manifestSeq)}`,
+      ),
+    );
+  }
+  const sectionHashes = manifestRow.sectionHashes;
 
   const records: ProtocolEventRecord[] = [];
   for (const [sectionId, document] of writes) {
     const hash = sectionHashes[sectionId] ?? head.sectionHashes[sectionId];
     if (hash === undefined) {
-      throw new Error(`no content hash for written section ${sectionId}`);
+      return yield* Effect.die(
+        new Error(`no content hash for written section ${sectionId}`),
+      );
     }
     records.push({
       kind: 'revision',
@@ -647,12 +827,7 @@ async function writeSections(
       ...(document === undefined ? {} : { document }),
     });
   }
-  const events = await appendProtocolEvents(
-    client,
-    teamId,
-    session.draftId,
-    records,
-  );
+  const events = yield* appendProtocolEvents(teamId, session.draftId, records);
   // Every section written by one operation carries that operation's sequence.
   // The hash identifies the section the caller asked about — the same hash its
   // revision event and its `getSection` answer carry, because the contract's
@@ -667,17 +842,7 @@ async function writeSections(
     },
     events,
   };
-}
-
-function auditedContext(
-  session: ProtocolBuilderSession,
-): AuditedCommandContext {
-  return {
-    tenantDb: session.tenantDb,
-    principal: session.principal,
-    requestId: session.requestId,
-  };
-}
+}, sqlErrorsOnly);
 
 /** The audit taxonomy's operation vocabulary, as far as this host writes. */
 type ProtocolOperation = 'set' | 'unset' | 'addStage';
@@ -687,13 +852,26 @@ type CommitDetails = {
   operationTypes: ProtocolOperation[];
 };
 
+/**
+ * The event a committed revision writes.
+ *
+ * It names no actor, team or request any more: `audited` owns those fields and
+ * `AuditEventBody` removes them, so a command supplying one is a type error
+ * rather than the runtime mismatch `assertEventContext` used to refuse.
+ */
 function committedEvent(
-  auditContext: LockedAuditedCommandContext,
   protocol: { protocolId: string; protocolLabel: string },
   input: { draftId: string; revision: bigint } & CommitDetails,
-): AuditEventInput {
+): AuditEventBody {
   return {
-    ...protocolEventContext(auditContext, protocol),
+    eventVersion: 1,
+    category: 'protocol',
+    subjectType: null,
+    subjectId: null,
+    subjectLabel: null,
+    resourceType: 'protocol',
+    resourceId: protocol.protocolId,
+    resourceLabel: protocol.protocolLabel,
     eventType: 'protocol.draft.committed',
     details: {
       draftId: input.draftId,
@@ -702,8 +880,27 @@ function committedEvent(
       operationTypes: [...new Set(input.operationTypes)],
       operationCount: input.affectedSectionIds.length,
     },
-  } satisfies AuditEventInput;
+  };
 }
+
+/**
+ * `audited`, with the two services this host resolves for itself.
+ *
+ * The rpc plane gets `Principal` from the `Authenticated` middleware and
+ * `RequestId` from the HTTP router. The protocol builder is served over `/ws`
+ * by oRPC, which runs neither, so the session — which resolved both when it
+ * opened — provides them. One place, so every audited command this host runs
+ * records the same actor and request as the session it belongs to.
+ */
+const auditedCommand = <A, E, R>(
+  name: string,
+  session: ProtocolBuilderSession,
+  body: Effect.Effect<AuditedResult<A>, E, R>,
+) =>
+  audited(name, session.access, body).pipe(
+    Effect.provideService(Principal)(session.principal),
+    Effect.provideService(RequestId)(session.requestId),
+  );
 
 /**
  * Writes the whole section, and the asset manifest entries handed with it, as
@@ -714,74 +911,74 @@ function committedEvent(
  * single revision, so a refused submit writes neither. The write's receipt is
  * recorded in that same revision's transaction, so a retry carrying the same
  * `requestId` is answered with what this attempt wrote rather than writing a
- * second time. The three refusals here
- * are returned rather than thrown so no audit event is written for a change
- * that did not happen: the caller does not hold the lock, the document is not
- * shaped like this section, and — for a submit that promotes — an editor holds
- * the asset manifest the promotion writes. A draft that is invalid across
- * sections is written, because drafts tolerate transient invalidity and
- * validity is enforced at publication.
+ * second time. The three refusals here are returned rather than raised so no
+ * audit event is written for a change that did not happen: the caller does not
+ * hold the lock, the document is not shaped like this section, and — for a
+ * submit that promotes — an editor holds the asset manifest the promotion
+ * writes. A draft that is invalid across sections is written, because drafts
+ * tolerate transient invalidity and validity is enforced at publication.
  */
-export async function submit(
+export const submit = Effect.fn('protocolBuilder.submit')(function* (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
   document: SectionDoc,
   write: WriteIntent,
-): Promise<Published<SubmitOutcome | undefined>> {
+) {
   const owner = sessionOwner(session);
-  const teamId = session.tenantDb.teamId;
+  const teamId = session.access.teamId;
   const key = {
     draftId: session.draftId,
     operation: 'submit' as const,
     requestId: write.requestId,
   };
-  const events: LoggedProtocolEvent[] = [];
-  const outcome = await runAuditedCommand<SubmitOutcome | undefined>(
-    auditedContext(session),
-    async (client, auditContext) => {
-      await lockProtocolActorMembership(client, auditedContext(session));
-      const protocol = await lockProtocolDraft(client, {
+  return yield* auditedCommand(
+    'protocolBuilder.submit',
+    session,
+    Effect.gen(function* () {
+      yield* lockProtocolActorMembership({
+        teamId,
+        actorUserId: session.principal.userId,
+      });
+      const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,
         draftId: session.draftId,
       });
-      const head = await lockDraftHead(client, teamId, session.draftId);
+      const head = yield* lockDraftHead(teamId, session.draftId);
       // Under the head lock, so two calls carrying one request id serialise
       // and the second finds what the first wrote. Asked before the section is
       // looked at: a retry is answered even once the section it wrote has been
       // deleted, and even once its lock has been given back.
-      const already = await lockedWriteReceipt(client, teamId, key);
+      const already = yield* readWriteReceipt(teamId, key);
       if (already !== undefined) {
-        return {
-          status: 'unchanged',
-          result: { status: 'replayed', receipt: already },
-        };
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: { status: 'replayed', receipt: already },
+          events: [],
+        });
       }
       if (head.sectionHashes[sectionId] === undefined) {
-        return { status: 'unchanged', result: undefined };
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: undefined,
+          events: [],
+        });
       }
-      const lease = await lockLease(client, teamId, session.draftId, sectionId);
+      const lease = yield* lockLease(teamId, session.draftId, sectionId);
       if (lease === undefined || !lease.live || lease.owner !== owner) {
-        const holder = await lockedHolder(
-          client,
-          teamId,
-          session.draftId,
-          lease,
-        );
-        return {
-          status: 'unchanged',
-          result: {
+        const holder = yield* lockedHolder(teamId, session.draftId, lease);
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: {
             status: 'notLockHolder',
             ...(holder === undefined ? {} : { holder }),
           },
-        };
+          events: [],
+        });
       }
       const issues = shapeIssues(sectionId, document);
       if (issues.length > 0) {
-        return {
-          status: 'unchanged',
-          result: { status: 'invalidShape', issues },
-        };
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: { status: 'invalidShape', issues },
+          events: [],
+        });
       }
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [sectionId, document],
@@ -792,50 +989,51 @@ export async function submit(
         // editor holding it would submit its own whole manifest next, over the
         // entry this promotion added, leaving the saved section naming a
         // resource the protocol no longer has.
-        const blocked = await blockedBy(
-          client,
+        const blocked = yield* blockedBy(
           session,
           [ASSETS],
           new Set([sectionId]),
         );
         if (blocked.length > 0) {
-          return {
-            status: 'unchanged',
-            result: { status: 'blocked', blocked },
-          };
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: { status: 'blocked', blocked },
+            events: [],
+          });
         }
-        const assets = await headSection(client, session, ASSETS);
+        const assets = yield* headSection(session, ASSETS);
         if (assets === undefined) {
-          throw new Error(`draft ${session.draftId} has no assets section`);
+          return yield* Effect.die(
+            new Error(`draft ${session.draftId} has no assets section`),
+          );
         }
         writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
       }
-      const written = await writeSections(client, session, {
+      const written = yield* writeSections(session, {
         head,
         writes,
         revisionOf: sectionId,
       });
-      events.push(...written.events);
-      await recordWriteReceipt(client, teamId, key, {
+      yield* recordWriteReceipt(teamId, key, {
         revision: written.revision,
         ...(write.promoted === undefined ? {} : { promoted: write.promoted }),
       });
-      return {
-        status: 'succeeded',
-        result: { status: 'written', revision: written.revision },
-        events: [
-          committedEvent(auditContext, protocol, {
+      return changed<Published<SubmitOutcome | undefined>>(
+        {
+          outcome: { status: 'written', revision: written.revision },
+          events: written.events,
+        },
+        [
+          committedEvent(protocol, {
             draftId: session.draftId,
             revision: written.revision.sequence,
             affectedSectionIds: [...writes.keys()],
             operationTypes: ['set'],
           }),
         ],
-      };
-    },
+      );
+    }),
   );
-  return { outcome, events };
-}
+});
 
 /**
  * Creates a section, registers its pointer — a stage's place in the stage
@@ -860,7 +1058,7 @@ export async function submit(
  * section, so a retry is told which stage the first attempt made instead of
  * minting a second one.
  */
-export async function create(
+export const create = Effect.fn('protocolBuilder.create')(function* (
   session: ProtocolBuilderSession,
   input: WriteIntent & {
     kind: CreatableSectionKind;
@@ -868,59 +1066,61 @@ export async function create(
     position?: number;
     mintId: () => string;
   },
-): Promise<Published<CreateOutcome>> {
-  const teamId = session.tenantDb.teamId;
+) {
+  const teamId = session.access.teamId;
   const key = {
     draftId: session.draftId,
     operation: 'create' as const,
     requestId: input.requestId,
   };
-  const events: LoggedProtocolEvent[] = [];
-  const outcome = await runAuditedCommand<CreateOutcome>(
-    auditedContext(session),
-    async (client, auditContext) => {
-      await lockProtocolActorMembership(client, auditedContext(session));
-      const protocol = await lockProtocolDraft(client, {
+  return yield* auditedCommand(
+    'protocolBuilder.create',
+    session,
+    Effect.gen(function* () {
+      yield* lockProtocolActorMembership({
+        teamId,
+        actorUserId: session.principal.userId,
+      });
+      const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,
         draftId: session.draftId,
       });
-      const head = await lockDraftHead(client, teamId, session.draftId);
+      const head = yield* lockDraftHead(teamId, session.draftId);
       // Under the head lock, before an id is minted: a create that ran twice
       // would put a second copy of the stage in the protocol and tell the
       // client about only one of them.
-      const already = await lockedWriteReceipt(client, teamId, key);
+      const already = yield* readWriteReceipt(teamId, key);
       if (already !== undefined) {
-        return {
-          status: 'unchanged',
-          result: { status: 'replayed', receipt: already },
-        };
+        return unchanged<Published<CreateOutcome>>({
+          outcome: { status: 'replayed', receipt: already },
+          events: [],
+        });
       }
       const touched = [
         ...(input.kind === 'stage' ? [STAGE_ORDER] : []),
         ...(input.assetEntries === undefined ? [] : [ASSETS]),
       ];
       if (touched.length > 0) {
-        const blocked = await blockedBy(
-          client,
+        const blocked = yield* blockedBy(
           session,
           touched,
           new Set<ProtocolSectionId>(),
         );
         if (blocked.length > 0) {
-          return {
-            status: 'unchanged',
-            result: { status: 'blocked', blocked },
-          };
+          return unchanged<Published<CreateOutcome>>({
+            outcome: { status: 'blocked', blocked },
+            events: [],
+          });
         }
       }
       const id = input.kind === 'codebookEgo' ? undefined : input.mintId();
       const target = createdSectionId(input.kind, id);
       if (head.sectionHashes[target] !== undefined) {
-        return {
-          status: 'unchanged',
-          result: { status: 'exists', sectionId: target },
-        };
+        return unchanged<Published<CreateOutcome>>({
+          outcome: { status: 'exists', sectionId: target },
+          events: [],
+        });
       }
       // A stage document carries its own id, and the section it lands in is
       // keyed by that id: the host mints both together so they cannot differ.
@@ -930,18 +1130,20 @@ export async function create(
           : input.document;
       const issues = shapeIssues(target, created);
       if (issues.length > 0) {
-        return {
-          status: 'unchanged',
-          result: { status: 'invalidShape', sectionId: target, issues },
-        };
+        return unchanged<Published<CreateOutcome>>({
+          outcome: { status: 'invalidShape', sectionId: target, issues },
+          events: [],
+        });
       }
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [target, created],
       ]);
       if (input.kind === 'stage' && id !== undefined) {
-        const order = await headSection(client, session, STAGE_ORDER);
+        const order = yield* headSection(session, STAGE_ORDER);
         if (order === undefined) {
-          throw new Error(`draft ${session.draftId} has no stageOrder section`);
+          return yield* Effect.die(
+            new Error(`draft ${session.draftId} has no stageOrder section`),
+          );
         }
         const stages = stageList(order.document);
         const at =
@@ -952,43 +1154,45 @@ export async function create(
         writes.set(STAGE_ORDER, { ...order.document, stages });
       }
       if (input.assetEntries !== undefined) {
-        const assets = await headSection(client, session, ASSETS);
+        const assets = yield* headSection(session, ASSETS);
         if (assets === undefined) {
-          throw new Error(`draft ${session.draftId} has no assets section`);
+          return yield* Effect.die(
+            new Error(`draft ${session.draftId} has no assets section`),
+          );
         }
         writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
       }
-      const written = await writeSections(client, session, {
+      const written = yield* writeSections(session, {
         head,
         writes,
         revisionOf: target,
       });
-      events.push(...written.events);
-      await recordWriteReceipt(client, teamId, key, {
+      yield* recordWriteReceipt(teamId, key, {
         revision: written.revision,
         createdSection: target,
         ...(input.promoted === undefined ? {} : { promoted: input.promoted }),
       });
-      return {
-        status: 'succeeded',
-        result: {
-          status: 'created',
-          sectionId: target,
-          revision: written.revision,
+      return changed<Published<CreateOutcome>>(
+        {
+          outcome: {
+            status: 'created',
+            sectionId: target,
+            revision: written.revision,
+          },
+          events: written.events,
         },
-        events: [
-          committedEvent(auditContext, protocol, {
+        [
+          committedEvent(protocol, {
             draftId: session.draftId,
             revision: written.revision.sequence,
             affectedSectionIds: [...writes.keys()],
             operationTypes: input.kind === 'stage' ? ['addStage'] : ['set'],
           }),
         ],
-      };
-    },
+      );
+    }),
   );
-  return { outcome, events };
-}
+});
 
 type RefactorPlan = {
   writes: Map<ProtocolSectionId, SectionDoc | undefined>;
@@ -1009,65 +1213,74 @@ type RefactorPlan = {
  * A change that cannot be contained in one section, so it cannot be made under
  * one lock: it takes every section it writes, or fails naming who holds what.
  */
-async function refactor(
+const refactor = Effect.fn('protocolBuilder.refactor')(function* (
   session: ProtocolBuilderSession,
   plan: (
-    client: pg.PoolClient,
     head: HeadState,
-  ) => Promise<RefactorPlan | undefined>,
+  ) => Effect.Effect<RefactorPlan | undefined, SqlError.SqlError, Transaction>,
   operationTypes: CommitDetails['operationTypes'],
-): Promise<Published<RefactorOutcome | undefined>> {
-  const teamId = session.tenantDb.teamId;
-  const events: LoggedProtocolEvent[] = [];
-  const outcome = await runAuditedCommand<RefactorOutcome | undefined>(
-    auditedContext(session),
-    async (client, auditContext) => {
-      await lockProtocolActorMembership(client, auditedContext(session));
-      const protocol = await lockProtocolDraft(client, {
+) {
+  const teamId = session.access.teamId;
+  return yield* auditedCommand(
+    'protocolBuilder.refactor',
+    session,
+    Effect.gen(function* () {
+      yield* lockProtocolActorMembership({
+        teamId,
+        actorUserId: session.principal.userId,
+      });
+      const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,
         draftId: session.draftId,
       });
-      const head = await lockDraftHead(client, teamId, session.draftId);
-      const planned = await plan(client, head);
-      if (planned === undefined)
-        return { status: 'unchanged', result: undefined };
+      const head = yield* lockDraftHead(teamId, session.draftId);
+      const planned = yield* plan(head);
+      if (planned === undefined) {
+        return unchanged<Published<RefactorOutcome | undefined>>({
+          outcome: undefined,
+          events: [],
+        });
+      }
       if (planned.remaining !== undefined && planned.remaining.length > 0) {
-        return {
-          status: 'unchanged',
-          result: { status: 'referenced', remaining: planned.remaining },
-        };
+        return unchanged<Published<RefactorOutcome | undefined>>({
+          outcome: { status: 'referenced', remaining: planned.remaining },
+          events: [],
+        });
       }
       const { writes, owned } = planned;
 
-      const blocked = await blockedBy(client, session, writes.keys(), owned);
+      const blocked = yield* blockedBy(session, writes.keys(), owned);
       if (blocked.length > 0) {
-        return { status: 'unchanged', result: { status: 'blocked', blocked } };
+        return unchanged<Published<RefactorOutcome | undefined>>({
+          outcome: { status: 'blocked', blocked },
+          events: [],
+        });
       }
 
-      const written = await writeSections(client, session, { head, writes });
-      events.push(...written.events);
+      const written = yield* writeSections(session, { head, writes });
       const changedSections = [...writes.keys()];
-      return {
-        status: 'succeeded',
-        result: {
-          status: 'applied',
-          revision: written.revision,
-          changedSections,
+      return changed<Published<RefactorOutcome | undefined>>(
+        {
+          outcome: {
+            status: 'applied',
+            revision: written.revision,
+            changedSections,
+          },
+          events: written.events,
         },
-        events: [
-          committedEvent(auditContext, protocol, {
+        [
+          committedEvent(protocol, {
             draftId: session.draftId,
             revision: written.revision.sequence,
             affectedSectionIds: changedSections,
             operationTypes,
           }),
         ],
-      };
-    },
+      );
+    }),
   );
-  return { outcome, events };
-}
+});
 
 /**
  * Removes a stage and its place in the stage order in one revision.
@@ -1084,16 +1297,13 @@ async function refactor(
  * NarrativePedigree from the pedigree it describes — as a side effect of
  * removing something else.
  */
-export function deleteStage(
-  session: ProtocolBuilderSession,
-  stageId: string,
-): Promise<Published<RefactorOutcome | undefined>> {
+export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
   return refactor(
     session,
-    async (client, head) => {
+    Effect.fnUntraced(function* (head: HeadState) {
       const target = makeSectionId({ kind: 'stage', stageId });
       if (head.sectionHashes[target] === undefined) return undefined;
-      const documents = await headDocuments(client, session, head);
+      const documents = yield* headDocuments(session, head);
       const remaining = stageReferences(assembledProtocol(documents), stageId);
       if (remaining.length > 0) {
         return {
@@ -1102,9 +1312,11 @@ export function deleteStage(
           remaining,
         };
       }
-      const order = await headSection(client, session, STAGE_ORDER);
+      const order = yield* headSection(session, STAGE_ORDER);
       if (order === undefined) {
-        throw new Error(`draft ${session.draftId} has no stageOrder section`);
+        return yield* Effect.die(
+          new Error(`draft ${session.draftId} has no stageOrder section`),
+        );
       }
       const stages = stageList(order.document).filter(
         (entry) => entry !== stageId,
@@ -1116,7 +1328,7 @@ export function deleteStage(
         ]),
         owned: new Set<ProtocolSectionId>(),
       };
-    },
+    }),
     ['unset', 'set'],
   );
 }
@@ -1124,19 +1336,19 @@ export function deleteStage(
 export function deleteVariable(
   session: ProtocolBuilderSession,
   input: { subject: CodebookSubject; variableId: string },
-): Promise<Published<RefactorOutcome | undefined>> {
+) {
   return refactor(
     session,
-    async (client, head) => {
+    Effect.fnUntraced(function* (head: HeadState) {
       const ownerSection = codebookSectionId(input.subject);
-      const state = await headSection(client, session, ownerSection);
+      const state = yield* headSection(session, ownerSection);
       if (state === undefined) return undefined;
       const variables = isRecord(state.document.variables)
         ? { ...state.document.variables }
         : {};
       delete variables[input.variableId];
       return sweptPlan(
-        await headDocuments(client, session, head),
+        yield* headDocuments(session, head),
         [[ownerSection, { ...state.document, variables }]],
         (documents) =>
           variableReferences(
@@ -1145,7 +1357,7 @@ export function deleteVariable(
             input.variableId,
           ),
       );
-    },
+    }),
     ['unset', 'set'],
   );
 }
@@ -1153,10 +1365,10 @@ export function deleteVariable(
 export function deleteEntityType(
   session: ProtocolBuilderSession,
   input: { entity: 'node' | 'edge'; typeId: string },
-): Promise<Published<RefactorOutcome | undefined>> {
+) {
   return refactor(
     session,
-    async (client, head) => {
+    Effect.fnUntraced(function* (head: HeadState) {
       const ownerSection = codebookSectionId(
         input.entity === 'node'
           ? { entity: 'node', type: input.typeId }
@@ -1164,7 +1376,7 @@ export function deleteEntityType(
       );
       if (head.sectionHashes[ownerSection] === undefined) return undefined;
       return sweptPlan(
-        await headDocuments(client, session, head),
+        yield* headDocuments(session, head),
         [[ownerSection, undefined]],
         (documents) =>
           entityTypeReferences(
@@ -1173,7 +1385,7 @@ export function deleteEntityType(
             input.typeId,
           ),
       );
-    },
+    }),
     ['unset', 'set'],
   );
 }
@@ -1212,22 +1424,46 @@ function stageList(order: SectionDoc): string[] {
     : [];
 }
 
-/** Every section document at the draft's head, in one read. */
-async function headDocuments(
-  client: pg.PoolClient,
+/**
+ * Every section document at the draft's head, in one read.
+ *
+ * The hashes come from the head the caller already holds, so the statement is
+ * `hash IN (...)` over that list (drizzle's `inArray`) rather than the
+ * `jsonb_each_text` join it replaces — bound hashes instead of a jsonb document, and the
+ * section-to-hash mapping stays where it was read. Two sections holding the
+ * same document share one row, which is why the rows are keyed by hash and the
+ * sections are walked separately.
+ */
+const headDocuments: (
   session: ProtocolBuilderSession,
   head: HeadState,
-): Promise<Record<string, SectionDoc>> {
-  const documents: Record<string, SectionDoc> = {};
-  if (Object.keys(head.sectionHashes).length === 0) return documents;
-  const result = await client.query(
-    `SELECT entry.key AS section_id, s.doc
-     FROM jsonb_each_text($1::jsonb) AS entry
-     JOIN sections s ON s.team_id = $2 AND s.hash = entry.value`,
-    [JSON.stringify(head.sectionHashes), session.tenantDb.teamId],
-  );
-  for (const row of result.rows as { section_id: string; doc: SectionDoc }[]) {
-    documents[makeSectionId(parseSectionId(row.section_id))] = row.doc;
-  }
-  return documents;
-}
+) => Effect.Effect<Record<string, SectionDoc>, SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.headDocuments')(function* (
+    session: ProtocolBuilderSession,
+    head: HeadState,
+  ) {
+    const documents: Record<string, SectionDoc> = {};
+    const entries = Object.entries(head.sectionHashes);
+    if (entries.length === 0) return documents;
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({ hash: sections.hash, doc: sections.doc })
+      .from(sections)
+      .where(
+        and(
+          eq(sections.teamId, session.access.teamId),
+          inArray(
+            sections.hash,
+            entries.map(([, hash]) => hash),
+          ),
+        ),
+      );
+    const byHash = new Map(rows.map((row) => [row.hash, row.doc]));
+    for (const [id, hash] of entries) {
+      const doc = byHash.get(hash);
+      if (doc !== undefined) {
+        documents[makeSectionId(parseSectionId(id))] = doc;
+      }
+    }
+    return documents;
+  }, sqlErrorsOnly);

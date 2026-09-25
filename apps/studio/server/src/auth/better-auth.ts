@@ -11,12 +11,12 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { RateLimiter } from '../rate-limit.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Two siblings
-// take narrower pieces: secrets-adapter.ts its adapter types, db/seed/teams.ts
+// take narrower pieces: secrets-adapter.ts its adapter types, scripts/seed/teams.ts
 // its password hasher.
 
 /**
@@ -83,7 +83,7 @@ export function createBetterAuthInstance(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
-  secrets: SecretsCipher,
+  secrets: SecretsCipherApi,
   /**
    * Where sign-in attempts are counted. Absent means this instance enforces no
    * limit of its own: the auth CLI's configuration and the suites that are not
@@ -160,7 +160,7 @@ export function createBetterAuthInstance(
       }),
     },
     // A third, always-available sign-in method alongside magic-link and
-    // social: the seeded admin account (src/db/seed.ts) needs somewhere to
+    // social: the seeded admin account (scripts/seed/seed.ts) needs somewhere to
     // authenticate with its known password, and open sign-up here matches
     // the same policy magic-link and social already carry (#1255) — access
     // control arrives with team invitations (#1256), not a gate here. Uses
@@ -271,7 +271,7 @@ export function createBetterAuthService(
   env: AuthEnv,
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
-  secrets: SecretsCipher,
+  secrets: SecretsCipherApi,
   limiter?: RateLimiter,
 ): AuthService {
   const auth = createBetterAuthInstance(

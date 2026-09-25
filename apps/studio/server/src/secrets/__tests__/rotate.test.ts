@@ -1,18 +1,31 @@
+// Rotation against real rows, because every property it has to hold is a
+// property of the transactions: that it re-seals what is behind and leaves
+// what is current alone, that a second run finds nothing, that an interrupted
+// run keeps what it committed, and that it refuses outright rather than
+// half-rotating a database whose keyring is incomplete.
+//
+// Every transaction the rotation opens is a MAINTENANCE one, which stamps no
+// team: the tenant tables force row-level security, so any other role would
+// rotate one team's rows and leave the rest pinned to a key about to be
+// removed. The fixtures and the oracles go through the connecting login
+// instead (`harness.onOwner`), which is a different session and therefore a
+// real second one — which is what makes the held-row case mean anything.
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { layer } from '@effect/vitest';
+import { Cause, Effect, Exit, Layer } from 'effect';
+import { describe, expect } from 'vitest';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
 import {
   testKeyring,
   testKeyringEntry,
 } from '../../__tests__/support/secrets.ts';
+import { MaintenanceScope } from '../../db/tenant.ts';
 import {
   assertSecretKeysProducible,
   SecretKeyCheckError,
@@ -22,18 +35,12 @@ import {
   secretKeyIdsInUse,
 } from '../boot.ts';
 import { createSecretsCipher } from '../cipher.ts';
-import { parseKeyring } from '../keyring.ts';
-import { RotationIncompleteError, rotateSecrets } from '../rotate.ts';
-
-// Rotation against real rows, because every property it has to hold is a
-// property of the transactions: that it re-seals what is behind and leaves
-// what is current alone, that a second run finds nothing, that an interrupted
-// run keeps what it committed, and that it refuses outright rather than
-// half-rotating a database whose keyring is incomplete.
-
-const db = await reachableDb();
+import { type KeyringApi, parseKeyring } from '../keyring.ts';
+import { RotationIncomplete, rotateSecrets } from '../rotate.ts';
+import { Keyring, type SecretsCipher, SecretsCipherLive } from '../services.ts';
 
 const TEAM = 'team-rotation';
+const USER = 'user-rotation';
 /** The protocol line every asset key below belongs to. */
 const PROTOCOL = '3f1c9b4e-0a2d-4c5e-9b8a-6d7e5f4c3b2a';
 /** A key id no keyring in this file carries: a half-removed rotation entry. */
@@ -52,521 +59,656 @@ const IMPOSTOR = parseKeyring(
   `test-1:${testKeyringEntry('test-impostor').split(':')[1]!}`,
 );
 
-const before = createSecretsCipher(BEFORE);
-const after = createSecretsCipher(AFTER);
+const beforeCipher = createSecretsCipher(BEFORE);
+const afterCipher = createSecretsCipher(AFTER);
 
-describe.skipIf(!db)('rotating stored secrets', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
-  /** The connecting login: fixtures and cross-team oracles. */
-  let pool: pg.Pool;
-  /** What rotation itself runs as, and the only identity that sees every team. */
-  let maintenance: pg.Pool;
+type TokenColumn = 'accessToken' | 'refreshToken' | 'idToken';
+const TOKEN_COLUMNS = [
+  'accessToken',
+  'refreshToken',
+  'idToken',
+] as const satisfies readonly TokenColumn[];
 
-  beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    maintenance = scratch.maintenance;
-    await provisionScratchSchema(pool);
-    await seedTeam(pool, TEAM);
-    await pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ('user-rotation', 'Rotation', 'rotation@example.test', true)`,
-    );
-    // `protocol_asset_keys` rows are pinned to a protocol by a composite
-    // foreign key, so the line has to exist before any key can be stored
-    // against it.
-    await pool.query(
-      `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Rotation protocol')`,
-      [PROTOCOL, TEAM],
-    );
-  }, 60_000);
+/**
+ * The rotation reads its keyring and its cipher from the services, so no call
+ * site can hand it a cipher over some other key material. A case that rotates
+ * under a given keyring provides both from that one keyring, which is what
+ * `SecretsCipherLive` over it is.
+ */
+const underKeyring = <A, E, R>(
+  keyring: KeyringApi,
+  body: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, Exclude<R, Keyring | SecretsCipher>> =>
+  Effect.provide(
+    body,
+    SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring))),
+  );
 
-  afterAll(async () => {
-    await scratch.dispose();
-  });
+/**
+ * The boot check under one keyring, with the cipher derived from that same
+ * keyring rather than passed beside it — the pairing the check's own signature
+ * asks for, in one place so no case can get it wrong.
+ */
+const bootCheck = (keyring: KeyringApi) =>
+  MaintenanceScope.open(
+    assertSecretKeysProducible(keyring, createSecretsCipher(keyring)),
+  );
 
-  afterEach(async () => {
-    await pool.query('DELETE FROM webhook_subscriptions');
-    await pool.query('DELETE FROM account');
-    await pool.query('DELETE FROM protocol_asset_keys');
-  });
+/**
+ * What a refused run answered with. A typed failure (`RotationIncomplete`, the
+ * boot check's three) and a DEFECT (a re-seal that refused a plaintext token, a
+ * batch size that could never finish) are read the same way: `Effect.result`
+ * would catch only the first kind, so everything is read off the `Exit`.
+ */
+const failureOf = (exit: Exit.Exit<unknown, unknown>): unknown =>
+  Exit.isFailure(exit)
+    ? Cause.squash(exit.cause)
+    : new Error('the run succeeded, so there is no refusal to read');
 
-  /** A subscription sealed by `cipher`, returning its id and its plaintext. */
-  async function newSubscription(
-    cipher = before,
-    keyIdOverride?: string,
-  ): Promise<{ id: string; secret: string }> {
-    const id = randomUUID();
-    const secret = `whsec_${randomUUID().replaceAll('-', '')}`;
-    const sealed = cipher.sealWebhookSecret(
-      { teamId: TEAM, subscriptionId: id },
-      secret,
-    );
-    await pool.query(
-      `INSERT INTO webhook_subscriptions
-         (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
-       VALUES ($1, $2, 'https://hooks.example.org/studio', ARRAY['interview.completed'], $3, $4, 'user-rotation')`,
-      [id, TEAM, sealed.ciphertext, keyIdOverride ?? sealed.keyId],
-    );
-    return { id, secret };
-  }
+const messageOf = (failure: unknown): string =>
+  failure instanceof Error ? failure.message : String(failure);
 
-  async function newAccount(
-    cipher = before,
-    tokens: Partial<
-      Record<'accessToken' | 'refreshToken' | 'idToken', string>
-    > = {
-      accessToken: 'ya29.access',
-      refreshToken: '1//refresh',
-      idToken: 'eyJ.id',
-    },
-  ): Promise<{ id: string; accountId: string; tokens: typeof tokens }> {
-    const id = randomUUID();
-    const accountId = `sub-${randomUUID()}`;
-    const sealed = (column: 'accessToken' | 'refreshToken' | 'idToken') =>
-      tokens[column] === undefined
-        ? null
-        : cipher.sealOAuthToken(
-            { providerId: 'google', accountId, column },
-            tokens[column],
-          );
-    await pool.query(
-      `INSERT INTO account
-         (id, "accountId", "providerId", "userId",
-          "accessToken", "refreshToken", "idToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'user-rotation', $3, $4, $5, now())`,
-      [
-        id,
-        accountId,
-        sealed('accessToken'),
-        sealed('refreshToken'),
-        sealed('idToken'),
-      ],
-    );
-    return { id, accountId, tokens };
-  }
+/**
+ * The team, the user and the protocol line the fixtures hang off, and an empty
+ * slate in all three stores. Every case starts from this: the stores are
+ * database-wide, so a row left behind by one case is a row the next one counts.
+ */
+const reset = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  yield* harness.onOwner(
+    Effect.gen(function* () {
+      const { sql } = harness.owner;
+      yield* sql`delete from webhook_subscriptions`;
+      yield* sql`delete from account`;
+      yield* sql`delete from protocol_asset_keys`;
+      yield* sql`insert into teams (id, name, slug)
+                 values (${TEAM}, ${TEAM}, ${TEAM})
+                 on conflict (id) do nothing`;
+      yield* sql`insert into "user" (id, name, email, "emailVerified")
+                 values (${USER}, 'Rotation', 'rotation@example.test', true)
+                 on conflict (id) do nothing`;
+      // `protocol_asset_keys` rows are pinned to a protocol by a composite
+      // foreign key, so the line has to exist before any key is stored on it.
+      yield* sql`insert into protocols (id, team_id, name)
+                 values (${PROTOCOL}, ${TEAM}, 'Rotation protocol')
+                 on conflict (id) do nothing`;
+    }),
+  );
+});
 
-  /** One sealed API key for `PROTOCOL`, returning its asset id and plaintext. */
-  async function newAssetKey(
-    cipher = before,
-    keyIdOverride?: string,
-  ): Promise<{ assetId: string; value: string }> {
-    const assetId = `asset-${randomUUID()}`;
-    const value = `pk.${randomUUID().replaceAll('-', '')}`;
-    const sealed = cipher.sealAssetKey(
-      { teamId: TEAM, protocolId: PROTOCOL, assetId },
+/** A subscription sealed by `cipher`, returning its id and its plaintext. */
+const newSubscription = Effect.fnUntraced(function* (
+  cipher = beforeCipher,
+  keyIdOverride?: string,
+) {
+  const harness = yield* TestDatabase;
+  const id = randomUUID();
+  const secret = `whsec_${randomUUID().replaceAll('-', '')}`;
+  const sealed = cipher.sealWebhookSecret(
+    { teamId: TEAM, subscriptionId: id },
+    secret,
+  );
+  yield* harness.onOwner(
+    harness.owner
+      .sql`insert into webhook_subscriptions (id, team_id, url, event_types,
+                                              secret_ciphertext, secret_key_id,
+                                              created_by_user_id)
+           values (${id}, ${TEAM}, 'https://hooks.example.org/studio',
+                   ${['interview.completed']}, ${sealed.ciphertext},
+                   ${keyIdOverride ?? sealed.keyId}, ${USER})`,
+  );
+  return { id, secret };
+});
+
+/**
+ * One `account` row. `tokens` is what each column holds: a plain string is
+ * sealed by `cipher`, and a value given as `{ plaintext: … }` is written
+ * as-is, which is the write that bypassed the auth adapter.
+ */
+const newAccount = Effect.fnUntraced(function* (
+  cipher = beforeCipher,
+  tokens: Partial<Record<TokenColumn, string | { plaintext: string }>> = {
+    accessToken: 'ya29.access',
+    refreshToken: '1//refresh',
+    idToken: 'eyJ.id',
+  },
+) {
+  const harness = yield* TestDatabase;
+  const id = randomUUID();
+  const accountId = `sub-${randomUUID()}`;
+  const stored = (column: TokenColumn) => {
+    const value = tokens[column];
+    if (value === undefined) return null;
+    if (typeof value !== 'string') return value.plaintext;
+    return cipher.sealOAuthToken(
+      { providerId: 'google', accountId, column },
       value,
     );
-    await pool.query(
-      `INSERT INTO protocol_asset_keys
-         (team_id, protocol_id, asset_id, ciphertext, key_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [
-        TEAM,
-        PROTOCOL,
-        assetId,
-        sealed.ciphertext,
-        keyIdOverride ?? sealed.keyId,
-      ],
-    );
-    return { assetId, value };
-  }
+  };
+  yield* harness.onOwner(
+    harness.owner
+      .sql`insert into account (id, "accountId", "providerId", "userId",
+                                "accessToken", "refreshToken", "idToken", "updatedAt")
+           values (${id}, ${accountId}, 'google', ${USER},
+                   ${stored('accessToken')}, ${stored('refreshToken')},
+                   ${stored('idToken')}, now())`,
+  );
+  return { id, accountId, tokens };
+});
 
-  const assetKeyRows = async () =>
-    (
-      await pool.query<{
-        asset_id: string;
-        ciphertext: Buffer;
-        key_id: string;
-        updated_at: Date;
-      }>(
-        'SELECT asset_id, ciphertext, key_id, updated_at FROM protocol_asset_keys ORDER BY asset_id',
-      )
-    ).rows;
+/** One sealed API key for `PROTOCOL`, returning its asset id and plaintext. */
+const newAssetKey = Effect.fnUntraced(function* (
+  cipher = beforeCipher,
+  keyIdOverride?: string,
+) {
+  const harness = yield* TestDatabase;
+  const assetId = `asset-${randomUUID()}`;
+  const value = `pk.${randomUUID().replaceAll('-', '')}`;
+  const sealed = cipher.sealAssetKey(
+    { teamId: TEAM, protocolId: PROTOCOL, assetId },
+    value,
+  );
+  yield* harness.onOwner(
+    harness.owner
+      .sql`insert into protocol_asset_keys (team_id, protocol_id, asset_id,
+                                            ciphertext, key_id)
+           values (${TEAM}, ${PROTOCOL}, ${assetId}, ${sealed.ciphertext},
+                   ${keyIdOverride ?? sealed.keyId})`,
+  );
+  return { assetId, value };
+});
 
-  const subscriptionRows = async () =>
-    (
-      await pool.query<{
-        id: string;
-        secret_ciphertext: Buffer;
-        secret_key_id: string;
-        updated_at: Date;
-      }>(
-        'SELECT id, secret_ciphertext, secret_key_id, updated_at FROM webhook_subscriptions ORDER BY id',
-      )
-    ).rows;
+// The oracles, read as the connecting login. `updated_at`/`updatedAt` come
+// back from RAW statements, which decode `timestamptz` as epoch milliseconds
+// rather than as a `Date` on rc.115 — so every case that asserts a timestamp
+// was NOT touched also pins that it is a primitive, because the comparison
+// only means "unchanged" while it is one.
+const subscriptionRows = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  return yield* harness.onOwner(
+    harness.owner.sql<{
+      id: string;
+      secret_ciphertext: Uint8Array;
+      secret_key_id: string;
+      updated_at: number;
+    }>`select id, secret_ciphertext, secret_key_id, updated_at
+       from webhook_subscriptions order by id`,
+  );
+});
 
-  const accountRows = async () =>
-    (
-      await pool.query<{
-        id: string;
-        accountId: string;
-        accessToken: string | null;
-        refreshToken: string | null;
-        idToken: string | null;
-        updatedAt: Date;
-      }>(
-        'SELECT id, "accountId", "accessToken", "refreshToken", "idToken", "updatedAt" FROM account ORDER BY id',
-      )
-    ).rows;
+const accountRows = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  return yield* harness.onOwner(
+    harness.owner.sql<{
+      id: string;
+      accountId: string;
+      accessToken: string | null;
+      refreshToken: string | null;
+      idToken: string | null;
+      updatedAt: number;
+    }>`select id, "accountId", "accessToken", "refreshToken", "idToken", "updatedAt"
+       from account order by id`,
+  );
+});
 
-  it('re-seals every store under the current key, plaintext unchanged', async () => {
-    const subscription = await newSubscription();
-    const account = await newAccount();
-    const assetKey = await newAssetKey();
-    const stored = (await accountRows())[0]!;
-    const storedAt = stored.updatedAt;
-    const assetStoredAt = (await assetKeyRows())[0]!.updated_at;
+const assetKeyRows = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  return yield* harness.onOwner(
+    harness.owner.sql<{
+      asset_id: string;
+      ciphertext: Uint8Array;
+      key_id: string;
+      updated_at: number;
+    }>`select asset_id, ciphertext, key_id, updated_at
+       from protocol_asset_keys order by asset_id`,
+  );
+});
 
-    const counts = await rotateSecrets(maintenance, AFTER);
-    expect(counts).toEqual({
-      webhook_subscriptions: 1,
-      account: 1,
-      protocol_asset_keys: 1,
-    });
+describe.skipIf(!testDb)('rotating stored secrets', () => {
+  layer(TestDatabaseLive, { excludeTestServices: true })(
+    'on a scratch schema, as the maintenance role',
+    (it) => {
+      it.effect(
+        're-seals every store under the current key, plaintext unchanged',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const subscription = yield* newSubscription();
+            const account = yield* newAccount();
+            const assetKey = yield* newAssetKey();
+            const storedAt = (yield* accountRows())[0]!.updatedAt;
+            const assetStoredAt = (yield* assetKeyRows())[0]!.updated_at;
 
-    const [rotatedSubscription] = await subscriptionRows();
-    expect(rotatedSubscription?.secret_key_id).toBe('test-1');
-    expect(
-      after.openWebhookSecret(
-        { teamId: TEAM, subscriptionId: subscription.id },
-        {
-          ciphertext: rotatedSubscription!.secret_ciphertext,
-          keyId: rotatedSubscription!.secret_key_id,
-        },
-      ),
-    ).toBe(subscription.secret);
+            const counts = yield* underKeyring(AFTER, rotateSecrets());
+            expect(counts).toEqual({
+              webhook_subscriptions: 1,
+              account: 1,
+              protocol_asset_keys: 1,
+            });
 
-    const [rotatedAccount] = await accountRows();
-    for (const column of ['accessToken', 'refreshToken', 'idToken'] as const) {
-      const value = rotatedAccount![column];
-      expect(value?.startsWith('studio-secret:test-1:')).toBe(true);
-      expect(
-        after.openOAuthToken(
-          { providerId: 'google', accountId: account.accountId, column },
-          value!,
-        ),
-      ).toBe(account.tokens[column]);
-    }
-    const [rotatedAssetKey] = await assetKeyRows();
-    expect(rotatedAssetKey?.key_id).toBe('test-1');
-    expect(
-      after.openAssetKey(
-        {
-          teamId: TEAM,
-          protocolId: PROTOCOL,
-          assetId: assetKey.assetId,
-        },
-        {
-          ciphertext: rotatedAssetKey!.ciphertext,
-          keyId: rotatedAssetKey!.key_id,
-        },
-      ),
-    ).toBe(assetKey.value);
+            const [rotatedSubscription] = yield* subscriptionRows();
+            expect(rotatedSubscription?.secret_key_id).toBe('test-1');
+            expect(
+              afterCipher.openWebhookSecret(
+                { teamId: TEAM, subscriptionId: subscription.id },
+                {
+                  ciphertext: rotatedSubscription!.secret_ciphertext,
+                  keyId: rotatedSubscription!.secret_key_id,
+                },
+              ),
+            ).toBe(subscription.secret);
 
-    // Rotation changes how a row is stored, not when anyone last changed it:
-    // a bumped timestamp would make every audit and every "recently changed"
-    // view lie the day a deployment re-keys.
-    expect(rotatedAccount?.updatedAt).toEqual(storedAt);
-    expect(rotatedAssetKey?.updated_at).toEqual(assetStoredAt);
-  });
+            const [rotatedAccount] = yield* accountRows();
+            for (const column of TOKEN_COLUMNS) {
+              const value = rotatedAccount![column];
+              expect(value?.startsWith('studio-secret:test-1:')).toBe(true);
+              expect(
+                afterCipher.openOAuthToken(
+                  {
+                    providerId: 'google',
+                    accountId: account.accountId,
+                    column,
+                  },
+                  value!,
+                ),
+              ).toBe(account.tokens[column]);
+            }
 
-  it('leaves an asset key that is already current byte for byte alone', async () => {
-    // Sealed under the keyring the rotation deploys, so there is nothing to
-    // do: a re-seal under the same key would draw a new nonce and still pass
-    // a count-only assertion.
-    await newAssetKey(after);
-    const stored = await assetKeyRows();
+            const [rotatedAssetKey] = yield* assetKeyRows();
+            expect(rotatedAssetKey?.key_id).toBe('test-1');
+            expect(
+              afterCipher.openAssetKey(
+                {
+                  teamId: TEAM,
+                  protocolId: PROTOCOL,
+                  assetId: assetKey.assetId,
+                },
+                {
+                  ciphertext: rotatedAssetKey!.ciphertext,
+                  keyId: rotatedAssetKey!.key_id,
+                },
+              ),
+            ).toBe(assetKey.value);
 
-    expect((await rotateSecrets(maintenance, AFTER)).protocol_asset_keys).toBe(
-      0,
-    );
-    expect(await assetKeyRows()).toEqual(stored);
-  });
-
-  it('refuses to rotate an asset key sealed under a missing entry', async () => {
-    const behind = await newAssetKey();
-    await newAssetKey(before, MISSING);
-    const stored = await assetKeyRows();
-
-    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
-      new RegExp(`cannot produce: ${MISSING}`),
-    );
-    // Including the row it could have rotated: the check runs before any
-    // write, so an incomplete keyring rotates nothing rather than some.
-    expect(await assetKeyRows()).toEqual(stored);
-    expect(stored.find((row) => row.asset_id === behind.assetId)?.key_id).toBe(
-      'test-2',
-    );
-  });
-
-  it('re-seals the tokens a row does have and leaves the others null', async () => {
-    const account = await newAccount(before, { accessToken: 'ya29.only' });
-    await rotateSecrets(maintenance, AFTER);
-    const [row] = await accountRows();
-    expect(row?.refreshToken).toBeNull();
-    expect(row?.idToken).toBeNull();
-    expect(
-      after.openOAuthToken(
-        {
-          providerId: 'google',
-          accountId: account.accountId,
-          column: 'accessToken',
-        },
-        row!.accessToken!,
-      ),
-    ).toBe('ya29.only');
-  });
-
-  it('finds nothing to do on a second run, and rewrites no row', async () => {
-    await newSubscription();
-    await newAccount();
-    await newAssetKey();
-    await rotateSecrets(maintenance, AFTER);
-    const first = await subscriptionRows();
-    const firstAccounts = await accountRows();
-    const firstAssetKeys = await assetKeyRows();
-
-    // Idempotent in the strong sense: not merely "reports zero", but leaves
-    // the stored bytes identical. A re-seal under the same key would produce
-    // a new nonce and pass a count-only assertion.
-    expect(await rotateSecrets(maintenance, AFTER)).toEqual({
-      webhook_subscriptions: 0,
-      account: 0,
-      protocol_asset_keys: 0,
-    });
-    expect(await subscriptionRows()).toEqual(first);
-    expect(await accountRows()).toEqual(firstAccounts);
-    expect(await assetKeyRows()).toEqual(firstAssetKeys);
-  });
-
-  it('keeps the batches it committed when a run is interrupted', async () => {
-    for (let index = 0; index < 3; index += 1) await newSubscription();
-
-    let batches = 0;
-    await expect(
-      rotateSecrets(maintenance, AFTER, {
-        batchSize: 1,
-        log: () => {
-          batches += 1;
-          // Stands in for the process being killed between batches, which is
-          // the failure resumability is for: the run ends after a commit.
-          throw new Error('interrupted');
-        },
-      }),
-    ).rejects.toThrow(/interrupted/);
-    expect(batches).toBe(1);
-
-    const partial = await subscriptionRows();
-    expect(
-      partial.filter((row) => row.secret_key_id === 'test-1'),
-    ).toHaveLength(1);
-
-    // The rerun is the whole point: it finishes the rest and does not redo the
-    // batch that already committed.
-    expect(await rotateSecrets(maintenance, AFTER)).toEqual({
-      webhook_subscriptions: 2,
-      account: 0,
-      protocol_asset_keys: 0,
-    });
-    expect(
-      (await subscriptionRows()).every((row) => row.secret_key_id === 'test-1'),
-    ).toBe(true);
-  });
-
-  it('refuses to report success while another transaction holds a row', async () => {
-    const held = await newSubscription();
-    await newSubscription();
-
-    const holder = await pool.connect();
-    try {
-      await holder.query('BEGIN');
-      await holder.query(
-        'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
-        [held.id],
+            // Rotation changes how a row is stored, not when anyone last
+            // changed it: a bumped timestamp would make every audit and every
+            // "recently changed" view lie the day a deployment re-keys.
+            expect(typeof rotatedAccount?.updatedAt).toBe('number');
+            expect(rotatedAccount?.updatedAt).toBe(storedAt);
+            expect(typeof rotatedAssetKey?.updated_at).toBe('number');
+            expect(rotatedAssetKey?.updated_at).toBe(assetStoredAt);
+          }).pipe(Effect.orDie),
       );
-      // FOR UPDATE SKIP LOCKED means a held row makes a batch return zero,
-      // which is also how a finished store reports itself. Believing it let
-      // the command print "every stored secret is now under key id …" with a
-      // row still sealed under the entry the operator is about to remove.
-      const refused = rotateSecrets(maintenance, AFTER);
-      await expect(refused).rejects.toThrow(RotationIncompleteError);
-      await expect(refused).rejects.toThrow(
-        /webhook_subscriptions: 1 row still under another key \(held by another session, or written under an older key while this ran\); run rotate-secrets again/,
+
+      it.effect(
+        'leaves an asset key that is already current byte for byte alone',
+        () =>
+          Effect.gen(function* () {
+            // Sealed under the keyring the rotation deploys, so there is
+            // nothing to do: a re-seal under the same key would draw a new
+            // nonce and still pass a count-only assertion.
+            yield* reset();
+            yield* newAssetKey(afterCipher);
+            const stored = yield* assetKeyRows();
+
+            const counts = yield* underKeyring(AFTER, rotateSecrets());
+            expect(counts.protocol_asset_keys).toBe(0);
+            expect(yield* assetKeyRows()).toEqual(stored);
+          }).pipe(Effect.orDie),
       );
-    } finally {
-      // In `finally` so a failed assertion still gives the row lock back:
-      // released with its transaction open, this connection would block the
-      // cleanup DELETE and every later test with it.
-      await holder.query('ROLLBACK').catch(() => undefined);
-      holder.release();
-    }
 
-    // The batch that did commit is still committed: the postcondition reports,
-    // it does not roll anything back.
-    expect(
-      (await subscriptionRows()).filter(
-        (row) => row.secret_key_id === 'test-1',
-      ),
-    ).toHaveLength(1);
+      it.effect(
+        'refuses to rotate an asset key sealed under a missing entry',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const behind = yield* newAssetKey();
+            yield* newAssetKey(beforeCipher, MISSING);
+            const stored = yield* assetKeyRows();
 
-    // And the rerun the message asks for finishes the job.
-    expect(await rotateSecrets(maintenance, AFTER)).toEqual({
-      webhook_subscriptions: 1,
-      account: 0,
-      protocol_asset_keys: 0,
-    });
-    expect(
-      (await subscriptionRows()).every((row) => row.secret_key_id === 'test-1'),
-    ).toBe(true);
-  });
+            const failure = failureOf(
+              yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
+            );
+            expect(messageOf(failure)).toMatch(
+              new RegExp(`cannot produce: ${MISSING}`),
+            );
+            // Including the row it could have rotated: the check runs before
+            // any write, so an incomplete keyring rotates nothing rather than
+            // some.
+            expect(yield* assetKeyRows()).toEqual(stored);
+            expect(
+              stored.find((row) => row.asset_id === behind.assetId)?.key_id,
+            ).toBe('test-2');
+          }).pipe(Effect.orDie),
+      );
 
-  it('reports the key ids in use across every store', async () => {
-    await newSubscription();
-    await newSubscription(before, MISSING);
-    await newAccount();
-    await newAssetKey(before, 'asset-gone');
-    // What the boot check compares against the keyring: one set, from every
-    // store, however many tables the registry grows to.
-    const client = await maintenance.connect();
-    try {
-      expect(await secretKeyIdsInUse(client)).toEqual([
-        'asset-gone',
-        MISSING,
-        'test-2',
-      ]);
-    } finally {
-      client.release();
-    }
-  });
+      it.effect(
+        're-seals the tokens a row does have and leaves the others null',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const account = yield* newAccount(beforeCipher, {
+              accessToken: 'ya29.only',
+            });
+            yield* underKeyring(AFTER, rotateSecrets());
 
-  it('refuses at boot when a stored key id is not a keyring id', async () => {
-    // A row whose key id is not one a keyring could hold cannot be opened by
-    // any keyring, so dropping it from the comparison made the boot check pass
-    // on a database it had just proved unreadable. It is counted instead, and
-    // the count says which table without ever printing what the column holds:
-    // these ids are read back out of stored text, and a boot refusal must not
-    // be a way to get arbitrary stored bytes into a log.
-    await newSubscription(before, 'not a key id');
-    await newSubscription(before, 'nor is this');
-    await newAssetKey(before, 'not a key id either');
-    await pool.query(
-      `INSERT INTO account
-         (id, "accountId", "providerId", "userId", "accessToken", "updatedAt")
-       VALUES ($1, $1, 'google', 'user-rotation', 'studio-secret::whatever', now())`,
-      [randomUUID()],
-    );
+            const [row] = yield* accountRows();
+            expect(row?.refreshToken).toBeNull();
+            expect(row?.idToken).toBeNull();
+            expect(
+              afterCipher.openOAuthToken(
+                {
+                  providerId: 'google',
+                  accountId: account.accountId,
+                  column: 'accessToken',
+                },
+                row!.accessToken!,
+              ),
+            ).toBe('ya29.only');
+          }).pipe(Effect.orDie),
+      );
 
-    const act = assertSecretKeysProducible(maintenance, AFTER);
-    await expect(act).rejects.toThrow(SecretKeyIdMalformedError);
-    // Every refusal from the boot check is one type to catch: that is what
-    // `verifySecretKeysOrExit` prints as a sentence rather than a stack.
-    await expect(act).rejects.toThrow(SecretKeyCheckError);
-    const error = await act.catch((reason: unknown) => reason);
-    const message = error instanceof Error ? error.message : String(error);
-    expect(message).toContain(
-      '2 stored key ids in webhook_subscriptions are not keyring ids',
-    );
-    expect(message).toContain(
-      '1 stored key id in protocol_asset_keys is not a keyring id',
-    );
-    expect(message).toContain('1 stored key id in account is not a keyring id');
-    // Never the text itself.
-    expect(message).not.toContain('not a key id');
-    expect(message).not.toContain('whatever');
-  });
+      it.effect(
+        'finds nothing to do on a second run, and rewrites no row',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            yield* newSubscription();
+            yield* newAccount();
+            yield* newAssetKey();
+            yield* underKeyring(AFTER, rotateSecrets());
+            const first = yield* subscriptionRows();
+            const firstAccounts = yield* accountRows();
+            const firstAssetKeys = yield* assetKeyRows();
 
-  it('refuses at boot when the keyring holds an id under different material', async () => {
-    // A restored database and a keyring that both name `test-1` but disagree
-    // about what it is: every id is present, so the produce-check passed and
-    // the deployment came up to fail one webhook signature at a time.
-    await newSubscription(after);
-    await newAccount(after);
-    await newAssetKey(after);
+            // Idempotent in the strong sense: not merely "reports zero", but
+            // leaves the stored bytes identical. A re-seal under the same key
+            // would produce a new nonce and pass a count-only assertion.
+            expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
+              webhook_subscriptions: 0,
+              account: 0,
+              protocol_asset_keys: 0,
+            });
+            expect(yield* subscriptionRows()).toEqual(first);
+            expect(yield* accountRows()).toEqual(firstAccounts);
+            expect(yield* assetKeyRows()).toEqual(firstAssetKeys);
+          }).pipe(Effect.orDie),
+      );
 
-    const refused = assertSecretKeysProducible(maintenance, IMPOSTOR);
-    await expect(refused).rejects.toThrow(SecretKeyMaterialError);
-    await expect(refused).rejects.toThrow(
-      /Key id "test-1" in the keyring does not open the stored secrets sealed under it/,
-    );
-    // The keyring that does match still passes, so the probe is not simply
-    // refusing everything.
-    await expect(
-      assertSecretKeysProducible(maintenance, AFTER),
-    ).resolves.toBeUndefined();
-  });
+      it.effect(
+        'keeps the batches it committed when a run is interrupted',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            for (let index = 0; index < 3; index += 1) yield* newSubscription();
 
-  it('refuses a row whose only token is plaintext', async () => {
-    // Selected on "is not under the current key" rather than on carrying a
-    // sealed prefix: a row whose only token is plaintext matched neither, so
-    // rotation walked past it and reported success with plaintext at rest.
-    const id = randomUUID();
-    await pool.query(
-      `INSERT INTO account
-         (id, "accountId", "providerId", "userId", "refreshToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'user-rotation', '1//written-around-the-adapter', now())`,
-      [id, `sub-${id}`],
-    );
+            let batches = 0;
+            const failure = failureOf(
+              yield* Effect.exit(
+                underKeyring(
+                  AFTER,
+                  rotateSecrets({
+                    batchSize: 1,
+                    log: () => {
+                      batches += 1;
+                      // Stands in for the process being killed between batches,
+                      // which is the failure resumability is for: the run ends
+                      // after a commit, and a death is a defect rather than
+                      // something the rotation publishes.
+                      return Effect.die(new Error('interrupted'));
+                    },
+                  }),
+                ),
+              ),
+            );
+            expect(messageOf(failure)).toMatch(/interrupted/);
+            expect(batches).toBe(1);
 
-    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
-      new RegExp(`account ${id} refreshToken could not be re-sealed`),
-    );
-    const [row] = await accountRows();
-    expect(row?.refreshToken).toBe('1//written-around-the-adapter');
-  });
+            const partial = yield* subscriptionRows();
+            expect(
+              partial.filter((row) => row.secret_key_id === 'test-1'),
+            ).toHaveLength(1);
 
-  it('refuses a keyring missing a stored key id, and rotates nothing', async () => {
-    await newSubscription();
-    await newSubscription(before, MISSING);
-    const stored = await subscriptionRows();
+            // The rerun is the whole point: it finishes the rest and does not
+            // redo the batch that already committed.
+            expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
+              webhook_subscriptions: 2,
+              account: 0,
+              protocol_asset_keys: 0,
+            });
+            expect(
+              (yield* subscriptionRows()).every(
+                (row) => row.secret_key_id === 'test-1',
+              ),
+            ).toBe(true);
+          }).pipe(Effect.orDie),
+      );
 
-    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
-      SecretKeyMissingError,
-    );
-    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
-      new RegExp(`cannot produce: ${MISSING}`),
-    );
-    // Not one row: a partial rotation under an incomplete keyring is the state
-    // this command exists to get a deployment out of, not into.
-    expect(await subscriptionRows()).toEqual(stored);
-  });
+      it.effect(
+        'refuses to report success while another transaction holds a row',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const held = yield* newSubscription();
+            yield* newSubscription();
+            const harness = yield* TestDatabase;
 
-  it('refuses a plaintext token rather than sealing it on the way past', async () => {
-    const id = randomUUID();
-    await pool.query(
-      `INSERT INTO account
-         (id, "accountId", "providerId", "userId",
-          "accessToken", "refreshToken", "updatedAt")
-       VALUES ($1, $2, 'google', 'user-rotation',
-               $3, 'ya29.written-around-the-adapter', now())`,
-      [
-        id,
-        `sub-${id}`,
-        before.sealOAuthToken(
-          {
-            providerId: 'google',
-            accountId: `sub-${id}`,
-            column: 'accessToken',
-          },
-          'ya29.sealed',
-        ),
-      ],
-    );
+            // The lock is taken on the connecting login's own connection,
+            // which is a different client from the maintenance one, so the
+            // rotation below really is another session.
+            const exit = yield* harness.onOwner(
+              Effect.gen(function* () {
+                yield* harness.owner.sql`select id from webhook_subscriptions
+                                         where id = ${held.id} for update`;
+                // FOR UPDATE SKIP LOCKED means a held row makes a batch return
+                // zero, which is also how a finished store reports itself.
+                // Believing it let the command print "every stored secret is
+                // now under key id …" with a row still sealed under the entry
+                // the operator is about to remove.
+                return yield* Effect.exit(underKeyring(AFTER, rotateSecrets()));
+              }),
+            );
+            const failure = failureOf(exit);
+            expect(failure).toBeInstanceOf(RotationIncomplete);
+            expect(messageOf(failure)).toMatch(
+              /webhook_subscriptions: 1 row still under another key \(held by another session, or written under an older key while this ran\); run rotate-secrets again/,
+            );
 
-    // Sealing it here would hide the write that bypassed the auth adapter, and
-    // the row would look rotated ever after.
-    await expect(rotateSecrets(maintenance, AFTER)).rejects.toThrow(
-      new RegExp(`account ${id} refreshToken could not be re-sealed`),
-    );
-    const [row] = await accountRows();
-    expect(row?.refreshToken).toBe('ya29.written-around-the-adapter');
-    expect(row?.accessToken?.startsWith('studio-secret:test-2:')).toBe(true);
-  });
+            // The batch that did commit is still committed: the postcondition
+            // reports, it does not roll anything back.
+            expect(
+              (yield* subscriptionRows()).filter(
+                (row) => row.secret_key_id === 'test-1',
+              ),
+            ).toHaveLength(1);
 
-  it('refuses a batch size that would never finish', async () => {
-    await expect(
-      rotateSecrets(maintenance, AFTER, { batchSize: 0 }),
-    ).rejects.toThrow(/positive integer/);
-  });
+            // And the rerun the message asks for finishes the job.
+            expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
+              webhook_subscriptions: 1,
+              account: 0,
+              protocol_asset_keys: 0,
+            });
+            expect(
+              (yield* subscriptionRows()).every(
+                (row) => row.secret_key_id === 'test-1',
+              ),
+            ).toBe(true);
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect('reports the key ids in use across every store', () =>
+        Effect.gen(function* () {
+          yield* reset();
+          yield* newSubscription();
+          yield* newSubscription(beforeCipher, MISSING);
+          yield* newAccount();
+          yield* newAssetKey(beforeCipher, 'asset-gone');
+          // What the boot check compares against the keyring: one set, from
+          // every store, however many tables the registry grows to.
+          expect(yield* MaintenanceScope.open(secretKeyIdsInUse)).toEqual([
+            'asset-gone',
+            MISSING,
+            'test-2',
+          ]);
+        }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        'refuses at boot when a stored key id is not a keyring id',
+        () =>
+          Effect.gen(function* () {
+            // A row whose key id is not one a keyring could hold cannot be opened
+            // by any keyring, so dropping it from the comparison made the boot
+            // check pass on a database it had just proved unreadable. It is
+            // counted instead, and the count says which table without ever
+            // printing what the column holds: these ids are read back out of
+            // stored text, and a boot refusal must not be a way to get arbitrary
+            // stored bytes into a log.
+            yield* reset();
+            yield* newSubscription(beforeCipher, 'not a key id');
+            yield* newSubscription(beforeCipher, 'nor is this');
+            yield* newAssetKey(beforeCipher, 'not a key id either');
+            yield* newAccount(beforeCipher, {
+              accessToken: { plaintext: 'studio-secret::whatever' },
+            });
+
+            const failure = failureOf(yield* Effect.exit(bootCheck(AFTER)));
+            expect(failure).toBeInstanceOf(SecretKeyIdMalformedError);
+            // Every refusal from the boot check is one type to catch: that is
+            // what `verifySecretKeysOrExit` prints as a sentence rather than a
+            // stack.
+            expect(failure).toBeInstanceOf(SecretKeyCheckError);
+            const message = messageOf(failure);
+            expect(message).toContain(
+              '2 stored key ids in webhook_subscriptions are not keyring ids',
+            );
+            expect(message).toContain(
+              '1 stored key id in protocol_asset_keys is not a keyring id',
+            );
+            expect(message).toContain(
+              '1 stored key id in account is not a keyring id',
+            );
+            // Never the text itself.
+            expect(message).not.toContain('not a key id');
+            expect(message).not.toContain('whatever');
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        'refuses at boot when the keyring holds an id under different material',
+        () =>
+          Effect.gen(function* () {
+            // A restored database and a keyring that both name `test-1` but
+            // disagree about what it is: every id is present, so the
+            // produce-check passed and the deployment came up to fail one
+            // webhook signature at a time.
+            yield* reset();
+            yield* newSubscription(afterCipher);
+            yield* newAccount(afterCipher);
+            yield* newAssetKey(afterCipher);
+
+            const failure = failureOf(yield* Effect.exit(bootCheck(IMPOSTOR)));
+            expect(failure).toBeInstanceOf(SecretKeyMaterialError);
+            expect(messageOf(failure)).toMatch(
+              /Key id "test-1" in the keyring does not open the stored secrets sealed under it/,
+            );
+            // The keyring that does match still passes, so the probe is not
+            // simply refusing everything.
+            expect(yield* Effect.exit(bootCheck(AFTER))).toStrictEqual(
+              Exit.succeed(undefined),
+            );
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect('refuses a row whose only token is plaintext', () =>
+        Effect.gen(function* () {
+          // Selected on "is not under the current key" rather than on carrying
+          // a sealed prefix: a row whose only token is plaintext matched
+          // neither, so rotation walked past it and reported success with
+          // plaintext at rest.
+          yield* reset();
+          const account = yield* newAccount(beforeCipher, {
+            refreshToken: { plaintext: '1//written-around-the-adapter' },
+          });
+
+          const failure = failureOf(
+            yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
+          );
+          expect(messageOf(failure)).toMatch(
+            new RegExp(
+              `account ${account.id} refreshToken could not be re-sealed`,
+            ),
+          );
+          const [row] = yield* accountRows();
+          expect(row?.refreshToken).toBe('1//written-around-the-adapter');
+        }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        'refuses a keyring missing a stored key id, and rotates nothing',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            yield* newSubscription();
+            yield* newSubscription(beforeCipher, MISSING);
+            const stored = yield* subscriptionRows();
+
+            const failure = failureOf(
+              yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
+            );
+            expect(failure).toBeInstanceOf(SecretKeyMissingError);
+            expect(messageOf(failure)).toMatch(
+              new RegExp(`cannot produce: ${MISSING}`),
+            );
+            // Not one row: a partial rotation under an incomplete keyring is
+            // the state this command exists to get a deployment out of, not
+            // into.
+            expect(yield* subscriptionRows()).toEqual(stored);
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        'refuses a plaintext token rather than sealing it on the way past',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const account = yield* newAccount(beforeCipher, {
+              accessToken: 'ya29.sealed',
+              refreshToken: { plaintext: 'ya29.written-around-the-adapter' },
+            });
+
+            // Sealing it here would hide the write that bypassed the auth
+            // adapter, and the row would look rotated ever after.
+            const failure = failureOf(
+              yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
+            );
+            expect(messageOf(failure)).toMatch(
+              new RegExp(
+                `account ${account.id} refreshToken could not be re-sealed`,
+              ),
+            );
+            const [row] = yield* accountRows();
+            expect(row?.refreshToken).toBe('ya29.written-around-the-adapter');
+            expect(row?.accessToken?.startsWith('studio-secret:test-2:')).toBe(
+              true,
+            );
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect('refuses a batch size that would never finish', () =>
+        Effect.gen(function* () {
+          // A DEFECT rather than a failure: the number came from the call site
+          // rather than from the database, and there is nothing an operator
+          // could do with it that is not "fix the caller".
+          yield* reset();
+          const failure = failureOf(
+            yield* Effect.exit(
+              underKeyring(AFTER, rotateSecrets({ batchSize: 0 })),
+            ),
+          );
+          expect(messageOf(failure)).toMatch(/positive integer/);
+        }).pipe(Effect.orDie),
+      );
+    },
+  );
 });

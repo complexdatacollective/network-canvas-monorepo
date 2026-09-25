@@ -1,19 +1,27 @@
 import { randomUUID } from 'node:crypto';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Effect, Exit, Fiber, Schema } from 'effect';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import { freePort } from '../../__tests__/support/entrypoint.ts';
 import {
   reachableRedis,
   REDIS_DATABASES,
 } from '../../__tests__/support/valkey.ts';
+import { readEnv } from '../../env.ts';
 import {
   createRateLimitStore,
+  getRateLimitStore,
   type RateLimitStore,
 } from '../../rate-limit/store.ts';
 import {
+  DENIAL_KEY_PREFIX,
   DeniedAuditRateLimiter,
   parseDenialWindowKey,
+  reservedDenial,
 } from '../denial-rate-limit.ts';
 
 // The window that caps how many denial events one actor can write into one
@@ -252,6 +260,116 @@ describe.skipIf(!url)('the denied-attempt window', () => {
 
     expect((await first.reserve(input)).admitted).toBe(false);
     expect((await second.reserve(input)).admitted).toBe(false);
+  });
+});
+
+describe.skipIf(!url)('the slot around a command', () => {
+  // `reservedDenial` takes the process's limiter, which reads `REDIS_URL` on
+  // first use; pointing that at this file's logical database means the store
+  // it memoises is the one `getRateLimitStore` hands back here, so a case can
+  // hold its round trip open.
+  let shared: RateLimitStore;
+
+  beforeAll(() => {
+    if (!url) throw new Error('unreachable: the probe guaranteed a store');
+    vi.stubEnv('REDIS_URL', url);
+    const { redis } = readEnv();
+    if (!redis) throw new Error('unreachable: REDIS_URL was just set');
+    shared = getRateLimitStore(redis);
+  });
+
+  afterAll(async () => {
+    vi.unstubAllEnvs();
+    await shared.close();
+  });
+
+  const attempt = (input: ReturnType<typeof target>) =>
+    reservedDenial(
+      {
+        operation: input.operation,
+        teamId: input.teamId,
+        refusal: () => 'refused' as const,
+        isDenial: (error) => error === 'denied',
+      },
+      Effect.never,
+    ).pipe(
+      Effect.provideService(
+        Principal,
+        Principal.of({
+          kind: 'user',
+          userId: Schema.decodeSync(UserId)(input.actorId),
+          email: 'actor@example.test',
+          emailVerified: true,
+          name: 'Denied Actor',
+          locale: null,
+          sessionId: 'denied-session',
+        }),
+      ),
+    );
+
+  /** Every field of the one window this team's attempts wrote. */
+  const windowOf = async (input: ReturnType<typeof target>) => {
+    const keys = await shared.run((redis) =>
+      redis.keys(`${DENIAL_KEY_PREFIX}:${encodeURIComponent(input.teamId)}:*`),
+    );
+    if (!Array.isArray(keys) || keys.length !== 1) {
+      throw new Error(`expected one window, found ${String(keys)}`);
+    }
+    const [key] = keys as [string];
+    return (await shared.run((redis) => redis.hgetall(key))) as Record<
+      string,
+      string
+    >;
+  };
+
+  it('returns the slot when the command is interrupted', async () => {
+    const input = target();
+    const fiber = Effect.runFork(attempt(input));
+    await vi.waitFor(async () => {
+      expect((await windowOf(input)).inflight).toBe('1');
+    });
+
+    const exit = await Effect.runPromise(
+      Effect.andThen(Fiber.interrupt(fiber), Fiber.await(fiber)),
+    );
+
+    expect(Exit.hasInterrupts(exit)).toBe(true);
+    expect(await windowOf(input)).toEqual({ inflight: '0' });
+  });
+
+  it('returns the slot when interrupted while the reservation is in flight', async () => {
+    // The gap the release has to cover: Valkey has already counted the slot,
+    // the reply has not reached the fiber yet, and the interrupt lands in
+    // between. A slot leaked here stays counted until the window's key
+    // expires, and `maxInFlight` of them refuse the actor's authorised work.
+    const input = target();
+    const reserved = Promise.withResolvers<void>();
+    const proceed = Promise.withResolvers<void>();
+    const realRun = shared.run;
+    const held: RateLimitStore['run'] = async (work) => {
+      shared.run = realRun;
+      const reply = await realRun(work);
+      reserved.resolve();
+      await proceed.promise;
+      return reply;
+    };
+    shared.run = held;
+
+    try {
+      const fiber = Effect.runFork(attempt(input));
+      await reserved.promise;
+      expect((await windowOf(input)).inflight).toBe('1');
+
+      fiber.interruptUnsafe();
+      proceed.resolve();
+      const exit = await Effect.runPromise(Fiber.await(fiber));
+
+      expect(Exit.hasInterrupts(exit)).toBe(true);
+      expect(await windowOf(input)).toEqual({ inflight: '0' });
+    } finally {
+      shared.run = realRun;
+      proceed.resolve();
+    }
   });
 });
 

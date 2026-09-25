@@ -1,94 +1,79 @@
 // A sign-in email is queued, never sent from the request (#1895). What this
-// file pins is the transaction around that enqueue: better-auth reads the
-// outcome of `sendMagicLink` to decide whether the person is told to check
-// their inbox, so a failure must not commit and must not be swallowed.
+// file pins is the seam better-auth sees: `sendMagicLink` is a promise, and
+// better-auth reads its outcome to decide whether the person is told to check
+// their inbox — so a queue that refused must reject rather than resolve.
+//
+// What it no longer pins is the transaction around the enqueue. That used to
+// be three statements this suite counted on a fake pool (`BEGIN`, the insert,
+// `COMMIT`), because the node-postgres path took a `pg.Pool` and could have
+// opened a connection of its own. `Jobs.enqueue` requires `Transaction` and
+// only a scope provides one, so the guarantee is structural and is proved
+// against a real database in `src/jobs/__tests__/transaction.test.ts`.
 //
 // The end-to-end half — a magic-link request producing exactly one
 // `sign-in-email` job carrying the minted link — is in
 // src/__tests__/auth.test.ts, against the real better-auth endpoint.
-import type pg from 'pg';
-import { describe, expect, it, vi } from 'vitest';
+import { assert, layer } from '@effect/vitest';
+import { Effect, Layer } from 'effect';
+import { describe } from 'vitest';
 
-import type { JobClient } from '../client.ts';
-import {
-  createSignInEmailSender,
-  enqueueSignInEmail,
-} from '../sign-in-email.ts';
+import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';
+import type { Database } from '../../db/client.ts';
+import { JobRefused, Jobs, RecordedJobs } from '../jobs.ts';
+import { createSignInEmailSender } from '../sign-in-email.ts';
 
 const MAGIC_LINK = {
   email: 'researcher@example.org',
   url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
 };
 
-/** Records the statements the enqueue runs, in order, and whether it let go. */
-function recordingPool() {
-  const statements: string[] = [];
-  let released = 0;
-  const client = {
-    query: (text: string) => {
-      statements.push(text);
-      return Promise.resolve({ rows: [] });
-    },
-    release: () => {
-      released += 1;
-    },
-  } as unknown as pg.PoolClient;
-  const pool = {
-    connect: () => Promise.resolve(client),
-  } as unknown as pg.Pool;
-  return { pool, statements, released: () => released };
-}
+/** A queue that refuses everything, which is the only outcome that matters. */
+const refusingJobs = Layer.succeed(Jobs)(
+  Jobs.of({
+    enqueue: (queue) =>
+      Effect.fail(new JobRefused({ queue, reason: 'the queue is gone' })),
+  }),
+);
 
-/** `enqueue` is the whole of the client, so a double needs nothing else. */
-function jobClient(enqueue: JobClient['enqueue']): JobClient {
-  return { enqueue };
-}
+describe.skipIf(!testDb)('queueing a sign-in email', () => {
+  layer(TestDatabaseLive)('over the application client', (suite) => {
+    suite.effect('creates the job inside a transaction of its own', () =>
+      Effect.gen(function* () {
+        const services = yield* Effect.context<Database | Jobs>();
+        const recorded = yield* RecordedJobs;
+        yield* recorded.clear;
 
-describe('queueing a sign-in email', () => {
-  it('creates the job inside a committed transaction', async () => {
-    const { pool, statements, released } = recordingPool();
-    const enqueue = vi.fn(() => Promise.resolve('job-1'));
+        // Through the promise seam better-auth is handed, not the Effect
+        // underneath it: what this case is about is that the seam works at
+        // all from outside Effect.
+        yield* Effect.promise(() =>
+          createSignInEmailSender(services)(MAGIC_LINK),
+        );
 
-    await enqueueSignInEmail(jobClient(enqueue), pool, MAGIC_LINK);
-
-    expect(statements).toEqual(['BEGIN', 'COMMIT']);
-    // The enqueue runs on the transaction's own client — passing the pool
-    // would put the insert on a different connection, outside it.
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ release: expect.any(Function) }),
-      'sign-in-email',
-      MAGIC_LINK,
+        // That it recorded at all is the transaction oracle: the recording
+        // enqueue requires `Transaction` like the live one, and nothing but a
+        // scope provides one — so a sender that had skipped the scope could
+        // not have reached this point.
+        assert.deepStrictEqual(
+          recorded.recorded.map(({ queue, payload }) => ({ queue, payload })),
+          [{ queue: 'sign-in-email' as const, payload: MAGIC_LINK }],
+        );
+      }).pipe(Effect.provide(Jobs.layerRecording)),
     );
-    expect(released()).toBe(1);
-  });
 
-  it('rolls back and rethrows when the enqueue fails', async () => {
-    const { pool, statements, released } = recordingPool();
-    const refused = new Error('sign-in-email refused the job');
-
-    await expect(
-      enqueueSignInEmail(
-        jobClient(() => Promise.reject(refused)),
-        pool,
-        MAGIC_LINK,
-      ),
-    ).rejects.toBe(refused);
-
-    // Rethrown, so better-auth answers the sign-in request with a failure
-    // rather than telling the person to check an inbox nothing will reach.
-    expect(statements).toEqual(['BEGIN', 'ROLLBACK']);
-    expect(released()).toBe(1);
-  });
-
-  it('refuses when the process has no queue to reach', async () => {
-    const { pool, statements } = recordingPool();
-
-    await expect(
-      createSignInEmailSender(undefined, pool)(MAGIC_LINK),
-    ).rejects.toThrow(/No job client is configured/);
-
-    // Refused before a connection is taken: there is nothing to roll back,
-    // and a lane with no database must not open one to find that out.
-    expect(statements).toEqual([]);
+    suite.effect('rejects rather than resolve when the queue refuses', () =>
+      Effect.gen(function* () {
+        const services = yield* Effect.context<Database | Jobs>();
+        const outcome = yield* Effect.exit(
+          Effect.tryPromise({
+            try: () => createSignInEmailSender(services)(MAGIC_LINK),
+            catch: (cause: unknown) => cause,
+          }),
+        );
+        // Rejected, so better-auth answers the sign-in request with a failure
+        // rather than telling the person to check an inbox nothing will reach.
+        assert.isTrue(outcome._tag === 'Failure');
+      }).pipe(Effect.provide(refusingJobs)),
+    );
   });
 });

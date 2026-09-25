@@ -33,13 +33,17 @@ const STUDIO_TAGS = [
 ] as const;
 
 const AUTHENTICATED = '@studio/Authenticated';
+const TEAM_ADMINISTRATION = '@studio/TeamAdministration';
 const REQUIRE_SESSION = '@studio/RequireSession';
 
 /**
- * Which middleware each merged procedure declares. `status` answers before
- * anyone has signed in and `setup.complete` is authorized by the bootstrap
- * token in its own payload, so those two carry none; every other procedure on
- * the rpc plane is a researcher-facing one and carries `Authenticated`.
+ * Which middleware each merged procedure declares, sorted — the *set*, with the
+ * order asserted separately below because it is load-bearing. `status` answers
+ * before anyone has signed in and `setup.complete` is authorized by the
+ * bootstrap token in its own payload, so those two carry none; every other
+ * procedure on the rpc plane is a researcher-facing one and carries
+ * `Authenticated`. `protocols.create` is the one admin-only procedure, so it
+ * carries the tier gate as well.
  */
 const STUDIO_MIDDLEWARE: Record<
   (typeof STUDIO_TAGS)[number],
@@ -51,7 +55,7 @@ const STUDIO_MIDDLEWARE: Record<
   'audit.list': [AUTHENTICATED],
   'me': [AUTHENTICATED],
   'protocols.addInformationStage': [AUTHENTICATED],
-  'protocols.create': [AUTHENTICATED],
+  'protocols.create': [AUTHENTICATED, TEAM_ADMINISTRATION],
   'protocols.draft': [AUTHENTICATED],
   'protocols.list': [AUTHENTICATED],
   'protocols.moveStage': [AUTHENTICATED],
@@ -109,6 +113,26 @@ describe('StudioRpcs', () => {
       expect(middlewareKeys(StudioRpcs.requests, tag)).toEqual([...expected]);
     },
   );
+
+  /**
+   * The order, which the sorted assertion above cannot see and which decides
+   * whether `protocols.create` works at all.
+   *
+   * `RpcServer.applyMiddleware` walks an rpc's middleware set in INSERTION
+   * order rebinding `handler = middleware(handler)`, so the one inserted last
+   * is the outermost and runs first. `TeamAdministration` reads the `Principal`
+   * that `Authenticated` installs, so `Authenticated` has to be last. Reverse
+   * the two `.middleware()` calls in `rpc/protocols.ts` and this fails; the
+   * runtime and type-level consequences of that reversal are in
+   * `ordering-probe.test.ts`.
+   */
+  it('declares Authenticated last on protocols.create, so it runs first', () => {
+    const create = StudioRpcs.requests.get('protocols.create');
+    if (create === undefined) throw new Error('protocols.create is not served');
+    expect([...create.middlewares].map((middleware) => middleware.key)).toEqual(
+      [TEAM_ADMINISTRATION, AUTHENTICATED],
+    );
+  });
 });
 
 describe('ParticipantRpcs', () => {

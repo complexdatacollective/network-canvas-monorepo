@@ -1,6 +1,12 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
-import type pg from 'pg';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
+
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
+import { SETUP_TABLES } from './schema.ts';
 
 // First-run bootstrap (#1909). A brand-new instance has no owner and no way to
 // authenticate anybody, so the schema step — the one command an operator runs
@@ -13,6 +19,14 @@ import type pg from 'pg';
 // and prints the new one (recorded decision, 2026-09-15). Running it against
 // an owned database prints nothing and stores nothing, so an instance that has
 // been set up can never be captured by re-running a deploy command.
+//
+// Which identity runs which statement is the security property, and it is the
+// scope each caller opens rather than a convention: `issueBootstrapToken` is
+// run by the schema step on the **connecting login**, because neither
+// application role holds INSERT on `installation` precisely so that arming an
+// instance is not something the server itself can do.
+
+const { installation } = SETUP_TABLES;
 
 /** 32 CSPRNG bytes, base64url: 43 characters, no padding, URL and shell safe. */
 const TOKEN_BYTES = 32;
@@ -33,29 +47,27 @@ export type Installation = {
 };
 
 /**
- * The installation row, or null on a database whose row was never created —
- * a scratch schema, or a database provisioned by DDL alone. Callers treat
- * null as "no owner and no token": setup is open and no token is spendable,
- * which is what such a database actually offers.
+ * The installation row, or null on a database whose row was never created — a
+ * scratch schema, or a database provisioned by DDL alone. Callers treat null
+ * as "no owner and no token": setup is open and no token is spendable, which
+ * is what such a database actually offers.
  */
-export async function readInstallation(
-  db: pg.Pool | pg.PoolClient,
-): Promise<Installation | null> {
-  const result = await db.query<{
-    name: string | null;
-    owner_user_id: string | null;
-    bootstrap_token_hash: string | null;
-  }>(
-    'select name, owner_user_id, bootstrap_token_hash from installation where id = 1',
-  );
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    name: row.name,
-    ownerUserId: row.owner_user_id,
-    bootstrapTokenHash: row.bootstrap_token_hash,
-  };
-}
+export const readInstallation: () => Effect.Effect<
+  Installation | null,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('setup.readInstallation')(function* () {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({
+      name: installation.name,
+      ownerUserId: installation.ownerUserId,
+      bootstrapTokenHash: installation.bootstrapTokenHash,
+    })
+    .from(installation)
+    .where(eq(installation.id, 1));
+  return rows[0] ?? null;
+}, sqlErrorsOnly);
 
 export function hashBootstrapToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -83,29 +95,45 @@ export function bootstrapTokenMatches(
  * Creates the installation row if it is missing, then arms it with a fresh
  * token — unless it already has an owner, in which case nothing is written.
  *
- * Run by the schema step, on the connecting login: the application roles hold
- * no INSERT on this table precisely so that arming an instance is not
- * something the server itself can do.
+ * Runs inside the caller's transaction, and the caller is the schema step,
+ * which opens an `OwnerScope`. The application roles hold no INSERT on this
+ * table, so the same statements run by the server would be refused by the
+ * database rather than by a check here.
  */
-export async function issueBootstrapToken(
-  pool: pg.Pool,
-): Promise<BootstrapTokenOutcome> {
-  await pool.query(
-    'insert into installation (id) values (1) on conflict (id) do nothing',
-  );
+export const issueBootstrapToken: () => Effect.Effect<
+  BootstrapTokenOutcome,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('setup.issueBootstrapToken')(function* () {
+  const { tx } = yield* Transaction;
+  yield* tx
+    .insert(installation)
+    .values({ id: 1 })
+    .onConflictDoNothing({ target: installation.id })
+    .returning({ id: installation.id });
 
   const token = randomBytes(TOKEN_BYTES).toString('base64url');
-  const armed = await pool.query(
-    `update installation
-        set bootstrap_token_hash = $1,
-            bootstrap_token_issued_at = now(),
-            updated_at = now()
-      where id = 1 and owner_user_id is null`,
-    [hashBootstrapToken(token)],
-  );
+  // `.returning()` is what makes the `owned` branch real: without it the
+  // builder answers with the driver's own result object, typed as a row array
+  // and not one, so an owned instance would read as freshly armed and the
+  // operator would be handed a token that spends nothing.
+  const armed = yield* tx
+    .update(installation)
+    .set({
+      bootstrapTokenHash: hashBootstrapToken(token),
+      bootstrapTokenIssuedAt: sql`now()`,
+      updatedAt: sql`now()`,
+    })
+    // The ownerlessness is a predicate on the write, not a prior read: two
+    // schema steps racing must not both arm, and an instance claimed between a
+    // read and this write must not be re-armed at all.
+    .where(and(eq(installation.id, 1), isNull(installation.ownerUserId)))
+    .returning({ id: installation.id });
 
-  return armed.rowCount === 0 ? { kind: 'owned' } : { kind: 'issued', token };
-}
+  return armed.length === 0
+    ? { kind: 'owned' as const }
+    : { kind: 'issued' as const, token };
+}, sqlErrorsOnly);
 
 const RULE = '─'.repeat(72);
 

@@ -6,8 +6,10 @@ import {
   pushSchema,
 } from 'drizzle-kit/api-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { Effect } from 'effect';
 import pg from 'pg';
 
+import { OwnerDatabase } from '../src/db/client.ts';
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
   SCHEMA,
@@ -15,9 +17,10 @@ import {
   SIDECARS,
   stampFingerprint,
 } from '../src/db/schema.ts';
-import { seed, type SeedOptions } from '../src/db/seed.ts';
+import type { DbEnv } from '../src/env.ts';
 import { installJobSchema } from '../src/jobs/install.ts';
 import { JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
+import { seed, type SeedOptions, type SeedResult } from './seed/seed.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach the
 // image's bundles. `studio-api migrate` applies the same schema from the DDL
@@ -158,6 +161,7 @@ export type ResetOptions = SeedOptions & {
  */
 export async function resetSchemaAndSeed(
   pool: pg.Pool,
+  db: DbEnv,
   options: ResetOptions,
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
@@ -172,7 +176,23 @@ export async function resetSchemaAndSeed(
   if (options.sweepScratch) await sweepScratch(pool);
 
   await applySchema(pool);
-  await seed(pool, options);
+  await seedDatabase(db, options);
+}
+
+/**
+ * The seed, on its own owner client. It is an Effect over `OwnerDatabase`
+ * because the protocol store it writes through is, so it cannot share the
+ * node-postgres pool the schema application above runs on — which is fine,
+ * because it needs none of that pool's state: the schema it seeds is
+ * committed by the time it runs, and the seed is one transaction of its own.
+ */
+export function seedDatabase(
+  db: DbEnv,
+  options: SeedOptions,
+): Promise<SeedResult> {
+  return Effect.runPromise(
+    seed(options).pipe(Effect.provide(OwnerDatabase.layer({ url: db.url }))),
+  );
 }
 
 async function sweepScratch(pool: pg.Pool): Promise<void> {

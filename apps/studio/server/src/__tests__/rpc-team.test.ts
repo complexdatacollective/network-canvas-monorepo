@@ -1,8 +1,7 @@
 // The tenancy spine end to end through the RPC boundary: explicit teamId input
-// → membership check → TenantDb → team-scoped rows.
+// → membership check → TenantScope → team-scoped rows.
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Exit } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -18,11 +17,12 @@ import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -30,7 +30,6 @@ import {
 } from './support/rpc.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
-const db = await reachableDb();
 const redis = await reachableRedis(REDIS_DATABASES.rpcPlane);
 
 // The payloads are branded, so a test builds its identifiers through the
@@ -51,35 +50,35 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'session-1',
 };
 
-describe.skipIf(!db)('team-scoped procedures', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('team-scoped procedures', () => {
+  let database: TestDatabaseRuntime;
   let memberships: Record<string, { role: string }>;
   let client: RpcTestClient;
   let anonymousClient: RpcTestClient;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    await provisionScratchSchema(scratch.pool);
+    database = await openTestDatabase();
     for (const teamId of ['team-a', 'team-b']) {
-      await seedTeam(scratch.pool, teamId);
+      await database.run(insertTeam(teamId));
     }
-    await scratch.pool.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified")
-       VALUES ($1, $2, $3, true)`,
-      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+    await database.run(
+      ownerAffected(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+      ),
     );
     // A team Admin throughout: this file is about the tenancy spine, and the
     // protocol surface is addressed by lines no study owns, which #1257's rule
     // shows to an Admin or Owner alone (rpc-protocols.test.ts is where that
     // rule is asserted).
     for (const teamId of ['team-a', 'team-b']) {
-      await scratch.pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, 'admin')`,
-        [`membership-${teamId}`, teamId, PRINCIPAL.userId],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'admin')`,
+          [`membership-${teamId}`, teamId, PRINCIPAL.userId],
+        ),
       );
     }
     memberships = { 'team-a': { role: 'admin' } };
@@ -89,16 +88,24 @@ describe.skipIf(!db)('team-scoped procedures', () => {
         Promise.resolve(memberships[teamId] ?? null),
     });
     client = await createRpcClient(
-      createStudio(readEnv(), { auth, pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth,
+        pool: database.appPool,
+        services: database.services,
+      }),
     );
     anonymousClient = await createRpcClient(
-      createStudio(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
+      createStudio(readEnv(), {
+        auth: stubAuthService(),
+        pool: database.appPool,
+        services: database.services,
+      }),
     );
   });
   afterAll(async () => {
     await client.dispose();
     await anonymousClient.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   it('creates and lists protocols within a member team', async () => {
@@ -160,23 +167,18 @@ describe.skipIf(!db)('team-scoped procedures', () => {
 
     const opened = await client.call(client.rpc('protocols.draft', scope));
     expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
-    const staleMove = await client.callExit(
-      client.rpc('protocols.moveStage', {
-        ...scope,
-        stageId: stageA,
-        toIndex: 0,
-        expectedRevision: beforeMove.revision.sequence,
-      }),
+    const staleMove = await expectRpcFailure(
+      client.callExit(
+        client.rpc('protocols.moveStage', {
+          ...scope,
+          stageId: stageA,
+          toIndex: 0,
+          expectedRevision: beforeMove.revision.sequence,
+        }),
+      ),
+      'Conflict',
     );
-    // A stale revision is a store fault rather than a declared refusal, here as
-    // it was before the move to the rpc plane: `handleAuditedProtocolCommand`
-    // mapped `ProtocolCommandAuthorizationError` and the audited-command's
-    // team-not-found and rethrew everything else, which oRPC answered as an
-    // internal error. §6.1 gives it no row, so it stays a defect.
-    expect(Exit.isFailure(staleMove)).toBe(true);
-    if (Exit.isFailure(staleMove)) {
-      expect(Cause.hasDies(staleMove.cause)).toBe(true);
-    }
+    expect(staleMove.reason).toBe('staleRevision');
   });
 
   it('refuses a non-member team and an unknown team identically', async () => {
@@ -228,7 +230,8 @@ describe.skipIf(!db)('team-scoped procedures', () => {
                 }),
               getMembership: () => Promise.resolve({ role: 'admin' }),
             }),
-            pool: scratch.app,
+            pool: database.appPool,
+            services: database.services,
             limits: { rpc_user: { max: 2, windowMs: 60_000 } },
           },
         ),

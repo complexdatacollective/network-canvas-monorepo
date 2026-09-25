@@ -1,17 +1,24 @@
 import { Predicate } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  SEED_ADMIN_EMAIL,
+  SEED_ADMIN_PASSWORD,
+  seed,
+} from '../../scripts/seed/seed.ts';
 import { createApp, createStudio, type Studio } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
-import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-} from './support/postgres.ts';
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  refusalOf,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import { createRpcClient, expectRpcFailure } from './support/rpc.ts';
 import { testCipher, testKeyring } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
@@ -429,8 +436,6 @@ describe('unconfigured auth', () => {
 
 const env = readEnv();
 
-const db = await reachableDb();
-
 function callBetterAuthOrganizationRoute(
   auth: AuthService,
   path: `/api/auth/organization/${string}`,
@@ -451,18 +456,18 @@ function callBetterAuthOrganizationRoute(
   );
 }
 
-describe.skipIf(!db)('magic-link sign-in', () => {
+describe.skipIf(!testDb)('magic-link sign-in', () => {
   it('queues the email for the worker rather than sending it', async () => {
-    if (!db) throw new Error('unreachable');
-    const scratch = await createScratchSchema(db);
+    const database = await openTestDatabase();
     try {
-      await provisionScratchSchema(scratch.pool);
-      const jobs = await scratch.createJobClient();
-      // The production wiring: createApp builds the auth service from the
-      // pool and the job client, and no mailer exists for it to reach for —
-      // src/__tests__/process-separation.test.ts pins that nodemailer is not
-      // even in this process's module graph.
-      const app = createApp(env, { jobs, pool: scratch.app });
+      // The production wiring: createApp builds the auth service from the pool
+      // and the Effect services the sign-in mail is queued on, and no mailer
+      // exists for it to reach for — src/__tests__/process-separation.test.ts
+      // pins that nodemailer is not even in this process's module graph.
+      const app = createApp(env, {
+        services: database.services,
+        pool: database.appPool,
+      });
       const email = `queued-${Date.now()}@example.com`;
 
       const send = await app.request('/api/auth/sign-in/magic-link', {
@@ -475,11 +480,13 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       });
       expect(send.status).toBe(200);
 
-      const queued = await scratch.pool.query<{
-        queue: string;
-        payload: unknown;
-      }>(`select queue, payload from ${scratch.jobSchema}.jobs`);
-      expect(queued.rows).toEqual([
+      const queued = await database.run(
+        ownerRows<{
+          queue: string;
+          payload: unknown;
+        }>(`select queue, payload from ${database.harness.jobSchema}.jobs`),
+      );
+      expect(queued).toEqual([
         {
           queue: 'sign-in-email',
           payload: {
@@ -491,24 +498,23 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 
       // The link in the payload is the real one: the worker sends what is
       // here, so a job carrying anything else would sign nobody in.
-      const { url } = queued.rows[0]!.payload as { url: string };
+      const { url } = queued[0]!.payload as { url: string };
       const verify = await app.request(url);
       expect([302, 200]).toContain(verify.status);
       expect(verify.headers.get('set-cookie')).toBeTruthy();
     } finally {
-      await scratch.dispose();
+      await database.dispose();
     }
   });
 
   it('signs in end to end: send, verify, session, me', async () => {
-    if (!db) throw new Error('unreachable');
-    const scratch = await createScratchSchema(db);
+    const database = await openTestDatabase();
     try {
-      await provisionScratchSchema(scratch.pool);
       const { studio, email, cookie } = await signInWithMagicLink(
         env,
-        scratch.app,
+        database.appPool,
         'researcher',
+        database.services,
       );
 
       const me = await meOver(studio, { cookie });
@@ -517,13 +523,13 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 
       await expectMeUnauthorized(studio);
     } finally {
-      await scratch.dispose();
+      await database.dispose();
     }
   });
 });
 
-describe.skipIf(!db)('email/password sign-in', () => {
-  // Exercises the seed script's credential account (src/db/seed.ts) against
+describe.skipIf(!testDb)('email/password sign-in', () => {
+  // Exercises the seed script's credential account (scripts/seed/seed.ts) against
   // the real better-auth handler end to end — the same path that regressed
   // silently when the account table did not match better-auth's own account
   // key (auth-schema.ts), because until this account existed nothing in this
@@ -541,7 +547,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
   /** Well past what this file asks for, so repeated local runs never meet it. */
   const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
+  let database: TestDatabaseRuntime | undefined;
   let studio: Studio;
 
   const signIn = (password: string) => {
@@ -557,14 +563,13 @@ describe.skipIf(!db)('email/password sign-in', () => {
   };
 
   beforeAll(async () => {
-    if (!db) return;
+    if (!testDb) return;
     if (!env.auth) throw new Error('dev env must configure auth');
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool, { scale: 'tiny', secrets: testKeyring() });
+    database = await openTestDatabase();
+    await database.run(seed({ scale: 'tiny', secrets: testKeyring() }));
     const auth = createBetterAuthService(
       env.auth,
-      scratch.pool,
+      database.appPool,
       () => Promise.resolve(),
       testCipher(),
     );
@@ -580,7 +585,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {
-    await scratch?.dispose();
+    await database?.dispose();
   });
 
   it('signs the seeded admin in with the published password', async () => {
@@ -604,16 +609,15 @@ describe.skipIf(!db)('email/password sign-in', () => {
   });
 });
 
-describe.skipIf(!db)('teams (organization plugin)', () => {
+describe.skipIf(!testDb)('teams (organization plugin)', () => {
   it('creates a team and resolves the creator membership', async () => {
-    if (!db) throw new Error('unreachable');
-    const scratch = await createScratchSchema(db);
+    const database = await openTestDatabase();
     try {
-      await provisionScratchSchema(scratch.pool);
       const { studio, auth, cookie } = await signInWithMagicLink(
         env,
-        scratch.app,
+        database.appPool,
         'owner',
+        database.services,
       );
       const me = await meOver(studio, { cookie });
 
@@ -640,27 +644,29 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
       // The plugin only check-then-inserts memberships, so the composite
       // unique index is what keeps that single-row read unambiguous. Omitting
       // created_at also exercises its default.
-      await expect(
-        scratch.pool.query(
-          `insert into team_members (id, team_id, user_id, role)
-           values ($1, $2, $3, 'member')`,
-          ['second-membership', team.id, me.userId],
+      const refused = await database.run(
+        refusalOf(
+          ownerAffected(
+            `insert into team_members (id, team_id, user_id, role)
+             values ($1, $2, $3, 'member')`,
+            ['second-membership', team.id, me.userId],
+          ),
         ),
-      ).rejects.toThrow(/duplicate key/);
+      );
+      expect(refused.message).toMatch(/duplicate key/);
     } finally {
-      await scratch.dispose();
+      await database.dispose();
     }
   });
 
   it('refuses to delete a team, as its tenant data cannot be deleted with it', async () => {
-    if (!db) throw new Error('unreachable');
-    const scratch = await createScratchSchema(db);
+    const database = await openTestDatabase();
     try {
-      await provisionScratchSchema(scratch.pool);
       const { auth, cookie } = await signInWithMagicLink(
         env,
-        scratch.app,
+        database.appPool,
         'owner',
+        database.services,
       );
       const create = await callBetterAuthOrganizationRoute(
         auth,
@@ -684,13 +690,12 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
         code: 'ORGANIZATION_DELETION_DISABLED',
       });
 
-      const survivors = await scratch.pool.query(
-        `select id from teams where id = $1`,
-        [team.id],
+      const survivors = await database.run(
+        ownerRows(`select id from teams where id = $1`, [team.id]),
       );
-      expect(survivors.rowCount).toBe(1);
+      expect(survivors).toHaveLength(1);
     } finally {
-      await scratch.dispose();
+      await database.dispose();
     }
   });
 });

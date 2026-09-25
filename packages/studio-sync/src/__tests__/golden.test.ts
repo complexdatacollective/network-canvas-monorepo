@@ -14,8 +14,12 @@ import {
   contentHash,
   type SectionDoc,
 } from '../apply.ts';
-import type { SyncServer } from '../server.ts';
-import { dbAvailable, makeDraft, makeServer } from './helpers.ts';
+import {
+  dbAvailable,
+  makeDraft,
+  makeServer,
+  type SyncFacade,
+} from './helpers.ts';
 
 // A fixed transcript with its expected hashes. If the apply engine's
 // semantics or the canonical serialization ever drift, these literals fail.
@@ -48,7 +52,7 @@ const GOLDEN_TRANSCRIPT: Command[][] = [
 describe.skipIf(!dbAvailable)('golden transcripts', () => {
   let db: Pool;
   let dispose: () => Promise<void>;
-  let server: SyncServer;
+  let server: SyncFacade;
 
   beforeAll(async () => {
     ({ db, server, dispose } = await makeServer('sync_golden'));

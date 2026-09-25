@@ -1,16 +1,19 @@
 import { createHash } from 'node:crypto';
 
-import type pg from 'pg';
+import { Effect } from 'effect';
 
-import { installJobSchema } from '../jobs/install.ts';
+import { installJobSchemaEffect } from '../jobs/install.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { OwnerDatabase } from './client.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import {
-  checkSchema,
+  checkSchemaEffect,
   SCHEMA_LOCK_KEY,
   staleDatabaseMessage,
-  stampFingerprint,
+  stampFingerprintEffect,
 } from './schema.ts';
+import { splitStatements } from './statements.ts';
+import { OwnerScope, Transaction } from './tenant.ts';
 
 // `studio-api migrate`, the deployed half of schema application (#1909).
 //
@@ -97,79 +100,105 @@ export type MigrateOptions = {
 };
 
 /**
- * Applies this build's schema to `pool`'s database, which must be the owner
- * pool: the statements create the roles the server runs as, so the login needs
- * `CREATEROLE` the first time (the same requirement `apply-schema` documents).
+ * Applies this build's schema to the `OwnerDatabase`'s database. The owner is
+ * the connecting login: the statements create the roles the server runs as,
+ * so it needs `CREATEROLE` the first time (the same requirement `apply-schema`
+ * documents).
  *
- * All or nothing. One client holds the advisory lock for the whole run — it is
- * session-scoped, so releasing the client would release the lock — and every
- * write goes through that one client inside one transaction, the job schema
- * included. A partial application would be worse here than
- * anywhere else: the next run reads a database with tables and no fingerprint
- * as `stale` and refuses it, so an operator whose first migrate died halfway
+ * All or nothing. A partial application would be worse here than anywhere
+ * else: the next run reads a database with tables and no fingerprint as
+ * `stale` and refuses it, so an operator whose first migrate died halfway
  * would be told to recreate a database that has never worked. Rolling back to
- * empty means the next run simply applies.
+ * empty means the next run simply applies. Three things carry that, and each
+ * is forced by the driver:
+ *
+ *   * **The lock rides a reserved connection.** `pg_advisory_lock` is
+ *     session-scoped, so the connection that takes it must be the one that
+ *     holds it for the whole run. `sql.reserve` is that connection, and its
+ *     scope is what releases it — an unlock in a `finally` could not survive
+ *     an interrupt, and a scope finalizer does.
+ *   * **`checkSchema` reads on the pool, not on the reserved connection.** It
+ *     is a read, and running it on the pool is what proves the lock is held
+ *     *across* it rather than merely around it: another migrate reaching the
+ *     same database blocks at `pg_advisory_lock` before it can read.
+ *   * **Every write is one transaction, statement by statement.**
+ *     `@effect/sql-pg` has no simple-query path: every multi-command string
+ *     is refused with `42601`, so the DDL goes through `splitStatements` —
+ *     which is dollar-quote aware, and has to be, because the sidecars carry
+ *     `plpgsql` bodies that a split on `;` would cut in half. The job schema
+ *     and the stamp are inside the same transaction.
+ *
+ * The fingerprint is computed over the *unsplit* strings, so splitting here
+ * does not move it.
  */
-export async function migrateDatabase(
-  pool: pg.Pool,
+export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* (
   ddl: SchemaDdl,
   { log = () => undefined }: MigrateOptions = {},
-): Promise<MigrateOutcome> {
+) {
   verifySchemaDdl(ddl);
+  const owner = yield* OwnerDatabase;
 
-  const lock = await pool.connect();
-  try {
-    await lock.query(`select pg_advisory_lock(${SCHEMA_LOCK_KEY})`);
+  return yield* Effect.scoped(
+    Effect.gen(function* () {
+      const lock = yield* owner.sql.reserve;
+      yield* lock.executeUnprepared(
+        `select pg_advisory_lock(${SCHEMA_LOCK_KEY})`,
+        [],
+        undefined,
+      );
+      yield* Effect.addFinalizer(() =>
+        Effect.orDie(
+          Effect.ignore(
+            lock.executeUnprepared(
+              `select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`,
+              [],
+              undefined,
+            ),
+          ),
+        ),
+      );
 
-    // Read under the lock, so two one-shots racing on the same database cannot
-    // both find it absent and both apply.
-    const state = await checkSchema(pool);
-    if (state.kind === 'current') {
-      log('Schema current.');
-      return { kind: 'current' };
-    }
-    if (state.kind === 'stale') {
-      // The same words every process prints when it boots against such a
-      // database: one verdict, one wording (src/db/schema.ts).
-      throw new StaleDatabase(staleDatabaseMessage(state));
-    }
+      // Read under the lock, so two one-shots racing on the same database
+      // cannot both find it absent and both apply.
+      const state = yield* checkSchemaEffect(owner.sql);
+      if (state.kind === 'current') {
+        log('Schema current.');
+        return { kind: 'current' } satisfies MigrateOutcome;
+      }
+      if (state.kind === 'stale') {
+        // The same words every process prints when it boots against such a
+        // database: one verdict, one wording (src/db/schema.ts).
+        return yield* Effect.fail(
+          new StaleDatabase(staleDatabaseMessage(state)),
+        );
+      }
 
-    // Postgres runs DDL transactionally, and nothing applied here needs a
-    // transaction of its own, so the whole application is one. The suites have
-    // executed the public statements as a single multi-statement query into a
-    // scratch schema since #1247.
-    await lock.query('begin');
-    try {
-      log(`Applying ${ddl.statements.length} schema statement(s).`);
-      await lock.query(ddl.statements.join('\n'));
+      yield* OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          const statements = ddl.statements.flatMap((statement) =>
+            splitStatements(statement),
+          );
+          log(`Applying ${statements.length} schema statement(s).`);
+          for (const statement of statements) {
+            yield* sql.unsafe(statement);
+          }
 
-      // After the schema, because the grants name the roles the sync sidecar
-      // creates, and before the stamp, because a stamped database has to be
-      // one where a process can already enqueue — the order `applySchema`
-      // runs in.
-      log(`Installing the ${JOB_SCHEMA} schema.`);
-      await installJobSchema(lock, JOB_SCHEMA);
+          // After the schema, because the grants name the roles the sync
+          // sidecar creates, and before the stamp, because a stamped database
+          // has to be one a process can already enqueue against.
+          log(`Installing the ${JOB_SCHEMA} schema.`);
+          yield* installJobSchemaEffect(JOB_SCHEMA);
 
-      // The first-run bootstrap token is issued by the entry (src/migrate.ts)
-      // once this has returned: the installation table it writes exists only
-      // when this transaction has committed.
+          // Last, and inside the transaction with everything it vouches for: a
+          // stamp that could outlive a failed apply is a database that reads
+          // as this build's and is not.
+          yield* stampFingerprintEffect(sql, ddl.fingerprint);
+        }),
+      );
 
-      // Last, and inside the transaction with everything it vouches for: a
-      // stamp that could outlive a failed apply is a database that reads as
-      // this build's and is not.
-      await stampFingerprint(lock, ddl.fingerprint);
-      await lock.query('commit');
-    } catch (error) {
-      await lock.query('rollback').catch(() => undefined);
-      throw error;
-    }
-
-    log('Schema applied.');
-    return { kind: 'applied' };
-  } finally {
-    await lock
-      .query(`select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`)
-      .catch(() => undefined);
-    lock.release();
-  }
-}
+      log('Schema applied.');
+      return { kind: 'applied' } satisfies MigrateOutcome;
+    }),
+  );
+});

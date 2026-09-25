@@ -15,10 +15,11 @@ import type { Studio } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { signInWithMagicLink } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-} from './support/postgres.ts';
+  openTestDatabase,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectPayloadRejected,
@@ -27,10 +28,9 @@ import {
 } from './support/rpc.ts';
 
 const env = readEnv();
-const db = await reachableDb();
 
-describe.skipIf(!db)('account.updateLocale', () => {
-  let scratch: Awaited<ReturnType<typeof createScratchSchema>>;
+describe.skipIf(!testDb)('account.updateLocale', () => {
+  let database: TestDatabaseRuntime;
   let studio: Studio;
   let app: Studio['app'];
   let cookie: string;
@@ -39,13 +39,12 @@ describe.skipIf(!db)('account.updateLocale', () => {
   let anonymousClient: RpcTestClient;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
+    database = await openTestDatabase();
     ({ studio, app, cookie } = await signInWithMagicLink(
       env,
-      scratch.app,
+      database.appPool,
       'locale',
+      database.services,
     ));
     client = await createRpcClient(studio, { cookie });
     anonymousClient = await createRpcClient(studio);
@@ -54,7 +53,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
   afterAll(async () => {
     await client.dispose();
     await anonymousClient.dispose();
-    await scratch.dispose();
+    await database.dispose();
   });
 
   const me = () => client.call(client.rpc('me', undefined));
@@ -62,12 +61,14 @@ describe.skipIf(!db)('account.updateLocale', () => {
     client.call(client.rpc('account.updateLocale', { locale }));
 
   const storedLocale = async (): Promise<string | null> => {
-    const row = await scratch.pool.query<{ locale: string | null }>(
-      'select locale from "user" where id = $1',
-      [userId],
+    const rows = await database.run(
+      ownerRows<{ locale: string | null }>(
+        'select locale from "user" where id = $1',
+        [userId],
+      ),
     );
-    expect(row.rowCount).toBe(1);
-    return row.rows[0]!.locale;
+    expect(rows).toHaveLength(1);
+    return rows[0]!.locale;
   };
 
   it('stores every supported tag and hands it back through me', async () => {
@@ -171,7 +172,7 @@ describe.skipIf(!db)('account.updateLocale', () => {
 
   it('writes no audit row: a personal preference has no tenant', async () => {
     await updateLocale('en-GB');
-    const events = await scratch.pool.query('select id from audit_events');
-    expect(events.rows).toEqual([]);
+    const events = await database.run(ownerRows('select id from audit_events'));
+    expect(events).toEqual([]);
   });
 });

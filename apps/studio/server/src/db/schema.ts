@@ -1,5 +1,7 @@
 import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { Effect } from 'effect';
+import type { SqlClient } from 'effect/unstable/sql';
 import type pg from 'pg';
 
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
@@ -38,6 +40,10 @@ import { TOKEN_SIDECAR_SQL, TOKEN_TABLES } from '../token/schema.ts';
 import { WEBHOOK_SIDECAR_SQL, WEBHOOK_TABLES } from '../webhook/schema.ts';
 import { ACCESS_SIDECAR_SQL } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
+import {
+  DEPLOYMENT_STATE_SIDECAR_SQL,
+  DEPLOYMENT_STATE_TABLES,
+} from './deployment-state.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
 // Managed like every other table: push diffs the whole public schema, so an
@@ -74,6 +80,7 @@ export const SCHEMA = {
   ...AUDIT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
   ...SETUP_TABLES,
+  ...DEPLOYMENT_STATE_TABLES,
   schemaFingerprint,
 };
 
@@ -104,6 +111,7 @@ export const SIDECARS = [
   MONITORING_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
   SETUP_SIDECAR_SQL,
+  DEPLOYMENT_STATE_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 
@@ -262,3 +270,74 @@ export function schemaProblemMessage(
     '  pnpm --filter @codaco/studio-server db:reset        (recreate)',
   ].join('\n');
 }
+
+/**
+ * `checkSchema` and `stampFingerprint`, as Effects on a client.
+ *
+ * Both shapes exist on purpose and neither is a wrapper of the other. The
+ * node-postgres pair above is what `scripts/apply.ts`, `apply-schema.ts` and
+ * `db-reset.ts` run: drizzle-kit's `pushSchema` takes a node-postgres handle
+ * and has no Effect driver, so a checkout lane without node-postgres is not
+ * available at any price. The Effect pair below is what the deployed
+ * `studio-api migrate` runs, because that process carries no `pg` at all.
+ *
+ * They read and write the same two statements. `db/__tests__/migrate.test.ts`
+ * applies through the Effect pair and reads the result back through the
+ * node-postgres `checkSchema`, so both are held to the same databases.
+ */
+export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
+  client: SqlClient.SqlClient,
+) {
+  const probe = yield* client.unsafe<{ stamped: boolean; tables: boolean }>(
+    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+            ${SCHEMA_TABLES.map(
+              (table) => `to_regclass('"${table}"') is not null`,
+            ).join(' or ')} as tables`,
+  );
+  const { stamped, tables } = probe[0] ?? { stamped: false, tables: false };
+
+  if (stamped) {
+    const recorded = yield* client.unsafe<{
+      fingerprint: string;
+      appliedAt: Date | number;
+    }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
+    const row = recorded[0];
+    if (row) {
+      if (row.fingerprint !== SCHEMA_FINGERPRINT) {
+        return {
+          kind: 'stale',
+          reason: 'mismatch',
+          found: row.fingerprint,
+          // Converted at the seam: this is a raw read, and on
+          // `@effect/sql-pg` 4.0.0-rc.115 a `timestamptz` arrives as epoch
+          // milliseconds rather than a `Date` (#1927 §20 Q6, fallback A).
+          // rc.116's #8241 removes the need for this line, not the line's
+          // correctness.
+          appliedAt: new Date(row.appliedAt),
+        } satisfies StaleSchema;
+      }
+      return { kind: 'current' } satisfies SchemaState;
+    }
+  }
+
+  if (tables) {
+    return {
+      kind: 'stale',
+      reason: 'unstamped',
+      found: null,
+      appliedAt: null,
+    } satisfies StaleSchema;
+  }
+
+  return { kind: 'absent' } satisfies SchemaState;
+});
+
+export const stampFingerprintEffect = Effect.fn('db.stampFingerprint')(
+  function* (client: SqlClient.SqlClient, fingerprint: string) {
+    yield* client.unsafe(
+      `insert into "schemaFingerprint" ("fingerprint") values ($1)
+       on conflict ("id") do update set "fingerprint" = excluded."fingerprint", "appliedAt" = CURRENT_TIMESTAMP`,
+      [fingerprint],
+    );
+  },
+);

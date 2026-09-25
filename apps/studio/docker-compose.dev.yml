@@ -22,6 +22,11 @@ services:
       # The port packages/studio-sync's conformance suite expects, so one
       # container serves the app and that suite.
       - '127.0.0.1:54318:5432'
+    # The suites run here too, and each drops its scratch schema — about a
+    # hundred tables — with `DROP SCHEMA … CASCADE`, in parallel. At the default
+    # of 64 the shared lock table runs out ("out of shared memory"). A command
+    # rather than an initdb argument, so an existing volume gets it on restart.
+    command: ['postgres', '-c', 'max_locks_per_transaction=256']
 
   garage:
     ports:

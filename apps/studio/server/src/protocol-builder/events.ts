@@ -7,7 +7,9 @@
 // transaction as the change it describes and read back by cursor. The
 // publisher answers "what is happening now", so it is memory, per process,
 // and lossy under back-pressure — a dropped subscriber reconnects and replays.
-import type pg from 'pg';
+import { and, asc, eq, gt, max } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import type {
   Presence,
@@ -19,7 +21,12 @@ import {
   parseSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
+
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
+import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+
+const { protocolEvents } = PROTOCOL_BUILDER_TABLES;
 
 /**
  * An event, and where it sits in its protocol's order.
@@ -52,44 +59,68 @@ export type ProtocolEventRecord =
       holder?: Presence;
     };
 
+/**
+ * A row as the log stores it. The three jsonb columns are declared with their
+ * shapes on the table (`schema.ts`), so nothing here casts one.
+ */
 type EventRow = {
-  cursor: string;
+  cursor: bigint;
   kind: string;
-  section_id: string;
-  manifest_seq: string | null;
-  content_hash: string | null;
+  sectionId: string;
+  manifestSeq: bigint | null;
+  contentHash: string | null;
   doc: SectionDoc | null;
   holder: Presence | null;
 };
 
-function toLoggedEvent(row: EventRow): LoggedProtocolEvent {
-  const sectionId = makeSectionId(parseSectionId(row.section_id));
+/** Every column `toLoggedEvent` reads, named once for the two readers. */
+const EVENT_COLUMNS = {
+  cursor: protocolEvents.cursor,
+  kind: protocolEvents.kind,
+  sectionId: protocolEvents.sectionId,
+  manifestSeq: protocolEvents.manifestSeq,
+  contentHash: protocolEvents.contentHash,
+  doc: protocolEvents.doc,
+  holder: protocolEvents.holder,
+} as const;
+
+/**
+ * A stored row as the contract describes it.
+ *
+ * A `revision` row without its sequence and hash is refused by the table's own
+ * shape check, so reaching that branch means the database is not the one this
+ * code was written against: it dies rather than failing, because no caller can
+ * answer it and no retry would change it.
+ */
+const toLoggedEvent = (row: EventRow): Effect.Effect<LoggedProtocolEvent> => {
+  const sectionId = makeSectionId(parseSectionId(row.sectionId));
+  const cursor = String(row.cursor);
   if (row.kind === 'revision') {
-    if (row.manifest_seq === null || row.content_hash === null) {
-      throw new Error(`protocol event ${row.cursor} is not a revision`);
+    const { manifestSeq, contentHash } = row;
+    if (manifestSeq === null || contentHash === null) {
+      return Effect.die(
+        new Error(`protocol event ${cursor} is not a revision`),
+      );
     }
-    return {
-      cursor: row.cursor,
+    return Effect.succeed({
+      cursor,
       event: {
         type: 'revision',
         sectionId,
-        revision: {
-          sequence: BigInt(row.manifest_seq),
-          contentHash: row.content_hash,
-        },
+        revision: { sequence: manifestSeq, contentHash },
         ...(row.doc === null ? {} : { document: row.doc }),
       },
-    };
+    });
   }
-  return {
-    cursor: row.cursor,
+  return Effect.succeed({
+    cursor,
     event: {
       type: 'lock',
       sectionId,
       ...(row.holder === null ? {} : { holder: row.holder }),
     },
-  };
-}
+  });
+};
 
 /**
  * Appends events to the draft's log, allocating their cursors.
@@ -98,61 +129,96 @@ function toLoggedEvent(row: EventRow): LoggedProtocolEvent {
  * `max(cursor) + 1` safe: every writer takes that lock first, so no two
  * transactions allocate the same cursor and none commits out of order.
  */
-export async function appendProtocolEvents(
-  client: pg.PoolClient,
+export const appendProtocolEvents: (
   teamId: string,
   draftId: string,
   records: readonly ProtocolEventRecord[],
-): Promise<LoggedProtocolEvent[]> {
-  if (records.length === 0) return [];
-  const last = await client.query(
-    `SELECT COALESCE(MAX(cursor), 0) AS cursor FROM protocol_events
-     WHERE draft_id = $1 AND team_id = $2`,
-    [draftId, teamId],
-  );
-  let cursor = BigInt((last.rows[0] as { cursor: string }).cursor);
-  const appended: LoggedProtocolEvent[] = [];
-  for (const record of records) {
-    cursor += 1n;
-    const inserted = await client.query(
-      `INSERT INTO protocol_events
-         (draft_id, team_id, cursor, kind, section_id,
-          manifest_seq, content_hash, doc, owner, holder)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING cursor, kind, section_id, manifest_seq, content_hash, doc, holder`,
-      [
-        draftId,
-        teamId,
-        String(cursor),
-        record.kind,
-        record.sectionId,
-        record.kind === 'revision' ? String(record.manifestSeq) : null,
-        record.kind === 'revision' ? record.contentHash : null,
-        record.kind === 'revision' ? (record.document ?? null) : null,
-        record.kind === 'lock' ? (record.owner ?? null) : null,
-        record.kind === 'lock' ? (record.holder ?? null) : null,
-      ],
-    );
-    appended.push(toLoggedEvent(inserted.rows[0] as EventRow));
-  }
-  return appended;
-}
+) => Effect.Effect<LoggedProtocolEvent[], SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.appendProtocolEvents')(function* (
+    teamId: string,
+    draftId: string,
+    records: readonly ProtocolEventRecord[],
+  ) {
+    if (records.length === 0) return [];
+    const { tx } = yield* Transaction;
+    // An aggregate with no GROUP BY always answers with one row, and `max`
+    // over no rows is null — which is the `COALESCE(MAX(cursor), 0)` this
+    // replaces, moved into TypeScript because the column decodes as a bigint.
+    const last = yield* tx
+      .select({ cursor: max(protocolEvents.cursor) })
+      .from(protocolEvents)
+      .where(
+        and(
+          eq(protocolEvents.draftId, draftId),
+          eq(protocolEvents.teamId, teamId),
+        ),
+      );
+    let cursor = last[0]?.cursor ?? 0n;
+    const appended: LoggedProtocolEvent[] = [];
+    // One INSERT per record on the caller's connection. No nested scope: a
+    // savepoint per row is what `savepoint`'s own comment warns against, and
+    // there is nothing here to roll back independently.
+    for (const record of records) {
+      cursor += 1n;
+      const inserted = yield* tx
+        .insert(protocolEvents)
+        .values({
+          draftId,
+          teamId,
+          cursor,
+          kind: record.kind,
+          sectionId: record.sectionId,
+          manifestSeq: record.kind === 'revision' ? record.manifestSeq : null,
+          contentHash: record.kind === 'revision' ? record.contentHash : null,
+          // A plain object: the jsonb codec stringifies it, and stringifying
+          // it here would store the JSON of a JSON string.
+          doc: record.kind === 'revision' ? (record.document ?? null) : null,
+          owner: record.kind === 'lock' ? (record.owner ?? null) : null,
+          holder: record.kind === 'lock' ? (record.holder ?? null) : null,
+        })
+        // `.returning()` because this reads the row back: without it the
+        // builder answers with the driver's result object wearing a rows
+        // array's type, and `inserted[0]` would be undefined at runtime while
+        // typechecking.
+        .returning(EVENT_COLUMNS);
+      const row = inserted[0];
+      if (row === undefined) {
+        return yield* Effect.die(
+          new Error(`protocol event ${String(cursor)} wrote no row`),
+        );
+      }
+      appended.push(yield* toLoggedEvent(row));
+    }
+    return appended;
+  }, sqlErrorsOnly);
 
 /** Everything after `since`, oldest first; the whole log when it is absent. */
-export async function readProtocolEvents(
-  db: TenantDb,
+export const readProtocolEvents: (
+  teamId: string,
   draftId: string,
-  since: string | undefined,
-): Promise<LoggedProtocolEvent[]> {
-  const result = await db.query(
-    `SELECT cursor, kind, section_id, manifest_seq, content_hash, doc, holder
-     FROM protocol_events
-     WHERE draft_id = $1 AND team_id = $2 AND cursor > $3
-     ORDER BY cursor`,
-    [draftId, db.teamId, since ?? '0'],
-  );
-  return (result.rows as EventRow[]).map(toLoggedEvent);
-}
+  since: bigint | undefined,
+) => Effect.Effect<LoggedProtocolEvent[], SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.readProtocolEvents')(function* (
+    teamId: string,
+    draftId: string,
+    since: bigint | undefined,
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select(EVENT_COLUMNS)
+      .from(protocolEvents)
+      .where(
+        and(
+          eq(protocolEvents.draftId, draftId),
+          eq(protocolEvents.teamId, teamId),
+          gt(protocolEvents.cursor, since ?? 0n),
+        ),
+      )
+      .orderBy(asc(protocolEvents.cursor));
+    const events: LoggedProtocolEvent[] = [];
+    for (const row of rows) events.push(yield* toLoggedEvent(row));
+    return events;
+  }, sqlErrorsOnly);
 
 const QUEUE_LIMIT = 1024;
 

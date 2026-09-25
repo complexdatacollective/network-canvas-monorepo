@@ -6,6 +6,7 @@ import { Me } from '@codaco/studio-contract/schema/account';
 import { NotFound } from '@codaco/studio-contract/schema/errors';
 
 import { updateUserLocale } from '../../account/commands.ts';
+import { UntenantedScope } from '../../db/tenant.ts';
 import { chargeLimit, requirePool } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
@@ -48,20 +49,24 @@ export const AccountHandlers = (deps: RpcDeps) =>
       Effect.gen(function* () {
         const principal = yield* Principal;
         yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
-        const pool = yield* requirePool(deps);
+        // A plane wired without a database refuses here, in the same place it
+        // always did, rather than reaching a client that has nothing behind it.
+        yield* requirePool(deps);
         // Deliberately not an audited command (localization design §5.2,
         // decision 7): the audit log is study/team-scoped by design, and a
-        // personal presentation preference has no tenant — so this writes
-        // through the plain pool, like team.acceptInvitation.
-        const updated = yield* Effect.promise(() =>
-          updateUserLocale(pool, {
-            userId: principal.userId,
-            locale: payload.locale,
-          }),
+        // personal presentation preference has no tenant — so this opens an
+        // untenanted transaction rather than a tenant one, and stamps no team.
+        const updated = yield* Effect.orDie(
+          UntenantedScope.open(
+            updateUserLocale({
+              userId: principal.userId,
+              locale: payload.locale,
+            }),
+          ),
         );
         // A session can outlive its user row only by a hard-delete race; there
         // is nothing left to store a preference on.
-        if (!updated) return yield* new NotFound({});
+        if (updated === null) return yield* new NotFound({});
         return updated;
       }),
   });

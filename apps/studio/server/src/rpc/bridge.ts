@@ -8,29 +8,15 @@ import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import { RequestId } from '../http/middleware/request-id.ts';
 import type { RateLimiter } from '../rate-limit.ts';
 import type { RateLimitScope } from '../rate-limit/scopes.ts';
-import type { SecretsCipher } from '../secrets/cipher.ts';
 import type { RpcDeps } from './deps.ts';
 
-// What every bridged handler is built out of while the commands behind `/rpc`
-// are still Promises (#1930, stage 2b: no store or command rewrite — that is
-// stage 3).
-
-/**
- * Runs one of today's Promise commands and turns what it throws into the
- * procedure's declared refusal.
- *
- * `refusal` decides: it returns the tagged error for a domain refusal it
- * recognises, and `Effect.die(cause)` for everything else. Nothing is
- * swallowed — a cause no mapper claims is a fault, and a fault must not arrive
- * as a refusal a client could act on.
- */
-export const runCommand = <A, E>(
-  work: () => Promise<A>,
-  refusal: (cause: unknown) => Effect.Effect<never, E>,
-): Effect.Effect<A, E> =>
-  Effect.tryPromise({ try: work, catch: (cause: unknown) => cause }).pipe(
-    Effect.catch(refusal),
-  );
+// What every `/rpc` handler is built out of.
+//
+// `runCommand` — the `Effect.tryPromise` every handler wrapped a Promise
+// command in — went with the last Promise command (#1927 stage 3). A command
+// is an Effect now, so a handler maps its declared failures with
+// `Effect.catch` and dies on the rest, in its own file where the mapping
+// belongs.
 
 /**
  * The id this call is known by in logs and in audit rows.
@@ -41,13 +27,29 @@ export const runCommand = <A, E>(
  * that skips the transport). That is the same fallback `app.ts` has always
  * applied.
  */
-export const requestIdOrMint: Effect.Effect<string> = Effect.flatMap(
+const requestIdOrMint: Effect.Effect<string> = Effect.flatMap(
   Effect.serviceOption(RequestId),
   Option.match({
     onNone: () => Effect.sync(() => randomUUID()),
     onSome: (requestId: string) => Effect.succeed(requestId),
   }),
 );
+
+/**
+ * Runs a command under this call's request id.
+ *
+ * `audited` requires `RequestId` rather than reading an option, because an
+ * audit row without one is not a record anybody can follow back. This is where
+ * the requirement is met: from the HTTP request where there is one, and from a
+ * fresh id where there is not — a call over the WebSocket, or in process,
+ * which is the same fallback `requestIdOrMint` has always applied.
+ */
+export const withRequestId = <A, E, R>(
+  command: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, Exclude<R, RequestId>> =>
+  Effect.flatMap(requestIdOrMint, (requestId) =>
+    Effect.provideService(command, RequestId, requestId),
+  );
 
 /**
  * A router wired without a database is a deployment bug rather than an
@@ -58,15 +60,6 @@ export const requirePool = (deps: RpcDeps): Effect.Effect<pg.Pool> =>
   deps.pool === undefined
     ? Effect.die(new Error('the rpc plane was wired without a database pool'))
     : Effect.succeed(deps.pool);
-
-/**
- * A protocol store can seal, so it always takes the cipher. A plane wired
- * without one is the same kind of deployment bug the pool is.
- */
-export const requireCipher = (deps: RpcDeps): Effect.Effect<SecretsCipher> =>
-  deps.cipher === undefined
-    ? Effect.die(new Error('the rpc plane was wired without a secrets cipher'))
-    : Effect.succeed(deps.cipher);
 
 /**
  * Refuses a call whose scope has spent its window (#1909), with the contract's

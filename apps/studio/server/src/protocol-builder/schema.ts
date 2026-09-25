@@ -23,6 +23,11 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import type {
+  Presence,
+  ResourceDescriptor,
+} from '@codaco/protocol-builder-core/contract/schemas';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 import { drafts } from '@codaco/studio-sync/schema';
 
@@ -41,11 +46,11 @@ const protocolEvents = pgTable(
     // section having stopped existing.
     manifestSeq: bigint('manifest_seq', { mode: 'bigint' }),
     contentHash: text('content_hash'),
-    doc: jsonb('doc'),
+    doc: jsonb('doc').$type<SectionDoc>(),
     // Lock events: the lease owner that took the section, and the presence
     // naming them. Both null when the section was released.
     owner: text('owner'),
-    holder: jsonb('holder'),
+    holder: jsonb('holder').$type<Presence>(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .default(sql`clock_timestamp()`),
@@ -125,7 +130,7 @@ const protocolWriteReceipts = pgTable(
     /** The section a `create` minted, so its retry names the one it made. */
     createdSectionId: text('created_section_id'),
     /** The resource descriptors the write promoted, as it answered with them. */
-    promoted: jsonb('promoted'),
+    promoted: jsonb('promoted').$type<ResourceDescriptor[]>(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .default(sql`clock_timestamp()`),

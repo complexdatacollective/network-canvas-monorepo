@@ -9,11 +9,18 @@
 // — `protocols.draft`, a diff, an export. So it never reaches the document:
 // the server strips it at the write boundary and seals it here, and only an
 // assembly for a participant session or a researcher preview opens one.
-import type pg from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { SecretsCipher } from '../secrets/cipher.ts';
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
+import type { SecretsCipherApi } from '../secrets/cipher.ts';
+import { PROTOCOL_TABLES } from './schema.ts';
+
+const protocolAssetKeys = PROTOCOL_TABLES.protocolAssetKeys;
 
 /**
  * What a document carries in place of a key while it is validated.
@@ -136,10 +143,21 @@ export function withPlaceholderAssetKeys(
  * that wrote it. Rows are never deleted when an asset leaves a manifest: a
  * published version still pins the revision that named it, and that version
  * has to go on assembling for a participant.
+ *
+ * One statement per key rather than one multi-row upsert: `ON CONFLICT DO
+ * UPDATE` refuses a command that would touch the same row twice (21000), and
+ * the loop opens no scope of its own — a nested scope per row would be a
+ * savepoint per row on the caller's connection.
  */
-export async function sealAssetKeys(
-  client: pg.PoolClient,
-  cipher: SecretsCipher,
+export const sealAssetKeys: (
+  cipher: SecretsCipherApi,
+  scope: ProtocolAssetScope,
+  values: AssetKeyValues,
+  createdAt?: Date,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'protocol.store.sealAssetKeys',
+)(function* (
+  cipher: SecretsCipherApi,
   scope: ProtocolAssetScope,
   values: AssetKeyValues,
   /**
@@ -148,38 +166,47 @@ export async function sealAssetKeys(
    * unset and takes the clock.
    */
   createdAt?: Date,
-): Promise<void> {
+) {
+  const { tx } = yield* Transaction;
+  // The database's clock where the caller named no date, which is what
+  // `COALESCE($6, now())` said — not this process's.
+  const written = createdAt ?? sql`now()`;
   for (const [assetId, value] of values) {
     const sealed = cipher.sealAssetKey({ ...scope, assetId }, value);
-    await client.query(
-      `INSERT INTO protocol_asset_keys
-         (team_id, protocol_id, asset_id, ciphertext, key_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6, now()), COALESCE($6, now()))
-       ON CONFLICT (team_id, protocol_id, asset_id) DO UPDATE
-         SET ciphertext = EXCLUDED.ciphertext,
-             key_id = EXCLUDED.key_id,
-             updated_at = COALESCE($6, now())`,
-      [
-        scope.teamId,
-        scope.protocolId,
+    // `.returning()` is not decoration: a write without it answers with the
+    // driver's own result object, which is typed as a row array and is not
+    // one — so the check below would read `undefined` and invert.
+    const rows = yield* tx
+      .insert(protocolAssetKeys)
+      .values({
+        teamId: scope.teamId,
+        protocolId: scope.protocolId,
         assetId,
-        sealed.ciphertext,
-        sealed.keyId,
-        createdAt ?? null,
-      ],
-    );
+        ciphertext: sealed.ciphertext,
+        keyId: sealed.keyId,
+        createdAt: written,
+        updatedAt: written,
+      })
+      .onConflictDoUpdate({
+        target: [
+          protocolAssetKeys.teamId,
+          protocolAssetKeys.protocolId,
+          protocolAssetKeys.assetId,
+        ],
+        set: {
+          ciphertext: sealed.ciphertext,
+          keyId: sealed.keyId,
+          updatedAt: written,
+        },
+      })
+      .returning({ assetId: protocolAssetKeys.assetId });
+    if (rows.length === 0) {
+      return yield* Effect.die(
+        new Error(`sealing asset key ${assetId} wrote no row`),
+      );
+    }
   }
-}
-
-/**
- * Anything that runs one statement: a transaction's client, or a `TenantDb`,
- * whose own query is a team-stamped transaction of one. Structural so a read
- * can be made either way without the caller opening a transaction it does not
- * otherwise need.
- */
-type QueryRunner = {
-  query(text: string, values?: unknown[]): Promise<pg.QueryResult>;
-};
+}, sqlErrorsOnly);
 
 /**
  * The plaintext key for one asset, or undefined when the protocol has no row
@@ -188,22 +215,37 @@ type QueryRunner = {
  * sealed under a retired keyring entry, or moved to another protocol, is a
  * fault an operator has to see, not an asset that quietly lost its value.
  */
-export async function openAssetKey(
-  client: QueryRunner,
-  cipher: SecretsCipher,
+export const openAssetKey: (
+  cipher: SecretsCipherApi,
   identity: ProtocolAssetScope & { assetId: string },
-): Promise<string | undefined> {
-  const result = await client.query(
-    `SELECT ciphertext, key_id FROM protocol_asset_keys
-     WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
-    [identity.teamId, identity.protocolId, identity.assetId],
-  );
-  const row = result.rows[0] as
-    | { ciphertext: Buffer; key_id: string }
-    | undefined;
-  if (row === undefined) return undefined;
-  return cipher.openAssetKey(identity, {
-    ciphertext: row.ciphertext,
-    keyId: row.key_id,
-  });
-}
+) => Effect.Effect<string | undefined, SqlError.SqlError, Transaction> =
+  Effect.fn('protocol.store.openAssetKey')(function* (
+    cipher: SecretsCipherApi,
+    identity: ProtocolAssetScope & { assetId: string },
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({
+        ciphertext: protocolAssetKeys.ciphertext,
+        keyId: protocolAssetKeys.keyId,
+      })
+      .from(protocolAssetKeys)
+      .where(
+        and(
+          eq(protocolAssetKeys.teamId, identity.teamId),
+          eq(protocolAssetKeys.protocolId, identity.protocolId),
+          eq(protocolAssetKeys.assetId, identity.assetId),
+        ),
+      );
+    const row = rows[0];
+    if (row === undefined) return undefined;
+    // A `bytea` decodes as a `Buffer` through node-postgres and as a plain
+    // `Uint8Array` through `@effect/sql-pg`; drizzle declares the column as
+    // the former and hands back whatever the driver produced. The cipher
+    // takes the wider of the two (`StoredSecret`), so the row opens either
+    // way — and `__tests__/asset-keys.test.ts` asserts which one arrives.
+    return cipher.openAssetKey(identity, {
+      ciphertext: row.ciphertext,
+      keyId: row.keyId,
+    });
+  }, sqlErrorsOnly);

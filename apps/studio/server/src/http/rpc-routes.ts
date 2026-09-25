@@ -7,9 +7,10 @@ import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import type { StudioEnv } from '../env.ts';
 import { AuthenticatedLive } from '../rpc/authenticated.ts';
 import { ClientSessionMiddlewareLive } from '../rpc/client-session.ts';
-import type { RpcDeps } from '../rpc/deps.ts';
+import type { RpcDeps, StudioServices } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
 import { SetCookiesMiddleware } from '../rpc/set-cookies.ts';
+import { TeamAdministrationLive } from '../rpc/team-administration.ts';
 import { SameOrigin } from './middleware/same-origin.ts';
 
 /**
@@ -33,7 +34,7 @@ import { SameOrigin } from './middleware/same-origin.ts';
 export const RpcRoutes = (
   deps: RpcDeps,
   env: StudioEnv,
-): Layer.Layer<never, never, HttpRouter.HttpRouter> => {
+): Layer.Layer<never, never, StudioServices | HttpRouter.HttpRouter> => {
   const served = RpcServer.layerHttp({
     group: StudioRpcs,
     path: RPC_PATH,
@@ -41,6 +42,7 @@ export const RpcRoutes = (
   }).pipe(
     Layer.provide(StudioRpcHandlers(deps)),
     Layer.provide(AuthenticatedLive(deps.auth)),
+    Layer.provide(TeamAdministrationLive(deps)),
     Layer.provide(ClientSessionMiddlewareLive),
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(SetCookiesMiddleware.layer),

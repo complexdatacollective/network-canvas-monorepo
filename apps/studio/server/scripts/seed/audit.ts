@@ -1,18 +1,13 @@
-// A short, plausible activity history per team, appended through the real
-// audit writer.
+// A short, plausible activity history per team, appended through the audit
+// store's own `append` inside the seed's transaction — so the seed is not a
+// second writer of the append-only log, and a seeded event is sequenced,
+// validated and locked exactly as a live one is.
 //
-// `AuditStore.append` is used rather than an INSERT, deliberately: it is the
-// only code that allocates a team's `sequence` under the advisory lock and
-// validates the event against its registered schema, and a raw insert here
-// would be a second writer of an append-only log whose whole value is that it
-// has one. Two consequences follow, and both are load-bearing for the
-// determinism test:
+// Two consequences are load-bearing for the determinism test:
 //
-//   - `audit_events.id` comes from `randomUUID()` inside the writer, which is
-//     not reachable from the seed's PRNG. It is one of the two columns the
-//     determinism case in `seed.test.ts` therefore leaves out of its dumps
-//     (the other is better-auth's password hash, in `seed/teams.ts`);
-//     everything else the seed writes is byte-identical between two runs.
+//   - `audit_events.id` comes from `randomUUID()` in the store, which is not
+//     reachable from the seed's PRNG. It is one of the columns the
+//     determinism case in `seed.test.ts` therefore leaves out of its dumps.
 //     `occurred_at` is passed in: each event is dated to the operation it
 //     records, so the log agrees with the rows — a protocol created before
 //     the versions that were published from it, a draft edit before the
@@ -20,21 +15,18 @@
 //   - `audit_export_jobs` and `audit_alert_outbox` are left empty. They have
 //     no production writer yet — only tests insert into them — so seeding them
 //     would mean inventing rows that bypass invariants no code has stated.
-import type pg from 'pg';
+import { Effect } from 'effect';
 
-import type { AuditEventInput } from '../../audit/events.ts';
-import { AuditStore } from '../../audit/store.ts';
+import type { AuditEventInput } from '../../src/audit/events.ts';
+import { append } from '../../src/audit/store.ts';
 import type { SeededProtocolLine } from './protocols.ts';
 import { seedTime, seedUuid } from './rng.ts';
 import type { SeedTeam } from './teams.ts';
 
-const auditStore = new AuditStore();
-
-export async function seedAuditEvents(
-  client: pg.PoolClient,
+export const seedAuditEvents = Effect.fnUntraced(function* (
   team: SeedTeam,
   line: SeededProtocolLine,
-): Promise<number> {
+) {
   const actor = {
     teamId: team.id,
     teamLabel: team.name,
@@ -166,7 +158,7 @@ export async function seedAuditEvents(
 
   events.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
   for (const { occurredAt, event } of events) {
-    await auditStore.append(client, event, { occurredAt });
+    yield* append(event, { occurredAt });
   }
   return events.length;
-}
+});

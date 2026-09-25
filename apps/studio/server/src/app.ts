@@ -1,5 +1,5 @@
 import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
-import { Effect } from 'effect';
+import { Cause, Effect, type Context as ServiceContext } from 'effect';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
@@ -17,6 +17,7 @@ import {
 } from './auth/principal.ts';
 import type { AuthService, SessionPrincipal } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
+import { UntenantedScope } from './db/tenant.ts';
 import {
   type AuthCapabilities,
   getDeploymentStatus,
@@ -30,12 +31,11 @@ import {
   type HealthChecks,
 } from './http/health.ts';
 import { UNKNOWN_ADDRESS } from './http/middleware/client-address.ts';
-import type { JobClient } from './jobs/client.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRateLimiter } from './rate-limit.ts';
 import type { RateLimitSettings } from './rate-limit/scopes.ts';
 import { createRpcRouter, type RpcContext } from './rpc.ts';
-import type { RpcDeps } from './rpc/deps.ts';
+import type { RpcDeps, StudioServices } from './rpc/deps.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
 import { readInstallation } from './setup/bootstrap.ts';
 
@@ -129,13 +129,15 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 
 type CreateAppDeps = {
   auth?: AuthService;
-  /**
-   * How a request creates background work (#1895). Absent where there is no
-   * database: nothing can be queued, and nothing that would queue anything is
-   * reachable, because auth is off.
-   */
-  jobs?: JobClient;
   pool?: pg.Pool;
+  /**
+   * The Effect services every data-layer caller runs on (#1931 stage 3): the
+   * application client, the operator signal, the job queue and the cipher.
+   * Passed down by the program that owns the layers (`programs/serve.ts`), and
+   * absent wherever there is no database — where every surface that needs one
+   * refuses beside the missing pool.
+   */
+  services?: ServiceContext.Context<StudioServices>;
   /**
    * Scopes this app enforces something other than their constant for. A
    * deployment never passes it — the limits are the constants in
@@ -221,7 +223,8 @@ export function createStudio(
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool, deps.jobs, limiter);
+  const auth =
+    deps.auth ?? createAuthService(env, pool, deps.services, limiter);
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -254,14 +257,23 @@ export function createStudio(
   // than failing the whole procedure. Nothing is cached: the answer changes
   // exactly once, when `/setup` completes, and the client asks once per load.
   const readInstallationRow: InstallationReader = async () => {
-    if (!pool) return null;
-    try {
-      return await readInstallation(pool);
-    } catch (error) {
-      // oxlint-disable-next-line no-console -- server-side failure diagnostics
-      console.error('Could not read the installation row for status:', error);
-      return null;
-    }
+    const services = deps.services;
+    if (!services) return null;
+    return Effect.runPromise(
+      UntenantedScope.open(readInstallation()).pipe(
+        Effect.provide(services),
+        Effect.catchCause((cause) =>
+          Effect.sync(() => {
+            // oxlint-disable-next-line no-console -- server-side failure diagnostics
+            console.error(
+              'Could not read the installation row for status:',
+              Cause.pretty(cause),
+            );
+            return null;
+          }),
+        ),
+      ),
+    );
   };
 
   // One store for both the /storage routes below and the protocol builder's
@@ -430,11 +442,11 @@ export function createStudio(
     capabilities: authCaps,
     deployment,
     readInstallation: readInstallationRow,
-    jobs: deps.jobs,
     pool,
     assetStore,
     cipher,
     limiter,
+    services: deps.services,
   };
   // The protocol builder over the socket, which is the only transport it has:
   // the streaming procedure the fetch transport could never serve — the

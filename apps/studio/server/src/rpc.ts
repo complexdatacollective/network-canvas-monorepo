@@ -58,6 +58,7 @@ export function createRpcRouter(
       ...(deps.pool === undefined ? {} : { pool: deps.pool }),
       ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
       ...(deps.cipher === undefined ? {} : { cipher: deps.cipher }),
+      ...(deps.services === undefined ? {} : { services: deps.services }),
     }),
   };
 }

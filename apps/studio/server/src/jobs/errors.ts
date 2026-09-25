@@ -57,29 +57,11 @@ export function exitSqlState(
   return Exit.isSuccess(exit) ? undefined : sqlState(causeError(exit.cause));
 }
 
-/**
- * The most specific message in a failure's cause chain. `@effect/sql-pg` wraps
- * the driver error in a `SqlError` whose own message is always
- * `PgConnection: Query failed`, so the outermost `message` says nothing about
- * what went wrong — the useful one is the Postgres error underneath it. A
- * failure with no chain (a tagged error of our own) answers with its own.
- */
-export function deepestMessage(value: unknown): string | undefined {
-  let current: unknown = value;
-  let deepest: string | undefined;
-  while (Predicate.isObject(current)) {
-    if (
-      Predicate.hasProperty(current, 'message') &&
-      Predicate.isString(current.message) &&
-      current.message.length > 0
-    ) {
-      deepest = current.message;
-    }
-    if (!Predicate.hasProperty(current, 'cause')) break;
-    current = current.cause;
-  }
-  return deepest;
-}
+// `deepestMessage` lives in `db/errors.ts`, beside the rest of the reading of
+// a database failure, and is re-exported here because this module is where the
+// queue's handlers look for one. One definition: the shape it walks is the
+// same whichever caller asks.
+export { deepestMessage } from '../db/errors.ts';
 
 /**
  * True when a `Cause` carries a unique-index violation.

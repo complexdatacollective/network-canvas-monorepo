@@ -2,7 +2,7 @@ import { assert, describe, layer } from '@effect/vitest';
 import { Effect, Exit } from 'effect';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
-import { Transaction, withTransaction } from '../database.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import { Jobs } from '../jobs.ts';
 import {
@@ -21,7 +21,7 @@ import {
 // read it can read every team's queued work.
 //
 // The role is pinned with `set local role` rather than a startup parameter,
-// because `@effect/sql-pg` rc.115 has none (see database.ts). That is exactly
+// because `@effect/sql-pg` rc.115 has none (see src/db/tenant.ts). That is exactly
 // what these cases exercise: the grants bite because the transaction is
 // running as `studio_app`.
 
@@ -44,7 +44,7 @@ describe.skipIf(!db)('what each role may do with a job', () => {
       Effect.flatMap(QueueHarness, ({ schema }) =>
         Effect.exit(
           asApp(
-            withTransaction(
+            MaintenanceScope.open(
               Effect.flatMap(Transaction, ({ sql }) => run(sql, schema)),
             ),
           ),
@@ -55,7 +55,7 @@ describe.skipIf(!db)('what each role may do with a job', () => {
       Effect.gen(function* () {
         const jobs = yield* Jobs;
         const id = yield* asApp(
-          withTransaction(
+          MaintenanceScope.open(
             jobs.enqueue('invitation-delivery', {
               deliveryId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             }),
@@ -121,7 +121,7 @@ describe.skipIf(!db)('what each role may do with a job', () => {
         const { schema } = yield* QueueHarness;
         const read = yield* Effect.exit(
           asMaintenance(
-            withTransaction(
+            MaintenanceScope.open(
               Effect.flatMap(
                 Transaction,
                 ({ sql }) => sql`SELECT * FROM ${sql(schema)}.jobs`,
@@ -133,7 +133,7 @@ describe.skipIf(!db)('what each role may do with a job', () => {
 
         const claim = yield* Effect.exit(
           asMaintenance(
-            withTransaction(
+            MaintenanceScope.open(
               Effect.flatMap(
                 Transaction,
                 ({ sql }) =>

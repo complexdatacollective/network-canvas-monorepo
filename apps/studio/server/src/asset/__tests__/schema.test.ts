@@ -9,19 +9,22 @@
 // guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
+import { layer } from '@effect/vitest';
+import { Effect, Layer } from 'effect';
+import { describe, expect } from 'vitest';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
-
-const db = await reachableDb();
+  insertTeam,
+  ownerAffected,
+  ownerRows,
+  refusalOf,
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+  maintenanceAffected,
+  ownerInsert,
+  tenantRows,
+} from '../../__tests__/support/database.ts';
 
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
@@ -40,182 +43,156 @@ const PUBLISHED_KINDS = [
 /** The two of them that are published by the insert that creates them. */
 const VERSION_KINDS = ['protocol_version', 'template_version'] as const;
 
-describe.skipIf(!db)('asset schema', () => {
-  let pool: pg.Pool;
-  let app: pg.Pool;
-  let maintenance: pg.Pool;
-  let dispose: () => Promise<void>;
-  let tenantA: TenantDb;
+const insertSql = (table: string, row: Row): [string, unknown[]] => [
+  `INSERT INTO ${table} (${Object.keys(row)
+    .map((name) => `"${name}"`)
+    .join(', ')})
+   VALUES (${Object.keys(row)
+     .map((_, i) => `$${i + 1}`)
+     .join(', ')})`,
+  Object.values(row),
+];
 
-  const insertSql = (table: string, row: Row): [string, unknown[]] => [
-    `INSERT INTO ${table} (${Object.keys(row)
-      .map((name) => `"${name}"`)
-      .join(', ')})
-     VALUES (${Object.keys(row)
-       .map((_, i) => `$${i + 1}`)
-       .join(', ')})`,
-    Object.values(row),
-  ];
+/** One statement as the connecting login, inside the transaction already open. */
+const inOwnerTransaction = (
+  text: string,
+  params: ReadonlyArray<unknown> = [],
+) =>
+  Effect.flatMap(TestDatabase, (harness) =>
+    harness.owner.sql.unsafe<Row>(text, params),
+  );
 
-  // The connecting login is the development superuser, so it bypasses the
-  // row-level security policies but not the triggers or constraints: exactly
-  // the fixture tool these cases want.
-  const insert = (table: string, row: Row) =>
-    pool.query(...insertSql(table, row));
+/**
+ * One transaction as the connecting login. The insert guard admits a pin on a
+ * published referrer only inside the transaction that published it, so a case
+ * that needs such a pin has to write both together — and a case that needs
+ * the window closed publishes the referrer here and pins afterwards.
+ */
+const inTransaction = <A, E, R>(body: Effect.Effect<A, E, R>) =>
+  Effect.flatMap(TestDatabase, (harness) => harness.onOwner(body));
 
-  /**
-   * One transaction on its own connection. The insert guard admits a pin on a
-   * published referrer only inside the transaction that published it, so a
-   * case that needs such a pin has to write both together — and a case that
-   * needs the window closed publishes the referrer here and pins afterwards.
-   */
-  async function inTransaction<T>(
-    run: (client: pg.PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await pool.connect();
-    try {
-      await client.query('begin');
-      const result = await run(client);
-      await client.query('commit');
-      return result;
-    } catch (error) {
-      await client.query('rollback');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  /**
-   * A referrer of `kind`, with whatever parent row it needs, and its id.
-   * A protocol version and a template version are published by the insert
-   * that creates them; a consent document is published only when `published`.
-   */
-  async function createReferrer(
-    client: pg.PoolClient,
-    kind: string,
-    { published = true }: { published?: boolean } = {},
-  ): Promise<string> {
-    const id = randomUUID();
-    if (kind === 'protocol_version') {
-      const protocolId = randomUUID();
-      await client.query(
-        ...insertSql('protocols', {
-          id: protocolId,
-          team_id: TEAM_A,
-          name: 'Pinned protocol',
-        }),
-      );
-      await client.query(
-        ...insertSql('protocol_versions', {
-          id,
-          protocol_id: protocolId,
-          team_id: TEAM_A,
-          version_number: 1,
-          version_hash: hex64(),
-          manifest: JSON.stringify({}),
-          schema_version: 8,
-          source_manifest_hash: hex64(),
-        }),
-      );
-      return id;
-    }
-    if (kind === 'template_version') {
-      const templateId = randomUUID();
-      await client.query(
-        ...insertSql('templates', {
-          id: templateId,
-          team_id: TEAM_A,
-          kind: 'protocol',
-          name: 'Pinned template',
-        }),
-      );
-      await client.query(
-        ...insertSql('template_versions', {
-          id,
-          team_id: TEAM_A,
-          template_id: templateId,
-          version_number: 1,
-          manifest: JSON.stringify({}),
-          manifest_hash: hex64(),
-          schema_version: 8,
-        }),
-      );
-      return id;
-    }
-    const studyId = randomUUID();
-    await client.query(
-      ...insertSql('studies', {
-        id: studyId,
+/**
+ * A referrer of `kind`, with whatever parent row it needs, and its id.
+ * A protocol version and a template version are published by the insert
+ * that creates them; a consent document is published only when `published`.
+ */
+const createReferrer = Effect.fnUntraced(function* (
+  kind: string,
+  { published = true }: { published?: boolean } = {},
+) {
+  const id = randomUUID();
+  if (kind === 'protocol_version') {
+    const protocolId = randomUUID();
+    yield* inOwnerTransaction(
+      ...insertSql('protocols', {
+        id: protocolId,
         team_id: TEAM_A,
-        name: 'Consenting study',
+        name: 'Pinned protocol',
       }),
     );
-    await client.query(
-      ...insertSql('consent_documents', {
+    yield* inOwnerTransaction(
+      ...insertSql('protocol_versions', {
         id,
+        protocol_id: protocolId,
         team_id: TEAM_A,
-        study_id: studyId,
-        version: 1,
-        state: published ? 'published' : 'draft',
-        published_at: published ? new Date() : null,
-        title: 'Information sheet',
-        body: JSON.stringify({}),
-        content_hash: hex64(),
+        version_number: 1,
+        version_hash: hex64(),
+        manifest: JSON.stringify({}),
+        schema_version: 8,
+        source_manifest_hash: hex64(),
       }),
     );
     return id;
   }
-
-  const assetRow = (overrides: Row = {}): Row => ({
-    team_id: TEAM_A,
-    hash: hex64(),
-    media_type: 'image/png',
-    media_class: 'image',
-    byte_size: 1024,
-    original_filename: 'photo.png',
-    origin: 'upload',
-    ...overrides,
-  });
-
-  const referenceRow = (assetHash: string, overrides: Row = {}): Row => ({
-    team_id: TEAM_A,
-    asset_hash: assetHash,
-    referrer_kind: 'section',
-    referrer_id: hex64(),
-    ...overrides,
-  });
-
-  async function newAsset(overrides: Row = {}): Promise<string> {
-    const row = assetRow(overrides);
-    await insert('assets', row);
-    return row.hash as string;
+  if (kind === 'template_version') {
+    const templateId = randomUUID();
+    yield* inOwnerTransaction(
+      ...insertSql('templates', {
+        id: templateId,
+        team_id: TEAM_A,
+        kind: 'protocol',
+        name: 'Pinned template',
+      }),
+    );
+    yield* inOwnerTransaction(
+      ...insertSql('template_versions', {
+        id,
+        team_id: TEAM_A,
+        template_id: templateId,
+        version_number: 1,
+        manifest: JSON.stringify({}),
+        manifest_hash: hex64(),
+        schema_version: 8,
+      }),
+    );
+    return id;
   }
+  const studyId = randomUUID();
+  yield* inOwnerTransaction(
+    ...insertSql('studies', {
+      id: studyId,
+      team_id: TEAM_A,
+      name: 'Consenting study',
+    }),
+  );
+  yield* inOwnerTransaction(
+    ...insertSql('consent_documents', {
+      id,
+      team_id: TEAM_A,
+      study_id: studyId,
+      version: 1,
+      state: published ? 'published' : 'draft',
+      published_at: published ? new Date() : null,
+      title: 'Information sheet',
+      body: JSON.stringify({}),
+      content_hash: hex64(),
+    }),
+  );
+  return id;
+});
 
-  async function newReference(
-    assetHash: string,
-    overrides: Row = {},
-  ): Promise<Row> {
-    const row = referenceRow(assetHash, overrides);
-    await insert('asset_references', row);
-    return row;
-  }
+const assetRow = (overrides: Row = {}): Row => ({
+  team_id: TEAM_A,
+  hash: hex64(),
+  media_type: 'image/png',
+  media_class: 'image',
+  byte_size: 1024,
+  original_filename: 'photo.png',
+  origin: 'upload',
+  ...overrides,
+});
 
-  /**
-   * Publishes a referrer of `kind` and pins `assetHash` to it, together, the
-   * way each kind is published: a version by the insert that creates it, a
-   * consent document drafted, pinned, and then moved to `published`.
-   */
-  async function pinAtPublication(
-    kind: string,
-    assetHash: string,
-  ): Promise<string> {
-    return inTransaction(async (client) => {
+const referenceRow = (assetHash: string, overrides: Row = {}): Row => ({
+  team_id: TEAM_A,
+  asset_hash: assetHash,
+  referrer_kind: 'section',
+  referrer_id: hex64(),
+  ...overrides,
+});
+
+const newAsset = (overrides: Row = {}) => {
+  const row = assetRow(overrides);
+  return Effect.as(ownerInsert('assets', row), row.hash as string);
+};
+
+const newReference = (assetHash: string, overrides: Row = {}) => {
+  const row = referenceRow(assetHash, overrides);
+  return Effect.as(ownerInsert('asset_references', row), row);
+};
+
+/**
+ * Publishes a referrer of `kind` and pins `assetHash` to it, together, the
+ * way each kind is published: a version by the insert that creates it, a
+ * consent document drafted, pinned, and then moved to `published`.
+ */
+const pinAtPublication = (kind: string, assetHash: string) =>
+  inTransaction(
+    Effect.gen(function* () {
       const drafted = kind === 'consent_document';
-      const referrerId = await createReferrer(client, kind, {
+      const referrerId = yield* createReferrer(kind, {
         published: !drafted,
       });
-      await client.query(
+      yield* inOwnerTransaction(
         ...insertSql(
           'asset_references',
           referenceRow(assetHash, {
@@ -225,637 +202,728 @@ describe.skipIf(!db)('asset schema', () => {
         ),
       );
       if (drafted) {
-        await client.query(
+        yield* inOwnerTransaction(
           `UPDATE consent_documents SET state = 'published', published_at = now()
            WHERE id = $1`,
           [referrerId],
         );
       }
       return referrerId;
-    });
-  }
+    }),
+  );
 
-  beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
-    await provisionScratchSchema(pool);
-    for (const teamId of [TEAM_A, TEAM_B]) await seedTeam(pool, teamId);
-    tenantA = createTenantDb(app, TEAM_A);
-  });
-  afterAll(async () => {
-    await dispose();
-  });
+/** Both teams, once for the file. */
+const Fixtures = Layer.effectDiscard(
+  Effect.forEach([TEAM_A, TEAM_B], (teamId) => insertTeam(teamId)),
+).pipe(Layer.provideMerge(TestDatabaseLive));
 
-  describe('assets', () => {
-    it('applies the documented defaults', async () => {
-      const hash = await newAsset();
+describe.skipIf(!testDb)('asset schema', () => {
+  layer(Fixtures)('over a provisioned schema', (it) => {
+    describe('assets', () => {
+      it.effect('applies the documented defaults', () =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
 
-      const row = await pool.query<Row>(
-        `SELECT uploaded_by_user_id, dataset_metadata, unreferenced_at,
-                created_at IS NOT NULL AS stamped,
-                created_at <= clock_timestamp() AS wall_clock
-         FROM assets WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
+          const rows = yield* ownerRows(
+            `SELECT uploaded_by_user_id, dataset_metadata, unreferenced_at,
+                    created_at IS NOT NULL AS stamped,
+                    created_at <= clock_timestamp() AS wall_clock
+             FROM assets WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(rows[0]).toEqual({
+            uploaded_by_user_id: null,
+            dataset_metadata: null,
+            unreferenced_at: null,
+            stamped: true,
+            wall_clock: true,
+          });
+        }),
       );
-      expect(row.rows[0]).toEqual({
-        uploaded_by_user_id: null,
-        dataset_metadata: null,
-        unreferenced_at: null,
-        stamped: true,
-        wall_clock: true,
-      });
-    });
 
-    it.each([
-      [
-        'a non-hex digest',
-        { hash: `zz${'0'.repeat(62)}` },
-        'assets_hash_check',
-      ],
-      [
-        'an uppercase digest',
-        { hash: hex64().toUpperCase() },
-        'assets_hash_check',
-      ],
-      ['a short digest', { hash: '0'.repeat(63) }, 'assets_hash_check'],
-      [
-        'a media type with no subtype',
-        { media_type: 'image' },
-        'assets_media_type_check',
-      ],
-      [
-        'an uppercase media type',
-        { media_type: 'Image/PNG' },
-        'assets_media_type_check',
-      ],
-      [
-        'an unknown media class',
-        { media_class: 'archive' },
-        'assets_media_class_check',
-      ],
-      ['a zero-byte object', { byte_size: 0 }, 'assets_byte_size_check'],
-      [
-        'an object past two gibibytes',
-        { byte_size: 2_147_483_649 },
-        'assets_byte_size_check',
-      ],
-      [
-        'a blank filename',
-        { original_filename: '   ' },
-        'assets_original_filename_check',
-      ],
-      [
-        'a filename past 255 characters',
-        { original_filename: `${'x'.repeat(252)}.png` },
-        'assets_original_filename_check',
-      ],
-      [
-        'a filename carrying a path separator',
-        { original_filename: 'nested/photo.png' },
-        'assets_original_filename_check',
-      ],
-      [
-        'a filename carrying a Windows separator',
-        { original_filename: 'nested\\photo.png' },
-        'assets_original_filename_check',
-      ],
-      ['an unknown origin', { origin: 'sideload' }, 'assets_origin_check'],
-      [
-        'dataset metadata on a non-dataset asset',
-        { dataset_metadata: JSON.stringify({ columns: ['a'] }) },
-        'assets_dataset_metadata_check',
-      ],
-      [
-        'scalar dataset metadata',
-        {
-          media_class: 'dataset',
-          media_type: 'text/csv',
-          dataset_metadata: JSON.stringify(3),
-        },
-        'assets_dataset_metadata_check',
-      ],
-      [
-        'a blank uploader id',
-        { uploaded_by_user_id: '' },
-        'assets_uploaded_by_user_id_check',
-      ],
-      [
-        'an uploader id past 255 characters',
-        { uploaded_by_user_id: 'u'.repeat(256) },
-        'assets_uploaded_by_user_id_check',
-      ],
-    ])('rejects %s', async (_label, overrides, constraint) => {
-      await expect(insert('assets', assetRow(overrides))).rejects.toMatchObject(
-        { constraint },
-      );
-    });
-
-    it('accepts the shapes the checks exist to admit', async () => {
-      await expect(
-        insert(
-          'assets',
-          assetRow({
+      it.effect.each<
+        readonly [label: string, overrides: Row, constraint: string]
+      >([
+        [
+          'a non-hex digest',
+          { hash: `zz${'0'.repeat(62)}` },
+          'assets_hash_check',
+        ],
+        [
+          'an uppercase digest',
+          { hash: hex64().toUpperCase() },
+          'assets_hash_check',
+        ],
+        ['a short digest', { hash: '0'.repeat(63) }, 'assets_hash_check'],
+        [
+          'a media type with no subtype',
+          { media_type: 'image' },
+          'assets_media_type_check',
+        ],
+        [
+          'an uppercase media type',
+          { media_type: 'Image/PNG' },
+          'assets_media_type_check',
+        ],
+        [
+          'an unknown media class',
+          { media_class: 'archive' },
+          'assets_media_class_check',
+        ],
+        ['a zero-byte object', { byte_size: 0 }, 'assets_byte_size_check'],
+        [
+          'an object past two gibibytes',
+          { byte_size: 2_147_483_649 },
+          'assets_byte_size_check',
+        ],
+        [
+          'a blank filename',
+          { original_filename: '   ' },
+          'assets_original_filename_check',
+        ],
+        [
+          'a filename past 255 characters',
+          { original_filename: `${'x'.repeat(252)}.png` },
+          'assets_original_filename_check',
+        ],
+        [
+          'a filename carrying a path separator',
+          { original_filename: 'nested/photo.png' },
+          'assets_original_filename_check',
+        ],
+        [
+          'a filename carrying a Windows separator',
+          { original_filename: 'nested\\photo.png' },
+          'assets_original_filename_check',
+        ],
+        ['an unknown origin', { origin: 'sideload' }, 'assets_origin_check'],
+        [
+          'dataset metadata on a non-dataset asset',
+          { dataset_metadata: JSON.stringify({ columns: ['a'] }) },
+          'assets_dataset_metadata_check',
+        ],
+        [
+          'scalar dataset metadata',
+          {
             media_class: 'dataset',
             media_type: 'text/csv',
-            dataset_metadata: JSON.stringify({ columns: ['a'], rows: 12 }),
-            uploaded_by_user_id: 'user-1',
-            origin: 'registry_import',
-            byte_size: 2_147_483_648,
+            dataset_metadata: JSON.stringify(3),
+          },
+          'assets_dataset_metadata_check',
+        ],
+        [
+          'a blank uploader id',
+          { uploaded_by_user_id: '' },
+          'assets_uploaded_by_user_id_check',
+        ],
+        [
+          'an uploader id past 255 characters',
+          { uploaded_by_user_id: 'u'.repeat(256) },
+          'assets_uploaded_by_user_id_check',
+        ],
+      ])('rejects %s', ([_label, overrides, constraint]) =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert('assets', assetRow(overrides)),
+          );
+          expect(refused.constraint).toBe(constraint);
+        }),
+      );
+
+      it.effect('accepts the shapes the checks exist to admit', () =>
+        Effect.gen(function* () {
+          expect(
+            yield* ownerInsert(
+              'assets',
+              assetRow({
+                media_class: 'dataset',
+                media_type: 'text/csv',
+                dataset_metadata: JSON.stringify({ columns: ['a'], rows: 12 }),
+                uploaded_by_user_id: 'user-1',
+                origin: 'registry_import',
+                byte_size: 2_147_483_648,
+              }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect(
+        'deduplicates per team rather than across the tenant boundary',
+        () =>
+          Effect.gen(function* () {
+            const hash = yield* newAsset();
+
+            const refused = yield* refusalOf(
+              ownerInsert('assets', assetRow({ hash })),
+            );
+            expect(refused.state).toBe('23505');
+            // The same bytes in another team are a different row, by design.
+            expect(
+              yield* ownerInsert('assets', assetRow({ hash, team_id: TEAM_B })),
+            ).toBe(1);
           }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      );
     });
 
-    it('deduplicates per team rather than across the tenant boundary', async () => {
-      const hash = await newAsset();
+    describe('asset_references', () => {
+      it.effect.each<
+        readonly [label: string, overrides: Row, constraint: string]
+      >([
+        [
+          'an unknown referrer kind',
+          { referrer_kind: 'draft' },
+          'asset_references_referrer_kind_check',
+        ],
+        [
+          'a blank referrer id',
+          { referrer_id: '' },
+          'asset_references_referrer_id_check',
+        ],
+        [
+          'a referrer id past 255 characters',
+          { referrer_id: 'r'.repeat(256) },
+          'asset_references_referrer_id_check',
+        ],
+      ])('rejects %s', ([_label, overrides, constraint]) =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
+          const refused = yield* refusalOf(
+            ownerInsert('asset_references', referenceRow(hash, overrides)),
+          );
+          expect(refused.constraint).toBe(constraint);
+        }),
+      );
 
-      await expect(insert('assets', assetRow({ hash }))).rejects.toMatchObject({
-        code: '23505',
-      });
-      // The same bytes in another team are a different row, by design.
-      await expect(
-        insert('assets', assetRow({ hash, team_id: TEAM_B })),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      it.effect('refuses a pin on an asset that does not exist', () =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert('asset_references', referenceRow(hex64())),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'asset_references_asset_fk',
+          });
+        }),
+      );
+
+      it.effect("refuses a pin on another team's asset", () =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset({ team_id: TEAM_B });
+
+          // Referential integrity bypasses row-level security, so the composite
+          // key is what stops one team citing another team's content hash.
+          const refused = yield* refusalOf(
+            ownerInsert(
+              'asset_references',
+              referenceRow(hash, { team_id: TEAM_A }),
+            ),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'asset_references_asset_fk',
+          });
+          expect(
+            yield* ownerInsert(
+              'asset_references',
+              referenceRow(hash, { team_id: TEAM_B }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect('pins the same asset once per referrer', () =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
+          const pin = yield* newReference(hash, { referrer_id: 'section-1' });
+
+          const refused = yield* refusalOf(
+            ownerInsert('asset_references', pin),
+          );
+          expect(refused.state).toBe('23505');
+          // A second referrer, and a second kind, are separate pins.
+          expect(
+            yield* ownerInsert(
+              'asset_references',
+              referenceRow(hash, { referrer_id: 'section-2' }),
+            ),
+          ).toBe(1);
+          expect(
+            yield* ownerInsert(
+              'asset_references',
+              referenceRow(hash, {
+                referrer_kind: 'message_template',
+                referrer_id: 'section-1',
+              }),
+            ),
+          ).toBe(1);
+        }),
+      );
     });
-  });
 
-  describe('asset_references', () => {
-    it.each([
-      [
-        'an unknown referrer kind',
-        { referrer_kind: 'draft' },
-        'asset_references_referrer_kind_check',
-      ],
-      [
-        'a blank referrer id',
-        { referrer_id: '' },
-        'asset_references_referrer_id_check',
-      ],
-      [
-        'a referrer id past 255 characters',
-        { referrer_id: 'r'.repeat(256) },
-        'asset_references_referrer_id_check',
-      ],
-    ])('rejects %s', async (_label, overrides, constraint) => {
-      const hash = await newAsset();
-      await expect(
-        insert('asset_references', referenceRow(hash, overrides)),
-      ).rejects.toMatchObject({ constraint });
+    describe('assets_metadata_immutable', () => {
+      it.effect.each<readonly [label: string, assignment: string]>([
+        ['the media type', `media_type = 'image/jpeg'`],
+        ['the media class', `media_class = 'document'`],
+        ['the byte size', 'byte_size = 2048'],
+        ['the original filename', `original_filename = 'other.png'`],
+        ['the origin', `origin = 'seed'`],
+        ['the uploader', `uploaded_by_user_id = 'user-2'`],
+        ['the dataset metadata', `dataset_metadata = '{}'::jsonb`],
+        ['the content hash', `hash = '${'a'.repeat(64)}'`],
+        ['the owning team', `team_id = '${TEAM_B}'`],
+        ['the creation stamp', 'created_at = now()'],
+      ])('refuses to rewrite %s', ([_label, assignment]) =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
+
+          const refused = yield* refusalOf(
+            ownerAffected(
+              `UPDATE assets SET ${assignment} WHERE team_id = $1 AND hash = $2`,
+              [TEAM_A, hash],
+            ),
+          );
+          expect(refused.message).toContain('asset metadata is immutable');
+        }),
+      );
+
+      it.effect('lets the sweep marker move in both directions', () =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
+
+          const marked = yield* ownerAffected(
+            `UPDATE assets SET unreferenced_at = clock_timestamp()
+             WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(marked).toBe(1);
+          const swept = yield* ownerRows(
+            `SELECT unreferenced_at IS NOT NULL AS marked FROM assets
+             WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(swept[0]).toEqual({ marked: true });
+
+          // Reconciliation clears the marker when a pin reappears.
+          const reconciled = yield* ownerAffected(
+            `UPDATE assets SET unreferenced_at = NULL
+             WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(reconciled).toBe(1);
+          const cleared = yield* ownerRows(
+            `SELECT unreferenced_at IS NOT NULL AS marked FROM assets
+             WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(cleared[0]).toEqual({ marked: false });
+        }),
+      );
     });
 
-    it('refuses a pin on an asset that does not exist', async () => {
-      await expect(
-        insert('asset_references', referenceRow(hex64())),
-      ).rejects.toMatchObject({
-        code: '23503',
-        constraint: 'asset_references_asset_fk',
-      });
-    });
+    describe('asset_references_published_immutable', () => {
+      it.effect.each(PUBLISHED_KINDS)(
+        'freezes a %s pin against update and retraction',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            const hash = yield* newAsset();
+            const referrerId = yield* pinAtPublication(referrerKind, hash);
 
-    it("refuses a pin on another team's asset", async () => {
-      const hash = await newAsset({ team_id: TEAM_B });
-
-      // Referential integrity bypasses row-level security, so the composite
-      // key is what stops one team citing another team's content hash.
-      await expect(
-        insert('asset_references', referenceRow(hash, { team_id: TEAM_A })),
-      ).rejects.toMatchObject({
-        code: '23503',
-        constraint: 'asset_references_asset_fk',
-      });
-      await expect(
-        insert('asset_references', referenceRow(hash, { team_id: TEAM_B })),
-      ).resolves.toMatchObject({ rowCount: 1 });
-    });
-
-    it('pins the same asset once per referrer', async () => {
-      const hash = await newAsset();
-      const pin = await newReference(hash, { referrer_id: 'section-1' });
-
-      await expect(insert('asset_references', pin)).rejects.toMatchObject({
-        code: '23505',
-      });
-      // A second referrer, and a second kind, are separate pins.
-      await expect(
-        insert(
-          'asset_references',
-          referenceRow(hash, { referrer_id: 'section-2' }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
-      await expect(
-        insert(
-          'asset_references',
-          referenceRow(hash, {
-            referrer_kind: 'message_template',
-            referrer_id: 'section-1',
+            const updated = yield* refusalOf(
+              ownerAffected(
+                `UPDATE asset_references SET created_at = now()
+                 WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+                   AND referrer_id = $4`,
+                [TEAM_A, hash, referrerKind, referrerId],
+              ),
+            );
+            expect(updated.message).toContain(
+              'published asset references are immutable',
+            );
+            const deleted = yield* refusalOf(
+              ownerAffected(
+                `DELETE FROM asset_references
+                 WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+                   AND referrer_id = $4`,
+                [TEAM_A, hash, referrerKind, referrerId],
+              ),
+            );
+            expect(deleted.message).toContain(
+              'published asset references are immutable',
+            );
           }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      );
+
+      it.effect(
+        'lets a draft consent document retract a pin, and freezes it at publication',
+        () =>
+          Effect.gen(function* () {
+            // The same boundary the insert guard draws: while the document is
+            // a draft an author may replace or remove an attached asset;
+            // publication fixes the set in both directions.
+            const hash = yield* newAsset();
+            const documentId = yield* inTransaction(
+              createReferrer('consent_document', { published: false }),
+            );
+            yield* newReference(hash, {
+              referrer_kind: 'consent_document',
+              referrer_id: documentId,
+            });
+            const retracted = yield* ownerAffected(
+              `DELETE FROM asset_references
+               WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+                 AND referrer_id = $3`,
+              [TEAM_A, hash, documentId],
+            );
+            expect(retracted).toBe(1);
+
+            yield* newReference(hash, {
+              referrer_kind: 'consent_document',
+              referrer_id: documentId,
+            });
+            // Retracted, never re-pointed: an UPDATE aiming the draft's pin at
+            // a published version would be a late pin on that version that the
+            // insert guard never saw.
+            const versionId = yield* inTransaction(
+              createReferrer('protocol_version'),
+            );
+            const repointed = yield* refusalOf(
+              ownerAffected(
+                `UPDATE asset_references
+                 SET referrer_kind = 'protocol_version', referrer_id = $4
+                 WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+                   AND referrer_id = $3`,
+                [TEAM_A, hash, documentId, versionId],
+              ),
+            );
+            expect(repointed.message).toContain(
+              'published asset references are immutable',
+            );
+            yield* ownerAffected(
+              `UPDATE consent_documents SET state = 'published', published_at = now()
+               WHERE id = $1`,
+              [documentId],
+            );
+            const deleted = yield* refusalOf(
+              ownerAffected(
+                `DELETE FROM asset_references
+                 WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+                   AND referrer_id = $3`,
+                [TEAM_A, hash, documentId],
+              ),
+            );
+            expect(deleted.message).toContain(
+              'published asset references are immutable',
+            );
+          }),
+      );
+
+      it.effect.each(PUBLISHED_KINDS)(
+        'lets the maintenance purge delete a %s pin, and nobody else',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            // A study is purged bottom-up, and asset_references carries no key
+            // onto its heterogeneous referrer: a published document's pins
+            // would otherwise outlive the document, never satisfying the draft
+            // test again, and hold the asset's metadata and bytes against
+            // garbage collection for good.
+            const hash = yield* newAsset();
+            const referrerId = yield* pinAtPublication(referrerKind, hash);
+            const where = `WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+                 AND referrer_id = $4`;
+            const params = [TEAM_A, hash, referrerKind, referrerId];
+
+            const updated = yield* refusalOf(
+              maintenanceAffected(
+                `UPDATE asset_references SET created_at = now() ${where}`,
+                params,
+              ),
+            );
+            expect(updated.message).toContain(
+              'published asset references are immutable',
+            );
+            expect(
+              yield* maintenanceAffected(
+                `DELETE FROM asset_references ${where}`,
+                params,
+              ),
+            ).toBe(1);
+          }),
+      );
+
+      it.effect.each(['section', 'message_template'])(
+        'lets a %s pin be retracted, because its referrer is still editable',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            const hash = yield* newAsset();
+            const pin = yield* newReference(hash, {
+              referrer_kind: referrerKind,
+            });
+
+            const deleted = yield* ownerAffected(
+              `DELETE FROM asset_references
+               WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+                 AND referrer_id = $4`,
+              [TEAM_A, hash, referrerKind, pin.referrer_id],
+            );
+            expect(deleted).toBe(1);
+          }),
+      );
     });
-  });
 
-  describe('assets_metadata_immutable', () => {
-    it.each([
-      ['the media type', `media_type = 'image/jpeg'`],
-      ['the media class', `media_class = 'document'`],
-      ['the byte size', 'byte_size = 2048'],
-      ['the original filename', `original_filename = 'other.png'`],
-      ['the origin', `origin = 'seed'`],
-      ['the uploader', `uploaded_by_user_id = 'user-2'`],
-      ['the dataset metadata', `dataset_metadata = '{}'::jsonb`],
-      ['the content hash', `hash = '${'a'.repeat(64)}'`],
-      ['the owning team', `team_id = '${TEAM_B}'`],
-      ['the creation stamp', 'created_at = now()'],
-    ])('refuses to rewrite %s', async (_label, assignment) => {
-      const hash = await newAsset();
+    // The other half of the same promise. Freezing only UPDATE and DELETE
+    // would leave a pin insertable after publication — and then
+    // unretractable, because the trigger above refuses to remove it.
+    describe('asset_references_insert_frozen', () => {
+      it.effect.each(VERSION_KINDS)(
+        'admits a %s pin written in the transaction that publishes it',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            const hash = yield* newAsset();
+            const referrerId = yield* pinAtPublication(referrerKind, hash);
 
-      await expect(
-        pool.query(
-          `UPDATE assets SET ${assignment} WHERE team_id = $1 AND hash = $2`,
-          [TEAM_A, hash],
-        ),
-      ).rejects.toThrow('asset metadata is immutable');
+            const pinned = yield* ownerRows(
+              `SELECT count(*)::int AS n FROM asset_references
+               WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+                 AND referrer_id = $4`,
+              [TEAM_A, hash, referrerKind, referrerId],
+            );
+            expect(pinned[0]).toEqual({ n: 1 });
+          }),
+      );
+
+      it.effect.each(PUBLISHED_KINDS)(
+        'refuses a %s pin written after that transaction commits',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            const hash = yield* newAsset();
+            const referrerId = yield* inTransaction(
+              createReferrer(referrerKind),
+            );
+
+            const refused = yield* refusalOf(
+              ownerInsert(
+                'asset_references',
+                referenceRow(hash, {
+                  referrer_kind: referrerKind,
+                  referrer_id: referrerId,
+                }),
+              ),
+            );
+            expect(refused.message).toContain(
+              `an asset reference cannot be added to a published ${referrerKind}`,
+            );
+          }),
+      );
+
+      it.effect(
+        'fixes a consent document’s pins at publication, by state rather than by transaction',
+        () =>
+          Effect.gen(function* () {
+            // A published document is still updated afterwards — retired,
+            // restamped — and each update gives its row a fresh xmin, so "the
+            // transaction that published it" is not a stable fact to prove a
+            // pin against. What is stable is the state: pins are free while
+            // the document is a draft and refused from publication on, even
+            // inside the publishing transaction.
+            const harness = yield* TestDatabase;
+            const kept = yield* newAsset();
+            const late = yield* newAsset();
+            const documentId = yield* inTransaction(
+              Effect.gen(function* () {
+                const id = yield* createReferrer('consent_document', {
+                  published: false,
+                });
+                yield* inOwnerTransaction(
+                  ...insertSql(
+                    'asset_references',
+                    referenceRow(kept, {
+                      referrer_kind: 'consent_document',
+                      referrer_id: id,
+                    }),
+                  ),
+                );
+                yield* inOwnerTransaction(
+                  `UPDATE consent_documents SET state = 'published', published_at = now()
+                   WHERE id = $1`,
+                  [id],
+                );
+                // Behind a savepoint (a nested `withTransaction`), so the
+                // refusal leaves the rest of the publishing transaction — and
+                // the pin it legitimately carries — to commit.
+                const refused = yield* refusalOf(
+                  harness.owner.sql.withTransaction(
+                    inOwnerTransaction(
+                      ...insertSql(
+                        'asset_references',
+                        referenceRow(late, {
+                          referrer_kind: 'consent_document',
+                          referrer_id: id,
+                        }),
+                      ),
+                    ),
+                  ),
+                );
+                expect(refused.message).toContain(
+                  'an asset reference cannot be added to a published consent_document',
+                );
+                return id;
+              }),
+            );
+
+            const pinned = yield* ownerRows(
+              `SELECT count(*)::int AS n FROM asset_references
+               WHERE team_id = $1 AND referrer_kind = 'consent_document'
+                 AND referrer_id = $2`,
+              [TEAM_A, documentId],
+            );
+            expect(pinned[0]).toEqual({ n: 1 });
+          }),
+      );
+
+      it.effect.each(PUBLISHED_KINDS)(
+        'refuses a %s pin that names no such referrer',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            // Such a pin could never be retracted either, and admitting it
+            // would let a pin be written before the version it claims to
+            // belong to.
+            const hash = yield* newAsset();
+
+            const refused = yield* refusalOf(
+              ownerInsert(
+                'asset_references',
+                referenceRow(hash, {
+                  referrer_kind: referrerKind,
+                  referrer_id: randomUUID(),
+                }),
+              ),
+            );
+            expect(refused.message).toContain(
+              `an asset reference must name a ${referrerKind} of its own team`,
+            );
+          }),
+      );
+
+      it.effect('lets a draft consent document gain a pin at any time', () =>
+        Effect.gen(function* () {
+          // A draft is still being written, and its pins are not yet frozen;
+          // the window closes when the document publishes.
+          const hash = yield* newAsset();
+          const documentId = yield* inTransaction(
+            createReferrer('consent_document', { published: false }),
+          );
+
+          expect(
+            yield* ownerInsert(
+              'asset_references',
+              referenceRow(hash, {
+                referrer_kind: 'consent_document',
+                referrer_id: documentId,
+              }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect.each(['section', 'message_template'])(
+        'leaves a %s pin free to be written at any time',
+        (referrerKind) =>
+          Effect.gen(function* () {
+            // Neither kind's pins are frozen, so there is no frozen set to
+            // protect and nothing for the insert guard to prove.
+            const hash = yield* newAsset();
+
+            expect(
+              yield* ownerInsert(
+                'asset_references',
+                referenceRow(hash, { referrer_kind: referrerKind }),
+              ),
+            ).toBe(1);
+          }),
+      );
     });
 
-    it('lets the sweep marker move in both directions', async () => {
-      const hash = await newAsset();
+    describe('garbage-collection semantics', () => {
+      it.effect('makes a pinned asset structurally undeletable', () =>
+        Effect.gen(function* () {
+          const hash = yield* newAsset();
+          const pin = yield* newReference(hash);
 
-      const marked = await pool.query(
-        `UPDATE assets SET unreferenced_at = clock_timestamp()
-         WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
-      );
-      expect(marked.rowCount).toBe(1);
-      const swept = await pool.query<{ marked: boolean }>(
-        `SELECT unreferenced_at IS NOT NULL AS marked FROM assets
-         WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
-      );
-      expect(swept.rows[0]).toEqual({ marked: true });
+          const refused = yield* refusalOf(
+            ownerAffected(
+              `DELETE FROM assets WHERE team_id = $1 AND hash = $2`,
+              [TEAM_A, hash],
+            ),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'asset_references_asset_fk',
+          });
 
-      // Reconciliation clears the marker when a pin reappears.
-      const reconciled = await pool.query(
-        `UPDATE assets SET unreferenced_at = NULL
-         WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
-      );
-      expect(reconciled.rowCount).toBe(1);
-      const cleared = await pool.query<{ marked: boolean }>(
-        `SELECT unreferenced_at IS NOT NULL AS marked FROM assets
-         WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
-      );
-      expect(cleared.rows[0]).toEqual({ marked: false });
-    });
-  });
-
-  describe('asset_references_published_immutable', () => {
-    it.each(PUBLISHED_KINDS)(
-      'freezes a %s pin against update and retraction',
-      async (referrerKind) => {
-        const hash = await newAsset();
-        const referrerId = await pinAtPublication(referrerKind, hash);
-
-        await expect(
-          pool.query(
-            `UPDATE asset_references SET created_at = now()
-             WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
-               AND referrer_id = $4`,
-            [TEAM_A, hash, referrerKind, referrerId],
-          ),
-        ).rejects.toThrow('published asset references are immutable');
-        await expect(
-          pool.query(
+          // The sweep's own order: retract the last pin, then delete the row.
+          yield* ownerAffected(
             `DELETE FROM asset_references
              WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
                AND referrer_id = $4`,
-            [TEAM_A, hash, referrerKind, referrerId],
-          ),
-        ).rejects.toThrow('published asset references are immutable');
-      },
-    );
+            [TEAM_A, hash, pin.referrer_kind, pin.referrer_id],
+          );
+          const deleted = yield* ownerAffected(
+            `DELETE FROM assets WHERE team_id = $1 AND hash = $2`,
+            [TEAM_A, hash],
+          );
+          expect(deleted).toBe(1);
+        }),
+      );
 
-    it('lets a draft consent document retract a pin, and freezes it at publication', async () => {
-      // The same boundary the insert guard draws: while the document is a
-      // draft an author may replace or remove an attached asset; publication
-      // fixes the set in both directions.
-      const hash = await newAsset();
-      const documentId = await inTransaction((client) =>
-        createReferrer(client, 'consent_document', { published: false }),
-      );
-      await newReference(hash, {
-        referrer_kind: 'consent_document',
-        referrer_id: documentId,
-      });
-      const retracted = await pool.query(
-        `DELETE FROM asset_references
-         WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
-           AND referrer_id = $3`,
-        [TEAM_A, hash, documentId],
-      );
-      expect(retracted.rowCount).toBe(1);
+      it.effect('marks only the assets no surviving pin references', () =>
+        Effect.gen(function* () {
+          const pinned = yield* newAsset();
+          const orphan = yield* newAsset();
+          yield* newReference(pinned);
 
-      await newReference(hash, {
-        referrer_kind: 'consent_document',
-        referrer_id: documentId,
-      });
-      // Retracted, never re-pointed: an UPDATE aiming the draft's pin at a
-      // published version would be a late pin on that version that the
-      // insert guard never saw.
-      const versionId = await inTransaction((client) =>
-        createReferrer(client, 'protocol_version'),
+          // The mark phase, as the protocol store's sweep writes it
+          // (src/jobs/handlers/protocol-store-gc.ts).
+          const marked = yield* ownerRows<{ hash: string }>(
+            `UPDATE assets a SET unreferenced_at = clock_timestamp()
+             WHERE a.team_id = $1
+               AND a.unreferenced_at IS NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM asset_references r
+                 WHERE r.team_id = a.team_id AND r.asset_hash = a.hash
+               )
+               AND a.hash = ANY($2::text[])
+             RETURNING a.hash`,
+            [TEAM_A, [pinned, orphan]],
+          );
+          expect(marked.map((row) => row.hash)).toEqual([orphan]);
+        }),
       );
-      await expect(
-        pool.query(
-          `UPDATE asset_references
-           SET referrer_kind = 'protocol_version', referrer_id = $4
-           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
-             AND referrer_id = $3`,
-          [TEAM_A, hash, documentId, versionId],
-        ),
-      ).rejects.toThrow('published asset references are immutable');
-      await pool.query(
-        `UPDATE consent_documents SET state = 'published', published_at = now()
-         WHERE id = $1`,
-        [documentId],
-      );
-      await expect(
-        pool.query(
-          `DELETE FROM asset_references
-           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
-             AND referrer_id = $3`,
-          [TEAM_A, hash, documentId],
-        ),
-      ).rejects.toThrow('published asset references are immutable');
     });
 
-    it.each(PUBLISHED_KINDS)(
-      'lets the maintenance purge delete a %s pin, and nobody else',
-      async (referrerKind) => {
-        // A study is purged bottom-up, and asset_references carries no key
-        // onto its heterogeneous referrer: a published document's pins would
-        // otherwise outlive the document, never satisfying the draft test
-        // again, and hold the asset's metadata and bytes against garbage
-        // collection for good.
-        const hash = await newAsset();
-        const referrerId = await pinAtPublication(referrerKind, hash);
-        const where = `WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
-               AND referrer_id = $4`;
-        const params = [TEAM_A, hash, referrerKind, referrerId];
+    it.effect('scopes reads and writes to the team that owns them', () =>
+      Effect.gen(function* () {
+        const mine = yield* newAsset();
+        const theirs = yield* newAsset({ team_id: TEAM_B });
 
-        await expect(
-          maintenance.query(
-            `UPDATE asset_references SET created_at = now() ${where}`,
-            params,
-          ),
-        ).rejects.toThrow('published asset references are immutable');
-        await expect(
-          maintenance.query(`DELETE FROM asset_references ${where}`, params),
-        ).resolves.toMatchObject({ rowCount: 1 });
-      },
-    );
-
-    it.each(['section', 'message_template'])(
-      'lets a %s pin be retracted, because its referrer is still editable',
-      async (referrerKind) => {
-        const hash = await newAsset();
-        const pin = await newReference(hash, { referrer_kind: referrerKind });
-
-        const deleted = await pool.query(
-          `DELETE FROM asset_references
-           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
-             AND referrer_id = $4`,
-          [TEAM_A, hash, referrerKind, pin.referrer_id],
-        );
-        expect(deleted.rowCount).toBe(1);
-      },
-    );
-  });
-
-  // The other half of the same promise. Freezing only UPDATE and DELETE would
-  // leave a pin insertable after publication — and then unretractable, because
-  // the trigger above refuses to remove it.
-  describe('asset_references_insert_frozen', () => {
-    it.each(VERSION_KINDS)(
-      'admits a %s pin written in the transaction that publishes it',
-      async (referrerKind) => {
-        const hash = await newAsset();
-        const referrerId = await pinAtPublication(referrerKind, hash);
-
-        const pinned = await pool.query<{ n: number }>(
-          `SELECT count(*)::int AS n FROM asset_references
-           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
-             AND referrer_id = $4`,
-          [TEAM_A, hash, referrerKind, referrerId],
-        );
-        expect(pinned.rows[0]).toEqual({ n: 1 });
-      },
-    );
-
-    it.each(PUBLISHED_KINDS)(
-      'refuses a %s pin written after that transaction commits',
-      async (referrerKind) => {
-        const hash = await newAsset();
-        const referrerId = await inTransaction((client) =>
-          createReferrer(client, referrerKind),
-        );
-
-        await expect(
-          insert(
-            'asset_references',
-            referenceRow(hash, {
-              referrer_kind: referrerKind,
-              referrer_id: referrerId,
-            }),
-          ),
-        ).rejects.toThrow(
-          `an asset reference cannot be added to a published ${referrerKind}`,
-        );
-      },
-    );
-
-    it('fixes a consent document’s pins at publication, by state rather than by transaction', async () => {
-      // A published document is still updated afterwards — retired, restamped
-      // — and each update gives its row a fresh xmin, so "the transaction that
-      // published it" is not a stable fact to prove a pin against. What is
-      // stable is the state: pins are free while the document is a draft and
-      // refused from publication on, even inside the publishing transaction.
-      const kept = await newAsset();
-      const late = await newAsset();
-      const documentId = await inTransaction(async (client) => {
-        const id = await createReferrer(client, 'consent_document', {
-          published: false,
-        });
-        await client.query(
-          ...insertSql(
-            'asset_references',
-            referenceRow(kept, {
-              referrer_kind: 'consent_document',
-              referrer_id: id,
-            }),
-          ),
-        );
-        await client.query(
-          `UPDATE consent_documents SET state = 'published', published_at = now()
-           WHERE id = $1`,
-          [id],
-        );
-        // Behind a savepoint, so the refusal leaves the rest of the
-        // publishing transaction — and the pin it legitimately carries — to
-        // commit.
-        await client.query('SAVEPOINT late_pin');
-        await expect(
-          client.query(
-            ...insertSql(
-              'asset_references',
-              referenceRow(late, {
-                referrer_kind: 'consent_document',
-                referrer_id: id,
-              }),
-            ),
-          ),
-        ).rejects.toThrow(
-          'an asset reference cannot be added to a published consent_document',
-        );
-        await client.query('ROLLBACK TO SAVEPOINT late_pin');
-        return id;
-      });
-
-      const pinned = await pool.query<{ n: number }>(
-        `SELECT count(*)::int AS n FROM asset_references
-         WHERE team_id = $1 AND referrer_kind = 'consent_document'
-           AND referrer_id = $2`,
-        [TEAM_A, documentId],
-      );
-      expect(pinned.rows[0]).toEqual({ n: 1 });
-    });
-
-    it.each(PUBLISHED_KINDS)(
-      'refuses a %s pin that names no such referrer',
-      async (referrerKind) => {
-        // Such a pin could never be retracted either, and admitting it would
-        // let a pin be written before the version it claims to belong to.
-        const hash = await newAsset();
-
-        await expect(
-          insert(
-            'asset_references',
-            referenceRow(hash, {
-              referrer_kind: referrerKind,
-              referrer_id: randomUUID(),
-            }),
-          ),
-        ).rejects.toThrow(
-          `an asset reference must name a ${referrerKind} of its own team`,
-        );
-      },
-    );
-
-    it('lets a draft consent document gain a pin at any time', async () => {
-      // A draft is still being written, and its pins are not yet frozen; the
-      // window closes when the document publishes.
-      const hash = await newAsset();
-      const documentId = await inTransaction((client) =>
-        createReferrer(client, 'consent_document', { published: false }),
-      );
-
-      await expect(
-        insert(
-          'asset_references',
-          referenceRow(hash, {
-            referrer_kind: 'consent_document',
-            referrer_id: documentId,
-          }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
-    });
-
-    it.each(['section', 'message_template'])(
-      'leaves a %s pin free to be written at any time',
-      async (referrerKind) => {
-        // Neither kind's pins are frozen, so there is no frozen set to
-        // protect and nothing for the insert guard to prove.
-        const hash = await newAsset();
-
-        await expect(
-          insert(
-            'asset_references',
-            referenceRow(hash, { referrer_kind: referrerKind }),
-          ),
-        ).resolves.toMatchObject({ rowCount: 1 });
-      },
-    );
-  });
-
-  describe('garbage-collection semantics', () => {
-    it('makes a pinned asset structurally undeletable', async () => {
-      const hash = await newAsset();
-      const pin = await newReference(hash);
-
-      await expect(
-        pool.query(`DELETE FROM assets WHERE team_id = $1 AND hash = $2`, [
+        const visible = yield* tenantRows(
           TEAM_A,
-          hash,
-        ]),
-      ).rejects.toMatchObject({
-        code: '23503',
-        constraint: 'asset_references_asset_fk',
-      });
+          `SELECT hash FROM assets WHERE hash = ANY($1::text[])`,
+          [[mine, theirs]],
+        );
+        expect(visible).toEqual([{ hash: mine }]);
 
-      // The sweep's own order: retract the last pin, then delete the row.
-      await pool.query(
-        `DELETE FROM asset_references
-         WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
-           AND referrer_id = $4`,
-        [TEAM_A, hash, pin.referrer_kind, pin.referrer_id],
-      );
-      const deleted = await pool.query(
-        `DELETE FROM assets WHERE team_id = $1 AND hash = $2`,
-        [TEAM_A, hash],
-      );
-      expect(deleted.rowCount).toBe(1);
-    });
-
-    it('marks only the assets no surviving pin references', async () => {
-      const pinned = await newAsset();
-      const orphan = await newAsset();
-      await newReference(pinned);
-
-      // The mark phase, as the protocol store's sweep writes it
-      // (src/jobs/handlers/protocol-store-gc.ts).
-      const marked = await pool.query<{ hash: string }>(
-        `UPDATE assets a SET unreferenced_at = clock_timestamp()
-         WHERE a.team_id = $1
-           AND a.unreferenced_at IS NULL
-           AND NOT EXISTS (
-             SELECT 1 FROM asset_references r
-             WHERE r.team_id = a.team_id AND r.asset_hash = a.hash
-           )
-           AND a.hash = ANY($2::text[])
-         RETURNING a.hash`,
-        [TEAM_A, [pinned, orphan]],
-      );
-      expect(marked.rows.map((row) => row.hash)).toEqual([orphan]);
-    });
-  });
-
-  it('scopes reads and writes to the team that owns them', async () => {
-    const mine = await newAsset();
-    const theirs = await newAsset({ team_id: TEAM_B });
-
-    const visible = await tenantA.query(
-      `SELECT hash FROM assets WHERE hash = ANY($1::text[])`,
-      [[mine, theirs]],
+        const refused = yield* refusalOf(
+          tenantRows(
+            TEAM_A,
+            `INSERT INTO assets (team_id, hash, media_type, media_class, byte_size,
+                                 original_filename, origin)
+             VALUES ($1, $2, 'image/png', 'image', 1, 'x.png', 'upload')`,
+            [TEAM_B, hex64()],
+          ),
+        );
+        expect(refused.state).toBe('42501');
+      }),
     );
-    expect(visible.rows).toEqual([{ hash: mine }]);
-
-    await expect(
-      tenantA.query(
-        `INSERT INTO assets (team_id, hash, media_type, media_class, byte_size,
-                             original_filename, origin)
-         VALUES ($1, $2, 'image/png', 'image', 1, 'x.png', 'upload')`,
-        [TEAM_B, hex64()],
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
   });
 });

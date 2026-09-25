@@ -4,36 +4,66 @@
 import { randomUUID } from 'node:crypto';
 
 import { getTableName } from 'drizzle-orm';
+import { Cause, Effect, Predicate } from 'effect';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TEAM_GUC, TENANT_ROLES } from '../rls.ts';
 import { SYNC_TABLES } from '../schema.ts';
-import { type SyncServer } from '../server.ts';
-import { createTenantDb, type TenantDb } from '../tenant.ts';
+import { Transaction } from '../tenant.ts';
 import {
   TEST_TEAM_ID,
   dbAvailable,
   makeDraft,
   makeServer,
-  makeTestSyncServer,
+  makeSyncFacade,
+  type RunTenant,
+  type SyncFacade,
 } from './helpers.ts';
 
 const OTHER_TEAM_ID = 'team-other';
+
+/** The SQLSTATE under a rejection, read through drizzle's and Effect's wrapping. */
+function sqlState(error: unknown): string | undefined {
+  let current: unknown = error;
+  for (let depth = 0; depth < 32; depth += 1) {
+    if (!Predicate.isObject(current)) return undefined;
+    if (Cause.isCause(current)) {
+      current = Cause.squash(current);
+      continue;
+    }
+    if ('code' in current && Predicate.isString(current.code)) {
+      return current.code;
+    }
+    if (!('cause' in current)) return undefined;
+    current = current.cause;
+  }
+  return undefined;
+}
+
+const rejectionOf = (promise: Promise<unknown>) =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
 
 describe.skipIf(!dbAvailable)('row-level security', () => {
   let db: Pool;
   let app: Pool;
   let maintenance: Pool;
   let dispose: () => Promise<void>;
-  let tenantDb: TenantDb;
+  let run: RunTenant;
 
   beforeAll(async () => {
-    let server: SyncServer;
-    ({ db, app, maintenance, tenantDb, server, dispose } =
+    let server: SyncFacade;
+    ({ db, app, maintenance, run, server, dispose } =
       await makeServer('sync_rls'));
     await makeDraft(server);
-    await makeDraft(makeTestSyncServer(createTenantDb(app, OTHER_TEAM_ID)));
+    await makeDraft(
+      makeSyncFacade((body, options) =>
+        run(body, { ...options, teamId: OTHER_TEAM_ID }),
+      ),
+    );
   });
   afterAll(async () => {
     await dispose();
@@ -73,16 +103,22 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
   });
 
   it('shows a team only its own rows, even to an unfiltered statement', async () => {
-    const inTransaction = await tenantDb.transaction((client) =>
-      client.query(`SELECT DISTINCT team_id FROM sections`),
+    // Every statement now runs inside a `run` transaction, so the old
+    // transaction and single-query readings are one mechanism: a statement
+    // sharing a transaction with another, and one alone in its own.
+    const inTransaction = await run(
+      Effect.gen(function* () {
+        const { sql } = yield* Transaction;
+        yield* sql`SELECT 1`;
+        return yield* sql`SELECT DISTINCT team_id FROM sections`;
+      }),
     );
-    expect(inTransaction.rows).toEqual([{ team_id: TEST_TEAM_ID }]);
+    expect(inTransaction).toEqual([{ team_id: TEST_TEAM_ID }]);
 
-    // query() is a transaction too, so it carries the same context.
-    const viaQuery = await tenantDb.query(
-      `SELECT DISTINCT team_id FROM drafts`,
+    const viaQuery = await run(
+      Transaction.use(({ sql }) => sql`SELECT DISTINCT team_id FROM drafts`),
     );
-    expect(viaQuery.rows).toEqual([{ team_id: TEST_TEAM_ID }]);
+    expect(viaQuery).toEqual([{ team_id: TEST_TEAM_ID }]);
 
     const superuser = await db.query(
       `SELECT DISTINCT team_id FROM sections ORDER BY team_id`,
@@ -122,20 +158,30 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
   });
 
   it('refuses writes that would land in another team', async () => {
-    await expect(
-      tenantDb.query(
-        `INSERT INTO drafts (id, team_id, head_manifest_hash) VALUES ($1, $2, 'x')`,
-        [randomUUID(), OTHER_TEAM_ID],
+    const inserted = await rejectionOf(
+      run(
+        Transaction.use(
+          ({ sql }) =>
+            sql`INSERT INTO drafts (id, team_id, head_manifest_hash) VALUES (${randomUUID()}, ${OTHER_TEAM_ID}, 'x')`,
+        ),
       ),
-    ).rejects.toMatchObject({ code: '42501' });
+    );
+    expect(sqlState(inserted)).toBe('42501');
 
-    await expect(
-      tenantDb.query(`UPDATE drafts SET team_id = $1`, [OTHER_TEAM_ID]),
-    ).rejects.toMatchObject({ code: '42501' });
+    const updated = await rejectionOf(
+      run(
+        Transaction.use(
+          ({ sql }) => sql`UPDATE drafts SET team_id = ${OTHER_TEAM_ID}`,
+        ),
+      ),
+    );
+    expect(sqlState(updated)).toBe('42501');
 
     // Rows outside the team are invisible to a delete, not deleted.
-    const deleted = await tenantDb.query(`DELETE FROM leases`);
-    expect(deleted.rowCount).toBe(0);
+    const deleted = await run(
+      Transaction.use(({ sql }) => sql`DELETE FROM leases`.raw),
+    );
+    expect(deleted).toMatchObject({ rowCount: 0 });
     const survivors = await db.query(`SELECT count(*)::int AS n FROM drafts`);
     expect(survivors.rows).toEqual([{ n: 2 }]);
   });

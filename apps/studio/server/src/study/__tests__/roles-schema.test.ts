@@ -9,250 +9,315 @@
 // later has to update it rather than silently subsume it.
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
+import { layer } from '@effect/vitest';
+import { Effect, Layer } from 'effect';
+import { describe, expect } from 'vitest';
 
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+  ownerAffected,
+  ownerRows,
+  refusalOf,
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+  ownerInsert,
+  tenantRows,
+} from '../../__tests__/support/database.ts';
 
-const db = await reachableDb();
-
-const TEAM_A = 'team-a';
-const TEAM_B = 'team-b';
+const TEAMS = ['team-a', 'team-b'] as const;
+type Team = (typeof TEAMS)[number];
+const TEAM_A: Team = 'team-a';
+const TEAM_B: Team = 'team-b';
 
 type Row = Record<string, unknown>;
 
-describe.skipIf(!db)('study role grants schema', () => {
-  let pool: pg.Pool;
-  let app: pg.Pool;
-  let dispose: () => Promise<void>;
-  let tenantA: TenantDb;
-  const studyOf: Record<string, string> = {};
+/**
+ * One rejection case: the label the test title reads, the row override that
+ * provokes the rejection, and the constraint Postgres must name.
+ *
+ * A tuple rather than an object because the title is interpolated with `%s`,
+ * which prints the label whole — a `$property` substitution is truncated at
+ * forty characters.
+ */
+type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
-  // The connecting login is the development superuser, so it bypasses the
-  // row-level security policies but not the triggers: exactly the fixture tool
-  // these cases want. Role-sensitive probes use the `app` pool instead.
-  const insert = (table: string, row: Row) => {
-    const columns = Object.keys(row);
-    return pool.query(
-      `INSERT INTO ${table} (${columns.map((name) => `"${name}"`).join(', ')})
-       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
-      Object.values(row),
-    );
-  };
+const newStudy = Effect.fnUntraced(function* (teamId: string = TEAM_A) {
+  const id = randomUUID();
+  yield* ownerInsert('studies', { id, team_id: teamId, name: 'A study' });
+  return id;
+});
 
-  async function newStudy(teamId = TEAM_A): Promise<string> {
-    const id = randomUUID();
-    await insert('studies', { id, team_id: teamId, name: 'A study' });
-    return id;
-  }
+const grantRow = (studyId: string, overrides: Row = {}): Row => ({
+  id: randomUUID(),
+  team_id: TEAM_A,
+  study_id: studyId,
+  user_id: `user-${randomUUID().slice(0, 8)}`,
+  role: 'manager',
+  granted_by_user_id: 'user-admin',
+  ...overrides,
+});
 
-  const grantRow = (studyId: string, overrides: Row = {}): Row => ({
-    id: randomUUID(),
-    team_id: TEAM_A,
-    study_id: studyId,
-    user_id: `user-${randomUUID().slice(0, 8)}`,
-    role: 'manager',
-    granted_by_user_id: 'user-admin',
-    ...overrides,
-  });
+/** One study per team, named up front so the fixtures can reach both. */
+const studyOf: Record<Team, string> = {
+  'team-a': randomUUID(),
+  'team-b': randomUUID(),
+};
 
-  beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
-    await provisionScratchSchema(pool);
-    for (const teamId of [TEAM_A, TEAM_B]) {
-      await seedTeam(pool, teamId);
-      studyOf[teamId] = await newStudy(teamId);
-    }
-    tenantA = createTenantDb(app, TEAM_A);
-  });
-  afterAll(async () => {
-    await dispose();
-  });
+/**
+ * The suite's `beforeAll`, as a layer: it runs once when the scratch schema is
+ * built, which is what the node-postgres suite's `beforeAll` did.
+ */
+const seed = Effect.flatMap(TestDatabase, (harness) =>
+  harness.onOwner(
+    Effect.forEach(TEAMS, (teamId) =>
+      Effect.gen(function* () {
+        yield* harness.owner.sql`INSERT INTO teams (id, name, slug)
+                                 VALUES (${teamId}, ${teamId}, ${teamId})
+                                 ON CONFLICT (id) DO NOTHING`;
+        yield* harness.owner.sql`INSERT INTO studies (id, team_id, name)
+                                 VALUES (${studyOf[teamId]}, ${teamId}, 'A study')`;
+      }),
+    ),
+  ),
+);
 
-  it('masks contact details until PII access is granted explicitly', async () => {
-    const studyId = await newStudy();
-    const row = grantRow(studyId);
-    await insert('study_role_grants', row);
+const SeededDatabaseLive = Layer.effectDiscard(seed).pipe(
+  Layer.provideMerge(TestDatabaseLive),
+);
 
-    const stored = await pool.query<Row>(
-      `SELECT pii_access FROM study_role_grants WHERE id = $1`,
-      [row.id],
-    );
-    // The flag is orthogonal to the role and defaults closed: a Manager has no
-    // contact details until someone grants them separately.
-    expect(stored.rows[0]).toEqual({ pii_access: false });
-  });
+describe.skipIf(!testDb)('study role grants schema', () => {
+  layer(SeededDatabaseLive, { excludeTestServices: true })(
+    'over a scratch schema',
+    (it) => {
+      it.effect(
+        'masks contact details until PII access is granted explicitly',
+        () =>
+          Effect.gen(function* () {
+            const studyId = yield* newStudy();
+            const row = grantRow(studyId);
+            yield* ownerInsert('study_role_grants', row);
 
-  it.each(['manager', 'protocol_designer', 'coordinator', 'data_viewer'])(
-    'admits the %s role',
-    async (role) => {
-      const studyId = await newStudy();
-      await expect(
-        insert('study_role_grants', grantRow(studyId, { role })),
-      ).resolves.toMatchObject({ rowCount: 1 });
+            const stored = yield* ownerRows<{ pii_access: boolean }>(
+              `SELECT pii_access FROM study_role_grants WHERE id = $1`,
+              [row.id],
+            );
+            // The flag is orthogonal to the role and defaults closed: a Manager
+            // has no contact details until someone grants them separately.
+            expect(stored[0]).toEqual({ pii_access: false });
+          }),
+      );
+
+      it.effect.each([
+        'manager',
+        'protocol_designer',
+        'coordinator',
+        'data_viewer',
+      ])('admits the %s role', (role) =>
+        Effect.gen(function* () {
+          const studyId = yield* newStudy();
+          expect(
+            yield* ownerInsert(
+              'study_role_grants',
+              grantRow(studyId, { role }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect.each<CheckCase>([
+        ['an unknown role', { role: 'owner' }, 'study_role_grants_role_check'],
+        [
+          'a team role borrowed from team_members',
+          { role: 'admin' },
+          'study_role_grants_role_check',
+        ],
+        [
+          'an empty user',
+          { user_id: '' },
+          'study_role_grants_identifier_lengths_check',
+        ],
+        [
+          'a user past 255 characters',
+          { user_id: 'u'.repeat(256) },
+          'study_role_grants_identifier_lengths_check',
+        ],
+        [
+          'an empty granting user',
+          { granted_by_user_id: '' },
+          'study_role_grants_identifier_lengths_check',
+        ],
+        [
+          'a granting user past 255 characters',
+          { granted_by_user_id: 'u'.repeat(256) },
+          'study_role_grants_identifier_lengths_check',
+        ],
+      ])('rejects %s', ([, overrides, constraint]) =>
+        Effect.gen(function* () {
+          const studyId = yield* newStudy();
+          expect(
+            (yield* refusalOf(
+              ownerInsert('study_role_grants', grantRow(studyId, overrides)),
+            )).constraint,
+          ).toBe(constraint);
+        }),
+      );
+
+      it.effect('holds one live grant per user per study', () =>
+        Effect.gen(function* () {
+          const studyId = yield* newStudy();
+          const otherStudyId = yield* newStudy();
+          const userId = 'user-researcher';
+          yield* ownerInsert(
+            'study_role_grants',
+            grantRow(studyId, { user_id: userId }),
+          );
+
+          expect(
+            (yield* refusalOf(
+              ownerInsert(
+                'study_role_grants',
+                grantRow(studyId, { user_id: userId, role: 'coordinator' }),
+              ),
+            )).constraint,
+          ).toBe('study_role_grants_study_id_user_id_unique');
+
+          // The same person may hold a different role on a different study.
+          expect(
+            yield* ownerInsert(
+              'study_role_grants',
+              grantRow(otherStudyId, { user_id: userId, role: 'data_viewer' }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect('refuses a grant whose team disagrees with its study', () =>
+        Effect.gen(function* () {
+          const studyId = yield* newStudy(TEAM_A);
+          expect(
+            yield* refusalOf(
+              ownerInsert(
+                'study_role_grants',
+                grantRow(studyId, { team_id: TEAM_B }),
+              ),
+            ),
+          ).toMatchObject({
+            state: '23503',
+            constraint: 'study_role_grants_study_fk',
+          });
+        }),
+      );
+
+      it.effect('refuses a grant over a study that does not exist', () =>
+        Effect.gen(function* () {
+          expect(
+            yield* refusalOf(
+              ownerInsert('study_role_grants', grantRow(randomUUID())),
+            ),
+          ).toMatchObject({
+            state: '23503',
+            constraint: 'study_role_grants_study_fk',
+          });
+        }),
+      );
+
+      it.effect('stops one team granting itself a role over another team', () =>
+        Effect.gen(function* () {
+          // Writing a row carrying the other team's id is refused by the
+          // policy...
+          expect(
+            (yield* refusalOf(
+              tenantRows(
+                TEAM_A,
+                `INSERT INTO study_role_grants
+                   (id, team_id, study_id, user_id, role, granted_by_user_id)
+                 VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
+                [randomUUID(), TEAM_B, studyOf[TEAM_B]],
+              ),
+            )).state,
+          ).toBe('42501');
+
+          // ...and claiming the other team's study under this team's id is
+          // refused by the composite foreign key, so neither half of the pair
+          // is a way in.
+          expect(
+            yield* refusalOf(
+              tenantRows(
+                TEAM_A,
+                `INSERT INTO study_role_grants
+                   (id, team_id, study_id, user_id, role, granted_by_user_id)
+                 VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
+                [randomUUID(), TEAM_A, studyOf[TEAM_B]],
+              ),
+            ),
+          ).toMatchObject({
+            state: '23503',
+            constraint: 'study_role_grants_study_fk',
+          });
+
+          const leaked = yield* ownerRows<{ n: number }>(
+            `SELECT count(*)::int AS n FROM study_role_grants WHERE team_id = $1`,
+            [TEAM_B],
+          );
+          expect(leaked[0]).toEqual({ n: 0 });
+        }),
+      );
+
+      it.effect('shows a team only its own grants', () =>
+        Effect.gen(function* () {
+          const grantId = randomUUID();
+          yield* ownerInsert('study_role_grants', {
+            id: grantId,
+            team_id: TEAM_B,
+            study_id: studyOf[TEAM_B],
+            user_id: 'user-elsewhere',
+            role: 'manager',
+            granted_by_user_id: 'user-admin',
+          });
+
+          const visible = yield* tenantRows<{ id: string }>(
+            TEAM_A,
+            `SELECT id FROM study_role_grants WHERE id = $1`,
+            [grantId],
+          );
+          expect([...visible]).toEqual([]);
+
+          // The positive control: the login that no policy binds does see it.
+          const login = yield* ownerRows<{ id: string }>(
+            `SELECT id FROM study_role_grants WHERE id = $1`,
+            [grantId],
+          );
+          expect([...login]).toEqual([{ id: grantId }]);
+        }),
+      );
+
+      it.effect(
+        'keeps a grant mutable and removable: the audit log is the history',
+        () =>
+          Effect.gen(function* () {
+            const studyId = yield* newStudy();
+            const row = grantRow(studyId);
+            yield* ownerInsert('study_role_grants', row);
+
+            // Changing someone's role is an UPDATE, and PII access is granted
+            // on top of an existing role rather than by reissuing the grant.
+            expect(
+              yield* ownerAffected(
+                `UPDATE study_role_grants
+                 SET role = 'coordinator', pii_access = true, updated_at = now()
+                 WHERE id = $1`,
+                [row.id],
+              ),
+            ).toBe(1);
+            // Removing them is a DELETE: there is no revocation tombstone.
+            expect(
+              yield* ownerAffected(
+                `DELETE FROM study_role_grants WHERE id = $1`,
+                [row.id],
+              ),
+            ).toBe(1);
+          }),
+      );
     },
   );
-
-  it.each([
-    ['an unknown role', { role: 'owner' }, 'study_role_grants_role_check'],
-    [
-      'a team role borrowed from team_members',
-      { role: 'admin' },
-      'study_role_grants_role_check',
-    ],
-    [
-      'an empty user',
-      { user_id: '' },
-      'study_role_grants_identifier_lengths_check',
-    ],
-    [
-      'a user past 255 characters',
-      { user_id: 'u'.repeat(256) },
-      'study_role_grants_identifier_lengths_check',
-    ],
-    [
-      'an empty granting user',
-      { granted_by_user_id: '' },
-      'study_role_grants_identifier_lengths_check',
-    ],
-    [
-      'a granting user past 255 characters',
-      { granted_by_user_id: 'u'.repeat(256) },
-      'study_role_grants_identifier_lengths_check',
-    ],
-  ])('rejects %s', async (_label, overrides, constraint) => {
-    const studyId = await newStudy();
-    await expect(
-      insert('study_role_grants', grantRow(studyId, overrides)),
-    ).rejects.toMatchObject({ constraint });
-  });
-
-  it('holds one live grant per user per study', async () => {
-    const studyId = await newStudy();
-    const otherStudyId = await newStudy();
-    const userId = 'user-researcher';
-    await insert('study_role_grants', grantRow(studyId, { user_id: userId }));
-
-    await expect(
-      insert(
-        'study_role_grants',
-        grantRow(studyId, { user_id: userId, role: 'coordinator' }),
-      ),
-    ).rejects.toMatchObject({
-      constraint: 'study_role_grants_study_id_user_id_unique',
-    });
-
-    // The same person may hold a different role on a different study.
-    await expect(
-      insert(
-        'study_role_grants',
-        grantRow(otherStudyId, { user_id: userId, role: 'data_viewer' }),
-      ),
-    ).resolves.toMatchObject({ rowCount: 1 });
-  });
-
-  it('refuses a grant whose team disagrees with its study', async () => {
-    const studyId = await newStudy(TEAM_A);
-    await expect(
-      insert('study_role_grants', grantRow(studyId, { team_id: TEAM_B })),
-    ).rejects.toMatchObject({
-      code: '23503',
-      constraint: 'study_role_grants_study_fk',
-    });
-  });
-
-  it('refuses a grant over a study that does not exist', async () => {
-    await expect(
-      insert('study_role_grants', grantRow(randomUUID())),
-    ).rejects.toMatchObject({
-      code: '23503',
-      constraint: 'study_role_grants_study_fk',
-    });
-  });
-
-  it('stops one team granting itself a role over another team', async () => {
-    // Writing a row carrying the other team's id is refused by the policy...
-    await expect(
-      tenantA.query(
-        `INSERT INTO study_role_grants
-           (id, team_id, study_id, user_id, role, granted_by_user_id)
-         VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
-        [randomUUID(), TEAM_B, studyOf[TEAM_B]],
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-
-    // ...and claiming the other team's study under this team's id is refused
-    // by the composite foreign key, so neither half of the pair is a way in.
-    await expect(
-      tenantA.query(
-        `INSERT INTO study_role_grants
-           (id, team_id, study_id, user_id, role, granted_by_user_id)
-         VALUES ($1, $2, $3, 'user-intruder', 'manager', 'user-admin')`,
-        [randomUUID(), TEAM_A, studyOf[TEAM_B]],
-      ),
-    ).rejects.toMatchObject({
-      code: '23503',
-      constraint: 'study_role_grants_study_fk',
-    });
-
-    const leaked = await pool.query(
-      `SELECT count(*)::int AS n FROM study_role_grants WHERE team_id = $1`,
-      [TEAM_B],
-    );
-    expect(leaked.rows[0]).toEqual({ n: 0 });
-  });
-
-  it('shows a team only its own grants', async () => {
-    const grantId = randomUUID();
-    await insert('study_role_grants', {
-      id: grantId,
-      team_id: TEAM_B,
-      study_id: studyOf[TEAM_B],
-      user_id: 'user-elsewhere',
-      role: 'manager',
-      granted_by_user_id: 'user-admin',
-    });
-
-    const visible = await tenantA.query(
-      `SELECT id FROM study_role_grants WHERE id = $1`,
-      [grantId],
-    );
-    expect(visible.rows).toEqual([]);
-
-    // The positive control: the login that no policy binds does see it.
-    const login = await pool.query(
-      `SELECT id FROM study_role_grants WHERE id = $1`,
-      [grantId],
-    );
-    expect(login.rows).toEqual([{ id: grantId }]);
-  });
-
-  it('keeps a grant mutable and removable: the audit log is the history', async () => {
-    const studyId = await newStudy();
-    const row = grantRow(studyId);
-    await insert('study_role_grants', row);
-
-    // Changing someone's role is an UPDATE, and PII access is granted on top
-    // of an existing role rather than by reissuing the grant.
-    await expect(
-      pool.query(
-        `UPDATE study_role_grants
-         SET role = 'coordinator', pii_access = true, updated_at = now()
-         WHERE id = $1`,
-        [row.id],
-      ),
-    ).resolves.toMatchObject({ rowCount: 1 });
-    // Removing them is a DELETE: there is no revocation tombstone.
-    await expect(
-      pool.query(`DELETE FROM study_role_grants WHERE id = $1`, [row.id]),
-    ).resolves.toMatchObject({ rowCount: 1 });
-  });
 });

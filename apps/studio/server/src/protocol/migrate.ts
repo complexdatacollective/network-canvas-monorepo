@@ -1,64 +1,110 @@
 import { randomUUID } from 'node:crypto';
 
+import { and, eq } from 'drizzle-orm';
+import { Effect, Schema } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
+
 import {
   CURRENT_SCHEMA_VERSION,
   migrateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
+import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import { sqlErrorsOnlyBeside } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
 import { stripAssetKeyValues, withPlaceholderAssetKeys } from './asset-keys.ts';
 import { insertDraftRows } from './draft-rows.ts';
+import { PROTOCOL_TABLES } from './schema.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 
+const { sections } = SYNC_TABLES;
+const { protocolDrafts, protocolVersions, protocols, versionSections } =
+  PROTOCOL_TABLES;
+
 /** @public */
-export class MigrationTargetError extends Error {}
+export class MigrationTargetError extends Schema.TaggedError<MigrationTargetError>()(
+  'MigrationTargetError',
+  { reason: Schema.String },
+) {
+  override get message(): string {
+    return this.reason;
+  }
+}
 
 // The version row is never touched, so as-fielded provenance and hashes
 // survive. The name is a migration dependency: v7 documents had no name field.
-export async function migrateStoredVersionToDraft(
-  db: TenantDb,
+export const migrateStoredVersionToDraft: (
+  teamId: string,
   params: { versionId: string; draftId?: string },
-): Promise<{
-  draftId: string;
-  protocolId: string;
-  fromSchemaVersion: number;
-  toSchemaVersion: number;
-}> {
+) => Effect.Effect<
+  {
+    draftId: string;
+    protocolId: string;
+    fromSchemaVersion: number;
+    toSchemaVersion: number;
+  },
+  MigrationTargetError | SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocol.store.migrateStoredVersionToDraft')(function* (
+  teamId: string,
+  params: { versionId: string; draftId?: string },
+) {
   const draftId = params.draftId ?? randomUUID();
-  const teamId = db.teamId;
+  const { tx } = yield* Transaction;
 
-  const version = await db.query(
-    `SELECT v.protocol_id, v.schema_version, p.name
-     FROM protocol_versions v
-     JOIN protocols p ON p.id = v.protocol_id AND p.team_id = v.team_id
-     WHERE v.id = $1 AND v.team_id = $2`,
-    [params.versionId, teamId],
-  );
-  const versionRow = version.rows[0] as
-    | { protocol_id: string; schema_version: number; name: string }
-    | undefined;
+  const version = yield* tx
+    .select({
+      protocolId: protocolVersions.protocolId,
+      schemaVersion: protocolVersions.schemaVersion,
+      name: protocols.name,
+    })
+    .from(protocolVersions)
+    .innerJoin(
+      protocols,
+      and(
+        eq(protocols.id, protocolVersions.protocolId),
+        eq(protocols.teamId, protocolVersions.teamId),
+      ),
+    )
+    .where(
+      and(
+        eq(protocolVersions.id, params.versionId),
+        eq(protocolVersions.teamId, teamId),
+      ),
+    );
+  const versionRow = version[0];
   if (versionRow === undefined) {
-    throw new MigrationTargetError(`no version ${params.versionId}`);
+    return yield* new MigrationTargetError({
+      reason: `no version ${params.versionId}`,
+    });
   }
 
-  const pins = await db.query(
-    `SELECT vs.section_id, s.doc
-     FROM version_sections vs
-     JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
-     WHERE vs.version_id = $1 AND vs.team_id = $2`,
-    [params.versionId, teamId],
-  );
-  const sections: Record<string, SectionDoc> = {};
-  for (const row of pins.rows as { section_id: string; doc: SectionDoc }[]) {
-    sections[row.section_id] = row.doc;
+  const pins = yield* tx
+    .select({ sectionId: versionSections.sectionId, doc: sections.doc })
+    .from(versionSections)
+    .innerJoin(
+      sections,
+      and(
+        eq(sections.teamId, versionSections.teamId),
+        eq(sections.hash, versionSections.sectionHash),
+      ),
+    )
+    .where(
+      and(
+        eq(versionSections.versionId, params.versionId),
+        eq(versionSections.teamId, teamId),
+      ),
+    );
+  const storedSections: Record<string, SectionDoc> = {};
+  for (const row of pins) {
+    storedSections[row.sectionId] = row.doc;
   }
 
-  const document = assembleProtocolSections(sections);
-  const settings = sections[sectionId({ kind: 'settings' })];
+  const document = assembleProtocolSections(storedSections);
+  const settings = storedSections[sectionId({ kind: 'settings' })];
   const name =
     typeof settings?.name === 'string' && settings.name !== ''
       ? settings.name
@@ -85,23 +131,28 @@ export async function migrateStoredVersionToDraft(
     migratedSections[assetsSectionId] = stripAssetKeyValues(migratedAssets).doc;
   }
 
-  await runNoAuditTenantTransaction(
-    db,
-    'protocol.migrateStoredVersionToDraft',
-    async (client) => {
-      await insertDraftRows(client, teamId, draftId, migratedSections);
-      await client.query(
-        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
-         VALUES ($1, $2, $3, $4)`,
-        [draftId, teamId, versionRow.protocol_id, params.versionId],
-      );
-    },
-  );
+  yield* insertDraftRows(teamId, draftId, migratedSections);
+  const draftRows = yield* tx
+    .insert(protocolDrafts)
+    .values({
+      draftId,
+      teamId,
+      protocolId: versionRow.protocolId,
+      basedOnVersionId: params.versionId,
+    })
+    // `.returning()`: without it the builder answers with the driver's result
+    // object, typed as a row array and not one, so this check would never fire.
+    .returning({ draftId: protocolDrafts.draftId });
+  if (draftRows.length === 0) {
+    return yield* Effect.die(
+      new Error(`protocol draft ${draftId} wrote no row`),
+    );
+  }
 
   return {
     draftId,
-    protocolId: versionRow.protocol_id,
-    fromSchemaVersion: versionRow.schema_version,
+    protocolId: versionRow.protocolId,
+    fromSchemaVersion: versionRow.schemaVersion,
     toSchemaVersion: CURRENT_SCHEMA_VERSION,
   };
-}
+}, sqlErrorsOnlyBeside);

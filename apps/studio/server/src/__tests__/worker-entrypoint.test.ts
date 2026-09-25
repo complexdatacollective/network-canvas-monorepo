@@ -10,7 +10,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
 
 import { applySchema } from '../../scripts/apply.ts';
-import { createJobClient } from '../jobs/client.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import {
   connectionRefused,
@@ -18,7 +17,11 @@ import {
   freePort,
   startEntrypoint,
 } from './support/entrypoint.ts';
-import { createScratchDatabase, reachableDb } from './support/postgres.ts';
+import {
+  createScratchDatabase,
+  enqueueAsApplication,
+  reachableDb,
+} from './support/postgres.ts';
 import { startSilentSmtp } from './support/smtp.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
@@ -400,9 +403,6 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       // mid-send must not abandon the handler and leave the row `active` until
       // its lease expires.
       const smtp = await startSilentSmtp();
-      // Enqueued the way the web process does: one statement inside a
-      // transaction of the caller's, on the database the child is working.
-      const jobs = createJobClient();
       const healthPort = await freePort();
       const worker = startWorker({
         DATABASE_URL: applied.db.url,
@@ -437,18 +437,13 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
         );
 
-        const client = await applied.pool.connect();
-        let jobId: string;
-        try {
-          await client.query('BEGIN');
-          jobId = await jobs.enqueue(client, 'sign-in-email', {
-            email: 'researcher@example.org',
-            url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
-          });
-          await client.query('COMMIT');
-        } finally {
-          client.release();
-        }
+        // Enqueued the way the web process does: `Jobs.enqueue` inside a
+        // transaction on the application client, on the database the child is
+        // working.
+        const jobId = await enqueueAsApplication(applied.db, 'sign-in-email', {
+          email: 'researcher@example.org',
+          url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+        });
 
         // `active` is the child holding the job: the handler is inside the send
         // and the connection to the silent transport is open.
@@ -544,7 +539,6 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         DATABASE_URL: applied.db.url,
         WORKER_HEALTH_PORT: String(healthPort),
       });
-      const jobs = createJobClient();
       const settledRow = async (
         jobId: string,
       ): Promise<{ state: string; outcome: string | null } | undefined> => {
@@ -562,15 +556,11 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
         );
 
-        const client = await applied.pool.connect();
-        let jobId: string;
-        try {
-          await client.query('BEGIN');
-          jobId = await jobs.enqueue(client, 'denied-attempts-summary', {});
-          await client.query('COMMIT');
-        } finally {
-          client.release();
-        }
+        const jobId = await enqueueAsApplication(
+          applied.db,
+          'denied-attempts-summary',
+          {},
+        );
 
         // The child's own outcome line, naming this job's id: the schedule
         // creates a job on this queue every minute, so the id is what says

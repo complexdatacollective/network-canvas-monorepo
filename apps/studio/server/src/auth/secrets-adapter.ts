@@ -4,7 +4,7 @@ import {
   type OAuthTokenColumn,
   type OAuthTokenIdentity,
   parseOAuthTokenKeyId,
-  type SecretsCipher,
+  type SecretsCipherApi,
 } from '../secrets/cipher.ts';
 
 // better-auth owns the `account` table and stores OAuth tokens in plain `text`
@@ -108,7 +108,7 @@ function touchesIdentity(update: unknown): boolean {
 function openResult(
   value: unknown,
   model: string,
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): void {
   if (Array.isArray(value)) {
     for (const item of value) openResult(item, model, cipher);
@@ -170,7 +170,7 @@ type IncrementOneArgs = Parameters<DBTransactionAdapter['incrementOne']>[0];
 function sealedCreateData<D extends object>(
   model: string,
   source: D,
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): D {
   if (model !== ACCOUNT_MODEL || !isRow(source)) return source;
   const sealed: D = { ...source };
@@ -186,7 +186,7 @@ function sealedCreateData<D extends object>(
 
 function wrapOperations(
   inner: DBTransactionAdapter,
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): Operations {
   /**
    * Both bulk paths fail closed for the same reason: a token is sealed under
@@ -340,7 +340,7 @@ function wrapOperations(
  */
 export function withSecretsAdapter(
   inner: DBAdapter,
-  cipher: SecretsCipher,
+  cipher: SecretsCipherApi,
 ): DBAdapter {
   return {
     ...inner,

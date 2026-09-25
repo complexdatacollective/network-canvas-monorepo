@@ -1,9 +1,14 @@
-import type pg from 'pg';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
-
+import { type Database } from '../db/client.ts';
+import {
+  type TeamAccess,
+  TenantScope,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
-import { type StudyDetailRow, StudyStore } from './store.ts';
+import { getStudy, type StudyDetailRow } from './store.ts';
 
 /** One team the caller belongs to, as the auth service reports it. */
 export type ActorMembership = {
@@ -11,11 +16,10 @@ export type ActorMembership = {
   role: string;
 };
 
+/** The team a study turned out to be in, as proof plus the row itself. */
 export type ResolvedStudy = {
-  teamId: string;
-  role: string;
-  tenantDb: TenantDb;
-  study: StudyDetailRow;
+  readonly access: TeamAccess;
+  readonly study: StudyDetailRow;
 };
 
 /**
@@ -32,43 +36,42 @@ export function seesEveryTeamStudy(role: string): boolean {
  * `requireStudy` (app-shell design §6.3): the tenant behind a `/study/$studyId`
  * URL, derived from the caller's own memberships rather than taken from the
  * browser. A cold direct navigation carries no team to send, and the rule
- * `AcceptTeamInvitationInputSchema` records applies — a tenant that cannot be
+ * `AcceptTeamInvitationInput` records applies — a tenant that cannot be
  * validated against a membership must not be trusted.
  *
  * The search space is exactly the caller's teams, so "no such study" and "a
  * study in a team you are not in" are the same answer here (null), and the
- * caller turns both into FORBIDDEN. Nothing about the study is read before a
- * `TenantDb` is pinned: each probe runs inside its team's own transaction,
- * under the row-level security policy and under #1257's visibility rule, so a
- * study a Member holds no grant on is invisible to this resolver too.
+ * caller turns both into `Forbidden`. Nothing about the study is read outside a
+ * tenant scope: each probe opens one on a `TeamAccess` minted from a membership
+ * the auth service just reported, so it runs under the row-level security
+ * policy and under #1257's visibility rule, and a study a Member holds no grant
+ * on is invisible to this resolver too.
  *
- * The probes run in the order the memberships arrive. §6.3 orders the
- * session's active team first so the common case is one probe; that needs the
- * active team on the principal, which this change does not add — and the cost
- * without it is one primary-key lookup per team the researcher belongs to.
+ * The probes run in the order the memberships arrive. §6.3 orders the session's
+ * active team first so the common case is one probe; that needs the active team
+ * on the principal, which this does not add — and the cost without it is one
+ * primary-key lookup per team the researcher belongs to.
  */
-export async function resolveStudy(
-  pool: pg.Pool,
-  input: {
-    studyId: string;
-    actorUserId: string;
-    memberships: readonly ActorMembership[];
-  },
-): Promise<ResolvedStudy | null> {
-  for (const membership of input.memberships) {
-    const tenantDb = createTenantDb(pool, membership.teamId);
-    const study = await new StudyStore(tenantDb).getStudy(input.studyId, {
-      actorUserId: input.actorUserId,
-      seesEveryStudy: seesEveryTeamStudy(membership.role),
-    });
-    if (study) {
-      return {
-        teamId: membership.teamId,
-        role: membership.role,
-        tenantDb,
-        study,
-      };
+export const resolveStudy: (input: {
+  readonly studyId: string;
+  readonly actorUserId: string;
+  readonly memberships: readonly ActorMembership[];
+}) => Effect.Effect<ResolvedStudy | null, SqlError.SqlError, Database> =
+  Effect.fn('study.tenancy.resolveStudy')(function* (input: {
+    readonly studyId: string;
+    readonly actorUserId: string;
+    readonly memberships: readonly ActorMembership[];
+  }) {
+    for (const membership of input.memberships) {
+      const access = unsafeMakeTeamAccess(membership.teamId, membership.role);
+      const study = yield* TenantScope.open(
+        access,
+        getStudy(input.studyId, {
+          actorUserId: input.actorUserId,
+          seesEveryStudy: seesEveryTeamStudy(membership.role),
+        }),
+      );
+      if (study !== null) return { access, study };
     }
-  }
-  return null;
-}
+    return null;
+  });

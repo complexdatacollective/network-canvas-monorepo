@@ -1,9 +1,9 @@
-import type pg from 'pg';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
-import { createMaintenancePool } from '../db/pool.ts';
-import type { StudioEnv } from '../env.ts';
-import { createSecretsCipher } from './cipher.ts';
-import { isKeyId, type Keyring } from './keyring.ts';
+import type { Transaction } from '../db/tenant.ts';
+import type { SecretsCipherApi } from './cipher.ts';
+import { isKeyId, type KeyringApi } from './keyring.ts';
 import { SECRET_STORES } from './stores.ts';
 
 // The refusal that stands beside the schema fingerprint check (#1900): a
@@ -11,6 +11,20 @@ import { SECRET_STORES } from './stores.ts';
 // stopped before it serves anything. Without it a half-rotated keyring, or a
 // database restored from a backup that does not match the keyring, comes up
 // looking healthy and fails one webhook delivery or one sign-in at a time.
+//
+// The check itself is the whole of this module. The *gate* — the layer that
+// refuses to build, and the print-and-exit wrapper the hand-run schema apply
+// calls — lives in src/secrets/services.ts beside the keyring and the cipher
+// it reads through, so there is one boot check rather than a service and a
+// function that drifted apart.
+//
+// Every statement here runs inside the caller's transaction, which must be a
+// MAINTENANCE one: the tenant tables force row-level security, so any other
+// role sees only the team its transaction named, and a check that saw one
+// team's rows would pass while another team's key was missing. The database is
+// reached only through `stores.ts`, whose spans each carry `sqlErrorsOnly`, so
+// nothing here can publish a drizzle wrapper with a sealed bind parameter in
+// its message.
 
 /** What every refusal from this check is, so one `catch` covers all three. */
 export class SecretKeyCheckError extends Error {}
@@ -74,15 +88,17 @@ export class SecretKeyMaterialError extends SecretKeyCheckError {
  * exactly as stored — including ids no keyring could hold, which
  * `assertSecretKeysProducible` counts rather than names.
  */
-export async function secretKeyIdsInUse(
-  client: pg.PoolClient,
-): Promise<string[]> {
+export const secretKeyIdsInUse: Effect.Effect<
+  string[],
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('secrets.boot.secretKeyIdsInUse')(function* () {
   const ids = new Set<string>();
   for (const store of SECRET_STORES) {
-    for (const id of await store.keyIdsInUse(client)) ids.add(id);
+    for (const id of yield* store.keyIdsInUse) ids.add(id);
   }
-  return [...ids].sort();
-}
+  return [...ids].toSorted();
+})();
 
 /**
  * Refuses a database this keyring cannot read, in the order the faults have to
@@ -93,36 +109,48 @@ export async function secretKeyIdsInUse(
  * statements at boot — and is the only one of the three that catches a keyring
  * whose entries are all named correctly.
  *
- * Takes a pool rather than a client so a caller does not have to know that the
- * check reads several tables in one session; it must be a MAINTENANCE pool,
- * which is the only identity that sees every team's rows.
+ * The keyring and the cipher are both taken, and there is no default for
+ * either: they must be the process's own pair (src/secrets/services.ts), and a
+ * check that read through some other key material would answer a question
+ * nobody asked. A cipher carries no way back to the keyring that made it — the
+ * `has` the missing-id branch needs is the keyring's — so both are passed, by
+ * the one caller that holds both as services.
+ *
+ * Reads several tables in ONE transaction, which the caller opens: the whole
+ * check is a single reading of the database, and a fault that appeared between
+ * two of its statements would otherwise be reported as something it is not.
  */
-export async function assertSecretKeysProducible(
-  pool: pg.Pool,
-  keyring: Keyring,
-): Promise<void> {
-  const client = await pool.connect();
-  try {
+export const assertSecretKeysProducible: (
+  keyring: KeyringApi,
+  cipher: SecretsCipherApi,
+) => Effect.Effect<void, SecretKeyCheckError | SqlError.SqlError, Transaction> =
+  Effect.fn('secrets.boot.assertSecretKeysProducible')(function* (
+    keyring: KeyringApi,
+    cipher: SecretsCipherApi,
+  ) {
     const malformed: { store: string; count: number }[] = [];
     const inUse = new Set<string>();
     for (const store of SECRET_STORES) {
       let count = 0;
-      for (const id of await store.keyIdsInUse(client)) {
+      for (const id of yield* store.keyIdsInUse) {
         if (isKeyId(id)) inUse.add(id);
         else count += 1;
       }
       if (count > 0) malformed.push({ store: store.name, count });
     }
-    if (malformed.length > 0) throw new SecretKeyIdMalformedError(malformed);
+    if (malformed.length > 0) {
+      return yield* Effect.fail(new SecretKeyIdMalformedError(malformed));
+    }
 
-    const ids = [...inUse].sort();
+    const ids = [...inUse].toSorted();
     const missing = ids.filter((id) => !keyring.has(id));
-    if (missing.length > 0) throw new SecretKeyMissingError(missing);
+    if (missing.length > 0) {
+      return yield* Effect.fail(new SecretKeyMissingError(missing));
+    }
 
-    const cipher = createSecretsCipher(keyring);
     for (const store of SECRET_STORES) {
       for (const id of ids) {
-        const open = await store.probe(client, id);
+        const open = yield* store.probe(id);
         if (open === null) continue;
         try {
           open(cipher);
@@ -130,65 +158,8 @@ export async function assertSecretKeysProducible(
           // Deliberately not chained: the cipher's message says only that a
           // value did not open, and what an operator has to act on is which
           // key id is wrong.
-          throw new SecretKeyMaterialError(id);
+          return yield* Effect.fail(new SecretKeyMaterialError(id));
         }
       }
     }
-  } finally {
-    client.release();
-  }
-}
-
-/**
- * What both entrypoints call once the schema is current — and what
- * `apply-schema` calls once it has applied one — in every lane, development
- * included: prints and exits rather than throwing, because there is nothing
- * above a boot to catch it and a stack trace would bury the one sentence that
- * says what to do.
- *
- * Resolves only when every stored key id is well formed, is in the keyring,
- * and opens a row that was sealed under it.
- *
- * @param pool a maintenance pool the caller already owns (the worker's). The
- * web process runs as the application role, which row-level security shows
- * only one team at a time, so with none given this opens a maintenance pool
- * for the check and ends it again — the check is a handful of statements at
- * boot, and holding a second pool for the life of the process would be a
- * cross-team identity sitting in the process that serves requests.
- */
-export async function verifySecretKeysOrExit(
-  env: StudioEnv,
-  pool?: pg.Pool,
-): Promise<void> {
-  const { db, secrets } = env;
-  if (!db) return;
-
-  const refuse = (message: string): never => {
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.error(message);
-    process.exit(1);
-  };
-
-  if (!secrets) {
-    // `resolve` already refuses a database with no keyring, so this is the
-    // belt to that braces: a lane that ever reached here without one would be
-    // about to write secrets it could not read back.
-    refuse(
-      'No secrets keyring is configured; set STUDIO_SECRETS_KEY_FILE or STUDIO_SECRETS_KEY.',
-    );
-    return;
-  }
-
-  const owned = pool ?? createMaintenancePool(db);
-  try {
-    await assertSecretKeysProducible(owned, secrets);
-  } catch (error) {
-    refuse(
-      error instanceof SecretKeyCheckError
-        ? error.message
-        : `Could not read the stored secret key ids: ${String(error)}`,
-    );
-  } finally {
-    if (!pool) await owned.end();
-  }
-}
+  });

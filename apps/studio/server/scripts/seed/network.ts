@@ -10,24 +10,26 @@
 // `refreshProjections` is injected rather than imported. ADR #1246 makes
 // `src/network/` the only directory permitted to touch the rollup tables, and
 // `network/__tests__/boundary.test.ts` allows exactly one bootstrap importer:
-// `src/db/seed.ts`. Handing the function down keeps that allowlist honest.
+// `scripts/seed/seed.ts`. Handing the function down keeps that allowlist honest.
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
 import type { NcNetwork } from '@codaco/shared-consts';
 import { canonicalize } from '@codaco/studio-sync/apply';
 
+import type { Transaction } from '../../src/db/tenant.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededVersion } from './protocols.ts';
 import { seedUuid, sha256Hex, shiftDays, shiftMinutes } from './rng.ts';
 import type { SeedStudy } from './studies.ts';
 import type { SeedTeam } from './teams.ts';
 
-export type RefreshProjections = (
-  client: pg.ClientBase,
-  ids: { teamId: string; sessionIds: readonly string[] },
-) => Promise<void>;
+export type RefreshProjections = (ids: {
+  teamId: string;
+  sessionIds: readonly string[];
+}) => Effect.Effect<void, SqlError.SqlError, Transaction>;
 
 export type NetworkScale = { nodeCount: { min: number; max: number } };
 
@@ -155,14 +157,13 @@ export type SeededSession = {
  * `xmin` is the current transaction's for the entire run. The same property is
  * what lets nodes and edges be written for an already-completed session.
  */
-export async function seedSessionsAndNetworks(
-  client: pg.PoolClient,
+export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
   versionsById: Map<string, SeededVersion>,
   refreshProjections: RefreshProjections,
   scale: NetworkScale,
-): Promise<SeededSession[]> {
+) {
   const sessionRows: SeedRowValue[][] = [];
   const nodeRows: SeedRowValue[][] = [];
   const edgeRows: SeedRowValue[][] = [];
@@ -177,37 +178,27 @@ export async function seedSessionsAndNetworks(
   // One study's worth of rows at a time: at `large` scale a whole team's
   // networks are millions of rows, and holding them all as JavaScript arrays
   // before the first INSERT is what would exhaust the heap.
-  const flush = async (): Promise<void> => {
+  const flush = Effect.fnUntraced(function* () {
     if (pending.length === 0) return;
-    await insertRows(
-      client,
-      'interview_sessions',
-      SESSION_COLUMNS,
-      sessionRows,
-    );
+    yield* insertRows('interview_sessions', SESSION_COLUMNS, sessionRows);
     // Nodes before edges: `edges.from_node` and `edges.to_node` are foreign
     // keys into `nodes`.
-    await insertRows(client, 'nodes', NODE_COLUMNS, nodeRows);
-    await insertRows(client, 'edges', EDGE_COLUMNS, edgeRows);
-    await refreshProjections(client, {
+    yield* insertRows('nodes', NODE_COLUMNS, nodeRows);
+    yield* insertRows('edges', EDGE_COLUMNS, edgeRows);
+    yield* refreshProjections({
       teamId: team.id,
       sessionIds: pending.map((session) => session.id),
     });
     // After the flip to `completed`, and in the same transaction as it, which
     // is what `session_snapshots_insert_frozen` proves.
-    await insertRows(
-      client,
-      'session_snapshots',
-      SNAPSHOT_COLUMNS,
-      snapshotRows,
-    );
+    yield* insertRows('session_snapshots', SNAPSHOT_COLUMNS, snapshotRows);
     sessions.push(...pending);
     pending = [];
     sessionRows.length = 0;
     nodeRows.length = 0;
     edgeRows.length = 0;
     snapshotRows.length = 0;
-  };
+  });
 
   for (const study of studies) {
     for (const [waveIndex, wave] of study.waves.entries()) {
@@ -404,11 +395,11 @@ export async function seedSessionsAndNetworks(
         });
       }
     }
-    await flush();
+    yield* flush();
   }
 
   return sessions;
-}
+});
 
 /**
  * The first session per participant, for the consent records' back-link: a

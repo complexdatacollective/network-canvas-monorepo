@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
+import { Context, Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -24,12 +25,15 @@ import {
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { SyncServer } from '@codaco/studio-sync/server';
-import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { createStudio } from '../app.ts';
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import {
+  type TeamAccess,
+  TenantScope,
+  unsafeMakeTeamAccess,
+} from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
 import {
   createProtocolBuilderRuntime,
@@ -39,19 +43,21 @@ import {
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
-import { ProtocolStore } from '../protocol/store.ts';
+import { createProtocol, latestDraftId } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
+import type { StudioServices } from '../rpc/deps.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
-} from './support/postgres.ts';
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  type TestDatabaseRuntime,
+  testDb,
+  tenantRows,
+} from './support/database.ts';
 import { createRpcClient, type RpcTestClient } from './support/rpc.ts';
 import { testCipher, testKeyringEntry } from './support/secrets.ts';
-
-const db = await reachableDb();
 
 const TEAM_ID = 'protocol-builder-team';
 
@@ -155,13 +161,27 @@ function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
   throw new Error('the sample protocol has no stage with one variable prompt');
 }
 
-describe.skipIf(!db)('the protocol-builder host surface', () => {
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('the protocol-builder host surface', () => {
+  let database: TestDatabaseRuntime;
   let clients: Map<Researcher, ReturnType<typeof clientFor>>;
   let protocolId: string;
   let draftId: string;
-  /** The team's database, as the host's own sessions reach it. */
-  let tenantDb: TenantDb;
+  /**
+   * The Effect half of the suite: the router's handlers are promises, and
+   * everything under them is Effect, so the router is handed the context the
+   * program builds — exactly as `programs/serve.ts` does.
+   */
+  let services: Context.Context<StudioServices>;
+  let runEffect: <A, E>(
+    effect: Effect.Effect<A, E, StudioServices>,
+  ) => Promise<A>;
+  /** The team this suite acts in, as a proved access. */
+  const access: TeamAccess = unsafeMakeTeamAccess(TEAM_ID, 'owner');
+  /** Rows as the host's own sessions reach them: the app role, in this team. */
+  const teamRows = <A extends object = Record<string, unknown>>(
+    text: string,
+    params: ReadonlyArray<unknown> = [],
+  ) => database.run(tenantRows<A>(TEAM_ID, text, params));
   let reference: VariableReference;
   let unstrippable: VariableReference;
   /** A protocol whose researcher has given the participant no attributes. */
@@ -264,21 +284,26 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     Promise.resolve(revoked.has(userId) ? null : { role: 'owner' });
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    dispose = scratch.dispose;
-    await provisionScratchSchema(scratch.pool);
-    await seedTeam(scratch.pool, TEAM_ID);
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM_ID));
+    // The services carry the test keyring the router and the rpc plane below
+    // are built with, so everything that seals or opens a key agrees on it.
+    services = Context.add(database.services, SecretsCipher, testCipher());
+    runEffect = (effect) => Effect.runPromiseWith(services)(effect);
     for (const who of [ADA, GRACE]) {
-      await scratch.pool.query(
-        `INSERT INTO "user" (id, name, email, "emailVerified")
-         VALUES ($1, $2, $3, true)`,
-        [who.principal.userId, who.principal.name, who.principal.email],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [who.principal.userId, who.principal.name, who.principal.email],
+        ),
       );
-      await scratch.pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, 'owner')`,
-        [who.memberId, TEAM_ID, who.principal.userId],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'owner')`,
+          [who.memberId, TEAM_ID, who.principal.userId],
+        ),
       );
     }
 
@@ -290,17 +315,27 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     ) as CurrentProtocol;
     reference = strippableVariable(protocol);
     unstrippable = soleVariablePrompt(protocol);
-    tenantDb = createTenantDb(scratch.app, TEAM_ID);
-    const store = new ProtocolStore(tenantDb, testCipher());
-    const created = await store.createProtocol({ protocol });
+    const created = await runEffect(
+      TenantScope.open(
+        access,
+        createProtocol(TEAM_ID, testCipher(), { protocol }),
+      ),
+    );
     protocolId = created.protocolId;
     const { ego: _ego, ...codebook } = protocol.codebook;
     egolessProtocolId = (
-      await store.createProtocol({
-        protocol: { ...protocol, name: 'No ego yet', codebook },
-      })
+      await runEffect(
+        TenantScope.open(
+          access,
+          createProtocol(TEAM_ID, testCipher(), {
+            protocol: { ...protocol, name: 'No ego yet', codebook },
+          }),
+        ),
+      )
     ).protocolId;
-    const draft = await store.latestDraftId(protocolId);
+    const draft = await runEffect(
+      TenantScope.open(access, latestDraftId(TEAM_ID, protocolId)),
+    );
     if (draft === undefined) throw new Error('the new protocol has no draft');
     draftId = draft;
 
@@ -325,7 +360,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         // bootstrap's (#1909), and an unset one is "no installation to
         // report".
         readInstallation: () => Promise.resolve(null),
-        pool: scratch.app,
+        pool: database.appPool,
+        services,
         protocolBuilder: createProtocolBuilderRuntime(() => now),
         assetStore,
         cipher: testCipher(),
@@ -343,7 +379,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       },
       deployment: { mode: 'self-hosted', billing: false },
       readInstallation: () => Promise.resolve(null),
-      pool: scratch.app,
+      pool: database.appPool,
+      services,
       protocolBuilder: runtime,
       assetStore,
       cipher: testCipher(),
@@ -368,7 +405,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
             listMemberships: memberships,
             getMembership: membership,
           }),
-          pool: scratch.app,
+          pool: database.appPool,
+          services,
         },
       ),
     );
@@ -376,7 +414,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
   afterAll(async () => {
     await adaRpc.dispose();
-    await dispose?.();
+    await database?.dispose();
   });
 
   it('refuses a submit from a caller that does not hold the lock', async () => {
@@ -840,33 +878,38 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(entry).toEqual({ name: 'Sealed token', type: 'apikey' });
 
     // Exactly one sealed row, and it opens to what was staged.
-    const sealed = await tenantDb.query(
+    const sealed = await teamRows(
       `SELECT key_id FROM protocol_asset_keys
        WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
       [TEAM_ID, protocolId, resourceId],
     );
-    expect(sealed.rowCount).toBe(1);
+    expect(sealed).toHaveLength(1);
     await expect(
-      openAssetKey(tenantDb, testCipher(), {
-        teamId: TEAM_ID,
-        protocolId,
-        assetId: resourceId,
-      }),
+      runEffect(
+        TenantScope.open(
+          access,
+          openAssetKey(testCipher(), {
+            teamId: TEAM_ID,
+            protocolId,
+            assetId: resourceId,
+          }),
+        ),
+      ),
     ).resolves.toBe(SECRET);
 
     // No section row anywhere holds it — not the head manifest, not the
     // revision the promotion replaced, and not the event log a watcher
     // replays from.
-    const sections = await tenantDb.query(
+    const sections = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM sections`,
     );
-    for (const row of sections.rows as { doc: string }[]) {
+    for (const row of sections) {
       expect(row.doc).not.toContain(SECRET);
     }
-    const events = await tenantDb.query(
+    const events = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM protocol_events WHERE doc IS NOT NULL`,
     );
-    for (const row of events.rows as { doc: string }[]) {
+    for (const row of events) {
       expect(row.doc).not.toContain(SECRET);
     }
 
@@ -944,20 +987,25 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
 
     // The placeholder the shape check was given is never written.
-    const sections = await tenantDb.query(
+    const sections = await teamRows<{ doc: string }>(
       `SELECT doc::text AS doc FROM sections`,
     );
-    for (const row of sections.rows as { doc: string }[]) {
+    for (const row of sections) {
       expect(row.doc).not.toContain(SECRET);
       expect(row.doc).not.toContain(ASSET_KEY_PLACEHOLDER);
     }
     // And the key is still sealed and still opens under the same asset id.
     await expect(
-      openAssetKey(tenantDb, testCipher(), {
-        teamId: TEAM_ID,
-        protocolId,
-        assetId: resourceId,
-      }),
+      runEffect(
+        TenantScope.open(
+          access,
+          openAssetKey(testCipher(), {
+            teamId: TEAM_ID,
+            protocolId,
+            assetId: resourceId,
+          }),
+        ),
+      ),
     ).resolves.toBe(SECRET);
   });
 
@@ -2113,17 +2161,20 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     // Postgres briefly unreachable: the renewal is not refused, it is never
     // made. Put where the acquire above put the keeper's own sync server.
+    // The keeper holds a renewal callback rather than a sync server now — a
+    // sync operation requires an open transaction, and a timer has none to
+    // give — so the unreachable database is the callback rejecting, which is
+    // the same thing this case has always been about: a renewal that could
+    // not be MADE, told apart from one the storage answered.
     let attempts = 0;
-    const unreachable = new SyncServer(tenantDb, () => {
-      attempts += 1;
-      return Promise.reject(new Error('ECONNREFUSED'));
-    });
     runtime.leases.hold({
-      sync: unreachable,
+      renew: () => {
+        attempts += 1;
+        return Promise.reject(new Error('ECONNREFUSED'));
+      },
       draftId,
       sectionId,
       owner,
-      epoch: 1n,
     });
 
     await runtime.leases.renewDue();

@@ -15,12 +15,13 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER_SRC = resolve(HERE, '../..');
+const SERVER_SCRIPTS = resolve(SERVER_SRC, '../scripts');
 const REPO_ROOT = resolve(SERVER_SRC, '../../../..');
 
 /**
- * Every TypeScript file under the server's source tree, tests included: a test
- * outside `src/network/` reaching for these tables would breach the boundary
- * exactly as production code would.
+ * Every TypeScript file under the server's source and scripts trees, tests
+ * included: a test or a script outside `src/network/` reaching for these
+ * tables would breach the boundary exactly as production code would.
  */
 function typescriptFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -33,7 +34,8 @@ function typescriptFiles(root: string): string[] {
 }
 
 function importersOf(target: string): string[] {
-  return typescriptFiles(SERVER_SRC)
+  return [SERVER_SRC, SERVER_SCRIPTS]
+    .flatMap(typescriptFiles)
     .filter((file) => {
       const source = readFileSync(file, 'utf8');
       return [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].some(
@@ -47,12 +49,12 @@ function importersOf(target: string): string[] {
 }
 
 // The two documented bootstrap exceptions. `db/schema.ts` registers the
-// module's tables and sidecar in the assembled schema; `db/seed.ts` fills the
+// module's tables and sidecar in the assembled schema; `scripts/seed/seed.ts` fills the
 // tables with synthetic data before any command layer exists to do it. The
 // seed is tolerated rather than required: it may not import the module yet.
 const BOOTSTRAP_EXCEPTIONS = [
   'apps/studio/server/src/db/schema.ts',
-  'apps/studio/server/src/db/seed.ts',
+  'apps/studio/server/scripts/seed/seed.ts',
 ];
 
 describe('the network module boundary', () => {

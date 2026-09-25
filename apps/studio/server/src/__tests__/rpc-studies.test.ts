@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -15,19 +14,20 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
-  createScratchSchema,
-  provisionScratchSchema,
-  reachableDb,
-  seedTeam,
+  insertTeam,
+  openTestDatabase,
+  ownerAffected,
+  ownerRows,
+  type TestDatabaseRuntime,
+  testDb,
   uniqueTeamId,
-} from './support/postgres.ts';
+  maintenanceRows,
+} from './support/database.ts';
 import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-
-const db = await reachableDb();
 
 // The payloads are branded, so the ids are built through the contract's own
 // schemas rather than passed as bare strings.
@@ -67,11 +67,13 @@ const SECOND_ADMIN = researcher('second-admin', TEAM_ID, 'admin');
 const MEMBER = researcher('member', TEAM_ID, 'member');
 const OUTSIDER = researcher('outsider', OTHER_TEAM_ID, 'owner');
 
-describe.skipIf(!db)('the studies RPC', () => {
-  let pool: pg.Pool;
-  let appPool: pg.Pool;
-  let maintenance: pg.Pool;
-  let dispose: () => Promise<void>;
+describe.skipIf(!testDb)('the studies RPC', () => {
+  /**
+   * The scratch schema and the Effect data layer over it, which is what every
+   * `/rpc` handler runs its reads and writes on. Shared by every Studio rather
+   * than built per Studio: the clients underneath it are connection pools.
+   */
+  let database: TestDatabaseRuntime;
   let clients: Map<Researcher, RpcTestClient>;
 
   const asClient = (who: Researcher) => {
@@ -81,27 +83,25 @@ describe.skipIf(!db)('the studies RPC', () => {
   };
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createScratchSchema(db);
-    pool = scratch.pool;
-    appPool = scratch.app;
-    maintenance = scratch.maintenance;
-    dispose = scratch.dispose;
-    await provisionScratchSchema(pool);
-    await seedTeam(pool, TEAM_ID);
-    await seedTeam(pool, OTHER_TEAM_ID);
+    database = await openTestDatabase();
+    await database.run(insertTeam(TEAM_ID));
+    await database.run(insertTeam(OTHER_TEAM_ID));
 
     clients = new Map();
     for (const who of [ADMIN, SECOND_ADMIN, MEMBER, OUTSIDER]) {
-      await pool.query(
-        `INSERT INTO "user" (id, name, email, "emailVerified")
-         VALUES ($1, $2, $3, true)`,
-        [who.principal.userId, who.principal.name, who.principal.email],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [who.principal.userId, who.principal.name, who.principal.email],
+        ),
       );
-      await pool.query(
-        `INSERT INTO team_members (id, team_id, user_id, role)
-         VALUES ($1, $2, $3, $4)`,
-        [who.memberId, who.teamId, who.principal.userId, who.role],
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, $4)`,
+          [who.memberId, who.teamId, who.principal.userId, who.role],
+        ),
       );
       const auth = stubAuthService({
         getSession: () => Promise.resolve(who.principal),
@@ -112,20 +112,29 @@ describe.skipIf(!db)('the studies RPC', () => {
       });
       clients.set(
         who,
-        await createRpcClient(createStudio(readEnv(), { auth, pool: appPool })),
+        await createRpcClient(
+          createStudio(readEnv(), {
+            auth,
+            pool: database.appPool,
+            services: database.services,
+          }),
+        ),
       );
     }
   });
 
   afterAll(async () => {
     for (const client of clients.values()) await client.dispose();
-    await dispose();
+    await database.dispose();
   });
 
   /** Fixture rows for a tenant table: the maintenance role is the one that
    * may write across teams without a pinned tenant. */
+  const asMaintenance = (text: string, params: ReadonlyArray<unknown>) =>
+    database.run(maintenanceRows(text, params));
+
   const grantStudyRole = (studyId: string, who: Researcher, role: string) =>
-    maintenance.query(
+    asMaintenance(
       `INSERT INTO study_role_grants
          (id, team_id, study_id, user_id, role, granted_by_user_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -138,6 +147,11 @@ describe.skipIf(!db)('the studies RPC', () => {
         ADMIN.principal.userId,
       ],
     );
+
+  const ownerQuery = <A extends object = Record<string, unknown>>(
+    text: string,
+    params: ReadonlyArray<unknown>,
+  ) => database.run(ownerRows<A>(text, params));
 
   const createStudy = async (name: string) => {
     const input = {
@@ -161,12 +175,12 @@ describe.skipIf(!db)('the studies RPC', () => {
     const created = await createStudy('Audited study');
 
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT name, state, participation_mode, protocol_id
          FROM studies WHERE id = $1 AND team_id = $2`,
         [created.studyId, TEAM_ID],
       ),
-    ).toHaveProperty('rows', [
+    ).toEqual([
       {
         name: 'Audited study',
         state: 'draft',
@@ -177,21 +191,21 @@ describe.skipIf(!db)('the studies RPC', () => {
     // The protocol line exists and is editable: without it the study has
     // nothing for the editor to open.
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT pd.draft_id FROM protocols p
          JOIN protocol_drafts pd
            ON pd.protocol_id = p.id AND pd.team_id = p.team_id
          WHERE p.id = $1 AND p.team_id = $2`,
         [created.protocolId, TEAM_ID],
       ),
-    ).toHaveProperty('rows', [{ draft_id: created.draftId }]);
+    ).toEqual([{ draft_id: created.draftId }]);
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT user_id, role, pii_access, granted_by_user_id
          FROM study_role_grants WHERE study_id = $1`,
         [created.studyId],
       ),
-    ).toHaveProperty('rows', [
+    ).toEqual([
       {
         user_id: ADMIN.principal.userId,
         role: 'manager',
@@ -200,7 +214,7 @@ describe.skipIf(!db)('the studies RPC', () => {
       },
     ]);
 
-    const events = await pool.query<{
+    const events = await ownerQuery<{
       event_type: string;
       category: string;
       resource_type: string;
@@ -215,7 +229,7 @@ describe.skipIf(!db)('the studies RPC', () => {
        ORDER BY sequence`,
       [TEAM_ID, created.studyId, created.protocolId],
     );
-    expect(events.rows).toEqual([
+    expect(events).toEqual([
       {
         event_type: 'study.created',
         category: 'study',
@@ -252,19 +266,19 @@ describe.skipIf(!db)('the studies RPC', () => {
       draftId: created.draftId,
     });
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT count(*)::int AS count FROM audit_events
          WHERE team_id = $1 AND resource_id IN ($2, $3)`,
         [TEAM_ID, created.studyId, created.protocolId],
       ),
-    ).toHaveProperty('rows', [{ count: 2 }]);
+    ).toEqual([{ count: 2 }]);
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT count(*)::int AS count FROM study_role_grants
          WHERE study_id = $1`,
         [created.studyId],
       ),
-    ).toHaveProperty('rows', [{ count: 1 }]);
+    ).toEqual([{ count: 1 }]);
 
     // The identities are readable through the study list, so anyone who may
     // create can replay someone else's creation. That must change nothing:
@@ -280,12 +294,12 @@ describe.skipIf(!db)('the studies RPC', () => {
       draftId: created.draftId,
     });
     expect(
-      await pool.query(
+      await ownerQuery(
         `SELECT user_id AS "userId", role, pii_access AS "piiAccess"
          FROM study_role_grants WHERE study_id = $1`,
         [created.studyId],
       ),
-    ).toHaveProperty('rows', [
+    ).toEqual([
       { userId: ADMIN.principal.userId, role: 'manager', piiAccess: true },
     ]);
   });
@@ -297,13 +311,13 @@ describe.skipIf(!db)('the studies RPC', () => {
     // One wave and two participants, so the counts the picker shows are
     // answered per study rather than as a constant.
     const waveId = randomUUID();
-    await maintenance.query(
+    await asMaintenance(
       `INSERT INTO study_waves (id, study_id, team_id, wave_number)
        VALUES ($1, $2, $3, 1)`,
       [waveId, shared.studyId, TEAM_ID],
     );
     for (const code of ['P-001', 'P-002']) {
-      await maintenance.query(
+      await asMaintenance(
         `INSERT INTO participants (id, study_id, team_id, participant_code)
          VALUES ($1, $2, $3, $4)`,
         [randomUUID(), shared.studyId, TEAM_ID, code],
@@ -408,23 +422,21 @@ describe.skipIf(!db)('the studies RPC', () => {
     // Nothing committed — not the study, not the protocol line the command
     // writes before it.
     expect(
-      await pool.query(`SELECT id FROM studies WHERE id = $1`, [input.studyId]),
-    ).toHaveProperty('rowCount', 0);
+      await ownerQuery(`SELECT id FROM studies WHERE id = $1`, [input.studyId]),
+    ).toHaveLength(0);
     expect(
-      await pool.query(`SELECT id FROM protocols WHERE id = $1`, [
+      await ownerQuery(`SELECT id FROM protocols WHERE id = $1`, [
         input.protocolId,
       ]),
-    ).toHaveProperty('rowCount', 0);
+    ).toHaveLength(0);
     // The refusal itself is evidence a team Admin can read.
     expect(
-      await pool.query<{ details: unknown }>(
+      await ownerQuery(
         `SELECT details FROM audit_events
          WHERE team_id = $1 AND event_type = 'study.creation_denied'
            AND actor_id = $2`,
         [TEAM_ID, MEMBER.principal.userId],
       ),
-    ).toHaveProperty('rows', [
-      { details: { reason: 'insufficient_permission' } },
-    ]);
+    ).toEqual([{ details: { reason: 'insufficient_permission' } }]);
   });
 });

@@ -3,16 +3,16 @@ import { Cause, Effect, Exit, Layer } from 'effect';
 
 import { JOB_QUEUES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
-import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { testDb } from '../../__tests__/support/database.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope } from '../../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
-import { Database, withTransaction } from '../database.ts';
 import {
   layerRecordingMailer,
   RecordedMail,
 } from '../handlers/__tests__/support.ts';
 import { DeniedAttemptsStore } from '../handlers/denied-attempts/store.ts';
-import { layerRecordingWriter } from '../handlers/denied-attempts/testing.ts';
 import { Jobs } from '../jobs.ts';
 import { JobHandlersLive, QueueUnavailable } from '../registrations.ts';
 import { JobWorker } from '../worker.ts';
@@ -36,8 +36,6 @@ import {
 // `layerDeliveryHarness` is the general "Studio's schema and the queue's, side
 // by side" harness: the sweep needs Studio's tables and every job needs the
 // queue's.
-
-const db = await reachableDb();
 
 /** The four queues a worker with a transport claims from. */
 const WORKED = [
@@ -113,13 +111,11 @@ function workerEnv(
   };
 }
 
-describe.skipIf(!db)('the worker’s handler registrations', () => {
+describe.skipIf(!testDb)('the worker’s handler registrations', () => {
   layer(
-    Layer.mergeAll(
-      layerRecordingMailer,
-      DeniedAttemptsStore.layerAbsent,
-      layerRecordingWriter,
-    ).pipe(Layer.provideMerge(layerDeliveryHarness(db!))),
+    Layer.mergeAll(layerRecordingMailer, DeniedAttemptsStore.layerAbsent).pipe(
+      Layer.provideMerge(layerDeliveryHarness),
+    ),
   )('over Studio and the queue', (suite) => {
     /**
      * One worker of its own per case, because registration mutates the
@@ -131,7 +127,9 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
       readonly auth?: StudioEnv['auth'];
     }) =>
       JobHandlersLive.pipe(
-        Layer.provide(Layer.succeed(Environment, workerEnv(db!, overrides))),
+        Layer.provide(
+          Layer.succeed(Environment, workerEnv(testDb!, overrides)),
+        ),
         Layer.provideMerge(layerWorker()),
       );
 
@@ -139,7 +137,9 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
 
     const enqueue = Effect.fnUntraced(function* (queue: JobQueueName) {
       const jobs = yield* Jobs;
-      return yield* withTransaction(jobs.enqueue(queue, payloadFor(queue)));
+      return yield* MaintenanceScope.open(
+        jobs.enqueue(queue, payloadFor(queue)),
+      );
     });
 
     const scheduleNames = Effect.map(readSchedules(), (rows) =>
@@ -225,7 +225,7 @@ describe.skipIf(!db)('the worker’s handler registrations', () => {
           // queue nothing works unless boot removes it.
           yield* asOwner(
             Effect.flatMap(
-              Database,
+              MaintenanceDatabase,
               ({ sql }) => sql`
                 INSERT INTO ${sql(schema)}.job_schedules
                   (name, cron, queue, payload, next_run_at)

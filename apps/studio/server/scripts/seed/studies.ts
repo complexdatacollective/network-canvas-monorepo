@@ -7,10 +7,12 @@
 // be written while the document is still a draft (the `consent_items_frozen`
 // trigger).
 import { faker } from '@faker-js/faker';
-import type pg from 'pg';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
 
+import { Transaction } from '../../src/db/tenant.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededProtocolLine } from './protocols.ts';
 import {
@@ -266,12 +268,11 @@ function scaled(count: number, multiplier: number): number {
   return count === 0 ? 0 : Math.max(1, Math.round(count * multiplier));
 }
 
-export async function seedStudies(
-  client: pg.PoolClient,
+export const seedStudies = Effect.fnUntraced(function* (
   team: SeedTeam,
   line: SeededProtocolLine,
   scale: { participantMultiplier: number },
-): Promise<SeedStudy[]> {
+) {
   const studies: SeedStudy[] = [];
   const studyRows: SeedRowValue[][] = [];
   const waveRows: SeedRowValue[][] = [];
@@ -290,9 +291,8 @@ export async function seedStudies(
     // team's block: every closed guard refuses writes to its children, so its
     // sessions, networks and consents must land first.
     const insertedState = plan.state === 'closed' ? 'live' : plan.state;
-    // Requested near the anchor, so the retention window is still open at
-    // every fresh seed: the example is a study awaiting purge, not one the
-    // first maintenance run would sweep away.
+    // Requested near the anchor, so the retention window is still open at the
+    // anchor: the example is a study awaiting purge, not one already due.
     const deletionRequestedAt = plan.key === 'deleting' ? seedTime(-10) : null;
     const purgeAfter =
       deletionRequestedAt === null ? null : shiftDays(deletionRequestedAt, 30);
@@ -510,8 +510,7 @@ export async function seedStudies(
     });
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'studies',
     [
       'id',
@@ -533,8 +532,7 @@ export async function seedStudies(
     ],
     studyRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'study_waves',
     [
       'id',
@@ -550,8 +548,7 @@ export async function seedStudies(
     ],
     waveRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'participants',
     [
       'id',
@@ -569,8 +566,7 @@ export async function seedStudies(
     ],
     participantRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'interview_links',
     [
       'id',
@@ -589,8 +585,7 @@ export async function seedStudies(
     ],
     linkRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'study_role_grants',
     [
       'id',
@@ -607,7 +602,7 @@ export async function seedStudies(
   );
 
   return studies;
-}
+});
 
 /**
  * A link's redemption record is derived from the sessions that cite it, once
@@ -616,11 +611,11 @@ export async function seedStudies(
  * as one set-based update rather than carried on the link rows, because the
  * sessions are planned after the links are inserted.
  */
-export async function recordLinkRedemptions(
-  client: pg.PoolClient,
+export const recordLinkRedemptions = Effect.fnUntraced(function* (
   teamId: string,
-): Promise<void> {
-  await client.query(
+) {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe(
     `update interview_links l
         set redemption_count = redeemed.n,
             last_redeemed_at = redeemed.newest
@@ -633,7 +628,7 @@ export async function recordLinkRedemptions(
       where l.id = redeemed.link_id and l.team_id = $1`,
     [teamId],
   );
-}
+});
 
 export type SeedConsentDocument = {
   id: string;
@@ -688,14 +683,17 @@ export type ConsentPublication = {
   retiredAt: Date | null;
 };
 
-export async function seedConsentDocuments(
-  client: pg.PoolClient,
+export const seedConsentDocuments = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
-): Promise<{
-  byStudy: Map<string, SeedConsentDocument[]>;
-  publications: ConsentPublication[];
-}> {
+): Effect.fn.Return<
+  {
+    byStudy: Map<string, SeedConsentDocument[]>;
+    publications: ConsentPublication[];
+  },
+  SqlError.SqlError,
+  Transaction
+> {
   const byStudy = new Map<string, SeedConsentDocument[]>();
   const documentRows: SeedRowValue[][] = [];
   const itemRows: SeedRowValue[][] = [];
@@ -803,8 +801,7 @@ export async function seedConsentDocuments(
     byStudy.set(study.id, documents);
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'consent_documents',
     [
       'id',
@@ -823,8 +820,7 @@ export async function seedConsentDocuments(
     ],
     documentRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'consent_items',
     [
       'id',
@@ -839,7 +835,7 @@ export async function seedConsentDocuments(
     itemRows,
   );
   return { byStudy, publications };
-}
+});
 
 /**
  * Moves each document to its final state. Runs after the asset pins are
@@ -847,14 +843,14 @@ export async function seedConsentDocuments(
  * a draft: publication fixes the set, and nothing in this seed gets to add to
  * a published document what a real author could not.
  */
-export async function publishConsentDocuments(
-  client: pg.PoolClient,
+export const publishConsentDocuments = Effect.fnUntraced(function* (
   team: SeedTeam,
   publications: ConsentPublication[],
-): Promise<void> {
+) {
+  const { sql } = yield* Transaction;
   for (const publication of publications) {
     if (publication.state === 'draft') continue;
-    await client.query(
+    yield* sql.unsafe(
       `update consent_documents
          set state = $2, published_at = $3, retired_at = $4, updated_at = $5
        where id = $1 and team_id = $6`,
@@ -868,7 +864,7 @@ export async function publishConsentDocuments(
       ],
     );
   }
-}
+});
 
 /**
  * ~90% of a study's participants consent to the current document, ~5% of those
@@ -888,13 +884,12 @@ export type SeedWithdrawal = {
 };
 
 /** Returns the consents that were withdrawn, for the events that cite them. */
-export async function seedParticipantConsents(
-  client: pg.PoolClient,
+export const seedParticipantConsents = Effect.fnUntraced(function* (
   team: SeedTeam,
   studies: SeedStudy[],
   documentsByStudy: Map<string, SeedConsentDocument[]>,
   firstSessionByParticipant: Map<string, { id: string; startedAt: Date }>,
-): Promise<SeedWithdrawal[]> {
+) {
   const consentRows: SeedRowValue[][] = [];
   const responseRows: SeedRowValue[][] = [];
   const withdrawals: SeedWithdrawal[] = [];
@@ -962,8 +957,7 @@ export async function seedParticipantConsents(
     }
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     'participant_consents',
     [
       'id',
@@ -982,8 +976,7 @@ export async function seedParticipantConsents(
     ],
     consentRows,
   );
-  await insertRows(
-    client,
+  yield* insertRows(
     'participant_consent_item_responses',
     [
       'team_id',
@@ -996,18 +989,18 @@ export async function seedParticipantConsents(
     responseRows,
   );
   return withdrawals;
-}
+});
 
 /** Closes the archived study, last, once every child row it owns is written. */
-export async function closeStudy(
-  client: pg.PoolClient,
+export const closeStudy = Effect.fnUntraced(function* (
   teamId: string,
   study: SeedStudy,
-): Promise<void> {
+) {
+  const { sql } = yield* Transaction;
   const closedAt = shiftDays(study.createdAt, 260);
-  await client.query(
+  yield* sql.unsafe(
     `update studies set state = 'closed', closed_at = $3, updated_at = $3
      where id = $1 and team_id = $2`,
     [study.id, teamId, closedAt],
   );
-}
+});

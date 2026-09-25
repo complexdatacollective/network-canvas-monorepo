@@ -1,27 +1,43 @@
-// One protocol line per team, published twice, written through `ProtocolStore`
-// — the sectioned store is the only correct writer of `protocols`,
+// One protocol line per team, published twice, written through the protocol
+// store — the sectioned store is the only correct writer of `protocols`,
 // `protocol_versions` and `version_sections`, and reimplementing its
 // sectionize/manifest/pin sequence in the seed is the dual-implementation trap
 // ADR #1246 names three times.
 //
-// The store takes a `TenantDb` and routes writes through
-// `runNoAuditTenantTransaction`, which opens a transaction of its own. The seed
-// is one transaction by contract, so it hands the store an adapter that runs
-// every unit of work on the seed's already-open client instead — see
-// `seedTenantScope` for why that adapter must not open a subtransaction.
+// Every store function runs on the caller's `Transaction` and opens no scope of
+// its own, so these writes join the seed's one transaction as they are. That
+// is a requirement rather than a convenience: `version_sections_insert_frozen`
+// admits a pin only when its version row's `xmin` equals
+// `pg_current_xact_id()`, which is the top-level transaction id. A row written
+// inside a savepoint carries the subtransaction's id instead, so publishing
+// through one is refused outright ("published protocol versions are
+// immutable"). The same proof backs `template_version_sections_insert_frozen`
+// and `session_snapshots_insert_frozen`, so no phase of the seed may sit in a
+// subtransaction. Nothing is lost: the seed has no recoverable failure — any
+// error rolls the whole transaction back and leaves the previous dataset in
+// place, which is the contract `seed.test.ts` pins.
+//
+// The GUC the row-level security policies read is stamped by the caller for
+// the team currently being populated, so every statement here is already
+// inside that team's scope.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import type pg from 'pg';
+import { Effect } from 'effect';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { addStage, removeStage } from '../../protocol/draft-structure.ts';
-import { ProtocolStore } from '../../protocol/store.ts';
-import type { SecretsCipher } from '../../secrets/cipher.ts';
+import { addStage, removeStage } from '../../src/protocol/draft-structure.ts';
+import {
+  createProtocol,
+  getDraftSections,
+  getVersionDocument,
+  getVersionSections,
+  publishDraft,
+} from '../../src/protocol/store.ts';
+import type { SecretsCipherApi } from '../../src/secrets/cipher.ts';
 import { seedHex, seedTime, seedUuid } from './rng.ts';
 
 /** The structural half of an assembled protocol document `generateNetwork` reads. */
@@ -65,41 +81,6 @@ function loadSampleProtocol(): CurrentProtocol {
   return structuredClone(sampleProtocol);
 }
 
-/**
- * A `TenantDb` that runs everything on the seed's single already-open client,
- * so `ProtocolStore`'s writes join the seed's one transaction instead of
- * opening their own.
- *
- * A unit of work is *not* wrapped in a savepoint, and that is the point.
- * `version_sections_insert_frozen` admits a pin only when its version row's
- * `xmin` equals `pg_current_xact_id()`, and `pg_current_xact_id()` is the
- * top-level transaction id: a row written inside a savepoint carries the
- * subtransaction's id instead, so publishing through a savepoint is refused
- * outright ("published protocol versions are immutable"). The same proof backs
- * `template_version_sections_insert_frozen` and
- * `session_snapshots_insert_frozen`, so no phase of the seed may sit in a
- * subtransaction. Nothing is lost: the seed has no recoverable failure — any
- * error rolls the whole transaction back and leaves the previous dataset in
- * place, which is the contract `seed.test.ts` pins.
- *
- * `opts.isolation` is ignored for the same reason: the enclosing transaction's
- * isolation level is already fixed, and the seed has no concurrent writer.
- *
- * The GUC the row-level security policies read is stamped by the caller for
- * the team currently being populated, so every statement here is already
- * inside that team's scope.
- */
-function seedTenantScope(client: pg.PoolClient, teamId: string): TenantDb {
-  const runOnSeedClient = async <T>(
-    work: (seedClient: pg.PoolClient) => Promise<T>,
-  ): Promise<T> => work(client);
-  return {
-    teamId,
-    query: (text, values) => client.query(text, values),
-    transaction: runOnSeedClient,
-  };
-}
-
 function stageOrderOf(doc: SectionDoc | undefined): string[] {
   const value = doc?.stages;
   return Array.isArray(value)
@@ -126,15 +107,16 @@ function editableStage(
   return undefined;
 }
 
-async function readVersion(
-  store: ProtocolStore,
+const readVersion = Effect.fnUntraced(function* (
+  teamId: string,
   versionId: string,
   versionNumber: number,
   label: string,
   publishedAt: Date,
-): Promise<SeededVersion> {
-  const { sectionHashes } = await store.getVersionSections(versionId);
-  const document = (await store.getVersionDocument(
+) {
+  const { sectionHashes } = yield* getVersionSections(teamId, versionId);
+  const document = (yield* getVersionDocument(
+    teamId,
     versionId,
   )) as unknown as CurrentProtocol;
   return {
@@ -146,8 +128,8 @@ async function readVersion(
     schemaVersion: document.schemaVersion,
     sectionHashes,
     publishedAt,
-  };
-}
+  } satisfies SeededVersion;
+});
 
 /**
  * Creates the team's protocol from the bundled sample, publishes it, makes one
@@ -155,14 +137,11 @@ async function readVersion(
  * `protocol-demo` sequence), and publishes again. The two versions are what
  * the team's waves pin.
  */
-export async function seedProtocolLine(
-  client: pg.PoolClient,
+export const seedProtocolLine = Effect.fnUntraced(function* (
   teamId: string,
   /** Seals the protocol's API-key asset (#1900). */
-  cipher: SecretsCipher,
-): Promise<SeededProtocolLine> {
-  const scope = seedTenantScope(client, teamId);
-  const store = new ProtocolStore(scope, cipher);
+  cipher: SecretsCipherApi,
+) {
   const protocol = loadSampleProtocol();
 
   // The sample protocol carries images and rosters but no API key, and an
@@ -189,7 +168,7 @@ export async function seedProtocolLine(
   // them run; after the team itself, which dates from 400 days before.
   const protocolId = seedUuid();
   const draftId = seedUuid();
-  await store.createProtocol({
+  yield* createProtocol(teamId, cipher, {
     protocol,
     protocolId,
     draftId,
@@ -198,21 +177,23 @@ export async function seedProtocolLine(
 
   const firstVersionId = seedUuid();
   const firstPublishedAt = seedTime(-370);
-  const first = await store.publishDraft({
+  const first = yield* publishDraft(teamId, {
     draftId,
     label: 'Baseline',
     versionId: firstVersionId,
     publishedAt: firstPublishedAt,
   });
   if (first.status !== 'published') {
-    throw new Error(`seed protocol v1 did not publish: ${first.status}`);
+    return yield* Effect.die(
+      new Error(`seed protocol v1 did not publish: ${first.status}`),
+    );
   }
 
-  const created = await store.getDraftSections(draftId);
+  const created = yield* getDraftSections(teamId, draftId);
   const target = editableStage(created.sections);
   if (target === undefined) {
-    throw new Error(
-      'the seed protocol carries no stage with an editable prompt',
+    return yield* Effect.die(
+      new Error('the seed protocol carries no stage with an editable prompt'),
     );
   }
   const edited = structuredClone(target.doc);
@@ -220,12 +201,12 @@ export async function seedProtocolLine(
   prompts[0]!.text = `${prompts[0]!.text} (revised for wave 2)`;
   // The edit that version 2 was published from, dated the day before it —
   // both halves, since each writes a stage-order section of its own.
-  await removeStage(scope, {
+  yield* removeStage(teamId, {
     draftId,
     stageId: target.stageId,
     createdAt: seedTime(-341),
   });
-  await addStage(scope, {
+  yield* addStage(teamId, {
     draftId,
     stage: edited,
     index: target.index,
@@ -234,31 +215,33 @@ export async function seedProtocolLine(
 
   const secondVersionId = seedUuid();
   const secondPublishedAt = seedTime(-340);
-  const second = await store.publishDraft({
+  const second = yield* publishDraft(teamId, {
     draftId,
     label: 'Revised prompt wording',
     versionId: secondVersionId,
     publishedAt: secondPublishedAt,
   });
   if (second.status !== 'published') {
-    throw new Error(`seed protocol v2 did not publish: ${second.status}`);
+    return yield* Effect.die(
+      new Error(`seed protocol v2 did not publish: ${second.status}`),
+    );
   }
 
-  return {
+  const line: SeededProtocolLine = {
     protocolId,
     draftId,
     name: protocol.name,
     plaintextAssetKey,
     versions: [
-      await readVersion(
-        store,
+      yield* readVersion(
+        teamId,
         first.versionId,
         first.versionNumber,
         'Baseline',
         firstPublishedAt,
       ),
-      await readVersion(
-        store,
+      yield* readVersion(
+        teamId,
         second.versionId,
         second.versionNumber,
         'Revised prompt wording',
@@ -266,4 +249,5 @@ export async function seedProtocolLine(
       ),
     ],
   };
-}
+  return line;
+});

@@ -1,22 +1,25 @@
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
+import { refusalOf } from '../../__tests__/support/database.ts';
 import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { installJobSchema } from '../../jobs/install.ts';
 import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { OwnerDatabase } from '../client.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import {
   fingerprintOfDdl,
-  migrateDatabase,
+  migrateDatabaseEffect,
   type SchemaDdl,
   SchemaDdlMismatch,
   StaleDatabase,
   verifySchemaDdl,
 } from '../migrate.ts';
-import { checkSchema, stampFingerprint } from '../schema.ts';
+import { checkSchema, SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 
 // `studio-api migrate` against a real, empty database — the one-shot a
 // deployment runs before anything else starts (#1909).
@@ -70,6 +73,19 @@ describe('the rendered schema DDL', () => {
   });
 });
 
+// The deployed path, on `@effect/sql-pg`: the only migrate there is.
+//
+// The driver has no simple-query path, so the DDL is cut into single
+// statements by `splitStatements` before it is sent, and this suite is the
+// splitter's real oracle. A splitter that cut a `plpgsql` body in half, or
+// dropped a statement, or merged two, fails here as a `42601` or as a database
+// that does not read `current` — which is what the mutation "skip
+// `splitStatements` on one sidecar" demonstrates.
+//
+// Fixtures and oracles run on the scratch database's node-postgres owner pool,
+// and the verdict is read back through the node-postgres `checkSchema` — the
+// one the scripts and the schema gate run — so the database the Effect path
+// leaves behind is judged by the other reader too.
 describe.skipIf(!db)('migrate', () => {
   let ddl: SchemaDdl;
 
@@ -95,6 +111,30 @@ describe.skipIf(!db)('migrate', () => {
     }
   }, DISPOSE_TIMEOUT_MS);
 
+  const ownerLayer = (url: string) =>
+    OwnerDatabase.layer({ url, applicationName: 'studio-migrate-test' });
+
+  /** The migrate program, run against one scratch database as its owner. */
+  const runMigrate = (
+    url: string,
+    options?: { log?: (line: string) => void },
+  ) =>
+    Effect.runPromise(
+      migrateDatabaseEffect(ddl, options).pipe(Effect.provide(ownerLayer(url))),
+    );
+
+  /**
+   * What a migrate that had to fail failed with, read off its whole cause:
+   * the SQLSTATE and every message down the chain, where the backend's own
+   * words arrive. `NOT_REFUSED` in every field when it succeeded.
+   */
+  const migrateRefusal = (url: string) =>
+    Effect.runPromise(
+      refusalOf(migrateDatabaseEffect(ddl)).pipe(
+        Effect.provide(ownerLayer(url)),
+      ),
+    );
+
   it(
     'creates a schema every process reads as current',
     async () => {
@@ -102,13 +142,21 @@ describe.skipIf(!db)('migrate', () => {
       expect((await checkSchema(scratch.pool)).kind).toBe('absent');
 
       const lines: string[] = [];
-      const outcome = await migrateDatabase(scratch.pool, ddl, {
+      const outcome = await runMigrate(scratch.db.url, {
         log: (line) => lines.push(line),
       });
 
       expect(outcome).toEqual({ kind: 'applied' });
       expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
       expect(lines.at(-1)).toBe('Schema applied.');
+
+      // The queue's schema is inside the same transaction and before the
+      // stamp, so a database this build stamped carries it.
+      const jobs = await scratch.pool.query<{ present: boolean }>(
+        `select exists (select 1 from pg_namespace where nspname = $1) as present`,
+        [JOB_SCHEMA],
+      );
+      expect(jobs.rows[0]?.present).toBe(true);
 
       // The roles the server's pools pin themselves to, which the sidecars
       // create: without them every pool is refused at connect.
@@ -131,7 +179,7 @@ describe.skipIf(!db)('migrate', () => {
       // migration, what this case is really about.
       const scratch = await emptyDatabase();
       const lines: string[] = [];
-      await migrateDatabase(scratch.pool, ddl, {
+      await runMigrate(scratch.db.url, {
         log: (line) => lines.push(line),
       });
 
@@ -192,7 +240,7 @@ describe.skipIf(!db)('migrate', () => {
     'is a no-op the second time, and changes nothing',
     async () => {
       const scratch = await emptyDatabase();
-      await migrateDatabase(scratch.pool, ddl);
+      await runMigrate(scratch.db.url);
 
       const before = await scratch.pool.query<{
         fingerprint: string;
@@ -200,7 +248,7 @@ describe.skipIf(!db)('migrate', () => {
       }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
 
       const lines: string[] = [];
-      const outcome = await migrateDatabase(scratch.pool, ddl, {
+      const outcome = await runMigrate(scratch.db.url, {
         log: (line) => lines.push(line),
       });
 
@@ -222,23 +270,22 @@ describe.skipIf(!db)('migrate', () => {
     'refuses a database another build created, without touching it',
     async () => {
       const scratch = await emptyDatabase();
-      await migrateDatabase(scratch.pool, ddl);
+      await runMigrate(scratch.db.url);
 
       const other = 'a'.repeat(64);
       await stampFingerprint(scratch.pool, other);
 
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        StaleDatabase,
+      const refusal: unknown = await runMigrate(scratch.db.url).then(
+        () => 'no failure',
+        (error: unknown) => error,
       );
+      expect(refusal).toBeInstanceOf(StaleDatabase);
       // Both fingerprints named, so an operator can tell which build is which,
       // and the reason it will not be reconciled.
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        new RegExp(other.slice(0, 12)),
-      );
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        new RegExp(SCHEMA_FINGERPRINT.slice(0, 12)),
-      );
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(/#1901/);
+      const message = refusal instanceof Error ? refusal.message : '';
+      expect(message).toMatch(new RegExp(other.slice(0, 12)));
+      expect(message).toMatch(new RegExp(SCHEMA_FINGERPRINT.slice(0, 12)));
+      expect(message).toMatch(/#1901/);
 
       // Unchanged: the refusal is a refusal, not a half-applied upgrade.
       const stamp = await scratch.pool.query<{ fingerprint: string }>(
@@ -252,10 +299,12 @@ describe.skipIf(!db)('migrate', () => {
   it(
     'installs the job schema inside the caller’s transaction',
     async () => {
-      // `installJobSchema` must carry no transaction control of its own:
-      // a COMMIT anywhere inside it would make everything `migrate` had applied
-      // before that point durable — no error, no warning anyone reads — and
-      // defeat every other guarantee here.
+      // The node-postgres `installJobSchema`, which `applySchema`
+      // (scripts/apply.ts) runs inside its one transaction, must carry no
+      // transaction control of its own: a COMMIT anywhere inside it would make
+      // everything applied before that point durable — no error, no warning
+      // anyone reads. `migrate`'s own install, on the Effect path, is held to
+      // the same by the two rollback cases below.
       //
       // The marker table is the oracle: it is written before the install and
       // rolled back after it, so it survives only if something in between
@@ -307,9 +356,9 @@ describe.skipIf(!db)('migrate', () => {
         `create table ${JOB_SCHEMA}.jobs (id uuid primary key)`,
       );
 
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
-        /column "state" does not exist/,
-      );
+      const refusal = await migrateRefusal(scratch.db.url);
+      expect(refusal.state).toBe('42703');
+      expect(refusal.message).toMatch(/column "state" does not exist/);
 
       // Nothing `migrate` wrote survives: not the tables, not the stamp.
       // `checkSchema` reporting `absent` rather than `stale` is the whole
@@ -331,9 +380,7 @@ describe.skipIf(!db)('migrate', () => {
 
       // And with the obstruction removed, the same database applies cleanly.
       await scratch.pool.query(`drop schema ${JOB_SCHEMA} cascade`);
-      expect(await migrateDatabase(scratch.pool, ddl)).toEqual({
-        kind: 'applied',
-      });
+      expect(await runMigrate(scratch.db.url)).toEqual({ kind: 'applied' });
       expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
     },
     CASE_TIMEOUT_MS,
@@ -362,7 +409,9 @@ describe.skipIf(!db)('migrate', () => {
       );
       expect(await checkSchema(scratch.pool)).toEqual({ kind: 'absent' });
 
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+      const refusal = await migrateRefusal(scratch.db.url);
+      expect(refusal.state).toBe('42P07');
+      expect(refusal.message).toMatch(
         /relation "schemaFingerprint" already exists/,
       );
 
@@ -394,12 +443,57 @@ describe.skipIf(!db)('migrate', () => {
       // The `unstamped` verdict: a database whose SQL is unknown. Adopting it
       // would launder exactly the staleness the fingerprint exists to catch.
       const scratch = await emptyDatabase();
-      await migrateDatabase(scratch.pool, ddl);
+      await runMigrate(scratch.db.url);
       await scratch.pool.query('delete from "schemaFingerprint"');
 
-      await expect(migrateDatabase(scratch.pool, ddl)).rejects.toThrow(
+      const refusal: unknown = await runMigrate(scratch.db.url).then(
+        () => 'no failure',
+        (error: unknown) => error,
+      );
+      expect(refusal).toBeInstanceOf(StaleDatabase);
+      expect(refusal instanceof Error ? refusal.message : '').toMatch(
         /no fingerprint/,
       );
+    },
+    CASE_TIMEOUT_MS,
+  );
+  it(
+    'serialises two concurrent migrates, so only one applies',
+    async () => {
+      const scratch = await emptyDatabase();
+
+      // Both start against an empty database. The advisory lock is held on a
+      // reserved connection across `checkSchema`, so the loser reads the
+      // database only after the winner has committed — and reads it as
+      // current. Without the lock spanning the read, both would find it
+      // absent and both would apply.
+      const [first, second] = await Promise.all([
+        runMigrate(scratch.db.url),
+        runMigrate(scratch.db.url),
+      ]);
+
+      expect([first, second].map((outcome) => outcome.kind).toSorted()).toEqual(
+        ['applied', 'current'],
+      );
+      expect(await checkSchema(scratch.pool)).toEqual({ kind: 'current' });
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'holds the advisory lock across the whole run',
+    async () => {
+      const scratch = await emptyDatabase();
+      await runMigrate(scratch.db.url);
+
+      // And gives it back: a migrate that leaked its session lock would make
+      // every later one block forever. Taken on a fresh connection, so this is
+      // the lock's real state and not a re-entrant grant.
+      const held = await scratch.pool.query<{ free: boolean }>(
+        `select pg_try_advisory_lock($1) as free`,
+        [SCHEMA_LOCK_KEY],
+      );
+      expect(held.rows[0]?.free).toBe(true);
     },
     CASE_TIMEOUT_MS,
   );

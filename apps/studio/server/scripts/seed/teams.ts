@@ -4,11 +4,15 @@
 // is stamped.
 import { faker } from '@faker-js/faker';
 import { hashPassword } from 'better-auth/crypto';
-import type pg from 'pg';
+import { Effect } from 'effect';
 
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import type { OAuthTokenColumn, SecretsCipher } from '../../secrets/cipher.ts';
+import { Transaction } from '../../src/db/tenant.ts';
+import type {
+  OAuthTokenColumn,
+  SecretsCipherApi,
+} from '../../src/secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import { seedHex, seedTime, seedUuid, shiftDays } from './rng.ts';
 
@@ -86,16 +90,17 @@ function uniqueEmail(
  * admin and this is the phase that creates them; the wipe truncates this table
  * like any other, so it is reinstated on every seed rather than surviving one.
  */
-async function insertOwnedInstallation(
-  client: pg.ClientBase,
-  input: { ownerUserId: string; createdAt: Date },
-): Promise<void> {
-  await client.query(
+const insertOwnedInstallation = Effect.fnUntraced(function* (input: {
+  ownerUserId: string;
+  createdAt: Date;
+}) {
+  const { sql } = yield* Transaction;
+  yield* sql.unsafe(
     `insert into installation (id, name, owner_user_id, created_at, updated_at)
      values (1, $1, $2, $3, $3)`,
     [SEED_INSTANCE_NAME, input.ownerUserId, input.createdAt],
   );
-}
+});
 
 /**
  * The `credential` provider account better-auth's own email/password sign-up
@@ -107,17 +112,19 @@ async function insertOwnedInstallation(
  * PRNG seed reaches. It is one of the two columns the determinism case in
  * `seed.test.ts` leaves out of its dumps; the other is `audit_events.id`.
  */
-async function insertCredentialAccount(
-  client: pg.ClientBase,
-  input: { userId: string; password: string; createdAt: Date },
-): Promise<void> {
-  const password = await hashPassword(input.password);
-  await client.query(
+const insertCredentialAccount = Effect.fnUntraced(function* (input: {
+  userId: string;
+  password: string;
+  createdAt: Date;
+}) {
+  const { sql } = yield* Transaction;
+  const password = yield* Effect.promise(() => hashPassword(input.password));
+  yield* sql.unsafe(
     `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
      values ($1, $2, 'credential', $2, $3, $4, $4)`,
     [seedUuid(), input.userId, password, input.createdAt],
   );
-}
+});
 
 /** Google's `iss`, the value better-auth stores for a Google account. */
 
@@ -134,11 +141,11 @@ async function insertCredentialAccount(
  * The admin can still sign in with the password: better-auth matches a
  * credential account by (providerId, accountId), and this row's are different.
  */
-export async function seedAdminOAuthAccount(
-  client: pg.ClientBase,
-  cipher: SecretsCipher,
+export const seedAdminOAuthAccount = Effect.fnUntraced(function* (
+  cipher: SecretsCipherApi,
   input: { userId: string; createdAt: Date },
-): Promise<string[]> {
+) {
+  const { sql } = yield* Transaction;
   const accountId = `seed-google-${seedHex(8)}`;
   // Shaped like the real thing — Google's access tokens start `ya29.`, its
   // refresh tokens `1//`, and an id token is a JWT — so a dump search that
@@ -154,7 +161,7 @@ export async function seedAdminOAuthAccount(
       tokens[column],
     );
 
-  await client.query(
+  yield* sql.unsafe(
     `insert into account
        (id, "accountId", "providerId", "userId",
         "accessToken", "refreshToken", "idToken", scope, "createdAt", "updatedAt")
@@ -171,12 +178,9 @@ export async function seedAdminOAuthAccount(
   );
 
   return Object.values(tokens);
-}
+});
 
-export async function seedTeams(
-  client: pg.PoolClient,
-  adminPassword: string,
-): Promise<SeedTeam[]> {
+export const seedTeams = Effect.fnUntraced(function* (adminPassword: string) {
   const createdAt = seedTime(-400);
   const adminId = seedUuid();
   const userRows: SeedRowValue[][] = [
@@ -247,36 +251,29 @@ export async function seedTeams(
     });
   }
 
-  await insertRows(
-    client,
+  yield* insertRows(
     '"user"',
     ['id', 'name', 'email', '"emailVerified"', '"createdAt"', '"updatedAt"'],
     userRows,
   );
-  await insertCredentialAccount(client, {
+  yield* insertCredentialAccount({
     userId: adminId,
     password: adminPassword,
     createdAt,
   });
-  await insertOwnedInstallation(client, {
+  yield* insertOwnedInstallation({
     ownerUserId: adminId,
     createdAt,
   });
-  await insertRows(
-    client,
-    'teams',
-    ['id', 'name', 'slug', 'created_at'],
-    teamRows,
-  );
-  await insertRows(
-    client,
+  yield* insertRows('teams', ['id', 'name', 'slug', 'created_at'], teamRows);
+  yield* insertRows(
     'team_members',
     ['id', 'team_id', 'user_id', 'role', 'created_at'],
     memberRows,
   );
 
   return teams;
-}
+});
 
 /** The members a team-owned service token may name as its custodian. */
 export function custodians(team: SeedTeam): SeedTeamMember[] {

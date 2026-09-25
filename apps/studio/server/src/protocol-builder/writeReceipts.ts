@@ -15,7 +15,9 @@
 // server that came back up is exactly the client whose answer went missing.
 // The row is written in the same transaction as the write it describes, so
 // there is no window in which the write is committed and its receipt is not.
-import type pg from 'pg';
+import { and, eq } from 'drizzle-orm';
+import { Effect } from 'effect';
+import type { SqlError } from 'effect/unstable/sql';
 
 import type {
   ResourceDescriptor,
@@ -26,7 +28,12 @@ import {
   parseSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
-import type { TenantDb } from '@codaco/studio-sync/tenant';
+
+import { sqlErrorsOnly } from '../db/errors.ts';
+import { Transaction } from '../db/tenant.ts';
+import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+
+const { protocolWriteReceipts } = PROTOCOL_BUILDER_TABLES;
 
 /** The two procedures the contract gives an idempotency key. */
 export type WriteOperation = 'submit' | 'create';
@@ -55,97 +62,105 @@ export type WriteReceipt = {
 };
 
 type ReceiptRow = {
-  revision_seq: string;
-  revision_hash: string;
-  created_section_id: string | null;
+  revisionSeq: bigint;
+  revisionHash: string;
+  createdSectionId: string | null;
   promoted: ResourceDescriptor[] | null;
 };
 
-const SELECT_RECEIPT = `
-  SELECT revision_seq, revision_hash, created_section_id, promoted
-  FROM protocol_write_receipts
-  WHERE draft_id = $1 AND team_id = $2 AND request_id = $3 AND operation = $4`;
-
 function toReceipt(row: ReceiptRow): WriteReceipt {
   return {
-    revision: {
-      sequence: BigInt(row.revision_seq),
-      contentHash: row.revision_hash,
-    },
+    // `revision_seq` is a bigint column read through the builder, which
+    // decodes it as a bigint — the string this used to widen by hand.
+    revision: { sequence: row.revisionSeq, contentHash: row.revisionHash },
     // Parsed and rebuilt rather than trusted as a section id: what comes back
     // out of the column has to be the branded id the contract answers with.
-    ...(row.created_section_id === null
+    ...(row.createdSectionId === null
       ? {}
       : {
-          createdSection: makeSectionId(parseSectionId(row.created_section_id)),
+          createdSection: makeSectionId(parseSectionId(row.createdSectionId)),
         }),
     ...(row.promoted === null ? {} : { promoted: row.promoted }),
   };
 }
 
 /**
- * The receipt for a key, read outside a write's transaction.
+ * The receipt for a key.
  *
- * The router asks before it plans a promotion: a retried promoting write finds
- * its staged resources gone — the first attempt committed them — so planning
- * again would refuse the retry rather than answer it.
+ * One function where there were two. `readWriteReceipt` and
+ * `lockedWriteReceipt` were the same SELECT, and differed only in whose
+ * transaction they ran in — which is no longer something a data function can
+ * decide, because every one of them now runs in the caller's. The distinction
+ * survives where it always belonged, at the two call sites:
+ *
+ *   * the router asks in a scope of its own, before it plans a promotion, so
+ *     that a retried promoting write is answered rather than refused for
+ *     staged resources the first attempt already consumed;
+ *   * the host asks inside the write's own transaction, under the draft-head
+ *     lock it has already taken. That is the read that decides: two calls
+ *     carrying one request id serialise behind that lock, so the second finds
+ *     the first's receipt rather than writing beside it.
  */
-export async function readWriteReceipt(
-  db: TenantDb,
-  key: WriteKey,
-): Promise<WriteReceipt | undefined> {
-  const result = await db.query(SELECT_RECEIPT, [
-    key.draftId,
-    db.teamId,
-    key.requestId,
-    key.operation,
-  ]);
-  const row = (result.rows as ReceiptRow[])[0];
-  return row === undefined ? undefined : toReceipt(row);
-}
-
-/**
- * The same read, inside the write's own transaction and under the draft-head
- * lock it has already taken. This is the one that decides: two calls carrying
- * one request id serialise behind that lock, so the second finds the first's
- * receipt rather than writing beside it.
- */
-export async function lockedWriteReceipt(
-  client: pg.PoolClient,
+export const readWriteReceipt: (
   teamId: string,
   key: WriteKey,
-): Promise<WriteReceipt | undefined> {
-  const result = await client.query(SELECT_RECEIPT, [
-    key.draftId,
-    teamId,
-    key.requestId,
-    key.operation,
-  ]);
-  const row = (result.rows as ReceiptRow[])[0];
-  return row === undefined ? undefined : toReceipt(row);
-}
+) => Effect.Effect<WriteReceipt | undefined, SqlError.SqlError, Transaction> =
+  Effect.fn('protocolBuilder.readWriteReceipt')(function* (
+    teamId: string,
+    key: WriteKey,
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({
+        revisionSeq: protocolWriteReceipts.revisionSeq,
+        revisionHash: protocolWriteReceipts.revisionHash,
+        createdSectionId: protocolWriteReceipts.createdSectionId,
+        promoted: protocolWriteReceipts.promoted,
+      })
+      .from(protocolWriteReceipts)
+      .where(
+        and(
+          eq(protocolWriteReceipts.draftId, key.draftId),
+          eq(protocolWriteReceipts.teamId, teamId),
+          eq(protocolWriteReceipts.requestId, key.requestId),
+          eq(protocolWriteReceipts.operation, key.operation),
+        ),
+      );
+    const row = rows[0];
+    return row === undefined ? undefined : toReceipt(row);
+  }, sqlErrorsOnly);
 
 /** Records what this write committed, in the transaction that committed it. */
-export async function recordWriteReceipt(
-  client: pg.PoolClient,
+export const recordWriteReceipt: (
   teamId: string,
   key: WriteKey,
   receipt: WriteReceipt,
-): Promise<void> {
-  await client.query(
-    `INSERT INTO protocol_write_receipts
-       (draft_id, team_id, request_id, operation,
-        revision_seq, revision_hash, created_section_id, promoted)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      key.draftId,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'protocolBuilder.recordWriteReceipt',
+)(function* (teamId: string, key: WriteKey, receipt: WriteReceipt) {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .insert(protocolWriteReceipts)
+    .values({
+      draftId: key.draftId,
       teamId,
-      key.requestId,
-      key.operation,
-      String(receipt.revision.sequence),
-      receipt.revision.contentHash,
-      receipt.createdSection ?? null,
-      receipt.promoted === undefined ? null : JSON.stringify(receipt.promoted),
-    ],
-  );
-}
+      requestId: key.requestId,
+      operation: key.operation,
+      revisionSeq: receipt.revision.sequence,
+      revisionHash: receipt.revision.contentHash,
+      createdSectionId: receipt.createdSection ?? null,
+      // A plain array: the jsonb codec stringifies it, and stringifying it
+      // here — as the raw statement had to — would store the JSON of a JSON
+      // string, which `toReceipt` would then answer with.
+      promoted: receipt.promoted ?? null,
+    })
+    // `.returning()` because the row is inspected below; without it the
+    // builder answers with the driver's result object wearing a rows array's
+    // type, so the check would read `undefined` and fire on every write.
+    .returning({ requestId: protocolWriteReceipts.requestId });
+  if (rows.length === 0) {
+    return yield* Effect.die(
+      new Error(`write receipt ${key.operation}:${key.requestId} wrote no row`),
+    );
+  }
+}, sqlErrorsOnly);

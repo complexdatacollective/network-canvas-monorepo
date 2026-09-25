@@ -14,9 +14,10 @@ import {
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
+import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
 import { JobClock } from '../clock.ts';
-import { Database, Transaction, withTransaction } from '../database.ts';
 import { Jobs } from '../jobs.ts';
 import { resolvedQueue } from '../queues.ts';
 import {
@@ -92,7 +93,7 @@ describe.skipIf(!db)('the native queue', () => {
           yield* Effect.provide(
             Effect.flatMap(Jobs, (jobs) =>
               asApp(
-                withTransaction(
+                MaintenanceScope.open(
                   jobs.enqueue('invitation-delivery', {
                     deliveryId: DELIVERY_ID,
                   }),
@@ -330,10 +331,10 @@ describe.skipIf(!db)('the native queue', () => {
         // and its `send` inserts a second `created` row happily. Both are
         // accepted here too.
         const first = yield* asApp(
-          withTransaction(jobs.enqueue('denied-attempts-summary', {})),
+          MaintenanceScope.open(jobs.enqueue('denied-attempts-summary', {})),
         );
         const second = yield* asApp(
-          withTransaction(jobs.enqueue('denied-attempts-summary', {})),
+          MaintenanceScope.open(jobs.enqueue('denied-attempts-summary', {})),
         );
         assert.notStrictEqual(first, second);
         const queued = yield* readJobs('denied-attempts-summary');
@@ -393,7 +394,7 @@ describe.skipIf(!db)('the native queue', () => {
         yield* clear;
         const jobs = yield* Jobs;
         const first = yield* asApp(
-          withTransaction(
+          MaintenanceScope.open(
             jobs.enqueue(
               'denied-attempts-summary',
               {},
@@ -407,7 +408,7 @@ describe.skipIf(!db)('the native queue', () => {
         // transaction survives and the failure is typed.
         const second = yield* Effect.exit(
           asApp(
-            withTransaction(
+            MaintenanceScope.open(
               jobs.enqueue(
                 'denied-attempts-summary',
                 {},
@@ -430,7 +431,7 @@ describe.skipIf(!db)('the native queue', () => {
         // The transaction the refusal happened in still commits its own work:
         // a unique violation would have poisoned it.
         const survived = yield* asApp(
-          withTransaction(
+          MaintenanceScope.open(
             Effect.gen(function* () {
               const outcome = yield* Effect.exit(
                 jobs.enqueue(
@@ -468,7 +469,7 @@ describe.skipIf(!db)('the native queue', () => {
         // only by how much of it got done.
         const rows = EXPIRY_BATCH_SIZE * 2 + 50;
         yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
+          Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
             sql.unsafe(
               // Claimed attempts whose lease ran out at the epoch, which is
               // where this suite's virtual clock starts. Flat retry delay so
@@ -510,7 +511,7 @@ describe.skipIf(!db)('the native queue', () => {
         // holding a lock on the whole backlog.
         const transactions = yield* asOwner(
           Effect.flatMap(
-            Database,
+            MaintenanceDatabase,
             ({ sql }) =>
               sql<{ tx: string; count: number }>`
                 SELECT xmin::text AS tx, count(*)::int AS count
@@ -701,7 +702,7 @@ describe.skipIf(!db)('the native queue', () => {
         // A row written by an older release or by hand; the enqueue path
         // could not produce it.
         yield* asOwner(
-          Effect.flatMap(Database, ({ sql }) =>
+          Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
             sql.unsafe(
               // Timestamps at the epoch, not \`now()\`: the claim compares
               // \`run_at\` against the *virtual* clock, which is where every

@@ -1,3 +1,4 @@
+import type { Context } from 'effect';
 import type pg from 'pg';
 import { expect } from 'vitest';
 
@@ -5,6 +6,7 @@ import { createStudio } from '../../app.ts';
 import { createBetterAuthService } from '../../auth/better-auth.ts';
 import type { AuthService } from '../../auth/service.ts';
 import type { StudioEnv } from '../../env.ts';
+import type { StudioServices } from '../../rpc/deps.ts';
 import { testCipher } from './secrets.ts';
 
 /**
@@ -36,6 +38,13 @@ export async function signInWithMagicLink(
   env: StudioEnv,
   pool: pg.Pool,
   prefix: string,
+  /**
+   * The Effect data layer over the same scratch schema (`scratch.services()`).
+   * Optional only for the suites whose cases never reach a procedure that
+   * opens a transaction — where the stand-ins refuse on first touch, which is
+   * what makes "nothing reached the database" checkable rather than assumed.
+   */
+  services?: Context.Context<StudioServices>,
 ) {
   if (!env.auth) throw new Error('dev env must configure auth');
   const sent: { email: string; url: string }[] = [];
@@ -52,7 +61,11 @@ export async function signInWithMagicLink(
   // scratch schema too rather than whatever DATABASE_URL points at. The whole
   // Studio rather than its Hono half: `/rpc` is the Effect shell's now, and a
   // suite driving it needs `studio.rpc` (see support/rpc.ts).
-  const studio = createStudio(env, { auth, pool });
+  const studio = createStudio(env, {
+    auth,
+    pool,
+    ...(services === undefined ? {} : { services }),
+  });
   const app = studio.app;
   const email = `${prefix}-${Date.now()}@example.com`;
 
