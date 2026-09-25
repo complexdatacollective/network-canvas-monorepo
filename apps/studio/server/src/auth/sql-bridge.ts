@@ -62,6 +62,11 @@ type BridgeContext = Database | PgClient.PgClient;
 const transactionBridge = (
   context: Context.Context<BridgeContext>,
 ): SqlBridge => {
+  // Not proven by a test. The suites' application client has one connection,
+  // and the driver already queues the statements it is handed for a
+  // connection, so the harness runs the same with or without the permit: it
+  // guards the interleaving of two adapter calls on the transaction's
+  // connection, which nothing there can produce.
   const permit = Semaphore.makeUnsafe(1);
   const bridge: SqlBridge = {
     run: (effect) =>

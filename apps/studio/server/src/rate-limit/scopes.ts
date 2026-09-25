@@ -18,8 +18,12 @@
 // attacks and cannot share a number.
 //
 // This file imports nothing. The limiter reads it to build keys and log lines
-// (src/rate-limit/limiter.ts), the app to enforce them (src/app.ts), and the summary
-// job to name what it counted — and none of those may import each other.
+// (src/rate-limit/limiter.ts); the surfaces that enforce them name their scope
+// from it — the HTTP route middleware (src/http/middleware/rate-limit.ts), the
+// auth mount (src/http/auth-mount.ts), the rpc plane (src/rate-limit/enforce.ts)
+// and the protocol-builder router (src/protocol-builder/router.ts); and the
+// summary job names what it counted from it — and none of those may import
+// each other.
 
 /** How many calls the window allows, and how long the window is. */
 export type RateLimitRule = { max: number; windowMs: number };

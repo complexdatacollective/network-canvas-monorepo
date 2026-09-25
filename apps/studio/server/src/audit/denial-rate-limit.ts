@@ -266,7 +266,10 @@ const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
     // read — admits, which is the direction a broken defence must fail in.
     if (reply === 0) return { admitted: false, reason: 'rate_limited' };
     // And only a literal 1 is a slot the script counted, which is the only
-    // kind `complete` may give back.
+    // kind `complete` may give back. So a reserve whose script ran but whose
+    // reply timed out leaves its slot in `inflight` until the key's TTL: the
+    // accepted cost of never decrementing a slot this request did not
+    // provably take.
     if (reply !== 1) return uncounted;
 
     // Idempotent, because a future edit must not be able to close one twice.
