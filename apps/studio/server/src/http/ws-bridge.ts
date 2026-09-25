@@ -195,11 +195,23 @@ export const WsBridge = (deps: WsBridgeDeps) =>
           // before it is dispatched, and a batch that arrives while the
           // instance is closed is dropped and closes the socket. The close
           // ends the pull like any other, which is what ends the loop.
+          //
+          // Only the operator's window closes a socket. The gate's other two
+          // triggers — a held migration lock and a stale schema — keep
+          // refusing new requests and upgrades, but a `migrate` with nothing to
+          // apply takes the lock for milliseconds on every deploy, and closing
+          // every open editor over that would fail an in-flight edit for
+          // nothing. A deploy that changes the schema enters the window first
+          // (#1901), and that is what closes sockets.
+          const operatorWindow = Effect.map(
+            triggers.closure,
+            Option.filter((closure) => closure.trigger === 'maintenance'),
+          );
           const closeForMaintenance = writer
             .write(MAINTENANCE_CLOSE)
             .pipe(Effect.ignore);
           const pump = Effect.flatMap(reader.pull, (frames) =>
-            Effect.flatMap(triggers.closure, (closure) =>
+            Effect.flatMap(operatorWindow, (closure) =>
               Option.isSome(closure)
                 ? closeForMaintenance
                 : Effect.forEach(
@@ -225,7 +237,7 @@ export const WsBridge = (deps: WsBridgeDeps) =>
           // closes the socket and waits for the loop, which that close ends,
           // to win the race and interrupt it.
           const watchMaintenance = Effect.gen(function* () {
-            while (Option.isNone(yield* triggers.closure)) {
+            while (Option.isNone(yield* operatorWindow)) {
               yield* Effect.sleep(MAINTENANCE_WATCH_INTERVAL);
             }
             yield* closeForMaintenance;

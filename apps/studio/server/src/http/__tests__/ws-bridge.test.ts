@@ -231,13 +231,14 @@ describe('the socket bridge', () => {
   );
 
   /**
-   * The server with a maintenance flag a case flips, over the real triggers:
-   * the flag is the only one of the three that can close it here.
+   * The server with a maintenance flag and a migration lock a case flips,
+   * over the real triggers; the schema is always current here.
    */
   async function serverWithFlag(studio: Studio) {
     const flag = MutableRef.make(false);
+    const lock = MutableRef.make(false);
     const triggers = MaintenanceTriggers.layerWith({
-      lockHeld: Effect.succeed(false),
+      lockHeld: Effect.sync(() => MutableRef.get(lock)),
       schema: Effect.succeed({ kind: 'current' }),
     }).pipe(Layer.provide(MaintenanceState.layerTest(flag)));
     const env = resolve({ NODE_ENV: 'test' });
@@ -247,7 +248,7 @@ describe('the socket bridge', () => {
       studio.checks,
       triggers,
     );
-    return { ...server, flag };
+    return { ...server, flag, lock };
   }
 
   /** The close, or a refusal naming how long it did not come. */
@@ -305,6 +306,34 @@ describe('the socket bridge', () => {
           await dispose();
         }
       }),
+  );
+
+  // A `migrate` with nothing to apply holds its lock for milliseconds on every
+  // deploy; the gate refuses new requests meanwhile, but an open editor keeps
+  // working.
+  it.live('keeps a socket open while only a migration lock is held', () =>
+    Effect.promise(async () => {
+      const studio = echoing();
+      const { origin, dispose, lock } = await serverWithFlag(studio);
+      const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+      try {
+        await opened(socket);
+        const closed = closedWith(socket).then(() => 'closed');
+        MutableRef.set(lock, true);
+        // Past the watch interval and the reading's TTL, so both have seen it.
+        await new Promise((settle) => setTimeout(settle, 1500));
+        const echoed = Promise.race([nextMessage(socket), closed]);
+        socket.send('during');
+        // Mutation: close on any closure, not only the operator's window → the
+        // watch closes the socket and this reads 'closed'.
+        expect(await echoed).toBe('echo:during');
+        expect(socket.readyState).toBe(WebSocket.OPEN);
+        expect(studio.closed()).toBe(0);
+      } finally {
+        socket.close();
+        await dispose();
+      }
+    }),
   );
 
   it.live('closes an idle socket when a maintenance window opens', () =>
