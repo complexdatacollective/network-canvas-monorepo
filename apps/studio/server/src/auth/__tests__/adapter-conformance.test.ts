@@ -543,20 +543,19 @@ const SCRIPT: Operation[] = [
 
   // consumeOne, delete, deleteMany
   {
-    label: 'consumeOne racing itself over one row',
-    act: async (adapter) =>
-      unordered(
-        await Promise.all([
-          adapter.consumeOne({
-            model: 'verification',
-            where: [eq('identifier', 'single')],
-          }),
-          adapter.consumeOne({
-            model: 'verification',
-            where: [eq('identifier', 'single')],
-          }),
-        ]),
-      ),
+    // Sequential: on the harness's one application connection two calls
+    // cannot race. The race is the two-client case below.
+    label: 'consumeOne twice over one row: the second finds nothing',
+    act: async (adapter) => [
+      await adapter.consumeOne({
+        model: 'verification',
+        where: [eq('identifier', 'single')],
+      }),
+      await adapter.consumeOne({
+        model: 'verification',
+        where: [eq('identifier', 'single')],
+      }),
+    ],
   },
   {
     label: 'consumeOne takes one of two matches',
@@ -1161,11 +1160,21 @@ describe.skipIf(!testDb)(
       });
     });
 
-    it('lets exactly one of two racing guarded writes through', async () => {
+    /**
+     * `act` on two application clients at once, over a row the owner holds
+     * locked until both have queued on it. Two clients, so the two calls are
+     * genuinely concurrent: the suite's application client has one connection.
+     * Both racers are past any read of the row before either may write it, so
+     * the one that goes second meets the first one's write — and an operation
+     * that is safe only because it reads and writes in one statement shows it.
+     */
+    async function raceOverLockedRow<A>(
+      table: string,
+      id: string,
+      act: (adapter: DBAdapter) => Promise<A>,
+    ): Promise<ReadonlyArray<A>> {
       if (!database) throw new Error('the scratch schema was not provisioned');
       const harness = database.harness;
-      // Two clients, so the two writes are genuinely concurrent: the suite's
-      // application client has one connection.
       const [first, second] = await Promise.all([
         database.run(makeSqlBridge),
         database.run(
@@ -1175,6 +1184,42 @@ describe.skipIf(!testDb)(
       const adapters = [first, second].map((client) =>
         studioAuthAdapter(client)(STUDIO_OPTIONS),
       );
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let locked: () => void = () => undefined;
+      const holding = new Promise<void>((resolve) => {
+        locked = resolve;
+      });
+      const holder = database.run(
+        harness.onOwner(
+          Effect.gen(function* () {
+            yield* harness.owner
+              .sql`select 1 from ${harness.owner.sql(table)} where id = ${id} for update`;
+            locked();
+            yield* Effect.promise(() => released);
+          }),
+        ),
+      );
+      await holding;
+      const racers = adapters.map(act);
+      for (let attempt = 0; ; attempt += 1) {
+        const [waiting] = await rows<{ n: number }>(
+          `select count(*)::int as n from pg_stat_activity
+          where wait_event_type = 'Lock'
+            and application_name in ('studio-test-app', 'studio-test-app-second')`,
+        );
+        if (waiting?.n === 2) break;
+        if (attempt > 200) throw new Error('the two racers never queued');
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      release();
+      await holder;
+      return Promise.all(racers);
+    }
+
+    it('lets exactly one of two racing guarded writes through', async () => {
       const { auth } = studioInstance();
       const context = await auth.$context;
       const inviter = await context.internalAdapter.createUser(
@@ -1204,52 +1249,55 @@ describe.skipIf(!testDb)(
         },
       });
 
-      // Both writers read `pending` and then queue on the row lock the owner
-      // holds, so both are past their sub-select before either may write. The
-      // one that goes second must see the first one's `accepted` and write
+      // The second writer must see the first one's `accepted` and write
       // nothing — which it does only if the guard is re-checked on the row it
       // finally locks.
-      let release: () => void = () => undefined;
-      const released = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let locked: () => void = () => undefined;
-      const holding = new Promise<void>((resolve) => {
-        locked = resolve;
-      });
-      const holder = database.run(
-        harness.onOwner(
-          Effect.gen(function* () {
-            yield* harness.owner
-              .sql`select 1 from team_invitations where id = ${invitation.id} for update`;
-            locked();
-            yield* Effect.promise(() => released);
+      const outcomes = await raceOverLockedRow(
+        'team_invitations',
+        invitation.id,
+        (adapter) =>
+          adapter.incrementOne({
+            model: 'invitation',
+            where: [eq('id', invitation.id), eq('status', 'pending')],
+            increment: {},
+            set: { status: 'accepted' },
           }),
-        ),
       );
-      await holding;
-      const racers = adapters.map((adapter) =>
-        adapter.incrementOne({
-          model: 'invitation',
-          where: [eq('id', invitation.id), eq('status', 'pending')],
-          increment: {},
-          set: { status: 'accepted' },
-        }),
-      );
-      for (let attempt = 0; ; attempt += 1) {
-        const [waiting] = await rows<{ n: number }>(
-          `select count(*)::int as n from pg_stat_activity
-          where wait_event_type = 'Lock'
-            and application_name in ('studio-test-app', 'studio-test-app-second')`,
-        );
-        if (waiting?.n === 2) break;
-        if (attempt > 200) throw new Error('the two writers never queued');
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-      release();
-      await holder;
-      const outcomes = await Promise.all(racers);
       expect(outcomes.filter((outcome) => outcome !== null)).toHaveLength(1);
+    });
+
+    it('hands a consumed row to exactly one of two racing consumers', async () => {
+      const { auth } = studioInstance();
+      const context = await auth.$context;
+      const identifier = `race-${randomUUID()}`;
+      const token = await context.adapter.create<{ id: string }>({
+        model: 'verification',
+        data: {
+          identifier,
+          value: 'one use',
+          expiresAt: LATER,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // A magic-link token's single use: a consume that selects and then
+      // deletes would hand the row to both.
+      const outcomes = await raceOverLockedRow(
+        'verification',
+        token.id,
+        (adapter) =>
+          adapter.consumeOne({
+            model: 'verification',
+            where: [eq('identifier', identifier)],
+          }),
+      );
+      expect(outcomes.filter((outcome) => outcome !== null)).toHaveLength(1);
+      expect(
+        await rows('select 1 from verification where identifier = $1', [
+          identifier,
+        ]),
+      ).toEqual([]);
     });
   },
 );
