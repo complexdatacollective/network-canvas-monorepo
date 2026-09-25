@@ -333,6 +333,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 3,
     why: 'cron bookkeeping over the job schema',
   },
+  [`${SERVER}/auth/adapter.ts`]: {
+    count: 38,
+    why: 'statements generated from better-auth’s schema through `sql(identifier)` with an `AUTH_TABLES` allowlist; the builder would need `any`. Counted by template, so the where-clause fragments each operator compiles to are in the count',
+  },
   [`${SERVER}/jobs/clock.ts`]: {
     count: 1,
     why: '`SELECT now()`, no FROM clause',
@@ -378,7 +382,7 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
   },
   // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible, and the list shrinks as stage 6 retires `pg`
+  // pinned rather than invisible, and the list shrinks as stage 4 retires `pg`
   // (better-auth's adapter is the last consumer that needs it).
   [`${SERVER}/db/schema.ts`]: {
     count: 3,

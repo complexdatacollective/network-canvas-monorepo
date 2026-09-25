@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
+import { PgClient } from '@effect/sql-pg';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +13,7 @@ import {
   testDb,
 } from '../../__tests__/support/database.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
+import { AUTH_TABLES } from '../../db/auth-schema.ts';
 import { readEnv } from '../../env.ts';
 import {
   type OAuthTokenColumn,
@@ -17,7 +21,9 @@ import {
   type SecretsCipherApi,
 } from '../../secrets/cipher.ts';
 import { SecretUnreadableError } from '../../secrets/envelope.ts';
+import { studioAuthAdapter } from '../adapter.ts';
 import { createBetterAuthInstance } from '../better-auth.ts';
+import { makeSqlBridge, type SqlBridge } from '../sql-bridge.ts';
 
 // Driven through a real better-auth instance rather than the wrapper alone:
 // what has to hold is that better-auth's own paths — the transaction an OAuth
@@ -67,12 +73,15 @@ describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
   function contextFor(cipher: SecretsCipherApi) {
     if (!env.auth) throw new Error('dev env must configure auth');
     if (!database) throw new Error('the scratch schema was not provisioned');
-    return createBetterAuthInstance(
-      env.auth,
-      database.appPool,
-      () => Promise.resolve(),
+    return createBetterAuthInstance({
+      env: env.auth,
+      adapter: drizzleAdapter(drizzle({ client: database.appPool }), {
+        provider: 'pg',
+        schema: AUTH_TABLES,
+      }),
       cipher,
-    ).$context;
+      sendMagicLink: () => Promise.resolve(),
+    }).$context;
   }
 
   /** What is actually on disk — read around the adapter, never through it. */
@@ -324,5 +333,77 @@ describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
         update: { accessToken: 'one-value-for-every-row' },
       }),
     ).rejects.toThrow(/bulk write/);
+  });
+
+  it('seals inside a real transaction over the sql-pg adapter, and keeps nothing it rolled back', async () => {
+    if (!env.auth) throw new Error('dev env must configure auth');
+    if (!database) throw new Error('the scratch schema was not provisioned');
+    // The bridge the transaction runs on, kept so the raw row can be read on
+    // the transaction's own connection: nothing outside it could see the row.
+    const bridge = await database.run(makeSqlBridge);
+    let open: SqlBridge | undefined;
+    const watched: SqlBridge = {
+      run: bridge.run,
+      transaction: (body) =>
+        bridge.transaction((inner) => {
+          open = inner;
+          return body(inner);
+        }),
+    };
+    const ctx = await createBetterAuthInstance({
+      env: env.auth,
+      adapter: studioAuthAdapter(watched),
+      cipher: testCipher(),
+      sendMagicLink: () => Promise.resolve(),
+    }).$context;
+    const email = `${randomUUID()}@example.com`;
+    const accountId = randomUUID();
+    class RolledBack extends Error {}
+
+    await expect(
+      ctx.adapter.transaction(async (trx) => {
+        const created = await trx.create<{ id: string }>({
+          model: 'user',
+          data: { name: 'Researcher', email, emailVerified: true },
+        });
+        const account = await trx.create({
+          model: 'account',
+          data: {
+            ...GOOGLE,
+            accountId,
+            userId: created.id,
+            ...TOKENS,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        expect(account).toMatchObject(TOKENS);
+
+        if (!open) throw new Error('no transaction bridge was opened');
+        const [stored] = await open.run(
+          PgClient.PgClient.use(
+            (sql) =>
+              sql<StoredTokens>`select "accessToken", "refreshToken", "idToken"
+                                  from account where "accountId" = ${accountId}`,
+          ),
+        );
+        for (const column of TOKEN_COLUMNS) {
+          expect(stored?.[column]).toMatch(/^studio-secret:/);
+          expect(stored?.[column]).not.toContain(TOKENS[column]);
+        }
+        throw new RolledBack();
+      }),
+    ).rejects.toBeInstanceOf(RolledBack);
+
+    expect(
+      await database.run(
+        ownerRows('select 1 from account where "accountId" = $1', [accountId]),
+      ),
+    ).toEqual([]);
+    expect(
+      await database.run(
+        ownerRows('select 1 from "user" where email = $1', [email]),
+      ),
+    ).toEqual([]);
   });
 });

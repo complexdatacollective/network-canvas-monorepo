@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
+import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
@@ -15,9 +16,9 @@ import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
-// The only module that builds a better-auth instance (#1245). Two siblings
-// take narrower pieces: secrets-adapter.ts its adapter types, scripts/seed/teams.ts
-// its password hasher.
+// The only module that builds a better-auth instance (#1245). Three siblings
+// take narrower pieces: adapter.ts its adapter factory, secrets-adapter.ts its
+// adapter types, scripts/seed/teams.ts its password hasher.
 
 /**
  * The sign-in endpoints whose per-address limit Studio sets rather than
@@ -79,22 +80,35 @@ export type SendMagicLink = (input: {
   url: string;
 }) => Promise<void>;
 
-export function createBetterAuthInstance(
-  env: AuthEnv,
-  pool: pg.Pool,
-  sendMagicLink: SendMagicLink,
-  secrets: SecretsCipherApi,
+/** A database adapter as `betterAuth({ database })` takes one. */
+export type AuthDatabaseAdapter = (options: BetterAuthOptions) => DBAdapter;
+
+export type BetterAuthDeps = {
+  readonly env: AuthEnv;
+  /**
+   * The database adapter, taken from the caller so the instance does not
+   * decide which client it runs on: `auth/adapter.ts`'s over the application
+   * client, or the drizzle adapter the better-auth CLI generates a schema
+   * from. Composed under the secrets wrapper here either way.
+   */
+  readonly adapter: AuthDatabaseAdapter;
+  readonly cipher: SecretsCipherApi;
+  readonly sendMagicLink: SendMagicLink;
   /**
    * Where sign-in attempts are counted. Absent means this instance enforces no
    * limit of its own: the auth CLI's configuration and the suites that are not
    * about limiting construct one that way. Every server process passes one.
    */
-  limiter?: RateLimiter,
-) {
-  const adapter = drizzleAdapter(drizzle({ client: pool }), {
-    provider: 'pg',
-    schema: AUTH_TABLES,
-  });
+  readonly limiter?: RateLimiter | undefined;
+};
+
+export function createBetterAuthInstance({
+  env,
+  adapter,
+  cipher,
+  sendMagicLink,
+  limiter,
+}: BetterAuthDeps) {
   return betterAuth({
     baseURL: env.baseUrl,
     basePath: '/api/auth',
@@ -104,8 +118,8 @@ export function createBetterAuthInstance(
     // because it would seal with BETTER_AUTH_SECRET, unrotatable and bound to
     // no row. Composed here, at the factory, so the wrapper is the adapter
     // better-auth resolves for every path including its transactions.
-    database: (options: Parameters<typeof adapter>[0]) =>
-      withSecretsAdapter(adapter(options), secrets),
+    database: (options: BetterAuthOptions) =>
+      withSecretsAdapter(adapter(options), cipher),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],
@@ -274,13 +288,18 @@ export function createBetterAuthService(
   secrets: SecretsCipherApi,
   limiter?: RateLimiter,
 ): AuthService {
-  const auth = createBetterAuthInstance(
+  const auth = createBetterAuthInstance({
     env,
-    pool,
+    // Still node-postgres until `AuthService` moves onto the application
+    // client and `auth/adapter.ts`; the instance no longer cares which.
+    adapter: drizzleAdapter(drizzle({ client: pool }), {
+      provider: 'pg',
+      schema: AUTH_TABLES,
+    }),
+    cipher: secrets,
     sendMagicLink,
-    secrets,
     limiter,
-  );
+  });
   const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),

@@ -138,7 +138,15 @@ const OPENERS: Record<string, { count: number; why: string }> = {
   },
   [`${SERVER}/src/auth/secrets-adapter.ts › transaction`]: {
     count: 1,
-    why: "better-auth's own adapter transaction on its node-postgres handle (stage 6 moves it), wrapped only so writes inside it are sealed",
+    why: "better-auth's own adapter transaction, wrapped only so writes inside it are sealed; the server's handle is node-postgres until stage 4's `AuthService` moves it onto `auth/adapter.ts`",
+  },
+  [`${SERVER}/src/auth/adapter.ts › transaction`]: {
+    count: 1,
+    why: "better-auth's `transaction()` handed to the bridge, which opens it as `sql-bridge.ts`'s untenanted scope: sign-up, OAuth linking and the like on the auth tables, which belong to no team",
+  },
+  [`${SERVER}/src/auth/sql-bridge.ts › UntenantedScope.open`]: {
+    count: 2,
+    why: "better-auth's adapter: one pinned transaction per statement outside better-auth's `transaction()`, and one around the whole callback inside it — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
   },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,

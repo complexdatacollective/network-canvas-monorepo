@@ -414,9 +414,9 @@ describe('the web process', () => {
     // The matching negative — "and it carries no node-postgres" — is not true
     // of this process today, so it is not asserted here: `pg` still arrives
     // through db/pool.ts, db/database-pool.ts, setup/bootstrap.ts,
-    // http/health.ts and auth/better-auth.ts, the last of which needs a
-    // node-postgres drizzle handle until stage 6 gives better-auth an Effect
-    // one. Asserting the absence would fail; asserting the presence of the
+    // http/health.ts and auth/better-auth.ts, the last of which builds a
+    // node-postgres drizzle handle until stage 4's `AuthService` puts
+    // better-auth on its sql-pg adapter (auth/adapter.ts). Asserting the absence would fail; asserting the presence of the
     // holders would pass whatever else joined them. The negative is asserted
     // where it is true instead — see the rotation process below, the one
     // entry already clear of the driver.
