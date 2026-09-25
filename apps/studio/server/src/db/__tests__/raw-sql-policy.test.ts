@@ -297,6 +297,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the stamp upsert, which must match the node-postgres `stampFingerprint` statement text for text',
   },
+  [`${SERVER}/db/deployment-state.ts › db.deploymentState.read`]: {
+    count: 1,
+    why: 'a transaction-local `statement_timeout` via `set_config` (no FROM), so a read queued behind a migration’s lock ends on the server rather than holding its connection',
+  },
   [`${SERVER}/db/readiness.ts › db.readiness.alive`]: {
     count: 1,
     why: 'the liveness probe’s `select 1`, no FROM clause',
@@ -332,6 +336,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/jobs/worker.ts › JobWorker.tickSchedules`]: {
     count: 3,
     why: 'cron bookkeeping over the job schema',
+  },
+  [`${SERVER}/auth/adapter.ts`]: {
+    count: 38,
+    why: 'statements generated from better-auth’s schema through `sql(identifier)` with an `AUTH_TABLES` allowlist; the builder would need `any`. Counted by template, so the where-clause fragments each operator compiles to are in the count',
   },
   [`${SERVER}/jobs/clock.ts`]: {
     count: 1,
@@ -378,8 +386,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
   },
   // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible, and the list shrinks as stage 6 retires `pg`
-  // (better-auth's adapter is the last consumer that needs it).
+  // pinned rather than invisible. better-auth left it in stage 4 (it runs on
+  // `auth/adapter.ts` now); what stays is readiness, the schema gate and the
+  // scripts, which remain on node-postgres while the Effect client cannot pin a
+  // role outside a transaction (rc.115).
   [`${SERVER}/db/schema.ts`]: {
     count: 3,
     why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ and the schema gate’s twins of the Effect pair',

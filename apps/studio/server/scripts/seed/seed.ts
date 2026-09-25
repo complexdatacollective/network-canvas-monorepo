@@ -147,6 +147,12 @@ const SCALES: Record<
 };
 
 /**
+ * `schemaFingerprint` and `deployment_state` are kept: both describe the
+ * deployment rather than hold its data, and both rows are written only by the
+ * schema step — `deployment_state`'s singleton cannot be re-inserted by either
+ * application role, so truncating it here would leave `maintenance on|off`
+ * failing on a missing row until the schema step ran again.
+ *
  * Driven off `pg_tables` rather than a hardcoded list, so a table added to
  * the schema later is wiped too instead of silently accumulating stale rows
  * that the rest of this function never touches.
@@ -167,7 +173,8 @@ const wipe = Effect.fnUntraced(function* () {
     begin
       for r in
         select tablename from pg_tables
-        where schemaname = current_schema() and tablename <> 'schemaFingerprint'
+        where schemaname = current_schema()
+          and tablename not in ('schemaFingerprint', 'deployment_state')
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;

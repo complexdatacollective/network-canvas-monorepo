@@ -1,19 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Predicate } from 'effect';
+import { Effect, Layer, MutableRef, Predicate } from 'effect';
 import { Hono } from 'hono';
 import { WebSocket } from 'ws';
 
 import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
-import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { authServiceStub } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import type { Studio, WsBridgeDeps } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import { getDeploymentStatus } from '../../domain.ts';
 import { resolve } from '../../env/resolve.ts';
+import { MaintenanceState } from '../../platform/maintenance-state.ts';
 import type { RpcDeps } from '../../rpc/deps.ts';
+import { MaintenanceTriggers } from '../middleware/maintenance.ts';
 
 // The socket route on its own, with the RPC router stubbed out: what the
 // protocol-builder suite proves is that the wiring carries a real session,
@@ -53,14 +55,16 @@ function tabIn(context: unknown): string | null {
  */
 function echoing(): Studio & {
   readonly closed: () => number;
+  readonly dispatched: () => number;
   readonly tab: () => string | null | typeof NO_FRAME;
 } {
   let closed = 0;
+  let dispatched = 0;
   let tab: string | null | typeof NO_FRAME = NO_FRAME;
   const ws: WsBridgeDeps = {
-    admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: {
       message: (peer, data, options) => {
+        dispatched += 1;
         tab = tabIn(options?.context);
         peer.send(typeof data === 'string' ? `echo:${data}` : 'echo:binary');
         return Promise.resolve({ matched: true });
@@ -74,7 +78,6 @@ function echoing(): Studio & {
   // The `/rpc` route is registered from this too, and answers nothing useful
   // here: this suite drives the socket alone.
   const rpc: RpcDeps = {
-    auth: stubAuthService(),
     capabilities: {
       enabled: false,
       magicLink: false,
@@ -87,9 +90,14 @@ function echoing(): Studio & {
   return {
     app: new Hono(),
     ws,
+    // The upgrade's principal gate asks the auth service, so the stub is the
+    // researcher the socket is admitted as.
+    auth: authServiceStub({ getSession: () => Effect.succeedSome(PRINCIPAL) }),
+    limiter: undefined,
     rpc,
     checks: {},
     closed: () => closed,
+    dispatched: () => dispatched,
     tab: () => tab,
   };
 }
@@ -151,12 +159,17 @@ describe('the socket bridge', () => {
         // The drain signals the socket routes and waits for them to leave
         // before the listener closes, so a stopping process tells its clients
         // rather than leaving them to notice. Observed: the whole stop takes
-        // about 3 ms and the close frame lands just inside it.
+        // about 3 ms and the close frame lands just inside it — but the
+        // client's `close` event and the stop's promise settle in the same
+        // process a fraction of a millisecond apart, in either order, so the
+        // two are bounded from the start of the stop rather than ordered
+        // against each other. That the server sent a close frame at all, and
+        // did not merely drop the connection, is the 1005 below.
         //
         // Mutation: drop `Effect.race(drain.closing)` from the pull loop and
         // the stop instead waits out the drain's whole five-second bound with
-        // the socket still open, which the bound below catches.
-        expect(event.at).toBeLessThanOrEqual(stoppedAt);
+        // the socket still open, which both bounds catch.
+        expect(event.at - startedStopAt).toBeLessThan(1000);
         expect(stoppedAt - startedStopAt).toBeLessThan(1000);
         // Codeless, per the shutdown decision on #1929: the upgrade's release
         // is `ws.close()` with no status. A client reads that as 1005 — a
@@ -219,6 +232,150 @@ describe('the socket bridge', () => {
         [CLIENT_SESSION_HEADER]: 'x'.repeat(65),
       });
       expect(exotic).toBeNull();
+    }),
+  );
+
+  /**
+   * The server with a maintenance flag and a migration lock a case flips,
+   * over the real triggers; the schema is always current here.
+   */
+  async function serverWithFlag(studio: Studio) {
+    const flag = MutableRef.make(false);
+    const lock = MutableRef.make(false);
+    const triggers = MaintenanceTriggers.layerWith({
+      lockHeld: Effect.sync(() => MutableRef.get(lock)),
+      schema: Effect.succeed({ kind: 'current' }),
+    }).pipe(Layer.provide(MaintenanceState.layerTest(flag)));
+    const env = resolve({ NODE_ENV: 'test' });
+    const server = await startStudioServer(
+      env,
+      studio,
+      studio.checks,
+      triggers,
+    );
+    return { ...server, flag, lock };
+  }
+
+  /** The close, or a refusal naming how long it did not come. */
+  function closedWithin(socket: WebSocket, ms: number): Promise<CloseEvent> {
+    return Promise.race([
+      closedWith(socket),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`the socket was still open after ${ms} ms`)),
+          ms,
+        ),
+      ),
+    ]);
+  }
+
+  // #1901: "no procedure runs" during a window, and the gate sees only the
+  // upgrade. A socket opened before the window must neither dispatch another
+  // frame nor stay open through it.
+  it.live(
+    'drops a frame sent during a maintenance window and closes the socket',
+    () =>
+      Effect.promise(async () => {
+        const studio = echoing();
+        const { origin, dispose, flag } = await serverWithFlag(studio);
+        const socket = new WebSocket(
+          `${origin.replace('http://', 'ws://')}/ws`,
+        );
+        try {
+          await opened(socket);
+          const echoed = nextMessage(socket);
+          socket.send('before');
+          expect(await echoed).toBe('echo:before');
+          expect(studio.dispatched()).toBe(1);
+
+          MutableRef.set(flag, true);
+          const closed = closedWithin(socket, 2500);
+          const unanswered = nextMessage(socket);
+          socket.send('during');
+          const event = await closed;
+
+          // Mutation: dispatch a batch without asking the triggers first → the
+          // frame is answered and counted.
+          expect(studio.dispatched()).toBe(1);
+          await expect(
+            Promise.race([
+              unanswered,
+              new Promise((settle) => setTimeout(() => settle('silence'), 100)),
+            ]),
+          ).resolves.toBe('silence');
+          expect(event.code).toBe(1013);
+          expect(event.reason).toBe('down for maintenance');
+          expect(studio.closed()).toBe(1);
+        } finally {
+          socket.close();
+          await dispose();
+        }
+      }),
+  );
+
+  // A `migrate` with nothing to apply holds its lock for milliseconds on every
+  // deploy; the gate refuses new requests meanwhile, but an open editor keeps
+  // working.
+  it.live('keeps a socket open while only a migration lock is held', () =>
+    Effect.promise(async () => {
+      const studio = echoing();
+      const { origin, dispose, lock } = await serverWithFlag(studio);
+      const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+      try {
+        await opened(socket);
+        const closed = closedWith(socket).then(() => 'closed');
+        MutableRef.set(lock, true);
+        // Past the watch interval and the reading's TTL, so both have seen it.
+        await new Promise((settle) => setTimeout(settle, 1500));
+        const echoed = Promise.race([nextMessage(socket), closed]);
+        socket.send('during');
+        // Mutation: close on any closure, not only the operator's window → the
+        // watch closes the socket and this reads 'closed'.
+        expect(await echoed).toBe('echo:during');
+        expect(socket.readyState).toBe(WebSocket.OPEN);
+        expect(studio.closed()).toBe(0);
+      } finally {
+        socket.close();
+        await dispose();
+      }
+    }),
+  );
+
+  it.live('closes an idle socket when a maintenance window opens', () =>
+    Effect.promise(async () => {
+      const studio = echoing();
+      const { origin, dispose, flag } = await serverWithFlag(studio);
+      const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+      try {
+        await opened(socket);
+        const flippedAt = performance.now();
+        MutableRef.set(flag, true);
+        // Mutation: drop the maintenance watch from the loop's races → the
+        // socket stays open and this rejects.
+        const event = await closedWithin(socket, 2500);
+        expect(event.code).toBe(1013);
+        expect(event.at - flippedAt).toBeLessThan(2500);
+        expect(studio.dispatched()).toBe(0);
+
+        // And the reconnect meets the gate.
+        const again = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+        const refused = await new Promise<number>((settle, reject) => {
+          // A listener here owns the refused handshake, so it ends it.
+          again.once('unexpected-response', (request, response) => {
+            settle(response.statusCode ?? 0);
+            response.resume();
+            request.destroy();
+          });
+          again.once('open', () => {
+            again.close();
+            reject(new Error('the reconnect was admitted'));
+          });
+        });
+        expect(refused).toBe(503);
+      } finally {
+        socket.close();
+        await dispose();
+      }
     }),
   );
 });

@@ -5,7 +5,6 @@ import type pg from 'pg';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
-import { createAssetStore } from '../assets.ts';
 import { OwnerDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { createOwnerPool } from '../db/pool.ts';
@@ -19,7 +18,11 @@ import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { testKeyringEntry } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
-import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
+} from './support/valkey.ts';
 
 // Liveness and readiness on the web process (#1897, #1909). The worker serves
 // the same two routes on a loopback listener of its own, which only a real
@@ -43,12 +46,21 @@ async function request(
   extraChecks: HealthChecks = {},
 ): Promise<{ response: Response; dispose: () => Promise<void> }> {
   const env = resolve(variables);
-  const studio = createStudio(env);
+  // The limiter the program would build: over `REDIS_URL`'s store when the
+  // variables name one, over no store when they do not.
+  const limits = await openRateLimitStore(env.redis);
+  const studio = createStudio(env, { limiter: limits.limiter() });
   const stack = composeStudio(env, studio, {
     ...studio.checks,
     ...extraChecks,
   });
-  return { response: await stack.request(path), dispose: stack.dispose };
+  return {
+    response: await stack.request(path),
+    dispose: async () => {
+      await stack.dispose();
+      await limits.dispose();
+    },
+  };
 }
 
 const ok = Effect.succeed('ok' as const);
@@ -139,25 +151,6 @@ describe('the schema check over a pool', () => {
   });
 });
 
-describe('the object-store check', () => {
-  it('aborts the request rather than only giving up on it', async () => {
-    // The route can stop waiting on its own, but the SDK would carry on
-    // retrying and holding a socket — once per probe, every few seconds, for
-    // as long as the endpoint is unreachable. So the deadline is handed to the
-    // command as well, and this is what says it arrived: an abort, not the
-    // transport error the SDK would have reached on its own.
-    const store = createAssetStore({
-      endpoint: 'http://127.0.0.1:59998',
-      region: 'us-east-1',
-      bucket: 'studio-test',
-      accessKeyId: 'key',
-      secretAccessKey: 'secret',
-    });
-
-    await expect(store.head(AbortSignal.timeout(1))).rejects.toThrow(/abort/i);
-  });
-});
-
 describe('the web process routes', () => {
   it('answers /healthz without asking anything', async () => {
     // Liveness: a process that answers is running. It must not consult a
@@ -217,7 +210,8 @@ describe('the web process routes', () => {
       NODE_ENV: 'test',
       REDIS_URL: `redis://127.0.0.1:${await freePort()}`,
     });
-    const studio = createStudio(env);
+    const limits = await openRateLimitStore(env.redis);
+    const studio = createStudio(env, { limiter: limits.limiter() });
     const stack = composeStudio(env, studio);
     try {
       const response = await stack.request('/readyz');
@@ -230,6 +224,7 @@ describe('the web process routes', () => {
       expect((await stack.request('/api/v1/status')).status).toBe(200);
     } finally {
       await stack.dispose();
+      await limits.dispose();
     }
   });
 

@@ -6,7 +6,10 @@ import { AuditReadDenied } from '@codaco/studio-contract/schema/audit';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 
 import { audited, auditable } from '../audit/audited.ts';
-import { reservedDenial } from '../audit/denial-rate-limit.ts';
+import {
+  type DeniedAttempts,
+  reservedDenial,
+} from '../audit/denial-rate-limit.ts';
 import {
   authorizeAuditRead,
   grantsAuditRead,
@@ -208,7 +211,7 @@ export const guardAuditRead = <A, R>(
 ): Effect.Effect<
   A,
   AuditReadDenied | NotFound | SqlError.SqlError,
-  R | Database | Principal | RequestId | AuditSignal
+  R | Database | Principal | RequestId | AuditSignal | DeniedAttempts
 > => {
   const predictsDenial = !grantsAuditRead(access.role);
   const decided = Effect.catchTag(read, 'AuditReadRefused', () =>

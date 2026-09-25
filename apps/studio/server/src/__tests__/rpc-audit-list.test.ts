@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Exit } from 'effect';
+import { Effect, Exit, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
@@ -8,7 +8,7 @@ import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -190,11 +190,11 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
         [`${seat.userId}-member`, TEAM, seat.userId, role],
       );
     }
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(currentPrincipal),
+    const auth = authServiceStub({
+      getSession: () => Effect.succeedSome(currentPrincipal),
       getMembership: (userId, teamId) => {
         const role = teamId === TEAM ? memberships[userId] : undefined;
-        return Promise.resolve(role ? { role } : null);
+        return Effect.succeed(Option.fromNullishOr(role ? { role } : null));
       },
     });
     client = await createRpcClient(
@@ -791,12 +791,12 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       createStudio(readEnv(), {
         pool: database.appPool,
         services: database.services,
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(demoted),
+        auth: authServiceStub({
+          getSession: () => Effect.succeedSome(demoted),
           // Still owner: this is the stale read the request carries forward.
           getMembership: () => {
             reportMiddlewareAuthorization();
-            return Promise.resolve({ role: 'owner' });
+            return Effect.succeedSome({ role: 'owner' });
           },
         }),
       }),
@@ -868,12 +868,12 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       createStudio(readEnv(), {
         pool: database.appPool,
         services: database.services,
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(promoted),
+        auth: authServiceStub({
+          getSession: () => Effect.succeedSome(promoted),
           // Still member: this is the stale read the request carries forward.
           getMembership: () => {
             reportMiddlewareAuthorization();
-            return Promise.resolve({ role: 'member' });
+            return Effect.succeedSome({ role: 'member' });
           },
         }),
       }),
@@ -941,9 +941,9 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     const unrecordedClient = await createRpcClient(
       createStudio(readEnv(), {
         pool: database.appPool,
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(unrecorded),
-          getMembership: () => Promise.resolve({ role: 'member' }),
+        auth: authServiceStub({
+          getSession: () => Effect.succeedSome(unrecorded),
+          getMembership: () => Effect.succeedSome({ role: 'member' }),
         }),
         services: database.services,
       }),
@@ -1038,9 +1038,9 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       const lostClient = await createRpcClient(
         createStudio(readEnv(), {
           pool: database.appPool,
-          auth: stubAuthService({
-            getSession: () => Promise.resolve(lost),
-            getMembership: () => Promise.resolve({ role: 'member' }),
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(lost),
+            getMembership: () => Effect.succeedSome({ role: 'member' }),
           }),
           services: database.services,
         }),

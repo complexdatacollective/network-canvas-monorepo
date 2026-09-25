@@ -2,21 +2,29 @@ import { Cause, Effect, Layer } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/unstable/http';
 
 import { createStudio, type Studio } from '../app.ts';
+import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
+import { AuthService } from '../auth/service.ts';
 import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
+import {
+  maintenanceCheck,
+  MaintenanceTriggers,
+} from '../http/middleware/maintenance.ts';
 import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { HttpServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
+import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
-import { RateLimitStoresLive } from '../rate-limit/store.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import {
   KeyringLive,
@@ -24,6 +32,7 @@ import {
   SecretsCipherLive,
   verifyKeyring,
 } from '../secrets/services.ts';
+import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
 // The web program, development and production both: one Node process serving
@@ -41,7 +50,7 @@ import { STUDIO_VERSION } from '../version.ts';
 // The whole process is one Layer. Acquisition order is the boot order and
 // finalizers run in reverse, so the shutdown a container stop asks for is a
 // property of the graph rather than of a hand-written handler: websocket
-// sessions drain, then the listener closes, then the rate-limit stores and the
+// sessions drain, then the listener closes, then the rate-limit store and the
 // pool release, then the tracer flushes. Exit codes come from
 // `NodeRuntime.runMain`'s teardown — 0 after a clean stop, 130 on a signal, 1
 // for a layer that would not build.
@@ -88,11 +97,17 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Effect.gen(function* () {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
+      const limiter = yield* RateLimiter;
+      const auth = yield* AuthService;
+      const objectStore = yield* ObjectStore;
+      const triggers = yield* MaintenanceTriggers;
 
       // The Effect services every data-layer caller on this process runs on,
-      // captured as one context and handed down to the two promise-shaped
+      // captured as one context and handed down to the promise-shaped
       // consumers that cannot take layers: the protocol builder's oRPC router
-      // and better-auth's sign-in mail callback (`rpc/deps.ts`).
+      // and the Hono residue (`rpc/deps.ts`). better-auth's sign-in mail
+      // callback is not one of them any more: `AuthService.layer` builds it
+      // over the services its own layer was given.
       //
       // Nothing here cares when the schema becomes current: a statement against
       // a database that has not been migrated yet fails the one request that
@@ -134,7 +149,13 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         yield* bootChecks;
       }
 
-      const studio = createStudio(env, { services, pool });
+      const studio = createStudio(env, {
+        services,
+        pool,
+        limiter,
+        auth,
+        objectStore,
+      });
       return Serve(studio, {
         ...studio.checks,
         // Is the database this build's? Both processes refuse a stale schema
@@ -143,11 +164,32 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         // has to say so rather than infer it from the process still being
         // alive.
         schema: schemaCheck(status.read),
+        // Whether the maintenance gate is refusing requests, and why (#1901):
+        // the same cached triggers the gate reads, so the two cannot disagree.
+        maintenance: maintenanceCheck(triggers),
       });
     }),
   ).pipe(
+    // Built once and provided to both the gate and the readiness check, so
+    // they share one cached reading of each trigger.
+    Layer.provide(MaintenanceTriggers.layer),
+    Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
-    Layer.provide(RateLimitStoresLive),
+    // The bucket `/storage`, the protocol builder's content promotions and
+    // readiness share, or none where `S3_*` is unset.
+    Layer.provide(ObjectStore.layer),
+    // better-auth over the application client (#1927 §12). Serve-only: the
+    // worker builds no auth provider at all. Above everything it asks for —
+    // the client, the cipher, the limiter it counts sign-in attempts in and
+    // the queue sign-in mail goes on.
+    Layer.provide(AuthService.layerFromEnvironment),
+    // The one Valkey client and the two services over it: every limit this
+    // process enforces, and the audit denial window. Acquired after the pool
+    // and before anything that charges a limit, so it releases after the
+    // listener closes and before the pool ends.
+    Layer.provide(DeniedAttempts.layer),
+    Layer.provide(RateLimiter.layer),
+    Layer.provide(RateLimitStore.layer),
     Layer.provide(DatabasePool.layerApplication(db)),
     // The application client and everything over it. `Jobs` is built above
     // `JobClock.layerApplication` so the skew against the database is measured
@@ -168,9 +210,25 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
  * refusals, and readiness that names nothing it was never asked to check.
  */
 function withoutDatabase(env: StudioEnv) {
-  const studio = createStudio(env);
-  return Serve(studio, studio.checks).pipe(
-    Layer.provide(RateLimitStoresLive),
+  return Layer.unwrap(
+    Effect.gen(function* () {
+      const studio = createStudio(env, {
+        limiter: yield* RateLimiter,
+        auth: yield* AuthService,
+        objectStore: yield* ObjectStore,
+      });
+      return Serve(studio, studio.checks);
+    }),
+  ).pipe(
+    // Disabled: with no database the selector never builds better-auth, so
+    // none of the stand-ins below it is asked for anything.
+    // No `deployment_state` to read, no lock and no schema: never closed.
+    Layer.provide(MaintenanceTriggers.layerOpen),
+    Layer.provide(ObjectStore.layer),
+    Layer.provide(AuthService.layerFromEnvironment),
+    Layer.provide(DeniedAttempts.layer),
+    Layer.provide(RateLimiter.layer),
+    Layer.provide(RateLimitStore.layer),
     // The `/rpc` route asks for the data layer whatever this process is, so
     // the requirement has to be met here too. Nothing reaches it: the auth
     // gate is off without a database, so every procedure that would open a

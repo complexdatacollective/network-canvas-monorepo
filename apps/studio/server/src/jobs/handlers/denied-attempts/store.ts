@@ -1,16 +1,14 @@
 import { Context, Effect, Layer, Predicate, Schema } from 'effect';
 
-import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
-import type { RateLimitStore } from '../../../rate-limit/store.ts';
-import { deepestMessage } from '../../errors.ts';
+import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit/limiter.ts';
+import { RateLimitStore } from '../../../rate-limit/store.ts';
 
 // The half of `denied-attempts-summary` that talks to Valkey, behind a tag
-// (#1927 stage 4). `RateLimitStore` (src/rate-limit/store.ts) is an ioredis
-// client wrapped in a Promise surface that never rejects — an unreachable
-// store, a timed-out command and a Lua error all arrive as its `UNAVAILABLE`
-// marker — and stage 4 is what turns that module itself into an Effect
-// service. Until then this tag is the seam: the live layer wraps today's
-// store, and the handler above it never sees a Promise.
+// (#1927 stage 4). The live layer is over `RateLimitStore`
+// (src/rate-limit/store.ts), the Effect service every other Valkey caller
+// uses: an unreachable store, a timed-out command and a Lua error all arrive
+// as its `UNAVAILABLE` marker rather than as a failure, and the handler above
+// this never sees a Promise.
 //
 // The surface is what the job means rather than what Redis does: "every
 // suppression key", "take this window", "give up this claim", "drain the
@@ -24,8 +22,10 @@ import { deepestMessage } from '../../errors.ts';
 // a failure. A scan that cannot finish answers with what it got, a claim that
 // cannot be taken answers with nothing, and the run does less this minute
 // rather than failing — the keys outlive their window by minutes, so the next
-// run takes what this one did not. The error channel is for a rejection the
-// store's own contract says cannot happen; it fails the job if it ever does.
+// run takes what this one did not. The error channel is the job's vocabulary
+// for a store that refused an operation outright; the live layer never uses
+// it, because `RateLimitStore.run` cannot fail, and the memory layer
+// (`testing.ts`) uses it to reach the handler's failure paths.
 
 /** `SCAN` is cursor-based; this is how much of the keyspace one call covers. */
 const SCAN_COUNT = 500;
@@ -73,10 +73,9 @@ return reply
 `;
 
 /**
- * The store rejected, which its own surface says it does not do: every
- * failure it knows about is reported as `UNAVAILABLE` instead. Typed rather
- * than a defect so the job fails and is seen, the way today's handler's outer
- * `catch` makes the run fail.
+ * The store refused an operation outright. Typed rather than a defect so the
+ * job fails and is seen. `RateLimitStore` reports every failure it knows about
+ * as `UNAVAILABLE` instead, so only a store other than the live one raises it.
  */
 export class DeniedAttemptsStoreFailed extends Schema.TaggedError<DeniedAttemptsStoreFailed>()(
   'DeniedAttemptsStoreFailed',
@@ -106,9 +105,8 @@ export class DeniedAttemptsStore extends Context.Service<
   {
     /**
      * False when the deployment has no store at all. The job then has nothing
-     * to summarise and says so; `src/programs/worker.ts` provides `layerAbsent`
-     * when `REDIS_URL` is unset, and the real layer over the rate-limit store
-     * when it is set.
+     * to summarise and says so. Read from `RateLimitStore`, which is
+     * `layerAbsent` when `REDIS_URL` is unset.
      */
     readonly configured: boolean;
     /** Every suppression key under `prefix`, read a page at a time. */
@@ -129,23 +127,14 @@ export class DeniedAttemptsStore extends Context.Service<
     >;
   }
 >()('@studio/jobs/handlers/DeniedAttemptsStore') {
-  /** Today's ioredis-backed store, which stage 4 replaces with its own service. */
-  static readonly layer = (
-    store: RateLimitStore,
-  ): Layer.Layer<DeniedAttemptsStore> =>
-    Layer.succeed(DeniedAttemptsStore)(live(store));
-
-  /** No store is configured; there is nothing to summarise. */
-  static readonly layerAbsent: Layer.Layer<DeniedAttemptsStore> = Layer.succeed(
+  /** Over the process's rate-limit store, whichever that is. */
+  static readonly layer: Layer.Layer<
     DeniedAttemptsStore,
-  )(
-    DeniedAttemptsStore.of({
-      configured: false,
-      scanWindowKeys: () => Effect.succeed([]),
-      claimWindow: () => Effect.succeed(NOTHING),
-      discardClaim: () => Effect.void,
-      drainScopeCounts: Effect.succeed(NOTHING),
-    }),
+    never,
+    RateLimitStore
+  > = Layer.effect(
+    DeniedAttemptsStore,
+    Effect.map(Effect.service(RateLimitStore), (store) => live(store)),
   );
 }
 
@@ -162,31 +151,16 @@ function readHash(reply: unknown): Map<string, string> | null {
   return fields;
 }
 
-const live = (store: RateLimitStore): DeniedAttemptsStore['Service'] => {
-  /**
-   * One operation. `store.run` answers with its `UNAVAILABLE` marker rather
-   * than rejecting, so a failure here is that contract being broken, not the
-   * store being down.
-   */
-  const run = <A>(operation: string, work: () => Promise<A>) =>
-    Effect.tryPromise({
-      try: work,
-      catch: (cause) =>
-        new DeniedAttemptsStoreFailed({
-          operation,
-          message: deepestMessage(cause) ?? String(cause),
-        }),
-    });
-
+const live = (
+  store: RateLimitStore['Service'],
+): DeniedAttemptsStore['Service'] => {
   const scanWindowKeys = Effect.fn('DeniedAttemptsStore.scanWindowKeys')(
     function* (prefix: string) {
       const found: string[] = [];
       let cursor = '0';
       do {
-        const page = yield* run('scan', () =>
-          store.run((redis) =>
-            redis.scan(cursor, 'MATCH', `${prefix}:*`, 'COUNT', SCAN_COUNT),
-          ),
+        const page = yield* store.run((redis) =>
+          redis.scan(cursor, 'MATCH', `${prefix}:*`, 'COUNT', SCAN_COUNT),
         );
         // An unreachable store mid-scan ends the pass; the keys outlive their
         // window by minutes, so the next run takes what this one did not.
@@ -203,17 +177,15 @@ const live = (store: RateLimitStore): DeniedAttemptsStore['Service'] => {
   const claimWindow = Effect.fn('DeniedAttemptsStore.claimWindow')(function* (
     claim: WindowClaim,
   ) {
-    const reply = yield* run('claim', () =>
-      store.run((redis) =>
-        redis.eval(
-          CLAIM_SCRIPT,
-          2,
-          claim.key,
-          claim.claimKey,
-          String(claim.ttlMs),
-          String(claim.nowMs),
-          String(claim.staleMs),
-        ),
+    const reply = yield* store.run((redis) =>
+      redis.eval(
+        CLAIM_SCRIPT,
+        2,
+        claim.key,
+        claim.claimKey,
+        String(claim.ttlMs),
+        String(claim.nowMs),
+        String(claim.staleMs),
       ),
     );
     // A reply of another shape — the store's `UNAVAILABLE` marker included —
@@ -224,23 +196,21 @@ const live = (store: RateLimitStore): DeniedAttemptsStore['Service'] => {
   const discardClaim = Effect.fn('DeniedAttemptsStore.discardClaim')(function* (
     claimKey: string,
   ) {
-    yield* run('del', () => store.run((redis) => redis.del(claimKey)));
+    yield* store.run((redis) => redis.del(claimKey));
   });
 
   // A span like its three siblings have: this is the fourth destructive
   // operation on the store, and a trace that shows the claim and the discard
   // but not the drain hides the one that empties the scope counts.
   const drainScopeCounts = Effect.gen(function* () {
-    const reply = yield* run('drain', () =>
-      store.run((redis) =>
-        redis.eval(DRAIN_SCRIPT, 1, DENIED_SCOPE_COUNTS_KEY),
-      ),
+    const reply = yield* store.run((redis) =>
+      redis.eval(DRAIN_SCRIPT, 1, DENIED_SCOPE_COUNTS_KEY),
     );
     return readHash(reply) ?? NOTHING;
   }).pipe(Effect.withSpan('DeniedAttemptsStore.drainScopeCounts'));
 
   return DeniedAttemptsStore.of({
-    configured: true,
+    configured: store.configured,
     scanWindowKeys,
     claimWindow,
     discardClaim,

@@ -34,14 +34,17 @@ export type Entrypoint = {
  * @param env variables layered over this process's own, which carry the
  * committed development defaults the suite runs under. A case whose subject is
  * the deployment lane overrides those deliberately.
+ * @param args what follows the entry on the command line — for `maintenance`,
+ * what `bin/studio-api` passes after taking the command off the front.
  */
 export function startEntrypoint(
   entry: string,
   env: Record<string, string>,
+  args: ReadonlyArray<string> = [],
 ): Entrypoint {
   const child: EntrypointProcess = spawn(
     process.execPath,
-    [resolve(SERVER_ROOT, entry)],
+    [resolve(SERVER_ROOT, entry), ...args],
     {
       /* oxlint-disable-next-line node/no-process-env -- the harness hands this process's whole environment to the child, which is what makes the child a deployment-shaped run of the entrypoint */
       env: { ...process.env, ...env },

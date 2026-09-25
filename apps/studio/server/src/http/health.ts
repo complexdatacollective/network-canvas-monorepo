@@ -44,7 +44,7 @@ export type Readiness = {
  * the probe time out with nothing to say — a timed-out probe names no failing
  * dependency, which is the whole point of answering at all.
  */
-export const CHECK_TIMEOUT_MS = 1000;
+const CHECK_TIMEOUT_MS = 1000;
 
 /** One line, bounded: this ends up in a container runtime's status output. */
 function reasonOf(error: unknown): string {

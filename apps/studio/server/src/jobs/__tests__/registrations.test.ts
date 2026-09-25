@@ -8,6 +8,7 @@ import { MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
+import { RateLimitStore } from '../../rate-limit/store.ts';
 import {
   layerRecordingMailer,
   RecordedMail,
@@ -113,9 +114,10 @@ function workerEnv(
 
 describe.skipIf(!testDb)('the worker’s handler registrations', () => {
   layer(
-    Layer.mergeAll(layerRecordingMailer, DeniedAttemptsStore.layerAbsent).pipe(
-      Layer.provideMerge(layerDeliveryHarness),
-    ),
+    Layer.mergeAll(
+      layerRecordingMailer,
+      DeniedAttemptsStore.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+    ).pipe(Layer.provideMerge(layerDeliveryHarness)),
   )('over Studio and the queue', (suite) => {
     /**
      * One worker of its own per case, because registration mutates the

@@ -53,5 +53,5 @@ export const SetupHandlers = (deps: RpcDeps) =>
       // outstanding, so setup is closed here exactly as `status` reports it.
       deps.pool === undefined
         ? new NotFound({})
-        : refusals(completeSetup(deps.auth, payload)),
+        : refusals(completeSetup(payload)),
   });

@@ -1,23 +1,19 @@
 import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
-import { and, eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import type pg from 'pg';
+import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
+import type { Effect } from 'effect';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
-import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
-import type { RateLimiter } from '../rate-limit.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
-import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
-// The only module that builds a better-auth instance (#1245). Two siblings
-// take narrower pieces: secrets-adapter.ts its adapter types, scripts/seed/teams.ts
-// its password hasher.
+// The only module that builds a better-auth instance (#1245). Three siblings
+// take narrower pieces: adapter.ts its adapter factory, secrets-adapter.ts its
+// adapter types, scripts/seed/teams.ts its password hasher.
 
 /**
  * The sign-in endpoints whose per-address limit Studio sets rather than
@@ -41,6 +37,9 @@ function scopeForAuthKey(key: string): string {
   return SIGN_IN_PATHS.has(path) ? 'sign_in_address' : 'better_auth';
 }
 
+/** Runs an Effect that needs nothing, for a promise-shaped caller. */
+type RunEffect = <A>(effect: Effect.Effect<A>) => Promise<A>;
+
 /**
  * better-auth's limiter, storing its counters where Studio's does (#1909).
  *
@@ -55,13 +54,18 @@ function scopeForAuthKey(key: string): string {
  * store's decision is the limiter's, and the limiter allows when it cannot
  * reach the store.
  */
-function createAuthRateLimitStorage(limiter: RateLimiter) {
+function createAuthRateLimitStorage(
+  limiter: RateLimiter['Service'],
+  run: RunEffect,
+) {
   return {
     consume: async (key: string, rule: { window: number; max: number }) => {
-      const decision = await limiter.consume(scopeForAuthKey(key), key, {
-        max: rule.max,
-        windowMs: rule.window * 1000,
-      });
+      const decision = await run(
+        limiter.consume(scopeForAuthKey(key), key, {
+          max: rule.max,
+          windowMs: rule.window * 1000,
+        }),
+      );
       return decision.allowed
         ? { allowed: true, retryAfter: null }
         : { allowed: false, retryAfter: decision.retryAfterSeconds };
@@ -79,22 +83,44 @@ export type SendMagicLink = (input: {
   url: string;
 }) => Promise<void>;
 
-export function createBetterAuthInstance(
-  env: AuthEnv,
-  pool: pg.Pool,
-  sendMagicLink: SendMagicLink,
-  secrets: SecretsCipherApi,
+/** A database adapter as `betterAuth({ database })` takes one. */
+export type AuthDatabaseAdapter = (options: BetterAuthOptions) => DBAdapter;
+
+export type BetterAuthDeps = {
+  readonly env: AuthEnv;
   /**
-   * Where sign-in attempts are counted. Absent means this instance enforces no
-   * limit of its own: the auth CLI's configuration and the suites that are not
-   * about limiting construct one that way. Every server process passes one.
+   * The database adapter, taken from the caller so the instance does not
+   * decide which client it runs on: `auth/adapter.ts`'s over the application
+   * client, or the drizzle adapter the better-auth CLI generates a schema
+   * from. Composed under the secrets wrapper here either way.
    */
-  limiter?: RateLimiter,
-) {
-  const adapter = drizzleAdapter(drizzle({ client: pool }), {
-    provider: 'pg',
-    schema: AUTH_TABLES,
-  });
+  readonly adapter: AuthDatabaseAdapter;
+  readonly cipher: SecretsCipherApi;
+  readonly sendMagicLink: SendMagicLink;
+  /**
+   * Where sign-in attempts are counted, and how better-auth's promise
+   * callbacks run it. Absent means this instance enforces no limit of its own:
+   * the auth CLI's configuration and the suites that are not about limiting
+   * construct one that way. Every server process passes one.
+   *
+   * The runner travels with the limiter so that neither can be passed without
+   * the other: it runs the limiter over the services of the program that built
+   * this instance, so a denial logs through that program's logger. With
+   * `Effect.runPromise` instead it would log through the default one, as
+   * plain text among the program's JSON.
+   */
+  readonly limits?:
+    | { readonly limiter: RateLimiter['Service']; readonly run: RunEffect }
+    | undefined;
+};
+
+export function createBetterAuthInstance({
+  env,
+  adapter,
+  cipher,
+  sendMagicLink,
+  limits,
+}: BetterAuthDeps) {
   return betterAuth({
     baseURL: env.baseUrl,
     basePath: '/api/auth',
@@ -104,10 +130,10 @@ export function createBetterAuthInstance(
     // because it would seal with BETTER_AUTH_SECRET, unrotatable and bound to
     // no row. Composed here, at the factory, so the wrapper is the adapter
     // better-auth resolves for every path including its transactions.
-    database: (options: Parameters<typeof adapter>[0]) =>
-      withSecretsAdapter(adapter(options), secrets),
+    database: (options: BetterAuthOptions) =>
+      withSecretsAdapter(adapter(options), cipher),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
-    // is covered by src/auth/csrf.ts (#1248).
+    // is covered by src/http/middleware/origin.ts (#1248).
     trustedOrigins: [env.baseUrl],
     // Sign-in attempt limits count in the shared store, so they mean the same
     // thing with one API container and with two (#1909). This supersedes the
@@ -116,10 +142,10 @@ export function createBetterAuthInstance(
     // counters are disposable state — losing them resets a window rather than
     // losing a record. What #1246 is actually about, the immutable audit log,
     // is untouched and stays in Postgres.
-    rateLimit: limiter
+    rateLimit: limits
       ? {
           enabled: true,
-          customStorage: createAuthRateLimitStorage(limiter),
+          customStorage: createAuthRateLimitStorage(limits.limiter, limits.run),
           // better-auth's own default for these paths is three attempts in
           // ten seconds. Studio's is the `sign_in_address` constant
           // (src/rate-limit/scopes.ts); the per-email limit is Studio's own
@@ -128,8 +154,8 @@ export function createBetterAuthInstance(
             [...SIGN_IN_PATHS].map((path) => [
               path,
               {
-                window: limiter.rules.sign_in_address.windowMs / 1000,
-                max: limiter.rules.sign_in_address.max,
+                window: limits.limiter.rules.sign_in_address.windowMs / 1000,
+                max: limits.limiter.rules.sign_in_address.max,
               },
             ]),
           ),
@@ -256,7 +282,7 @@ export function createBetterAuthInstance(
  */
 const EMAIL_TAKEN_CODE = 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
 
-function isEmailTaken(error: unknown): boolean {
+export function isEmailTaken(error: unknown): boolean {
   if (!isAPIError(error)) return false;
   const body: unknown = error.body;
   return (
@@ -267,98 +293,8 @@ function isEmailTaken(error: unknown): boolean {
   );
 }
 
-export function createBetterAuthService(
-  env: AuthEnv,
-  pool: pg.Pool,
-  sendMagicLink: SendMagicLink,
-  secrets: SecretsCipherApi,
-  limiter?: RateLimiter,
-): AuthService {
-  const auth = createBetterAuthInstance(
-    env,
-    pool,
-    sendMagicLink,
-    secrets,
-    limiter,
-  );
-  const db = drizzle({ client: pool });
-  return {
-    handler: (request) => auth.handler(request),
-    getSession: async (headers) => {
-      const result = await auth.api.getSession({ headers });
-      if (!result) return null;
-      return {
-        kind: 'user',
-        userId: result.user.id,
-        email: result.user.email,
-        emailVerified: result.user.emailVerified,
-        name: result.user.name,
-        locale: result.user.locale ?? null,
-        sessionId: result.session.id,
-      };
-    },
-    getMembership: async (userId, teamId) => {
-      // Through the drizzle definitions rather than a raw SQL string: the
-      // adapter already queries these tables via drizzle, and this keeps the
-      // physical names single-sourced in auth-schema.ts. The plugin's own api
-      // surface is session-header-driven; this check is (userId, teamId)-
-      // keyed, so it queries directly.
-      const members = AUTH_TABLES.team_members;
-      const rows = await db
-        .select({ role: members.role })
-        .from(members)
-        .where(and(eq(members.user_id, userId), eq(members.team_id, teamId)))
-        .limit(1);
-      return rows[0] ?? null;
-    },
-    listMemberships: async (userId) => {
-      // The same policy-free table `getMembership` reads, and the same index
-      // (`team_members_user_id_team_id_idx`) serves it: this is the whole
-      // search space a study identifier may be resolved over, so it is read
-      // before any tenant is pinned and nothing else is read with it.
-      const members = AUTH_TABLES.team_members;
-      return db
-        .select({ teamId: members.team_id, role: members.role })
-        .from(members)
-        .where(eq(members.user_id, userId))
-        .orderBy(members.team_id);
-    },
-    signUpEmail: async ({ name, email, password }): Promise<SignUpOutcome> => {
-      // `returnHeaders` is what makes this usable from a procedure: the
-      // session cookie better-auth would have set on its own response comes
-      // back as headers for the calling surface to carry out.
-      try {
-        const { headers, response } = await auth.api.signUpEmail({
-          body: { name, email, password },
-          returnHeaders: true,
-        });
-        return {
-          kind: 'created',
-          session: { userId: response.user.id, headers },
-        };
-      } catch (error) {
-        if (isEmailTaken(error)) return { kind: 'emailTaken' };
-        throw error;
-      }
-    },
-    signInEmail: async ({ email, password }): Promise<SignInOutcome> => {
-      try {
-        const { headers, response } = await auth.api.signInEmail({
-          body: { email, password },
-          returnHeaders: true,
-        });
-        return {
-          kind: 'signedIn',
-          session: { userId: response.user.id, headers },
-        };
-      } catch (error) {
-        // Every refusal reads the same — wrong password, no such account, a
-        // provider-side policy — because the caller has nothing different to
-        // do about any of them, and `/setup` must not become an oracle for
-        // which addresses have accounts.
-        if (isAPIError(error)) return { kind: 'refused' };
-        throw error;
-      }
-    },
-  };
-}
+/**
+ * A refusal better-auth answered on purpose, as opposed to a failure: its own
+ * `APIError`, whatever the code. A sign-in reads every one of them the same.
+ */
+export const isRefusal = (error: unknown): boolean => isAPIError(error);

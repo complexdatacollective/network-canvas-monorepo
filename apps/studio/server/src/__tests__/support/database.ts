@@ -49,6 +49,7 @@ import { ERASURE_GUC } from '../../study/schema.ts';
 import { CI } from './env.ts';
 import { reachableDb } from './postgres.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
+import { testDeniedAttempts } from './valkey.ts';
 
 // The scratch-schema harness: one schema per suite, with the three stage-3
 // clients over it (#1927 section 9). It replaced a node-postgres harness whose
@@ -355,9 +356,10 @@ export const TestDatabaseLive: Layer.Layer<
 
 /**
  * What `createStudio` takes, over this suite's scratch schema: the job queue on
- * its job sibling, the operator signal and the process cipher, beside the
- * clients `TestDatabaseLive` already provides. The production wiring with only
- * the two schema names changed.
+ * its job sibling, the operator signal, the process cipher and the audit
+ * denial window over the process's store, beside the clients
+ * `TestDatabaseLive` already provides. The production wiring with only the two
+ * schema names changed.
  *
  * With no keyring configured the cipher is a proxy that throws on first use,
  * so a suite that never seals anything needs none, and one that does fails
@@ -372,6 +374,7 @@ const TestStudioServicesLive: Layer.Layer<
     return Layer.mergeAll(
       Jobs.layer({ schema: harness.jobSchema }),
       AuditSignal.layer,
+      testDeniedAttempts,
       keyring === undefined
         ? Layer.succeed(SecretsCipher)(
             new Proxy({} as ReturnType<typeof createSecretsCipher>, {
@@ -390,9 +393,11 @@ const TestStudioServicesLive: Layer.Layer<
 /**
  * A node-postgres pool over the scratch schema, as the application role.
  *
- * Only for what still runs on node-postgres: better-auth's adapter (stage 6
- * moves it) and the surfaces `createApp` hands that pool to. Everything else
- * in a suite goes through the Effect clients. The search path rides the
+ * Only for what still runs on node-postgres: the surfaces `createApp` hands a
+ * pool to — the readiness probe, and the `requirePool` assertion on the rpc
+ * plane. better-auth is not one of them since stage 4: it runs on
+ * `auth/adapter.ts` over the Effect client. Everything else in a suite goes
+ * through the Effect clients. The search path rides the
  * connection options, as `support/postgres.ts`'s pools did, because this pool
  * opens no scope to pin it in.
  */
@@ -641,6 +646,27 @@ export const ownerRows = <A extends object = Record<string, unknown>>(
   Effect.flatMap(TestDatabase, (harness) =>
     harness.onOwner(harness.owner.sql.unsafe<A>(statement, params)),
   );
+
+const readNow = Schema.decodeUnknownSync(Schema.Struct({ now: Schema.Number }));
+
+/**
+ * The database's clock, in epoch milliseconds (rc.115 decodes a raw
+ * `timestamptz` as a number), read in a transaction of its own.
+ *
+ * What a case asserting "stamped no earlier than now" compares against. The
+ * host's `Date.now()` is the wrong clock for that: the database runs in a
+ * container whose clock drifts from the host's by milliseconds, so a default
+ * stamped a moment later can still read as earlier than the host's reading. A
+ * later transaction's `now()` is never earlier than this one's.
+ */
+export const databaseNow: Effect.Effect<
+  number,
+  SqlError.SqlError,
+  TestDatabase
+> = Effect.map(
+  ownerRows('select now() as now'),
+  (rows) => readNow(rows[0]).now,
+);
 
 const readRowCount = Schema.decodeUnknownSync(
   Schema.Struct({ rowCount: Schema.Number }),

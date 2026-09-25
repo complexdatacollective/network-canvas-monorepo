@@ -7,6 +7,8 @@ import {
 } from '@codaco/studio-contract/middleware/team-administration';
 import { TeamScoped } from '@codaco/studio-contract/schema/team';
 
+import { AuthService } from '../auth/service.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
 import type { RpcDeps } from './deps.ts';
 import { openTeam, requireTeamAdministration } from './team-scope.ts';
 
@@ -31,19 +33,35 @@ import { openTeam, requireTeamAdministration } from './team-scope.ts';
  */
 const decodeTeamScoped = Schema.decodeUnknownEffect(TeamScoped);
 
+/**
+ * The services `openTeam` asks of are captured when the layer is built: a
+ * middleware function is handed nothing but the call.
+ */
 export const TeamAdministrationLive = (
   deps: RpcDeps,
-): Layer.Layer<TeamAdministration> =>
-  Layer.succeed(TeamAdministration)((effect, options) =>
+): Layer.Layer<TeamAdministration, never, AuthService | RateLimiter> =>
+  Layer.effect(TeamAdministration)(
     Effect.gen(function* () {
-      // `Principal` is available here only because `Authenticated` is declared
-      // AFTER this middleware on every rpc that carries it, which puts it
-      // outside this one. `middleware/teamAdministration.ts` says why, and
-      // `__tests__/ordering-probe.test.ts` fails if the order is reversed.
-      const principal = yield* Principal;
-      const payload = yield* Effect.orDie(decodeTeamScoped(options.payload));
-      const access = yield* openTeam(deps, principal, payload.teamId);
-      yield* requireTeamAdministration(access);
-      return yield* Effect.provideService(effect, TeamAccess, access);
+      const auth = yield* AuthService;
+      const limiter = yield* RateLimiter;
+      return (effect, options) =>
+        Effect.gen(function* () {
+          // `Principal` is available here only because `Authenticated` is
+          // declared AFTER this middleware on every rpc that carries it, which
+          // puts it outside this one — so the caller's own budget has already
+          // been charged by the time a membership is read here.
+          // `middleware/teamAdministration.ts` says why, and
+          // `__tests__/ordering-probe.test.ts` fails if the order is reversed.
+          const principal = yield* Principal;
+          const payload = yield* Effect.orDie(
+            decodeTeamScoped(options.payload),
+          );
+          const access = yield* openTeam(deps, principal, payload.teamId).pipe(
+            Effect.provideService(AuthService, auth),
+            Effect.provideService(RateLimiter, limiter),
+          );
+          yield* requireTeamAdministration(access);
+          return yield* Effect.provideService(effect, TeamAccess, access);
+        });
     }),
   );

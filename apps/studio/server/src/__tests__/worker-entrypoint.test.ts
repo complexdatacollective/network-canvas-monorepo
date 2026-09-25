@@ -157,6 +157,9 @@ function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   });
 }
 
+/** The gate polls every second and the flag's reading lives a second. */
+const MAINTENANCE_WAIT_MS = 10_000;
+
 describe.skipIf(!db)('the worker entrypoint', () => {
   let applied: Awaited<ReturnType<typeof createScratchDatabase>>;
 
@@ -219,6 +222,25 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         body: '{}',
       });
       expect(rpc.status).toBe(404);
+
+      // Maintenance mode reaches the queue (#1901): the flag `studio-api
+      // maintenance on` writes, read on this process's maintenance client,
+      // stops every claim within the gate's poll, and clearing it resumes
+      // them. Written here as the owner and put back before the next case.
+      await applied.pool.query(
+        `update deployment_state set maintenance = true, reason = 'Upgrading'`,
+      );
+      try {
+        await worker.waitForOutput(
+          /the deployment is in maintenance: the job worker has stopped claiming jobs/,
+          MAINTENANCE_WAIT_MS,
+        );
+      } finally {
+        await applied.pool.query(
+          'update deployment_state set maintenance = false, reason = null',
+        );
+      }
+      await worker.waitForOutput(/maintenance is over/, MAINTENANCE_WAIT_MS);
 
       worker.child.kill('SIGTERM');
       // A container stop is a SIGTERM and a deadline. The process exits 130
@@ -534,6 +556,16 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       // with no REDIS_URL the store is absent, so the handler has nothing to
       // summarise, says so and answers `completed`
       // (src/jobs/handlers/denied-attempts-summary.ts).
+      //
+      // The cases above share this database and end their workers with
+      // SIGKILL, so one killed while its boot-time cron run of this queue was
+      // in flight leaves that row `active` under its lease — and the queue
+      // claims one job at a time, so this case's job would wait out a lease it
+      // has nothing to do with. Cleared first, as the queue's own reaper would
+      // once the lease expired.
+      await applied.pool.query(
+        `delete from ${JOB_SCHEMA}.jobs where queue = 'denied-attempts-summary'`,
+      );
       const healthPort = await freePort();
       const worker = startWorker({
         DATABASE_URL: applied.db.url,

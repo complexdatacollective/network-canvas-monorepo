@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from 'effect';
 
-import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
+import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit/limiter.ts';
 import {
   DeniedAttemptsStore,
   DeniedAttemptsStoreFailed,

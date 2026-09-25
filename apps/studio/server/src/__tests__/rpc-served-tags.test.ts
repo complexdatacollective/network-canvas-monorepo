@@ -13,15 +13,18 @@ import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
+import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { DatabaseAbsent } from '../db/client.ts';
 import { getDeploymentStatus } from '../domain.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
 import { SecretsCipherAbsent } from '../secrets/services.ts';
-import { stubAuthService } from './support/auth.ts';
+import { AuthServiceStub } from './support/auth.ts';
 
 /**
  * The surface, written out by hand. It is the same list
@@ -62,7 +65,6 @@ const STUDIO_TAGS = [
  * deliberately supplies none of them.
  */
 const deps: RpcDeps = {
-  auth: stubAuthService(),
   capabilities: {
     enabled: false,
     magicLink: false,
@@ -111,6 +113,11 @@ const handlerContext = await Effect.runPromise(
             SecretsCipherAbsent,
             AuditSignal.layer,
             Jobs.layer({ schema: JOB_SCHEMA }),
+            DeniedAttempts.layer.pipe(
+              Layer.provide(RateLimitStore.layerAbsent),
+            ),
+            AuthServiceStub(),
+            RateLimiter.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
           ),
         ),
       ),

@@ -10,12 +10,14 @@ import {
   type DeniedAuditWindow,
   parseDenialWindowKey,
 } from '../../audit/denial-rate-limit.ts';
-import { appendDeniedAuditSummary } from '../../audit/denial-summary.ts';
+import {
+  appendDeniedAuditSummary,
+  type DeniedAuditActor,
+} from '../../audit/denial-summary.ts';
 import {
   DENIED_AUDIT_OPERATIONS,
   type DeniedAuditOperation,
 } from '../../audit/events.ts';
-import type { SessionPrincipal } from '../../auth/service.ts';
 import { type MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { causeError, deepestMessage } from '../errors.ts';
@@ -100,7 +102,6 @@ export type DeniedAttemptsSummaryOptions = {
 type ActorRow = {
   readonly name: string;
   readonly email: string;
-  readonly emailVerified: boolean;
 };
 
 function readSummary(fields: WindowFields): DeniedAuditSummary | null {
@@ -136,24 +137,17 @@ const loadActor = Effect.fnUntraced(function* (actorId: string) {
     Effect.flatMap(
       Transaction,
       ({ sql }) => sql<ActorRow>`
-        SELECT name, email, "emailVerified" FROM "user" WHERE id = ${actorId}`,
+        SELECT name, email FROM "user" WHERE id = ${actorId}`,
     ),
   );
   const row = rows[0];
   if (!row) return null;
-  const principal: SessionPrincipal = {
-    kind: 'user',
+  const actor: DeniedAuditActor = {
     userId: actorId,
     email: row.email,
-    emailVerified: row.emailVerified,
     name: row.name,
-    locale: null,
-    // Nothing on the write path reads it, and there is no session to name:
-    // the attempts this summarises were made in sessions that ended before
-    // the window did.
-    sessionId: '',
   };
-  return principal;
+  return actor;
 });
 
 /**

@@ -1,17 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { StudioEnv } from './env.ts';
+import { Clock, Context, Effect, Layer, Ref } from 'effect';
+
 import {
   RATE_LIMITS,
   type RateLimitRule,
   type RateLimitScope,
   type RateLimitSettings,
-} from './rate-limit/scopes.ts';
-import {
-  getRateLimitStore,
-  type RateLimitStore,
-  UNAVAILABLE,
-} from './rate-limit/store.ts';
+} from './scopes.ts';
+import { RateLimitStore, UNAVAILABLE } from './store.ts';
 
 // Studio's one rate limiter (#1909). Every limited surface asks this module,
 // it asks Valkey, and the answer is the same whether one API container is
@@ -95,31 +92,6 @@ export type RateLimitDecision =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };
 
-export type RateLimiter = {
-  /** Whether there is a store at all; readiness omits its check when there is not. */
-  readonly configured: boolean;
-  /**
-   * What each scope allows, for the one caller that has to state a limit
-   * rather than ask for a decision: better-auth resolves the window and
-   * maximum per path itself and needs Studio's numbers as configuration.
-   */
-  readonly rules: RateLimitSettings;
-  /** One call against a catalogued scope's own limit. */
-  check(scope: RateLimitScope, subject: string): Promise<RateLimitDecision>;
-  /**
-   * One call against a limit this module did not choose — better-auth's own
-   * limiter, which resolves the window and maximum per path and hands them to
-   * whatever storage it was given (src/auth/better-auth.ts).
-   */
-  consume(
-    scope: string,
-    subject: string,
-    rule: RateLimitRule,
-  ): Promise<RateLimitDecision>;
-  /** `degraded`, never `failed`: the limiter fails open, so losing it does not unfit the process. */
-  readiness(): Promise<'ok' | 'degraded'>;
-};
-
 /** The subject never leaves this function unhashed. 128 bits is past collision. */
 function hashSubject(subject: string): string {
   return createHash('sha256').update(subject).digest('hex').slice(0, 32);
@@ -132,24 +104,6 @@ function hashSubject(subject: string): string {
  */
 const MEMBER_PREFIX = randomUUID();
 let memberCounter = 0;
-
-const lastDenialLogAt = new Map<string, number>();
-
-/**
- * The scope and the retry-after, and deliberately nothing else. What was
- * denied is operationally useful; who was denied is a participant's address or
- * a researcher's email, and a rate-limit log is not a place to keep either.
- */
-function logDenial(scope: string, retryAfterSeconds: number): void {
-  const now = Date.now();
-  const last = lastDenialLogAt.get(scope) ?? 0;
-  if (now - last < DENIAL_LOG_INTERVAL_MS) return;
-  lastDenialLogAt.set(scope, now);
-  // oxlint-disable-next-line no-console -- abuse diagnostics
-  console.warn(
-    `Rate limit reached for ${scope}; callers are refused for up to ${retryAfterSeconds}s.`,
-  );
-}
 
 /** `[allowed, retryMs]`, as the script returns it; anything else is a bug worth failing open on. */
 function readDecision(reply: unknown): RateLimitDecision | null {
@@ -165,43 +119,43 @@ function readDecision(reply: unknown): RateLimitDecision | null {
   };
 }
 
-let warnedAboutNoStore = false;
+const make = Effect.fnUntraced(function* (settings: RateLimitSettings) {
+  const store = yield* RateLimitStore;
+  // Per limiter rather than per module, so two limiters in one process —
+  // which only the suites build — log independently.
+  const lastDenialLogAt = yield* Ref.make<ReadonlyMap<string, number>>(
+    new Map(),
+  );
 
-/**
- * The limiter this process uses. There is one store per process (see
- * `getRateLimitStore`), so calling this more than once — every `createApp` in
- * the suites does — costs a closure rather than a connection.
- *
- * @param limits scopes to enforce something other than their constant for.
- * Every scope left out keeps the number in `rate-limit/scopes.ts`, which is
- * what every deployment runs: nothing in the environment can reach this, and
- * the only callers that pass anything are the suites that have to trip a limit
- * without making a thousand requests to do it.
- */
-export function createRateLimiter(
-  env: StudioEnv,
-  limits: Partial<RateLimitSettings> = {},
-): RateLimiter {
-  const settings: RateLimitSettings = { ...RATE_LIMITS, ...limits };
-  const store: RateLimitStore | undefined = env.redis
-    ? getRateLimitStore(env.redis)
-    : undefined;
-
-  if (!store && !env.devDefaults && !warnedAboutNoStore) {
-    warnedAboutNoStore = true;
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.warn(
-      'REDIS_URL is not set: no rate limit is enforced. Sign-in, invitation, RPC, storage, public API and WebSocket limits all depend on it.',
+  /**
+   * The scope and the retry-after, and deliberately nothing else. What was
+   * denied is operationally useful; who was denied is a participant's address
+   * or a researcher's email, and a rate-limit log is not a place to keep
+   * either.
+   */
+  const logDenial = Effect.fnUntraced(function* (
+    scope: string,
+    retryAfterSeconds: number,
+  ) {
+    const now = yield* Clock.currentTimeMillis;
+    const due = yield* Ref.modify(lastDenialLogAt, (logged) => {
+      const last = logged.get(scope) ?? Number.NEGATIVE_INFINITY;
+      if (now - last < DENIAL_LOG_INTERVAL_MS) return [false, logged];
+      return [true, new Map(logged).set(scope, now)];
+    });
+    if (!due) return;
+    yield* Effect.logWarning(
+      `Rate limit reached for ${scope}; callers are refused for up to ${retryAfterSeconds}s.`,
     );
-  }
+  });
 
-  const consume = async (
+  const consume = Effect.fnUntraced(function* (
     scope: string,
     subject: string,
     rule: RateLimitRule,
-  ): Promise<RateLimitDecision> => {
-    if (!store) return { allowed: true };
-    const reply = await store.run((redis) =>
+  ): Effect.fn.Return<RateLimitDecision> {
+    if (!store.configured) return { allowed: true };
+    const reply = yield* store.run((redis) =>
       redis.eval(
         CONSUME_SCRIPT,
         2,
@@ -220,18 +174,65 @@ export function createRateLimiter(
     if (reply === UNAVAILABLE) return { allowed: true };
     const decision = readDecision(reply);
     if (!decision) return { allowed: true };
-    if (!decision.allowed) logDenial(scope, decision.retryAfterSeconds);
+    if (!decision.allowed) yield* logDenial(scope, decision.retryAfterSeconds);
     return decision;
-  };
+  });
 
-  return {
-    configured: store !== undefined,
+  return RateLimiter.of({
+    configured: store.configured,
     rules: settings,
     check: (scope, subject) => consume(scope, subject, settings[scope]),
     consume,
-    readiness: async () => {
-      if (!store) return 'ok';
-      return (await store.ping()) === 'ok' ? 'ok' : 'degraded';
-    },
-  };
+    readiness: store.configured
+      ? Effect.map(store.ping, (reply) => (reply === 'ok' ? 'ok' : 'degraded'))
+      : Effect.succeed('ok'),
+  });
+});
+
+export class RateLimiter extends Context.Service<
+  RateLimiter,
+  {
+    /** Whether there is a store at all; readiness omits its check when there is not. */
+    readonly configured: boolean;
+    /**
+     * What each scope allows, for the one caller that has to state a limit
+     * rather than ask for a decision: better-auth resolves the window and
+     * maximum per path itself and needs Studio's numbers as configuration.
+     */
+    readonly rules: RateLimitSettings;
+    /** One call against a catalogued scope's own limit. */
+    readonly check: (
+      scope: RateLimitScope,
+      subject: string,
+    ) => Effect.Effect<RateLimitDecision>;
+    /**
+     * One call against a limit this module did not choose — better-auth's own
+     * limiter, which resolves the window and maximum per path and hands them
+     * to whatever storage it was given (src/auth/better-auth.ts).
+     */
+    readonly consume: (
+      scope: string,
+      subject: string,
+      rule: RateLimitRule,
+    ) => Effect.Effect<RateLimitDecision>;
+    /** `degraded`, never `failed`: the limiter fails open, so losing it does not unfit the process. */
+    readonly readiness: Effect.Effect<'ok' | 'degraded'>;
+  }
+>()('@studio/RateLimiter') {
+  /**
+   * The limiter with some scopes enforcing something other than their
+   * constant. A deployment never takes it — the limits are the constants in
+   * `rate-limit/scopes.ts`, nothing in the environment can reach this, and the
+   * programs take `layer` — and the suites do, because tripping a real limit
+   * through the request path would otherwise mean two thousand requests to
+   * `/storage`.
+   */
+  static readonly layerWith = (
+    limits: Partial<RateLimitSettings>,
+  ): Layer.Layer<RateLimiter, never, RateLimitStore> =>
+    Layer.effect(RateLimiter, make({ ...RATE_LIMITS, ...limits }));
+
+  /** Every scope at its constant, which is what every deployment runs. */
+  static readonly layer: Layer.Layer<RateLimiter, never, RateLimitStore> =
+    RateLimiter.layerWith({});
 }
