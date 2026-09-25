@@ -3,7 +3,7 @@ import type pg from 'pg';
 
 import type { StudioEnv } from '../env.ts';
 import { createSignInEmailSender } from '../jobs/sign-in-email.ts';
-import type { RateLimiter } from '../rate-limit.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { createSecretsCipher } from '../secrets/cipher.ts';
 import { createBetterAuthService } from './better-auth.ts';
@@ -25,7 +25,7 @@ export function createAuthService(
    */
   services?: Context.Context<StudioServices>,
   /** Where sign-in attempts are counted (#1909); `createApp` builds it. */
-  limiter?: RateLimiter,
+  limiter?: RateLimiter['Service'],
 ): AuthService {
   if (!env.db || !env.auth || !pool || !services) {
     return createDisabledAuthService();

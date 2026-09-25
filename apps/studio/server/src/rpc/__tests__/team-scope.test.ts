@@ -6,7 +6,7 @@ import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import type { AuthService } from '../../auth/service.ts';
-import type { RateLimiter } from '../../rate-limit.ts';
+import type { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RATE_LIMITS, type RateLimitScope } from '../../rate-limit/scopes.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam, requireTeamAdministration } from '../team-scope.ts';
@@ -76,20 +76,21 @@ const authFor = (memberOf: Record<string, string>): AuthService => ({
  */
 const recordingLimiter = (
   charged: Array<`${RateLimitScope}:${string}`>,
-): RateLimiter => ({
+): RateLimiter['Service'] => ({
   configured: true,
   rules: RATE_LIMITS,
-  check: (scope, subject) => {
-    charged.push(`${scope}:${subject}`);
-    return Promise.resolve({ allowed: true });
-  },
-  consume: () => Promise.resolve({ allowed: true }),
-  readiness: () => Promise.resolve('ok'),
+  check: (scope, subject) =>
+    Effect.sync(() => {
+      charged.push(`${scope}:${subject}`);
+      return { allowed: true };
+    }),
+  consume: () => Effect.succeed({ allowed: true }),
+  readiness: Effect.succeed('ok'),
 });
 
 const depsFor = (
   memberOf: Record<string, string>,
-  limiter?: RateLimiter,
+  limiter?: RateLimiter['Service'],
 ): RpcDeps => ({
   pool: unusedPool,
   auth: authFor(memberOf),

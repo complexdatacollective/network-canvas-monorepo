@@ -2,6 +2,7 @@ import { Cause, Effect, Layer } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/unstable/http';
 
 import { createStudio, type Studio } from '../app.ts';
+import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
@@ -16,7 +17,8 @@ import { LoggerLive } from '../platform/logger.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
-import { RateLimitStoresLive } from '../rate-limit/store.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import {
   KeyringLive,
@@ -41,7 +43,7 @@ import { STUDIO_VERSION } from '../version.ts';
 // The whole process is one Layer. Acquisition order is the boot order and
 // finalizers run in reverse, so the shutdown a container stop asks for is a
 // property of the graph rather than of a hand-written handler: websocket
-// sessions drain, then the listener closes, then the rate-limit stores and the
+// sessions drain, then the listener closes, then the rate-limit store and the
 // pool release, then the tracer flushes. Exit codes come from
 // `NodeRuntime.runMain`'s teardown — 0 after a clean stop, 130 on a signal, 1
 // for a layer that would not build.
@@ -88,6 +90,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Effect.gen(function* () {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
+      const limiter = yield* RateLimiter;
 
       // The Effect services every data-layer caller on this process runs on,
       // captured as one context and handed down to the two promise-shaped
@@ -134,7 +137,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         yield* bootChecks;
       }
 
-      const studio = createStudio(env, { services, pool });
+      const studio = createStudio(env, { services, pool, limiter });
       return Serve(studio, {
         ...studio.checks,
         // Is the database this build's? Both processes refuse a stale schema
@@ -147,7 +150,13 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     }),
   ).pipe(
     Layer.provide(SchemaStatus.layer),
-    Layer.provide(RateLimitStoresLive),
+    // The one Valkey client and the two services over it: every limit this
+    // process enforces, and the audit denial window. Acquired after the pool
+    // and before anything that charges a limit, so it releases after the
+    // listener closes and before the pool ends.
+    Layer.provide(DeniedAttempts.layer),
+    Layer.provide(RateLimiter.layer),
+    Layer.provide(RateLimitStore.layer),
     Layer.provide(DatabasePool.layerApplication(db)),
     // The application client and everything over it. `Jobs` is built above
     // `JobClock.layerApplication` so the skew against the database is measured
@@ -168,9 +177,15 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
  * refusals, and readiness that names nothing it was never asked to check.
  */
 function withoutDatabase(env: StudioEnv) {
-  const studio = createStudio(env);
-  return Serve(studio, studio.checks).pipe(
-    Layer.provide(RateLimitStoresLive),
+  return Layer.unwrap(
+    Effect.gen(function* () {
+      const studio = createStudio(env, { limiter: yield* RateLimiter });
+      return Serve(studio, studio.checks);
+    }),
+  ).pipe(
+    Layer.provide(DeniedAttempts.layer),
+    Layer.provide(RateLimiter.layer),
+    Layer.provide(RateLimitStore.layer),
     // The `/rpc` route asks for the data layer whatever this process is, so
     // the requirement has to be met here too. Nothing reaches it: the auth
     // gate is off without a database, so every procedure that would open a

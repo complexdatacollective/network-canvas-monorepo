@@ -2,6 +2,7 @@ import type { Context } from 'effect';
 import type pg from 'pg';
 
 import type { AssetStore } from '../assets.ts';
+import type { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import type { AuditSignal } from '../audit/signal.ts';
 import type { AuthService } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';
@@ -11,7 +12,7 @@ import type {
   InstallationReader,
 } from '../domain.ts';
 import type { Jobs } from '../jobs/jobs.ts';
-import type { RateLimiter } from '../rate-limit.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import type { SecretsCipher } from '../secrets/services.ts';
 
@@ -48,11 +49,11 @@ export type RpcDeps = {
    */
   readonly cipher?: SecretsCipherApi | undefined;
   /** Where per-user and per-team call limits are counted (#1909). */
-  readonly limiter?: RateLimiter | undefined;
+  readonly limiter?: RateLimiter['Service'] | undefined;
   /**
    * The Effect services every data-layer caller on this plane runs on (#1931
-   * stage 3): the application client, the operator signal, the job queue and
-   * the process's cipher.
+   * stage 3): the application client, the operator signal, the job queue, the
+   * process's cipher and the audit denial window.
    *
    * It is a `Context` rather than a set of layers because two of the consumers
    * are promises — the protocol builder's oRPC handlers until stage 8 moves
@@ -65,4 +66,9 @@ export type RpcDeps = {
 };
 
 /** What a request-serving process resolves its data-layer work against. */
-export type StudioServices = Database | AuditSignal | Jobs | SecretsCipher;
+export type StudioServices =
+  | Database
+  | AuditSignal
+  | Jobs
+  | SecretsCipher
+  | DeniedAttempts;

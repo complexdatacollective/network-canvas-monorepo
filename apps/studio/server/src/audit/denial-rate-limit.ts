@@ -1,9 +1,8 @@
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Clock, Context, Effect, Exit, Layer, Ref } from 'effect';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
-import { readEnv } from '../env.ts';
-import { getRateLimitStore, type RateLimitStore } from '../rate-limit/store.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 
 // How many denial events one actor may write into one team's audit log for one
 // operation before the rest of the burst is summarised instead.
@@ -84,17 +83,17 @@ export const DENIAL_KEY_PREFIX = 'studio:audit-denial';
 export const CLAIMED_SUFFIX = ':claimed';
 
 export type DeniedAuditReservation =
-  | { admitted: false; reason: 'rate_limited' }
+  | { readonly admitted: false; readonly reason: 'rate_limited' }
   | {
-      admitted: true;
+      readonly admitted: true;
       /**
-       * Awaited rather than fired and forgotten: the in-flight slot has to be
-       * back, and a confirmed denial counted, before the next request asks —
-       * or a caller making permitted calls in sequence would run itself out of
-       * capacity, and one making denied calls in sequence would never reach
+       * Waited on rather than fired and forgotten: the in-flight slot has to
+       * be back, and a confirmed denial counted, before the next request asks
+       * — or a caller making permitted calls in sequence would run itself out
+       * of capacity, and one making denied calls in sequence would never reach
        * the cap.
        */
-      complete: (outcome: 'denied' | 'other') => Promise<void>;
+      readonly complete: (outcome: 'denied' | 'other') => Effect.Effect<void>;
     };
 
 /** What one suppressed window has to say; the job turns it into an event. */
@@ -202,17 +201,97 @@ redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[1]))
 return 1
 `;
 
-export type DeniedAuditRateLimiterOptions = {
-  /** Absent means no store: every attempt is admitted, as when one is unreachable. */
-  store?: RateLimitStore | undefined;
-  limit?: number;
-  maxInFlight?: number;
-  windowMs?: number;
-  graceMs?: number;
+export type DeniedAttemptsOptions = {
+  readonly limit?: number;
+  readonly maxInFlight?: number;
+  readonly windowMs?: number;
+  readonly graceMs?: number;
   /** The suites give each file its own, so parallel runs share one Valkey safely. */
-  keyPrefix?: string;
-  now?: () => number;
+  readonly keyPrefix?: string;
 };
+
+/** Who is attempting what, where: one window's identity, less its start. */
+export type DeniedAttemptInput = {
+  readonly actorId: string;
+  readonly teamId: string;
+  readonly operation: string;
+};
+
+const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
+  const store = yield* RateLimitStore;
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const maxInFlight = options.maxInFlight ?? DEFAULT_MAX_IN_FLIGHT;
+  const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
+  const ttlMs = windowMs + (options.graceMs ?? DEFAULT_GRACE_MS);
+  const keyPrefix = options.keyPrefix ?? DENIAL_KEY_PREFIX;
+
+  const keyAt = (input: DeniedAttemptInput, now: number) =>
+    windowKey(keyPrefix, {
+      ...input,
+      windowStart: Math.floor(now / windowMs) * windowMs,
+    });
+
+  /**
+   * What a reservation nothing counted answers with. Its `complete` does
+   * nothing on purpose: there is no slot of its own to give back, and running
+   * `COMPLETE_SCRIPT` anyway would decrement a counter some other request's
+   * reservation incremented — freeing that request's slot while it is still in
+   * flight, once for every such admission during an outage.
+   */
+  const uncounted: DeniedAuditReservation = {
+    admitted: true,
+    complete: () => Effect.void,
+  };
+
+  const reserve = Effect.fn('DeniedAttempts.reserve')(function* (
+    input: DeniedAttemptInput,
+  ): Effect.fn.Return<DeniedAuditReservation> {
+    // No store at all is the same posture as a store that cannot be reached.
+    if (!store.configured) return uncounted;
+    const now = yield* Clock.currentTimeMillis;
+    const key = keyAt(input, now);
+    const reply = yield* store.run((redis) =>
+      redis.eval(
+        RESERVE_SCRIPT,
+        1,
+        key,
+        String(limit),
+        String(ttlMs),
+        String(now),
+        String(maxInFlight),
+      ),
+    );
+    // Only a literal 0 suppresses. An unreachable store yields the store's own
+    // `unavailable` marker instead, and that — like anything else this cannot
+    // read — admits, which is the direction a broken defence must fail in.
+    if (reply === 0) return { admitted: false, reason: 'rate_limited' };
+    // And only a literal 1 is a slot the script counted, which is the only
+    // kind `complete` may give back.
+    if (reply !== 1) return uncounted;
+
+    // Idempotent, because a future edit must not be able to close one twice.
+    const completed = yield* Ref.make(false);
+    return {
+      admitted: true,
+      complete: (outcome) =>
+        Effect.flatMap(Ref.getAndSet(completed, true), (already) =>
+          already
+            ? Effect.void
+            : Effect.asVoid(
+                store.run((redis) =>
+                  redis.eval(COMPLETE_SCRIPT, 1, key, String(ttlMs), outcome),
+                ),
+              ),
+        ),
+    };
+  });
+
+  return DeniedAttempts.of({
+    reserve,
+    keyFor: (input) =>
+      Effect.map(Clock.currentTimeMillis, (now) => keyAt(input, now)),
+  });
+});
 
 /**
  * A fixed window per (actor, team, operation), aligned to the clock rather
@@ -224,104 +303,29 @@ export type DeniedAuditRateLimiterOptions = {
  * The window is chosen from the calling process's clock, not Valkey's, because
  * the key has to be known before the round trip. Two API containers whose
  * clocks differ by less than the window still agree on it almost always, and
- * when they do not the cost is one extra summary event, not a lost one.
+ * when they do not the cost is one extra summary event, not a lost one. The
+ * clock is Effect's `Clock`, read in the caller's fiber, so a suite moves a
+ * window boundary with `TestClock` rather than through a seam in this module.
  */
-export class DeniedAuditRateLimiter {
-  readonly #store: RateLimitStore | undefined;
-  readonly #limit: number;
-  readonly #maxInFlight: number;
-  readonly #windowMs: number;
-  readonly #ttlMs: number;
-  readonly #keyPrefix: string;
-  readonly #now: () => number;
-
-  constructor(options: DeniedAuditRateLimiterOptions = {}) {
-    this.#store = options.store;
-    this.#limit = options.limit ?? DEFAULT_LIMIT;
-    this.#maxInFlight = options.maxInFlight ?? DEFAULT_MAX_IN_FLIGHT;
-    this.#windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
-    this.#ttlMs = this.#windowMs + (options.graceMs ?? DEFAULT_GRACE_MS);
-    this.#keyPrefix = options.keyPrefix ?? DENIAL_KEY_PREFIX;
-    this.#now = options.now ?? Date.now;
+export class DeniedAttempts extends Context.Service<
+  DeniedAttempts,
+  {
+    readonly reserve: (
+      input: DeniedAttemptInput,
+    ) => Effect.Effect<DeniedAuditReservation>;
+    /** The key a reservation made now would use; the suites read it back. */
+    readonly keyFor: (input: DeniedAttemptInput) => Effect.Effect<string>;
   }
+>()('@studio/DeniedAttempts') {
+  /** Other bounds, or a key space of its own, for a suite. */
+  static readonly layerWith = (
+    options: DeniedAttemptsOptions,
+  ): Layer.Layer<DeniedAttempts, never, RateLimitStore> =>
+    Layer.effect(DeniedAttempts, make(options));
 
-  /** The key a reservation made now would use; the suites read it back. */
-  keyFor(input: {
-    teamId: string;
-    actorId: string;
-    operation: string;
-  }): string {
-    const now = this.#now();
-    return windowKey(this.#keyPrefix, {
-      ...input,
-      windowStart: Math.floor(now / this.#windowMs) * this.#windowMs,
-    });
-  }
-
-  async reserve(input: {
-    teamId: string;
-    actorId: string;
-    operation: string;
-  }): Promise<DeniedAuditReservation> {
-    const store = this.#store;
-    const key = this.keyFor(input);
-    // No store at all is the same posture as a store that cannot be reached.
-    if (!store) return { admitted: true, complete: async () => undefined };
-
-    const reply = await store.run((redis) =>
-      redis.eval(
-        RESERVE_SCRIPT,
-        1,
-        key,
-        String(this.#limit),
-        String(this.#ttlMs),
-        String(this.#now()),
-        String(this.#maxInFlight),
-      ),
-    );
-    // Only a literal 0 suppresses. An unreachable store yields the store's own
-    // `unavailable` marker instead, and that — like anything else this cannot
-    // read — admits, which is the direction a broken defence must fail in.
-    if (reply === 0) return { admitted: false, reason: 'rate_limited' };
-
-    let completed = false;
-    return {
-      admitted: true,
-      complete: async (outcome) => {
-        // Idempotent, because the call sites complete in both a try and a
-        // catch and a future edit must not be able to close one twice.
-        if (completed) return;
-        completed = true;
-        await store.run((redis) =>
-          redis.eval(COMPLETE_SCRIPT, 1, key, String(this.#ttlMs), outcome),
-        );
-      },
-    };
-  }
-}
-
-/**
- * The process's limiter, built on first use rather than at import: the store's
- * URL comes from the environment, and this module is imported by command
- * modules that are themselves imported before any environment is read.
- */
-let processLimiter: DeniedAuditRateLimiter | undefined;
-
-function limiter(): DeniedAuditRateLimiter {
-  if (processLimiter) return processLimiter;
-  const { redis } = readEnv();
-  processLimiter = new DeniedAuditRateLimiter({
-    store: redis ? getRateLimitStore(redis) : undefined,
-  });
-  return processLimiter;
-}
-
-function reserveDeniedAuditAttempt(input: {
-  actorId: string;
-  teamId: string;
-  operation: string;
-}): Promise<DeniedAuditReservation> {
-  return limiter().reserve(input);
+  /** The bounds every deployment runs, over the process's store. */
+  static readonly layer: Layer.Layer<DeniedAttempts, never, RateLimitStore> =
+    DeniedAttempts.layerWith({});
 }
 
 /**
@@ -355,49 +359,42 @@ export const reservedDenial: <A, E, E2, R>(
     readonly isDenial: (error: unknown) => boolean;
   },
   command: Effect.Effect<A, E, R>,
-) => Effect.Effect<A, E | E2, R | Principal> = Effect.fnUntraced(function* <
-  A,
-  E,
-  E2,
-  R,
->(
-  input: {
-    readonly operation: string;
-    readonly teamId: string;
-    readonly refusal: () => E2;
-    readonly isDenial: (error: unknown) => boolean;
-  },
-  command: Effect.Effect<A, E, R>,
-) {
-  const principal = yield* Principal;
-  // Acquired uninterruptibly: once Valkey has counted the slot in flight, the
-  // release below is registered before an interrupt can land, so an
-  // interrupted request gives its slot back rather than holding it until the
-  // window's key expires (#1927 §10).
-  return yield* Effect.acquireUseRelease(
-    Effect.promise(() =>
-      reserveDeniedAuditAttempt({
+) => Effect.Effect<A, E | E2, R | Principal | DeniedAttempts> =
+  Effect.fnUntraced(function* <A, E, E2, R>(
+    input: {
+      readonly operation: string;
+      readonly teamId: string;
+      readonly refusal: () => E2;
+      readonly isDenial: (error: unknown) => boolean;
+    },
+    command: Effect.Effect<A, E, R>,
+  ) {
+    const principal = yield* Principal;
+    const attempts = yield* DeniedAttempts;
+    // Acquired uninterruptibly: once Valkey has counted the slot in flight, the
+    // release below is registered before an interrupt can land, so an
+    // interrupted request gives its slot back rather than holding it until the
+    // window's key expires (#1927 §10).
+    return yield* Effect.acquireUseRelease(
+      attempts.reserve({
         actorId: principal.userId,
         teamId: input.teamId,
         operation: input.operation,
       }),
-    ),
-    (reservation): Effect.Effect<A, E | E2, R> =>
-      reservation.admitted ? command : Effect.fail(input.refusal()),
-    (reservation, exit) =>
-      reservation.admitted
-        ? // Awaited rather than fired and forgotten: the in-flight slot has
-          // to be back, and a confirmed denial counted, before the next
-          // request asks — or a caller making permitted calls in sequence
-          // would run itself out of capacity, and one making denied calls in
-          // sequence would never reach the cap.
-          Effect.promise(() =>
+      (reservation): Effect.Effect<A, E | E2, R> =>
+        reservation.admitted ? command : Effect.fail(input.refusal()),
+      (reservation, exit) =>
+        reservation.admitted
+          ? // Waited on rather than fired and forgotten: the in-flight slot
+            // has to be back, and a confirmed denial counted, before the next
+            // request asks — or a caller making permitted calls in sequence
+            // would run itself out of capacity, and one making denied calls in
+            // sequence would never reach the cap.
             reservation.complete(
               Exit.isFailure(exit) && input.isDenial(Cause.squash(exit.cause))
                 ? 'denied'
                 : 'other',
-            ),
-          )
-        : Effect.void,
-  );
-});
+            )
+          : Effect.void,
+    );
+  });

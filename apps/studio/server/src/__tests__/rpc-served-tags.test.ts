@@ -13,11 +13,13 @@ import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
+import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { DatabaseAbsent } from '../db/client.ts';
 import { getDeploymentStatus } from '../domain.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
 import { SecretsCipherAbsent } from '../secrets/services.ts';
@@ -111,6 +113,9 @@ const handlerContext = await Effect.runPromise(
             SecretsCipherAbsent,
             AuditSignal.layer,
             Jobs.layer({ schema: JOB_SCHEMA }),
+            DeniedAttempts.layer.pipe(
+              Layer.provide(RateLimitStore.layerAbsent),
+            ),
           ),
         ),
       ),

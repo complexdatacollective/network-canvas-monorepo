@@ -28,7 +28,11 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
+} from './support/valkey.ts';
 
 const redis = await reachableRedis(REDIS_DATABASES.rpcPlane);
 
@@ -214,6 +218,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
       // user id per run, because the bucket is keyed by it and the window
       // outlives the test.
       const userId = `budget-${randomUUID()}`;
+      const limits = await openRateLimitStore(redis);
       const limited = await createRpcClient(
         createStudio(
           resolve({
@@ -232,7 +237,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
             }),
             pool: database.appPool,
             services: database.services,
-            limits: { rpc_user: { max: 2, windowMs: 60_000 } },
+            limiter: limits.limiter({ rpc_user: { max: 2, windowMs: 60_000 } }),
           },
         ),
       );
@@ -251,6 +256,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
         expect(refused.retryAfterSeconds).toBeGreaterThan(0);
       } finally {
         await limited.dispose();
+        await limits.dispose();
       }
     },
   );

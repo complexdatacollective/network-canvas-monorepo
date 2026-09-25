@@ -32,8 +32,8 @@ import {
 } from './http/health.ts';
 import { UNKNOWN_ADDRESS } from './http/middleware/client-address.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
-import { createRateLimiter } from './rate-limit.ts';
-import type { RateLimitSettings } from './rate-limit/scopes.ts';
+import type { RateLimitDecision, RateLimiter } from './rate-limit/limiter.ts';
+import { RATE_LIMITS, type RateLimitScope } from './rate-limit/scopes.ts';
 import { createRpcRouter, type RpcContext } from './rpc.ts';
 import type { RpcDeps, StudioServices } from './rpc/deps.ts';
 import { createSecretsCipher } from './secrets/cipher.ts';
@@ -139,13 +139,14 @@ type CreateAppDeps = {
    */
   services?: ServiceContext.Context<StudioServices>;
   /**
-   * Scopes this app enforces something other than their constant for. A
-   * deployment never passes it — the limits are the constants in
-   * `rate-limit/scopes.ts` and there is no way to configure them — and the
-   * suites do, because tripping a real limit through the request path would
-   * otherwise mean two thousand requests to `/storage`.
+   * Where every limit this process enforces is counted (#1909): the
+   * program's `RateLimiter`, built once over the process's store. Every
+   * program passes one. Absent only in the suites that are not about
+   * limiting, where nothing is limited and readiness names no limiter; a
+   * suite that is about limiting builds one with the limits it wants to trip
+   * (`support/valkey.ts`'s `openRateLimitStore`).
    */
-  limits?: Partial<RateLimitSettings>;
+  limiter?: RateLimiter['Service'];
 };
 
 /**
@@ -208,9 +209,16 @@ export function createStudio(
   const app = new Hono<StudioHonoEnv>();
 
   // Every limit this process enforces, counted in the shared store (#1909).
-  // Built before anything is mounted because better-auth's own sign-in limiter
+  // Read before anything is mounted because better-auth's own sign-in limiter
   // stores its counters through it too.
-  const limiter = createRateLimiter(env, deps.limits);
+  const limiter = deps.limiter;
+  const decide = (
+    scope: RateLimitScope,
+    subject: string,
+  ): Promise<RateLimitDecision> =>
+    limiter === undefined
+      ? Promise.resolve({ allowed: true })
+      : Effect.runPromise(limiter.check(scope, subject));
 
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
@@ -313,14 +321,7 @@ export function createStudio(
     // serve — and taking the container out of rotation for it would turn a
     // rate-limit outage into an availability one. Omitted entirely where no
     // store is configured, like every other unconfigured surface.
-    ...(limiter.configured
-      ? {
-          limiter: Effect.tryPromise({
-            try: () => limiter.readiness(),
-            catch: (cause: unknown) => cause,
-          }),
-        }
-      : {}),
+    ...(limiter?.configured ? { limiter: limiter.readiness } : {}),
   };
 
   // Per-email sign-in (#1909). better-auth keys its own limiter by address and
@@ -329,7 +330,7 @@ export function createStudio(
   app.on('POST', '/api/auth/*', async (c, next) => {
     const email = await signInEmailSubject(c, c.req.path.replace(/\/+$/, ''));
     if (email) {
-      const decision = await limiter.check('sign_in_email', email);
+      const decision = await decide('sign_in_email', email);
       // The response says nothing the limiter's own log does not: the scope
       // and how long to wait. Never the address being refused.
       if (!decision.allowed) {
@@ -370,7 +371,9 @@ export function createStudio(
       c,
       Number.isFinite(retryAfter) && retryAfter > 0
         ? Math.ceil(retryAfter)
-        : Math.ceil(limiter.rules.sign_in_address.windowMs / 1000),
+        : Math.ceil(
+            (limiter?.rules ?? RATE_LIMITS).sign_in_address.windowMs / 1000,
+          ),
     );
   });
 
@@ -385,7 +388,7 @@ export function createStudio(
   // which is the address limit doing nothing at all. When a token is validated
   // the key becomes its resolved id, which cannot be minted.
   app.on(['GET', ...UNSAFE_METHODS], API_V1_PATHS, async (c, next) => {
-    const decision = await limiter.check(
+    const decision = await decide(
       'public_api',
       c.env?.clientAddress ?? UNKNOWN_ADDRESS,
     );
@@ -415,7 +418,7 @@ export function createStudio(
   // interview fetches every stimulus it shows, and an institution often puts a
   // whole building behind one address.
   app.on('GET', STORAGE_PATHS, async (c, next) => {
-    const decision = await limiter.check(
+    const decision = await decide(
       'storage_read',
       c.env?.clientAddress ?? UNKNOWN_ADDRESS,
     );
@@ -498,7 +501,7 @@ export function createStudio(
     const principal = c.get('principal');
     // Unreachable past requirePrincipal; narrowing rather than asserting.
     if (!principal) return next();
-    const decision = await limiter.check('ws_upgrade', principal.userId);
+    const decision = await decide('ws_upgrade', principal.userId);
     if (!decision.allowed) {
       return tooManyRequests(c, decision.retryAfterSeconds);
     }

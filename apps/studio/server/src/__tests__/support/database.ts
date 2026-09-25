@@ -49,6 +49,7 @@ import { ERASURE_GUC } from '../../study/schema.ts';
 import { CI } from './env.ts';
 import { reachableDb } from './postgres.ts';
 import { scratchSchemaDdl } from './schema-ddl.ts';
+import { testDeniedAttempts } from './valkey.ts';
 
 // The scratch-schema harness: one schema per suite, with the three stage-3
 // clients over it (#1927 section 9). It replaced a node-postgres harness whose
@@ -355,9 +356,10 @@ export const TestDatabaseLive: Layer.Layer<
 
 /**
  * What `createStudio` takes, over this suite's scratch schema: the job queue on
- * its job sibling, the operator signal and the process cipher, beside the
- * clients `TestDatabaseLive` already provides. The production wiring with only
- * the two schema names changed.
+ * its job sibling, the operator signal, the process cipher and the audit
+ * denial window over the process's store, beside the clients
+ * `TestDatabaseLive` already provides. The production wiring with only the two
+ * schema names changed.
  *
  * With no keyring configured the cipher is a proxy that throws on first use,
  * so a suite that never seals anything needs none, and one that does fails
@@ -372,6 +374,7 @@ const TestStudioServicesLive: Layer.Layer<
     return Layer.mergeAll(
       Jobs.layer({ schema: harness.jobSchema }),
       AuditSignal.layer,
+      testDeniedAttempts,
       keyring === undefined
         ? Layer.succeed(SecretsCipher)(
             new Proxy({} as ReturnType<typeof createSecretsCipher>, {
@@ -390,7 +393,7 @@ const TestStudioServicesLive: Layer.Layer<
 /**
  * A node-postgres pool over the scratch schema, as the application role.
  *
- * Only for what still runs on node-postgres: better-auth's adapter (stage 6
+ * Only for what still runs on node-postgres: better-auth's adapter (stage 4
  * moves it) and the surfaces `createApp` hands that pool to. Everything else
  * in a suite goes through the Effect clients. The search path rides the
  * connection options, as `support/postgres.ts`'s pools did, because this pool

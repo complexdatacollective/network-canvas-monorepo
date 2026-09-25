@@ -1,10 +1,12 @@
 import { Layer } from 'effect';
 
 import type { Studio } from '../../app.ts';
+import { DeniedAttempts } from '../../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../../audit/signal.ts';
 import { DatabaseAbsent } from '../../db/client.ts';
 import { Jobs } from '../../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { RateLimitStore } from '../../rate-limit/store.ts';
 import type { StudioServices } from '../../rpc/deps.ts';
 import { SecretsCipherAbsent } from '../../secrets/services.ts';
 
@@ -27,5 +29,6 @@ export const studioServices = (studio: Studio): Layer.Layer<StudioServices> =>
         SecretsCipherAbsent,
         AuditSignal.layer,
         Jobs.layer({ schema: JOB_SCHEMA }),
+        DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
       )
     : Layer.succeedContext(studio.rpc.services);

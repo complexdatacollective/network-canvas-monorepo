@@ -22,6 +22,7 @@ import {
   TestDatabase,
   testDb,
 } from '../../../__tests__/support/database.ts';
+import { testDeniedAttempts } from '../../../__tests__/support/valkey.ts';
 import { AuditSignal } from '../../../audit/signal.ts';
 import type { SessionPrincipal } from '../../../auth/service.ts';
 import { MaintenanceDatabase, Database } from '../../../db/client.ts';
@@ -110,9 +111,11 @@ const dateOf = (ms: number | null): Date | null =>
   ms === null ? null : new Date(ms);
 
 /** Studio's schema, the queue, an enqueue and a recording transport. */
-const suiteLayer = Layer.mergeAll(layerJobs, layerRecordingMailer).pipe(
-  Layer.provideMerge(layerDeliveryHarness),
-);
+const suiteLayer = Layer.mergeAll(
+  layerJobs,
+  layerRecordingMailer,
+  testDeniedAttempts,
+).pipe(Layer.provideMerge(layerDeliveryHarness));
 
 describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
   layer(suiteLayer)('with Studio and the queue installed', (it) => {

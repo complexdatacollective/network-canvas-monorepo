@@ -24,8 +24,8 @@ import type { AuthService, Principal } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';
 import { TenantScope } from '../db/tenant.ts';
 import { openAssetKey } from '../protocol/asset-keys.ts';
-import type { RateLimiter } from '../rate-limit.ts';
-import { enforceRateLimit } from '../rate-limit/enforce.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
+import type { RateLimitScope } from '../rate-limit/scopes.ts';
 import type { RpcContext } from '../rpc.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
@@ -100,7 +100,7 @@ export type ProtocolBuilderRouterDeps = {
    * including every edit over an open WebSocket — would be the one part of the
    * RPC plane with no per-user or per-team limit at all.
    */
-  limiter?: RateLimiter;
+  limiter?: RateLimiter['Service'];
   /**
    * What this router's Effects run with (#1931 stage 3). Absent on an
    * entrypoint with no database, where it is refused beside the pool: every
@@ -109,6 +109,29 @@ export type ProtocolBuilderRouterDeps = {
    */
   services?: Context.Context<ProtocolBuilderServices>;
 };
+
+/**
+ * Refuses a call whose scope has spent its window (#1909), as this oRPC
+ * router's own error: the one caller left on that plane. The retry interval
+ * goes in the error's data, which is what a caller over the WebSocket has — a
+ * frame carries no response headers at all, so `resHeaders` is always absent
+ * from the one transport serving this router. It stays because stage 8's
+ * unary mount is where a response to put `Retry-After` on appears.
+ */
+async function enforceRateLimit(
+  limiter: RateLimiter['Service'] | undefined,
+  scope: RateLimitScope,
+  subject: string,
+  resHeaders: Headers | undefined,
+): Promise<void> {
+  if (!limiter) return;
+  const decision = await Effect.runPromise(limiter.check(scope, subject));
+  if (decision.allowed) return;
+  resHeaders?.set('Retry-After', String(decision.retryAfterSeconds));
+  throw new ORPCError('TOO_MANY_REQUESTS', {
+    data: { retryAfter: decision.retryAfterSeconds },
+  });
+}
 
 function requirePrincipal(context: RpcContext): Principal {
   if (!context.principal) throw new ORPCError('UNAUTHORIZED');

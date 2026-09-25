@@ -22,6 +22,10 @@ import {
 import { createRpcClient, expectRpcFailure } from './support/rpc.ts';
 import { testCipher, testKeyring } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
+import {
+  type OpenRateLimitStore,
+  openRateLimitStore,
+} from './support/valkey.ts';
 
 /** `me` over the rpc plane, with the harness disposed however the case ends. */
 async function meOver(studio: Studio, headers?: Record<string, string>) {
@@ -548,6 +552,7 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
   const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
   let database: TestDatabaseRuntime | undefined;
+  let limits: OpenRateLimitStore | undefined;
   let studio: Studio;
 
   const signIn = (password: string) => {
@@ -578,14 +583,16 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
     // ten minutes, which a developer re-running this file would reach on the
     // third run. The limiter is not what this file is about, so it states a
     // limit of its own rather than sharing the constant's window (#1909).
+    limits = await openRateLimitStore(env.redis);
     studio = createStudio(env, {
       auth,
-      limits: { sign_in_email: SIGN_IN_ALLOWANCE },
+      limiter: limits.limiter({ sign_in_email: SIGN_IN_ALLOWANCE }),
     });
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {
     await database?.dispose();
+    await limits?.dispose();
   });
 
   it('signs the seeded admin in with the published password', async () => {

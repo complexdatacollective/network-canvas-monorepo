@@ -4,13 +4,14 @@ import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { Effect } from 'effect';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
-import type { RateLimiter } from '../rate-limit.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
 import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
@@ -55,13 +56,15 @@ function scopeForAuthKey(key: string): string {
  * store's decision is the limiter's, and the limiter allows when it cannot
  * reach the store.
  */
-function createAuthRateLimitStorage(limiter: RateLimiter) {
+function createAuthRateLimitStorage(limiter: RateLimiter['Service']) {
   return {
     consume: async (key: string, rule: { window: number; max: number }) => {
-      const decision = await limiter.consume(scopeForAuthKey(key), key, {
-        max: rule.max,
-        windowMs: rule.window * 1000,
-      });
+      const decision = await Effect.runPromise(
+        limiter.consume(scopeForAuthKey(key), key, {
+          max: rule.max,
+          windowMs: rule.window * 1000,
+        }),
+      );
       return decision.allowed
         ? { allowed: true, retryAfter: null }
         : { allowed: false, retryAfter: decision.retryAfterSeconds };
@@ -89,7 +92,7 @@ export function createBetterAuthInstance(
    * limit of its own: the auth CLI's configuration and the suites that are not
    * about limiting construct one that way. Every server process passes one.
    */
-  limiter?: RateLimiter,
+  limiter?: RateLimiter['Service'],
 ) {
   const adapter = drizzleAdapter(drizzle({ client: pool }), {
     provider: 'pg',
@@ -272,7 +275,7 @@ export function createBetterAuthService(
   pool: pg.Pool,
   sendMagicLink: SendMagicLink,
   secrets: SecretsCipherApi,
-  limiter?: RateLimiter,
+  limiter?: RateLimiter['Service'],
 ): AuthService {
   const auth = createBetterAuthInstance(
     env,

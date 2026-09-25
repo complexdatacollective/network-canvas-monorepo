@@ -7,7 +7,15 @@ import {
   it as vitestIt,
   layer,
 } from '@effect/vitest';
-import { DateTime, Duration, Effect, Exit, Layer } from 'effect';
+import {
+  Clock,
+  Context,
+  DateTime,
+  Duration,
+  Effect,
+  Exit,
+  Layer,
+} from 'effect';
 import { TestClock } from 'effect/testing';
 import pg from 'pg';
 
@@ -17,16 +25,13 @@ import { ownerRows, testDb } from '../../../__tests__/support/database.ts';
 import { reachableRedis } from '../../../__tests__/support/valkey.ts';
 import {
   CLAIMED_SUFFIX,
-  DeniedAuditRateLimiter,
+  DeniedAttempts,
 } from '../../../audit/denial-rate-limit.ts';
 import { MaintenanceDatabase } from '../../../db/client.ts';
 import { MaintenanceScope } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
-import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit.ts';
-import {
-  createRateLimitStore,
-  type RateLimitStore,
-} from '../../../rate-limit/store.ts';
+import { DENIED_SCOPE_COUNTS_KEY } from '../../../rate-limit/limiter.ts';
+import { RateLimitStore } from '../../../rate-limit/store.ts';
 import {
   DeliveryHarness,
   layerDeliveryHarness,
@@ -86,6 +91,27 @@ const WINDOW_MS = 60_000;
 const CASE_STEP = Duration.minutes(10);
 
 const OPERATION = 'audit.read';
+
+/**
+ * Runs an effect as though the clock read `ms`, without moving the suite's
+ * `TestClock`: every case shares that one, and it only ever moves forward, so
+ * a window in the past is placed by pinning the time its reservations read
+ * rather than by winding the clock back.
+ */
+const pinnedAt =
+  (ms: number) =>
+  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Clock.clockWith((clock) =>
+      Effect.provideService(effect, Clock.Clock, {
+        currentTimeMillisUnsafe: () => ms,
+        currentTimeMillis: Effect.succeed(ms),
+        currentTimeNanosUnsafe: () => BigInt(ms) * 1_000_000n,
+        currentTimeNanos: Effect.succeed(BigInt(ms) * 1_000_000n),
+        monotonicTimeNanosUnsafe: () => clock.monotonicTimeNanosUnsafe(),
+        monotonicTimeNanos: clock.monotonicTimeNanos,
+        sleep: (duration) => clock.sleep(duration),
+      }),
+    );
 
 /** A later run, far enough past the claim's visibility timeout to retake one. */
 const LATER = Duration.minutes(10);
@@ -191,11 +217,15 @@ describe.skipIf(!testDb)(
         input: { teamId: string; actorId: string; operation: string },
         windowStart: number,
       ) =>
-        new DeniedAuditRateLimiter({
-          keyPrefix,
-          windowMs: WINDOW_MS,
-          now: () => windowStart,
-        }).keyFor(input);
+        Effect.flatMap(Effect.service(DeniedAttempts), (window) =>
+          window.keyFor(input),
+        ).pipe(
+          Effect.provide(
+            DeniedAttempts.layerWith({ keyPrefix, windowMs: WINDOW_MS }),
+          ),
+          Effect.provide(RateLimitStore.layerAbsent),
+          pinnedAt(windowStart),
+        );
 
       /**
        * A window of theirs that suppressed `count` attempts, as the limiter's
@@ -212,7 +242,7 @@ describe.skipIf(!testDb)(
       }) {
         const memory = yield* DeniedAttemptsMemory;
         const operation = input.operation ?? OPERATION;
-        const key = keyFor(
+        const key = yield* keyFor(
           input.keyPrefix,
           { teamId: input.teamId, actorId: input.actorId, operation },
           input.windowStart,
@@ -234,41 +264,46 @@ describe.skipIf(!testDb)(
        * Answers the window's key.
        */
       const suppressInValkey = Effect.fnUntraced(function* (input: {
-        store: RateLimitStore;
+        store: RateLimitStore['Service'];
         keyPrefix: string;
         teamId: string;
         actorId: string;
         count: number;
         windowStart: number;
       }) {
-        let clock = input.windowStart;
-        const limiter = new DeniedAuditRateLimiter({
-          store: input.store,
-          limit: 1,
-          windowMs: WINDOW_MS,
-          keyPrefix: input.keyPrefix,
-          now: () => clock,
-        });
+        const limiter = yield* Effect.service(DeniedAttempts).pipe(
+          Effect.provide(
+            DeniedAttempts.layerWith({
+              limit: 1,
+              windowMs: WINDOW_MS,
+              keyPrefix: input.keyPrefix,
+            }),
+          ),
+          Effect.provideService(RateLimitStore, input.store),
+        );
         const subject = {
           teamId: input.teamId,
           actorId: input.actorId,
           operation: OPERATION,
         };
-        const admitted = yield* Effect.promise(() => limiter.reserve(subject));
+        const admitted = yield* limiter
+          .reserve(subject)
+          .pipe(pinnedAt(input.windowStart));
         if (!admitted.admitted) throw new Error('expected an admission');
-        yield* Effect.promise(() => admitted.complete('denied'));
+        yield* admitted.complete('denied');
         for (let attempt = 0; attempt < input.count; attempt += 1) {
-          clock = input.windowStart + 1_000 * (attempt + 1);
-          const refused = yield* Effect.promise(() => limiter.reserve(subject));
+          const refused = yield* limiter
+            .reserve(subject)
+            .pipe(pinnedAt(input.windowStart + 1_000 * (attempt + 1)));
           assert.isFalse(refused.admitted);
         }
-        return limiter.keyFor(subject);
+        return yield* limiter.keyFor(subject).pipe(pinnedAt(input.windowStart));
       });
 
-      /** A store open on this file's own logical Valkey database. */
-      const openStore = Effect.acquireRelease(
-        Effect.sync(() => createRateLimitStore(redisUrl!)),
-        (open) => Effect.promise(() => open.close()),
+      /** A store open on this file's own logical Valkey database, closed with the case. */
+      const openStore = Effect.map(
+        Layer.build(RateLimitStore.layerOf(redisUrl!)),
+        (context) => Context.get(context, RateLimitStore),
       );
 
       /** One run of the job, as the maintenance role the worker runs as. */
@@ -609,7 +644,8 @@ describe.skipIf(!testDb)(
           const outcome = yield* runSummary(
             `test-summary-${randomUUID()}`,
           ).pipe(
-            Effect.provide(DeniedAttemptsStore.layerAbsent),
+            Effect.provide(DeniedAttemptsStore.layer),
+            Effect.provide(RateLimitStore.layerAbsent),
             Effect.provide(logs.layer),
           );
           assert.strictEqual(outcome, 'completed');
@@ -870,7 +906,8 @@ describe.skipIf(!testDb)(
             });
 
             const outcome = yield* runSummary(keyPrefix).pipe(
-              Effect.provide(DeniedAttemptsStore.layer(store)),
+              Effect.provide(DeniedAttemptsStore.layer),
+              Effect.provideService(RateLimitStore, store),
             );
             assert.strictEqual(outcome, 'completed');
 
@@ -883,10 +920,8 @@ describe.skipIf(!testDb)(
 
             // Nothing of the window is left in the store: neither the window
             // nor the claim it was renamed to.
-            const left = yield* Effect.promise(() =>
-              store.run((redis) =>
-                redis.exists(key, `${key}${CLAIMED_SUFFIX}`),
-              ),
+            const left = yield* store.run((redis) =>
+              redis.exists(key, `${key}${CLAIMED_SUFFIX}`),
             );
             assert.strictEqual(left, 0);
           }),
@@ -917,16 +952,17 @@ describe.skipIf(!testDb)(
 
             yield* Effect.all([runSummary(keyPrefix), runSummary(keyPrefix)], {
               concurrency: 'unbounded',
-            }).pipe(Effect.provide(DeniedAttemptsStore.layer(store)));
+            }).pipe(
+              Effect.provide(DeniedAttemptsStore.layer),
+              Effect.provideService(RateLimitStore, store),
+            );
 
             assert.deepInclude(yield* onlySummary(teamId), {
               suppressedCount: 3,
               firstSuppressedAt: new Date(at.closedAt + 1_000).toISOString(),
             });
-            const left = yield* Effect.promise(() =>
-              store.run((redis) =>
-                redis.exists(key, `${key}${CLAIMED_SUFFIX}`),
-              ),
+            const left = yield* store.run((redis) =>
+              redis.exists(key, `${key}${CLAIMED_SUFFIX}`),
             );
             assert.strictEqual(left, 0);
           }),

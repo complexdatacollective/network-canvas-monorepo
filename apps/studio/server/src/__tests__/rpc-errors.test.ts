@@ -48,7 +48,10 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-import { reachableDeniedAuditStore } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableDeniedAuditStore,
+} from './support/valkey.ts';
 
 const env = readEnv();
 /**
@@ -145,6 +148,8 @@ describe('refusals that need no database', () => {
     'refuses a spent invitation budget with the interval to wait',
     async () => {
       const invitationId = TeamInvitationId.make(randomUUID());
+      const limits = await openRateLimitStore(env.redis);
+      disposals.push(limits.dispose);
       const client = await track(
         createRpcClient(
           createStudio(
@@ -156,7 +161,9 @@ describe('refusals that need no database', () => {
               auth: stubAuthService({
                 getSession: () => Promise.resolve(PRINCIPAL),
               }),
-              limits: { invitation_accept: { max: 1, windowMs: 60_000 } },
+              limiter: limits.limiter({
+                invitation_accept: { max: 1, windowMs: 60_000 },
+              }),
             },
           ),
         ),

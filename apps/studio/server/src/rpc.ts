@@ -33,8 +33,9 @@ export type RpcContext = {
    * Always absent today: this router is served over the WebSocket alone, and a
    * frame has no response headers at all — so a call the rate limiter refuses
    * carries its retry-after in the error data and nowhere else. The field stays
-   * because `rate-limit/enforce.ts` takes one, and it is what stage 8 will hand
-   * the value through when the protocol builder moves onto the rpc plane.
+   * because the protocol builder's limit check (`protocol-builder/router.ts`)
+   * writes to one, and it is what stage 8 will hand the value through when the
+   * protocol builder moves onto the rpc plane.
    */
   resHeaders?: Headers;
 };

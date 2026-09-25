@@ -19,7 +19,11 @@ import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { testKeyringEntry } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
-import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
+} from './support/valkey.ts';
 
 // Liveness and readiness on the web process (#1897, #1909). The worker serves
 // the same two routes on a loopback listener of its own, which only a real
@@ -43,12 +47,21 @@ async function request(
   extraChecks: HealthChecks = {},
 ): Promise<{ response: Response; dispose: () => Promise<void> }> {
   const env = resolve(variables);
-  const studio = createStudio(env);
+  // The limiter the program would build: over `REDIS_URL`'s store when the
+  // variables name one, over no store when they do not.
+  const limits = await openRateLimitStore(env.redis);
+  const studio = createStudio(env, { limiter: limits.limiter() });
   const stack = composeStudio(env, studio, {
     ...studio.checks,
     ...extraChecks,
   });
-  return { response: await stack.request(path), dispose: stack.dispose };
+  return {
+    response: await stack.request(path),
+    dispose: async () => {
+      await stack.dispose();
+      await limits.dispose();
+    },
+  };
 }
 
 const ok = Effect.succeed('ok' as const);
@@ -217,7 +230,8 @@ describe('the web process routes', () => {
       NODE_ENV: 'test',
       REDIS_URL: `redis://127.0.0.1:${await freePort()}`,
     });
-    const studio = createStudio(env);
+    const limits = await openRateLimitStore(env.redis);
+    const studio = createStudio(env, { limiter: limits.limiter() });
     const stack = composeStudio(env, studio);
     try {
       const response = await stack.request('/readyz');
@@ -230,6 +244,7 @@ describe('the web process routes', () => {
       expect((await stack.request('/api/v1/status')).status).toBe(200);
     } finally {
       await stack.dispose();
+      await limits.dispose();
     }
   });
 

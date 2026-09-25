@@ -211,22 +211,20 @@ schema before a handler ever sees it, so a handler never has to parse).
 | `handlers/protocol-store-gc.ts`       | `src/protocol/gc.ts` (`gcProtocolStore`) + `src/jobs/handlers/protocol-store-gc.ts`    | `MaintenanceDatabase`                        | Asserts `current_user` equals the maintenance role inside a transaction before enumerating every tenant. The role is pinned per-transaction via `set local role`, so that reads back the identity label this module wrote one statement earlier: it refuses a worker built on the app identity, but not a maintenance identity over a login that merely happens to be a member of `studio_maintenance`. A login that may _not_ assume the role fails inside the pin, and the `42501` is mapped to the same `GcRoleError` rather than surfacing as a bare `SqlError`. rc.116's `startupParameters` is what restores the original's connection-level check. `PROTOCOL_STORE_GC_BOUNDS` is exported: `retainManifestsPerDraft: 1000`, `sectionGraceMs: 259,200,000` (3 days), `commandRetryHorizonMs: 86,400,000` (1 day). Retry limit 0 — the sweep is idempotent and the next hourly run repairs whatever a failed pass left half-done.                                                          |
 | `handlers/denied-attempts-summary.ts` | `src/jobs/handlers/denied-attempts-summary.ts`                                         | `MaintenanceDatabase \| DeniedAttemptsStore` | Drains two Valkey structures each run: closed audit-denial windows (claim → write one audit event → discard the claim, idempotent via `summaryAlreadyWritten` reading `audit_events` under `MaintenanceScope.openTenant`) and the rate limiter's per-scope denial counts (drained and logged, never written to a team's audit log — those scopes mostly have no team). `singleton` policy plus the claim's rename-not-delete semantics together make a double write of the same window impossible even across two runs. A window is counted the moment its event is in the log, before the claim is given up, so a discard that fails cannot un-report a summary that was written. Per window the whole `Cause` is caught, not the typed error alone — a defect skips that window and leaves it claimed, exactly as the original's `try`/`catch` did, rather than abandoning every window still to come — and an interruption is re-raised so a stopped run is not reported as a completed one. |
 
-One of that last handler's dependencies is not Effect yet; it is a
-`Context.Service` seam with a live layer wrapping today's Promise
-implementation and a test layer beside it, so the handler itself never sees a
-`Promise`:
+One of that last handler's dependencies is a `Context.Service` seam in the
+job's own vocabulary, with a live layer and a test layer beside it, so the
+handler itself never sees Redis:
 
-- **`DeniedAttemptsStore`** (`handlers/denied-attempts/store.ts`) wraps
-  today's `RateLimitStore` (`src/rate-limit/store.ts`, ioredis). The live
-  layer (`DeniedAttemptsStore.layer(store)`) wraps the exact calls the handler
-  needs — a cursor `SCAN`, the claim's Lua (`CLAIM_SCRIPT`: rename a live
-  window onto its claim key, or extend an existing claim once it has gone
-  stale), `discardClaim`, and the scope-count drain (`DRAIN_SCRIPT`) — each in
-  `Effect.tryPromise`. `DeniedAttemptsStore.layerAbsent` is what stage 3 wires
-  when `REDIS_URL` is unset: `configured: false`, every operation a no-op,
-  which is the same posture today's optional `deps.store` takes. A later
-  stage (#1927's stage 4) replaces this seam by turning `RateLimitStore`
-  itself into an Effect service.
+- **`DeniedAttemptsStore`** (`handlers/denied-attempts/store.ts`) is over
+  the Effect `RateLimitStore` (`src/rate-limit/store.ts`) since stage 4. The
+  live layer (`DeniedAttemptsStore.layer`, requiring `RateLimitStore`) runs
+  the exact calls the handler needs — a cursor `SCAN`, the claim's Lua
+  (`CLAIM_SCRIPT`: rename a live window onto its claim key, or extend an
+  existing claim once it has gone stale), `discardClaim`, and the scope-count
+  drain (`DRAIN_SCRIPT`) — through `RateLimitStore.run`, which never fails.
+  `configured` is the store's: with `REDIS_URL` unset the program provides
+  `RateLimitStore.layerAbsent`, every operation answers `UNAVAILABLE` without
+  touching a socket, and the handler says there is nothing to summarise.
   There is no writer seam any more. `appendDeniedAuditSummary`
   (`src/audit/denial-summary.ts`) is an ordinary Effect on
   `MaintenanceDatabase`: it opens `MaintenanceScope.openTenant`, takes the team
@@ -348,9 +346,9 @@ the secrets check still needs — and then, in acquisition order:
    pass, the cron tick and the `LISTEN` are all forked here. Its scope
    finalizer is the graceful drain: 25 seconds, and because `Health` was
    acquired first it closes last, so `/readyz` stays answerable throughout.
-5. `DeniedAttemptsStore` — the live store where `REDIS_URL` is set,
-   `layerAbsent` otherwise — then `JobHandlersLive` (§3), which registers the
-   handlers and writes the schedules.
+5. `DeniedAttemptsStore.layer`, over the program's `RateLimitStore` (live
+   where `REDIS_URL` is set, `layerAbsent` otherwise) — then `JobHandlersLive`
+   (§3), which registers the handlers and writes the schedules.
 6. `JobQueueMetrics.layer()` for `studio_jobs_queue_depth` and the backlog
    warning. Readiness does not depend on it: the worker's own poll fibers set
    `ready` from their first answered claim.

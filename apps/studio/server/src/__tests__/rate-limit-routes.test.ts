@@ -4,7 +4,7 @@ import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import { Cause, Exit } from 'effect';
 import type pg from 'pg';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import {
   ProtocolId,
@@ -24,7 +24,11 @@ import {
   type RpcTestClient,
 } from './support/rpc.ts';
 import { startStudioServer } from './support/serve.ts';
-import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
+} from './support/valkey.ts';
 
 // Every limited surface, through the request path a caller actually takes
 // (#1909). What the limiter itself decides is in
@@ -37,6 +41,10 @@ import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 // surface and is answered by it.
 
 const url = await reachableRedis(REDIS_DATABASES.routes);
+
+/** One connection for the file; each case builds its own limiter over it. */
+const store = await openRateLimitStore(url);
+afterAll(() => store.dispose());
 
 /**
  * A peer address of its own per case, so no two cases share a bucket.
@@ -68,7 +76,7 @@ function appOptions(
     ...(url ? { REDIS_URL: url } : {}),
   });
   const deps = {
-    limits,
+    limiter: store.limiter(limits),
     // A pool that is never connected to. `openTeam` needs one to exist before
     // it will look a membership up at all, and every procedure behind it fails
     // when it tries to use it — which is what tells an admitted call from a

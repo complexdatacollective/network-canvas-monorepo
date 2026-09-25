@@ -18,7 +18,7 @@
 // attacks and cannot share a number.
 //
 // This file imports nothing. The limiter reads it to build keys and log lines
-// (src/rate-limit.ts), the app to enforce them (src/app.ts), and the summary
+// (src/rate-limit/limiter.ts), the app to enforce them (src/app.ts), and the summary
 // job to name what it counted — and none of those may import each other.
 
 /** How many calls the window allows, and how long the window is. */

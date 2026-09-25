@@ -3,7 +3,7 @@ import { HttpRouter } from 'effect/unstable/http';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
-import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
+import { type DbEnv, Environment } from '../env.ts';
 import {
   databaseCheck,
   type HealthCheck,
@@ -25,8 +25,8 @@ import { WorkerHealthServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
-import { createRateLimiter } from '../rate-limit.ts';
-import { getRateLimitStore, RateLimitStoresLive } from '../rate-limit/store.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
+import { RateLimitStore } from '../rate-limit/store.ts';
 import { KeyringVerified } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
@@ -94,11 +94,10 @@ type StartedQueue = {
  * nothing, and the maintenance pool would still reach Postgres.
  */
 function workerChecks(
-  env: StudioEnv,
   pool: DatabasePool['Service']['pool'],
+  limiter: RateLimiter['Service'],
   started: Ref.Ref<Option.Option<StartedQueue>>,
 ): HealthChecks {
-  const limiter = createRateLimiter(env);
   const jobs: HealthCheck = Effect.gen(function* () {
     const queue = yield* Ref.get(started);
     if (Option.isNone(queue)) return yield* new JobsNotStarted();
@@ -113,24 +112,23 @@ function workerChecks(
     // cannot reach it still runs every job it has — only the summary job has
     // nothing to drain. Omitted where no store is configured, like every other
     // unconfigured surface.
-    ...(limiter.configured
-      ? { limiter: Effect.promise(() => limiter.readiness()) }
-      : {}),
+    ...(limiter.configured ? { limiter: limiter.readiness } : {}),
     jobs,
   };
 }
 
-function workerWith(env: StudioEnv, db: DbEnv) {
+function workerWith(db: DbEnv) {
   return Layer.unwrap(
     Effect.gen(function* () {
       const { pool } = yield* DatabasePool;
+      const limiter = yield* RateLimiter;
       const started = yield* Ref.make(Option.none<StartedQueue>());
 
       // 127.0.0.1 by construction, not by configuration
       // (`WorkerHealthServerLive`): this listener answers the container runtime
       // and nothing else, and a worker is not a service anything routes to.
       const Health = HttpRouter.serve(
-        HealthRoutes(workerChecks(env, pool, started)),
+        HealthRoutes(workerChecks(pool, limiter, started)),
         {
           disableLogger: true,
           disableListenLog: true,
@@ -184,11 +182,7 @@ function workerWith(env: StudioEnv, db: DbEnv) {
         // first answered claim.
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
-        Layer.provide(
-          env.redis
-            ? DeniedAttemptsStore.layer(getRateLimitStore(env.redis))
-            : DeniedAttemptsStore.layerAbsent,
-        ),
+        Layer.provide(DeniedAttemptsStore.layer),
         Layer.provideMerge(JobWorker.layer({ schema: JOB_SCHEMA })),
         Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
         // The production skew correction, measured against this client's own
@@ -202,7 +196,12 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       );
     }),
   ).pipe(
-    Layer.provide(RateLimitStoresLive),
+    // The one Valkey client, for the `limiter` readiness check and the
+    // denied-attempts summary job. Acquired after the pool and before
+    // everything that reads through it, so it closes after the job drain and
+    // before the pool ends.
+    Layer.provide(RateLimiter.layer),
+    Layer.provide(RateLimitStore.layer),
     Layer.provide(DatabasePool.layerMaintenance(db)),
   );
 }
@@ -225,7 +224,7 @@ export const WorkerProgram = Layer.unwrap(
           'DATABASE_URL is required for the worker process: there are no jobs to run without a database.',
       });
     }
-    return workerWith(env, db);
+    return workerWith(db);
   }),
 ).pipe(
   Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('worker'))),

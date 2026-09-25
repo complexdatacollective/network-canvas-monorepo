@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { Effect, Option } from 'effect';
 import type pg from 'pg';
 
-import { RateLimited } from '@codaco/studio-contract/schema/errors';
+import type { RateLimited } from '@codaco/studio-contract/schema/errors';
 
 import { RequestId } from '../http/middleware/request-id.ts';
-import type { RateLimiter } from '../rate-limit.ts';
+import { enforceRateLimit } from '../rate-limit/enforce.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
 import type { RateLimitScope } from '../rate-limit/scopes.ts';
 import type { RpcDeps } from './deps.ts';
 
@@ -71,18 +72,14 @@ export const requirePool = (deps: RpcDeps): Effect.Effect<pg.Pool> =>
  * answers problem+json with the header.
  */
 export const chargeLimit = (
-  limiter: RateLimiter | undefined,
+  limiter: RateLimiter['Service'] | undefined,
   scope: RateLimitScope,
   subject: string,
 ): Effect.Effect<void, RateLimited> =>
   limiter === undefined
     ? Effect.void
-    : Effect.flatMap(
-        Effect.promise(() => limiter.check(scope, subject)),
-        (decision) =>
-          decision.allowed
-            ? Effect.void
-            : new RateLimited({
-                retryAfterSeconds: decision.retryAfterSeconds,
-              }),
+    : Effect.provideService(
+        enforceRateLimit(scope, subject),
+        RateLimiter,
+        limiter,
       );
