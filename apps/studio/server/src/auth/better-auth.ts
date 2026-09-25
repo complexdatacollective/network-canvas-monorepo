@@ -51,10 +51,16 @@ function scopeForAuthKey(key: string): string {
  * store's decision is the limiter's, and the limiter allows when it cannot
  * reach the store.
  */
-function createAuthRateLimitStorage(limiter: RateLimiter['Service']) {
+/** Runs an Effect that needs nothing, for a promise-shaped caller. */
+type RunEffect = <A>(effect: Effect.Effect<A>) => Promise<A>;
+
+function createAuthRateLimitStorage(
+  limiter: RateLimiter['Service'],
+  run: RunEffect,
+) {
   return {
     consume: async (key: string, rule: { window: number; max: number }) => {
-      const decision = await Effect.runPromise(
+      const decision = await run(
         limiter.consume(scopeForAuthKey(key), key, {
           max: rule.max,
           windowMs: rule.window * 1000,
@@ -97,6 +103,13 @@ export type BetterAuthDeps = {
    * about limiting construct one that way. Every server process passes one.
    */
   readonly limiter?: RateLimiter['Service'] | undefined;
+  /**
+   * How better-auth's promise callbacks run the limiter: over the services of
+   * the program that built this instance, so a denial logs through that
+   * program's logger rather than the default one. `Effect.runPromise` where
+   * there is no program (the CLI harness, the suites).
+   */
+  readonly run?: RunEffect | undefined;
 };
 
 export function createBetterAuthInstance({
@@ -105,6 +118,7 @@ export function createBetterAuthInstance({
   cipher,
   sendMagicLink,
   limiter,
+  run = Effect.runPromise,
 }: BetterAuthDeps) {
   return betterAuth({
     baseURL: env.baseUrl,
@@ -130,7 +144,7 @@ export function createBetterAuthInstance({
     rateLimit: limiter
       ? {
           enabled: true,
-          customStorage: createAuthRateLimitStorage(limiter),
+          customStorage: createAuthRateLimitStorage(limiter, run),
           // better-auth's own default for these paths is three attempts in
           // ten seconds. Studio's is the `sign_in_address` constant
           // (src/rate-limit/scopes.ts); the per-email limit is Studio's own

@@ -330,6 +330,7 @@ const makeLive = Effect.gen(function* () {
     cipher: yield* SecretsCipher,
     sendMagicLink: yield* makeSendMagicLink,
     limiter: yield* RateLimiter,
+    run: Effect.runPromiseWith(yield* Effect.context()),
   });
 
   /**
