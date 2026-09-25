@@ -25,7 +25,7 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-import { startStudioServer } from './support/serve.ts';
+import { composeStudio, startStudioServer } from './support/serve.ts';
 import {
   openRateLimitStore,
   reachableRedis,
@@ -338,6 +338,55 @@ describe.skipIf(!url)('the limited request paths', () => {
       expect(seen).toHaveLength(1);
     } finally {
       await server.dispose();
+    }
+  });
+
+  it('refuses a sign-in body over the cap before better-auth sees it', async () => {
+    // In process, as the upload cap's case is: over a socket the server's
+    // early answer closes it under the client's write, which fetch reports as
+    // a failure. Streamed, so the body carries no Content-Length, and finite —
+    // four times the cap — so a read with no bound ends and says so rather
+    // than hanging the run.
+    let reached = 0;
+    const { env, deps } = appOptions({}, undefined, undefined, {
+      handler: () =>
+        Effect.sync(() => {
+          reached += 1;
+          return Response.json({ signedIn: true });
+        }),
+    });
+    const stack = composeStudio(env, createStudio(env, deps));
+    const chunk = new TextEncoder().encode(' '.repeat(64 * 1024));
+    let sent = 0;
+    const oversized = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 4 * 1024 * 1024) return controller.close();
+        sent += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+    const init: RequestInit & { duplex: 'half' } = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: oversized,
+      duplex: 'half',
+    };
+    try {
+      const response = await stack.request('/api/auth/sign-in/email', init);
+      // Mutation: `MAX_AUTH_BODY_BYTES = Number.MAX_SAFE_INTEGER` → 200.
+      expect(response.status).toBe(413);
+      expect(response.headers.get('Content-Type')).toContain(
+        'application/problem+json',
+      );
+      expect(await response.json()).toEqual({
+        title: 'Content Too Large',
+        status: 413,
+      });
+      expect(reached).toBe(0);
+      expect(sent).toBeGreaterThan(1024 * 1024);
+      expect(sent).toBeLessThanOrEqual(1024 * 1024 + 3 * chunk.byteLength);
+    } finally {
+      await stack.dispose();
     }
   });
 
