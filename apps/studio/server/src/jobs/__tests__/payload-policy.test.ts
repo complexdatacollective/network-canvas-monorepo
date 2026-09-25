@@ -5,16 +5,19 @@
 // Studio off a queue library until #1895.
 import { randomUUID } from 'node:crypto';
 
+import { Effect, Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
-import type { z } from 'zod';
 
 import {
+  JOB_PAYLOAD_PARSE_OPTIONS,
   JOB_PAYLOAD_POLICY,
   JOB_PAYLOAD_SCHEMAS,
   JOB_QUEUES,
   JOB_SCHEDULES,
   type JobQueueName,
 } from '@codaco/studio-sync/jobs';
+
+import { payloadCodec } from '../queues.ts';
 
 const QUEUE_NAMES = JOB_QUEUES.map(({ name }) => name);
 
@@ -28,12 +31,22 @@ const IDENTIFIER_KEY = /^(id|[a-z][A-Za-z0-9]*Id)$/;
 const CONTENT_KEY =
   /email|address|mail|url|link|token|secret|name|label|content|body|text|message|payload|data/i;
 
-function shapeOf(schema: z.ZodType): Record<string, z.ZodType> {
-  if (!('shape' in schema)) {
-    throw new Error('a job payload schema must be an object schema');
-  }
-  return schema.shape as Record<string, z.ZodType>;
-}
+/** Whether `value` decodes against `schema` the way a job payload is decoded. */
+const admits = (
+  schema: Schema.ConstraintDecoder<unknown>,
+  value: unknown,
+): boolean =>
+  Exit.isSuccess(
+    Schema.decodeUnknownExit(schema, JOB_PAYLOAD_PARSE_OPTIONS)(value),
+  );
+
+/**
+ * Whether the decoder every enqueue, claim and schedule goes through admits
+ * `value` for `queue`. Asked beside the declaration itself, so a codec that
+ * decoded without `JOB_PAYLOAD_PARSE_OPTIONS` fails here too.
+ */
+const codecAdmits = (queue: JobQueueName, value: unknown): boolean =>
+  Exit.isSuccess(Effect.runSyncExit(payloadCodec(queue).decode(value)));
 
 describe('job queue declarations', () => {
   it('declares every dead-letter target before the queue that names it', () => {
@@ -90,7 +103,7 @@ describe('job payload policy', () => {
 
   it('keeps sign-in email to the link and the account it signs in', () => {
     expect(
-      Object.keys(shapeOf(JOB_PAYLOAD_SCHEMAS['sign-in-email'])).toSorted(),
+      Object.keys(JOB_PAYLOAD_SCHEMAS['sign-in-email'].fields).toSorted(),
     ).toEqual(['email', 'url']);
   });
 
@@ -100,24 +113,29 @@ describe('job payload policy', () => {
     ),
   )('carries identifiers only on %s', (queue: JobQueueName) => {
     const schema = JOB_PAYLOAD_SCHEMAS[queue];
-    const shape = shapeOf(schema);
+    const fields = schema.fields;
 
-    for (const [key, field] of Object.entries(shape)) {
+    for (const [key, field] of Object.entries(fields)) {
       expect(key, `${queue} payload key ${key}`).toMatch(IDENTIFIER_KEY);
       expect(key, `${queue} payload key ${key}`).not.toMatch(CONTENT_KEY);
       // An identifier is a row id, so the schema has to refuse anything that
       // is not one: a `string` field named `teamId` would admit a label.
-      expect(field.safeParse(randomUUID()).success).toBe(true);
-      expect(field.safeParse('not-an-identifier').success).toBe(false);
+      expect(admits(field, randomUUID())).toBe(true);
+      expect(admits(field, 'not-an-identifier')).toBe(false);
     }
 
     // Strict, so a payload cannot grow a field the policy never saw.
+    // `Schema.Struct` strips an undeclared key unless it is decoded with
+    // `onExcessProperty: 'error'`, and an empty one admits anything that is
+    // not null, so both the declaration and the codec are asked.
     const valid = Object.fromEntries(
-      Object.keys(shape).map((key) => [key, randomUUID()]),
+      Object.keys(fields).map((key) => [key, randomUUID()]),
     );
-    expect(schema.safeParse(valid).success).toBe(true);
-    expect(schema.safeParse({ ...valid, email: 'a@example.org' }).success).toBe(
-      false,
-    );
+    const grown = { ...valid, email: 'a@example.org' };
+    expect(admits(schema, valid)).toBe(true);
+    expect(admits(schema, grown)).toBe(false);
+    expect(codecAdmits(queue, valid)).toBe(true);
+    expect(codecAdmits(queue, grown)).toBe(false);
+    expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
   });
 });

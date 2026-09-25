@@ -1,6 +1,6 @@
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
-import { type JobPayload, resolvedQueue } from './queues.ts';
+import { resolvedQueue } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
 // The one statement that creates a job, rendered as text and bound values:

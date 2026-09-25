@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Effect, Layer } from 'effect';
 import pg from 'pg';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 import { TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
 
 import { Database } from '../../db/client.ts';
@@ -11,7 +11,7 @@ import { createOwnerPool } from '../../db/pool.ts';
 import { UntenantedScope } from '../../db/tenant.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 import { Jobs } from '../../jobs/jobs.ts';
-import { JOB_SCHEMA, type JobPayload } from '../../jobs/queues.ts';
+import { JOB_SCHEMA } from '../../jobs/queues.ts';
 import { CI } from './env.ts';
 
 const PROBE_TIMEOUT_MS = 3000;

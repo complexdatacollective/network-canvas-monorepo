@@ -20,7 +20,7 @@ import {
 } from 'effect';
 import type { SqlClient, SqlError } from 'effect/unstable/sql';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
@@ -32,7 +32,6 @@ import {
 } from './errors.ts';
 import { Jobs, type JobId } from './jobs.ts';
 import {
-  type JobPayload,
   payloadCodec,
   type ResolvedQueue,
   resolvedQueue,

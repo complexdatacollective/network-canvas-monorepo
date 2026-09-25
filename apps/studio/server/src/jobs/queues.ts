@@ -1,7 +1,10 @@
 import { type Effect, Schema } from 'effect';
 
 import {
+  JOB_PAYLOAD_PARSE_OPTIONS,
+  JOB_PAYLOAD_SCHEMAS,
   JOB_QUEUES,
+  type JobPayload,
   type JobQueueName,
   type JobQueueOptions,
 } from '@codaco/studio-sync/jobs';
@@ -10,14 +13,10 @@ import { jobSchemaGrantsSql, jobSchemaSql } from './schema.ts';
 
 // What a queue means to the native worker, read off the declarations in
 // `@codaco/studio-sync/jobs` rather than restated: `JOB_QUEUES` stays the one
-// place a queue exists, and this module only resolves its options against the
-// defaults and pairs it with the Effect Schema its payload has to satisfy.
-//
-// The payload schemas are the stage-5 move of `JOB_PAYLOAD_SCHEMAS` from zod to
-// Effect Schema (#1927 §17 stage 5). They are declared here rather than in
-// studio-sync because that package is compiled into contexts that never run a
-// job and still need the zod shapes for the payload policy; these are the zod
-// ones, field for field.
+// place a queue exists, and `JOB_PAYLOAD_SCHEMAS` the one place its payload is
+// declared. This module only resolves a queue's options against the defaults
+// and turns its payload schema into the decoder both directions of the queue
+// run.
 
 /**
  * pg-boss's own defaults (`QUEUE_DEFAULTS`, pg-boss 12.31.1
@@ -100,69 +99,30 @@ export function resolvedQueue(name: JobQueueName): ResolvedQueue {
   return queue;
 }
 
-const InvitationDeliveryPayload = Schema.Struct({
-  deliveryId: Schema.String.check(Schema.isUUID()),
-});
-
-/**
- * `z.url()`, as a Schema filter. Effect 4 ships `Schema.URL` (an
- * `instanceof URL` check) and `Schema.URLFromString` (which decodes to a `URL`
- * instance) but no string-shaped URL check, and a payload column has to stay a
- * string — the magic link is put into an email as it was minted.
- */
-const isUrlString = Schema.makeFilter<string>(
-  (value) => (URL.canParse(value) ? undefined : 'a URL'),
-  { expected: 'a URL' },
-);
-
-const SignInEmailPayload = Schema.Struct({
-  email: Schema.String.check(Schema.isMinLength(1)),
-  url: Schema.String.check(isUrlString),
-});
-
-const EmptyPayload = Schema.Struct({});
-
-/**
- * `Schema.Struct` strips excess properties by default, which would let a
- * payload carrying a field the policy forbids reach the table with the field
- * silently dropped rather than refused. Pinned by the payload test, as
- * `JOB_PAYLOAD_PARSE_OPTIONS` is in #1927 §11.
- */
-const JOB_PAYLOAD_PARSE_OPTIONS = {
-  onExcessProperty: 'error',
-} as const;
-
-/**
- * What each queue's payload is, as a type first. Both directions of the queue
- * — the enqueue validating a caller's value and the worker validating a row —
- * run the same decode, so `JobPayload` is what the decoder returns and there
- * is one shape per queue rather than a pair.
- */
-export type JobPayloads = {
-  'invitation-delivery': (typeof InvitationDeliveryPayload)['Type'];
-  'invitation-delivery-dead-letter': (typeof InvitationDeliveryPayload)['Type'];
-  'sign-in-email': (typeof SignInEmailPayload)['Type'];
-  'protocol-store-gc': (typeof EmptyPayload)['Type'];
-  'denied-attempts-summary': (typeof EmptyPayload)['Type'];
-};
-
-export type JobPayload<Queue extends JobQueueName> = JobPayloads[Queue];
-
 /**
  * A decoder per queue, rather than the schema itself. Indexing a mapped type
  * with a generic key resolves — `JOB_PAYLOAD_CODECS[queue]` for
  * `queue: Queue` is `QueuePayloadCodec<Queue>` — where indexing a plain
  * object of schemas would only give the union of all five, and every generic
  * call site would then need a cast to get its own payload type back.
+ *
+ * Both directions of the queue — the enqueue validating a caller's value and
+ * the worker validating a row — run this decode, so `JobPayload` is what it
+ * returns and there is one shape per queue rather than a pair.
  */
 export type QueuePayloadCodec<Queue extends JobQueueName> = {
   readonly decode: (
     raw: unknown,
-  ) => Effect.Effect<JobPayloads[Queue], Schema.SchemaError>;
+  ) => Effect.Effect<JobPayload<Queue>, Schema.SchemaError>;
 };
 
+/**
+ * The one place `JOB_PAYLOAD_PARSE_OPTIONS` is applied: every call site
+ * decodes through `payloadCodec`, so none can reach a payload schema without
+ * it.
+ */
 const codec = <Queue extends JobQueueName>(
-  schema: Schema.Codec<JobPayloads[Queue], unknown>,
+  schema: Schema.Codec<JobPayload<Queue>, unknown>,
 ): QueuePayloadCodec<Queue> => ({
   decode: Schema.decodeUnknownEffect(schema, JOB_PAYLOAD_PARSE_OPTIONS),
 });
@@ -170,11 +130,15 @@ const codec = <Queue extends JobQueueName>(
 const JOB_PAYLOAD_CODECS: {
   [Queue in JobQueueName]: QueuePayloadCodec<Queue>;
 } = {
-  'invitation-delivery': codec(InvitationDeliveryPayload),
-  'invitation-delivery-dead-letter': codec(InvitationDeliveryPayload),
-  'sign-in-email': codec(SignInEmailPayload),
-  'protocol-store-gc': codec(EmptyPayload),
-  'denied-attempts-summary': codec(EmptyPayload),
+  'invitation-delivery': codec(JOB_PAYLOAD_SCHEMAS['invitation-delivery']),
+  'invitation-delivery-dead-letter': codec(
+    JOB_PAYLOAD_SCHEMAS['invitation-delivery-dead-letter'],
+  ),
+  'sign-in-email': codec(JOB_PAYLOAD_SCHEMAS['sign-in-email']),
+  'protocol-store-gc': codec(JOB_PAYLOAD_SCHEMAS['protocol-store-gc']),
+  'denied-attempts-summary': codec(
+    JOB_PAYLOAD_SCHEMAS['denied-attempts-summary'],
+  ),
 };
 
 export function payloadCodec<Queue extends JobQueueName>(

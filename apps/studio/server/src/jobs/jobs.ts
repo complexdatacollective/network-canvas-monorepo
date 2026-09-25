@@ -1,11 +1,11 @@
 import { Context, DateTime, Effect, Layer, Schema } from 'effect';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { Transaction } from '../db/tenant.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
 import { insertJobStatement } from './insert.ts';
-import { type JobPayload, payloadCodec } from './queues.ts';
+import { payloadCodec } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
 // The Effect half of creating a job (#1927 §4, the `Jobs` row). One statement
