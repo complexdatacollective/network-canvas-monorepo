@@ -28,6 +28,7 @@
     "start": "NODE_ENV=production node --env-file-if-exists=.env dist/index.js",
     "start:worker": "NODE_ENV=production node --env-file-if-exists=.env dist/worker.js",
     "start:migrate": "NODE_ENV=production node --env-file-if-exists=.env dist/migrate.js",
+    "start:maintenance": "NODE_ENV=production node --env-file-if-exists=.env dist/maintenance.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

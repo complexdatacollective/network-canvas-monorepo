@@ -1,6 +1,6 @@
 // The web/worker split is structural, not conventional (#1895): "neither
 // process may do the other's work" is only true if neither process can. What a
-// module graph reaches is what a process loads, so the four entrypoints are
+// module graph reaches is what a process loads, so the five entrypoints are
 // checked against each other here rather than against a habit.
 //
 // The runtime half of the same rule is proved elsewhere: the grants suite
@@ -12,7 +12,7 @@
 // file over a program in src/programs/, and the graph is read from the entry
 // — so the program, the shell it composes and every service it wires are what
 // is inspected, the same way the bundler sees them (vite.config.ts names the
-// same four files as its entries).
+// same five files as its entries).
 import { readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -124,11 +124,12 @@ const JOB_EXECUTION = [
   'src/jobs/handlers/denied-attempts-summary.ts',
 ];
 
-/** The four bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
+/** The five bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
 const ENTRIES = {
   'src/index.ts': './programs/serve.ts',
   'src/worker.ts': './programs/worker.ts',
   'src/migrate.ts': './programs/migrate.ts',
+  'src/maintenance.ts': './programs/maintenance.ts',
   'src/rotate-secrets.ts': './programs/rotate-secrets.ts',
 } as const;
 
@@ -415,11 +416,12 @@ describe('the web process', () => {
     // of this process today, so it is not asserted here: `pg` still arrives
     // through db/pool.ts, db/database-pool.ts, setup/bootstrap.ts,
     // http/health.ts and auth/better-auth.ts, the last of which needs a
-    // node-postgres drizzle handle until stage 6 gives better-auth an Effect
-    // one. Asserting the absence would fail; asserting the presence of the
-    // holders would pass whatever else joined them. The negative is asserted
-    // where it is true instead — see the rotation process below, the one
-    // entry already clear of the driver.
+    // node-postgres drizzle handle until this stage's (#1932) sql-pg adapter
+    // gives better-auth an Effect one. Asserting the absence would fail;
+    // asserting the presence of the holders would pass whatever else joined
+    // them. The negative is asserted where it is true instead — see the
+    // maintenance and rotation processes below, the entries already clear of
+    // the driver.
     //
     // Mutation: drop `@effect/sql-pg` from src/db/client.ts.
     expect(
@@ -456,7 +458,83 @@ describe('the web process', () => {
   });
 });
 
-// The fourth entry, and the other side of "the web process cannot re-key the
+// The maintenance command (#1901): the one writer of the `deployment_state`
+// flag both long-running processes read. It connects, flips one row as the
+// maintenance role, and exits — so it reaches the row's store and the
+// maintenance client, and none of what either process runs.
+describe('the maintenance process', () => {
+  const graph = moduleGraph('src/maintenance.ts');
+
+  it('writes the flag through the deployment-state store', () => {
+    // The positive half: every negative below would also hold for an entry
+    // that had stopped writing anything at all.
+    expect(
+      reached(graph, [
+        'src/db/deployment-state.ts',
+        'src/db/client.ts',
+        '@effect/sql-pg',
+      ]),
+    ).toEqual([
+      'src/db/deployment-state.ts',
+      'src/db/client.ts',
+      '@effect/sql-pg',
+    ]);
+  });
+
+  it('serves nothing and runs no job', () => {
+    // Neither the HTTP surface — the maintenance gate included, which is the
+    // web process's reader of the flag, not its writer — nor the job worker
+    // and its gate, which is the worker's.
+    //
+    // Mutation: import src/http/middleware/maintenance.ts or
+    // src/jobs/maintenance.ts from src/programs/maintenance.ts.
+    expect(
+      reached(graph, [
+        'src/app.ts',
+        'src/http/router.ts',
+        'src/http/health.ts',
+        'src/http/middleware/maintenance.ts',
+        'src/rpc.ts',
+        'hono',
+        '@orpc/server',
+        '@effect/platform-node/NodeHttpServer',
+        'ws',
+        'src/jobs/maintenance.ts',
+        ...JOB_EXECUTION,
+      ]),
+    ).toEqual([]);
+  });
+
+  it('holds no mail transport, no rotation and no better-auth', () => {
+    // It sends nothing, re-keys nothing and signs nobody in: the flag is the
+    // whole of what it touches.
+    expect(
+      reached(graph, [
+        'src/mail/live.ts',
+        'src/mail/smtp.ts',
+        'nodemailer',
+        'src/secrets/rotate.ts',
+        'better-auth',
+        'src/auth/better-auth.ts',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('carries no node-postgres', () => {
+    // Like rotation, a command written on the Effect driver from the start:
+    // no pool, and no `pg` even as a type.
+    expect(
+      reached(graph, [
+        'pg',
+        'drizzle-orm/node-postgres',
+        'src/db/pool.ts',
+        'src/db/database-pool.ts',
+      ]),
+    ).toEqual([]);
+  });
+});
+
+// The fifth entry, and the other side of "the web process cannot re-key the
 // database while it is serving it" above: the rotation is a process of its own
 // (#1900), so the separation runs both ways — the web process cannot reach the
 // rotation, and the rotation loads neither the HTTP surface nor the job

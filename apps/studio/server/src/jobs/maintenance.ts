@@ -1,13 +1,6 @@
-import {
-  Cause,
-  Context,
-  Duration,
-  Effect,
-  Layer,
-  MutableRef,
-  Schedule,
-} from 'effect';
+import { Cause, Duration, Effect, Layer, MutableRef, Schedule } from 'effect';
 
+import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { JobWorker } from './worker.ts';
 
 // Maintenance mode, as it reaches the queue: while a deployment is in
@@ -17,51 +10,14 @@ import { JobWorker } from './worker.ts';
 // which is what the poll fibers read before each claim. A handler already in
 // flight is not interrupted: maintenance stops new work, and the graceful
 // stop (worker.ts) is what bounds the work already running.
-
-/**
- * Whether the deployment is in maintenance. The live implementation is
- * stage 4's, over `deployment_state` (stage 3 added the table and its store,
- * `db/deployment-state.ts`); until then the worker provides `layerOff`. Nothing
- * here reads that table, because the queue must not grow a second opinion
- * about what maintenance is.
- *
- * `read` cannot fail, which is a decision the live implementation inherits:
- * a read of `deployment_state` that errors has to answer with the last state
- * it knew rather than hand the gate a failure, because the only thing the
- * gate could do with one is guess — and a guess either claims through a
- * maintenance window or stops claiming because a query timed out.
- */
-export class MaintenanceState extends Context.Service<
-  MaintenanceState,
-  {
-    readonly read: Effect.Effect<{ readonly maintenance: boolean }>;
-  }
->()('@studio/jobs/MaintenanceState') {
-  /**
-   * The suites' implementation: a reference a case flips between ticks. Not
-   * `Layer.succeed(MaintenanceState)(…)` over a boolean — the point of the
-   * gate is that the answer changes while the fiber runs.
-   */
-  static readonly layerTest = (
-    ref: MutableRef.MutableRef<boolean>,
-  ): Layer.Layer<MaintenanceState> =>
-    Layer.succeed(MaintenanceState)(
-      MaintenanceState.of({
-        read: Effect.sync(() => ({ maintenance: MutableRef.get(ref) })),
-      }),
-    );
-
-  /**
-   * Never in maintenance, which is what the worker program provides: Studio has
-   * no maintenance mode yet. The stage that introduces one replaces this with a
-   * read of `deployment_state` and nothing else about the gate changes — which
-   * is why the gate is mounted now rather than left out, so the wiring is not a
-   * second thing that stage has to get right.
-   */
-  static readonly layerOff: Layer.Layer<MaintenanceState> = Layer.succeed(
-    MaintenanceState,
-  )(MaintenanceState.of({ read: Effect.succeed({ maintenance: false }) }));
-}
+//
+// The flag is `MaintenanceState`'s (`platform/maintenance-state.ts`), the same
+// cached read of `deployment_state` the web process's gate consults; nothing
+// here reads that table, because the queue must not grow a second opinion
+// about what maintenance is. That read cannot fail — a failed read answers
+// the last state it knew — so the gate never has to guess, which would either
+// claim through a maintenance window or stop claiming because a query timed
+// out.
 
 /** How often the gate asks; a second, as the deployment gate polls. */
 const DEFAULT_POLL_INTERVAL = Duration.seconds(1);

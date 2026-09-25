@@ -1,7 +1,7 @@
 import { Cause, Console, Effect } from 'effect';
 
-// What the two one-shot commands — `migrate` and `rotate-secrets` — share:
-// the way they refuse. Both are typed by a person, so a refusal is one
+// What the one-shot commands — `migrate`, `maintenance` and `rotate-secrets` —
+// share: the way they refuse. Each is typed by a person, so a refusal is one
 // sentence saying what to do, written to stderr as it was before the shell
 // moved to Effect; the runtime's own report (a timestamp, a level, the error's
 // class name, a stack) is what the entries turn off with

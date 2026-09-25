@@ -14,7 +14,7 @@ import {
 import { JobClock } from '../jobs/clock.ts';
 import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
 import { Jobs } from '../jobs/jobs.ts';
-import { JobMaintenanceGate, MaintenanceState } from '../jobs/maintenance.ts';
+import { JobMaintenanceGate } from '../jobs/maintenance.ts';
 import { JobQueueMetrics } from '../jobs/metrics.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { jobsCheck } from '../jobs/readiness.ts';
@@ -23,6 +23,7 @@ import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
 import { WorkerHealthServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
+import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { createRateLimiter } from '../rate-limit.ts';
@@ -174,11 +175,12 @@ function workerWith(env: StudioEnv, db: DbEnv) {
       );
 
       return Started.pipe(
-        // One flag over the whole worker (#1927 §20 Q9). Studio has no
-        // maintenance mode yet, so the state is constantly off; the gate is
-        // wired now so the stage that adds one only replaces the state.
+        // One flag over the whole worker (#1927 §20 Q9): the
+        // `deployment_state` row `studio-api maintenance on|off` writes, read
+        // on the queue's own maintenance client — the only client this process
+        // runs work on.
         Layer.provide(JobMaintenanceGate.layer()),
-        Layer.provide(MaintenanceState.layerOff),
+        Layer.provide(MaintenanceState.layerMaintenance),
         // For `studio_jobs_queue_depth` and the backlog warning. Readiness does
         // not depend on it: the worker's own poll fibers set `ready` from their
         // first answered claim.

@@ -7,12 +7,17 @@ import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
+import {
+  maintenanceCheck,
+  MaintenanceTriggers,
+} from '../http/middleware/maintenance.ts';
 import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { HttpServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
+import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
@@ -88,6 +93,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Effect.gen(function* () {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
+      const triggers = yield* MaintenanceTriggers;
 
       // The Effect services every data-layer caller on this process runs on,
       // captured as one context and handed down to the two promise-shaped
@@ -143,9 +149,16 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         // has to say so rather than infer it from the process still being
         // alive.
         schema: schemaCheck(status.read),
+        // Whether the maintenance gate is refusing requests, and why (#1901):
+        // the same cached triggers the gate reads, so the two cannot disagree.
+        maintenance: maintenanceCheck(triggers),
       });
     }),
   ).pipe(
+    // Built once and provided to both the gate and the readiness check, so
+    // they share one cached reading of each trigger.
+    Layer.provide(MaintenanceTriggers.layer),
+    Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
     Layer.provide(RateLimitStoresLive),
     Layer.provide(DatabasePool.layerApplication(db)),
@@ -170,6 +183,8 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
 function withoutDatabase(env: StudioEnv) {
   const studio = createStudio(env);
   return Serve(studio, studio.checks).pipe(
+    // No `deployment_state` to read, no lock and no schema: never closed.
+    Layer.provide(MaintenanceTriggers.layerOpen),
     Layer.provide(RateLimitStoresLive),
     // The `/rpc` route asks for the data layer whatever this process is, so
     // the requirement has to be met here too. Nothing reaches it: the auth
