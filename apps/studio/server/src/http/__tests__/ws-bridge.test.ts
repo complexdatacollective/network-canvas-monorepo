@@ -159,12 +159,17 @@ describe('the socket bridge', () => {
         // The drain signals the socket routes and waits for them to leave
         // before the listener closes, so a stopping process tells its clients
         // rather than leaving them to notice. Observed: the whole stop takes
-        // about 3 ms and the close frame lands just inside it.
+        // about 3 ms and the close frame lands just inside it — but the
+        // client's `close` event and the stop's promise settle in the same
+        // process a fraction of a millisecond apart, in either order, so the
+        // two are bounded from the start of the stop rather than ordered
+        // against each other. That the server sent a close frame at all, and
+        // did not merely drop the connection, is the 1005 below.
         //
         // Mutation: drop `Effect.race(drain.closing)` from the pull loop and
         // the stop instead waits out the drain's whole five-second bound with
-        // the socket still open, which the bound below catches.
-        expect(event.at).toBeLessThanOrEqual(stoppedAt);
+        // the socket still open, which both bounds catch.
+        expect(event.at - startedStopAt).toBeLessThan(1000);
         expect(stoppedAt - startedStopAt).toBeLessThan(1000);
         // Codeless, per the shutdown decision on #1929: the upgrade's release
         // is `ws.close()` with no status. A client reads that as 1005 — a
