@@ -181,11 +181,15 @@ function workerWith(db: DbEnv) {
         Layer.provide(MaintenanceState.layerMaintenance),
         // For `studio_jobs_queue_depth` and the backlog warning. Readiness does
         // not depend on it: the worker's own poll fibers set `ready` from their
-        // first answered claim.
+        // first answered claim, or, while paused, from one read of the tables.
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
         Layer.provide(DeniedAttemptsStore.layer),
-        Layer.provideMerge(JobWorker.layer({ schema: JOB_SCHEMA })),
+        // Paused until the gate's first reading: a worker that booted
+        // fetching could claim before that reading said "maintenance".
+        Layer.provideMerge(
+          JobWorker.layer({ schema: JOB_SCHEMA, startPaused: true }),
+        ),
         Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
         // The production skew correction, measured against this client's own
         // `now()`; the uncorrected clock is the suites'.

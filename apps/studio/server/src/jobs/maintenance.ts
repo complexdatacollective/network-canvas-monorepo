@@ -41,8 +41,15 @@ export const JobMaintenanceGate = {
       Effect.gen(function* () {
         const worker = yield* JobWorker;
         const state = yield* MaintenanceState;
-        // `null` until the first tick, so the first answer is always applied:
-        // a process that boots into maintenance must not start by claiming.
+        // `null` until the first tick, so the first answer is always applied
+        // whichever way it points. That is what opens a worker built with
+        // `startPaused` (worker.ts), which is how a process that boots into
+        // maintenance never claims: this tick is forked, not awaited, so a
+        // worker that started fetching would poll before it ran. A first read
+        // that fails or hangs still answers here — `MaintenanceState` answers
+        // the last value it read, and "not in maintenance" before any — so a
+        // database that cannot be read at boot opens the worker rather than
+        // leaving it paused for good.
         const applied = MutableRef.make<boolean | null>(null);
 
         const tick = Effect.gen(function* () {
