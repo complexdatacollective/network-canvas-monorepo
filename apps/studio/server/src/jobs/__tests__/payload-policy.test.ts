@@ -105,6 +105,19 @@ describe('job payload policy', () => {
     expect(
       Object.keys(JOB_PAYLOAD_SCHEMAS['sign-in-email'].fields).toSorted(),
     ).toEqual(['email', 'url']);
+
+    // And strict like every other queue: the exception is two named fields,
+    // not an open payload.
+    const schema = JOB_PAYLOAD_SCHEMAS['sign-in-email'];
+    const valid = {
+      email: 'person@example.org',
+      url: 'https://studio.example/api/auth/magic-link/verify?token=t',
+    };
+    const grown = { ...valid, teamId: randomUUID() };
+    expect(admits(schema, valid)).toBe(true);
+    expect(admits(schema, grown)).toBe(false);
+    expect(codecAdmits('sign-in-email', valid)).toBe(true);
+    expect(codecAdmits('sign-in-email', grown)).toBe(false);
   });
 
   it.each(
@@ -137,5 +150,8 @@ describe('job payload policy', () => {
     expect(codecAdmits(queue, valid)).toBe(true);
     expect(codecAdmits(queue, grown)).toBe(false);
     expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
+    // An object that is not a plain one — no own keys, but not a payload.
+    expect(codecAdmits(queue, new Map())).toBe(false);
+    expect(codecAdmits(queue, new Date(0))).toBe(false);
   });
 });

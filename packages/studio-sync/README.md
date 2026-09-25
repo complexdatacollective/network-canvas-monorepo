@@ -23,7 +23,7 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
 - `@codaco/studio-sync/jobs` — Studio's background-job declarations (#1895):
   every queue and how it retries, expires and dead-letters, the cron schedules
   the worker registers, and the payload schema and payload policy per queue.
-  Plain data, and declarations only: the server's own queue
+  Declarations only (plain data, and Effect Schema for the payloads): the server's own queue
   (`apps/studio/server/src/jobs/queues.ts`) resolves each one against
   its defaults and freezes the result onto the job row at enqueue. They live
   here rather than in the server because this package is compiled into contexts

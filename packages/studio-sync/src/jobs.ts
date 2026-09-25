@@ -2,7 +2,8 @@
 // retries and expires, when the recurring ones run, and what a job on each may
 // carry.
 //
-// Declarations only, as plain data. The queue that reads them is the server's
+// Declarations only — plain data for the queues and schedules, Effect Schema
+// for the payloads. The queue that reads them is the server's
 // own (`apps/studio/server/src/jobs/queues.ts`), which resolves each one
 // against its defaults and freezes the result onto a job row at enqueue, so a
 // job already in flight keeps the retry and expiry it was created under. They
@@ -167,10 +168,14 @@ const isUrlString = Schema.makeFilter<string>(
  * and passes an object's keys through untouched — `onExcessProperty: 'error'`
  * has no key list to hold them against. A queue that carries nothing has to
  * say so itself, or `{ email }` on the sweep's queue would be stored as sent.
+ * A plain object only: a `Date` or a `Map` has no own keys either, and would
+ * be stored as whatever `JSON.stringify` made of it.
  */
 const isEmptyObject = Schema.makeFilter<Schema.Struct<{}>['Type']>(
   (value) =>
-    Predicate.isObject(value) && Reflect.ownKeys(value).length === 0
+    Predicate.isObject(value) &&
+    [Object.prototype, null].includes(Object.getPrototypeOf(value)) &&
+    Reflect.ownKeys(value).length === 0
       ? undefined
       : 'an object with no properties',
   { expected: 'an object with no properties' },

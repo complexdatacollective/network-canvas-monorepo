@@ -1019,7 +1019,12 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             UPDATE ${table(sql)}.job_schedules
                SET next_run_at = ${nextRunAt}
              WHERE name = ${row.name}`;
-          // The row was written by `schedule`, which decoded it first.
+          // The row was written by `schedule`, which decoded it first, so a
+          // payload that no longer decodes is a row edited behind the queue's
+          // back — a defect, not a refusal. It dies inside this tick's one
+          // transaction, so the whole tick rolls back and every other due
+          // schedule waits with it until the row is repaired (the next
+          // `schedule` upsert or `dropUndeclaredSchedules` at boot).
           const payload = yield* Effect.orDie(
             payloadCodec(row.queue).decode(row.payload),
           );
