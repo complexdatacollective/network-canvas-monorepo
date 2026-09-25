@@ -20,7 +20,9 @@ import type { CheckVerdict, HealthCheck } from '../health.ts';
 // nothing — no procedure, no upgrade, no storage read, nothing the Hono residue
 // would have done. The client shell renders its maintenance state from that
 // 503, and readiness fails naming `maintenance`, so a deployment stops routing
-// here for the whole window.
+// here for the whole window. The gate sees requests, and a socket upgraded
+// before the window is no longer one: `http/ws-bridge.ts` watches the same
+// reading and closes it.
 //
 // Three things close the instance, and only the first is a decision anybody
 // made (#1901, "the same page is served automatically, without the flag"):

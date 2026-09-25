@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Predicate } from 'effect';
+import { Effect, Layer, MutableRef, Predicate } from 'effect';
 import { Hono } from 'hono';
 import { WebSocket } from 'ws';
 
@@ -13,7 +13,9 @@ import type { Studio, WsBridgeDeps } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import { getDeploymentStatus } from '../../domain.ts';
 import { resolve } from '../../env/resolve.ts';
+import { MaintenanceState } from '../../platform/maintenance-state.ts';
 import type { RpcDeps } from '../../rpc/deps.ts';
+import { MaintenanceTriggers } from '../middleware/maintenance.ts';
 
 // The socket route on its own, with the RPC router stubbed out: what the
 // protocol-builder suite proves is that the wiring carries a real session,
@@ -53,13 +55,16 @@ function tabIn(context: unknown): string | null {
  */
 function echoing(): Studio & {
   readonly closed: () => number;
+  readonly dispatched: () => number;
   readonly tab: () => string | null | typeof NO_FRAME;
 } {
   let closed = 0;
+  let dispatched = 0;
   let tab: string | null | typeof NO_FRAME = NO_FRAME;
   const ws: WsBridgeDeps = {
     socket: {
       message: (peer, data, options) => {
+        dispatched += 1;
         tab = tabIn(options?.context);
         peer.send(typeof data === 'string' ? `echo:${data}` : 'echo:binary');
         return Promise.resolve({ matched: true });
@@ -92,6 +97,7 @@ function echoing(): Studio & {
     rpc,
     checks: {},
     closed: () => closed,
+    dispatched: () => dispatched,
     tab: () => tab,
   };
 }
@@ -221,6 +227,121 @@ describe('the socket bridge', () => {
         [CLIENT_SESSION_HEADER]: 'x'.repeat(65),
       });
       expect(exotic).toBeNull();
+    }),
+  );
+
+  /**
+   * The server with a maintenance flag a case flips, over the real triggers:
+   * the flag is the only one of the three that can close it here.
+   */
+  async function serverWithFlag(studio: Studio) {
+    const flag = MutableRef.make(false);
+    const triggers = MaintenanceTriggers.layerWith({
+      lockHeld: Effect.succeed(false),
+      schema: Effect.succeed({ kind: 'current' }),
+    }).pipe(Layer.provide(MaintenanceState.layerTest(flag)));
+    const env = resolve({ NODE_ENV: 'test' });
+    const server = await startStudioServer(
+      env,
+      studio,
+      studio.checks,
+      triggers,
+    );
+    return { ...server, flag };
+  }
+
+  /** The close, or a refusal naming how long it did not come. */
+  function closedWithin(socket: WebSocket, ms: number): Promise<CloseEvent> {
+    return Promise.race([
+      closedWith(socket),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`the socket was still open after ${ms} ms`)),
+          ms,
+        ),
+      ),
+    ]);
+  }
+
+  // #1901: "no procedure runs" during a window, and the gate sees only the
+  // upgrade. A socket opened before the window must neither dispatch another
+  // frame nor stay open through it.
+  it.live(
+    'drops a frame sent during a maintenance window and closes the socket',
+    () =>
+      Effect.promise(async () => {
+        const studio = echoing();
+        const { origin, dispose, flag } = await serverWithFlag(studio);
+        const socket = new WebSocket(
+          `${origin.replace('http://', 'ws://')}/ws`,
+        );
+        try {
+          await opened(socket);
+          const echoed = nextMessage(socket);
+          socket.send('before');
+          expect(await echoed).toBe('echo:before');
+          expect(studio.dispatched()).toBe(1);
+
+          MutableRef.set(flag, true);
+          const closed = closedWithin(socket, 2500);
+          const unanswered = nextMessage(socket);
+          socket.send('during');
+          const event = await closed;
+
+          // Mutation: dispatch a batch without asking the triggers first → the
+          // frame is answered and counted.
+          expect(studio.dispatched()).toBe(1);
+          await expect(
+            Promise.race([
+              unanswered,
+              new Promise((settle) => setTimeout(() => settle('silence'), 100)),
+            ]),
+          ).resolves.toBe('silence');
+          expect(event.code).toBe(1013);
+          expect(event.reason).toBe('down for maintenance');
+          expect(studio.closed()).toBe(1);
+        } finally {
+          socket.close();
+          await dispose();
+        }
+      }),
+  );
+
+  it.live('closes an idle socket when a maintenance window opens', () =>
+    Effect.promise(async () => {
+      const studio = echoing();
+      const { origin, dispose, flag } = await serverWithFlag(studio);
+      const socket = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+      try {
+        await opened(socket);
+        const flippedAt = performance.now();
+        MutableRef.set(flag, true);
+        // Mutation: drop the maintenance watch from the loop's races → the
+        // socket stays open and this rejects.
+        const event = await closedWithin(socket, 2500);
+        expect(event.code).toBe(1013);
+        expect(event.at - flippedAt).toBeLessThan(2500);
+        expect(studio.dispatched()).toBe(0);
+
+        // And the reconnect meets the gate.
+        const again = new WebSocket(`${origin.replace('http://', 'ws://')}/ws`);
+        const refused = await new Promise<number>((settle, reject) => {
+          // A listener here owns the refused handshake, so it ends it.
+          again.once('unexpected-response', (request, response) => {
+            settle(response.statusCode ?? 0);
+            response.resume();
+            request.destroy();
+          });
+          again.once('open', () => {
+            again.close();
+            reject(new Error('the reconnect was admitted'));
+          });
+        });
+        expect(refused).toBe(503);
+      } finally {
+        socket.close();
+        await dispose();
+      }
     }),
   );
 });
