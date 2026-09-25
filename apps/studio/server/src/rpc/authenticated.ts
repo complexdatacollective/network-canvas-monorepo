@@ -102,11 +102,14 @@ export const AuthenticatedLive: Layer.Layer<
         // and `Headers.fromInput` merges them through its iterable branch,
         // which assigns `out[k] = v` without filtering `undefined`. A
         // one-element entry `["authorization"]` therefore writes the key as
-        // `undefined` in the merged set, while the request's real
-        // `Authorization` still reaches `getSession` beside the cookie — the
-        // silent token-to-cookie fallback #1248 forbids. Read `options.headers`
-        // here and `auth.test.ts`'s 'refuses the token plane even when the
-        // message erases the header' fails.
+        // `undefined` in the merged set; a guard that read the value there
+        // would see no token while the request's real `Authorization` still
+        // reached `getSession` beside the cookie — the silent token-to-cookie
+        // fallback #1248 forbids. (`principalFromHeaders` asks whether the key
+        // is present, which that entry cannot hide, but the rule should not
+        // rest on which set happens to be tolerant.) Read `options.headers`
+        // here and `auth.test.ts`'s 'asks the provider with the headers the
+        // request carried, not ones a message attached' fails.
         const transport = yield* transportHeaders(options.headers);
         const principal = yield* Effect.provideService(
           principalFromHeaders(transport),
