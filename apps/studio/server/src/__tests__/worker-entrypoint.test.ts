@@ -556,6 +556,16 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       // with no REDIS_URL the store is absent, so the handler has nothing to
       // summarise, says so and answers `completed`
       // (src/jobs/handlers/denied-attempts-summary.ts).
+      //
+      // The cases above share this database and end their workers with
+      // SIGKILL, so one killed while its boot-time cron run of this queue was
+      // in flight leaves that row `active` under its lease — and the queue
+      // claims one job at a time, so this case's job would wait out a lease it
+      // has nothing to do with. Cleared first, as the queue's own reaper would
+      // once the lease expired.
+      await applied.pool.query(
+        `delete from ${JOB_SCHEMA}.jobs where queue = 'denied-attempts-summary'`,
+      );
       const healthPort = await freePort();
       const worker = startWorker({
         DATABASE_URL: applied.db.url,
