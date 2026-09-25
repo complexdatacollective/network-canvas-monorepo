@@ -9,7 +9,7 @@ import { assertSchemaName } from './schema.ts';
 // (`__tests__/source-policy.test.ts`) pins which modules may create a job, and
 // one module holding the statement is what makes that pin meaningful.
 
-/** One `INSERT … RETURNING id`, in the shape both enqueue paths can send. */
+/** One `INSERT … RETURNING id`, as text and bound values. */
 export type JobInsertStatement = {
   readonly text: string;
   /** Bound, never interpolated; `$1` is `values[0]`, as pg numbers them. */
@@ -24,23 +24,23 @@ export type JobInsertInput<Queue extends JobQueueName> = {
   readonly singletonKey: string | null;
   /**
    * The instant the row is created at, and the `run_at` unless `startAfter`
-   * overrides it. `null` asks the database for its own `now()`: the
-   * node-postgres path has no `JobClock` to read, and the database's clock is
-   * the one the correction in clock.ts converges on anyway.
+   * overrides it. `null` asks the database for its own `now()`, which the
+   * correction in clock.ts converges on anyway. It was the node-postgres
+   * twin's, which had no `JobClock` to read; `Jobs.enqueue`, the one caller
+   * left, always passes the corrected clock.
    */
   readonly now: Date | null;
   readonly startAfter: Date | null;
 };
 
 /**
- * The one place a job row is composed. Both enqueue paths call it, so the
- * columns frozen at enqueue — the policy, the whole retry ladder, the lease —
- * cannot differ by which process created the job.
+ * The one place a job row is composed, so the columns frozen at enqueue — the
+ * policy, the whole retry ladder, the lease — are written one way whoever
+ * enqueues.
  *
- * `keep_until` is computed in SQL rather than in either caller's language,
- * because with `now()` as the run instant there is no JavaScript value to add
- * the retention to; doing it one way for both is what keeps the two paths one
- * statement. Every timestamp is cast explicitly: a bare `$n` used both as a
+ * `keep_until` is computed in SQL rather than in JavaScript, because with
+ * `now()` as the run instant there is no JavaScript value to add the retention
+ * to. Every timestamp is cast explicitly: a bare `$n` used both as a
  * column value and inside an interval expression leaves Postgres to infer the
  * parameter's type from whichever context it resolves first.
  */

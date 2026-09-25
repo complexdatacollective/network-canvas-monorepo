@@ -1023,8 +1023,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           // payload that no longer decodes is a row edited behind the queue's
           // back — a defect, not a refusal. It dies inside this tick's one
           // transaction, so the whole tick rolls back and every other due
-          // schedule waits with it until the row is repaired (the next
-          // `schedule` upsert or `dropUndeclaredSchedules` at boot).
+          // schedule waits with it until the row is repaired — by the
+          // `schedule` upsert or `dropUndeclaredSchedules`, both of which run
+          // at boot. A row naming a queue this build does not declare dies
+          // here the same way.
           const payload = yield* Effect.orDie(
             payloadCodec(row.queue).decode(row.payload),
           );

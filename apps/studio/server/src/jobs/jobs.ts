@@ -18,12 +18,11 @@ import { assertSchemaName } from './schema.ts';
 // is no second connection an enqueue could reach for, so a domain row and its
 // job commit together or not at all.
 //
-// The statement itself is `insertJobStatement` (insert.ts). It is a module of
-// its own because it once had two callers — a node-postgres twin the web
-// process enqueued through before its commands moved onto `Transaction` — and
-// two hand-written inserts would have drifted: the frozen retry columns are the
-// whole reason a job in flight keeps the policy it was enqueued under. The twin
-// is gone; `enqueue` below is the one caller.
+// The statement itself is `insertJobStatement` (insert.ts), in a module of its
+// own because the source policy (`__tests__/source-policy.test.ts`) pins which
+// modules may create a job, and one module holding the statement is what makes
+// that pin meaningful. `enqueue` below is its one caller since the web
+// process's node-postgres twin went.
 
 /** The `jobs.id` a successful enqueue reads back. */
 export type JobId = string;

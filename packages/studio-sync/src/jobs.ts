@@ -162,6 +162,11 @@ const isUrlString = Schema.makeFilter<string>(
   { expected: 'a URL' },
 );
 
+/** Whether a prototype is a plain object's, in this realm or another. */
+const isPlainPrototype = (prototype: unknown): boolean =>
+  prototype === null ||
+  (Predicate.isObject(prototype) && Object.getPrototypeOf(prototype) === null);
+
 /**
  * An empty `Schema.Struct` is not an empty object: with no declared key it
  * compiles to a non-nullish check, so it admits any string, number or array
@@ -169,12 +174,14 @@ const isUrlString = Schema.makeFilter<string>(
  * has no key list to hold them against. A queue that carries nothing has to
  * say so itself, or `{ email }` on the sweep's queue would be stored as sent.
  * A plain object only: a `Date` or a `Map` has no own keys either, and would
- * be stored as whatever `JSON.stringify` made of it.
+ * be stored as whatever `JSON.stringify` made of it. "Plain" as Effect's own
+ * AST reads it — a `null` prototype, or one whose prototype is `null` — so an
+ * object literal from another realm still counts.
  */
 const isEmptyObject = Schema.makeFilter<Schema.Struct<{}>['Type']>(
   (value) =>
     Predicate.isObject(value) &&
-    [Object.prototype, null].includes(Object.getPrototypeOf(value)) &&
+    isPlainPrototype(Object.getPrototypeOf(value)) &&
     Reflect.ownKeys(value).length === 0
       ? undefined
       : 'an object with no properties',

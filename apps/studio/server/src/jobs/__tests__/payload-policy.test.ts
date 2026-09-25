@@ -4,6 +4,7 @@
 // would put tenant data where nothing isolates it — the objection that kept
 // Studio off a queue library until #1895.
 import { randomUUID } from 'node:crypto';
+import { runInNewContext } from 'node:vm';
 
 import { Effect, Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -120,6 +121,16 @@ describe('job payload policy', () => {
     expect(codecAdmits('sign-in-email', grown)).toBe(false);
   });
 
+  it.each(['protocol-store-gc', 'denied-attempts-summary'] as const)(
+    'admits an empty object from another realm on %s',
+    (queue) => {
+      // "Plain" is the prototype's shape, not identity with this realm's
+      // `Object.prototype`: an object literal made anywhere is still `{}`.
+      expect(codecAdmits(queue, runInNewContext('({})'))).toBe(true);
+      expect(codecAdmits(queue, Object.create(null))).toBe(true);
+    },
+  );
+
   it.each(
     QUEUE_NAMES.filter(
       (queue) => JOB_PAYLOAD_POLICY[queue].kind === 'identifiers',
@@ -150,7 +161,9 @@ describe('job payload policy', () => {
     expect(codecAdmits(queue, valid)).toBe(true);
     expect(codecAdmits(queue, grown)).toBe(false);
     expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
-    // An object that is not a plain one — no own keys, but not a payload.
+    // An object that is not a plain one: no own keys, but not a payload. It
+    // is the empty queues this asks something of; the others refuse it for
+    // its missing identifiers anyway.
     expect(codecAdmits(queue, new Map())).toBe(false);
     expect(codecAdmits(queue, new Date(0))).toBe(false);
   });
