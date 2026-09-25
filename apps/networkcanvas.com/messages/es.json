@@ -101,6 +101,33 @@
     "citing": "Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Novedades",
+      "description": "Resúmenes en lenguaje sencillo de las nuevas versiones de Architect, Interviewer y Fresco."
+    },
+    "heading": "Novedades",
+    "introduction": "Las novedades de las aplicaciones de Network Canvas. Para ver la lista detallada de todos los cambios, consulte las <changelog>notas de la versión en GitHub</changelog>.",
+    "upgrading": {
+      "heading": "Cómo actualizar",
+      "automatic": "Architect e Interviewer se actualizan automáticamente, sin necesidad de gestionar versiones manualmente. Si los ha instalado desde su navegador como aplicaciones web progresivas, las actualizaciones se cargan al reiniciarlas, y sus datos locales siguen seguros y bajo su control.",
+      "fresco": "Para actualizar Fresco a la versión más reciente, siga las <link>instrucciones de actualización de nuestra documentación</link>."
+    },
+    "published": "Publicado el {date}",
+    "search": {
+      "label": "Buscar novedades",
+      "placeholder": "Buscar novedades",
+      "clear": "Borrar búsqueda",
+      "results": "{count} de {total, plural, =1 {# novedad} other {# novedades}}",
+      "emptyHeading": "No se encontraron novedades",
+      "emptyDescription": "Pruebe con otra búsqueda."
+    },
+    "latest": "Novedad más reciente",
+    "filter": {
+      "label": "Filtrar por aplicación",
+      "all": "Todas"
+    }
+  },
   "Team": {
     "heading": "Equipo principal",
     "introduction": "El equipo del proyecto está compuesto por personas de diversas disciplinas y especialidades."
@@ -145,6 +172,7 @@
   },
   "Footer": {
     "terms": "Términos de uso",
+    "updates": "Novedades",
     "privacy": "Política de privacidad",
     "copyright": "Derechos de autor de Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

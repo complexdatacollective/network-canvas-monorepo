@@ -55,17 +55,24 @@ type AccordionTriggerProps = Omit<
   'className'
 > & {
   className?: string;
+  /**
+   * `overline` sets the trigger as a small all-caps heading. `inherit` leaves
+   * typography to the children, for a trigger that carries its own heading.
+   */
+  typography?: 'overline' | 'inherit';
 };
 
 function AccordionTrigger({
   className,
   children,
+  typography = 'overline',
   ...props
 }: AccordionTriggerProps) {
   return (
     <BaseAccordion.Trigger
       className={cx(
-        headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
+        typography === 'overline' &&
+          headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
         'focusable flex w-full flex-1 cursor-pointer items-center justify-between gap-4',
         className,
       )}

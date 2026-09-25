@@ -5,6 +5,7 @@ import csv from 'csvtojson';
 import { z } from 'zod';
 
 import type { Locale } from '~/lib/i18n/locales';
+import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
 export type NewsItem = { id: string; title: string; href: string };
 
@@ -32,6 +33,14 @@ export type TeamMember = {
   name: string;
   institution: string;
   photo: string;
+};
+
+export type Update = {
+  id: string;
+  date: string;
+  apps: UpdateAppId[];
+  title: string;
+  body: string;
 };
 
 export type SiteContent = {
@@ -103,6 +112,30 @@ const teamMemberRowSchema = z
     institution_en: requiredText,
     institution_es: requiredText,
     photo: publicImage,
+  })
+  .strict();
+
+const isoDate = z.iso.date();
+
+const updateRowSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
+    date: isoDate,
+    apps: z
+      .string()
+      .transform((value) => value.split('|').map((app) => app.trim()))
+      .pipe(
+        z
+          .array(z.enum(updateAppIds))
+          .min(1)
+          .refine(
+            (apps) => new Set(apps).size === apps.length,
+            'must not repeat an app',
+          ),
+      ),
+    title_en: requiredText,
+    title_en_gb: requiredText,
+    title_es: requiredText,
   })
   .strict();
 
@@ -210,4 +243,38 @@ export async function loadSiteContent(
       photo: row.photo,
     })),
   };
+}
+
+export async function loadUpdates(
+  locale: Locale,
+  contentDirectory = join(process.cwd(), 'content'),
+): Promise<Update[]> {
+  const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
+  const bodySuffix = locale === 'en-US' ? 'en' : locale;
+
+  const updates = await Promise.all(
+    rows.map(async (row) => {
+      const filename = `updates/${row.id}.${bodySuffix}.md`;
+      let body: string;
+      try {
+        body = await readFile(join(contentDirectory, filename), 'utf8');
+      } catch (error) {
+        throw new Error(`${filename}: missing update body`, { cause: error });
+      }
+
+      return {
+        id: row.id,
+        date: row.date,
+        apps: row.apps,
+        title: {
+          'en-US': row.title_en,
+          'en-GB': row.title_en_gb,
+          'es': row.title_es,
+        }[locale],
+        body: body.trim(),
+      };
+    }),
+  );
+
+  return updates.toSorted((a, b) => b.date.localeCompare(a.date));
 }

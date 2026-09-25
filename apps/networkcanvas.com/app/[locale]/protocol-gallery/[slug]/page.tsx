@@ -12,12 +12,12 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
-import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
 import { ProtocolCitation } from '~/components/protocol-gallery/ProtocolCitation';
 import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetailFacts';
 import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloads';
 import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
 import { Container } from '~/components/ui/Container';
+import { OverlineHeading } from '~/components/ui/OverlineHeading';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryHref, protocolGalleryUrl } from '~/lib/siteUrls';
@@ -180,7 +180,7 @@ export default async function ProtocolDetailPage({
         </Container>
       </div>
 
-      <Footer />
+      <Footer host="protocolGallery" />
     </main>
   );
 }

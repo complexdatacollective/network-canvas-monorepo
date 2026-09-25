@@ -183,7 +183,7 @@ export const ResourcesGrouped: Story = {
 export const ResourcesExpanded: Story = {
   args: {
     activeItemId: 'documentation',
-    containerWidth: 1280,
+    containerWidth: 1408,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

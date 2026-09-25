@@ -7,12 +7,19 @@ import {
   protocolGalleryUrl,
   isSameSiteNavigationUrl,
   resolveWebsiteNavigationUrl,
+  websitePageHref,
 } from '../siteUrls';
 
 const galleryOrigin = 'https://protocolgallery.networkcanvas.com';
 
 describe('website site URLs', () => {
   afterEach(() => vi.unstubAllEnvs());
+
+  it('links to website pages in the locale on a single-host deployment', () => {
+    expect(websitePageHref('en-GB', '/updates', 'protocolGallery')).toBe(
+      '/en-GB/updates/',
+    );
+  });
 
   it('uses the canonical documentation site when no override is configured', () => {
     expect(documentationUrl('/en/get-started')).toBe(
@@ -74,6 +81,13 @@ describe('website site URLs', () => {
     beforeEach(() =>
       vi.stubEnv('NEXT_PUBLIC_PROTOCOL_GALLERY_URL', galleryOrigin),
     );
+
+    it('links from the gallery to website pages across hosts', () => {
+      expect(websitePageHref('es', '/updates', 'protocolGallery')).toBe(
+        'https://networkcanvas.com/es/updates/',
+      );
+      expect(websitePageHref('es', '/updates')).toBe('/es/updates/');
+    });
 
     it('drops the route prefix from same-host gallery links', () => {
       expect(protocolGalleryHref('en-US')).toBe('/en-US/');

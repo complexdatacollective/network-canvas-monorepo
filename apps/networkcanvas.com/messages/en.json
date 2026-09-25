@@ -101,6 +101,33 @@
     "citing": "For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Plain-language summaries of new releases of Architect, Interviewer, and Fresco."
+    },
+    "heading": "Updates",
+    "introduction": "What's new in the Network Canvas apps. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>.",
+    "upgrading": {
+      "heading": "Upgrading",
+      "automatic": "Architect and Interviewer update automatically, without the need for manual version management. If you have installed them from your browser as Progressive Web Apps, updates load on restart while keeping your local data secure and under your control.",
+      "fresco": "To upgrade to the latest version of Fresco, follow the <link>upgrade instructions in our documentation</link>."
+    },
+    "published": "Published {date}",
+    "search": {
+      "label": "Search updates",
+      "placeholder": "Search updates",
+      "clear": "Clear search",
+      "results": "{count} of {total, plural, =1 {# update} other {# updates}}",
+      "emptyHeading": "No updates found",
+      "emptyDescription": "Try a different search."
+    },
+    "latest": "Latest update",
+    "filter": {
+      "label": "Filter by app",
+      "all": "All"
+    }
+  },
   "Team": {
     "heading": "Core Team",
     "introduction": "Our project team comprises individuals across a variety of disciplines and specializations."
@@ -145,6 +172,7 @@
   },
   "Footer": {
     "terms": "Terms of Use",
+    "updates": "Updates",
     "privacy": "Privacy Policy",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

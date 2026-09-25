@@ -165,6 +165,24 @@ export function resolveWebsiteNavigationUrl(
 }
 
 /**
+ * Link to one of the website's own pages from any host, carrying the locale.
+ */
+export function websitePageHref(
+  locale: Locale,
+  pathname: string,
+  host: SiteHost = 'website',
+) {
+  return resolveWebsiteNavigationUrl(
+    new URL(
+      getLocalizedPathname(locale, pathname),
+      canonicalNetworkCanvasUrl,
+    ).toString(),
+    locale,
+    host,
+  );
+}
+
+/**
  * Whether a resolved navigation destination stays on the current deployment.
  * Site-relative paths always do; on the gallery host, so does an absolute
  * URL back onto the gallery's own origin, which the shared navigation would

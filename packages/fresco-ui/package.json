@@ -198,7 +198,8 @@
     "./utils/ariaIdReferences": "./src/utils/ariaIdReferences.ts",
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/cva": "./src/utils/cva.ts",
-    "./utils/finalFocus": "./src/utils/finalFocus.ts"
+    "./utils/finalFocus": "./src/utils/finalFocus.ts",
+    "./utils/foldText": "./src/utils/foldText.ts"
   },
   "publishConfig": {
     "exports": {
@@ -930,6 +931,10 @@
       "./utils/finalFocus": {
         "types": "./dist/utils/finalFocus.d.ts",
         "default": "./dist/utils/finalFocus.js"
+      },
+      "./utils/foldText": {
+        "types": "./dist/utils/foldText.d.ts",
+        "default": "./dist/utils/foldText.js"
       }
     },
     "access": "public"

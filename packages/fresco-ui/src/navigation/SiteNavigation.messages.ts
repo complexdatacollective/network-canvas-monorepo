@@ -13,6 +13,7 @@ export type SiteNavigationMessages = {
   community: string;
   documentation: string;
   protocolGallery: string;
+  updates: string;
   resources: string;
   software: string;
   getStarted: string;
@@ -35,6 +36,7 @@ const englishMessages = {
   community: 'Community',
   documentation: 'Documentation',
   protocolGallery: 'Protocol Gallery',
+  updates: 'Updates',
   resources: 'Resources',
   software: 'Software',
   getStarted: 'Get Started',
@@ -84,6 +86,7 @@ export const siteNavigationMessages = {
     community: 'Comunidad',
     documentation: 'Documentación',
     protocolGallery: 'Galería de protocolos',
+    updates: 'Novedades',
     resources: 'Recursos',
     software: 'Software',
     getStarted: 'Comenzar',

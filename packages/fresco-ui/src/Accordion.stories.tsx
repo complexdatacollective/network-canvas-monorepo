@@ -7,6 +7,7 @@ import {
   AccordionPanel,
   AccordionTrigger,
 } from './Accordion';
+import Heading from './typography/Heading';
 
 const ITEM_VALUES = ['overview', 'details', 'metadata'] as const;
 
@@ -96,6 +97,33 @@ export const Default: Story = {
           <p className="text-sm">
             Triggers inherit the heading typography. The chevron rotates
             automatically when the panel opens.
+          </p>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  ),
+};
+
+export const InheritedTypography: Story = {
+  render: () => (
+    <Accordion defaultValue={['release']}>
+      <AccordionItem value="release">
+        <AccordionHeader>
+          <AccordionTrigger typography="inherit">
+            <Heading
+              level="h2"
+              variant="subheading"
+              margin="none"
+              render={<span />}
+            >
+              A trigger that carries its own heading
+            </Heading>
+          </AccordionTrigger>
+        </AccordionHeader>
+        <AccordionPanel>
+          <p className="text-sm">
+            With typography set to inherit, the trigger adds no heading styles
+            of its own, so the children set the size and case.
           </p>
         </AccordionPanel>
       </AccordionItem>
