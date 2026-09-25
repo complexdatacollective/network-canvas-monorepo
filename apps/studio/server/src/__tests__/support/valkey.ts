@@ -35,6 +35,7 @@ export const REDIS_DATABASES = {
   webEntrypoint: 8,
   rpcPlane: 9,
   authPlane: 10,
+  authService: 11,
 } as const;
 
 /** `REDIS_URL` pointed at one logical database, or null when none is set. */

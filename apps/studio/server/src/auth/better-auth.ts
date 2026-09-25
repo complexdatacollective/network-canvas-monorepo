@@ -37,6 +37,9 @@ function scopeForAuthKey(key: string): string {
   return SIGN_IN_PATHS.has(path) ? 'sign_in_address' : 'better_auth';
 }
 
+/** Runs an Effect that needs nothing, for a promise-shaped caller. */
+type RunEffect = <A>(effect: Effect.Effect<A>) => Promise<A>;
+
 /**
  * better-auth's limiter, storing its counters where Studio's does (#1909).
  *
@@ -51,9 +54,6 @@ function scopeForAuthKey(key: string): string {
  * store's decision is the limiter's, and the limiter allows when it cannot
  * reach the store.
  */
-/** Runs an Effect that needs nothing, for a promise-shaped caller. */
-type RunEffect = <A>(effect: Effect.Effect<A>) => Promise<A>;
-
 function createAuthRateLimitStorage(
   limiter: RateLimiter['Service'],
   run: RunEffect,
