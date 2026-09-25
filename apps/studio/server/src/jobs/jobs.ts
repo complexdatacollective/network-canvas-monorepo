@@ -1,11 +1,11 @@
 import { Context, DateTime, Effect, Layer, Schema } from 'effect';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { Transaction } from '../db/tenant.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
 import { insertJobStatement } from './insert.ts';
-import { type JobPayload, payloadCodec } from './queues.ts';
+import { payloadCodec } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
 
 // The Effect half of creating a job (#1927 §4, the `Jobs` row). One statement
@@ -18,11 +18,11 @@ import { assertSchemaName } from './schema.ts';
 // is no second connection an enqueue could reach for, so a domain row and its
 // job commit together or not at all.
 //
-// The statement itself is `insertJobStatement` (insert.ts), and it is shared: the web
-// process still runs its commands on node-postgres, so `src/jobs/client.ts`
-// enqueues through the same renderer on the caller's `pg.PoolClient`. Two hand-
-// written inserts would drift — the frozen retry columns are the whole reason a
-// job in flight keeps the policy it was enqueued under — so there is one.
+// The statement itself is `insertJobStatement` (insert.ts), in a module of its
+// own because the source policy (`__tests__/source-policy.test.ts`) pins which
+// modules may create a job, and one module holding the statement is what makes
+// that pin meaningful. `enqueue` below is its one caller since the web
+// process's node-postgres twin went.
 
 /** The `jobs.id` a successful enqueue reads back. */
 export type JobId = string;

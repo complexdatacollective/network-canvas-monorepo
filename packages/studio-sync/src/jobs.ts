@@ -2,14 +2,15 @@
 // retries and expires, when the recurring ones run, and what a job on each may
 // carry.
 //
-// Declarations only, as plain data. The queue that reads them is the server's
+// Declarations only — plain data for the queues and schedules, Effect Schema
+// for the payloads. The queue that reads them is the server's
 // own (`apps/studio/server/src/jobs/queues.ts`), which resolves each one
 // against its defaults and freezes the result onto a job row at enqueue, so a
 // job already in flight keeps the retry and expiry it was created under. They
 // live here rather than in the server because this package is compiled into
 // contexts that never run a job and still need the payload shapes and the
 // policy table below.
-import { z } from 'zod';
+import { Predicate, Schema, type SchemaAST } from 'effect';
 
 /**
  * What a queue may declare. Anything left out takes the default the server's
@@ -147,29 +148,74 @@ export const JOB_SCHEDULES = [
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
+/** A row id, as `randomUUID()` mints them and zod's `z.uuid()` accepted. */
+const RowId = Schema.String.check(Schema.isUUID());
+
+/**
+ * A string `URL.canParse` accepts. Effect 4 ships `Schema.URL` (an
+ * `instanceof URL` check) and `Schema.URLFromString` (which decodes to a `URL`
+ * instance) but no string-shaped URL check, and a payload column has to stay a
+ * string — the magic link is put into an email as it was minted.
+ */
+const isUrlString = Schema.makeFilter<string>(
+  (value) => (URL.canParse(value) ? undefined : 'a URL'),
+  { expected: 'a URL' },
+);
+
+/** Whether a prototype is a plain object's, in this realm or another. */
+const isPlainPrototype = (prototype: unknown): boolean =>
+  prototype === null ||
+  (Predicate.isObject(prototype) && Object.getPrototypeOf(prototype) === null);
+
+/**
+ * An empty `Schema.Struct` is not an empty object: with no declared key it
+ * compiles to a non-nullish check, so it admits any string, number or array
+ * and passes an object's keys through untouched — `onExcessProperty: 'error'`
+ * has no key list to hold them against. A queue that carries nothing has to
+ * say so itself, or `{ email }` on the sweep's queue would be stored as sent.
+ * A plain object only: a `Date` or a `Map` has no own keys either, and would
+ * be stored as whatever `JSON.stringify` made of it. "Plain" as Effect's own
+ * AST reads it — a `null` prototype, or one whose prototype is `null` — so an
+ * object literal from another realm still counts.
+ */
+const isEmptyObject = Schema.makeFilter<Schema.Struct<{}>['Type']>(
+  (value) =>
+    Predicate.isObject(value) &&
+    isPlainPrototype(Object.getPrototypeOf(value)) &&
+    Reflect.ownKeys(value).length === 0
+      ? undefined
+      : 'an object with no properties',
+  { expected: 'an object with no properties' },
+);
+
 /** The delivery row's id; the handler loads the address under its own role. */
-export const InvitationDeliveryJobSchema = z.strictObject({
-  deliveryId: z.uuid(),
+export const InvitationDeliveryJobSchema = Schema.Struct({
+  deliveryId: RowId,
 });
-export type InvitationDeliveryJob = z.infer<typeof InvitationDeliveryJobSchema>;
+export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
-export const SignInEmailJobSchema = z.strictObject({
-  email: z.string().min(1),
-  url: z.url(),
+export const SignInEmailJobSchema = Schema.Struct({
+  email: Schema.String.check(Schema.isMinLength(1)),
+  url: Schema.String.check(isUrlString),
 });
-export type SignInEmailJob = z.infer<typeof SignInEmailJobSchema>;
+export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
 
 /** The sweep visits every tenant; there is nothing to address it at. */
-export const ProtocolStoreGcJobSchema = z.strictObject({});
-export type ProtocolStoreGcJob = z.infer<typeof ProtocolStoreGcJobSchema>;
+export const ProtocolStoreGcJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type ProtocolStoreGcJob = typeof ProtocolStoreGcJobSchema.Type;
 
 /** The run scans every suppressed window there is; nothing addresses it. */
-export const DeniedAttemptsSummaryJobSchema = z.strictObject({});
-export type DeniedAttemptsSummaryJob = z.infer<
-  typeof DeniedAttemptsSummaryJobSchema
->;
+export const DeniedAttemptsSummaryJobSchema = Schema.Struct({}).check(
+  isEmptyObject,
+);
+export type DeniedAttemptsSummaryJob =
+  typeof DeniedAttemptsSummaryJobSchema.Type;
 
+/**
+ * Every queue's payload as a `Schema.Struct`, so the payload test can read
+ * each one's keys off `fields` without decoding anything.
+ */
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the
@@ -178,11 +224,23 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
-} as const satisfies Record<JobQueueName, z.ZodType>;
+} as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
-export type JobPayload<Queue extends JobQueueName> = z.infer<
-  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]
->;
+export type JobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+/**
+ * How every payload is decoded, on the way into the table and on the way back
+ * out. `Schema.Struct` strips an undeclared key by default where
+ * `z.strictObject` refused it, which would let a payload carrying a field the
+ * policy forbids reach the table with the field silently dropped rather than
+ * refused. On the way out it is what makes a row written by hand or by an
+ * older release with an extra field a dead job, rather than a handler run on
+ * a payload the policy never saw. Pinned by the payload test (#1927 §11).
+ */
+export const JOB_PAYLOAD_PARSE_OPTIONS = {
+  onExcessProperty: 'error',
+} as const satisfies SchemaAST.ParseOptions;
 
 export type JobPayloadPolicy =
   | { kind: 'identifiers' }
