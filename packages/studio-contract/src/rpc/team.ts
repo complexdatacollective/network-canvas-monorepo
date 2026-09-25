@@ -25,15 +25,17 @@ import {
 // route is team-scoped by construction), so a non-member and an unknown team
 // are both `Forbidden` — no existence oracle.
 //
-// Every command here declares `RateLimited`: the per-user and per-team call
-// limits (#1909) are charged inside the handler that resolves the caller's
-// team, and `Rpc.ToHandlerFn` types a handler's error channel from the rpc's
-// OWN error schema rather than from `Rpc.ErrorSchema` — so a refusal the
-// `Authenticated` middleware's schema would happily encode still has to be
-// declared here for a handler to be able to raise it.
-// `team.acceptInvitation` charges one more, per invitation token: it is the one
-// command here an invitee reaches before the server knows anything about them
-// beyond "signed in", so it is where a guessed token is throttled.
+// Every command here declares `RateLimited`, because its handler raises it: the
+// per-team call limit (#1909) is charged in the helper that resolves the
+// caller's team, once membership is confirmed, and `Rpc.ToHandlerFn` types a
+// handler's error channel from the rpc's OWN error schema rather than from
+// `Rpc.ErrorSchema` — so a refusal the `Authenticated` middleware's schema
+// would happily encode still has to be declared here for a handler to be able
+// to raise it. `team.acceptInvitation` names no team and charges a different
+// scope, per invitation token: it is the one command here an invitee reaches
+// before the server knows anything about them beyond "signed in", so it is
+// where a guessed token is throttled. The per-user limit is the middleware's,
+// charged before any handler runs.
 
 const TeamCommandErrors = Schema.Union([
   Forbidden,

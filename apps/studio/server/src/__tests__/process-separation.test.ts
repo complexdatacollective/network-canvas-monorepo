@@ -249,6 +249,43 @@ describe('the worker process', () => {
     expect(reached(graph, JOB_EXECUTION)).toEqual(JOB_EXECUTION);
   });
 
+  it('builds no auth provider at all', () => {
+    // A tightening, not a loosening (#1927 §12): the worker used to construct
+    // a better-auth instance only to reach the secrets wrapper, and since
+    // stage 4 the auth layers are serve-only. Nothing the worker does signs
+    // anybody in, so neither better-auth, its plugins and adapters, nor any
+    // of Studio's own auth modules may be in its graph — a type import
+    // included, since the graph follows those too and one is how the rest
+    // would arrive a refactor later.
+    //
+    // The positive half is the web process's graph below, which reaches all
+    // of it, so this cannot be satisfied by the modules being gone.
+    //
+    // Mutation: import `SessionPrincipal` from src/auth/service.ts in
+    // src/audit/denial-summary.ts.
+    const isBetterAuth = (name: string) =>
+      name === 'better-auth' ||
+      name.startsWith('better-auth/') ||
+      name.startsWith('@better-auth/');
+    expect([...graph.packages].filter(isBetterAuth)).toEqual([]);
+    expect(
+      [...graph.modules].filter((path) => path.startsWith('src/auth/')),
+    ).toEqual([]);
+
+    const web = moduleGraph('src/index.ts');
+    expect(
+      reached(web, [
+        'better-auth',
+        'src/auth/service.ts',
+        'src/auth/better-auth.ts',
+      ]),
+    ).toEqual([
+      'better-auth',
+      'src/auth/service.ts',
+      'src/auth/better-auth.ts',
+    ]);
+  });
+
   it('is the process that holds the maintenance TeamAccess', () => {
     // The positive half of the web process's case below, so that "the web
     // process cannot reach it" is not satisfied by the module being gone.
@@ -413,11 +450,12 @@ describe('the web process', () => {
     //
     // The matching negative — "and it carries no node-postgres" — is not true
     // of this process today, so it is not asserted here: `pg` still arrives
-    // through db/pool.ts, db/database-pool.ts, setup/bootstrap.ts,
-    // http/health.ts and auth/better-auth.ts, the last of which builds a
-    // node-postgres drizzle handle until stage 4's `AuthService` puts
-    // better-auth on its sql-pg adapter (auth/adapter.ts). Asserting the absence would fail; asserting the presence of the
-    // holders would pass whatever else joined them. The negative is asserted
+    // through db/pool.ts, db/database-pool.ts and http/health.ts, the
+    // readiness probes that stay on node-postgres while rc.115 cannot pin a
+    // role outside a transaction. better-auth left that list in stage 4, when
+    // `AuthService` put it on its sql-pg adapter (auth/adapter.ts). Asserting
+    // the absence would fail; asserting the presence of the holders would pass
+    // whatever else joined them. The negative is asserted
     // where it is true instead — see the rotation process below, the one
     // entry already clear of the driver.
     //

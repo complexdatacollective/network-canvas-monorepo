@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -12,7 +13,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -103,12 +104,16 @@ describe.skipIf(!testDb)('the studies RPC', () => {
           [who.memberId, who.teamId, who.principal.userId, who.role],
         ),
       );
-      const auth = stubAuthService({
-        getSession: () => Promise.resolve(who.principal),
+      const auth = authServiceStub({
+        getSession: () => Effect.succeedSome(who.principal),
         getMembership: (_userId, teamId) =>
-          Promise.resolve(teamId === who.teamId ? { role: who.role } : null),
+          Effect.succeed(
+            Option.fromNullishOr(
+              teamId === who.teamId ? { role: who.role } : null,
+            ),
+          ),
         listMemberships: () =>
-          Promise.resolve([{ teamId: who.teamId, role: who.role }]),
+          Effect.succeed([{ teamId: who.teamId, role: who.role }]),
       });
       clients.set(
         who,

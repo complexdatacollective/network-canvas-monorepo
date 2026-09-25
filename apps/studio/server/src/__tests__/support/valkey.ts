@@ -34,6 +34,7 @@ export const REDIS_DATABASES = {
   workerEntrypoint: 7,
   webEntrypoint: 8,
   rpcPlane: 9,
+  authPlane: 10,
 } as const;
 
 /** `REDIS_URL` pointed at one logical database, or null when none is set. */
@@ -111,6 +112,19 @@ export const testDeniedAttempts: Layer.Layer<DeniedAttempts> =
     Layer.provide(RateLimitStore.layer),
     Layer.provide(Environment.layer),
   );
+
+/**
+ * A limiter over no store: every scope at its constant, and every call admitted
+ * — the posture of a deployment with no `REDIS_URL`. What the rpc plane gets in
+ * a suite that is not about limiting, where the programs would always provide a
+ * limiter of their own.
+ */
+export const limiterWithoutStore: RateLimiter['Service'] = Effect.runSync(
+  Effect.service(RateLimiter).pipe(
+    Effect.provide(RateLimiter.layer),
+    Effect.provide(RateLimitStore.layerAbsent),
+  ),
+);
 
 /** A store a promise-driven suite holds open, and the limiters it builds over it. */
 export type OpenRateLimitStore = {

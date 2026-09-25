@@ -1,6 +1,7 @@
-import type { Principal } from './auth/service.ts';
+import type { AuthService, Principal } from './auth/service.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
+import type { RateLimiter } from './rate-limit/limiter.ts';
 import type { RpcDeps } from './rpc/deps.ts';
 
 // What is left of the oRPC router behind `/rpc`.
@@ -49,7 +50,11 @@ export type RpcContext = {
  * that, because its inputs name a protocol and never a team or a draft.
  */
 export function createRpcRouter(
-  deps: RpcDeps & { protocolBuilder: ProtocolBuilderRuntime },
+  deps: RpcDeps & {
+    auth: AuthService['Service'];
+    limiter: RateLimiter['Service'] | undefined;
+    protocolBuilder: ProtocolBuilderRuntime;
+  },
 ) {
   return {
     protocolBuilder: createProtocolBuilderRouter({

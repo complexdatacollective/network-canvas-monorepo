@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Cause, Exit } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import type pg from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -17,7 +17,7 @@ import { resolve } from '../env/resolve.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import type { RateLimitSettings } from '../rate-limit/scopes.ts';
 import { createRpcRouter } from '../rpc.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -82,17 +82,19 @@ function appOptions(
     // when it tries to use it — which is what tells an admitted call from a
     // refused one here.
     pool: {} as unknown as pg.Pool,
-    auth: stubAuthService(
+    auth: authServiceStub(
       principalUserId
         ? {
             getMembership: (_userId, teamId) =>
-              Promise.resolve(
-                memberOfTeamId && teamId === memberOfTeamId
-                  ? { role: 'owner' }
-                  : null,
+              Effect.succeed(
+                Option.fromNullishOr(
+                  memberOfTeamId && teamId === memberOfTeamId
+                    ? { role: 'owner' }
+                    : null,
+                ),
               ),
             getSession: () =>
-              Promise.resolve({
+              Effect.succeedSome({
                 kind: 'user',
                 userId: principalUserId,
                 email: `${principalUserId}@example.org`,
@@ -145,6 +147,8 @@ function builderClientFor(studio: Studio, userId: string) {
   return createRouterClient(
     createRpcRouter({
       ...studio.rpc,
+      auth: studio.auth,
+      limiter: studio.limiter,
       protocolBuilder: createProtocolBuilderRuntime(),
     }),
     {

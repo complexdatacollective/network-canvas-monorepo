@@ -393,9 +393,11 @@ const TestStudioServicesLive: Layer.Layer<
 /**
  * A node-postgres pool over the scratch schema, as the application role.
  *
- * Only for what still runs on node-postgres: the server's better-auth adapter
- * (stage 4 moves it onto `auth/adapter.ts`) and the surfaces `createApp` hands that pool to. Everything else
- * in a suite goes through the Effect clients. The search path rides the
+ * Only for what still runs on node-postgres: the surfaces `createApp` hands a
+ * pool to — the readiness probe, and the `requirePool` assertion on the rpc
+ * plane. better-auth is not one of them since stage 4: it runs on
+ * `auth/adapter.ts` over the Effect client. Everything else in a suite goes
+ * through the Effect clients. The search path rides the
  * connection options, as `support/postgres.ts`'s pools did, because this pool
  * opens no scope to pin it in.
  */

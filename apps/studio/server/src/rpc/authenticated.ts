@@ -1,4 +1,4 @@
-import { Effect, Layer, Schema } from 'effect';
+import { Effect, Layer, Option, Schema } from 'effect';
 
 import {
   Authenticated,
@@ -7,24 +7,23 @@ import {
 import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
-import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { principalFromHeaders } from '../auth/principal.ts';
+import { AuthService, type SessionPrincipal } from '../auth/service.ts';
+import { enforceRateLimit } from '../rate-limit/enforce.ts';
+import { RateLimiter } from '../rate-limit/limiter.ts';
 import { transportHeaders } from './request-headers.ts';
 
 // The server half of the contract's `Authenticated` middleware: the only place
 // on the rpc plane that reads a cookie and asks the auth provider who is
-// calling.
+// calling, and the place the caller's own budget is charged.
 //
-// Deliberately minimal. It resolves the session and nothing else — no rate
-// limit is charged here, although the middleware declares `RateLimited`
-// alongside `Unauthorized`.
-//
-// The per-user budget is already charged, just not here: `rpc/team-scope.ts`'s
-// scope-opening helpers take it before any query, and the three procedures
-// that open no scope (`me`, `account.updateLocale`, `team.acceptInvitation`)
-// take it in the handler. Stage 4 moves that charge INTO this middleware
-// (#1932 §3, §12), which is what makes "before any database work" structural
-// rather than a rule every helper has to keep. Doing it here now would take
-// the decision away from procedures that still make it for themselves.
+// `rpc_user` is taken here, once the principal is known and before the handler
+// runs — so before any database work, for every procedure that carries the
+// middleware, without a helper or a handler having to remember it (#1932 §3,
+// §12). The two narrower scopes stay explicit calls where their subject first
+// exists: `rpc_team` in `rpc/team-scope.ts` once membership is confirmed, and
+// `invitation_accept` at the top of `team.acceptInvitation`, before the token
+// is looked up.
 
 const decodeUserId = Schema.decodeUnknownSync(UserId);
 
@@ -63,55 +62,72 @@ export const principalOf = (session: SessionPrincipal): Principal['Service'] =>
  *
  * A caller with no cookie, an expired one, an instance with auth switched off,
  * and a caller on the token plane are one answer — `Unauthorized`, saying no
- * more than that.
+ * more than that. A caller who is known but has spent their window is
+ * `RateLimited`, carrying the interval to wait.
+ *
+ * The services are captured when the layer is built: a middleware function is
+ * handed nothing but the call, so what it asks of has to be closed over.
  */
-export const AuthenticatedLive = (
-  auth: AuthService,
-): Layer.Layer<Authenticated> =>
-  Layer.succeed(Authenticated)((effect, options) =>
-    Effect.gen(function* () {
-      // The provider is handed a request, not a cookie: `auth.getSession` runs
-      // a better-auth endpoint, and which headers that endpoint consults is its
-      // business and changes between versions. So the rule is about where they
-      // come from rather than which ones they are — the ones this deployment
-      // received, never the ones the caller attached to the message.
-      //
-      // `options.headers` cannot be used for that: it is the request's headers
-      // with the message's written over the top, so a caller could present a
-      // `user-agent` and an `x-forwarded-for` of their own choosing. With
-      // `TRUSTED_PROXIES` set, the address better-auth resolves comes off that
-      // forwarded header (`auth/better-auth.ts`, `advanced.ipAddress`) — out of
-      // the request body, where no reverse proxy can correct it, which is the
-      // forgery that configuration exists to prevent.
-      const transport = yield* transportHeaders(options.headers);
-      // An Authorization header puts the request on the token plane, which must
-      // never fall back silently to cookies (#1248) — the rule
-      // `createPrincipalMiddleware` carried on the Hono `/rpc` mount. Until
-      // #1288 lands, the token plane resolves to no principal.
-      //
-      // Asked of `transport` rather than of `options.headers`, so that the set
-      // refused over and the set forwarded are one. Splitting them is a bypass
-      // rather than an inconsistency: a message's headers are raw `JSON.parse`
-      // output — `layerNdjson` never decodes the envelope against
-      // `RequestEncoded` — and `Headers.fromInput` merges them through its
-      // iterable branch, which assigns `out[k] = v` without filtering
-      // `undefined`. A one-element entry `["authorization"]` therefore writes
-      // the key as `undefined` in the merged set, where this check cannot see
-      // it, while the request's real `Authorization` still reaches
-      // `getSession` beside the cookie — the silent token-to-cookie fallback
-      // #1248 forbids. Put the two reads back on different sets and
-      // `auth.test.ts`'s 'refuses the token plane even when the message erases
-      // the header' fails.
-      if (transport['authorization'] !== undefined) {
-        return yield* new Unauthorized({});
-      }
-      const headers = new Headers(transport);
-      const session = yield* Effect.promise(() => auth.getSession(headers));
-      if (!session) return yield* new Unauthorized({});
-      return yield* Effect.provideService(
-        effect,
-        Principal,
-        principalOf(session),
-      );
-    }),
-  );
+export const AuthenticatedLive: Layer.Layer<
+  Authenticated,
+  never,
+  AuthService | RateLimiter
+> = Layer.effect(Authenticated)(
+  Effect.gen(function* () {
+    const auth = yield* AuthService;
+    const limiter = yield* RateLimiter;
+    return (effect, options) =>
+      Effect.gen(function* () {
+        // The provider is handed a request, not a cookie: `auth.getSession`
+        // runs a better-auth endpoint, and which headers that endpoint
+        // consults is its business and changes between versions. So the rule
+        // is about where they come from rather than which ones they are — the
+        // ones this deployment received, never the ones the caller attached to
+        // the message.
+        //
+        // `options.headers` cannot be used for that: it is the request's
+        // headers with the message's written over the top, so a caller could
+        // present a `user-agent` and an `x-forwarded-for` of their own
+        // choosing. With `TRUSTED_PROXIES` set, the address better-auth
+        // resolves comes off that forwarded header (`auth/better-auth.ts`,
+        // `advanced.ipAddress`) — out of the request body, where no reverse
+        // proxy can correct it, which is the forgery that configuration exists
+        // to prevent.
+        //
+        // And the token-plane rule is asked of the same set, inside
+        // `principalFromHeaders`, so that the set refused over and the set
+        // forwarded are one. Splitting them is a bypass rather than an
+        // inconsistency: a message's headers are raw `JSON.parse` output —
+        // `layerNdjson` never decodes the envelope against `RequestEncoded` —
+        // and `Headers.fromInput` merges them through its iterable branch,
+        // which assigns `out[k] = v` without filtering `undefined`. A
+        // one-element entry `["authorization"]` therefore writes the key as
+        // `undefined` in the merged set, while the request's real
+        // `Authorization` still reaches `getSession` beside the cookie — the
+        // silent token-to-cookie fallback #1248 forbids. Read `options.headers`
+        // here and `auth.test.ts`'s 'refuses the token plane even when the
+        // message erases the header' fails.
+        const transport = yield* transportHeaders(options.headers);
+        const principal = yield* Effect.provideService(
+          principalFromHeaders(transport),
+          AuthService,
+          auth,
+        );
+        if (Option.isNone(principal)) return yield* new Unauthorized({});
+        // The caller's own budget, before the handler and so before any query:
+        // that is the one a runaway client spends, and refusing after a
+        // membership lookup would have spent the work the limit exists to
+        // stop.
+        yield* Effect.provideService(
+          enforceRateLimit('rpc_user', principal.value.userId),
+          RateLimiter,
+          limiter,
+        );
+        return yield* Effect.provideService(
+          effect,
+          Principal,
+          principalOf(principal.value),
+        );
+      });
+  }),
+);

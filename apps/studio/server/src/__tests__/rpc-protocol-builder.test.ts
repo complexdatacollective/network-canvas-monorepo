@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Context, Effect } from 'effect';
+import { Context, Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -47,7 +47,7 @@ import { createProtocol, latestDraftId } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -272,7 +272,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   /** Researchers whose membership the team has taken away. */
   const revoked = new Set<string>();
   const memberships = (userId: string) =>
-    Promise.resolve(
+    Effect.succeed(
       revoked.has(userId) ? [] : [{ teamId: TEAM_ID, role: 'owner' as const }],
     );
   /**
@@ -281,7 +281,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * one this suite reaches, to read back what a promotion stored.
    */
   const membership = (userId: string) =>
-    Promise.resolve(revoked.has(userId) ? null : { role: 'owner' });
+    Effect.succeed(
+      revoked.has(userId) ? Option.none() : Option.some({ role: 'owner' }),
+    );
 
   beforeAll(async () => {
     database = await openTestDatabase();
@@ -345,10 +347,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // is a restarted server serving the same database.
     buildRouter = () =>
       createRpcRouter({
-        auth: stubAuthService({
+        auth: authServiceStub({
           listMemberships: memberships,
           getMembership: membership,
         }),
+        limiter: undefined,
         capabilities: {
           enabled: true,
           emailAndPassword: true,
@@ -367,10 +370,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         cipher: testCipher(),
       });
     router = createRpcRouter({
-      auth: stubAuthService({
+      auth: authServiceStub({
         listMemberships: memberships,
         getMembership: membership,
       }),
+      limiter: undefined,
       capabilities: {
         enabled: true,
         emailAndPassword: true,
@@ -400,8 +404,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             .join(','),
         }),
         {
-          auth: stubAuthService({
-            getSession: () => Promise.resolve(ADA.principal),
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(ADA.principal),
             listMemberships: memberships,
             getMembership: membership,
           }),

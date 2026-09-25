@@ -6,10 +6,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
-import { createBetterAuthService } from '../auth/better-auth.ts';
 import { OwnerScope } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { issueBootstrapToken, readInstallation } from '../setup/bootstrap.ts';
+import { liveAuthService } from './support/auth.ts';
 import {
   openTestDatabase,
   ownerAffected,
@@ -22,7 +22,6 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-import { testCipher } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
 
 const env = readEnv();
@@ -118,14 +117,8 @@ describe.skipIf(!testDb)('setup.complete', () => {
   beforeAll(async () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     database = await openTestDatabase();
-    const auth = createBetterAuthService(
-      env.auth,
-      database.appPool,
-      () => Promise.resolve(),
-      testCipher(),
-    );
     studio = createStudio(env, {
-      auth,
+      auth: liveAuthService(env, database.services),
       pool: database.appPool,
       services: database.services,
     });

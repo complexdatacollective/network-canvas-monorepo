@@ -22,13 +22,15 @@ import { TeamScoped } from '../schema/team.ts';
 // is a different thing entirely — the call limits, not the audit log's own
 // suppression, which stays unobservable.
 //
-// Every procedure here declares `RateLimited` as well as its own refusals. The
-// per-user and per-team call limits (#1909) are charged inside the handlers
-// that resolve the caller's team, not inside the `Authenticated` middleware, and
+// Every procedure here declares `RateLimited` as well as its own refusals,
+// because its handler raises it: the per-team call limit (#1909) is charged in
+// the helper that resolves the caller's team, once membership is confirmed, and
 // `Rpc.ToHandlerFn` types a handler's error channel from the rpc's OWN error
 // schema rather than from `Rpc.ErrorSchema` — which is what folds a middleware's
 // errors in. So a refusal the middleware's schema would happily encode still has
-// to be declared here for a handler to be able to raise it.
+// to be declared here for a handler to be able to raise it. The per-user limit
+// is not the reason: the `Authenticated` middleware charges it before any
+// handler runs, and its own error schema carries that refusal.
 export const AuditRpcs = RpcGroup.make(
   Rpc.make('audit.list', {
     payload: AuditListInput,

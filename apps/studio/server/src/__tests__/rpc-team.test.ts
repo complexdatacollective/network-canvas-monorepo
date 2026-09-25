@@ -1,7 +1,8 @@
-// The tenancy spine end to end through the RPC boundary: explicit teamId input
-// → membership check → TenantScope → team-scoped rows.
 import { randomUUID } from 'node:crypto';
 
+// The tenancy spine end to end through the RPC boundary: explicit teamId input
+// → membership check → TenantScope → team-scoped rows.
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -15,7 +16,7 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -86,10 +87,10 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
       );
     }
     memberships = { 'team-a': { role: 'admin' } };
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
+    const auth = authServiceStub({
+      getSession: () => Effect.succeedSome(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(memberships[teamId] ?? null),
+        Effect.succeed(Option.fromNullishOr(memberships[teamId])),
     });
     client = await createRpcClient(
       createStudio(readEnv(), {
@@ -100,7 +101,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
-        auth: stubAuthService(),
+        auth: authServiceStub(),
         pool: database.appPool,
         services: database.services,
       }),
@@ -210,13 +211,12 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
   it.skipIf(!redis)(
     'refuses a caller who has spent their per-user budget, with the interval to wait',
     async () => {
-      // The per-user call limit (#1909) is charged by the team-opening helper,
-      // not by the `Authenticated` middleware, and it reaches the client as the
-      // contract's `RateLimited` on an ordinary procedure, not only on
-      // `team.acceptInvitation`. Stage 4 moves the charge into the middleware
-      // (#1932 §3); this case is what proves the move kept the refusal. A fresh
-      // user id per run, because the bucket is keyed by it and the window
-      // outlives the test.
+      // The per-user call limit (#1909) is charged by the `Authenticated`
+      // middleware since stage 4 (#1932 §3), before the team-opening helper
+      // runs, and it reaches the client as the contract's `RateLimited` on an
+      // ordinary procedure, not only on `team.acceptInvitation`. This case is
+      // what proves the move kept the refusal. A fresh user id per run,
+      // because the bucket is keyed by it and the window outlives the test.
       const userId = `budget-${randomUUID()}`;
       const limits = await openRateLimitStore(redis);
       const limited = await createRpcClient(
@@ -226,14 +226,14 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
             ...(redis ? { REDIS_URL: redis } : {}),
           }),
           {
-            auth: stubAuthService({
+            auth: authServiceStub({
               getSession: () =>
-                Promise.resolve({
+                Effect.succeedSome({
                   ...PRINCIPAL,
                   userId,
                   sessionId: `session-${userId}`,
                 }),
-              getMembership: () => Promise.resolve({ role: 'admin' }),
+              getMembership: () => Effect.succeedSome({ role: 'admin' }),
             }),
             pool: database.appPool,
             services: database.services,

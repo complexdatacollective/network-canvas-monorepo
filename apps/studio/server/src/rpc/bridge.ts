@@ -3,12 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Effect, Option } from 'effect';
 import type pg from 'pg';
 
-import type { RateLimited } from '@codaco/studio-contract/schema/errors';
-
 import { RequestId } from '../http/middleware/request-id.ts';
-import { enforceRateLimit } from '../rate-limit/enforce.ts';
-import { RateLimiter } from '../rate-limit/limiter.ts';
-import type { RateLimitScope } from '../rate-limit/scopes.ts';
 import type { RpcDeps } from './deps.ts';
 
 // What every `/rpc` handler is built out of.
@@ -61,25 +56,3 @@ export const requirePool = (deps: RpcDeps): Effect.Effect<pg.Pool> =>
   deps.pool === undefined
     ? Effect.die(new Error('the rpc plane was wired without a database pool'))
     : Effect.succeed(deps.pool);
-
-/**
- * Refuses a call whose scope has spent its window (#1909), with the contract's
- * `RateLimited` carrying the interval to wait.
- *
- * There is no `Retry-After` header any more, by design: an rpc-plane refusal is
- * a typed failure inside a 200 response, so the number travels in the error
- * where both transports can read it. A limit enforced at the HTTP layer still
- * answers problem+json with the header.
- */
-export const chargeLimit = (
-  limiter: RateLimiter['Service'] | undefined,
-  scope: RateLimitScope,
-  subject: string,
-): Effect.Effect<void, RateLimited> =>
-  limiter === undefined
-    ? Effect.void
-    : Effect.provideService(
-        enforceRateLimit(scope, subject),
-        RateLimiter,
-        limiter,
-      );

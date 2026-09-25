@@ -1,21 +1,15 @@
 import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
 import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
-import { and, eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { Effect } from 'effect';
-import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
-import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
-import type { AuthService, SignInOutcome, SignUpOutcome } from './service.ts';
 
 // The only module that builds a better-auth instance (#1245). Three siblings
 // take narrower pieces: adapter.ts its adapter factory, secrets-adapter.ts its
@@ -273,7 +267,7 @@ export function createBetterAuthInstance({
  */
 const EMAIL_TAKEN_CODE = 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
 
-function isEmailTaken(error: unknown): boolean {
+export function isEmailTaken(error: unknown): boolean {
   if (!isAPIError(error)) return false;
   const body: unknown = error.body;
   return (
@@ -284,103 +278,8 @@ function isEmailTaken(error: unknown): boolean {
   );
 }
 
-export function createBetterAuthService(
-  env: AuthEnv,
-  pool: pg.Pool,
-  sendMagicLink: SendMagicLink,
-  secrets: SecretsCipherApi,
-  limiter?: RateLimiter['Service'],
-): AuthService {
-  const auth = createBetterAuthInstance({
-    env,
-    // Still node-postgres until `AuthService` moves onto the application
-    // client and `auth/adapter.ts`; the instance no longer cares which.
-    adapter: drizzleAdapter(drizzle({ client: pool }), {
-      provider: 'pg',
-      schema: AUTH_TABLES,
-    }),
-    cipher: secrets,
-    sendMagicLink,
-    limiter,
-  });
-  const db = drizzle({ client: pool });
-  return {
-    handler: (request) => auth.handler(request),
-    getSession: async (headers) => {
-      const result = await auth.api.getSession({ headers });
-      if (!result) return null;
-      return {
-        kind: 'user',
-        userId: result.user.id,
-        email: result.user.email,
-        emailVerified: result.user.emailVerified,
-        name: result.user.name,
-        locale: result.user.locale ?? null,
-        sessionId: result.session.id,
-      };
-    },
-    getMembership: async (userId, teamId) => {
-      // Through the drizzle definitions rather than a raw SQL string: the
-      // adapter already queries these tables via drizzle, and this keeps the
-      // physical names single-sourced in auth-schema.ts. The plugin's own api
-      // surface is session-header-driven; this check is (userId, teamId)-
-      // keyed, so it queries directly.
-      const members = AUTH_TABLES.team_members;
-      const rows = await db
-        .select({ role: members.role })
-        .from(members)
-        .where(and(eq(members.user_id, userId), eq(members.team_id, teamId)))
-        .limit(1);
-      return rows[0] ?? null;
-    },
-    listMemberships: async (userId) => {
-      // The same policy-free table `getMembership` reads, and the same index
-      // (`team_members_user_id_team_id_idx`) serves it: this is the whole
-      // search space a study identifier may be resolved over, so it is read
-      // before any tenant is pinned and nothing else is read with it.
-      const members = AUTH_TABLES.team_members;
-      return db
-        .select({ teamId: members.team_id, role: members.role })
-        .from(members)
-        .where(eq(members.user_id, userId))
-        .orderBy(members.team_id);
-    },
-    signUpEmail: async ({ name, email, password }): Promise<SignUpOutcome> => {
-      // `returnHeaders` is what makes this usable from a procedure: the
-      // session cookie better-auth would have set on its own response comes
-      // back as headers for the calling surface to carry out.
-      try {
-        const { headers, response } = await auth.api.signUpEmail({
-          body: { name, email, password },
-          returnHeaders: true,
-        });
-        return {
-          kind: 'created',
-          session: { userId: response.user.id, headers },
-        };
-      } catch (error) {
-        if (isEmailTaken(error)) return { kind: 'emailTaken' };
-        throw error;
-      }
-    },
-    signInEmail: async ({ email, password }): Promise<SignInOutcome> => {
-      try {
-        const { headers, response } = await auth.api.signInEmail({
-          body: { email, password },
-          returnHeaders: true,
-        });
-        return {
-          kind: 'signedIn',
-          session: { userId: response.user.id, headers },
-        };
-      } catch (error) {
-        // Every refusal reads the same — wrong password, no such account, a
-        // provider-side policy — because the caller has nothing different to
-        // do about any of them, and `/setup` must not become an oracle for
-        // which addresses have accounts.
-        if (isAPIError(error)) return { kind: 'refused' };
-        throw error;
-      }
-    },
-  };
-}
+/**
+ * A refusal better-auth answered on purpose, as opposed to a failure: its own
+ * `APIError`, whatever the code. A sign-in reads every one of them the same.
+ */
+export const isRefusal = (error: unknown): boolean => isAPIError(error);

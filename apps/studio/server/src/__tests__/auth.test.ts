@@ -1,5 +1,10 @@
-import { Predicate } from 'effect';
+import { randomUUID } from 'node:crypto';
+
+import { Cause, Effect, Exit, Option, Predicate } from 'effect';
+import { type Headers, HttpServerRequest } from 'effect/unstable/http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { TeamId } from '@codaco/studio-contract/schema/ids';
 
 import {
   SEED_ADMIN_EMAIL,
@@ -7,10 +12,14 @@ import {
   seed,
 } from '../../scripts/seed/seed.ts';
 import { createApp, createStudio, type Studio } from '../app.ts';
-import { createBetterAuthService } from '../auth/better-auth.ts';
-import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { principalFromRequest } from '../auth/principal.ts';
+import { AuthService, type SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
+import {
+  authServiceStub,
+  liveAuthService,
+  signInWithMagicLink,
+} from './support/auth.ts';
 import {
   openTestDatabase,
   ownerAffected,
@@ -25,6 +34,8 @@ import { composeStudio } from './support/serve.ts';
 import {
   type OpenRateLimitStore,
   openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
 } from './support/valkey.ts';
 
 /** `me` over the rpc plane, with the harness disposed however the case ends. */
@@ -99,14 +110,14 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
+    const auth = authServiceStub({
+      getSession: () => Effect.succeedSome(PRINCIPAL),
       // Better Auth's own team list drops the caller's role, so `me` is what
       // carries it — including a legacy membership stored as one
       // comma-separated value, which the wire schema takes as a plain string
       // rather than rejecting the whole response over.
       listMemberships: () =>
-        Promise.resolve([
+        Effect.succeed([
           { teamId: 'team-a', role: 'owner' },
           { teamId: 'team-b', role: 'admin,member' },
         ]),
@@ -126,11 +137,11 @@ describe('principal resolution', () => {
   });
 
   it('asks the provider with the request headers, not the cookie alone', async () => {
-    let asked: Headers | undefined;
-    const auth = stubAuthService({
+    let asked: Headers.Headers | undefined;
+    const auth = authServiceStub({
       getSession: (headers) => {
         asked = headers;
-        return Promise.resolve(PRINCIPAL);
+        return Effect.succeedSome(PRINCIPAL);
       },
     });
     const me = await meOver(createStudio(readEnv(), { auth }), {
@@ -138,14 +149,14 @@ describe('principal resolution', () => {
       'user-agent': 'Studio Test Agent',
     });
     expect(me.userId).toBe('user-1');
-    expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+    expect(asked?.['cookie']).toBe('studio.session_token=opaque');
     // The provider is handed a request rather than a cookie: which headers
     // its endpoint consults is its own business, so the whole set goes
     // through — the header set `createPrincipalMiddleware` passed on the Hono
     // mount. This client talks to the handlers in process, so the set it
     // presents is the only one there is; the case below is where a real
     // request and a message that contradicts it are told apart.
-    expect(asked?.get('user-agent')).toBe('Studio Test Agent');
+    expect(asked?.['user-agent']).toBe('Studio Test Agent');
   });
 
   it('asks the provider with the headers the request carried, not ones a message attached', async () => {
@@ -155,11 +166,11 @@ describe('principal resolution', () => {
     // the deployment had received it: with `TRUSTED_PROXIES` set, the address
     // better-auth resolves comes off `x-forwarded-for`, and the forgery would
     // arrive in the request body where no reverse proxy can correct it.
-    let asked: Headers | undefined;
-    const auth = stubAuthService({
+    let asked: Headers.Headers | undefined;
+    const auth = authServiceStub({
       getSession: (headers) => {
         asked = headers;
-        return Promise.resolve(PRINCIPAL);
+        return Effect.succeedSome(PRINCIPAL);
       },
     });
     // Over the transport, because that is the only place the two sets differ:
@@ -188,29 +199,29 @@ describe('principal resolution', () => {
       });
       expect(response.status).toBe(200);
 
-      expect(asked?.get('user-agent')).toBe('The Real Agent');
+      expect(asked?.['user-agent']).toBe('The Real Agent');
       // Not overwritten and not invented: a header the request never carried
       // stays absent however loudly the message names it.
-      expect(asked?.get('x-forwarded-for')).toBeNull();
+      expect(asked?.['x-forwarded-for']).toBeUndefined();
       // Still the request's own credential, which is the point of forwarding
       // the set at all.
-      expect(asked?.get('cookie')).toBe('studio.session_token=opaque');
+      expect(asked?.['cookie']).toBe('studio.session_token=opaque');
     } finally {
       await stack.dispose();
     }
   });
 
   it('refuses protected procedures without a session', async () => {
-    const auth = stubAuthService();
+    const auth = authServiceStub();
     await expectMeUnauthorized(createStudio(readEnv(), { auth }));
   });
 
   it('never falls back to the cookie when an Authorization header is present', async () => {
     let getSessionCalls = 0;
-    const auth = stubAuthService({
+    const auth = authServiceStub({
       getSession: () => {
         getSessionCalls += 1;
-        return Promise.resolve(PRINCIPAL);
+        return Effect.succeedSome(PRINCIPAL);
       },
     });
     const studio = createStudio(readEnv(), { auth });
@@ -221,6 +232,45 @@ describe('principal resolution', () => {
     // With the header, the request is on the token plane (#1248): the cookie
     // session must not even be consulted.
     await expectMeUnauthorized(studio, { authorization: 'Bearer some-token' });
+    expect(getSessionCalls).toBe(1);
+  });
+
+  it('resolves an HTTP request by the same rule, token plane included', async () => {
+    // `principalFromRequest` is what the HTTP gates ask (`/storage`, `/ws`),
+    // over the request being served rather than an rpc frame. One rule for
+    // both planes: a cookie resolves, and an Authorization header is the token
+    // plane, which resolves to nobody without the session being consulted.
+    let getSessionCalls = 0;
+    const auth = authServiceStub({
+      getSession: () => {
+        getSessionCalls += 1;
+        return Effect.succeedSome(PRINCIPAL);
+      },
+    });
+    const resolveFor = (headers: Record<string, string>) =>
+      Effect.runPromise(
+        principalFromRequest.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(
+              new Request('http://studio.test/storage/x', { headers }),
+            ),
+          ),
+          Effect.provideService(AuthService, auth),
+        ),
+      );
+
+    expect(await resolveFor({ cookie: 'studio.session_token=opaque' })).toEqual(
+      Option.some(PRINCIPAL),
+    );
+    expect(getSessionCalls).toBe(1);
+
+    expect(
+      await resolveFor({
+        cookie: 'studio.session_token=opaque',
+        authorization: 'Bearer some-token',
+      }),
+    ).toEqual(Option.none());
     expect(getSessionCalls).toBe(1);
   });
 
@@ -238,10 +288,10 @@ describe('principal resolution', () => {
     // `Authorization`, and the cookie beside it would be the silent
     // token-to-cookie fallback #1248 forbids.
     let getSessionCalls = 0;
-    const auth = stubAuthService({
+    const auth = authServiceStub({
       getSession: () => {
         getSessionCalls += 1;
-        return Promise.resolve(PRINCIPAL);
+        return Effect.succeedSome(PRINCIPAL);
       },
     });
     const configured = readEnv();
@@ -294,7 +344,7 @@ describe('principal resolution', () => {
     const configured = readEnv();
     const stack = composeStudio(
       configured,
-      createStudio(configured, { auth: stubAuthService() }),
+      createStudio(configured, { auth: authServiceStub() }),
     );
     try {
       const response = await stack.request('/rpc', {
@@ -387,6 +437,119 @@ describe('principal resolution', () => {
   });
 });
 
+// The same procedure over the websocket transport is not a case here, and
+// that is not an omission: `StudioRpcs` is mounted on `/rpc` alone
+// (`http/rpc-routes.ts`, the group's only `RpcServer` mount). `/ws` is the
+// protocol builder's oRPC bridge, which runs no rpc middleware and resolves its
+// principal from the upgrade through `auth/principal.ts`'s Hono gate. When
+// stage 8 moves that router onto this plane, a frame inherits the handshake's
+// headers and reaches `AuthenticatedLive` through `transportHeaders` exactly as
+// a fetch request does — and that is when the case can be written against a
+// real mount.
+
+/** The call the limiter admitted: nothing behind this Studio can serve it, so it dies there. */
+function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
+  expect(Exit.isFailure(exit)).toBe(true);
+  if (Exit.isFailure(exit)) expect(Cause.hasDies(exit.cause)).toBe(true);
+}
+
+const planeRedis = await reachableRedis(REDIS_DATABASES.authPlane);
+
+describe.skipIf(!planeRedis)('what the middleware charges', () => {
+  // The ordering the `Authenticated` middleware makes structural (#1932 §3,
+  // §12): the caller's own budget is spent once the principal is known and
+  // before the handler runs, so before any database work. The two narrower
+  // scopes are the procedures' own, and their ordering oracles are where the
+  // procedures are exercised: `rpc_team` only after membership in
+  // `rate-limit-routes.test.ts` ('charges the team nothing for a caller who is
+  // not in it') and `rpc/__tests__/team-scope.test.ts`, and `invitation_accept`
+  // before the token lookup in `rate-limit-routes.test.ts` ('refuses a third
+  // acceptance of one invitation token').
+  let limits: OpenRateLimitStore;
+  beforeAll(async () => {
+    limits = await openRateLimitStore(planeRedis);
+  });
+  afterAll(() => limits.dispose());
+
+  /** A caller of their own per case, since the window is keyed by user and outlives the test. */
+  const caller = (): SessionPrincipal => {
+    const userId = `plane-${randomUUID()}`;
+    return { ...PRINCIPAL, userId, sessionId: `session-${userId}` };
+  };
+
+  it('refuses a spent caller before the handler reads anything', async () => {
+    const principal = caller();
+    const reads = { memberships: 0, membership: 0 };
+    const studio = createStudio(readEnv(), {
+      auth: authServiceStub({
+        getSession: () => Effect.succeedSome(principal),
+        listMemberships: () =>
+          Effect.sync(() => {
+            reads.memberships += 1;
+            return [];
+          }),
+        getMembership: () =>
+          Effect.sync(() => {
+            reads.membership += 1;
+            return Option.some({ role: 'owner' });
+          }),
+      }),
+      limiter: limits.limiter({ rpc_user: { max: 1, windowMs: 60_000 } }),
+    });
+    const client = await createRpcClient(studio);
+    try {
+      // The one call the window holds, and the read `me` makes for it.
+      await client.call(client.rpc('me', undefined));
+      expect(reads.memberships).toBe(1);
+
+      // Spent: refused with the interval, and neither `me`'s membership list
+      // nor a team procedure's membership read happened — the handler never
+      // ran, which a charge taken after the read could not say.
+      const refused = await expectRpcFailure(
+        client.callExit(client.rpc('me', undefined)),
+        'RateLimited',
+      );
+      expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+      await expectRpcFailure(
+        client.callExit(
+          client.rpc('studies.list', { teamId: TeamId.make('team-a') }),
+        ),
+        'RateLimited',
+      );
+      expect(reads).toEqual({ memberships: 1, membership: 0 });
+    } finally {
+      await client.dispose();
+    }
+  });
+
+  it('charges a team procedure once, in the middleware, and not again in the scope helper', async () => {
+    const principal = caller();
+    const studio = createStudio(readEnv(), {
+      auth: authServiceStub({
+        getSession: () => Effect.succeedSome(principal),
+        getMembership: () => Effect.succeedSome({ role: 'owner' }),
+      }),
+      limiter: limits.limiter({ rpc_user: { max: 2, windowMs: 60_000 } }),
+    });
+    const client = await createRpcClient(studio);
+    const list = () =>
+      client.callExit(
+        client.rpc('studies.list', { teamId: TeamId.make('team-a') }),
+      );
+    try {
+      // Two calls for a window of two: a scope helper that still charged
+      // `rpc_user` beside the middleware would have spent the window on the
+      // first and refused the second. Each is admitted and dies where this
+      // Studio has no database to open the tenant on.
+      expectAdmitted(await list());
+      expectAdmitted(await list());
+      await expectRpcFailure(list(), 'RateLimited');
+    } finally {
+      await client.dispose();
+    }
+  });
+});
+
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
     port: 3000,
@@ -441,22 +604,24 @@ describe('unconfigured auth', () => {
 const env = readEnv();
 
 function callBetterAuthOrganizationRoute(
-  auth: AuthService,
+  auth: AuthService['Service'],
   path: `/api/auth/organization/${string}`,
   cookie: string,
   body: object,
 ): Promise<Response> {
   if (!env.auth) throw new Error('dev env must configure auth');
-  return auth.handler(
-    new Request(new URL(path, env.auth.baseUrl), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'origin': env.auth.baseUrl,
-        cookie,
-      },
-      body: JSON.stringify(body),
-    }),
+  return Effect.runPromise(
+    auth.handler(
+      new Request(new URL(path, env.auth.baseUrl), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': env.auth.baseUrl,
+          cookie,
+        },
+        body: JSON.stringify(body),
+      }),
+    ),
   );
 }
 
@@ -464,11 +629,12 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
   it('queues the email for the worker rather than sending it', async () => {
     const database = await openTestDatabase();
     try {
-      // The production wiring: createApp builds the auth service from the pool
-      // and the Effect services the sign-in mail is queued on, and no mailer
-      // exists for it to reach for — src/__tests__/process-separation.test.ts
-      // pins that nodemailer is not even in this process's module graph.
+      // The production wiring: the live auth service over the Effect
+      // services the sign-in mail is queued on, and no mailer for it to reach
+      // for — src/__tests__/process-separation.test.ts pins that nodemailer is
+      // not even in this process's module graph.
       const app = createApp(env, {
+        auth: liveAuthService(env, database.services),
         services: database.services,
         pool: database.appPool,
       });
@@ -572,12 +738,6 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     database = await openTestDatabase();
     await database.run(seed({ scale: 'tiny', secrets: testKeyring() }));
-    const auth = createBetterAuthService(
-      env.auth,
-      database.appPool,
-      () => Promise.resolve(),
-      testCipher(),
-    );
     // Every case here signs the one seeded account in, so they all count
     // against one `sign_in_email` bucket — and the shipped limit is five in
     // ten minutes, which a developer re-running this file would reach on the
@@ -585,7 +745,9 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
     // limit of its own rather than sharing the constant's window (#1909).
     limits = await openRateLimitStore(env.redis);
     studio = createStudio(env, {
-      auth,
+      // The seed sealed its rows under the test keyring, so the instance
+      // opens them with the same one.
+      auth: liveAuthService(env, database.services, { cipher: testCipher() }),
       limiter: limits.limiter({ sign_in_email: SIGN_IN_ALLOWANCE }),
     });
   }, SEEDING_TIMEOUT_MS);
@@ -642,11 +804,13 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
       const team = (await create.json()) as { id: string; slug: string };
       expect(team.slug).toBe('my-studies');
 
-      expect(await auth.getMembership(me.userId, team.id)).toEqual({
-        role: 'owner',
-      });
-      expect(await auth.getMembership(me.userId, 'not-a-team')).toBeNull();
-      expect(await auth.getMembership('someone-else', team.id)).toBeNull();
+      const membership = (userId: string, teamId: string) =>
+        Effect.runPromise(auth.getMembership(userId, teamId));
+      expect(await membership(me.userId, team.id)).toEqual(
+        Option.some({ role: 'owner' }),
+      );
+      expect(await membership(me.userId, 'not-a-team')).toEqual(Option.none());
+      expect(await membership('someone-else', team.id)).toEqual(Option.none());
 
       // The plugin only check-then-inserts memberships, so the composite
       // unique index is what keeps that single-row read unambiguous. Omitting

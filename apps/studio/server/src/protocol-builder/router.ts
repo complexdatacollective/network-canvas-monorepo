@@ -81,7 +81,7 @@ const os = implement(contract).$context<RpcContext>();
 export type ProtocolBuilderServices = Database | AuditSignal;
 
 export type ProtocolBuilderRouterDeps = {
-  auth: AuthService;
+  auth: AuthService['Service'];
   runtime: ProtocolBuilderRuntime;
   pool?: pg.Pool;
   assetStore?: AssetStore;
@@ -192,7 +192,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     if (!deps.pool || !deps.cipher || !deps.services) {
       throw new ORPCError('INTERNAL_SERVER_ERROR');
     }
-    const memberships = await auth.listMemberships(principal.userId);
+    const memberships = await Effect.runPromise(
+      auth.listMemberships(principal.userId),
+    );
     const session = await run(
       openSession({
         protocolId,

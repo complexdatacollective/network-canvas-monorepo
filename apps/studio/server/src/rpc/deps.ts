@@ -25,13 +25,16 @@ import type { SecretsCipher } from '../secrets/services.ts';
  * separately, because the editor still reaches it over the `/ws` bridge until
  * stage 8 (#1930).
  *
+ * The auth provider and the rate limiter are not here: the handlers and the
+ * middlewares ask the `AuthService` and `RateLimiter` services for them, which
+ * the program's layer graph provides (`programs/serve.ts`).
+ *
  * The optional members are the surfaces a deployment may not have configured.
  * Their absence is a deployment bug rather than an authorization refusal —
  * every procedure that needs one dies rather than declaring an error for it —
  * which is the reading today's `INTERNAL_SERVER_ERROR` rows already had.
  */
 export type RpcDeps = {
-  readonly auth: AuthService;
   /** What sign-in this instance offers, for `status`. */
   readonly capabilities: AuthCapabilities;
   readonly deployment: DeploymentStatus;
@@ -48,19 +51,17 @@ export type RpcDeps = {
    * no database.
    */
   readonly cipher?: SecretsCipherApi | undefined;
-  /** Where per-user and per-team call limits are counted (#1909). */
-  readonly limiter?: RateLimiter['Service'] | undefined;
   /**
    * The Effect services every data-layer caller on this plane runs on (#1931
    * stage 3): the application client, the operator signal, the job queue, the
    * process's cipher and the audit denial window.
    *
-   * It is a `Context` rather than a set of layers because two of the consumers
-   * are promises — the protocol builder's oRPC handlers until stage 8 moves
-   * that router onto the rpc plane (#1930), and better-auth's sign-in mail
-   * callback — and the program that owns the layers is the only thing that can
-   * supply them. Absent wherever there is no database, where every procedure
-   * that would need one refuses beside the missing pool.
+   * It is a `Context` rather than a set of layers because some of its
+   * consumers are promises — the protocol builder's oRPC handlers until stage
+   * 8 moves that router onto the rpc plane (#1930), and the Hono residue's
+   * installation read — and the program that owns the layers is the only
+   * thing that can supply them. Absent wherever there is no database, where
+   * every procedure that would need one refuses beside the missing pool.
    */
   readonly services?: Context.Context<StudioServices> | undefined;
 };
@@ -72,3 +73,12 @@ export type StudioServices =
   | Jobs
   | SecretsCipher
   | DeniedAttempts;
+
+/**
+ * What the `/rpc` route runs on: the data layer, plus the auth provider the
+ * `Authenticated` middleware and the access helpers ask, and the limiter every
+ * scope on this plane is charged against. Always present — a process with no
+ * database has the disabled auth service and a limiter over no store — so no
+ * handler branches on either being missing.
+ */
+export type RpcServices = StudioServices | AuthService | RateLimiter;

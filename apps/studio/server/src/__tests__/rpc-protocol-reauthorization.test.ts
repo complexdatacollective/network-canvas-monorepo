@@ -7,7 +7,7 @@
 // commits: the answer has to be the committed state's.
 import { randomUUID } from 'node:crypto';
 
-import { Effect, type Exit } from 'effect';
+import { Effect, type Exit, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -21,7 +21,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -94,12 +94,16 @@ describe.skipIf(!testDb)(
         createStudio(readEnv(), {
           pool: database.appPool,
           services: database.services,
-          auth: stubAuthService({
-            getSession: () => Promise.resolve(principal),
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(principal),
             getMembership: (_userId, teamId) =>
-              Promise.resolve(teamId === TEAM_ID ? { role: staleRole } : null),
+              Effect.succeed(
+                Option.fromNullishOr(
+                  teamId === TEAM_ID ? { role: staleRole } : null,
+                ),
+              ),
             listMemberships: () =>
-              Promise.resolve([{ teamId: TEAM_ID, role: staleRole }]),
+              Effect.succeed([{ teamId: TEAM_ID, role: staleRole }]),
           }),
         }),
       );

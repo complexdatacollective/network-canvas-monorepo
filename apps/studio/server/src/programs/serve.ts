@@ -4,6 +4,7 @@ import { HttpRouter, HttpServer } from 'effect/unstable/http';
 import { createStudio, type Studio } from '../app.ts';
 import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
+import { AuthService } from '../auth/service.ts';
 import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
@@ -91,11 +92,14 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const { pool } = yield* DatabasePool;
       const status = yield* SchemaStatus;
       const limiter = yield* RateLimiter;
+      const auth = yield* AuthService;
 
       // The Effect services every data-layer caller on this process runs on,
-      // captured as one context and handed down to the two promise-shaped
+      // captured as one context and handed down to the promise-shaped
       // consumers that cannot take layers: the protocol builder's oRPC router
-      // and better-auth's sign-in mail callback (`rpc/deps.ts`).
+      // and the Hono residue (`rpc/deps.ts`). better-auth's sign-in mail
+      // callback is not one of them any more: `AuthService.layer` builds it
+      // over the services its own layer was given.
       //
       // Nothing here cares when the schema becomes current: a statement against
       // a database that has not been migrated yet fails the one request that
@@ -137,7 +141,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         yield* bootChecks;
       }
 
-      const studio = createStudio(env, { services, pool, limiter });
+      const studio = createStudio(env, { services, pool, limiter, auth });
       return Serve(studio, {
         ...studio.checks,
         // Is the database this build's? Both processes refuse a stale schema
@@ -150,6 +154,11 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     }),
   ).pipe(
     Layer.provide(SchemaStatus.layer),
+    // better-auth over the application client (#1927 §12). Serve-only: the
+    // worker builds no auth provider at all. Above everything it asks for —
+    // the client, the cipher, the limiter it counts sign-in attempts in and
+    // the queue sign-in mail goes on.
+    Layer.provide(AuthService.layerFromEnvironment),
     // The one Valkey client and the two services over it: every limit this
     // process enforces, and the audit denial window. Acquired after the pool
     // and before anything that charges a limit, so it releases after the
@@ -179,10 +188,16 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
 function withoutDatabase(env: StudioEnv) {
   return Layer.unwrap(
     Effect.gen(function* () {
-      const studio = createStudio(env, { limiter: yield* RateLimiter });
+      const studio = createStudio(env, {
+        limiter: yield* RateLimiter,
+        auth: yield* AuthService,
+      });
       return Serve(studio, studio.checks);
     }),
   ).pipe(
+    // Disabled: with no database the selector never builds better-auth, so
+    // none of the stand-ins below it is asked for anything.
+    Layer.provide(AuthService.layerFromEnvironment),
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),

@@ -6,12 +6,14 @@ import { Me } from '@codaco/studio-contract/schema/account';
 import { NotFound } from '@codaco/studio-contract/schema/errors';
 
 import { updateUserLocale } from '../../account/commands.ts';
+import { AuthService } from '../../auth/service.ts';
 import { UntenantedScope } from '../../db/tenant.ts';
-import { chargeLimit, requirePool } from '../bridge.ts';
+import { requirePool } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
 // The account tier: personal, not team-scoped, so no tenant is opened and only
-// the caller's own budget is charged.
+// the caller's own budget is charged — by `Authenticated`, before either
+// handler runs.
 
 /**
  * The membership list as the contract spells it — the same rows the auth
@@ -25,7 +27,7 @@ export const AccountHandlers = (deps: RpcDeps) =>
     'me': () =>
       Effect.gen(function* () {
         const principal = yield* Principal;
-        yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
+        const auth = yield* AuthService;
         return {
           userId: principal.userId,
           email: principal.email,
@@ -38,17 +40,12 @@ export const AccountHandlers = (deps: RpcDeps) =>
           // index serves it. Better Auth's own team list drops the role, so
           // this is the only thing that can tell a researcher what they are in
           // each of their teams.
-          teams: decodeTeams(
-            yield* Effect.promise(() =>
-              deps.auth.listMemberships(principal.userId),
-            ),
-          ),
+          teams: decodeTeams(yield* auth.listMemberships(principal.userId)),
         };
       }),
     'account.updateLocale': (payload) =>
       Effect.gen(function* () {
         const principal = yield* Principal;
-        yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
         // A plane wired without a database refuses here, in the same place it
         // always did, rather than reaching a client that has nothing behind it.
         yield* requirePool(deps);

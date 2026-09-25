@@ -7,7 +7,7 @@ import { WebSocket } from 'ws';
 
 import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
-import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { authServiceStub } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import type { Studio, WsBridgeDeps } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
@@ -74,7 +74,6 @@ function echoing(): Studio & {
   // The `/rpc` route is registered from this too, and answers nothing useful
   // here: this suite drives the socket alone.
   const rpc: RpcDeps = {
-    auth: stubAuthService(),
     capabilities: {
       enabled: false,
       magicLink: false,
@@ -87,6 +86,8 @@ function echoing(): Studio & {
   return {
     app: new Hono(),
     ws,
+    auth: authServiceStub(),
+    limiter: undefined,
     rpc,
     checks: {},
     closed: () => closed,

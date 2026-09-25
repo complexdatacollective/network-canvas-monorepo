@@ -4,7 +4,7 @@ import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
 
 import { createStudio } from '../app.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
 /**
@@ -21,7 +21,7 @@ async function postRpc(headers: Record<string, string> = {}) {
   const env = readEnv();
   const stack = composeStudio(
     env,
-    createStudio(env, { auth: stubAuthService() }),
+    createStudio(env, { auth: authServiceStub() }),
   );
   try {
     return await stack.request(RPC_PATH, { method: 'POST', headers });
@@ -37,7 +37,7 @@ async function postRpc(headers: Record<string, string> = {}) {
  */
 function serverWithFakeAuth() {
   const env = readEnv();
-  return startStudioServer(env, createStudio(env, { auth: stubAuthService() }));
+  return startStudioServer(env, createStudio(env, { auth: authServiceStub() }));
 }
 
 describe('cookie-plane CSRF', () => {
@@ -79,7 +79,7 @@ describe('cookie-plane CSRF', () => {
     const env = readEnv();
     const stack = composeStudio(
       env,
-      createStudio(env, { auth: stubAuthService() }),
+      createStudio(env, { auth: authServiceStub() }),
     );
     try {
       const res = await stack.request('/healthz');

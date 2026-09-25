@@ -8,14 +8,13 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
-import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import {
   createPrincipalMiddleware,
   type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
-import type { AuthService, SessionPrincipal } from './auth/service.ts';
+import { AuthService, type SessionPrincipal } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
 import { UntenantedScope } from './db/tenant.ts';
 import {
@@ -128,7 +127,13 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
-  auth?: AuthService;
+  /**
+   * The process's auth provider: `AuthService.layerFromEnvironment`'s, built
+   * by the program (`programs/serve.ts`) and handed down so the Hono residue
+   * asks the same instance the rpc plane does. Absent means auth is off, which
+   * is also what a suite that is not about auth gets.
+   */
+  auth?: AuthService['Service'];
   pool?: pg.Pool;
   /**
    * The Effect services every data-layer caller runs on (#1931 stage 3): the
@@ -188,10 +193,17 @@ export type Studio = {
   readonly app: Hono<StudioHonoEnv>;
   readonly ws: WsBridgeDeps;
   /**
+   * The auth provider and the limiter this app was built over. The Effect
+   * shell's `/rpc` route asks for both as services; the programs provide them
+   * from their own graph, which is where these came from, and a suite
+   * composing the stack provides these (`__tests__/support/services.ts`).
+   */
+  readonly auth: AuthService['Service'];
+  readonly limiter: RateLimiter['Service'] | undefined;
+  /**
    * What the `/rpc` handlers are wired from. Resolved here because this is
-   * where the pool, the auth service, the limiter and the cipher are decided,
-   * and handed to the Effect shell, which owns the route
-   * (src/http/rpc-routes.ts).
+   * where the pool and the cipher are decided, and handed to the Effect shell,
+   * which owns the route (src/http/rpc-routes.ts).
    */
   readonly rpc: RpcDeps;
   /**
@@ -231,8 +243,7 @@ export function createStudio(
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth =
-    deps.auth ?? createAuthService(env, pool, deps.services, limiter);
+  const auth = deps.auth ?? AuthService.disabled;
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -360,7 +371,7 @@ export function createStudio(
         });
       }
     }
-    const response = await auth.handler(c.req.raw);
+    const response = await Effect.runPromise(auth.handler(c.req.raw));
     // better-auth answers its own rate limit with a `{ message }` body and an
     // `X-Retry-After` header. Every other refusal on this server is problem
     // JSON with `Retry-After`, and a caller should not have to know which
@@ -441,14 +452,12 @@ export function createStudio(
   // the principal is resolved by the `Authenticated` middleware rather than by
   // a Hono middleware on this app.
   const rpcDeps: RpcDeps = {
-    auth,
     capabilities: authCaps,
     deployment,
     readInstallation: readInstallationRow,
     pool,
     assetStore,
     cipher,
-    limiter,
     services: deps.services,
   };
   // The protocol builder over the socket, which is the only transport it has:
@@ -458,6 +467,8 @@ export function createStudio(
   const socketHandler = new WebSocketRPCHandler<RpcContext>(
     createRpcRouter({
       ...rpcDeps,
+      auth,
+      limiter,
       protocolBuilder: createProtocolBuilderRuntime(),
     }),
   );
@@ -534,7 +545,14 @@ export function createStudio(
     return { principal };
   };
 
-  return { app, ws: { admit, socket: socketHandler }, rpc: rpcDeps, checks };
+  return {
+    app,
+    ws: { admit, socket: socketHandler },
+    auth,
+    limiter,
+    rpc: rpcDeps,
+    checks,
+  };
 }
 
 /**

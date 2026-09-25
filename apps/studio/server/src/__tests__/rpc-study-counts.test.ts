@@ -9,7 +9,7 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { StudyId } from '@codaco/studio-contract/schema/ids';
@@ -23,7 +23,7 @@ import {
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   openTestDatabase,
   ownerRows,
@@ -109,12 +109,13 @@ describe.skipIf(!testDb)('studies.counts', () => {
     // property of the role, and it is the role that decides whether a count
     // exists for them at all.
     const memberOf = (role: string) =>
-      stubAuthService({
-        getSession: () => Promise.resolve(PRINCIPAL),
+      authServiceStub({
+        getSession: () => Effect.succeedSome(PRINCIPAL),
         getMembership: (_userId, teamId) =>
-          Promise.resolve(teamId === memberTeamId ? { role } : null),
-        listMemberships: () =>
-          Promise.resolve([{ teamId: memberTeamId, role }]),
+          Effect.succeed(
+            Option.fromNullishOr(teamId === memberTeamId ? { role } : null),
+          ),
+        listMemberships: () => Effect.succeed([{ teamId: memberTeamId, role }]),
       });
     client = await createRpcClient(
       createStudio(readEnv(), {
@@ -132,7 +133,7 @@ describe.skipIf(!testDb)('studies.counts', () => {
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
-        auth: stubAuthService(),
+        auth: authServiceStub(),
         pool: database.appPool,
         services: database.services,
       }),

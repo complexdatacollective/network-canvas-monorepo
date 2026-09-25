@@ -1,9 +1,10 @@
+import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApp, createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
 import { composeStudio } from './support/serve.ts';
 
@@ -90,11 +91,9 @@ describe('studio server', () => {
   });
 
   it('refuses audited team writes before Better Auth can mutate them', async () => {
-    const handler = vi.fn(() =>
-      Promise.resolve(Response.json({ wrote: true })),
-    );
+    const handler = vi.fn(() => Effect.succeed(Response.json({ wrote: true })));
     const app = createApp(undefined, {
-      auth: stubAuthService({ handler }),
+      auth: authServiceStub({ handler }),
     });
     const bodies: Record<string, object> = {
       '/api/auth/organization/create': {
@@ -157,11 +156,9 @@ describe('studio server', () => {
   });
 
   it('fails closed for an unclassified Better Auth organization mutation', async () => {
-    const handler = vi.fn(() =>
-      Promise.resolve(Response.json({ wrote: true })),
-    );
+    const handler = vi.fn(() => Effect.succeed(Response.json({ wrote: true })));
     const app = createApp(undefined, {
-      auth: stubAuthService({ handler }),
+      auth: authServiceStub({ handler }),
     });
 
     const response = await app.request(
@@ -176,10 +173,10 @@ describe('studio server', () => {
 
   it('forwards an explicitly classified Better Auth organization mutation', async () => {
     const handler = vi.fn(() =>
-      Promise.resolve(Response.json({ available: true })),
+      Effect.succeed(Response.json({ available: true })),
     );
     const app = createApp(undefined, {
-      auth: stubAuthService({ handler }),
+      auth: authServiceStub({ handler }),
     });
 
     const response = await app.request(

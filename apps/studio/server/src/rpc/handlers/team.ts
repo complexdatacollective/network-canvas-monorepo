@@ -12,6 +12,7 @@ import {
   UpdateTeamMemberRoleResult,
 } from '@codaco/studio-contract/schema/team';
 
+import { enforceRateLimit } from '../../rate-limit/enforce.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -19,7 +20,7 @@ import {
   type TeamCommandError as TeamCommandFailure,
   updateTeamMemberRole,
 } from '../../team/commands.ts';
-import { chargeLimit, requirePool, withRequestId } from '../bridge.ts';
+import { requirePool, withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam } from '../team-scope.ts';
 
@@ -66,21 +67,16 @@ export const TeamHandlers = (deps: RpcDeps) =>
   TeamRpcs.toLayer({
     'team.acceptInvitation': (payload) =>
       Effect.gen(function* () {
-        const principal = yield* Principal;
-        // The caller's own budget first, as everywhere else on this plane.
-        yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
         // Per invitation token, and here rather than on better-auth's
         // `/organization/accept-invitation` (#1909): Studio blocks that route
         // outright (audit/better-auth-policy.ts) so that acceptance and its
         // audit event share one transaction, which makes this procedure the
         // only path a token is ever guessed through.
         //
-        // Before the lookup, so a guessed token costs nothing to refuse.
-        yield* chargeLimit(
-          deps.limiter,
-          'invitation_accept',
-          payload.invitationId,
-        );
+        // Before the lookup, so a guessed token costs nothing to refuse — and
+        // after the caller's own budget, which `Authenticated` charged before
+        // this handler ran.
+        yield* enforceRateLimit('invitation_accept', payload.invitationId);
         // A plane wired without a database refuses here, in the same place
         // every other team procedure does — `openTeam` asserts it for the
         // three that carry a team id, and this one carries none, so it says

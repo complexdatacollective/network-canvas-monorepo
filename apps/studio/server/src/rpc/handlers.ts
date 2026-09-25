@@ -3,7 +3,7 @@ import type { Rpc, RpcGroup } from 'effect/unstable/rpc';
 
 import type { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
-import type { RpcDeps, StudioServices } from './deps.ts';
+import type { RpcDeps, RpcServices } from './deps.ts';
 import { AccountHandlers } from './handlers/account.ts';
 import { AuditHandlers } from './handlers/audit.ts';
 import { ProtocolsHandlers } from './handlers/protocols.ts';
@@ -25,8 +25,9 @@ import { TeamHandlers } from './handlers/team.ts';
  * `Layer.mergeAll` rather than a `provideMerge` chain: the seven are
  * independent, and nothing here depends on another's output.
  *
- * `StudioServices` is what they carry out: the application client, the
- * operator signal, the job queue and the process's cipher. A handler that
+ * `RpcServices` is what they carry out: the application client, the operator
+ * signal, the job queue, the process's cipher, the auth provider and the
+ * limiter. A handler that
  * reads or writes tenant rows does it through `TenantScope.open`, which takes
  * the client from that tag; a command that queues work reaches `Jobs` the same
  * way, which is what makes "the job and the change commit together" a property
@@ -38,7 +39,7 @@ export const StudioRpcHandlers = (
 ): Layer.Layer<
   Rpc.ToHandler<RpcGroup.Rpcs<typeof StudioRpcs>>,
   never,
-  StudioServices
+  RpcServices
 > =>
   Layer.mergeAll(
     StatusHandlers(deps),

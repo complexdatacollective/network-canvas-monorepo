@@ -382,8 +382,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
   },
   // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible, and the list shrinks as stage 4 retires `pg`
-  // (better-auth's adapter is the last consumer that needs it).
+  // pinned rather than invisible. better-auth left it in stage 4 (it runs on
+  // `auth/adapter.ts` now); what stays is readiness, the schema gate and the
+  // scripts, which remain on node-postgres while the Effect client cannot pin a
+  // role outside a transaction (rc.115).
   [`${SERVER}/db/schema.ts`]: {
     count: 3,
     why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ and the schema gate’s twins of the Effect pair',
