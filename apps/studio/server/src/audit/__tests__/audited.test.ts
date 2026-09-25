@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Effect, Exit, Fiber, Layer, Schema } from 'effect';
+import { Cause, Effect, Exit, Fiber, Layer, Schema } from 'effect';
+import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -193,12 +194,13 @@ const waitForLock = (
 
 /**
  * Returns once another backend is queued behind this transaction, so the body
- * fails only after the waiter is really waiting. Polled against the wall clock
- * rather than slept on: the layer runs under the test clock, and a loaded
- * server can be slow to give the second client its connection.
+ * fails only after the waiter is really waiting. A waiter that ended without
+ * queueing dies here with its own exit rather than at the deadline.
  */
-const untilSomeoneWaits: Effect.Effect<void, unknown, Transaction> = Effect.gen(
-  function* () {
+const untilSomeoneWaits = (
+  waiter: Fiber.Fiber<number, unknown>,
+): Effect.Effect<void, unknown, Transaction> =>
+  Effect.gen(function* () {
     const { sql } = yield* Transaction;
     const deadline = Date.now() + 20_000;
     while (Date.now() < deadline) {
@@ -207,10 +209,17 @@ const untilSomeoneWaits: Effect.Effect<void, unknown, Transaction> = Effect.gen(
            where pg_backend_pid() = any(pg_blocking_pids(pid))
         ) as waiting`;
       if (rows[0]?.waiting === true) return;
+      const ended = waiter.pollUnsafe();
+      if (ended !== undefined) {
+        yield* Effect.die(
+          new Error(
+            `the waiter ended without queueing: ${Exit.isFailure(ended) ? Cause.pretty(ended.cause) : 'it took the lock'}`,
+          ),
+        );
+      }
     }
     yield* Effect.die(new Error('the waiter never queued'));
-  },
-);
+  });
 
 describe.skipIf(!testDb)('audited', () => {
   layer(Harness)((it) => {
@@ -346,35 +355,43 @@ describe.skipIf(!testDb)('audited', () => {
       ['team advisory lock', lockTeam],
       ['team row lock', lockedTeamLabel],
     ] as const) {
+      // On the live clock: the waiter's connect runs inside the driver's own
+      // timers, which the test clock would never fire.
       it.effect(`holds the ${lock} until the denial event has committed`, () =>
-        Effect.gen(function* () {
-          const TEAM = yield* seedTeam('Audited Team');
-          let waiter: Fiber.Fiber<number, unknown> | undefined;
+        TestClock.withLive(
+          Effect.gen(function* () {
+            const TEAM = yield* seedTeam('Audited Team');
+            // Connected before the command opens, so the waiter's first
+            // statement is the lock rather than a connect under load.
+            const { secondApp } = yield* TestDatabase;
+            yield* secondApp.sql`select 1`;
+            let waiter: Fiber.Fiber<number, unknown> | undefined;
 
-          const exit = yield* Effect.exit(
-            audited(
-              'team.updateMemberRole',
-              TEAM,
-              Effect.gen(function* () {
-                waiter = yield* waitForLock(TEAM, take(TEAM.teamId));
-                yield* untilSomeoneWaits;
-                return yield* Effect.fail(denied());
-              }),
-            ),
-          );
-          // The denial itself, not a defect: a waiter that never queued dies
-          // above, and the rollback that follows would read as a released
-          // lock below.
-          assert.isTrue(Exit.isFailure(exit) && !Exit.hasDies(exit));
-          assert.isDefined(waiter);
-          if (waiter === undefined) return;
+            const exit = yield* Effect.exit(
+              audited(
+                'team.updateMemberRole',
+                TEAM,
+                Effect.gen(function* () {
+                  waiter = yield* waitForLock(TEAM, take(TEAM.teamId));
+                  yield* untilSomeoneWaits(waiter);
+                  return yield* Effect.fail(denied());
+                }),
+              ),
+            );
+            // The denial itself, not a defect: a waiter that never queued dies
+            // above, and the rollback that follows would read as a released
+            // lock below.
+            assert.isTrue(Exit.isFailure(exit) && !Exit.hasDies(exit));
+            assert.isDefined(waiter);
+            if (waiter === undefined) return;
 
-          // The waiter got the lock only after the command committed, so it
-          // saw the denial event. Released at the savepoint's rollback, it
-          // would have got it first and seen nothing.
-          assert.strictEqual(yield* Fiber.join(waiter), 1);
-          assert.lengthOf(yield* auditRows(TEAM.teamId), 1);
-        }),
+            // The waiter got the lock only after the command committed, so it
+            // saw the denial event. Released at the savepoint's rollback, it
+            // would have got it first and seen nothing.
+            assert.strictEqual(yield* Fiber.join(waiter), 1);
+            assert.lengthOf(yield* auditRows(TEAM.teamId), 1);
+          }),
+        ),
       );
     }
 
