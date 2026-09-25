@@ -157,6 +157,9 @@ function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   });
 }
 
+/** The gate polls every second and the flag's reading lives a second. */
+const MAINTENANCE_WAIT_MS = 10_000;
+
 describe.skipIf(!db)('the worker entrypoint', () => {
   let applied: Awaited<ReturnType<typeof createScratchDatabase>>;
 
@@ -219,6 +222,25 @@ describe.skipIf(!db)('the worker entrypoint', () => {
         body: '{}',
       });
       expect(rpc.status).toBe(404);
+
+      // Maintenance mode reaches the queue (#1901): the flag `studio-api
+      // maintenance on` writes, read on this process's maintenance client,
+      // stops every claim within the gate's poll, and clearing it resumes
+      // them. Written here as the owner and put back before the next case.
+      await applied.pool.query(
+        `update deployment_state set maintenance = true, reason = 'Upgrading'`,
+      );
+      try {
+        await worker.waitForOutput(
+          /the deployment is in maintenance: the job worker has stopped claiming jobs/,
+          MAINTENANCE_WAIT_MS,
+        );
+      } finally {
+        await applied.pool.query(
+          'update deployment_state set maintenance = false, reason = null',
+        );
+      }
+      await worker.waitForOutput(/maintenance is over/, MAINTENANCE_WAIT_MS);
 
       worker.child.kill('SIGTERM');
       // A container stop is a SIGTERM and a deadline. The process exits 130

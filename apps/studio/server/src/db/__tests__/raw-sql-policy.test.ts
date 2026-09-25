@@ -297,6 +297,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the stamp upsert, which must match the node-postgres `stampFingerprint` statement text for text',
   },
+  [`${SERVER}/db/deployment-state.ts › db.deploymentState.read`]: {
+    count: 1,
+    why: 'a transaction-local `statement_timeout` via `set_config` (no FROM), so a read queued behind a migration’s lock ends on the server rather than holding its connection',
+  },
   [`${SERVER}/db/readiness.ts › db.readiness.alive`]: {
     count: 1,
     why: 'the liveness probe’s `select 1`, no FROM clause',

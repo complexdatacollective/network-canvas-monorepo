@@ -4,7 +4,8 @@ import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
-import { JobMaintenanceGate, MaintenanceState } from '../maintenance.ts';
+import { MaintenanceState } from '../../platform/maintenance-state.ts';
+import { JobMaintenanceGate } from '../maintenance.ts';
 import { JobWorker } from '../worker.ts';
 import { layerQueueHarness, layerWorker } from './support.ts';
 

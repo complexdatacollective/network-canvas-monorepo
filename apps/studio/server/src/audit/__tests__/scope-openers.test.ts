@@ -156,6 +156,15 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`readDeploymentState`: one untenanted row, read-only',
   },
+  [`${SERVER}/src/db/deployment-state.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: '`readDeploymentStateAsMaintenance`: the same row, read-only, on the worker’s maintenance client',
+  },
+  [`${SERVER}/src/programs/maintenance.ts › maintenance.apply › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: '`studio-api maintenance on|off` flipping the deployment’s flag, which belongs to no team; an operator’s command, not a researcher’s act',
+    },
   [`${SERVER}/src/db/migrate.ts › db.migrate › OwnerScope.open`]: {
     count: 1,
     why: '`studio-api migrate` applying the schema DDL as the owner; no team exists at this layer',

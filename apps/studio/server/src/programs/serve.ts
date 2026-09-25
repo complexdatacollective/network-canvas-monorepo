@@ -9,12 +9,17 @@ import { Database, DatabaseAbsent } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
+import {
+  maintenanceCheck,
+  MaintenanceTriggers,
+} from '../http/middleware/maintenance.ts';
 import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { HttpServerLive } from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
+import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
@@ -93,6 +98,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const status = yield* SchemaStatus;
       const limiter = yield* RateLimiter;
       const auth = yield* AuthService;
+      const triggers = yield* MaintenanceTriggers;
 
       // The Effect services every data-layer caller on this process runs on,
       // captured as one context and handed down to the promise-shaped
@@ -150,9 +156,16 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         // has to say so rather than infer it from the process still being
         // alive.
         schema: schemaCheck(status.read),
+        // Whether the maintenance gate is refusing requests, and why (#1901):
+        // the same cached triggers the gate reads, so the two cannot disagree.
+        maintenance: maintenanceCheck(triggers),
       });
     }),
   ).pipe(
+    // Built once and provided to both the gate and the readiness check, so
+    // they share one cached reading of each trigger.
+    Layer.provide(MaintenanceTriggers.layer),
+    Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
     // better-auth over the application client (#1927 §12). Serve-only: the
     // worker builds no auth provider at all. Above everything it asks for —
@@ -197,6 +210,8 @@ function withoutDatabase(env: StudioEnv) {
   ).pipe(
     // Disabled: with no database the selector never builds better-auth, so
     // none of the stand-ins below it is asked for anything.
+    // No `deployment_state` to read, no lock and no schema: never closed.
+    Layer.provide(MaintenanceTriggers.layerOpen),
     Layer.provide(AuthService.layerFromEnvironment),
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),

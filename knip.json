@@ -233,10 +233,16 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
-      // The image's third entry (#1909). src/index.ts and src/worker.ts are
-      // found through the `dev` script, which runs both from source; migrate
-      // is a one-shot no script starts, so it is named here.
-      "entry": ["scripts/auth-cli-config.ts!", "src/migrate.ts!"],
+      // The image's one-shot entries (#1909, #1901). src/index.ts and
+      // src/worker.ts are found through the `dev` script, which runs both from
+      // source, and src/rotate-secrets.ts through its own script; migrate and
+      // maintenance are one-shots no script starts from source, so they are
+      // named here.
+      "entry": [
+        "scripts/auth-cli-config.ts!",
+        "src/migrate.ts!",
+        "src/maintenance.ts!"
+      ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
