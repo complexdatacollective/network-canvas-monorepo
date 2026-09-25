@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Context, Effect, Option } from 'effect';
+import { Context, Effect, Layer, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -35,6 +35,7 @@ import {
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
+import { collectLogs } from '../platform/__tests__/support/logs.ts';
 import {
   createProtocolBuilderRuntime,
   IDLE_MS,
@@ -58,8 +59,16 @@ import {
 } from './support/database.ts';
 import { createRpcClient, type RpcTestClient } from './support/rpc.ts';
 import { testCipher, testKeyringEntry } from './support/secrets.ts';
+import {
+  openRateLimitStore,
+  reachableRedis,
+  REDIS_DATABASES,
+} from './support/valkey.ts';
 
 const TEAM_ID = 'protocol-builder-team';
+
+/** The limiter's store, for the one case whose subject is a denial. */
+const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
 
 type Researcher = {
   principal: SessionPrincipal;
@@ -420,6 +429,65 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     await adaRpc.dispose();
     await database?.dispose();
   });
+
+  it.skipIf(!limiterUrl)(
+    "logs a spent rpc_user budget through the program's logger",
+    async () => {
+      // The router's handlers are promises, so its limiter checks leave the
+      // program's fibers; a denial's warning must still reach the logger the
+      // program's services carry, not Effect's default one — in a deployment
+      // the difference between a JSON line and plain text nothing reads.
+      const logs = collectLogs();
+      const loggers = await Effect.runPromise(
+        Effect.scoped(Layer.build(logs.layer)),
+      );
+      const store = await openRateLimitStore(limiterUrl);
+      try {
+        const limited = createRpcRouter({
+          auth: authServiceStub({
+            listMemberships: memberships,
+            getMembership: membership,
+          }),
+          limiter: store.limiter({ rpc_user: { max: 1, windowMs: 60_000 } }),
+          capabilities: {
+            enabled: true,
+            emailAndPassword: true,
+            magicLink: false,
+            socialProviders: [],
+          },
+          deployment: { mode: 'self-hosted', billing: false },
+          readInstallation: () => Promise.resolve(null),
+          pool: database.appPool,
+          services: Context.merge(services, loggers),
+          protocolBuilder: createProtocolBuilderRuntime(() => now),
+          assetStore,
+          cipher: testCipher(),
+        });
+        const client = clientOn(limited, ADA);
+        const read = () =>
+          client.protocolBuilder.getSection({
+            protocolId,
+            sectionId: stageSection(reference.stageId),
+          });
+
+        await read();
+        const { error } = await safe(read());
+        if (!(error instanceof ORPCError)) {
+          throw error ?? new Error('the second read was not refused at all');
+        }
+        expect(error.code).toBe('TOO_MANY_REQUESTS');
+        // Mutation: run the check with `Effect.runPromise` → the warning goes
+        // to the default logger and nothing is captured.
+        expect(
+          logs.messages.filter((line) => line.startsWith('Rate limit reached')),
+        ).toEqual([
+          'Rate limit reached for rpc_user; callers are refused for up to 60s.',
+        ]);
+      } finally {
+        await store.dispose();
+      }
+    },
+  );
 
   it('refuses a submit from a caller that does not hold the lock', async () => {
     const sectionId = stageSection(reference.stageId);

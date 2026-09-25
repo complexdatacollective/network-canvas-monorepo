@@ -120,12 +120,13 @@ export type ProtocolBuilderRouterDeps = {
  */
 async function enforceRateLimit(
   limiter: RateLimiter['Service'] | undefined,
+  runCheck: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>,
   scope: RateLimitScope,
   subject: string,
   resHeaders: Headers | undefined,
 ): Promise<void> {
   if (!limiter) return;
-  const decision = await Effect.runPromise(limiter.check(scope, subject));
+  const decision = await runCheck(limiter.check(scope, subject));
   if (decision.allowed) return;
   resHeaders?.set('Retry-After', String(decision.retryAfterSeconds));
   throw new ORPCError('TOO_MANY_REQUESTS', {
@@ -176,6 +177,20 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       ? Promise.reject(new ORPCError('INTERNAL_SERVER_ERROR'))
       : Effect.runPromiseWith(deps.services)(effect);
 
+  /**
+   * Runs a limiter check, which needs no services but must still run over the
+   * program's: a denial logs its once-a-minute warning, and that line has to
+   * reach the program's logger rather than Effect's default one. The check
+   * comes before `sessionFor`'s refusal of a router with no services, so that
+   * router falls back to the default runtime rather than refusing here —
+   * keeping the answer a caller gets from it what it was, a 429 for a spent
+   * budget and the refusal otherwise.
+   */
+  const runCheck = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
+    deps.services === undefined
+      ? Effect.runPromise(effect)
+      : Effect.runPromiseWith(deps.services)(effect);
+
   const sessionFor = async (
     context: RpcContext,
     protocolId: string,
@@ -185,6 +200,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     // it on the rest of the RPC surface.
     await enforceRateLimit(
       deps.limiter,
+      runCheck,
       'rpc_user',
       principal.userId,
       context.resHeaders,
@@ -192,9 +208,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     if (!deps.pool || !deps.cipher || !deps.services) {
       throw new ORPCError('INTERNAL_SERVER_ERROR');
     }
-    const memberships = await Effect.runPromise(
-      auth.listMemberships(principal.userId),
-    );
+    const memberships = await run(auth.listMemberships(principal.userId));
     const session = await run(
       openSession({
         protocolId,
@@ -213,6 +227,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       // anyone else's quota.
       await enforceRateLimit(
         deps.limiter,
+        runCheck,
         'rpc_team',
         session.access.teamId,
         context.resHeaders,

@@ -36,6 +36,7 @@ export const REDIS_DATABASES = {
   rpcPlane: 9,
   authPlane: 10,
   authService: 11,
+  protocolBuilder: 12,
 } as const;
 
 /** `REDIS_URL` pointed at one logical database, or null when none is set. */
