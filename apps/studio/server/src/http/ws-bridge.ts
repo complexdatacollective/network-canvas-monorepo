@@ -11,10 +11,15 @@ import {
   CLIENT_SESSION_HEADER,
   readClientSessionId,
 } from '@codaco/studio-contract/client-session';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
 import type { WsBridgeDeps } from '../app.ts';
+import { Environment } from '../env.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { ClientSessionQuery } from './middleware/client-session-query.ts';
+import { requireWsOrigin } from './middleware/origin.ts';
+import { requirePrincipal } from './middleware/principal.ts';
+import { httpRateLimit } from './middleware/rate-limit.ts';
 import { RequestId } from './middleware/request-id.ts';
 
 /**
@@ -44,6 +49,35 @@ function frameOf(
 const WS_PATH = '/ws';
 
 /**
+ * The upgrade's guards, outermost first: the origin, then the principal, then
+ * the per-user upgrade limit — after the principal, because its subject is the
+ * user. What the limit stops is a reconnect loop becoming a connection storm:
+ * a tab opens one socket and reopens it whenever the network drops. An
+ * instance with no auth configured has no cookie to forge and no origin to
+ * compare against, so it has no origin gate — and no session, so the
+ * principal refuses every upgrade.
+ *
+ * Innermost, and so only for an admitted handshake, the tab's id moves off
+ * the query string: that is the `/ws` upgrade's own problem — `/rpc` is a
+ * fetch request and carries the header itself — so it is provided here rather
+ * than registered globally.
+ */
+const wsGuards = Layer.unwrap(
+  Effect.map(Environment, (env) => {
+    const principal =
+      env.auth === undefined
+        ? requirePrincipal
+        : requirePrincipal.combine(requireWsOrigin(env.auth.baseUrl));
+    return ClientSessionQuery.combine(
+      httpRateLimit(
+        'ws_upgrade',
+        Effect.map(Principal, ({ userId }) => userId),
+      ).combine(principal),
+    ).layer;
+  }),
+);
+
+/**
  * The upgrade, and the frames over it, as one route.
  *
  * The pull loop is inline rather than forked. A forked fiber would be a child
@@ -66,16 +100,9 @@ export const WsBridge = (deps: WsBridgeDeps) =>
         Effect.gen(function* () {
           const request = yield* HttpServerRequest.HttpServerRequest;
           const requestId = yield* RequestId;
-
-          // The guards are still the Hono middlewares they have always been, so
-          // they are run over the handshake as a web request and their refusal is
-          // answered as they wrote it.
-          const handshake = yield* HttpServerRequest.toWeb(request);
-          const admission = yield* Effect.promise(() => deps.admit(handshake));
-          if ('refused' in admission) {
-            return HttpServerResponse.fromWeb(admission.refused);
-          }
-          const { principal } = admission;
+          // Resolved by the guards below, which have admitted the handshake by
+          // the time this runs.
+          const principal = yield* Principal;
 
           const socket = yield* request.upgrade;
           // Registered for the duration of this request's scope, so a shutdown
@@ -92,7 +119,7 @@ export const WsBridge = (deps: WsBridgeDeps) =>
           //
           // Read from the header, not from the query string. A browser cannot
           // put a header on a WebSocket handshake, so the tab names itself on
-          // the upgrade URL — and the route middleware below rewrites it into
+          // the upgrade URL — and the route middleware above rewrites it into
           // the header before this runs, so both transports carry the id the
           // same way by the time anything reads it. The rewrite is also what
           // keeps "a parameter given twice names no tab" true here.
@@ -174,9 +201,4 @@ export const WsBridge = (deps: WsBridgeDeps) =>
         }),
       );
     }),
-  ).pipe(
-    // Provided rather than registered globally: moving the tab's id off the
-    // query string is the `/ws` upgrade's own problem — `/rpc` is a fetch
-    // request and carries the header itself.
-    Layer.provide(ClientSessionQuery.layer),
-  );
+  ).pipe(Layer.provide(wsGuards));

@@ -58,7 +58,6 @@ function echoing(): Studio & {
   let closed = 0;
   let tab: string | null | typeof NO_FRAME = NO_FRAME;
   const ws: WsBridgeDeps = {
-    admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: {
       message: (peer, data, options) => {
         tab = tabIn(options?.context);
@@ -86,7 +85,9 @@ function echoing(): Studio & {
   return {
     app: new Hono(),
     ws,
-    auth: authServiceStub(),
+    // The upgrade's principal gate asks the auth service, so the stub is the
+    // researcher the socket is admitted as.
+    auth: authServiceStub({ getSession: () => Effect.succeedSome(PRINCIPAL) }),
     limiter: undefined,
     rpc,
     checks: {},

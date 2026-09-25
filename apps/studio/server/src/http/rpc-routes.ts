@@ -11,7 +11,7 @@ import type { RpcDeps, RpcServices } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
 import { SetCookiesMiddleware } from '../rpc/set-cookies.ts';
 import { TeamAdministrationLive } from '../rpc/team-administration.ts';
-import { SameOrigin } from './middleware/same-origin.ts';
+import { requireSameOrigin } from './middleware/origin.ts';
 
 /**
  * `POST /rpc`: the SPA's twenty procedures, served by Effect's rpc server over
@@ -27,7 +27,7 @@ import { SameOrigin } from './middleware/same-origin.ts';
  * The two route-scoped middlewares are provided here rather than registered
  * globally, because both are about this route: `SetCookiesMiddleware` gives the
  * request the holder `setup.complete` signs a browser in through, and
- * `SameOrigin` is the cookie plane's CSRF gate, which only applies where a
+ * `requireSameOrigin` is the cookie plane's CSRF gate, which only applies where a
  * cookie is a credential. `RpcServer` registers its route while these are in
  * its build context, so the route captures them.
  */
@@ -47,9 +47,8 @@ export const RpcRoutes = (
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(SetCookiesMiddleware.layer),
   );
-  // Exactly where `app.ts` applied `requireSameOrigin('/rpc/*')`: an instance
-  // with no auth configured has no cookie to forge a call with.
+  // An instance with no auth configured has no cookie to forge a call with.
   return env.auth === undefined
     ? served
-    : served.pipe(Layer.provide(SameOrigin(env.auth.baseUrl).layer));
+    : served.pipe(Layer.provide(requireSameOrigin(env.auth.baseUrl).layer));
 };

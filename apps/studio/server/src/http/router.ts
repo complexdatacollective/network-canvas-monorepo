@@ -2,6 +2,8 @@ import { Effect, Layer } from 'effect';
 
 import type { Studio } from '../app.ts';
 import { Environment } from '../env.ts';
+import { ApiV1Routes } from './api-v1.ts';
+import { AuthMount } from './auth-mount.ts';
 import { type HealthChecks, HealthRoutes } from './health.ts';
 import { HonoBridge } from './hono-bridge.ts';
 import { ClientAddressLive } from './middleware/client-address.ts';
@@ -9,6 +11,7 @@ import { MaintenanceGate } from './middleware/maintenance.ts';
 import { ProblemJson } from './middleware/problem-json.ts';
 import { RequestIdLive } from './middleware/request-id.ts';
 import { RpcRoutes } from './rpc-routes.ts';
+import { StorageRoutes } from './storage.ts';
 import { WsBridge } from './ws-bridge.ts';
 
 /**
@@ -32,11 +35,13 @@ import { WsBridge } from './ws-bridge.ts';
  * and `/readyz` by exact path itself rather than by being registered after
  * them.
  *
- * The Hono bridge is outermost — built last — because it is a catch-all:
- * everything the Effect shell owns has to be registered before the route that
- * matches everything else. `/rpc` sits between the health routes and `/ws`,
- * which is where design §8 puts it: the two machine surfaces the shell owns,
- * then the upgrade, then whatever is left.
+ * The routes follow in design §8's order: health, the better-auth mount, the
+ * public API's limit, `/storage`, `/rpc`, the `/ws` upgrade, and last the Hono
+ * bridge — outermost, built last — because it is a catch-all: everything the
+ * Effect shell owns has to be registered before the route that matches
+ * everything else. Each route layer carries its own route middlewares (the
+ * origin gates, the principal, the HTTP-level limits), so the order among the
+ * routes is registration order and nothing more.
  *
  * The environment is read here rather than passed in, because the only thing
  * the routes want from it is the browser-facing origin the `/rpc` CSRF gate
@@ -56,7 +61,10 @@ export const Routes = (studio: Studio, checks: HealthChecks) =>
         ),
       );
       const health = HealthRoutes(checks).pipe(Layer.provideMerge(middlewares));
-      const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(health));
+      const auth = AuthMount.pipe(Layer.provideMerge(health));
+      const apiV1 = ApiV1Routes(studio.app).pipe(Layer.provideMerge(auth));
+      const storage = StorageRoutes.pipe(Layer.provideMerge(apiV1));
+      const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(storage));
       const ws = WsBridge(studio.ws).pipe(Layer.provideMerge(rpc));
       return HonoBridge(studio.app).pipe(Layer.provideMerge(ws));
     }),

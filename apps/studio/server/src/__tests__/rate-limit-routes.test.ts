@@ -12,10 +12,12 @@ import {
   TeamInvitationId,
 } from '@codaco/studio-contract/schema/ids';
 
-import { createApp, createStudio, type Studio } from '../app.ts';
+import { createStudio, type Studio } from '../app.ts';
+import type { AuthService } from '../auth/service.ts';
+import type { StudioEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
-import type { RateLimitSettings } from '../rate-limit/scopes.ts';
+import { RATE_LIMITS, type RateLimitSettings } from '../rate-limit/scopes.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
@@ -47,16 +49,21 @@ const store = await openRateLimitStore(url);
 afterAll(() => store.dispose());
 
 /**
- * A peer address of its own per case, so no two cases share a bucket.
+ * A client address of its own per case, so no two cases share a bucket.
  *
- * The app reads the address the Effect shell resolved off the adapter
- * bindings now (src/http/middleware/client-address.ts does the resolving), so
- * this is that binding rather than the node adapter's connection info. What
- * the resolution itself decides is in src/__tests__/client-address.test.ts.
+ * The HTTP limits are the Effect router's route middleware, keyed by the
+ * address the global `ClientAddress` middleware resolved — so the cases run
+ * over a real socket, whose peer is loopback, with loopback trusted as a
+ * proxy: the address is then the forwarded one, exactly as it is behind a
+ * deployment's reverse proxy. What the resolution itself decides is in
+ * src/__tests__/client-address.test.ts.
  */
-function peer(address: string) {
-  return { clientAddress: address };
+function peer(address: string): Record<string, string> {
+  return { 'x-forwarded-for': address };
 }
+
+/** The browser-facing origin these cases configure, which better-auth is handed. */
+const PUBLIC_URL = 'http://studio.example:5173';
 
 /** A limit small enough to count to, for the one scope a case is about. */
 const perMinute = (max: number) => ({ max, windowMs: 60_000 });
@@ -70,11 +77,25 @@ function appOptions(
   limits: Partial<RateLimitSettings>,
   principalUserId?: string,
   memberOfTeamId?: string,
+  handler: Partial<Pick<AuthService['Service'], 'handler'>> = {},
 ) {
-  const env = resolve({
+  const resolved = resolve({
     NODE_ENV: 'test',
+    TRUSTED_PROXIES: ['127.0.0.1'],
     ...(url ? { REDIS_URL: url } : {}),
   });
+  // Auth configured without a database, which the environment's own decode
+  // would refuse: nothing here reaches one, and the origin the routes rebuild
+  // better-auth's request against is what a case asserts.
+  const env: StudioEnv = {
+    ...resolved,
+    auth: {
+      secret: 'a'.repeat(40),
+      baseUrl: PUBLIC_URL,
+      trustedProxies: ['127.0.0.1'],
+      socialProviders: {},
+    },
+  };
   const deps = {
     limiter: store.limiter(limits),
     // A pool that is never connected to. `openTeam` needs one to exist before
@@ -85,6 +106,7 @@ function appOptions(
     auth: authServiceStub(
       principalUserId
         ? {
+            ...handler,
             getMembership: (_userId, teamId) =>
               Effect.succeed(
                 Option.fromNullishOr(
@@ -104,20 +126,47 @@ function appOptions(
                 sessionId: `session-${principalUserId}`,
               }),
           }
-        : undefined,
+        : handler,
     ),
   };
   return { env, deps };
 }
 
-function appWith(
+/**
+ * The whole stack on a loopback port, and a request against it from a given
+ * client address. `handler` stands in for better-auth's web handler.
+ */
+async function serverWith(
   limits: Partial<RateLimitSettings>,
-  principalUserId?: string,
-  memberOfTeamId?: string,
+  options: {
+    readonly principalUserId?: string;
+    readonly handler?: AuthService['Service']['handler'];
+  } = {},
 ) {
-  const { env, deps } = appOptions(limits, principalUserId, memberOfTeamId);
-  return createApp(env, deps);
+  const { env, deps } = appOptions(
+    limits,
+    options.principalUserId,
+    undefined,
+    options.handler === undefined ? {} : { handler: options.handler },
+  );
+  const server = await startStudioServer(env, createStudio(env, deps));
+  return {
+    env,
+    request: (address: string, path: string, init: RequestInit = {}) =>
+      fetch(`${server.origin}${path}`, {
+        ...init,
+        headers: { ...peer(address), ...init.headers },
+      }),
+    dispose: server.dispose,
+  };
 }
+
+/** A JSON POST, as the SPA's sign-in form sends one. */
+const postJson = (body: unknown): RequestInit => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
 
 function studioWith(
   limits: Partial<RateLimitSettings>,
@@ -200,36 +249,139 @@ async function expectProblemJson429(response: Response): Promise<void> {
 
 describe.skipIf(!url)('the limited request paths', () => {
   it('refuses a third magic-link request for one email address', async () => {
-    const app = appWith({ sign_in_email: perMinute(2) });
+    const server = await serverWith({ sign_in_email: perMinute(2) });
     const email = `researcher-${randomUUID()}@example.org`;
-    const send = () =>
-      app.request(
+    // Three different addresses, so what refuses the third call can only be
+    // the per-email limit.
+    const send = (address: string) =>
+      server.request(
+        address,
         '/api/auth/sign-in/magic-link',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, callbackURL: '/' }),
-        },
-        // Two different addresses, so what refuses the third call can only be
-        // the per-email limit.
-        peer(`203.0.113.${1 + Math.floor(Math.random() * 200)}`),
+        postJson({ email, callbackURL: '/' }),
       );
+    try {
+      expect((await send('203.0.113.1')).status).not.toBe(429);
+      // Upper case and a trailing slash name the same account on the same
+      // endpoint: one bucket.
+      expect(
+        (
+          await server.request(
+            '203.0.113.2',
+            '/api/auth/sign-in/magic-link/',
+            postJson({ email: email.toUpperCase(), callbackURL: '/' }),
+          )
+        ).status,
+      ).not.toBe(429);
+      await expectProblemJson429(await send('203.0.113.3'));
 
-    expect((await send()).status).not.toBe(429);
-    expect((await send()).status).not.toBe(429);
-    await expectProblemJson429(await send());
+      // Another address is another bucket.
+      const other = await server.request(
+        '203.0.113.4',
+        '/api/auth/sign-in/magic-link',
+        postJson({ email: `other-${email}`, callbackURL: '/' }),
+      );
+      expect(other.status).not.toBe(429);
+    } finally {
+      await server.dispose();
+    }
+  });
 
-    // Another address is another bucket.
-    const other = await app.request(
-      '/api/auth/sign-in/magic-link',
+  it('hands better-auth the body the sign-in limit read', async () => {
+    // The limit has to read the body to know whose account it is, and the
+    // body can be read once: this is what says better-auth still got it.
+    const seen: Array<{ url: string; method: string; body: string }> = [];
+    const server = await serverWith(
+      { sign_in_email: perMinute(1) },
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: `other-${email}`, callbackURL: '/' }),
+        handler: (request) =>
+          Effect.promise(async () => {
+            seen.push({
+              url: request.url,
+              method: request.method,
+              body: await request.text(),
+            });
+            return Response.json({ signedIn: true });
+          }),
       },
-      peer('203.0.113.4'),
     );
-    expect(other.status).not.toBe(429);
+    const credentials = {
+      email: `reader-${randomUUID()}@example.org`,
+      password: 'correct horse battery staple',
+    };
+    try {
+      const response = await server.request(
+        '203.0.113.6',
+        '/api/auth/sign-in/email?from=form',
+        postJson(credentials),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ signedIn: true });
+      // Mutation: forward the request without its body → `body` is ''.
+      expect(seen).toEqual([
+        {
+          // Rebuilt against the configured origin, not the socket's.
+          url: `${PUBLIC_URL}/api/auth/sign-in/email?from=form`,
+          method: 'POST',
+          body: JSON.stringify(credentials),
+        },
+      ]);
+
+      // And it was the limit's to spend: the second attempt never reaches
+      // better-auth.
+      await expectProblemJson429(
+        await server.request(
+          '203.0.113.7',
+          '/api/auth/sign-in/email',
+          postJson(credentials),
+        ),
+      );
+      expect(seen).toHaveLength(1);
+    } finally {
+      await server.dispose();
+    }
+  });
+
+  it("answers better-auth's own rate limit as problem JSON with Retry-After", async () => {
+    // better-auth refuses its per-address limit with a `{ message }` body and
+    // `X-Retry-After`; a caller reads every refusal the same way here.
+    let retryAfter: string | null = '42';
+    const server = await serverWith(
+      {},
+      {
+        handler: () =>
+          Effect.succeed(
+            Response.json(
+              { message: 'Too many requests. Please try again later.' },
+              {
+                status: 429,
+                headers:
+                  retryAfter === null ? {} : { 'X-Retry-After': retryAfter },
+              },
+            ),
+          ),
+      },
+    );
+    try {
+      const refused = await server.request(
+        '203.0.113.8',
+        '/api/auth/get-session',
+      );
+      expect(refused.headers.get('Retry-After')).toBe('42');
+      await expectProblemJson429(refused);
+
+      // Without the header, the interval is the per-address window itself.
+      retryAfter = null;
+      const unstated = await server.request(
+        '203.0.113.8',
+        '/api/auth/get-session',
+      );
+      expect(unstated.headers.get('Retry-After')).toBe(
+        String(RATE_LIMITS.sign_in_address.windowMs / 1000),
+      );
+      await expectProblemJson429(unstated);
+    } finally {
+      await server.dispose();
+    }
   });
 
   it('refuses a third acceptance of one invitation token, on the path the client takes', async () => {
@@ -264,34 +416,33 @@ describe.skipIf(!url)('the limited request paths', () => {
   it('refuses the blocked better-auth invitation route outright', async () => {
     // The reason the limit moved: this path answers 404 whatever is sent to
     // it, so nothing guessing a token ever reaches it.
-    const app = appWith({});
-    const response = await app.request(
-      '/api/auth/organization/accept-invitation',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitationId: randomUUID() }),
-      },
-      peer('203.0.113.5'),
-    );
-    expect(response.status).toBe(404);
+    const server = await serverWith({});
+    try {
+      const response = await server.request(
+        '203.0.113.5',
+        '/api/auth/organization/accept-invitation',
+        postJson({ invitationId: randomUUID() }),
+      );
+      expect(response.status).toBe(404);
+    } finally {
+      await server.dispose();
+    }
   });
 
   it('refuses a third storage read from one client address', async () => {
-    const app = appWith({ storage_read: perMinute(2) });
-    const address = '203.0.113.11';
-    const read = () =>
-      app.request(`/storage/${randomUUID()}`, {}, peer(address));
+    const server = await serverWith({ storage_read: perMinute(2) });
+    const read = (address: string) =>
+      server.request(address, `/storage/${randomUUID()}`);
+    try {
+      expect((await read('203.0.113.11')).status).not.toBe(429);
+      expect((await read('203.0.113.11')).status).not.toBe(429);
+      await expectProblemJson429(await read('203.0.113.11'));
 
-    expect((await read()).status).not.toBe(429);
-    expect((await read()).status).not.toBe(429);
-    await expectProblemJson429(await read());
-
-    // A different address still reads: the bucket is the caller, not the path.
-    expect(
-      (await app.request(`/storage/${randomUUID()}`, {}, peer('203.0.113.12')))
-        .status,
-    ).not.toBe(429);
+      // A different address still reads: the bucket is the caller, not the path.
+      expect((await read('203.0.113.12')).status).not.toBe(429);
+    } finally {
+      await server.dispose();
+    }
   });
 
   it('does not let a rotating Authorization header escape the public API limit', async () => {
@@ -299,53 +450,55 @@ describe.skipIf(!url)('the limited request paths', () => {
     // unvalidated string. Keying on it would let an anonymous caller mint a
     // fresh allowance per request by changing the value — the address limit
     // doing nothing at all.
-    const app = appWith({ public_api: perMinute(2) });
+    const server = await serverWith({ public_api: perMinute(2) });
     const call = () =>
-      app.request(
-        '/api/v1/status',
-        { headers: { Authorization: `Bearer ${randomUUID()}` } },
-        peer('203.0.113.21'),
-      );
-
-    expect((await call()).status).toBe(200);
-    expect((await call()).status).toBe(200);
-    await expectProblemJson429(await call());
+      server.request('203.0.113.21', '/api/v1/status', {
+        headers: { Authorization: `Bearer ${randomUUID()}` },
+      });
+    try {
+      expect((await call()).status).toBe(200);
+      expect((await call()).status).toBe(200);
+      await expectProblemJson429(await call());
+    } finally {
+      await server.dispose();
+    }
   });
 
   it('refuses a third public API call from one address when there is no token', async () => {
-    const app = appWith({ public_api: perMinute(2) });
-    const call = (address: string) =>
-      app.request('/api/v1/status', {}, peer(address));
-
-    expect((await call('203.0.113.31')).status).toBe(200);
-    expect((await call('203.0.113.31')).status).toBe(200);
-    await expectProblemJson429(await call('203.0.113.31'));
-    expect((await call('203.0.113.32')).status).toBe(200);
+    const server = await serverWith({ public_api: perMinute(2) });
+    const call = (address: string) => server.request(address, '/api/v1/status');
+    try {
+      expect((await call('203.0.113.31')).status).toBe(200);
+      expect((await call('203.0.113.31')).status).toBe(200);
+      await expectProblemJson429(await call('203.0.113.31'));
+      expect((await call('203.0.113.32')).status).toBe(200);
+    } finally {
+      await server.dispose();
+    }
   });
 
-  it('refuses a third WebSocket upgrade for one user', async () => {
-    // Through the composed server, because the upgrade guards answer through
-    // the Effect shell's bridge now (src/http/ws-bridge.ts).
+  it('refuses a third WebSocket upgrade for one user, from any address', async () => {
+    // Keyed by the user the principal gate resolved, not by the address: a
+    // tab that reconnects from a new network is the same tab.
     const userId = `user-${randomUUID()}`;
-    const { env, deps } = appOptions({ ws_upgrade: perMinute(2) }, userId);
-    const { origin, dispose } = await startStudioServer(
-      env,
-      createStudio(env, deps),
+    const server = await serverWith(
+      { ws_upgrade: perMinute(2) },
+      { principalUserId: userId },
     );
     try {
-      const upgrade = () =>
-        fetch(`${origin}/ws`, {
-          headers: { origin: new URL(env.auth?.baseUrl ?? origin).origin },
+      const upgrade = (address: string) =>
+        server.request(address, '/ws', {
+          headers: { origin: new URL(PUBLIC_URL).origin },
         });
 
       // The route behind the guards needs a real upgrade, which a plain GET
       // is not; what matters is that the first two reached it and the third
       // did not.
-      expect((await upgrade()).status).not.toBe(429);
-      expect((await upgrade()).status).not.toBe(429);
-      await expectProblemJson429(await upgrade());
+      expect((await upgrade('203.0.113.41')).status).not.toBe(429);
+      expect((await upgrade('203.0.113.42')).status).not.toBe(429);
+      await expectProblemJson429(await upgrade('203.0.113.43'));
     } finally {
-      await dispose();
+      await server.dispose();
     }
   });
 

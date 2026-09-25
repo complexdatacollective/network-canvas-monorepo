@@ -32,6 +32,7 @@ import {
   SecretsCipherLive,
   verifyKeyring,
 } from '../secrets/services.ts';
+import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
 
 // The web program, development and production both: one Node process serving
@@ -98,6 +99,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const status = yield* SchemaStatus;
       const limiter = yield* RateLimiter;
       const auth = yield* AuthService;
+      const objectStore = yield* ObjectStore;
       const triggers = yield* MaintenanceTriggers;
 
       // The Effect services every data-layer caller on this process runs on,
@@ -147,7 +149,13 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         yield* bootChecks;
       }
 
-      const studio = createStudio(env, { services, pool, limiter, auth });
+      const studio = createStudio(env, {
+        services,
+        pool,
+        limiter,
+        auth,
+        objectStore,
+      });
       return Serve(studio, {
         ...studio.checks,
         // Is the database this build's? Both processes refuse a stale schema
@@ -167,6 +175,9 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Layer.provide(MaintenanceTriggers.layer),
     Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
+    // The bucket `/storage`, the protocol builder's content promotions and
+    // readiness share, or none where `S3_*` is unset.
+    Layer.provide(ObjectStore.layer),
     // better-auth over the application client (#1927 §12). Serve-only: the
     // worker builds no auth provider at all. Above everything it asks for —
     // the client, the cipher, the limiter it counts sign-in attempts in and
@@ -204,6 +215,7 @@ function withoutDatabase(env: StudioEnv) {
       const studio = createStudio(env, {
         limiter: yield* RateLimiter,
         auth: yield* AuthService,
+        objectStore: yield* ObjectStore,
       });
       return Serve(studio, studio.checks);
     }),
@@ -212,6 +224,7 @@ function withoutDatabase(env: StudioEnv) {
     // none of the stand-ins below it is asked for anything.
     // No `deployment_state` to read, no lock and no schema: never closed.
     Layer.provide(MaintenanceTriggers.layerOpen),
+    Layer.provide(ObjectStore.layer),
     Layer.provide(AuthService.layerFromEnvironment),
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),

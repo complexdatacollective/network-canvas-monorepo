@@ -1,6 +1,5 @@
-import { Effect, Option } from 'effect';
+import { Effect, type Option } from 'effect';
 import { Headers, HttpServerRequest } from 'effect/unstable/http';
-import { createMiddleware } from 'hono/factory';
 
 import { AuthService, type Principal } from './service.ts';
 
@@ -31,43 +30,3 @@ export const principalFromRequest: Effect.Effect<
 > = Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) =>
   principalFromHeaders(request.headers),
 );
-
-export type PrincipalVariables = {
-  Variables: { principal: Principal | null };
-};
-
-/**
- * The Hono residue's principal: `principalFromHeaders` over the raw request,
- * run against the process's auth service. It goes with the Hono app, when the
- * `/storage` and `/ws` gates move onto the Effect router and take
- * `principalFromRequest` instead.
- */
-export function createPrincipalMiddleware(auth: AuthService['Service']) {
-  return createMiddleware<PrincipalVariables>(async (c, next) => {
-    const principal = await Effect.runPromise(
-      Effect.provideService(
-        principalFromHeaders(Headers.fromInput(c.req.raw.headers)),
-        AuthService,
-        auth,
-      ),
-    );
-    c.set('principal', Option.getOrNull(principal));
-    await next();
-  });
-}
-
-/**
- * The RPC surface enforces this per-procedure inside its `Authenticated`
- * middleware; this covers routes outside it — the WebSocket upgrade and the
- * unsafe `/storage` methods.
- */
-export function requirePrincipal() {
-  return createMiddleware<PrincipalVariables>(async (c, next) => {
-    if (!c.get('principal')) {
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'Content-Type': 'application/problem+json',
-      });
-    }
-    await next();
-  });
-}

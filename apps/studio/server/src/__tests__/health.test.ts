@@ -5,7 +5,6 @@ import type pg from 'pg';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
-import { createAssetStore } from '../assets.ts';
 import { OwnerDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { createOwnerPool } from '../db/pool.ts';
@@ -149,25 +148,6 @@ describe('the schema check over a pool', () => {
     } finally {
       await pool.end();
     }
-  });
-});
-
-describe('the object-store check', () => {
-  it('aborts the request rather than only giving up on it', async () => {
-    // The route can stop waiting on its own, but the SDK would carry on
-    // retrying and holding a socket — once per probe, every few seconds, for
-    // as long as the endpoint is unreachable. So the deadline is handed to the
-    // command as well, and this is what says it arrived: an abort, not the
-    // transport error the SDK would have reached on its own.
-    const store = createAssetStore({
-      endpoint: 'http://127.0.0.1:59998',
-      region: 'us-east-1',
-      bucket: 'studio-test',
-      accessKeyId: 'key',
-      secretAccessKey: 'secret',
-    });
-
-    await expect(store.head(AbortSignal.timeout(1))).rejects.toThrow(/abort/i);
   });
 });
 

@@ -11,6 +11,7 @@ import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import type { RpcServices, StudioServices } from '../../rpc/deps.ts';
 import { SecretsCipherAbsent } from '../../secrets/services.ts';
+import { ObjectStore } from '../../storage/object-store.ts';
 import { limiterWithoutStore } from './valkey.ts';
 
 /**
@@ -37,14 +38,19 @@ const dataServices = (studio: Studio): Layer.Layer<StudioServices> =>
     : Layer.succeedContext(studio.rpc.services);
 
 /**
- * Everything the `/rpc` route asks for: the data layer above, and the auth
- * provider and limiter the Studio was built over — which is what a program
+ * Everything the routes ask for: the data layer above, and the auth provider,
+ * limiter and object store the Studio was built over — which is what a program
  * provides from its own graph. A Studio built with no limiter gets one over no
- * store, which admits every call, as a deployment with no `REDIS_URL` does.
+ * store, which admits every call, as a deployment with no `REDIS_URL` does;
+ * one built with no object store gets none, as a deployment with no `S3_*`
+ * does.
  */
-export const studioServices = (studio: Studio): Layer.Layer<RpcServices> =>
+export const studioServices = (
+  studio: Studio,
+): Layer.Layer<RpcServices | ObjectStore> =>
   Layer.mergeAll(
     dataServices(studio),
     Layer.succeed(AuthService)(studio.auth),
     Layer.succeed(RateLimiter)(studio.limiter ?? limiterWithoutStore),
+    Layer.succeed(ObjectStore)(studio.objectStore ?? ObjectStore.absent),
   );

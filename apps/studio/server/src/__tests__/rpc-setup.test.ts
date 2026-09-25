@@ -331,7 +331,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     // was not. Standing in for it with the provider's own sign-up endpoint,
     // which is exactly what the procedure calls.
     const account = owner();
-    const signedUp = await studio.app.request('/api/auth/sign-up/email', {
+    const signedUp = await composed.request('/api/auth/sign-up/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -366,7 +366,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
 
   it('refuses an address whose password the caller cannot produce', async () => {
     const account = owner();
-    const signedUp = await studio.app.request('/api/auth/sign-up/email', {
+    const signedUp = await composed.request('/api/auth/sign-up/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

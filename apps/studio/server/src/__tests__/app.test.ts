@@ -3,10 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createApp, createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
+import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { authServiceStub } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
 import { composeStudio } from './support/serve.ts';
+
+/**
+ * The composed stack with better-auth's web handler stubbed: `/api/auth/*` is
+ * the Effect router's auth mount, so its organization-policy gate is only
+ * reachable through the stack.
+ */
+function authMountWith(handler: AuthService['Service']['handler']) {
+  const env = readEnv();
+  return composeStudio(
+    env,
+    createStudio(env, { auth: authServiceStub({ handler }) }),
+  );
+}
 
 describe('studio server', () => {
   it('reports healthy on /healthz', async () => {
@@ -92,9 +106,7 @@ describe('studio server', () => {
 
   it('refuses audited team writes before Better Auth can mutate them', async () => {
     const handler = vi.fn(() => Effect.succeed(Response.json({ wrote: true })));
-    const app = createApp(undefined, {
-      auth: authServiceStub({ handler }),
-    });
+    const app = authMountWith(handler);
     const bodies: Record<string, object> = {
       '/api/auth/organization/create': {
         name: 'Unaudited Team',
@@ -152,19 +164,19 @@ describe('studio server', () => {
         });
       }
     }
+    await app.dispose();
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('fails closed for an unclassified Better Auth organization mutation', async () => {
     const handler = vi.fn(() => Effect.succeed(Response.json({ wrote: true })));
-    const app = createApp(undefined, {
-      auth: authServiceStub({ handler }),
-    });
+    const app = authMountWith(handler);
 
     const response = await app.request(
       '/api/auth/organization/future-team-write/?attempt=1',
       { method: 'POST' },
     );
+    await app.dispose();
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ title: 'Not Found', status: 404 });
@@ -175,14 +187,15 @@ describe('studio server', () => {
     const handler = vi.fn(() =>
       Effect.succeed(Response.json({ available: true })),
     );
-    const app = createApp(undefined, {
-      auth: authServiceStub({ handler }),
-    });
+    const app = authMountWith(handler);
 
+    // Mutation: skip the trailing-slash normalisation before the policy
+    // lookup → this allowed route reads as unclassified and 404s.
     const response = await app.request(
       '/api/auth/organization/check-slug/?slug=example',
       { method: 'POST' },
     );
+    await app.dispose();
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ available: true });

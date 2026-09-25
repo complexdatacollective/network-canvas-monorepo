@@ -11,7 +11,7 @@ import {
   SEED_ADMIN_PASSWORD,
   seed,
 } from '../../scripts/seed/seed.ts';
-import { createApp, createStudio, type Studio } from '../app.ts';
+import { createStudio, type Studio } from '../app.ts';
 import { principalFromRequest } from '../auth/principal.ts';
 import { AuthService, type SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
@@ -152,8 +152,8 @@ describe('principal resolution', () => {
     expect(asked?.['cookie']).toBe('studio.session_token=opaque');
     // The provider is handed a request rather than a cookie: which headers
     // its endpoint consults is its own business, so the whole set goes
-    // through — the header set `createPrincipalMiddleware` passed on the Hono
-    // mount. This client talks to the handlers in process, so the set it
+    // through — the same set the HTTP gates hand it
+    // (`http/middleware/principal.ts`). This client talks to the handlers in process, so the set it
     // presents is the only one there is; the case below is where a real
     // request and a message that contradicts it are told apart.
     expect(asked?.['user-agent']).toBe('Studio Test Agent');
@@ -571,10 +571,10 @@ describe('unconfigured auth', () => {
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
-    const app = createApp(env);
-    const res = await app.request('/api/auth/session', {
-      method: 'GET',
-    });
+    const stack = composeStudio(env, createStudio(env));
+    const res = await stack
+      .request('/api/auth/session', { method: 'GET' })
+      .finally(() => stack.dispose());
     expect(res.status).toBe(503);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
@@ -633,11 +633,14 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
       // services the sign-in mail is queued on, and no mailer for it to reach
       // for — src/__tests__/process-separation.test.ts pins that nodemailer is
       // not even in this process's module graph.
-      const app = createApp(env, {
-        auth: liveAuthService(env, database.services),
-        services: database.services,
-        pool: database.appPool,
-      });
+      const app = composeStudio(
+        env,
+        createStudio(env, {
+          auth: liveAuthService(env, database.services),
+          services: database.services,
+          pool: database.appPool,
+        }),
+      );
       const email = `queued-${Date.now()}@example.com`;
 
       const send = await app.request('/api/auth/sign-in/magic-link', {
@@ -672,6 +675,7 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
       const verify = await app.request(url);
       expect([302, 200]).toContain(verify.status);
       expect(verify.headers.get('set-cookie')).toBeTruthy();
+      await app.dispose();
     } finally {
       await database.dispose();
     }
@@ -720,10 +724,14 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
   let database: TestDatabaseRuntime | undefined;
   let limits: OpenRateLimitStore | undefined;
   let studio: Studio;
+  let stack: ReturnType<typeof composeStudio> | undefined;
 
+  // Through the composed stack's auth mount, which reads the body for the
+  // per-email limit before better-auth does: a sign-in that succeeds on the
+  // right password is better-auth having received it.
   const signIn = (password: string) => {
-    if (!env.auth) throw new Error('dev env must configure auth');
-    return studio.app.request('/api/auth/sign-in/email', {
+    if (!env.auth || !stack) throw new Error('dev env must configure auth');
+    return stack.request('/api/auth/sign-in/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -750,9 +758,11 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
       auth: liveAuthService(env, database.services, { cipher: testCipher() }),
       limiter: limits.limiter({ sign_in_email: SIGN_IN_ALLOWANCE }),
     });
+    stack = composeStudio(env, studio);
   }, SEEDING_TIMEOUT_MS);
 
   afterAll(async () => {
+    await stack?.dispose();
     await database?.dispose();
     await limits?.dispose();
   });

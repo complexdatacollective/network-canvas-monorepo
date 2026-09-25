@@ -10,12 +10,12 @@ import { composeStudio, startStudioServer } from './support/serve.ts';
 /**
  * One unsafe request at `POST /rpc` through the composed Effect router.
  *
- * `/rpc` belongs to the Effect shell now, so the gate under test is the
- * route-scoped `SameOrigin` middleware rather than Hono's
- * `requireSameOrigin('/rpc/*')` — the same decision, in the place it moved to.
- * The body is empty on purpose: the gate answers before the rpc server reads
- * a frame, so a refusal needs no payload, and a request the gate lets through
- * only has to prove it was not refused.
+ * The gate under test is `http/middleware/origin.ts`'s `requireSameOrigin`,
+ * the route middleware every cookie-plane surface is given — `/rpc` here,
+ * the unsafe `/storage` methods in assets.test.ts. The body is empty on
+ * purpose: the gate answers before the rpc server reads a frame, so a refusal
+ * needs no payload, and a request the gate lets through only has to prove it
+ * was not refused.
  */
 async function postRpc(headers: Record<string, string> = {}) {
   const env = readEnv();
@@ -31,9 +31,9 @@ async function postRpc(headers: Record<string, string> = {}) {
 }
 
 /**
- * The whole stack on a real port. The upgrade guards answer through the
- * Effect shell's bridge now, so the two `/ws` cases below need the composed
- * server rather than an in-process Hono request.
+ * The whole stack on a real port, because the `/ws` route upgrades: its
+ * guards (`requireWsOrigin`, then the principal) are route middleware in
+ * front of the upgrade.
  */
 function serverWithFakeAuth() {
   const env = readEnv();

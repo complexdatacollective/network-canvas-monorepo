@@ -170,7 +170,6 @@ function tabIn(context: unknown): string | null {
  */
 function reporting(): Studio {
   const ws: WsBridgeDeps = {
-    admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: (() => {
       const deps: WsBridgeDeps['socket'] = {
         message: (peer, _data, options) => {
@@ -199,7 +198,9 @@ function reporting(): Studio {
   return {
     app: new Hono(),
     ws,
-    auth: authServiceStub(),
+    // The upgrade's principal gate asks the auth service, so the stub is the
+    // researcher the socket is admitted as.
+    auth: authServiceStub({ getSession: () => Effect.succeedSome(PRINCIPAL) }),
     limiter: undefined,
     rpc,
     checks: {},

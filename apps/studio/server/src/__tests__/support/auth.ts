@@ -9,6 +9,7 @@ import { Jobs, RecordedJobs } from '../../jobs/jobs.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import type { StudioServices } from '../../rpc/deps.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
+import { composeStudio } from './serve.ts';
 import { limiterWithoutStore } from './valkey.ts';
 
 /**
@@ -125,29 +126,33 @@ export async function signInWithMagicLink(
   const auth = liveAuthService(env, services, { jobs });
   // The same pool the rpc handlers are wired with, so procedures address the
   // scratch schema too rather than whatever DATABASE_URL points at. The whole
-  // Studio rather than its Hono half: `/rpc` is the Effect shell's now, and a
-  // suite driving it needs `studio.rpc` (see support/rpc.ts).
+  // Studio, composed: `/api/auth/*` and `/rpc` are both the Effect shell's,
+  // and a suite driving `/rpc` needs `studio.rpc` (see support/rpc.ts).
   const studio = createStudio(env, { auth, pool, services });
-  const app = studio.app;
+  const stack = composeStudio(env, studio);
   const email = `${prefix}-${Date.now()}@example.com`;
 
-  const send = await app.request('/api/auth/sign-in/magic-link', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'origin': 'http://localhost:5173',
-    },
-    body: JSON.stringify({ email, callbackURL: '/' }),
-  });
-  expect(send.status).toBe(200);
-  const sent = sentLink(Context.get(jobs, RecordedJobs));
-  expect(sent.email).toBe(email);
+  try {
+    const send = await stack.request('/api/auth/sign-in/magic-link', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': 'http://localhost:5173',
+      },
+      body: JSON.stringify({ email, callbackURL: '/' }),
+    });
+    expect(send.status).toBe(200);
+    const sent = sentLink(Context.get(jobs, RecordedJobs));
+    expect(sent.email).toBe(email);
 
-  const verify = await app.request(sent.url);
-  expect([302, 200]).toContain(verify.status);
-  const setCookie = verify.headers.get('set-cookie');
-  expect(setCookie).toBeTruthy();
-  const cookie = (setCookie ?? '').split(';')[0]!;
+    const verify = await stack.request(sent.url);
+    expect([302, 200]).toContain(verify.status);
+    const setCookie = verify.headers.get('set-cookie');
+    expect(setCookie).toBeTruthy();
+    const cookie = (setCookie ?? '').split(';')[0]!;
 
-  return { studio, app, auth, email, cookie };
+    return { studio, auth, email, cookie };
+  } finally {
+    await stack.dispose();
+  }
 }

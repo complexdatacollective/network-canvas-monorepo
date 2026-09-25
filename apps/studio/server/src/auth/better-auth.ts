@@ -118,7 +118,7 @@ export function createBetterAuthInstance({
     database: (options: BetterAuthOptions) =>
       withSecretsAdapter(adapter(options), cipher),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
-    // is covered by src/auth/csrf.ts (#1248).
+    // is covered by src/http/middleware/origin.ts (#1248).
     trustedOrigins: [env.baseUrl],
     // Sign-in attempt limits count in the shared store, so they mean the same
     // thing with one API container and with two (#1909). This supersedes the

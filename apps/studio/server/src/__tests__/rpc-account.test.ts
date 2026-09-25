@@ -26,13 +26,13 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
+import { composeStudio } from './support/serve.ts';
 
 const env = readEnv();
 
 describe.skipIf(!testDb)('account.updateLocale', () => {
   let database: TestDatabaseRuntime;
   let studio: Studio;
-  let app: Studio['app'];
   let cookie: string;
   let userId: string;
   let client: RpcTestClient;
@@ -40,7 +40,7 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
 
   beforeAll(async () => {
     database = await openTestDatabase();
-    ({ studio, app, cookie } = await signInWithMagicLink(
+    ({ studio, cookie } = await signInWithMagicLink(
       env,
       database.appPool,
       'locale',
@@ -155,15 +155,19 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
     // update-user from accepting the field; dropping it must fail here.
     if (!env.auth) throw new Error('dev env must configure auth');
     await updateLocale('en');
-    const response = await app.request('/api/auth/update-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'origin': env.auth.baseUrl,
-        cookie,
-      },
-      body: JSON.stringify({ locale: 'en-GB' }),
-    });
+    // Through the composed stack, whose auth mount is the route to it.
+    const stack = composeStudio(env, studio);
+    const response = await stack
+      .request('/api/auth/update-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': env.auth.baseUrl,
+          cookie,
+        },
+        body: JSON.stringify({ locale: 'en-GB' }),
+      })
+      .finally(() => stack.dispose());
     // Whether better-auth ignores the stripped field or refuses the empty
     // update, the stored preference must be untouched.
     expect(response.status).toBeLessThan(500);
