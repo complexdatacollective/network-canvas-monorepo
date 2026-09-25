@@ -250,6 +250,14 @@ peerDependencyRules:
     '@storybook/addon-vitest>vitest': '5'
     '@storybook/addon-vitest>@vitest/browser': '5'
     '@storybook/addon-vitest>@vitest/browser-playwright': '5'
+    # `vite-plugin-pwa@1.3.0` is the newest release and still declares its
+    # optional `@vite-pwa/assets-generator` peer as ^1.0.0, so there is no
+    # version of the plugin that admits the generator's 2.0.0 (ESM-only) major.
+    # The integration is exercised — both PWA apps set
+    # `pwaAssets: { config: true }` — and it works on 2.0.0: architect and
+    # interviewer emit every configured icon. Drop this entry once the plugin
+    # widens the range.
+    'vite-plugin-pwa>@vite-pwa/assets-generator': '2'
 linkWorkspacePackages: false
 # Supply-chain cooldown: refuse dependency versions younger than this many
 # minutes. 1440 = 24h. This is pnpm 11's built-in default, pinned explicitly so
