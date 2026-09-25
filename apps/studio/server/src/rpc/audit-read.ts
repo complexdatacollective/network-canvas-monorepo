@@ -52,6 +52,18 @@ class AuditReadRefused extends Schema.TaggedError<AuditReadRefused>()(
 ) {}
 
 /**
+ * What `denyAuditRead` fails with once the denial event has committed, and
+ * only then: the one outcome that spends the window's allowance. A lost
+ * append or a vanished membership is `AuditReadDenied` and spends nothing.
+ * `guardAuditRead` answers it as `AuditReadDenied`, so it never leaves the
+ * module either.
+ */
+class AuditReadDenialRecorded extends Schema.TaggedError<AuditReadDenialRecorded>()(
+  'AuditReadDenialRecorded',
+  {},
+) {}
+
+/**
  * The denial event: server-owned, coupled to no domain write, and required.
  *
  * `audited` is given a body that does nothing but fail with the auditable
@@ -125,20 +137,21 @@ const denyAuditRead = Effect.fnUntraced(function* (
     const error: unknown = Cause.squash(exit.cause);
     // `AuditReadRefused` IS the success of this path: the event committed and
     // the combinator re-raised. Anything else means it did not.
-    if (!(error instanceof AuditReadRefused)) {
-      yield* signal.warn('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
-        eventType: 'audit.read_denied',
-        procedure,
-        teamId: access.teamId,
-        actorId: principal.userId,
-        requestId,
-        causeName: error instanceof Error ? error.name : typeof error,
-        // The most specific message in the chain: a `SqlError`'s own is always
-        // `PgConnection: Query failed`, and the operator needs the Postgres
-        // one underneath it.
-        causeMessage: deepestMessage(error) ?? String(error),
-      });
+    if (error instanceof AuditReadRefused) {
+      return yield* new AuditReadDenialRecorded();
     }
+    yield* signal.warn('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
+      eventType: 'audit.read_denied',
+      procedure,
+      teamId: access.teamId,
+      actorId: principal.userId,
+      requestId,
+      causeName: error instanceof Error ? error.name : typeof error,
+      // The most specific message in the chain: a `SqlError`'s own is always
+      // `PgConnection: Query failed`, and the operator needs the Postgres
+      // one underneath it.
+      causeMessage: deepestMessage(error) ?? String(error),
+    });
   }
   return yield* new AuditReadDenied({});
 });
@@ -201,15 +214,21 @@ export const guardAuditRead = <A, R>(
   const decided = Effect.catchTag(read, 'AuditReadRefused', () =>
     denyAuditRead(access, procedure, predictsDenial),
   );
-  return predictsDenial
-    ? reservedDenial(
-        {
-          operation: 'audit.read',
-          teamId: access.teamId,
-          refusal: () => new AuditReadDenied({}),
-          isDenial: (error) => error instanceof AuditReadDenied,
-        },
-        decided,
-      )
-    : decided;
+  return (
+    predictsDenial
+      ? reservedDenial(
+          {
+            operation: 'audit.read',
+            teamId: access.teamId,
+            refusal: () => new AuditReadDenied({}),
+            isDenial: (error) => error instanceof AuditReadDenialRecorded,
+          },
+          decided,
+        )
+      : decided
+  ).pipe(
+    Effect.catchTag('AuditReadDenialRecorded', () =>
+      Effect.fail(new AuditReadDenied({})),
+    ),
+  );
 };

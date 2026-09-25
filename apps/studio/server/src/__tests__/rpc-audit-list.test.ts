@@ -23,12 +23,15 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
+import { reachableDeniedAuditStore } from './support/valkey.ts';
 
 const TEAM = TeamId.make(uniqueTeamId('audit-list-team'));
 const OTHER_TEAM = TeamId.make(uniqueTeamId('audit-list-other'));
 const T0 = '2026-08-30T10:00:00.000Z';
 const T1 = '2026-08-30T11:00:00.000Z';
 const T2 = '2026-08-30T12:00:00.000Z';
+
+const limiterStore = await reachableDeniedAuditStore();
 
 function principal(userId: string, name: string): SessionPrincipal {
   return {
@@ -1013,4 +1016,72 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       ),
     ).toHaveLength(0);
   });
+
+  it.skipIf(!limiterStore)(
+    'spends the denial window only on denial events that committed',
+    async () => {
+      // A member's read is predicted to be denied, so its window slot is
+      // reserved before the read opens. A denial whose append was lost wrote
+      // nothing, and must not count towards the five the window allows —
+      // or a run of append failures would suppress the next real denial.
+      const lost = principal(`audit-window-${randomUUID()}`, 'Audit Window');
+      await query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [lost.userId, lost.name, lost.email],
+      );
+      await query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'member')`,
+        [`${lost.userId}-member`, TEAM, lost.userId],
+      );
+      const lostClient = await createRpcClient(
+        createStudio(readEnv(), {
+          pool: database.appPool,
+          auth: stubAuthService({
+            getSession: () => Promise.resolve(lost),
+            getMembership: () => Promise.resolve({ role: 'member' }),
+          }),
+          services: database.services,
+        }),
+      );
+      extraClients.push(lostClient);
+
+      await query(`
+        create or replace function refuse_window_denial() returns trigger as $refuse$
+        begin raise exception 'audit read denial rejected'; end;
+        $refuse$ language plpgsql`);
+      await query(`
+        create or replace trigger refuse_window_denial
+          before insert on audit_events
+          for each row execute function refuse_window_denial()`);
+      const warning = vi
+        .spyOn(process, 'emitWarning')
+        .mockImplementation(() => undefined);
+      try {
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          await expectRpcFailure(
+            lostClient.callExit(lostClient.rpc('audit.list', { teamId: TEAM })),
+            'Forbidden',
+          );
+        }
+      } finally {
+        warning.mockRestore();
+        await query('drop trigger refuse_window_denial on audit_events');
+      }
+
+      await expectRpcFailure(
+        lostClient.callExit(lostClient.rpc('audit.list', { teamId: TEAM })),
+        'Forbidden',
+      );
+      expect(
+        await query(
+          `SELECT id FROM audit_events
+           WHERE team_id = $1 AND actor_id = $2
+             AND event_type = 'audit.read_denied'`,
+          [TEAM, lost.userId],
+        ),
+      ).toHaveLength(1);
+    },
+  );
 });
