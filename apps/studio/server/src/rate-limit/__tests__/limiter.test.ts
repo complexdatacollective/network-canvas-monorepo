@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { describe, expect, it, layer } from '@effect/vitest';
 import { Effect, Layer, Logger, Predicate } from 'effect';
+import { TestClock } from 'effect/testing';
 
 import { freePort } from '../../__tests__/support/entrypoint.ts';
 import {
@@ -214,6 +215,48 @@ describe.skipIf(!url)('the limiter against a real store', () => {
         expect((yield* first.check('rpc_user', subject)).allowed).toBe(false);
         expect((yield* second.check('rpc_user', subject)).allowed).toBe(false);
       }),
+    );
+
+    suite.effect(
+      "logs a scope's denials once a minute, naming the scope and never the subject",
+      () =>
+        // On the TestClock, which is the only clock the interval reads: the
+        // window itself is Valkey's, and in the few real milliseconds this
+        // takes it never reopens, so every call past the first is a denial.
+        Effect.gen(function* () {
+          const lines: string[] = [];
+          const limiter = yield* limiterWith({
+            participant_redeem_link: { max: 1, windowMs: 60_000 },
+          });
+          const subject = `link-${randomUUID()}`;
+          const denials = () =>
+            lines.filter((line) => line.startsWith('Rate limit reached'));
+          const deny = Effect.gen(function* () {
+            const decision = yield* limiter.check(
+              'participant_redeem_link',
+              subject,
+            );
+            expect(decision.allowed).toBe(false);
+          }).pipe(Effect.provide(capturingLogger(lines)));
+
+          yield* limiter.check('participant_redeem_link', subject);
+          yield* deny;
+          yield* deny;
+          // Mutation: drop the interval check in `logDenial` → two lines.
+          expect(denials()).toEqual([
+            'Rate limit reached for participant_redeem_link; callers are refused for up to 60s.',
+          ]);
+
+          yield* TestClock.adjust('59 seconds');
+          yield* deny;
+          expect(denials()).toHaveLength(1);
+
+          yield* TestClock.adjust('2 seconds');
+          yield* deny;
+          expect(denials()).toHaveLength(2);
+          expect(denials()[1]).toContain('participant_redeem_link');
+          expect(lines.join('\n')).not.toContain(subject);
+        }),
     );
 
     suite.effect('reports ready while the store answers', () =>
