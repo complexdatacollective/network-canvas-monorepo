@@ -65,7 +65,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
       const calls: boolean[] = [];
       return Effect.gen(function* () {
         yield* Effect.gen(function* () {
-          // The first tick applies the state the process booted into.
+          // The first reading is applied while the gate's layer builds —
+          // before the clock has moved at all — so a worker built paused is
+          // open by the time the process reports itself started.
+          assert.deepStrictEqual(calls, [true]);
           yield* tick;
           assert.deepStrictEqual(calls, [true]);
           assert.deepStrictEqual(logs.messages, []);
@@ -153,39 +156,41 @@ describe.skipIf(!db)('the maintenance gate', () => {
               yield* worker.work('invitation-delivery', () =>
                 Effect.succeed('completed' as const),
               );
-              yield* Effect.gen(function* () {
-                // Ten poll intervals with the reading still out: long enough
-                // for a fetching worker to claim several times over.
-                yield* Effect.sleep(Duration.millis(500));
-                const [waiting] = yield* readJobs('invitation-delivery');
-                assert.strictEqual(waiting?.state, 'created');
-                assert.strictEqual(waiting?.attempts, 0);
-                // Paused and still ready: it read its tables without claiming.
-                assert.isTrue(yield* worker.ready);
-
-                // The reading lands and says "maintenance": still nothing.
-                yield* Deferred.succeed(firstRead, undefined);
-                yield* Effect.sleep(Duration.millis(300));
-                const [still] = yield* readJobs('invitation-delivery');
-                assert.strictEqual(still?.state, 'created');
-
-                // Maintenance ends, and the job is worked.
-                MutableRef.set(maintenance, false);
-                const worked = yield* awaitJobState(
-                  'invitation-delivery',
-                  'completed',
-                  Duration.seconds(5),
-                );
-                assert.isTrue(Option.isSome(worked));
-              }).pipe(
-                Effect.provide(
+              // The gate awaits its first reading while its layer builds, so
+              // it is built on a fiber of its own: this case holds that
+              // reading and watches the worker meanwhile.
+              yield* Effect.forkScoped(
+                Layer.build(
                   JobMaintenanceGate.layer({
                     pollInterval: Duration.millis(50),
                   }),
-                ),
-                Effect.provide(held),
+                ).pipe(Effect.provide(held)),
               );
+              // Ten poll intervals with the reading still out: long enough
+              // for a fetching worker to claim several times over.
+              yield* Effect.sleep(Duration.millis(500));
+              const [waiting] = yield* readJobs('invitation-delivery');
+              assert.strictEqual(waiting?.state, 'created');
+              assert.strictEqual(waiting?.attempts, 0);
+              // Paused and still ready: it read its tables without claiming.
+              assert.isTrue(yield* worker.ready);
+
+              // The reading lands and says "maintenance": still nothing.
+              yield* Deferred.succeed(firstRead, undefined);
+              yield* Effect.sleep(Duration.millis(300));
+              const [still] = yield* readJobs('invitation-delivery');
+              assert.strictEqual(still?.state, 'created');
+
+              // Maintenance ends, and the job is worked.
+              MutableRef.set(maintenance, false);
+              const worked = yield* awaitJobState(
+                'invitation-delivery',
+                'completed',
+                Duration.seconds(5),
+              );
+              assert.isTrue(Option.isSome(worked));
             }).pipe(
+              Effect.scoped,
               Effect.provide(
                 layerWorker({
                   background: true,

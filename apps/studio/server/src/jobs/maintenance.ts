@@ -1,4 +1,4 @@
-import { Cause, Duration, Effect, Layer, MutableRef, Schedule } from 'effect';
+import { Cause, Duration, Effect, Layer, MutableRef } from 'effect';
 
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { JobWorker } from './worker.ts';
@@ -44,8 +44,11 @@ export const JobMaintenanceGate = {
         // `null` until the first tick, so the first answer is always applied
         // whichever way it points. That is what opens a worker built with
         // `startPaused` (worker.ts), which is how a process that boots into
-        // maintenance never claims: this tick is forked, not awaited, so a
-        // worker that started fetching would poll before it ran. A first read
+        // maintenance never claims: a worker that started fetching would poll
+        // before any reading could stop it. The first tick is awaited while
+        // this layer builds, so the worker is open — or deliberately paused —
+        // before the process reports itself started; only the repeats are
+        // forked. A first read
         // that fails or hangs still answers here — `MaintenanceState` answers
         // the last value it read, and "not in maintenance" before any — so a
         // database that cannot be read at boot opens the worker rather than
@@ -73,17 +76,17 @@ export const JobMaintenanceGate = {
           }
         });
 
-        yield* Effect.forkScoped(
-          tick.pipe(
-            Effect.catchCause((cause) =>
-              Effect.logError(
-                `the job maintenance gate failed to read the deployment state: ${Cause.pretty(cause)}`,
-              ),
-            ),
-            Effect.repeat(
-              Schedule.spaced(config.pollInterval ?? DEFAULT_POLL_INTERVAL),
+        const guarded = tick.pipe(
+          Effect.catchCause((cause) =>
+            Effect.logError(
+              `the job maintenance gate failed to read the deployment state: ${Cause.pretty(cause)}`,
             ),
           ),
+        );
+        const interval = config.pollInterval ?? DEFAULT_POLL_INTERVAL;
+        yield* guarded;
+        yield* Effect.forkScoped(
+          Effect.sleep(interval).pipe(Effect.andThen(guarded), Effect.forever),
         );
       }),
     ),
