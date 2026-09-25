@@ -1179,11 +1179,12 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
 });
 
 /**
- * The four columns the seed does not choose, and therefore cannot reproduce.
+ * The five columns the seed does not choose, and therefore cannot reproduce.
  * Every one of them is a consequence of the seed writing through real code
  * rather than around it, which is the trade it makes everywhere: two are
- * allocated inside a writer it calls, and two are wall-clock stamps that
- * belong to the operation rather than to the data.
+ * allocated inside a writer it calls, and three are wall-clock stamps that
+ * belong to the operation rather than to the data — two of them stamped by
+ * the schema step, whose rows the seed's wipe leaves alone.
  *
  * Everything else — every other id, every timestamp, every encryption nonce —
  * comes from the pinned PRNG or the fixed anchor, which is what this case

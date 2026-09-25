@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { isAPIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
 import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
-import { Effect } from 'effect';
+import type { Effect } from 'effect';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
@@ -98,18 +98,20 @@ export type BetterAuthDeps = {
   readonly cipher: SecretsCipherApi;
   readonly sendMagicLink: SendMagicLink;
   /**
-   * Where sign-in attempts are counted. Absent means this instance enforces no
-   * limit of its own: the auth CLI's configuration and the suites that are not
-   * about limiting construct one that way. Every server process passes one.
+   * Where sign-in attempts are counted, and how better-auth's promise
+   * callbacks run it. Absent means this instance enforces no limit of its own:
+   * the auth CLI's configuration and the suites that are not about limiting
+   * construct one that way. Every server process passes one.
+   *
+   * The runner travels with the limiter so that neither can be passed without
+   * the other: it runs the limiter over the services of the program that built
+   * this instance, so a denial logs through that program's logger. With
+   * `Effect.runPromise` instead it would log through the default one, as
+   * plain text among the program's JSON.
    */
-  readonly limiter?: RateLimiter['Service'] | undefined;
-  /**
-   * How better-auth's promise callbacks run the limiter: over the services of
-   * the program that built this instance, so a denial logs through that
-   * program's logger rather than the default one. `Effect.runPromise` where
-   * there is no program (the CLI harness, the suites).
-   */
-  readonly run?: RunEffect | undefined;
+  readonly limits?:
+    | { readonly limiter: RateLimiter['Service']; readonly run: RunEffect }
+    | undefined;
 };
 
 export function createBetterAuthInstance({
@@ -117,8 +119,7 @@ export function createBetterAuthInstance({
   adapter,
   cipher,
   sendMagicLink,
-  limiter,
-  run = Effect.runPromise,
+  limits,
 }: BetterAuthDeps) {
   return betterAuth({
     baseURL: env.baseUrl,
@@ -141,10 +142,10 @@ export function createBetterAuthInstance({
     // counters are disposable state — losing them resets a window rather than
     // losing a record. What #1246 is actually about, the immutable audit log,
     // is untouched and stays in Postgres.
-    rateLimit: limiter
+    rateLimit: limits
       ? {
           enabled: true,
-          customStorage: createAuthRateLimitStorage(limiter, run),
+          customStorage: createAuthRateLimitStorage(limits.limiter, limits.run),
           // better-auth's own default for these paths is three attempts in
           // ten seconds. Studio's is the `sign_in_address` constant
           // (src/rate-limit/scopes.ts); the per-email limit is Studio's own
@@ -153,8 +154,8 @@ export function createBetterAuthInstance({
             [...SIGN_IN_PATHS].map((path) => [
               path,
               {
-                window: limiter.rules.sign_in_address.windowMs / 1000,
-                max: limiter.rules.sign_in_address.max,
+                window: limits.limiter.rules.sign_in_address.windowMs / 1000,
+                max: limits.limiter.rules.sign_in_address.max,
               },
             ]),
           ),

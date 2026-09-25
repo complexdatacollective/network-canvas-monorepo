@@ -329,8 +329,10 @@ const makeLive = Effect.gen(function* () {
     adapter: studioAuthAdapter(yield* makeSqlBridge),
     cipher: yield* SecretsCipher,
     sendMagicLink: yield* makeSendMagicLink,
-    limiter: yield* RateLimiter,
-    run: Effect.runPromiseWith(yield* Effect.context()),
+    limits: {
+      limiter: yield* RateLimiter,
+      run: Effect.runPromiseWith(yield* Effect.context()),
+    },
   });
 
   /**
