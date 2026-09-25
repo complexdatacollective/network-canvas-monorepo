@@ -267,7 +267,9 @@ schema, which drizzle does not model — and each one is named in
 `__tests__/raw-sql-policy.test.ts` with its reason. Two groups on that list are
 there for history rather than necessity: the queue handlers #1957 ported from
 their pg-boss originals text for text, and the node-postgres residue (the
-scripts' schema helpers, the readiness probe) that stage 6 retires.
+scripts' schema helpers, the readiness probes) that stay on node-postgres until the Effect client can
+pin a role outside a transaction (`@effect/sql-pg` rc.117's startup
+parameters).
 Two rules for the builder: **every write whose outcome is inspected ends in
 `.returning()`** (without it the driver's result object comes back typed as a
 row array, and `result[0]` is `undefined`), and **every builder span applies
@@ -319,7 +321,7 @@ rule:
 `@codaco/studio-sync`'s, collects every statement handed to a driver as text
 (`sql.unsafe`, the client's `` sql`…` `` template, `sql.raw`, `.execute` and a
 connection's `executeRaw` family — and node-postgres's `.query`, so the `pg`
-residue is pinned until stage 6 retires it), and charges each to the `Effect.fn` span that encloses it, or to its file. The
+residue is pinned until the rc.117 upgrade retires it), and charges each to the `Effect.fn` span that encloses it, or to its file. The
 result must equal the allowlist exactly: a new raw statement fails until it is
 listed with its reason, and a listed one that is gone fails until it is
 removed.
