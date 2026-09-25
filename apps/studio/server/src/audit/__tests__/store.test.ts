@@ -13,6 +13,7 @@ import {
   testDb,
   maintenanceRows,
   tenantRows,
+  databaseNow,
 } from '../../__tests__/support/database.ts';
 import { Database } from '../../db/client.ts';
 import { sqlState } from '../../db/errors.ts';
@@ -379,14 +380,12 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               anchor.toISOString(),
             );
 
-            const before = Date.now();
+            const before = yield* databaseNow;
             const live = yield* TenantScope.open(
               access(team),
               append(invitationEvent(team)),
             );
-            expect(live.occurredAt.getTime()).toBeGreaterThanOrEqual(
-              before - 1,
-            );
+            expect(live.occurredAt.getTime()).toBeGreaterThanOrEqual(before);
 
             // Stored, not merely returned: the row reads back the same way.
             const stored = yield* TenantScope.open(access(team), list(team));

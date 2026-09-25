@@ -647,6 +647,27 @@ export const ownerRows = <A extends object = Record<string, unknown>>(
     harness.onOwner(harness.owner.sql.unsafe<A>(statement, params)),
   );
 
+const readNow = Schema.decodeUnknownSync(Schema.Struct({ now: Schema.Number }));
+
+/**
+ * The database's clock, in epoch milliseconds (rc.115 decodes a raw
+ * `timestamptz` as a number), read in a transaction of its own.
+ *
+ * What a case asserting "stamped no earlier than now" compares against. The
+ * host's `Date.now()` is the wrong clock for that: the database runs in a
+ * container whose clock drifts from the host's by milliseconds, so a default
+ * stamped a moment later can still read as earlier than the host's reading. A
+ * later transaction's `now()` is never earlier than this one's.
+ */
+export const databaseNow: Effect.Effect<
+  number,
+  SqlError.SqlError,
+  TestDatabase
+> = Effect.map(
+  ownerRows('select now() as now'),
+  (rows) => readNow(rows[0]).now,
+);
+
 const readRowCount = Schema.decodeUnknownSync(
   Schema.Struct({ rowCount: Schema.Number }),
 );

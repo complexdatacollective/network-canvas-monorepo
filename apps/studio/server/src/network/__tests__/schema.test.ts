@@ -23,6 +23,7 @@ import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
 import {
   NOT_REFUSED,
+  databaseNow,
   ownerRows,
   refusalOf,
   TestDatabase,
@@ -802,7 +803,7 @@ describe.skipIf(!testDb)('network schema', () => {
           Effect.gen(function* () {
             const fixture = yield* newFixture();
             const payload = { nodes: [{ _uid: 'person_1' }], ego: { age: 41 } };
-            const before = Date.now();
+            const before = yield* databaseNow;
 
             expect(
               yield* finalizing(fixture.sessionId, (sql) =>
@@ -832,7 +833,7 @@ describe.skipIf(!testDb)('network schema', () => {
             );
             expect(stored[0]?.payload).toEqual(payload);
             expect(instantOf(stored[0]?.created_at)).toBeGreaterThanOrEqual(
-              before - 1,
+              before,
             );
           }),
         );
@@ -1082,14 +1083,14 @@ describe.skipIf(!testDb)('network schema', () => {
         it.effect('applies the documented session_stats default', () =>
           Effect.gen(function* () {
             const fixture = yield* newFixture();
-            const before = Date.now();
+            const before = yield* databaseNow;
             yield* insert('session_stats', statsRow(fixture));
             const stored = yield* ownerRows<{ computed_at: unknown }>(
               `SELECT computed_at FROM session_stats WHERE session_id = $1`,
               [fixture.sessionId],
             );
             expect(instantOf(stored[0]?.computed_at)).toBeGreaterThanOrEqual(
-              before - 1,
+              before,
             );
           }),
         );
