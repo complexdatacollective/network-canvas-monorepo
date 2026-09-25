@@ -1,5 +1,809 @@
 # @codaco/fresco-ui
 
+## 7.0.0
+
+### Major Changes
+
+- 64c7891: `Badge` is now the one label chip, replacing three overlapping components that
+  rendered the same kind of object differently depending on which one a call site
+  happened to pick.
+
+  `Badge` gains semantic `tone`s (`neutral`, `primary`, `secondary`, `accent`,
+  `info`, `success`, `warning`, `destructive`), each painted in a `filled` or
+  `outline` `appearance` from the theme's colour pairs so it follows light and
+  dark mode; three sizes (`sm`, `md`, `lg`); `mono` and `uppercase` typography
+  options; a leading `icon` slot; the palette `color` prop for taxonomic
+  colouring; and a Base UI `render` override for rendering as a button, toggle
+  or animated element. Its default look is unchanged.
+
+  `Tag` keeps its name, API and look but is now a `Badge` with a toggle state
+  and palette dot, so the two can no longer drift.
+
+  **Breaking:** `Pill` and the `@codaco/fresco-ui/Pill` subpath are removed —
+  use `Badge` with `mono` (and `appearance="outline"` for the outlined look).
+  `Badge`'s `variant` prop is replaced by `tone` and `appearance`:
+  `variant="secondary"` → `tone="secondary"`, `variant="destructive"` →
+  `tone="destructive"`, `variant="outline"` → `appearance="outline"`; the
+  default needs no props.
+
+  The interview runtime's offline map banner; Architect's codebook usage chips, library counts, asset cards and the
+  requires-internet label on protocol cards; Interviewer's deck card label;
+  Background Creator's zone pills; and Fresco's activity feed, interview,
+  participant and passkey chips all render through it.
+
+### Minor Changes
+
+- 91a25de: The stage editor's shared sections and its form-family editors say what
+  Architect has always said. Section titles, descriptions, field labels, hints,
+  placeholders and empty states across the subject picker, stage filter, skip
+  logic, task introduction, page content, prompts, sort order, background, side
+  panels, quick add, the form-fields section and the attribute editor now match
+  the released wording word for word, in English and Spanish, and around sixty
+  invented hints and placeholders that Architect never showed are gone.
+
+  The stage filter's description now says what that section does: "Create rules
+  that filter which nodes or edges are displayed on this stage."
+
+  Three explanations come back with it. The background image picker and the
+  input-control picker link to their documentation pages again; choosing an
+  attribute that already exists explains why the list of input controls is short
+  ("Attribute type is locked") and choosing a control for an attribute being
+  invented says which type it will create; and a form field's collapsed row
+  names its attribute type and input control in the reader's own language,
+  filled in that type's colour, instead of showing a raw schema token.
+
+  A validation rule is now called the same thing everywhere: the names come from
+  `@codaco/protocol-validation`, which is what a protocol's own validation errors
+  already use.
+
+  Colour swatches announce the colour they are rather than their position in the
+  palette — "Sea Serpent" rather than "Node color 2" — for everyone choosing one
+  with a screen reader. Architect's own colour picker in the codebook reads its
+  swatch names from the same list, so the two announce a swatch identically.
+
+  For anyone building on `@codaco/fresco-ui`: a field's hint is now given to
+  `Hint` as its `hint` prop, with a field's validation summary as a separate
+  `validationSummary` prop, so a field carrying both keeps them as two
+  paragraphs. Passing the hint as children still works and renders as before.
+  A `Badge` given both a `color` and `variant="outline"` now reads in the surface's
+  own text colour instead of the theme colour, which most of the palette does not
+  reach 4.5:1 against a wash of itself; the colour is still the badge's border
+  and background.
+  A filled `Badge` now reads in whichever of black or white contrasts better with
+  the colour it is filled with, worked out from that colour rather than assigned
+  by hand, so every colour in the palette carries a readable label. The palette
+  itself is exported as `BADGE_COLORS`.
+
+- ce5e872: The node type editor offers the icons themselves again, and the dialogs it opens
+  close instead of vanishing.
+
+  Choosing a node type's icon is a search through the icons again. The field had
+  become a plain text box asking for an icon's name typed exactly — so the only
+  way to find one was to know it already, or to guess and be refused. It is a
+  searchable list again, each icon shown as itself: type a few letters and pick
+  what you see. Both sets are offered, Network Canvas' own icons first and then
+  Lucide's, and the search matches either way of writing a name, so "user plus",
+  "user-plus" and "userplus" all reach the same icon. Where the list is longer
+  than it shows at once, it says so rather than stopping silently.
+
+  Every Network Canvas icon can now be chosen, not just the two that name the
+  buttons an interview offers. A type whose icon was any of the others — set in an
+  older version of Architect, or by hand — opened onto an empty field asking the
+  researcher to choose an icon, with no way to choose the one it already had.
+
+  The dialogs in the stage editor close instead of disappearing. Creating or
+  editing a node type, inventing an attribute, editing the values or rules an
+  attribute collects, and setting a map's starting view all vanished the instant
+  they were dismissed, which read as the screen flickering rather than as the
+  dialog going away. They now animate out the way every other dialog does. One
+  exception remains and is deliberate: finishing an attribute you were inventing
+  takes the row out of inventing anything in the same moment, so that dialog still
+  goes at once.
+
+- 2eafe92: `Modal`'s `forceBackdrop` prop is gone: every nested surface now dims what is
+  behind it, so there is nothing left for a caller to opt into.
+
+  A dialog opened from inside another dialog dims what is behind it. Reaching for
+  the attribute picker from an edit prompt dialog, or opening an attribute's
+  values, left the dialog underneath at full strength, so the two surfaces read as
+  one crowded screen rather than one on top of the other. Every nested surface now
+  carries its own dimmed, blurred layer, so the deeper you go the further back the
+  rest of the screen sits.
+
+  Editing a node type no longer restates its own title. The dialog said "Edit this
+  node type" and then immediately said "Edit node type" again above the first
+  field. Its fields are now grouped under the four topics they belong to — the
+  type's identity, its colour, how its nodes look, and the icon the interface
+  shows — and its Cancel and save buttons sit in the dialog's footer with the rest
+  of the dialogs', rather than partway down the form. The same restatement is gone
+  from the disease, nomination, content item and dyad-census prompt dialogs, whose
+  single group repeated the title it sat under; what that group explained now
+  introduces the dialog itself.
+
+  A node type can map its nodes' shapes to an attribute's answers again. The
+  feature was missing from the node type editor altogether, so a protocol that
+  already mapped shapes could be opened, saved and handed back with the mapping
+  intact but invisible and uneditable. Choose an attribute and each of its answers
+  takes the shape you give it; for a number or a scale, set one or two thresholds
+  and the shape changes as the answer crosses them. It says which answers still
+  have no shape of their own, refuses a save that has no threshold to act on, and
+  tells you when an attribute it was pointing at is no longer one shapes can be
+  mapped to.
+
+  The colour picker shows which colour is chosen. Each colour is a circle of
+  itself outlined in the ink around it, and the chosen one carries a thick ring in
+  the selection colour the rest of the interface marks a chosen thing with —
+  previously it was ringed in its own colour, which is the one outline it cannot
+  be told apart from. Keyboard focus draws that same ring rather than a second one
+  of its own, so a chosen swatch no longer changes shape merely by being focused.
+  Pointing at a swatch grows it instead of drawing a faint copy of the chosen
+  ring, so an offer can never be mistaken for an answer.
+
+  The buttons that create and edit a node type are the size every other button is.
+  They were drawn small, which read as a lesser action than the one they perform.
+
+  Architect's section list stays clear of the menu bar. The list down the left of a
+  stage editor is meant to hold still while the stage scrolls past it, but its top
+  was measured from the top of the page rather than from the bottom of the menu
+  bar, so its first entries slid underneath the bar and out of sight. It now
+  measures the bar, follows it if it changes height, and jumping to a section
+  leaves the section's own heading clear of the bar instead of tucked behind it.
+
+  A categorical or ordinal attribute's answers are edited where the attribute is
+  chosen. Choosing an attribute for a form field, a composer row, a bin prompt or
+  a tie-strength prompt put its answers behind a "change this attribute's values"
+  dialog; the list of answers, and a yes-or-no attribute's two words, now sit
+  under the attribute you picked, and are saved by the same button that saves the
+  rest of the row. An attribute whose answers an interface owns, or one you are
+  only allowed to read, shows them without offering to change them and says why.
+  A yes-or-no attribute you invent while filling in a row can be given its two
+  words as you invent it, rather than becoming editable only the next time the
+  row is opened.
+
+  The rules an answer has to satisfy are set in the Validation section, not a
+  dialog of their own. A button reading "set rules for this answer" opened a
+  dialog Architect never had, and in the edit prompt dialog that button and the
+  Validation section were both on screen at once, each offering to set the same
+  rules. There is now one Validation section, in the place Architect put it, built
+  from the same switches, boxes and menus as every other field — and the rule
+  groups are drawn the way Architect drew them, each group titled on its own
+  border with its rules reading as on or off at a glance, with the explanation of
+  what each rule needs beside it and any complaint about a value under that value.
+
+  The edit field dialog is arranged the way Architect arranged it. The input
+  control was under "Attribute selection", which is where the attribute is
+  chosen, not where the field is configured; it now sits at the end of "Field
+  configuration" after the question text, the hint and the validation-hints
+  switch, with the attribute's own answers and the Validation section below.
+
+  An attribute can be renamed from its pill again, wherever the pill is shown. The
+  only place an existing attribute's name could be changed was the attribute
+  editor, behind the buttons for its answers, parameters and rules — so renaming a
+  plain text attribute had become unreachable. Clicking the pill, or pressing
+  Enter or Space on it, opens a box on the name it already holds; the new name has
+  to be given, has to be one the entity type does not already use however it is
+  spelled, and has to be one the protocol can store. A name a colleague's open
+  section is holding says who is holding it and keeps the old name rather than
+  failing. Cancelling, pressing Escape or clicking away puts the old name back and
+  returns you to the pill, and each of editing, renaming and cancelling is
+  announced once.
+
+  An option's label is written as rich text everywhere it can be written. The
+  label of a categorical or ordinal answer is shown to participants as markdown,
+  so bold and italic have always reached them — but only the codebook's own
+  editor offered them, and the same label reached from a bin's stage editor was a
+  plain box. Every place a label can be edited now offers the same restricted
+  editor, with bold and italic and nothing else. A label that is typed with a
+  literal asterisk, underscore, hash or backtick keeps that character in the
+  interview rather than turning into emphasis or a heading, which the plain boxes
+  could not promise. The two answers of a yes-or-no attribute are written the
+  same way, and the check that refuses two answers with the same label now asks
+  one question from every surface instead of four slightly different ones.
+
+  A node type's shape is chosen from the shapes themselves. The default shape, and
+  the shape each answer or threshold of a shape mapping maps to, were dropdowns
+  listing the words circle, square and diamond; they are swatches again, drawn in
+  the type's own colour, as Architect drew them — so the choice is made by looking
+  at what a participant will see. A threshold box left empty now goes back to the
+  number that is actually stored rather than saving a number it is not showing,
+  adding a threshold starts it on a number you could have typed rather than on a
+  floating-point remainder, and no further threshold is offered once the
+  attribute's range is used up.
+
+  The warning that an attribute offers more answers than a screen can draw appears
+  while you are adding them. It counted the answers the codebook had already
+  stored, so adding a sixth value to a bin prompt or a tie-strength scale said
+  nothing until the save — which closes the dialog, so it was never read at all.
+
+  Saving a prompt no longer writes back answers you did not touch. The list of
+  answers under an attribute is filled in from the codebook, so every save used to
+  write it back; a colleague who added a value while you were rewording the prompt
+  had it taken away again by your save, with nothing on either screen saying so.
+  A list nobody edited is left alone.
+
+  Renaming an attribute from its pill holds until the codebook answers. Pressing
+  Escape or clicking away while the rename was still being written said the edit
+  was cancelled while the new name landed anyway. Both ways out now wait, as the
+  Cancel button already did, and what you are told is what actually happened.
+
+- 88f4d4b: A long attribute name no longer pushes the rest of the codebook table off
+  screen. The name is cut short with an ellipsis, and the full name is still in
+  its tooltip.
+
+  The printed protocol summary shows stored values exactly as they are saved,
+  instead of breaking them across lines with hyphens. The summary page also has
+  the same margin at the edges as the Codebook and Resource Library pages.
+
+  On a phone, the list of interfaces for a new stage now fits the screen, and
+  every title and description can be read.
+
+  A video preview keeps its playback controls inside the window.
+
+  While you edit a choice value, its confirm button is now the same size as the
+  delete button beside it.
+
+  When you create an attribute on the Codebook page and choose its type, the
+  values it needs now scroll into view instead of appearing below the window's
+  visible area.
+
+  When a toolbar is too narrow for all its buttons, it now fades the edge where
+  more buttons are hidden, so it is clear the toolbar can be scrolled. This
+  includes the Background Creator toolbar. The toolbar at the bottom of
+  Architect's screen also scrolls to show its last button, such as Download.
+
+  `SegmentedToolbar` has a new `restAt` prop. Set it to `"end"` to show a
+  toolbar's last button, rather than its first, when the toolbar does not fit.
+
+  A field's error message now has space between it and the control above it,
+  instead of sitting right against it.
+
+  `ScrollArea` now fades the correct edges when it scrolls sideways in a
+  right-to-left language.
+
+- fb1b7ed: Add a shared protocol-card visual shell and animated emphasis border for Interviewer, Architect, and website previews. `Collection` can also preserve native link and button semantics and run fuzzy filtering synchronously when a rendering environment does not support the default search worker.
+
+  `Collection` now seeds its store with the initial items, so server-rendered and statically exported markup contains the items rather than the empty state. In native-item mode the item props only carry the keys the collection owns, so a consumer's own click handler survives either spread order, and keyboard drag handling is still forwarded.
+
+  `Collection` accepts `scrollable={false}` for a collection laid out in the flow of a page that already scrolls: the items render in a plain container instead of a ScrollArea, so nothing is clipped at the collection's edges and no nested scroll region or tab stop is created. Virtualisation and the ScrollArea options are unavailable in that mode.
+
+  The seeded store also starts in the collection's initial sort order, so server output and the first client render are sorted rather than in load order, and the virtualised renderer now finds its scroll viewport on mount even when nothing updates the store afterwards.
+
+- e87f8f5: The last four dialogs that vanished instead of closing now animate out, and a
+  CI guard keeps the next one from regressing.
+
+  Dismissing a dialog used to remove it from the screen instantly, which read as
+  the screen flickering rather than as the dialog going away. Four were left after
+  the first pass: Interviewer's export dialog, its unlock and passphrase-recovery
+  dialogs, and Architect's report that a protocol has become invalid. All four now
+  close the way every other dialog does.
+
+  Nothing of a passphrase now outlives the dialog it was typed into. The unlock
+  dialogs hold their form outside the dialog itself, so keeping the dialog on
+  screen long enough to animate away also kept what had been typed into it; the
+  form is now emptied as the dialog closes.
+
+  Internal only: the repository's build-time scripts and CI guards move from
+  `scripts/build/` to `scripts/buildtime/`. Three separate ignore rules — git's,
+  the linter's and the formatter's — all match `**/build`, which meant those
+  fourteen files needed a forced `git add` to be committed at all and were never
+  linted or formatted; eight of them had drifted. Nothing emits to a `build`
+  directory in this repository, so the collision was the name alone.
+
+- b0fa87a: Export `storybook-support/awaitPassiveEffects`. It is what a Storybook play
+  function awaits before its first synthetic interaction, so the story's passive
+  effects have run and the event is not swallowed by a listener that is not
+  attached yet. Stories outside this package had no way to reach it, and the only
+  alternative was a second copy of the same three lines.
+- ab25ed6: `CheckboxGroupField` takes an `emptyState`, shown inside the group when there
+  is nothing to tick. A field whose options all come from somewhere else can be
+  handed none, and the caller that wants to say so had to replace the group with
+  a paragraph — which drops the `aria-labelledby` the field injects, so the
+  control assistive technology announced as "Edge types" became unnamed text at
+  the moment the name mattered most. The sentence now sits inside the group the
+  label names.
+- 1abd707: Export `datePickerMonthOptions` from `@codaco/fresco-ui/form/fields/DatePicker`.
+  It builds the twelve month options the date picker offers, named from the
+  reader's own locale but anchored in UTC against the Gregorian calendar — the
+  option VALUES are `01` to `12` and are stored as part of an ISO date, so a
+  locale that defaults to another calendar would otherwise name them in that
+  calendar's months and picking one would store a different month. A control
+  outside this package now offers the same twelve months for the same stored
+  values, and a second table would be a second chance to lose that pinning. No
+  behaviour change for `DatePickerField` itself.
+- 4749625: A form can be handed the document it edits, and be closed to editing.
+  `<Form initialValues={…}>` (and `<FormStoreProvider>`) seeds any field that
+  names no starting value of its own from the document at the field's own name,
+  nested names included — read when each field mounts, so a control revealed
+  later opens on the document as it stands then rather than as it stood when the
+  form opened. A field mounting at a container path starts on the document's
+  reading of that path with only the paths other fields are actually mounted at
+  written over it, so it shows the edits made inside it without dropping the keys
+  beside them that nothing renders. The document is the only thing that seeds a
+  field: a form handed none starts every field holding nothing, as before.
+  `FieldsDisabled` marks every field beneath it unavailable, so a record somebody
+  else is holding is said once by the form rather than remembered by each
+  control; a field that disables itself still does.
+- c358132: Every piece of copy the components supply themselves — icon labels, dialog
+  buttons, empty states, validation messages, pagination and sort announcements
+  — now renders through `@codaco/app-i18n` instead of being hardcoded English.
+  That includes the copy with no visible home: the accessible names a control
+  falls back to when the caller supplies none (progress bars, panel handles,
+  number steppers, the Likert and analog scales), the drag-and-drop live-region
+  announcements, and the two messages a person only sees once something has
+  already failed — a submit handler that threw, and a validation rule that did.
+
+  The numbers inside that copy now go through the same formatter, so a filter
+  endpoint, a saved filter condition and the analog scale's value bubble carry
+  the reader's digits and grouping rather than the source language's.
+
+  Existing hosts need no change: a component used without a locale provider
+  renders exactly the English it rendered before, with one exception — those
+  numbers now take English grouping, so a range ending at 2000 reads `2,000`.
+
+  A host that wants the components in the reader's language mounts
+  `AppI18nProvider` and merges this package's catalogs into the messages it
+  passes it — `mergeCatalogs(commonCatalogs[locale], frescoUiCatalogs[locale],
+appCatalog)`, taking `frescoUiCatalogs` from `@codaco/fresco-ui/locales`. The
+  provider formats only the `messages` it is handed, so mounting it without that
+  merge leaves every `frescoUi.*` id on its English default — including the
+  en-GB overrides, where the trash-bin icon stays a "Trash bin" rather than a
+  "Rubbish bin".
+
+  Also adds a `LocaleSelect` field for choosing a language, exports the
+  package's catalogs at `@codaco/fresco-ui/locales`, and converts the layout to
+  logical properties (`start`/`end` rather than `left`/`right`) so the
+  components lay out correctly in right-to-left languages.
+
+  The shared catalog includes complete Spanish translations. Relative timestamps
+  follow the active locale, and queued dialog/toast content can use reactive
+  message nodes so titles, descriptions, action labels, and retry errors update
+  when the language changes. Text-length guidance now describes the inclusive
+  maximum correctly and uses singular or plural character counts.
+
+  Submitted form errors can also carry a shared message descriptor through the
+  existing string result contract. Field and form error displays translate it in
+  the active language while preserving entered values, focus, and server refusals.
+
+  Fields and radio options also accept rich React labels, so translated questions
+  can include literal person names without treating those names as Markdown.
+  String labels keep their existing Markdown rendering. Detached drag-and-drop
+  announcements carry their own language and direction when embedded in a host
+  using another language.
+
+  Long PIN fields fit narrow layouts, and a PIN retry restores focus after the
+  form becomes enabled without taking focus again on a later language change.
+
+- df21eec: Add `messageRuleValidation`, which turns a plain validation function that returns a message into a field validation rule, so consumers without a schema library can attach blocking rules to array fields.
+
+  A custom field validation's `hint` is now optional. A rule that only speaks when it fails — "every option needs a unique value" — has nothing to promise a participant up front, and previously had no way to say so except an empty string, which the validation summary rendered as an empty bullet.
+
+- c563d9f: Hold a non-dismissible dialog open. `dismissible={false}` hid the dialog's close
+  button, but pressing Escape or clicking outside still closed it and still called
+  `closeDialog` — so a dialog that was meant to stay put until its work finished
+  could be dismissed by either reflex. Both are now refused, which is what the
+  prop has always said it does. `Modal` takes the same `dismissible` prop, for
+  overlays that are built on it directly rather than through `Dialog`.
+- 4e808e1: `resolveFieldContainer` is exported from `form/utils/focusFirstError`. It
+  answers with the element a form field owns in the DOM for a given error key,
+  through the same two rules the focus machinery already used internally — the
+  store's own key first, then a public field name when exactly one element
+  carries it. Callers that need the field itself, rather than the control an
+  invalid submit would focus, no longer have to reimplement that lookup and drift
+  from it.
+- ca83424: Add `singleLine` to `RichTextEditorField`, which holds the editor to one line.
+
+  A field that stores a single line of text — a label, a short prompt — had no way to say so to the editor, only to whatever converted the document afterwards. The editor was therefore free to hold a second paragraph, and the converter had to invent a join for a shape it was never meant to see: Architect's markdown adapter joined two paragraphs with a space, so a label whose first paragraph had just been emptied saved "Never met" as " Never met".
+
+  With `singleLine`, the document is a single paragraph in the schema, Enter and Shift-Enter do nothing, a pasted passage arrives with its lines joined by spaces and its formatting intact, and the box reports `aria-multiline="false"`. The heading, list and rule controls are withheld along with it, because a block cannot exist in that document and the buttons would do nothing.
+
+  A document handed to the field as its `value` is joined the same way, and joined before anything reads it. The schema is not consulted on that route — a value is read with `Node.fromJSON`, which builds what it is told to build — so a stored two-paragraph document would otherwise arrive whole and the field would show two lines while promising one. A hard break inside a paragraph is joined too; it sits inside the paragraph rather than beside it, so the schema was never going to refuse it at all. A value holding a heading, a list or a rule fared worse still: reading it fails outright on a node type the single-line schema does not have, and TipTap answers that with an empty document, so the text did not arrive flattened, it arrived as nothing and the next edit saved that over it. A MARK the schema does not have — a link, in a field whose toolbar offers none — fails the same read the same way, so the flattening drops the marks this field has no type for and keeps the words they were on.
+
+  Turning `singleLine` on rebuilds the editor around the new schema, and it is now rebuilt from what the field is holding rather than from the host's `value`. Under the default `changeMode="blur"` those are not the same thing: the value is a whole sentence behind until the caret leaves, so a field whose restriction changed mid-edit lost everything typed since it was entered. The carried document is flattened like any other and reported to the host, because it is one the outgoing schema could not have expressed.
+
+- a382c6b: Add `Tag`, a compact uppercase label with an optional palette-coloured dot that becomes an `aria-pressed` toggle button when given `onPressedChange` — the shape used for multi-select facet filters. Architect's New Stage capability filter now uses it.
+
+  `GridLayout` accepts `maxColumns`, so a collection can cap its column count while wider containers grow the items instead. Internally, `Badge` and `Tag` now read the named palette from one shared map.
+
+  New typographic levels for compact secondary text: `Eyebrow`, a bold uppercase monospace label with `muted`, `default`, `primary` and `subtle` tones, the last dropping the bold face for a classifier set beside its subject; `Paragraph` intents `caption` and `meta` (tight-leading small text, the latter monospace); and a `Heading` `subtitle` variant that keeps the level's size but sets a semibold face on snug leading for long titles. `Paragraph` also accepts a `render` prop, like `Heading`, to substitute the rendered element.
+
+  `STAGE_TYPE_COLORS` and `STAGE_TYPE_ICONS` map every protocol stage type to a palette colour and a Lucide icon, both keyed by the schema's stage union so a new interface cannot ship without either. Each icon is chosen for what its interface does, and — where Network Canvas already drew that interface its own icon — for the closest silhouette to it, so the set still reads as Network Canvas. `isStageType` narrows a type read from protocol JSON; `stageTypeColorStyle` gives the colour as CSS variables and `stageTypeIcon` the icon component. `StageBar` draws a stage sequence as a colour strip from the colour map; the website's protocol gallery uses both.
+
+- 3abf9e4: Two new components for naming where a researcher is: `IdentityMark` and
+  `navigation/TeamAndStudySwitcher`.
+
+  `IdentityMark` gives an entity a stable visual identity — a monogram on a fill
+  chosen by hashing the entity's id. The fill derives from the id alone, so the
+  same entity is the same colour in every session with nothing persisted, and
+  renaming it never recolours it. The fill and foreground pairings are measured
+  rather than assumed: mustard, sea green and sea serpent take the dark
+  foreground, because white on them is 1.82:1, 2.27:1 and 2.23:1. The mark is
+  `aria-hidden` — every caller renders the entity's real name beside it.
+
+  `TeamAndStudySwitcher` is the control that names the team whose work is on
+  screen and the study open inside it, and moves between siblings of either. One
+  component rather than a frame composed around separate switchers: the frame and
+  the segments have to agree about radius, height and where a painted surface
+  stops, and as separate components they disagreed about each in turn. The frame
+  owns the border, the radius and the clip; the segments have no corners of their
+  own.
+
+  It is a listbox rather than a menu, so opening lands on the entity you are
+  already in rather than on the first sibling. The trailing command sits in the
+  popup but outside the list, so the list holds only options — and the command
+  is still reachable, one Tab from the open list. A segment with nothing to
+  switch to and no command renders inert rather than taking a tab stop, and a
+  loading segment reserves the space its name will take, so the header does not
+  reflow. Which presentation a segment is in follows a container query, not the
+  viewport.
+
+  A segment's status is `ready` or `loading`, and there is no failure state.
+  A list that could not be read is the host's to report: one switcher carrying
+  its own error surface would put a second, quieter account of the same outage
+  beside the one the application already makes.
+
+  The trigger's accessible name is one interpolated message the host supplies
+  through `accessibleName`, rather than two separately translated strings this
+  component joins. Word order is a property of the sentence — English wants
+  "Team SONIC Lab" and Japanese the equivalent of "SONIC Lab team" — and no
+  order the component picks is right everywhere. It defaults to the previous
+  output, and warns in development when a supplied label does not contain the
+  visible name, which a control's accessible name has to (WCAG 2.5.3).
+
+  The listbox is rendered even when the list is empty. Without one, Base UI
+  moves `role="listbox"` onto the popup, which puts the trailing command inside
+  the listbox — a structure that holds options and nothing else, and one a
+  screen reader may skip or misannounce.
+
+  The supporting line under a name keeps full strength on the selected row.
+  Dimmed, it composites toward `--selected` and falls to 2.90:1 against it.
+
+  Every text run in the control sits on its caps and baseline rather than on its
+  line box, matching the rest of the library. Two spacings that the leading used
+  to provide by accident — between the kicker and the name, and between a name
+  and its supporting line — are now stated, and a name that has to shorten clips
+  sideways only, because a cap-height box would otherwise lose its descenders.
+
+  The type scale gains `text-2xs`, one step below `xs`, for the small uppercase
+  labels that qualify a value rather than being one.
+
+  `@codaco/tailwind-config` ships alongside because the components need its CSS:
+  a `--text-2xs` step below `xs`, for the small uppercase word above each name,
+  and a radius scale that now derives every step from `--radius-base`. That
+  second change is a fix — only the bare `rounded` utility followed a theme
+  before, so `rounded-sm` and the rest resolved at `:root` and every themed
+  region got the default theme's numbers.
+
+  Interviewer's update indicator takes the default pill size. It was the only
+  caller asking for `sm` — Architect's equivalent asks for `md` — so the same
+  indicator was drawn at two sizes in the two apps for no stated reason. It is
+  `md` in both now. The patch is here rather than in a changeset of its own
+  because the size it lands on is `Pill`'s, and the two move together.
+
+- bb8e755: Added `ColorPickerField`, a palette of named colour swatches chosen one at a
+  time. It is a Field component, so it carries the form system's value,
+  validation, error, label and hint contract, is fully operable from the keyboard,
+  and marks the chosen swatch with an outline ring that reads without perceiving
+  colour.
+
+  `ArrayField` gains two additions: `itemTemplate` is now optional, so a list
+  whose every field is answered in its row editor adds an empty row instead of
+  passing a template it has no use for; and `itemLabel` lets a list name its own
+  rows, so the delete confirmation asks "Delete this prompt?" rather than the
+  generic "Are you sure?".
+
+- 693655f: Add `getMarkdownLabelText` alongside `RenderMarkdown` so locale-sensitive formatting can use the text produced by the default label renderer, including GFM, emoji and sanitized HTML, while retaining the original authored markup.
+- ed91f97: `ArrayField` tells each row the word the list uses for its rows, and a
+  confirmed removal leaves focus inside the list.
+
+  `ArrayFieldItemProps` gains `itemLabel`, the descriptor the list already
+  declares for its delete confirmation, so a row can name its own Edit and
+  Delete controls for the researcher instead of leaving several lists on one
+  screen showing identically named buttons.
+
+  It also gains `deleteTriggerRef`. A row that registers the control opening its
+  removal lets the list's own `confirmDelete` hand focus to the row that takes
+  the removed one's place — and to the add button only when the list is emptied
+  — rather than sending the researcher out of the middle of a list they were
+  working down.
+
+- a5626f5: Add the application-shell layout and navigation primitives: `layout/AppFrame`,
+  `layout/AppArea`, `navigation/NavList`, `navigation/NavItem` and
+  `navigation/NavDrawer`.
+
+  `AppFrame` is the outer chrome — the skip link, the `header` it renders around
+  the host's header contents, and the region an area fills. It renders no `nav` and no `main` of its own. `AppArea` renders those:
+  one labelled navigation region and one `main` the skip link lands on, becoming
+  a trigger and a drawer when its container is narrow. Keeping the two apart is
+  what lets one area's navigation replace another's rather than nest inside it.
+
+  `NavList` groups destinations under translatable headings, as sibling lists so
+  each reports its own count and none claims a hierarchy that isn't there.
+  `NavItem` takes its link from a render prop, so any router can supply one, and
+  folds an optional count into the destination's accessible name rather than
+  leaving a bare number beside it. Its `disabled` state — which requires an
+  `unavailableReason` alongside it — renders a destination this deployment does
+  not have as text rather than as a link: no `href`, nothing focusable, and the
+  reason shown beneath the label so the row explains itself.
+
+  `NavDrawer` traps focus while open and hands focus to the destination when a
+  navigation closes it, falling back to the trigger when the destination has no
+  landing point. A navigation that is cancelled leaves it open.
+
+  `navigation/RouteFocus` gains `hasRouteFocusTarget`, which answers whether the
+  current route has a landing point — for callers that must know a handoff is
+  possible before giving up the focus they hold.
+
+- aab7516: Architect and Interviewer share one interface-language switcher. In Architect
+  it sits in the header navigation and names the language in use, written in
+  that language; in Interviewer it is a globe button in the home status bar.
+  Both open a list of every interface language, each written in itself. The
+  first entry, Automatic, says which language the browser currently resolves to,
+  and while it is chosen the switcher names that language rather than announcing
+  itself as automatic.
+
+  Choosing an entry applies at once and closes the list. A choice that could not
+  be stored is reported in the list's footer, with a button to try again.
+
+  Architect's language dialog behind the translate icon is retired in favour of
+  the header switcher. Interviewer's settings dialog, welcome screen and setup
+  wizard keep their language selects.
+
+  For anyone building on `@codaco/fresco-ui`: `navigation/LocaleSwitcher` is the
+  new component. It takes the app's locale registry, the stored preference, the
+  locale automatic resolves to, the host's save state, and whether it persists
+  to a device or an account; its own chrome is translated once under
+  `frescoUi.localeSwitcher.*`. `display` chooses what the trigger shows beside
+  the globe — `label` always names the language, `icon` never does, and
+  `responsive` drops the name once its container is narrower than 36em.
+  `searchable` adds a search box, for a host offering more languages than a list
+  can carry comfortably; it is off by default and matches a language by its own
+  name or its tag. A host whose bar dresses its own controls hands the trigger
+  element in as `renderTrigger`; Architect's header does, so the switcher sits
+  in its navigation list styled like the links beside it.
+
+- d356513: A form's "jump to the first problem" now finds a field rendered outside the
+  `<form>` element, and can no longer reach a field belonging to another form.
+  Every connected field stamps its own form's identity on its container
+  (`data-field-form`), and `focusFirstError` takes that identity alongside the
+  form element: a field belongs to the form if the element contains it or it
+  carries the form's id. Previously the search was DOM containment alone, so a
+  host drawing one of a form's fields outside the element — a stage editor's
+  title — was unreachable, and an unscoped fallback could scroll the page behind
+  a dialog to a same-named field it must not touch.
+
+  A field's registration is now counted, so one path may be bound by more than
+  one mounted caller. A stage editor's title and a rename dialog over it bind the
+  same name, and registration was last-write-wins in both directions: the second
+  mount reset the live field's own state, and the FIRST unmount deleted the field
+  and took its value and its errors with it. A second registration of a mounted
+  field now joins it, and the field is unregistered when the last holder goes.
+
+- 553d580: Added `@codaco/fresco-ui/hooks/useHasHydrated`, the one implementation of "is this tree past hydration" for the handful of things only a browser can answer. It replaces eight hand-rolled copies across the design system and the apps.
+
+  In Fresco, the anonymous recruitment URL and the passkey option on the sign-in and sign-up forms now appear as soon as the page is interactive, without the extra render pass they used to wait for.
+
+### Patch Changes
+
+- 486ad48: Choosing an attribute is a searchable window again. Every control that asks
+  which codebook attribute something records — a form field, a prompt, a rule, a
+  pedigree slot, quick add — now opens a window with a search box and a keyboard
+  navigable list, instead of a dropdown you had to scroll. Each attribute is
+  shown with the kind of answer it holds, so a type carrying dozens of them can
+  be read at a glance, and the arrow keys and Enter take a row without reaching
+  for the mouse.
+
+  Where a control lets you invent an attribute, you do it from the same window:
+  type a name nothing matches and the first row offers to create it. A name the
+  type already has, or one holding characters the export formats cannot carry,
+  says so on the row before anything is written.
+
+- 043c098: Error messages inside a list item in Architect, such as the one under a
+  yes/no attribute's answer labels, can be read again. They were red on the
+  slate blue row and almost invisible. They now appear as white text in a red
+  box, the same treatment Fresco UI already uses for errors on coloured
+  backgrounds. Other destructive text on these rows, such as the required-field
+  marker, is drawn in a light tint that stays legible against the row.
+
+  In Fresco UI, `FieldErrors` now draws its messages as that red box by default
+  when it sits inside `<Surface series="accent">`; pass `variant="text"` to keep
+  plain text there. In the default theme's dark mode the box uses dark text
+  instead of white, which read at 3.85:1 on the brightened red there and now
+  reads at 5.06:1; every other theme draws it as before. A new `useSurfaceSeries`
+  hook, exported from `@codaco/fresco-ui/layout/Surface`, tells a component
+  whether it is inside an accent or a default Surface.
+
+  Destructive text across the library, such as required-field markers, inline
+  error lines and the weak password label, now uses `text-destructive-ink` rather
+  than `text-destructive`, so an accent Surface can give it a legible colour
+  without changing destructive buttons and badges. `getPasswordStrength` returns
+  `'text-destructive-ink'` as the `colorClass` of a weak password, and the
+  `PasswordStrength['colorClass']` type changes to match.
+
+- 55bf4da: Links inside a list item in Architect, such as a link in an Information stage's
+  text block, can be read again. They were coral on the slate blue row and almost
+  invisible. They are now white and underlined, so they stand out from the text
+  around them.
+- 0968b01: Response options read in full in the categorical and ordinal bins. A researcher
+  can write an option as a whole sentence — "Previously involved in the criminal
+  legal system, but not currently" is an ordinary thing for a study to ask — and
+  the bin now sizes that text to the room it actually has, a step at a time, in
+  place of cutting it off mid-word. Where a bin is too small to hold every word
+  even at the smallest readable size, the text fades at the edge rather than
+  stopping without warning, and the whole option is still read out by a screen
+  reader.
+
+  Two ways an option could disappear entirely are fixed. In a tall window, an
+  ordinal bin's heading could be pushed out through the top and bottom of its own
+  panel, leaving a coloured band with nothing in it. In a narrow one, the labels
+  were cut part-way through a line of text.
+
+  A bin that holds people shows who is in it underneath the option, as before. It
+  now steps aside when the option itself needs the room, instead of being cut in
+  half, and comes back as soon as there is room again.
+
+  Emphasis authored in an option — **bold** or _italic_ — now reads as emphasis
+  against the label's own weight, and a screen reader is handed the words without
+  the markdown around them.
+
+- 8a91585: A combobox's list of options now opens above the popover it sits in. In
+  Interviewer's data view, the protocol filter's list opened behind the rest of
+  the filter panel, so once you had filtered to one protocol you could not
+  choose another or clear the filter. You can now.
+- 5a19894: Fix `Alert`'s default variant applying no text colour. It referenced `text-contrast`, which is not a token the shared theme defines — every other variant pairs its background with a `{variant}-contrast` colour (`bg-info`/`text-info-contrast`, `bg-destructive`/`text-destructive-contrast`, and so on), but the default variant's `bg-surface` was left pointing at the nonexistent bare `contrast` token instead of `text-surface-contrast`. Text in a default-variant alert now gets the same explicit, theme-correct colour as every other variant instead of falling back to whatever colour it happened to inherit.
+- ca83424: Fix two heading-order defects found by running the a11y checks over every story.
+
+  Both are the same defect: a heading level is only correct relative to the heading above it, and a component that can be rendered anywhere cannot know what that is. A `Dialog` now states the level it encloses, and what is inside counts down from it.
+
+  `AlertTitle` was always a level-four heading, so an alert raised in a dialog sat as an `h4` under the dialog's `h2` title — a `heading-order` failure, and for anyone navigating by headings a title that reads as belonging to a subsection that is not there. An alert title in a dialog is now an `h3` without being asked; anywhere else it is still an `h4`. A `headingLevel` prop names a level explicitly for the rare outline neither of those describes.
+
+  `Section` took its heading level from Surface depth, and `Dialog` restarts the Surface ladder one level in so that surfaces inside an overlay derive from the overlay rather than from wherever it was opened. A first-level section in a dialog was therefore an `h4` under the `h2` as well, on every dialog whose content is built from sections. Sections inside a dialog now count down from the dialog's own title, so the first is an `h3`.
+
+  The count is from the NEAREST heading, not the outermost one. A section writes a heading of its own, so it states its level for everything inside it in turn: an alert raised inside a section in a dialog is an `h4` under that section's `h3`, where before it was an `h3` beside it. On an ordinary page the same now holds — an alert inside a section counts from the section's heading rather than assuming there is none.
+
+  The element changes and nothing else does: a section keeps the type treatment its Surface depth gives it, an alert title keeps the small all-caps treatment that makes it read as one, and neither is touched outside a dialog.
+
+- e4dad7e: `ArrayField` no longer deletes a row when the list stopped accepting changes while its delete confirmation was open. A confirmation is a window the list can change under — a section whose prerequisite has just been unset, an editing lock lost to a collaborator — and the row was removed anyway, because the confirmation only checked at the moment Delete was first pressed. It now checks when the confirmation is answered, and says nothing was removed rather than closing over a deletion of a list that is no longer editable.
+- 90b08cd: A removed row of an `ArrayField` stays mounted while it animates away, and for
+  that moment it was still a row: in the accessibility tree, in the tab ring, and
+  answering to every query for one of its controls. It is `aria-hidden` and
+  `inert` for the rest of its life now, so nothing that asks the list what it
+  contains can reach a row that has gone.
+
+  That window was long enough to send focus to a control that no longer exists.
+  Architect's list field decides where focus goes after a removal by asking the
+  list which Remove controls it holds — the row that took the removed one's place
+  — and asked inside the window it counted the dying row and answered with its
+  own Remove button. Focus landed on a node destroyed a fraction of a second
+  later and fell back to the page header, which is the outcome naming a target
+  exists to prevent.
+
+- 1376c6a: `ArrayField`'s `move` operation now carries the row that moved, alongside the two positions it already reported. A pointer drag reads `from` when the pointer goes down and `to` when it comes up, and `ArrayField` re-syncs its rows from the `value` prop in between — so a value that changes mid-drag leaves the two ends numbered against two different lists, and an `onOperation` consumer replaying `from` reorders whichever row has since taken that place. The row itself is the only part of the operation that survives the change, so it is now what a consumer should resolve the move by.
+
+  Rows with no id of their own keep their identity across a value the parent replaces. Such a row's internal id — its React key, and the handle every drag, confirm dialog and asynchronous edit holds it by — used to be reused BY POSITION, so a row arriving from elsewhere handed each row below it the id of its neighbour: a drag in progress finished by moving a row the researcher never picked up, and a handler held across an await wrote to one they never looked at. An arriving row now keeps the id of the row it is, matched by its content. Position is preferred only where the content at that position changed and every other row stayed exactly where it was — a keystroke, which must not remount the row and take the caret with it. A row that content cannot match in a list which also moved gets a new id instead of the one at its position: content is what carries a row through an insertion above it, and the id at that position now belongs to a row that has gone elsewhere. So one arrival that both rewrites the row a researcher has open and inserts another above it closes their editor, rather than moving it onto the row that just arrived and letting their next keystroke overwrite it.
+
+  `onOperation` and an item component's `onUpdate` can now answer whether the write landed. `ArrayField` draws every mutation out of its own state before reporting it and re-reads `value` only when `value` changes, so a consumer that commits somewhere else — a document that refuses the write, a row it cannot resolve — could leave a row on screen belonging to no list. `onOperation` returning `false` now puts the list's rows back to `value`, and `onUpdate` returns `false` when the row it was called for has left the list, so an item component updating after a round trip through its host can tell the researcher rather than assuming it landed. Returning nothing means the write was taken, which is what every existing consumer does.
+
+- 15c8259: Every subpath that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import it from a Server Component. Twenty-seven modules
+  were missing the directive, including `Modal`, `Popover`, `TimeAgo`,
+  `SegmentedSwitcher`, `form/FieldGroup`, `form/SubmitButton`,
+  `form/fields/CheckboxGroup`, the form hooks (`form/hooks/useField`,
+  `useForm`, `useFormState`, `useFormStore`, `useFormValue`), `dialogs/useDialog`,
+  `dnd/useDropTarget`, `hooks/useSafeLocalStorage`, `navigation/RouteFocus` and
+  `utils/NoSSRWrapper`. An unmarked module is treated as server code, so importing
+  any of these anywhere in a Server Component's import graph failed the build
+  rather than rendering.
+
+  `typography/Heading` and `NativeLink` are deliberately unchanged and stay
+  server-renderable: the only hook-named call they make is Base UI's `useRender`,
+  which runs no React hook of its own.
+
+- 484c9e0: Stop fields spreading `aria-readonly` and `aria-required` onto elements whose
+  role does not allow them. `useField` injects both into the prop bag every field
+  spreads onto its element, which is correct for the controls that take them
+  directly, but `ArrayField` put them on its `role="list"`, `CheckboxGroup`,
+  `ToggleButtonGroup` and `RadioMatrixField` on their `<fieldset>` (implicit
+  `role="group"`), and `LikertScale` and `VisualAnalogScale` on the roleless
+  `<div>` they wrap their slider in and on Base UI's `Slider.Root`, which is
+  itself a `role="group"` wrapper rather than the slider. ARIA 1.2 made
+  `aria-disabled` and `aria-invalid` global attributes, so those are valid
+  anywhere and are unchanged, but `aria-readonly` and `aria-required` are allowed
+  only on the roles that support them — `textbox`, `checkbox`, `combobox`,
+  `listbox`, `radiogroup`, `slider`, `spinbutton` and friends — so axe reported
+  every one of these as a critical `aria-allowed-attr` failure, even when the
+  value was `"false"`. That failed the accessibility gate on any story mounting
+  an array field, a checkbox or toggle group, a radio matrix or a scale.
+
+  Each of those fields now filters both attributes out before spreading and
+  leaves the state on the control that owns it: the individual checkboxes and
+  toggles of a group, each row's radio group in a matrix. Where no element in the
+  field can legally carry them, the state is exposed the way it already was to
+  sighted users and screen readers alike — the required marker on the field's
+  label and the visually hidden "Required" element named in `aria-describedby`,
+  and, for read-only, the suppressed affordances and handlers. Text, select and
+  combobox fields are unaffected and still carry both attributes themselves.
+
+- 154d2ab: `EnclosingHeadingLevel` is now a public export at
+  `@codaco/fresco-ui/typography/EnclosingHeadingLevel`, alongside the
+  `useEnclosingHeadingLevel` hook and the `headingTagBelow` helper.
+
+  A heading level is only correct relative to the heading above it, so `Dialog`,
+  `Section` and `AlertTitle` state what they enclose and count down from what
+  encloses them. Everything that writes a heading has to take part in that, and
+  components outside this package write headings too: an editor with a title of
+  its own raises alerts and mounts sections beneath it, and a host mounts a form
+  under its own page heading. Until now they had no way to say so, so an alert
+  inside such an editor counted from the dialog above the editor and landed
+  beside the editor's own title instead of under it. There is no behaviour change
+  for anything already in the package.
+
+- c100092: Fix `FieldErrors`' shake animation replaying on every keystroke of an already-invalid field. Revalidating a dirty field clears its error and writes the identical message back within the same keystroke, which made the message flicker off and back on and, with it, the shake — even though nothing had actually changed. The shake now only replays when the message itself changes.
+- 65d2583: A form can be told the document it edits has been stored, and every field's
+  baseline moves onto it. `<Form initialValues={…}>` gave a field its starting
+  value when the field mounted and never moved it again, so a form whose stage
+  had just been saved went on measuring every field on screen against the
+  reading it opened on and reported itself dirty over work that was stored — and
+  a host guarding unsaved work asked whether to discard changes the person had
+  just watched it save. The form store now offers `rebaseToDocument(document)`: a
+  field holding what that document says stops counting as unsaved work, while an
+  edit the document does not have keeps its value and goes on saying it is
+  unsaved. Deliberately said by the host rather than inferred from
+  `initialValues` moving — a working document also advances for writes nobody has
+  saved, and a baseline taking those would call a form clean with all of it still
+  to save.
+- 57c74ae: Fix a field going on running a validation rule it no longer has. A field memoises its validation function on a JSON serialisation of its validation props, and `JSON.stringify` omits a function-valued property, so a `custom` rule rebuilt to judge against something that has changed — the rows a value must stay unique against, the picks a cross-reference must agree with — produced an identical key and the field kept running the rule it first registered with. The rules are now read when validation runs, so the registered function keeps its identity (re-registering would delete the field's stored errors) while always judging by the rules the field currently holds.
+- ca83424: Make the rich text toolbar unavailable when its field is.
+
+  A read-only or disabled editor left its toolbar looking and reading as though it still worked. The link control was the worst of it: it is a disclosure, which works out its own availability rather than taking the field's, so it reported `aria-disabled="false"` and sat undimmed beside its unavailable siblings, ready to open its popover over a document nobody could edit. The rest were marked `aria-disabled` but never actually disabled, so they stayed in the tab order of a toolbar with nothing to offer.
+
+  Every button is now disabled and marked `aria-disabled` while the field is, and the content stays readable. A button unavailable only because of where the caret is — Undo with nothing to undo — is unchanged: it stays focusable and marked `aria-disabled`, which is what the ARIA toolbar pattern asks for.
+
+  A link popover already open when the field becomes unavailable is closed with it. Disabling the trigger said nothing about the panel it had opened: the URL box and the Apply and Remove buttons live in a portal of their own, and they went on running editor commands against a read-only field and reporting the result back as a change a researcher had made.
+
+- 208fcea: The site header's Software dropdown cards now highlight the moment the pointer reaches them. The hover tint is a light wash on the popup surface, and easing it in over 150ms made the highlight appear to lag behind the pointer and linger on the card just left.
+- 45a30fa: Fix "Must be unique" accepting a duplicate value for a number variable. A number typed into an interview form was compared as text against the numbers already stored on the other alters, so an Alter ID that another alter already held passed the check and the duplicate was added. The same mismatch let a "same as" or "different from" rule misjudge a number answered on an earlier stage. Number values are now compared as numbers wherever a rule reads what the network already holds.
+- aa4693a: Reopening the everything bar now re-checks its recent items before showing them, instead of briefly painting the rows the previous opening ended with. A recent entry that has since been renamed, or that the researcher no longer has access to, can no longer appear.
+
+  A node whose label may no longer be revealed, and a rich text editor's link popover when the field becomes disabled, now update in the same step as the change rather than one frame after it.
+
+- 0030df8: Bumps the `cva` dependency behind `cva`/`cx`/`compose`/`VariantProps`
+  (`@codaco/fresco-ui/utils/cva`) from `1.0.0-beta.4` to `1.0.0-beta.10`.
+  Rendered class output is unchanged.
+
+  One narrowing worth knowing if you import `compose` directly: `cva`'s
+  `compose()` no longer type-checks a composed component passed into another
+  `compose()` call (its declared return type doesn't carry the internal
+  property the check needs), so composing an already-composed variant function
+  now needs its own constituents listed directly rather than nesting the
+  composed function itself.
+
+- 98063fb: Attribute pills in the codebook no longer have an animated border. The moving
+  border marks the attribute a picker is holding, and the codebook's list of
+  attributes is a list rather than a choice, so its pills are now drawn in their
+  type's colour without it.
+
+  Rows of a list no longer scale into place when the editor or dialog holding
+  them opens. The animation is for a row that has just been added, and a row that
+  was simply there is now drawn at rest from the first frame. Adding, deleting,
+  reordering and opening a row's editor animate exactly as before.
+
+  Asking the attribute window to create an attribute whose kind of answer needs
+  more than a name now brings the attribute editor to the front. The window that
+  opened it was being drawn over it, so the editor looked like it had not opened
+  at all. The codebook’s own attribute window, which could have been drawn over a
+  dialog the same way, is stacked like every other window now too.
+
+- 139de02: Popover, tooltip and dropdown arrows now join their surface cleanly. The
+  arrow's outline was landing half a pixel off the surface border, which left a
+  small notch on either side of it and a lip of border hanging past the surface's
+  edge. The arrow also sat two pixels to one side of whatever opened it, and on
+  surfaces anchored left or right it could drift far enough along the edge to
+  overlap the rounded corner rather than the straight run beside it.
+- 06ffe9f: The value bubble on the visual analog scale and Likert scale now stays on the thumb when the scale is shown inside a dialog. Previously it could drift away from the thumb by the dialog's distance from the edge of the window.
+- Updated dependencies ([026b518](https://github.com/complexdatacollective/network-canvas-monorepo/commit/026b5188636452e20570bb4c15e055c8d6d000e8), [e322f90](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e322f9040c9f5f4218ea8d7da1aa286ef4e719e9), [4ea797d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4ea797d7159622173f7a605cf2ce6cac1884e854), [d7e93c5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d7e93c571df1fea1a8fc71d8c9d4f6692e2dbe7c), [55f5549](https://github.com/complexdatacollective/network-canvas-monorepo/commit/55f554975bc6731a7f5bc94dde0a7000b64ce2da), [2bea7ee](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2bea7eed99b1f0f5056144a1d6ac30855c36513e), [02ead76](https://github.com/complexdatacollective/network-canvas-monorepo/commit/02ead76454267cb9fcc8e2810eb6189e6d3aabc9), [f84eb32](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f84eb32e7c776a088c412511183baf7e3b635021), [eea0b5a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eea0b5acf7c4b852a57c6b57c5a504a34a7d11c0), [eee19fb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eee19fb93d4cb57d3c4d256971da78df15730a88), [3ae3a94](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3ae3a9438da400fc357a0c71721d45cd32f3a7ac), [01aaed2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01aaed2d0bcd7ce203f50952ddd3e4ddeaed143a), [9d9f310](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9d9f310867e490c073374df20689def7be163f47))
+  - @codaco/app-i18n@0.2.0
+  - @codaco/protocol-validation@14.0.0
+
 ## 6.4.0
 
 ### Minor Changes
