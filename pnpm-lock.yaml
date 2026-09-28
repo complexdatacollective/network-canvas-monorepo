@@ -90,16 +90,10 @@ catalogs:
     '@orpc/contract':
       specifier: 2.0.0-beta.34
       version: 2.0.0-beta.34
-    '@orpc/openapi':
-      specifier: 2.0.0-beta.34
-      version: 2.0.0-beta.34
     '@orpc/server':
       specifier: 2.0.0-beta.34
       version: 2.0.0-beta.34
     '@orpc/tanstack-query':
-      specifier: 2.0.0-beta.34
-      version: 2.0.0-beta.34
-    '@orpc/zod':
       specifier: 2.0.0-beta.34
       version: 2.0.0-beta.34
     '@playwright/test':
@@ -2063,15 +2057,9 @@ importers:
       '@orpc/contract':
         specifier: 'catalog:'
         version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
-      '@orpc/openapi':
-        specifier: 'catalog:'
-        version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
       '@orpc/server':
         specifier: 'catalog:'
         version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
-      '@orpc/zod':
-        specifier: 'catalog:'
-        version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)(zod@4.5.4)
       better-auth:
         specifier: 'catalog:'
         version: 1.7.5(e0989a7a847e9f6ee6d733fed8bbd75f)
@@ -6424,11 +6412,6 @@ packages:
     resolution: {integrity: sha512-Eg8OUMbPP1QaqKc6ZUNzsO9a2AVoW3ubErP2esMv9uRG6st4ooZILnCu6rbP+kbB0/kVZ4TfXIlq76+fv9OJyw==}
     peerDependencies:
       '@tanstack/query-core': '>=5.80.2'
-
-  '@orpc/zod@2.0.0-beta.34':
-    resolution: {integrity: sha512-n7FAvSTUMMa65cleI2xL7SkCeB3ts2UKuCxRCshh7QhVnKietHuNj5cpXJZFm7apIr/y2g0V8oezJLXuJ2JHFw==}
-    peerDependencies:
-      zod: ^4.5.4
 
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     resolution: {integrity: sha512-0LC7ye4hvqbIKxAzThzvswgHLFu2AURKzYLeSVvLdu2TBOYWQDmHnTqPLeA597BcUCxiLqLsS4CJ5uoI5WYWCQ==}
@@ -21068,16 +21051,6 @@ snapshots:
       - crossws
       - fastify
       - swagger-ui
-
-  '@orpc/zod@2.0.0-beta.34(@opentelemetry/api@1.9.1)(zod@4.5.4)':
-    dependencies:
-      '@openapi-spec/types': 0.1.0
-      '@orpc/json-schema': 2.0.0-beta.34(@opentelemetry/api@1.9.1)
-      zod: 4.5.4
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
-      - crossws
-      - fastify
 
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     optional: true

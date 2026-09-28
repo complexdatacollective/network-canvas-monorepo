@@ -5,7 +5,6 @@ import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
-import { createApiV1 } from './api.ts';
 import { assetStoreOf } from './assets.ts';
 import { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
@@ -238,10 +237,6 @@ export function createStudio(
     // store is configured, like every other unconfigured surface.
     ...(limiter?.configured ? { limiter: limiter.readiness } : {}),
   };
-
-  // The public data API's handlers. Its limit is the Effect router's
-  // (src/http/api-v1.ts), which forwards here once the caller is admitted.
-  app.route('/api/v1', createApiV1(authCaps, deployment, readInstallationRow));
 
   // One cipher for the process. Absent only where no keyring was given, which
   // the env layer allows only where there is no database — and every surface

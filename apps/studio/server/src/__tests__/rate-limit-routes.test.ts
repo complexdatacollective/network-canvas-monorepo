@@ -526,6 +526,32 @@ describe.skipIf(!url)('the limited request paths', () => {
     }
   });
 
+  it.each([
+    ['the OpenAPI document', '203.0.113.33', '/api/v1/openapi.json', 200],
+    ['the reference page', '203.0.113.34', '/api/v1/docs', 200],
+    ['a path that is no route', '203.0.113.35', '/api/v1/nope', 404],
+    [
+      'a method the route does not take',
+      '203.0.113.36',
+      '/api/v1/status',
+      404,
+      'DELETE',
+    ],
+  ])(
+    'charges %s against the public API limit',
+    async (_what, address, path, admitted, method = 'GET') => {
+      const server = await serverWith({ public_api: perMinute(2) });
+      const call = () => server.request(address, path, { method });
+      try {
+        expect((await call()).status).toBe(admitted);
+        expect((await call()).status).toBe(admitted);
+        await expectProblemJson429(await call());
+      } finally {
+        await server.dispose();
+      }
+    },
+  );
+
   it('refuses a third WebSocket upgrade for one user, from any address', async () => {
     // Keyed by the user the principal gate resolved, not by the address: a
     // tab that reconnects from a new network is the same tab.

@@ -1,10 +1,13 @@
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openApiDocument } from '@codaco/studio-contract/api/v1';
+
 import { createApp, createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
 import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { STUDIO_VERSION } from '../version.ts';
 import { authServiceStub } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
 import { composeStudio } from './support/serve.ts';
@@ -38,47 +41,71 @@ describe('studio server', () => {
   });
 
   it('serves instance status from the versioned API', async () => {
-    const app = createApp();
-    const res = await app.request('/api/v1/status');
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { name: string; version: string };
-    expect(body.name).toBe('Network Canvas Studio');
-    expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
-    // The public surface's output schema is the serialization allowlist
-    // (#1248): the SPA-facing auth capability and deployment blocks must
-    // never leak here.
-    expect(body).not.toHaveProperty('auth');
-    expect(body).not.toHaveProperty('deployment');
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request('/api/v1/status');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('application/json');
+      const body = (await res.json()) as Record<string, unknown>;
+      // The public surface's output schema is the serialization allowlist
+      // (#1248): the SPA-facing auth, deployment and setup blocks the domain
+      // hands the handler must never reach this wire.
+      expect(Object.keys(body).sort()).toEqual(['name', 'version']);
+      expect(body.name).toBe('Network Canvas Studio');
+      expect(body.version).toBe(STUDIO_VERSION);
+    } finally {
+      await stack.dispose();
+    }
   });
 
-  it('publishes an OpenAPI 3.1 document describing the API', async () => {
-    const app = createApp();
-    const res = await app.request('/api/v1/openapi.json');
-    expect(res.status).toBe(200);
-    const doc = (await res.json()) as {
-      openapi: string;
-      servers: { url: string }[];
-      paths: Record<string, unknown>;
-      components: { schemas: Record<string, unknown> };
-    };
-    expect(doc.openapi).toMatch(/^3\.1\./);
-    // Paths are relative to the mount prefix; the document must say so, or
-    // generated clients resolve /status against the host root.
-    expect(doc.servers).toEqual([{ url: '/api/v1' }]);
-    expect(Object.keys(doc.paths)).toContain('/status');
-    expect(Object.keys(doc.components.schemas)).toContain('Status');
+  it('publishes the contract’s OpenAPI document beside the API', async () => {
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request('/api/v1/openapi.json');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual(openApiDocument());
+    } finally {
+      await stack.dispose();
+    }
   });
 
-  it('does not serve unknown API paths, refusing as problem JSON', async () => {
-    const app = createApp();
-    const res = await app.request('/api/v1/nope');
-    expect(res.status).toBe(404);
-    // The guarantee is RFC 9457 problem details — never a fall-through to
-    // the SPA fallback's HTML.
-    expect(res.headers.get('Content-Type')).toContain(
-      'application/problem+json',
-    );
-    expect(await res.json()).toEqual({ title: 'Not Found', status: 404 });
+  it('serves an API reference page for the document', async () => {
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request('/api/v1/docs');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Type')).toContain('text/html');
+      const page = await res.text();
+      expect(page).toContain('<title>Network Canvas Studio API</title>');
+      expect(page).toContain('Scalar.createApiReference');
+    } finally {
+      await stack.dispose();
+    }
+  });
+
+  it.each([
+    ['GET', '/api/v1/nope'],
+    ['GET', '/api/v1'],
+    ['POST', '/api/v1/status'],
+    ['DELETE', '/api/v1/status'],
+  ])('does not serve %s %s, refusing as problem JSON', async (method, path) => {
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request(path, { method });
+      expect(res.status).toBe(404);
+      // The guarantee is RFC 9457 problem details — never a fall-through to
+      // the SPA fallback's HTML.
+      expect(res.headers.get('Content-Type')).toContain(
+        'application/problem+json',
+      );
+      expect(await res.json()).toEqual({ title: 'Not Found', status: 404 });
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('serves instance status over the typed RPC surface', async () => {

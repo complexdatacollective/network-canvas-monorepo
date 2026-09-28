@@ -25,7 +25,7 @@ export const problemFields = (title: string, status: number) => ({
   title: Schema.String.pipe(
     Schema.withConstructorDefault(Effect.succeed(title)),
   ),
-  status: Schema.Number.pipe(
+  status: Schema.Int.pipe(
     Schema.withConstructorDefault(Effect.succeed(status)),
   ),
   detail: Schema.optionalKey(Schema.String),
