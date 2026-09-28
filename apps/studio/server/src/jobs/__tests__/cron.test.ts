@@ -1,13 +1,16 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Cron, DateTime, Duration, Effect } from 'effect';
+import { Cron, DateTime, Duration, Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import { MaintenanceDatabase } from '../../db/client.ts';
 import { JobWorker } from '../worker.ts';
 import {
+  asOwner,
   clearQueue,
+  DELIVERY_ID,
   holding,
   layerJobs,
   layerQueueHarness,
@@ -36,6 +39,17 @@ const CHANGED = '30 4 * * *';
  * the case below fails if the two drift, so the pin checks itself.
  */
 const CRON_LOCK_CLASS = 402177;
+
+/**
+ * A delivery payload with a field the queue does not declare, built without a
+ * cast: TypeScript's excess-property check only fires on a fresh literal. The
+ * two empty payloads the declared schedules carry refuse any key on their own,
+ * so only a queue with declared keys shows whether a decode strips the rest.
+ */
+const withExcessField = Object.assign(
+  { deliveryId: DELIVERY_ID },
+  { teamId: 'a-team' },
+);
 
 /**
  * Holds the cron lock for `schemaName` on a connection of its own for the
@@ -201,6 +215,72 @@ describe.skipIf(!db)('recurring work', () => {
             (yield* schedules()).map(({ name }) => name).sort(),
             JOB_SCHEDULES.map(({ queue }) => queue).sort(),
           );
+        }).pipe(Effect.provide(layerWorker()));
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('refuses to register a schedule whose payload grew a field', () =>
+      Effect.gen(function* () {
+        yield* clear;
+
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+          const refused = yield* Effect.exit(
+            worker.schedule(
+              'grown',
+              EVERY_MINUTE,
+              'invitation-delivery',
+              withExcessField,
+            ),
+          );
+          // Stripped rather than refused, the row would be written and every
+          // occurrence enqueued from it would look like a clean one.
+          assert.isTrue(Exit.isFailure(refused));
+          assert.deepStrictEqual(yield* schedules(), []);
+
+          yield* worker.schedule('grown', EVERY_MINUTE, 'invitation-delivery', {
+            deliveryId: DELIVERY_ID,
+          });
+          assert.strictEqual((yield* schedules()).length, 1);
+        }).pipe(Effect.provide(layerWorker()));
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect('enqueues nothing from a schedule row that grew a field', () =>
+      Effect.gen(function* () {
+        const { schema } = yield* QueueHarness;
+        /** A due row as a previous release or a hand would have left it. */
+        const writeDueRow = (payload: object) =>
+          asOwner(
+            Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
+              sql.unsafe(
+                `INSERT INTO ${schema}.job_schedules
+                   (name, cron, queue, payload, next_run_at)
+                 VALUES ('hand-written', $1, 'invitation-delivery', $2::jsonb,
+                         to_timestamp(0))`,
+                [EVERY_MINUTE, JSON.stringify(payload)],
+              ),
+            ),
+          );
+
+        yield* Effect.gen(function* () {
+          const worker = yield* JobWorker;
+
+          // The control: the same row without the extra field is due and
+          // becomes a job, so the case below is not passing on a row the tick
+          // never reached.
+          yield* clear;
+          yield* writeDueRow({ deliveryId: DELIVERY_ID });
+          yield* Effect.exit(worker.tickSchedules);
+          assert.strictEqual(
+            (yield* readJobs('invitation-delivery')).length,
+            1,
+          );
+
+          yield* clear;
+          yield* writeDueRow(withExcessField);
+          yield* Effect.exit(worker.tickSchedules);
+          assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
         }).pipe(Effect.provide(layerWorker()));
       }).pipe(Effect.provide(jobsLayer)),
     );

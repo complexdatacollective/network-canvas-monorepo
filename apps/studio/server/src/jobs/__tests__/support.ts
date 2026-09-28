@@ -10,7 +10,7 @@ import {
   Scope,
 } from 'effect';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import {
   TestDatabase,
@@ -27,7 +27,7 @@ import { MaintenanceScope } from '../../db/tenant.ts';
 import type { DbEnv } from '../../env.ts';
 import { JobClock } from '../clock.ts';
 import { type EnqueueOptions, Jobs } from '../jobs.ts';
-import { type JobPayload, resolvedQueue } from '../queues.ts';
+import { resolvedQueue } from '../queues.ts';
 import {
   dropJobSchemaSql,
   jobSchemaGrantsSql,

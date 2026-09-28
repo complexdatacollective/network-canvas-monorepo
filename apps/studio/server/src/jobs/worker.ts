@@ -20,7 +20,7 @@ import {
 } from 'effect';
 import type { SqlClient, SqlError } from 'effect/unstable/sql';
 
-import type { JobQueueName } from '@codaco/studio-sync/jobs';
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
@@ -32,7 +32,6 @@ import {
 } from './errors.ts';
 import { Jobs, type JobId } from './jobs.ts';
 import {
-  type JobPayload,
   payloadCodec,
   type ResolvedQueue,
   resolvedQueue,
@@ -1020,7 +1019,14 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             UPDATE ${table(sql)}.job_schedules
                SET next_run_at = ${nextRunAt}
              WHERE name = ${row.name}`;
-          // The row was written by `schedule`, which decoded it first.
+          // The row was written by `schedule`, which decoded it first, so a
+          // payload that no longer decodes is a row edited behind the queue's
+          // back — a defect, not a refusal. It dies inside this tick's one
+          // transaction, so the whole tick rolls back and every other due
+          // schedule waits with it until the row is repaired — by the
+          // `schedule` upsert or `dropUndeclaredSchedules`, both of which run
+          // at boot. A row naming a queue this build does not declare dies
+          // here the same way.
           const payload = yield* Effect.orDie(
             payloadCodec(row.queue).decode(row.payload),
           );
