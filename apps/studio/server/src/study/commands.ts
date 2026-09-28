@@ -19,7 +19,10 @@ import {
   changed,
   unchanged,
 } from '../audit/audited.ts';
-import { reservedDenial } from '../audit/denial-rate-limit.ts';
+import {
+  type DeniedAttempts,
+  reservedDenial,
+} from '../audit/denial-rate-limit.ts';
 import type { AuditSignal } from '../audit/signal.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly, sqlErrorsOnlyBeside } from '../db/errors.ts';
@@ -196,7 +199,12 @@ export const createAuditedStudy: (
   | SectionValidationFailedError
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | SecretsCipher
+  | Database
+  | Principal
+  | RequestId
+  | AuditSignal
+  | SecretsCipher
+  | DeniedAttempts
 > = Effect.fn('study.create')(function* (
   access: TeamAccess,
   input: {

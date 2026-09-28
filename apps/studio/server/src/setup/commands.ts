@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { Effect, Option, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
-import type { AuthService } from '../auth/service.ts';
+import { AuthService } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction, UntenantedScope } from '../db/tenant.ts';
@@ -121,16 +121,12 @@ const claimInstallation: (input: {
  * with no team, and this runs before any team exists at all.
  */
 export const completeSetup: (
-  auth: AuthService,
   input: CompleteSetupInput,
 ) => Effect.Effect<
   CompletedSetup,
   SetupCommandError | SqlError.SqlError,
-  Database
-> = Effect.fn('setup.complete')(function* (
-  auth: AuthService,
-  input: CompleteSetupInput,
-) {
+  Database | AuthService
+> = Effect.fn('setup.complete')(function* (input: CompleteSetupInput) {
   const existing = yield* UntenantedScope.open(readInstallation());
   // A missing row is an unprovisioned database, not an open instance: there is
   // no token to spend and nothing to mark. It reads as closed, like an owned
@@ -142,7 +138,7 @@ export const completeSetup: (
     return yield* new SetupCommandError({ reason: 'unauthorized' });
   }
 
-  const session = yield* establishOwnerSession(auth, input.owner);
+  const session = yield* establishOwnerSession(input.owner);
 
   const owned = yield* UntenantedScope.open(
     claimInstallation({
@@ -161,21 +157,20 @@ export const completeSetup: (
   // A transport with no response to carry them has no holder, and the result
   // says the browser was not signed in.
   const setCookies = yield* Effect.serviceOption(SetCookies);
-  const cookies = session.headers.getSetCookie();
-  if (Option.isNone(setCookies) || cookies.length === 0) {
+  if (Option.isNone(setCookies) || session.setCookies.length === 0) {
     return { instanceName: input.instanceName, signedIn: false };
   }
-  for (const cookie of cookies) {
+  for (const cookie of session.setCookies) {
     yield* setCookies.value.append(cookie);
   }
   return { instanceName: input.instanceName, signedIn: true };
 });
 
 const establishOwnerSession = Effect.fnUntraced(function* (
-  auth: AuthService,
   owner: CompleteSetupInput['owner'],
 ) {
-  const created = yield* Effect.promise(() => auth.signUpEmail(owner));
+  const auth = yield* AuthService;
+  const created = yield* auth.signUpEmail(owner);
   if (created.kind === 'created') return created.session;
   // Auth off means no database or no secret, and `setup.required` is false in
   // both — so this is a deployment fault rather than a refusal, and it leaves
@@ -186,9 +181,10 @@ const establishOwnerSession = Effect.fnUntraced(function* (
     );
   }
 
-  const adopted = yield* Effect.promise(() =>
-    auth.signInEmail({ email: owner.email, password: owner.password }),
-  );
+  const adopted = yield* auth.signInEmail({
+    email: owner.email,
+    password: owner.password,
+  });
   if (adopted.kind === 'refused') {
     return yield* new SetupCommandError({ reason: 'emailTaken' });
   }

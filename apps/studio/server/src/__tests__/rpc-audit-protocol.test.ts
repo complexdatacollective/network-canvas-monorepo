@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -17,7 +17,7 @@ import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../rpc.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -44,6 +44,8 @@ function builderClientFor(studio: Studio, who: SessionPrincipal) {
   return createRouterClient(
     createRpcRouter({
       ...studio.rpc,
+      auth: studio.auth,
+      limiter: studio.limiter,
       protocolBuilder: createProtocolBuilderRuntime(),
     }),
     {
@@ -90,15 +92,17 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         [TEAM_ID, PRINCIPAL.userId],
       ),
     );
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
+    const auth = authServiceStub({
+      getSession: () => Effect.succeedSome(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === TEAM_ID ? { role: 'owner' } : null),
+        Effect.succeed(
+          Option.fromNullishOr(teamId === TEAM_ID ? { role: 'owner' } : null),
+        ),
       // The protocol-builder host takes no teamId: it derives the tenant from
       // the caller's own memberships, so a stub that lists none would refuse
       // every write here for a reason this file is not about.
       listMemberships: () =>
-        Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
+        Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
     });
     const studio = createStudio(readEnv(), {
       auth,
@@ -429,11 +433,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       createStudio(readEnv(), {
         pool: database.appPool,
         services: database.services,
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(actor),
+        auth: authServiceStub({
+          getSession: () => Effect.succeedSome(actor),
           getMembership: () => {
             reportMiddlewareAuthorization();
-            return Promise.resolve({ role: 'admin' });
+            return Effect.succeedSome({ role: 'admin' });
           },
         }),
       }),

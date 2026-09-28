@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -8,6 +8,7 @@ import {
   type RateLimited,
 } from '@codaco/studio-contract/schema/errors';
 
+import { AuthService } from '../auth/service.ts';
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
@@ -17,6 +18,8 @@ import {
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import { isReachableByCaller } from '../protocol/store.ts';
+import { enforceRateLimit } from '../rate-limit/enforce.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import { STUDY_ROLE_TABLES } from '../study/roles-schema.ts';
 import { STUDY_TABLES } from '../study/schema.ts';
 import {
@@ -25,7 +28,7 @@ import {
   seesEveryTeamStudy,
 } from '../study/tenancy.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
-import { chargeLimit, requirePool } from './bridge.ts';
+import { requirePool } from './bridge.ts';
 import type { RpcDeps } from './deps.ts';
 
 const { team_members: teamMembers } = AUTH_TABLES;
@@ -52,8 +55,12 @@ const { studies } = STUDY_TABLES;
 //
 // What the move from the old `TeamScope` record must preserve is the ORDER:
 // the caller's own budget before any query, the team's only once membership is
-// confirmed. A spent window leaves as the contract's `RateLimited`, which every
-// procedure that opens a scope declares.
+// confirmed. The first is no longer this module's: `Authenticated` charges
+// `rpc_user` before any handler runs (`rpc/authenticated.ts`), which is what
+// makes "before any query" true of every procedure rather than of every helper
+// that remembers it. The second is here, because its subject is only known
+// after the membership read. A spent window leaves as the contract's
+// `RateLimited`, which every procedure that opens a scope declares.
 
 /**
  * Tenancy is checked per request against an explicit teamId in the procedure
@@ -68,28 +75,27 @@ export const openTeam = Effect.fnUntraced(function* (
   deps: RpcDeps,
   principal: Principal['Service'],
   teamId: string,
-): Effect.fn.Return<TeamAccess, Forbidden | RateLimited> {
-  // The caller's own budget first, before the database is touched at all: that
-  // is the one a runaway client spends, and refusing after a membership lookup
-  // would have spent the work the limit exists to stop.
-  yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
+): Effect.fn.Return<
+  TeamAccess,
+  Forbidden | RateLimited,
+  AuthService | RateLimiter
+> {
   // Asserted here rather than where the handle is built, so a plane wired
   // without a database refuses in the same place it always did — before any
   // membership is looked up.
   yield* requirePool(deps);
-  const membership = yield* Effect.promise(() =>
-    deps.auth.getMembership(principal.userId, teamId),
-  );
+  const auth = yield* AuthService;
+  const membership = yield* auth.getMembership(principal.userId, teamId);
   // One refusal, built the same way for both misses: `Forbidden` carries no
   // reason beyond `detail`, and neither branch sets one, so a non-member and an
   // unknown team are byte-identical answers rather than an existence oracle.
-  if (!membership) return yield* new Forbidden({});
+  if (Option.isNone(membership)) return yield* new Forbidden({});
   // The team's ceiling is charged only once this caller is known to be in the
   // team. Charging it first would let any signed-in stranger who can guess a
   // team id exhaust that team's quota with calls that are all refused — a
   // denial of service built entirely out of forbidden requests.
-  yield* chargeLimit(deps.limiter, 'rpc_team', teamId);
-  return unsafeMakeTeamAccess(teamId, membership.role);
+  yield* enforceRateLimit('rpc_team', teamId);
+  return unsafeMakeTeamAccess(teamId, membership.value.role);
 });
 
 /**
@@ -120,26 +126,26 @@ export const requireTeamAdministration = (
  * it has no use for.
  */
 export const resolveStudy = Effect.fnUntraced(function* (
-  deps: RpcDeps,
   principal: Principal['Service'],
   studyId: string,
-): Effect.fn.Return<ResolvedStudy, Forbidden | RateLimited, Database> {
+): Effect.fn.Return<
+  ResolvedStudy,
+  Forbidden | RateLimited,
+  Database | AuthService | RateLimiter
+> {
   // A study URL names no team, so the team limit cannot be taken before the
-  // tenant is resolved; the caller's own is taken before any query.
-  yield* chargeLimit(deps.limiter, 'rpc_user', principal.userId);
+  // tenant is resolved; the caller's own was taken by `Authenticated`.
+  const auth = yield* AuthService;
+  const memberships = yield* auth.listMemberships(principal.userId);
   const resolved = yield* Effect.orDie(
-    Effect.flatMap(
-      Effect.promise(() => deps.auth.listMemberships(principal.userId)),
-      (memberships) =>
-        resolveStudyTenant({
-          studyId,
-          actorUserId: principal.userId,
-          memberships,
-        }),
-    ),
+    resolveStudyTenant({
+      studyId,
+      actorUserId: principal.userId,
+      memberships,
+    }),
   );
   if (resolved === null) return yield* new Forbidden({});
-  yield* chargeLimit(deps.limiter, 'rpc_team', resolved.access.teamId);
+  yield* enforceRateLimit('rpc_team', resolved.access.teamId);
   return resolved;
 });
 

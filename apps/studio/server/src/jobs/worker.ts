@@ -149,6 +149,16 @@ export type JobWorkerConfig = {
    * This is `JobWorkerInline` (§11): the same code paths without a timer.
    */
   readonly background?: boolean | undefined;
+  /**
+   * `true` builds the worker with fetching off, so nothing is claimed until
+   * something calls `setFetching(true)`. The worker program sets it because
+   * its fetching flag belongs to `JobMaintenanceGate`, whose first reading of
+   * the deployment state is forked rather than awaited: a worker that started
+   * fetching would claim from its first poll pass, before that reading could
+   * say the deployment is in maintenance. Defaults to `false` — a worker with
+   * no gate over it must start working on its own.
+   */
+  readonly startPaused?: boolean | undefined;
 };
 
 /**
@@ -359,8 +369,22 @@ export const returnToQueue = Effect.fnUntraced(function* (
 const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const schema = assertSchemaName(config.schema);
   const registry = new Map<JobQueueName, RegisteredHandler>();
-  const fetching = MutableRef.make(true);
+  const fetching = MutableRef.make(config.startPaused !== true);
   const started = MutableRef.make(false);
+  /**
+   * One latch per queue, open to start with so a worker that boots onto a
+   * backlog drains it rather than waiting out a poll interval first. The poll
+   * fiber waits on "the latch OR the interval", whichever comes first; the
+   * listener opens the latch of the queue a `NOTIFY` names, and `setFetching`
+   * opens every one when fetching resumes — a worker that booted paused has
+   * already spent its open latch on a pass that claimed nothing.
+   */
+  const wake = new Map<JobQueueName, Latch.Latch>(
+    resolvedQueues.map((declaration) => [
+      declaration.name,
+      Latch.makeUnsafe(true),
+    ]),
+  );
   /** Set when `forkListener` acquires its `LISTEN`, cleared when it loses it. */
   const listening = MutableRef.make(false);
   const maxInFlight = config.maxInFlight ?? DEFAULTS.maxInFlight;
@@ -1062,7 +1086,12 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     listening: Effect.sync((): Option.Option<boolean> =>
       listens ? Option.some(MutableRef.get(listening)) : Option.none(),
     ),
-    setFetching: (value) => Effect.sync(() => MutableRef.set(fetching, value)),
+    setFetching: (value) =>
+      Effect.gen(function* () {
+        MutableRef.set(fetching, value);
+        if (!value) return;
+        for (const latch of wake.values()) yield* latch.open;
+      }),
     queueDepths: queueDepths(),
     drainOnce,
     reapExpired: reapExpired(),
@@ -1074,6 +1103,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
   yield* forkBackground(service, config, schema, {
     fetching,
+    wake,
     inFlight,
     maxInFlight,
     registry,
@@ -1094,24 +1124,14 @@ const forkBackground = Effect.fnUntraced(function* (
   schema: string,
   state: {
     readonly fetching: MutableRef.MutableRef<boolean>;
+    readonly wake: ReadonlyMap<JobQueueName, Latch.Latch>;
     readonly inFlight: Semaphore.Semaphore;
     readonly maxInFlight: number;
     readonly registry: ReadonlyMap<JobQueueName, unknown>;
     readonly listening: MutableRef.MutableRef<boolean>;
   },
 ) {
-  /**
-   * One latch per queue, open to start with so a worker that boots onto a
-   * backlog drains it rather than waiting out a poll interval first. The poll
-   * fiber waits on "the latch OR the interval", whichever comes first; the
-   * listener below opens the latch of the queue a `NOTIFY` names.
-   */
-  const wake = new Map<JobQueueName, Latch.Latch>(
-    resolvedQueues.map((declaration) => [
-      declaration.name,
-      Latch.makeUnsafe(true),
-    ]),
-  );
+  const { wake } = state;
 
   const pollQueue = (queue: JobQueueName, latch: Latch.Latch) =>
     Effect.gen(function* () {
@@ -1120,7 +1140,17 @@ const forkBackground = Effect.fnUntraced(function* (
       // be swallowed by a close that ran afterwards and the job would wait for
       // the poll interval after all.
       yield* latch.close;
-      if (!MutableRef.get(state.fetching)) return;
+      if (!MutableRef.get(state.fetching)) {
+        // A worker that booted paused has claimed nothing, and a first
+        // answered claim is what makes it `ready`. It still has to prove it
+        // can read its tables, or readiness would report a worker booted into
+        // maintenance as unable to reach its queue until the window ended —
+        // or lean on `JobQueueMetrics.layer` to say otherwise (readiness.ts).
+        // Once, until it answers: a worker paused after it was ready reads
+        // nothing.
+        if (!(yield* worker.ready)) yield* worker.queueDepths;
+        return;
+      }
       // A queue this replica registers no handler for is not claimed from at
       // all — as pg-boss only polls what `work()` named. Claiming it would put
       // the row straight back (`drainOnce`'s no-handler branch), and putting it

@@ -25,17 +25,6 @@ Usage: studio-api <command>
 USAGE
 }
 
-# A command whose implementation lands with the issue that defines it. A stub
-# rather than an absent command: a deployment that ran it and got
-# "unknown command" would read it as its own mistake, where what it needs to
-# know is that the command exists and this build cannot do it yet. Exit 64 is
-# sysexits' EX_USAGE — the same code an unknown command gets, because in both
-# cases the answer is that this build will not do what was asked.
-unavailable() {
-    echo "studio-api $1 is not available until #$2 merges" >&2
-    exit 64
-}
-
 command="${1:-serve}"
 shift 2>/dev/null || true
 
@@ -50,12 +39,15 @@ migrate)
     exec node /app/dist/migrate.js "$@"
     ;;
 maintenance)
+    # `command` has been shifted off, so "$@" starts at on|off (and the
+    # reason, for on). The program refuses anything else it is handed; this
+    # branch answers a bare or misspelt subcommand without starting Node.
     case "${1:-}" in
     on | off)
-        unavailable maintenance 1901
+        exec node /app/dist/maintenance.js "$@"
         ;;
     *)
-        echo "Usage: studio-api maintenance on|off" >&2
+        echo "Usage: studio-api maintenance on [reason ...] | off" >&2
         exit 64
         ;;
     esac

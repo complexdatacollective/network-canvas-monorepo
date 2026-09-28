@@ -1,11 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
 
 import { it } from '@effect/vitest';
 import { Effect } from 'effect';
 import { parse as parseConnectionString } from 'pg-connection-string';
-import { afterEach, describe, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { testKeyringEntry } from '../../__tests__/support/secrets.ts';
 import { Environment, isLocalDatabase, readEnv } from '../../env.ts';
@@ -19,9 +21,28 @@ import {
 } from '../development.ts';
 import { resolve } from '../resolve.ts';
 
-// The suite runs with the committed .env.development loaded (see
-// vitest.config.ts), so it starts from the same environment `pnpm dev` gets
-// and stubs away from it.
+// The suite starts from the same environment `pnpm dev` gets — the committed
+// .env.development — and stubs away from it.
+//
+// vitest.config.ts loads that file too, but `process.loadEnvFile` never
+// overwrites a variable that is already set, so a shell that exports its own
+// `DATABASE_URL` (as every run of the server suites against a scratch Postgres
+// does) would otherwise leak into cases that assert the committed defaults.
+// So every variable the file names is stubbed back to its committed value
+// before each case, and `afterEach` puts the real environment back.
+
+const COMMITTED = parseEnv(
+  readFileSync(
+    fileURLToPath(new URL('../../../.env.development', import.meta.url)),
+    'utf8',
+  ),
+);
+
+beforeEach(() => {
+  for (const [name, value] of Object.entries(COMMITTED)) {
+    vi.stubEnv(name, value);
+  }
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();

@@ -138,7 +138,15 @@ const OPENERS: Record<string, { count: number; why: string }> = {
   },
   [`${SERVER}/src/auth/secrets-adapter.ts › transaction`]: {
     count: 1,
-    why: "better-auth's own adapter transaction on its node-postgres handle (stage 6 moves it), wrapped only so writes inside it are sealed",
+    why: "better-auth's own adapter transaction, wrapped only so writes inside it are sealed; it delegates to `auth/adapter.ts`'s, which the bridge opens as an untenanted scope",
+  },
+  [`${SERVER}/src/auth/adapter.ts › transaction`]: {
+    count: 1,
+    why: "better-auth's `transaction()` handed to the bridge, which opens it as `sql-bridge.ts`'s untenanted scope: sign-up, OAuth linking and the like on the auth tables, which belong to no team",
+  },
+  [`${SERVER}/src/auth/sql-bridge.ts › UntenantedScope.open`]: {
+    count: 2,
+    why: "better-auth's adapter: one pinned transaction per statement outside better-auth's `transaction()`, and one around the whole callback inside it — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
   },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,
@@ -148,6 +156,15 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`readDeploymentState`: one untenanted row, read-only',
   },
+  [`${SERVER}/src/db/deployment-state.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: '`readDeploymentStateAsMaintenance`: the same row, read-only, on the worker’s maintenance client',
+  },
+  [`${SERVER}/src/programs/maintenance.ts › maintenance.apply › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: '`studio-api maintenance on|off` flipping the deployment’s flag, which belongs to no team; an operator’s command, not a researcher’s act',
+    },
   [`${SERVER}/src/db/migrate.ts › db.migrate › OwnerScope.open`]: {
     count: 1,
     why: '`studio-api migrate` applying the schema DDL as the owner; no team exists at this layer',
@@ -164,9 +181,14 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the web process clock’s `SELECT now()`, read-only',
   },
-  [`${SERVER}/src/jobs/sign-in-email.ts › UntenantedScope.open`]: {
+  [`${SERVER}/src/auth/service.ts › auth.sendMagicLink › UntenantedScope.open`]:
+    {
+      count: 1,
+      why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and the scope only pins the application role',
+    },
+  [`${SERVER}/src/auth/service.ts › UntenantedScope.open`]: {
     count: 1,
-    why: 'enqueueing a sign-in mail, which belongs to no team; the scope only pins the application role',
+    why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope only pins the application role, which a bare statement loses on rc.115",
   },
   [`${SERVER}/src/jobs/handlers/denied-attempts-summary.ts › loadActor › MaintenanceScope.open`]:
     {

@@ -1,6 +1,7 @@
-import type { Principal } from './auth/service.ts';
+import type { AuthService, Principal } from './auth/service.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
+import type { RateLimiter } from './rate-limit/limiter.ts';
 import type { RpcDeps } from './rpc/deps.ts';
 
 // What is left of the oRPC router behind `/rpc`.
@@ -33,8 +34,9 @@ export type RpcContext = {
    * Always absent today: this router is served over the WebSocket alone, and a
    * frame has no response headers at all — so a call the rate limiter refuses
    * carries its retry-after in the error data and nowhere else. The field stays
-   * because `rate-limit/enforce.ts` takes one, and it is what stage 8 will hand
-   * the value through when the protocol builder moves onto the rpc plane.
+   * because the protocol builder's limit check (`protocol-builder/router.ts`)
+   * writes to one, and it is what stage 8 will hand the value through when the
+   * protocol builder moves onto the rpc plane.
    */
   resHeaders?: Headers;
 };
@@ -48,7 +50,11 @@ export type RpcContext = {
  * that, because its inputs name a protocol and never a team or a draft.
  */
 export function createRpcRouter(
-  deps: RpcDeps & { protocolBuilder: ProtocolBuilderRuntime },
+  deps: RpcDeps & {
+    auth: AuthService['Service'];
+    limiter: RateLimiter['Service'] | undefined;
+    protocolBuilder: ProtocolBuilderRuntime;
+  },
 ) {
   return {
     protocolBuilder: createProtocolBuilderRouter({

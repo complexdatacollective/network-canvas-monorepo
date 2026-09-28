@@ -30,7 +30,7 @@ that make a row safe to trust.
 | `statements.ts`               | `splitStatements`: a Postgres script cut into single commands, dollar-quote-, string- and comment-aware.                                                                                                                                                                                                           |
 | `migrate.ts`                  | What `studio-api migrate` runs in the image.                                                                                                                                                                                                                                                                       |
 | `readiness.ts`                | The Effect readiness probes, each bounded to a second: `databaseAlive` (`select 1`), `schemaVerdict` (`checkSchemaEffect`) and `migrationLockHeld` (is the migration's advisory lock held now). Not yet mounted: `/readyz` still probes on node-postgres (`src/http/health.ts`).                                   |
-| `pool.ts`, `database-pool.ts` | The node-postgres pools that remain, and their scoped service: better-auth's adapter (stage 6 moves it), the scripts, and the surfaces not yet on Effect.                                                                                                                                                          |
+| `pool.ts`, `database-pool.ts` | The node-postgres pools that remain, and their scoped service: `/readyz`'s probes (which stay here while rc.115 cannot pin a role outside a transaction), the scripts, and the surfaces not yet on Effect. better-auth left them in stage 4 for `src/auth/adapter.ts`.                                             |
 | `__tests__/`                  | The clients, scopes and errors; `rls.test.ts` (the team boundary across the whole schema); `migrate.test.ts`; `statements.test.ts`; `seed.test.ts`; `readiness.test.ts`; `deployment-state.test.ts`; and `raw-sql-policy.test.ts`.                                                                                 |
 
 The development seed is not here: it is `scripts/seed/`, beside the other
@@ -267,7 +267,9 @@ schema, which drizzle does not model — and each one is named in
 `__tests__/raw-sql-policy.test.ts` with its reason. Two groups on that list are
 there for history rather than necessity: the queue handlers #1957 ported from
 their pg-boss originals text for text, and the node-postgres residue (the
-scripts' schema helpers, the readiness probe) that stage 6 retires.
+scripts' schema helpers, the readiness probes) that stay on node-postgres until the Effect client can
+pin a role outside a transaction (`@effect/sql-pg` rc.117's startup
+parameters).
 Two rules for the builder: **every write whose outcome is inspected ends in
 `.returning()`** (without it the driver's result object comes back typed as a
 row array, and `result[0]` is `undefined`), and **every builder span applies
@@ -319,7 +321,7 @@ rule:
 `@codaco/studio-sync`'s, collects every statement handed to a driver as text
 (`sql.unsafe`, the client's `` sql`…` `` template, `sql.raw`, `.execute` and a
 connection's `executeRaw` family — and node-postgres's `.query`, so the `pg`
-residue is pinned until stage 6 retires it), and charges each to the `Effect.fn` span that encloses it, or to its file. The
+residue is pinned until the rc.117 upgrade retires it), and charges each to the `Effect.fn` span that encloses it, or to its file. The
 result must equal the allowlist exactly: a new raw statement fails until it is
 listed with its reason, and a listed one that is gone fails until it is
 removed.

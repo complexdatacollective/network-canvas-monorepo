@@ -8,8 +8,8 @@
 #                  worker           background jobs and cron schedules (#1895)
 #                  migrate          create this build's schema in an empty
 #                                   database, once per deployment
-#                  maintenance on   close the instance to users — a stub until
-#                  maintenance off    #1901 merges
+#                  maintenance on   close the instance to users (#1901)
+#                  maintenance off  reopen it
 #                  rotate-secrets   re-encrypt every stored secret under the
 #                                   keyring's current entry, once per rotation
 #                                   (#1900)
@@ -67,7 +67,7 @@ FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
-# dist/ carries the four entries and dist/schema-ddl.json beside them: the
+# dist/ carries the five entries and dist/schema-ddl.json beside them: the
 # statements `migrate` executes, rendered at build time because drizzle-kit is
 # a development dependency and `pnpm deploy --prod` installs none.
 COPY --from=builder /repo/apps/studio/server/dist ./dist

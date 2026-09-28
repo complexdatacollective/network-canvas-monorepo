@@ -15,7 +15,7 @@
 // `CONFLICT`.
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -34,7 +34,7 @@ import { MaintenanceScope, OwnerScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
 import { issueBootstrapToken } from '../setup/bootstrap.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -48,7 +48,10 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
-import { reachableDeniedAuditStore } from './support/valkey.ts';
+import {
+  openRateLimitStore,
+  reachableDeniedAuditStore,
+} from './support/valkey.ts';
 
 const env = readEnv();
 /**
@@ -96,7 +99,7 @@ describe('refusals that need no database', () => {
     const client = await track(
       createRpcClient(
         createStudio(resolve({ NODE_ENV: 'test' }), {
-          auth: stubAuthService(),
+          auth: authServiceStub(),
         }),
       ),
     );
@@ -116,9 +119,9 @@ describe('refusals that need no database', () => {
     const client = await track(
       createRpcClient(
         createStudio(resolve({ NODE_ENV: 'test' }), {
-          auth: stubAuthService({
-            getSession: () => Promise.resolve(PRINCIPAL),
-            getMembership: () => Promise.resolve({ role: 'admin' }),
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(PRINCIPAL),
+            getMembership: () => Effect.succeedSome({ role: 'admin' }),
           }),
         }),
       ),
@@ -145,6 +148,8 @@ describe('refusals that need no database', () => {
     'refuses a spent invitation budget with the interval to wait',
     async () => {
       const invitationId = TeamInvitationId.make(randomUUID());
+      const limits = await openRateLimitStore(env.redis);
+      disposals.push(limits.dispose);
       const client = await track(
         createRpcClient(
           createStudio(
@@ -153,10 +158,12 @@ describe('refusals that need no database', () => {
               ...(env.redis ? { REDIS_URL: env.redis } : {}),
             }),
             {
-              auth: stubAuthService({
-                getSession: () => Promise.resolve(PRINCIPAL),
+              auth: authServiceStub({
+                getSession: () => Effect.succeedSome(PRINCIPAL),
               }),
-              limits: { invitation_accept: { max: 1, windowMs: 60_000 } },
+              limiter: limits.limiter({
+                invitation_accept: { max: 1, windowMs: 60_000 },
+              }),
             },
           ),
         ),
@@ -260,10 +267,12 @@ describe.skipIf(!testDb)('the error map', () => {
   }
 
   /** A client whose session and memberships this case decides for itself. */
-  async function clientAs(auth: Partial<AuthService>): Promise<RpcTestClient> {
+  async function clientAs(
+    auth: Partial<AuthService['Service']>,
+  ): Promise<RpcTestClient> {
     const settled = await createRpcClient(
       createStudio(env, {
-        auth: stubAuthService(auth),
+        auth: authServiceStub(auth),
         pool: database.appPool,
         services: database.services,
       }),
@@ -281,11 +290,11 @@ describe.skipIf(!testDb)('the error map', () => {
       ),
     );
     client = await clientAs({
-      getSession: () => Promise.resolve(PRINCIPAL),
+      getSession: () => Effect.succeedSome(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(claimed[teamId] ?? null),
+        Effect.succeed(Option.fromNullishOr(claimed[teamId])),
       listMemberships: () =>
-        Promise.resolve(
+        Effect.succeed(
           Object.entries(claimed).map(([teamId, membership]) => ({
             teamId,
             role: membership.role,
@@ -390,7 +399,7 @@ describe.skipIf(!testDb)('the error map', () => {
   it('reports a locale write with no user row left as not found', async () => {
     const orphan = await clientAs({
       getSession: () =>
-        Promise.resolve({
+        Effect.succeedSome({
           ...PRINCIPAL,
           userId: `deleted-${randomUUID()}`,
         }),
@@ -590,8 +599,8 @@ describe.skipIf(!testDb)('the error map', () => {
     // is machine-readable now, where the boundary had only the CONFLICT code.
     it('says why an address it cannot adopt was refused', async () => {
       const taken = await clientAs({
-        signUpEmail: () => Promise.resolve({ kind: 'emailTaken' }),
-        signInEmail: () => Promise.resolve({ kind: 'refused' }),
+        signUpEmail: () => Effect.succeed({ kind: 'emailTaken' }),
+        signInEmail: () => Effect.succeed({ kind: 'refused' }),
       });
 
       const refused = await expectRpcFailure(

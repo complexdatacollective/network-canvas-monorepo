@@ -15,13 +15,13 @@ import { NotFound, RateLimited } from '../schema/errors.ts';
 // by design, and a personal presentation preference has no tenant and no
 // research-data significance.
 
-// Every procedure here declares `RateLimited` as well as its own refusals. The
-// per-user and per-team call limits (#1909) are charged inside the handlers
-// that resolve the caller's team, not inside the `Authenticated` middleware, and
-// `Rpc.ToHandlerFn` types a handler's error channel from the rpc's OWN error
-// schema rather than from `Rpc.ErrorSchema` — which is what folds a middleware's
-// errors in. So a refusal the middleware's schema would happily encode still has
-// to be declared here for a handler to be able to raise it.
+// Both procedures declare `RateLimited`, and neither handler raises it: the
+// only call limit on this tier is the caller's own (#1909), which the
+// `Authenticated` middleware charges before either handler runs, and the
+// middleware's own error schema carries that refusal to the client
+// (`Rpc.ErrorSchema` folds it in). The entries are redundant rather than wrong,
+// and are kept because removing them would change the declared unions for no
+// behavioural gain.
 
 export const AccountRpcs = RpcGroup.make(
   /** The signed-in researcher; refuses `Unauthorized` without a session. */

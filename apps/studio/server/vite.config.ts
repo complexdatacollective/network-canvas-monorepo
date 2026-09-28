@@ -5,9 +5,10 @@ import { defineConfig } from 'vite';
 // installs them as source and Node refuses to type-strip under node_modules —
 // anything left external here dies at boot in the image.
 //
-// Four entries, one image (#1895, #1909, #1900): `dist/index.js` serves users,
-// `dist/worker.js` runs background jobs, `dist/migrate.js` creates the schema,
-// and `dist/rotate-secrets.js` re-keys the stored secrets and exits. The
+// Five entries, one image (#1895, #1909, #1900, #1901): `dist/index.js` serves
+// users, `dist/worker.js` runs background jobs, `dist/migrate.js` creates the
+// schema, `dist/maintenance.js` opens and closes a maintenance window, and
+// `dist/rotate-secrets.js` re-keys the stored secrets and exits. The
 // image's entrypoint (`bin/studio-api`) `exec`s one of them per run, so a
 // deployment names a command rather than a path into this bundle. `ssr: true`
 // rather than a path, because the entries are named by `rollupOptions.input`
@@ -23,6 +24,7 @@ export default defineConfig({
         'index': 'src/index.ts',
         'worker': 'src/worker.ts',
         'migrate': 'src/migrate.ts',
+        'maintenance': 'src/maintenance.ts',
         'rotate-secrets': 'src/rotate-secrets.ts',
       },
       output: {

@@ -4,7 +4,6 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Predicate } from 'effect';
-import pg from 'pg';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
@@ -16,7 +15,9 @@ import {
   tokenName,
   type SourceToken,
 } from '../../__tests__/support/source-tokens.ts';
+import { studioAuthAdapter } from '../../auth/adapter.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
+import type { SqlBridge } from '../../auth/sql-bridge.ts';
 import type { AuthEnv } from '../../env.ts';
 import { SYNC_TRANSACTION_POLICIES } from '../../protocol/sync.ts';
 import {
@@ -359,56 +360,60 @@ describe('audit mutation policy', () => {
     assertReasons(NO_AUDIT_TRANSACTION_POLICIES);
   });
 
-  it('classifies the exact configured Better Auth organization route inventory', async () => {
-    const pool = new pg.Pool();
+  it('classifies the exact configured Better Auth organization route inventory', () => {
     const env: AuthEnv = {
       baseUrl: 'http://studio.test',
       secret: randomBytes(32).toString('hex'),
       trustedProxies: undefined,
       socialProviders: {},
     };
-    try {
-      const auth = createBetterAuthInstance(
-        env,
-        pool,
-        () => Promise.resolve(),
-        testCipher(),
-      );
-      const plugin = auth.options.plugins?.find(
-        (candidate) => candidate.id === 'organization',
-      );
-      if (!plugin?.endpoints) throw new Error('organization plugin not found');
-      const runtimeRoutes = Object.values(plugin.endpoints).flatMap(
-        (endpoint): string[] => {
-          if (!isRecord(endpoint)) throw new Error('invalid auth endpoint');
-          const path = endpoint.path;
-          const options = endpoint.options;
-          if (path === undefined) return [];
-          if (
-            typeof path !== 'string' ||
-            !isRecord(options) ||
-            (options.method !== 'GET' && options.method !== 'POST')
-          ) {
-            throw new Error('invalid organization route metadata');
-          }
-          return [`${options.method} /api/auth${path}`];
-        },
-      );
-
-      expect(runtimeRoutes.toSorted(byName)).toEqual(
-        Object.keys(BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES).toSorted(byName),
-      );
-      for (const [key, policy] of Object.entries(
-        BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES,
-      )) {
-        expect(`${policy.method} ${policy.path}`).toBe(key);
-        expect(policy.reason).not.toHaveLength(0);
-        if (policy.audit.kind !== 'required') {
-          expect(policy.audit.reason).not.toHaveLength(0);
+    // The server's own adapter, over a bridge that refuses every statement:
+    // the inventory is read off the configured plugin, so building the
+    // instance must not need a database, and this proves it does not.
+    const unreachable = (): Promise<never> =>
+      Promise.reject(new Error('the route inventory reads no database'));
+    const bridge: SqlBridge = {
+      run: unreachable,
+      transaction: unreachable,
+    };
+    const auth = createBetterAuthInstance({
+      env,
+      adapter: studioAuthAdapter(bridge),
+      cipher: testCipher(),
+      sendMagicLink: () => Promise.resolve(),
+    });
+    const plugin = auth.options.plugins?.find(
+      (candidate) => candidate.id === 'organization',
+    );
+    if (!plugin?.endpoints) throw new Error('organization plugin not found');
+    const runtimeRoutes = Object.values(plugin.endpoints).flatMap(
+      (endpoint): string[] => {
+        if (!isRecord(endpoint)) throw new Error('invalid auth endpoint');
+        const path = endpoint.path;
+        const options = endpoint.options;
+        if (path === undefined) return [];
+        if (
+          typeof path !== 'string' ||
+          !isRecord(options) ||
+          (options.method !== 'GET' && options.method !== 'POST')
+        ) {
+          throw new Error('invalid organization route metadata');
         }
+        return [`${options.method} /api/auth${path}`];
+      },
+    );
+
+    expect(runtimeRoutes.toSorted(byName)).toEqual(
+      Object.keys(BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES).toSorted(byName),
+    );
+    for (const [key, policy] of Object.entries(
+      BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES,
+    )) {
+      expect(`${policy.method} ${policy.path}`).toBe(key);
+      expect(policy.reason).not.toHaveLength(0);
+      if (policy.audit.kind !== 'required') {
+        expect(policy.audit.reason).not.toHaveLength(0);
       }
-    } finally {
-      await pool.end();
     }
   });
 
@@ -529,6 +534,13 @@ describe('audit mutation policy', () => {
       // one (#1900). The oracle matches `.transaction` on any receiver on
       // purpose, so a non-tenant one is listed here rather than exempted.
       'apps/studio/server/src/auth/secrets-adapter.ts': [
+        { member: 'transaction', form: 'call', line: 0 },
+      ],
+      // Not a tenant transaction either: the sql-pg adapter's
+      // `transaction` config handing better-auth's callback to the bridge,
+      // which opens an untenanted scope on the auth tables — no tenant table
+      // has a better-auth model.
+      'apps/studio/server/src/auth/adapter.ts': [
         { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/db/schema.ts': [

@@ -58,7 +58,7 @@ export type RpcTestClient = {
  *
  * `headers` are sent with every call, which is how a suite presents a session:
  * `AuthenticatedLive` reads `cookie` out of the request headers and asks the
- * auth service, exactly as it does for a fetch request, so a stubbed
+ * Studio's auth service, exactly as it does for a fetch request, so a stubbed
  * `getSession` sees whatever the suite put there. `x-studio-client-session`
  * rides the same way. They are attached with `RpcClient.withHeaders` around the
  * call rather than per call site, so no case can forget them.
@@ -70,7 +70,7 @@ export async function createRpcClient(
   const runtime = ManagedRuntime.make(
     Layer.mergeAll(
       StudioRpcHandlers(studio.rpc),
-      AuthenticatedLive(studio.rpc.auth),
+      AuthenticatedLive,
       TeamAdministrationLive(studio.rpc),
       ClientSessionMiddlewareLive,
     ).pipe(Layer.provide(studioServices(studio))),

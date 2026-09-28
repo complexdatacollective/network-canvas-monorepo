@@ -121,8 +121,10 @@ denial window's cap falls — need the development lane's Valkey running and
 skip without it, because a limiter that fails open cannot be observed
 enforcing anything; on CI they throw instead, where the store is part of the
 job. They run the shipped constants like everything else: a case that has to be
-refused states its own small limit in code, through the `limits` option on
-`createApp` and `createRateLimiter`, rather than turning the shipped one down.
+refused states its own small limit in code, through
+`RateLimiter.layerWith(limits)` (or `support/valkey.ts`'s
+`openRateLimitStore(url).limiter(limits)` for a suite that drives
+`createStudio`), rather than turning the shipped one down.
 
 What was refused is reported once a minute by the `denied-attempts-summary`
 job on the worker (see [Background work](#background-work)). Suppressed

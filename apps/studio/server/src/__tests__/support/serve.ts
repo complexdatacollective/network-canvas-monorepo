@@ -8,6 +8,7 @@ import * as NetAddress from 'effect/unstable/net/NetAddress';
 import type { Studio } from '../../app.ts';
 import { Environment, type StudioEnv } from '../../env.ts';
 import type { HealthChecks } from '../../http/health.ts';
+import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
 import { studioServices } from './services.ts';
@@ -16,6 +17,8 @@ import { studioServices } from './services.ts';
 // the health routes, the problem-JSON rewrite and the WebSocket upgrade all
 // belong to the Effect shell now, so a suite reaching any of them composes
 // the same layers the programs do rather than a second arrangement of them.
+// The maintenance gate is open unless a suite hands in the triggers it is
+// about: every other suite's subject is what happens when the instance serves.
 
 /**
  * The whole server on an ephemeral loopback port, for a suite that needs a
@@ -30,6 +33,7 @@ export async function startStudioServer(
   env: StudioEnv,
   studio: Studio,
   checks: HealthChecks = studio.checks,
+  maintenance: Layer.Layer<MaintenanceTriggers> = MaintenanceTriggers.layerOpen,
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
   const EnvironmentLive = Layer.succeed(Environment, env);
   const ServerLive = NodeHttpServer.layer(createServer, {
@@ -45,6 +49,7 @@ export async function startStudioServer(
     Layer.provideMerge(ServeLive),
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(ServerLive),
+    Layer.provide(maintenance),
     Layer.provide(EnvironmentLive),
     Layer.provide(studioServices(studio)),
   );
@@ -70,6 +75,7 @@ export function composeStudio(
   env: StudioEnv,
   studio: Studio,
   checks: HealthChecks = studio.checks,
+  maintenance: Layer.Layer<MaintenanceTriggers> = MaintenanceTriggers.layerOpen,
 ): {
   request: (path: string, init?: RequestInit) => Promise<Response>;
   dispose: () => Promise<void>;
@@ -77,6 +83,7 @@ export function composeStudio(
   const { handler, dispose } = HttpRouter.toWebHandler(
     Routes(studio, checks).pipe(
       Layer.provide(WebSocketDrain.layerTest),
+      Layer.provide(maintenance),
       Layer.provide(Layer.succeed(Environment, env)),
       Layer.provide(studioServices(studio)),
     ),

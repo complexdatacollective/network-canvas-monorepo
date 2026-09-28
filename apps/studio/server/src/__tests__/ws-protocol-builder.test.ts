@@ -27,7 +27,7 @@ import { TenantScope, unsafeMakeTeamAccess } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { createProtocol } from '../protocol/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -194,10 +194,10 @@ describe.skipIf(!testDb || !env.auth)(
       // socket rather than the ingress boundary.
       const serverEnv = { ...env, deploymentMode: 'self-hosted' } as const;
       const studio = createStudio(serverEnv, {
-        auth: stubAuthService({
-          getSession: () => Promise.resolve(PRINCIPAL),
+        auth: authServiceStub({
+          getSession: () => Effect.succeedSome(PRINCIPAL),
           listMemberships: () =>
-            Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
+            Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
         }),
         pool: database.appPool,
         services,

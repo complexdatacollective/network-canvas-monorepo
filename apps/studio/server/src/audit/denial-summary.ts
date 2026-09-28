@@ -5,7 +5,6 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 
-import type { SessionPrincipal } from '../auth/service.ts';
 import type { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope } from '../db/tenant.ts';
 import { maintenanceTeamAccess } from '../jobs/team-access.ts';
@@ -37,6 +36,17 @@ import { append, lockedTeamLabel, lockTeam } from './store.ts';
 // permanent. There is one client now, so the hazard is gone rather than
 // documented.
 
+/**
+ * Who a summary is about: the three fields its event is stamped from. Its own
+ * type rather than the auth provider's principal, because this module runs in
+ * the worker, which reaches no auth module at all (`process-separation`).
+ */
+export type DeniedAuditActor = {
+  readonly userId: string;
+  readonly name: string;
+  readonly email: string;
+};
+
 export type DeniedAuditSummaryWrite = {
   readonly teamId: string;
   readonly operation: DeniedAuditOperation;
@@ -46,7 +56,7 @@ export type DeniedAuditSummaryWrite = {
    * address are exactly what the limiter's keys are hashed to keep out of the
    * rate-limit store.
    */
-  readonly actor: SessionPrincipal;
+  readonly actor: DeniedAuditActor;
   readonly summary: DeniedAuditSummary;
 };
 

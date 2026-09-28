@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -23,7 +23,7 @@ import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../rpc.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -144,12 +144,16 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
           [who.memberId, TEAM_ID, who.principal.userId, who.role],
         ),
       );
-      const auth = stubAuthService({
-        getSession: () => Promise.resolve(who.principal),
+      const auth = authServiceStub({
+        getSession: () => Effect.succeedSome(who.principal),
         getMembership: (_userId, teamId) =>
-          Promise.resolve(teamId === TEAM_ID ? { role: who.role } : null),
+          Effect.succeed(
+            Option.fromNullishOr(
+              teamId === TEAM_ID ? { role: who.role } : null,
+            ),
+          ),
         listMemberships: () =>
-          Promise.resolve([{ teamId: TEAM_ID, role: who.role }]),
+          Effect.succeed([{ teamId: TEAM_ID, role: who.role }]),
       });
       const studio = createStudio(readEnv(), {
         auth,
@@ -160,7 +164,12 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       builderClients.set(
         who,
         createRouterClient(
-          createRpcRouter({ ...studio.rpc, protocolBuilder }),
+          createRpcRouter({
+            ...studio.rpc,
+            auth: studio.auth,
+            limiter: studio.limiter,
+            protocolBuilder,
+          }),
           {
             context: {
               principal: who.principal,

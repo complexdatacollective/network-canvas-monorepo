@@ -3,6 +3,7 @@
 // in-process test of `createApp` can see — that the queue this process creates
 // jobs on is not something it only has when the schema happened to be current
 // the moment it booted.
+import { Predicate } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { applySchema } from '../../scripts/apply.ts';
@@ -70,6 +71,44 @@ describe.skipIf(!db)('the web entrypoint', () => {
           `select queue from ${JOB_SCHEMA}.jobs`,
         );
         expect(queued.rows).toEqual([{ queue: 'sign-in-email' }]);
+
+        // Maintenance mode, as this process is wired for it (#1901): the flag
+        // `studio-api maintenance on` writes closes every surface within the
+        // gate's one-second reading, and readiness names it, while liveness
+        // stays up. Written here as the owner; the command's own round trip
+        // is src/programs/__tests__/maintenance.test.ts's.
+        await scratch.pool.query(
+          `update deployment_state set maintenance = true, reason = 'Upgrading'`,
+        );
+        const maintenanceCheck = async (): Promise<unknown> => {
+          const body: unknown = await (await fetch(`${origin}/readyz`)).json();
+          return Predicate.isObject(body) &&
+            Predicate.hasProperty(body, 'checks') &&
+            Predicate.isObject(body.checks) &&
+            Predicate.hasProperty(body.checks, 'maintenance')
+            ? body.checks.maintenance
+            : undefined;
+        };
+        await expect
+          .poll(maintenanceCheck, { timeout: 5_000 })
+          .toBe('failed: maintenance mode is on: Upgrading');
+        const refused = await fetch(`${origin}/rpc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', origin },
+          body: '{}',
+        });
+        expect(refused.status).toBe(503);
+        expect(refused.headers.get('retry-after')).toBe('30');
+        expect(await refused.json()).toEqual({
+          title: 'Down for maintenance',
+          status: 503,
+        });
+        expect((await fetch(`${origin}/healthz`)).status).toBe(200);
+
+        await scratch.pool.query(
+          'update deployment_state set maintenance = false, reason = null',
+        );
+        await expect.poll(maintenanceCheck, { timeout: 5_000 }).toBe('ok');
       } finally {
         web.child.kill('SIGKILL');
         await scratch.dispose();

@@ -84,11 +84,7 @@ export const StudiesHandlers = (deps: RpcDeps) =>
       }),
     'studies.get': (payload) =>
       Effect.gen(function* () {
-        const resolved = yield* resolveStudy(
-          deps,
-          yield* Principal,
-          payload.studyId,
-        );
+        const resolved = yield* resolveStudy(yield* Principal, payload.studyId);
         const { protocolDraftId, ...study } = resolved.study;
         return decodeDetail({
           teamId: resolved.access.teamId,
@@ -101,11 +97,7 @@ export const StudiesHandlers = (deps: RpcDeps) =>
     // caller cannot reach is refused the same way for both.
     'studies.counts': (payload) =>
       Effect.gen(function* () {
-        const resolved = yield* resolveStudy(
-          deps,
-          yield* Principal,
-          payload.studyId,
-        );
+        const resolved = yield* resolveStudy(yield* Principal, payload.studyId);
         const counts = yield* Effect.orDie(
           TenantScope.open(resolved.access, readStudyCounts(resolved.study.id)),
         );

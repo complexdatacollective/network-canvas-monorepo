@@ -15,7 +15,10 @@ import type {
   AuditEvents,
 } from '../audit/audited.ts';
 import { AuditContext } from '../audit/context.ts';
-import { reservedDenial } from '../audit/denial-rate-limit.ts';
+import {
+  type DeniedAttempts,
+  reservedDenial,
+} from '../audit/denial-rate-limit.ts';
 import type { DeniedAuditOperation } from '../audit/events.ts';
 import type { AuditSignal } from '../audit/signal.ts';
 import type { Database } from '../db/client.ts';
@@ -164,7 +167,7 @@ export const updateTeamMemberRole: (
 ) => Effect.Effect<
   UpdatedTeamMember,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal
+  Database | Principal | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.updateMemberRole')(function* (
   access: TeamAccess,
   input: { memberId: string; role: TeamRole },
@@ -275,7 +278,7 @@ export const createTeamInvitation: (
 ) => Effect.Effect<
   CreatedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | Jobs
+  Database | Principal | RequestId | AuditSignal | Jobs | DeniedAttempts
 > = Effect.fn('team.createInvitation')(function* (
   access: TeamAccess,
   input: { email: string; role: TeamRole },
@@ -405,7 +408,7 @@ export const cancelTeamInvitation: (
 ) => Effect.Effect<
   CancelledTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal
+  Database | Principal | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.cancelInvitation')(function* (
   access: TeamAccess,
   input: { invitationId: string },
@@ -530,7 +533,7 @@ export const acceptTeamInvitation: (input: {
 }) => Effect.Effect<
   AcceptedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal
+  Database | Principal | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.acceptInvitation')(function* (input: {
   invitationId: string;
 }) {

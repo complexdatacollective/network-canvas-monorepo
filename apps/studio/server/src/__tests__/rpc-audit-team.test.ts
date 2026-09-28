@@ -1,3 +1,4 @@
+import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -9,7 +10,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
   openTestDatabase,
@@ -63,10 +64,14 @@ describe.skipIf(!testDb)('audited team RPC', () => {
       ),
     );
     membershipRole = 'owner';
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
+    const auth = authServiceStub({
+      getSession: () => Effect.succeedSome(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === TEAM_ID ? { role: membershipRole } : null),
+        Effect.succeed(
+          Option.fromNullishOr(
+            teamId === TEAM_ID ? { role: membershipRole } : null,
+          ),
+        ),
     });
     inviteeClients = [];
     client = await createRpcClient(
@@ -197,9 +202,9 @@ describe.skipIf(!testDb)('audited team RPC', () => {
         [invitationId, invitee.email, PRINCIPAL.userId],
       ),
     );
-    const inviteeAuth = stubAuthService({
-      getSession: () => Promise.resolve(invitee),
-      getMembership: () => Promise.resolve(null),
+    const inviteeAuth = authServiceStub({
+      getSession: () => Effect.succeedSome(invitee),
+      getMembership: () => Effect.succeedNone,
     });
     const inviteeClient = await createRpcClient(
       createStudio(readEnv(), {

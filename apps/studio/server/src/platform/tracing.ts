@@ -23,7 +23,12 @@ import { STUDIO_VERSION } from '../version.ts';
  * process, and a collector that mixes a web process's spans with a worker's
  * would otherwise have no way to tell them apart.
  */
-export type TracedProgram = 'serve' | 'worker' | 'migrate' | 'rotate-secrets';
+export type TracedProgram =
+  | 'serve'
+  | 'worker'
+  | 'migrate'
+  | 'maintenance'
+  | 'rotate-secrets';
 
 export const TracingLive = (
   program: TracedProgram,

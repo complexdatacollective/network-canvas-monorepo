@@ -45,7 +45,7 @@ import { getDeploymentStatus } from '../domain.ts';
 import { resolve } from '../env/resolve.ts';
 import { ClientSessionMiddlewareLive } from '../rpc/client-session.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
-import { stubAuthService } from './support/auth.ts';
+import { authServiceStub } from './support/auth.ts';
 import { startStudioServer } from './support/serve.ts';
 
 /** A minted id, as `crypto.randomUUID()` produces and the contract accepts. */
@@ -170,7 +170,6 @@ function tabIn(context: unknown): string | null {
  */
 function reporting(): Studio {
   const ws: WsBridgeDeps = {
-    admit: () => Promise.resolve({ principal: PRINCIPAL }),
     socket: (() => {
       const deps: WsBridgeDeps['socket'] = {
         message: (peer, _data, options) => {
@@ -187,7 +186,6 @@ function reporting(): Studio {
   // The `/rpc` route is registered from this too; this half drives the socket
   // alone, so the plane behind it answers nothing useful.
   const rpc: RpcDeps = {
-    auth: stubAuthService(),
     capabilities: {
       enabled: false,
       magicLink: false,
@@ -197,7 +195,16 @@ function reporting(): Studio {
     deployment: getDeploymentStatus('self-hosted'),
     readInstallation: () => Promise.resolve(null),
   };
-  return { app: new Hono(), ws, rpc, checks: {} };
+  return {
+    app: new Hono(),
+    ws,
+    // The upgrade's principal gate asks the auth service, so the stub is the
+    // researcher the socket is admitted as.
+    auth: authServiceStub({ getSession: () => Effect.succeedSome(PRINCIPAL) }),
+    limiter: undefined,
+    rpc,
+    checks: {},
+  };
 }
 
 function opened(socket: WebSocket): Promise<void> {

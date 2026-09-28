@@ -82,7 +82,7 @@ export const JobHandlersLive: Layer.Layer<
     // Worked whether or not a rate-limit store is configured: the schedule
     // creates a job every minute either way, and a queue nothing works would
     // accumulate them. Without a store the handler has nothing to read and
-    // says so in its outcome line (`DeniedAttemptsStore.layerAbsent`).
+    // says so in its outcome line (`RateLimitStore.layerAbsent`).
     yield* worker.work('denied-attempts-summary', deniedAttemptsSummary());
 
     // `refuse` is the resolved shape of "no transport is configured", and a

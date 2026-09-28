@@ -21,7 +21,10 @@ import {
   TestDatabaseLive,
   testDb,
 } from '../../__tests__/support/database.ts';
-import { reachableDeniedAuditStore } from '../../__tests__/support/valkey.ts';
+import {
+  reachableDeniedAuditStore,
+  testDeniedAttempts,
+} from '../../__tests__/support/valkey.ts';
 import {
   audited,
   auditable,
@@ -159,6 +162,7 @@ const Harness = Layer.mergeAll(
   TestDatabaseLive,
   AuditSignal.layerRecording,
   Jobs.layerRecording,
+  testDeniedAttempts,
 );
 
 describe.skipIf(!testDb)('audited team commands', () => {

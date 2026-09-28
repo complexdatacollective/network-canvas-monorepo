@@ -142,6 +142,18 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       }),
     );
 
+    it.effect('keeps the deployment state row the schema step wrote', () =>
+      Effect.gen(function* () {
+        // The seed wipes every populated table, and neither application role
+        // may re-insert this singleton: without it `maintenance on|off` and
+        // the maintenance gate's read have no row to act on.
+        const rows = yield* ownerRows<{ id: number; maintenance: boolean }>(
+          'select id, maintenance from deployment_state',
+        );
+        expect(rows).toEqual([{ id: 1, maintenance: false }]);
+      }),
+    );
+
     it.effect('covers every study state and both participation modes', () =>
       Effect.gen(function* () {
         const states = yield* ownerRows<{ state: string }>(
@@ -1167,11 +1179,12 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
 });
 
 /**
- * The four columns the seed does not choose, and therefore cannot reproduce.
+ * The five columns the seed does not choose, and therefore cannot reproduce.
  * Every one of them is a consequence of the seed writing through real code
  * rather than around it, which is the trade it makes everywhere: two are
- * allocated inside a writer it calls, and two are wall-clock stamps that
- * belong to the operation rather than to the data.
+ * allocated inside a writer it calls, and three are wall-clock stamps that
+ * belong to the operation rather than to the data — two of them stamped by
+ * the schema step, whose rows the seed's wipe leaves alone.
  *
  * Everything else — every other id, every timestamp, every encryption nonce —
  * comes from the pinned PRNG or the fixed anchor, which is what this case
@@ -1192,6 +1205,9 @@ const IRREPRODUCIBLE = {
   // skips the table for that reason. The fingerprint itself is still
   // compared, which is worth having: it says both runs seeded one schema.
   schemaFingerprint: ['appliedAt'],
+  // The same: the schema step inserts the singleton and stamps it, and the
+  // wipe skips it. Whether the window is open is still compared.
+  deployment_state: ['updated_at'],
 } as const;
 
 /**
