@@ -1,10 +1,11 @@
-import { Effect } from 'effect';
+import { Cause, Effect, Exit } from 'effect';
 
 import { OwnerDatabase } from '../src/db/client.ts';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { OwnerScope } from '../src/db/tenant.ts';
-import { readEnv } from '../src/env.ts';
-import { verifySecretKeysOrExit } from '../src/secrets/services.ts';
+import { Environment, readEnv } from '../src/env.ts';
+import { SecretsLive } from '../src/secrets/services.ts';
+import { verifyKeyring } from '../src/secrets/verify.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
@@ -44,7 +45,21 @@ try {
   // rule: back it up with the database, because without it every stored secret
   // is unreadable. Before the bootstrap token, so a refused database never
   // prints a token nobody should use.
-  await verifySecretKeysOrExit(env);
+  // The same effect `migrate` and the gate run, so the script and the image
+  // refuse on exactly the same conditions in exactly the same order. A refusal
+  // is printed as its one sentence rather than a stack, which would bury what
+  // to do; a defect is caught too, so it is never an unhandled rejection.
+  const verified = await Effect.runPromiseExit(
+    verifyKeyring.pipe(
+      Effect.provide(SecretsLive),
+      Effect.provideService(Environment)(env),
+    ),
+  );
+  if (Exit.isFailure(verified)) {
+    const failure: unknown = Cause.squash(verified.cause);
+    console.error(failure instanceof Error ? failure.message : String(failure));
+    process.exit(1);
+  }
   console.log('Stored secrets are readable with the configured keyring.');
   // First-run bootstrap (#1909). After the schema, because the row it writes
   // is part of it, and on every run, because an ownerless instance whose token

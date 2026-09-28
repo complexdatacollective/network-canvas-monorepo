@@ -1095,6 +1095,14 @@ Both processes refuse to start while any stored key id is missing from the
 keyring, naming it, so a half-finished rotation is caught before it serves
 anything.
 
+Each committed batch is logged as one JSON line, like every other Studio log,
+and the command ends with one plain line per store. It exits 0 once every row
+is under the current entry; 1 when it refuses (a key id the keyring cannot
+produce, or rows still under another key because another session held them),
+printing the one sentence to act on; and 130 when interrupted. An interrupted
+or refused run keeps every batch it committed, so running it again finishes
+the rest.
+
 ### Database schema and seeding
 
 Run **once per deployment** against `DATABASE_URL` — not once per replica,

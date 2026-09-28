@@ -8,7 +8,8 @@ import { OwnerScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
-import { verifyKeyring } from '../secrets/services.ts';
+import { SecretsLive } from '../secrets/services.ts';
+import { verifyKeyring } from '../secrets/verify.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
@@ -110,7 +111,7 @@ const migrate = Effect.gen(function* () {
   // container start. `Environment` already refused to run without a keyring
   // at all. Before the bootstrap token, so a refused database never prints a
   // token nobody should use.
-  yield* verifyKeyring;
+  yield* verifyKeyring.pipe(Effect.provide(SecretsLive));
   yield* Console.log(
     'Stored secrets are readable with the configured keyring.',
   );
@@ -132,10 +133,11 @@ const migrate = Effect.gen(function* () {
 /** The command, with the environment decoded once at its root. */
 export const MigrateProgram = migrate.pipe(
   Effect.scoped,
-  reportingRefusals,
   Effect.provide(
     Layer.mergeAll(LoggerLive, TracingLive('migrate')).pipe(
       Layer.provideMerge(Environment.layer),
     ),
   ),
+  // Outside the environment, so a refusal to read it is printed too.
+  reportingRefusals,
 );

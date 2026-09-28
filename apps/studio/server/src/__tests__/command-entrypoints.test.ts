@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { startEntrypoint } from './support/entrypoint.ts';
+import { testKeyringEntry } from './support/secrets.ts';
 
 /**
  * The refusal each command prints with no database configured, and the
@@ -42,6 +43,36 @@ describe.each(Object.entries(REFUSALS))(
         const { code, signal } = await command.exited;
         expect({ code, signal }).toEqual({ code: 1, signal: null });
         expect(command.output().trim()).toBe(refusal);
+      } finally {
+        command.child.kill('SIGKILL');
+      }
+    });
+  },
+);
+
+describe.each(Object.entries(REFUSALS))(
+  'the %s command with an environment it cannot read',
+  (entry, { args }) => {
+    it('prints why, without a stack, and exits 1', async () => {
+      // Mutation: apply `reportingRefusals` inside the environment's
+      // `Effect.provide` again — the refusal happens while the layer is
+      // built, outside the effect it taps, and the command exits 1 in
+      // silence.
+      const command = startEntrypoint(
+        entry,
+        {
+          STUDIO_SECRETS_KEY: testKeyringEntry('k1'),
+          STUDIO_SECRETS_KEY_FILE: '/run/secrets/studio_secrets_key',
+        },
+        args,
+      );
+      try {
+        const { code, signal } = await command.exited;
+        expect({ code, signal }).toEqual({ code: 1, signal: null });
+        expect(command.output()).toMatch(
+          /STUDIO_SECRETS_KEY and STUDIO_SECRETS_KEY_FILE are both set/,
+        );
+        expect(command.output()).not.toMatch(/^\s+at /m);
       } finally {
         command.child.kill('SIGKILL');
       }

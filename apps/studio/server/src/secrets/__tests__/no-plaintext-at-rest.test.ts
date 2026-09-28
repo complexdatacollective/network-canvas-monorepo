@@ -1,5 +1,15 @@
+import { randomUUID } from 'node:crypto';
+
 import { layer } from '@effect/vitest';
-import { Context, Effect, Layer } from 'effect';
+import {
+  Cause,
+  Context,
+  Effect,
+  Exit,
+  Layer,
+  Logger,
+  References,
+} from 'effect';
 import { describe, expect, test } from 'vitest';
 
 import { seed } from '../../../scripts/seed/seed.ts';
@@ -10,7 +20,13 @@ import {
   TestDatabaseLive,
   testDb,
 } from '../../__tests__/support/database.ts';
-import { testKeyring } from '../../__tests__/support/secrets.ts';
+import {
+  testKeyring,
+  testKeyringEntry,
+} from '../../__tests__/support/secrets.ts';
+import { type KeyringApi, parseKeyring } from '../keyring.ts';
+import { rotateSecrets } from '../rotate.ts';
+import { Keyring, SecretsCipherLive } from '../services.ts';
 
 // The acceptance criterion of #1900, asked of the database rather than of the
 // code that writes it: a dump of a seeded Studio contains no webhook signing
@@ -78,6 +94,50 @@ function encodings(secret: string): { label: string; needle: string }[] {
     { label: 'hex', needle: bytes.toString('hex') },
   ];
 }
+
+/** Every needle of every secret that `haystacks` holds, never the secret. */
+function leaksIn(
+  haystacks: readonly string[],
+  secrets: readonly string[],
+): string[] {
+  const found: string[] = [];
+  for (const secret of secrets) {
+    for (const { label, needle } of encodings(secret)) {
+      if (haystacks.some((haystack) => haystack.includes(needle))) {
+        found.push(`${label}:${needle.length}`);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Every log line an effect writes, as the process's own logger renders it
+ * (`Logger.consoleJson`, src/platform/logger.ts), at every level including the
+ * ones production filters out.
+ */
+const recordingLogs =
+  (lines: string[]) =>
+  <A, E, R>(body: Effect.Effect<A, E, R>) =>
+    body.pipe(
+      Effect.provide(
+        Logger.layer([
+          Logger.map(Logger.formatJson, (line) => {
+            lines.push(line);
+          }),
+        ]),
+      ),
+      Effect.provideService(References.MinimumLogLevel, 'All'),
+    );
+
+const underKeyring = <A, E, R>(
+  keyring: KeyringApi,
+  body: Effect.Effect<A, E, R>,
+) =>
+  Effect.provide(
+    body,
+    SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring))),
+  );
 
 describe('the needles the dump is searched for', () => {
   // The helper's own oracle, and the reason the search below can fail: a
@@ -191,6 +251,84 @@ describe.skipIf(!testDb)('a seeded database at rest', () => {
         }
         expect(found).toEqual([]);
       }),
+    );
+
+    // The other half of the property: what the rotation says while it works
+    // and when it refuses. It opens every stored secret, so it is the one
+    // program that could put one in a log line or an error message. Last in
+    // the file, because it rewrites the rows the dump above was read from.
+    it.effect(
+      'rotates it without a secret reaching a log line or an error message',
+      () =>
+        Effect.gen(function* () {
+          const { plaintextSecrets } = yield* SeededDump;
+          const lines: string[] = [];
+          const recorded = recordingLogs(lines);
+          const failures: string[] = [];
+          const rotateUnder = Effect.fnUntraced(function* (
+            keyring: KeyringApi,
+          ) {
+            const exit = yield* Effect.exit(
+              recorded(underKeyring(keyring, rotateSecrets({ batchSize: 2 }))),
+            );
+            // Everything a refusal publishes: the runtime's rendering of the
+            // cause, which carries the message and the stack.
+            if (Exit.isFailure(exit)) failures.push(Cause.pretty(exit.cause));
+            return exit;
+          });
+
+          // Refused before anything is written: ids the keyring does not
+          // carry, then the right id under the wrong material.
+          yield* rotateUnder(testKeyring(['test-9']));
+          yield* rotateUnder(
+            parseKeyring(
+              `test-1:${testKeyringEntry('test-impostor').split(':')[1]!}`,
+            ),
+          );
+
+          // Refused mid-run: a token written around the auth adapter, which
+          // the rotation will not seal on the way past.
+          const planted = `1//planted-${randomUUID()}`;
+          const plantedId = randomUUID();
+          const [user] = yield* ownerRows<{ id: string }>(
+            'select id from "user" order by id limit 1',
+          );
+          yield* ownerRows(
+            `insert into account (id, "accountId", "providerId", "userId", "refreshToken", "updatedAt")
+             values ($1, $2, 'google', $3, $4, now())`,
+            [plantedId, `sub-${plantedId}`, user!.id, planted],
+          );
+          const ROTATED = testKeyring(['test-3', 'test-1', 'test-2']);
+          yield* rotateUnder(ROTATED);
+          yield* ownerRows('delete from account where id = $1', [plantedId]);
+
+          // And the rotation itself, to completion.
+          expect(Exit.isSuccess(yield* rotateUnder(ROTATED))).toBe(true);
+
+          // The controls: the recorder saw the progress lines, and each of the
+          // three refusals is here in its own words.
+          expect(
+            lines.filter((line) => line.includes('re-sealed under test-3')),
+          ).not.toEqual([]);
+          expect(failures).toHaveLength(3);
+          expect(failures[0]).toMatch(/cannot produce: test-1/);
+          expect(failures[1]).toMatch(/Key id "test-1" in the keyring/);
+          expect(failures[2]).toMatch(
+            new RegExp(
+              `account ${plantedId} refreshToken could not be re-sealed`,
+            ),
+          );
+
+          expect(
+            leaksIn([...lines, ...failures], [...plaintextSecrets, planted]),
+          ).toEqual([]);
+
+          // The search's own control: a secret that does reach a debug line
+          // through the same recorder is found.
+          const leaked: string[] = [];
+          yield* recordingLogs(leaked)(Effect.logDebug(plaintextSecrets[0]));
+          expect(leaksIn(leaked, plaintextSecrets)).not.toEqual([]);
+        }).pipe(Effect.orDie),
     );
   });
 });

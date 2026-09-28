@@ -253,14 +253,15 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'queue-depth metrics, read-only',
   },
-  [`${SERVER}/src/secrets/services.ts › MaintenanceScope.open`]: {
-    count: 1,
-    why: 'the boot check that every stored secret can be opened, read-only',
-  },
+  [`${SERVER}/src/secrets/verify.ts › secrets.verify.verifyStoredKeys › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: 'the boot check that every stored secret can be opened, read-only; the gate and the re-keying command both run it',
+    },
   [`${SERVER}/src/secrets/rotate.ts › secrets.rotate.rotateSecrets › MaintenanceScope.open`]:
     {
-      count: 3,
-      why: 'the hand-run re-keying command: the same read-only check, each re-seal batch (ciphertext only, no plaintext changes), and the read-only postcondition',
+      count: 2,
+      why: 'the hand-run re-keying command: each re-seal batch (ciphertext only, no plaintext changes), and the read-only postcondition',
     },
   [`${SERVER}/src/setup/commands.ts › setup.complete › UntenantedScope.open`]: {
     count: 2,

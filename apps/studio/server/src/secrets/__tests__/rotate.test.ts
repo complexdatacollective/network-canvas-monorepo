@@ -13,7 +13,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer } from 'effect';
+import { Cause, Effect, Exit, Fiber, Layer, Logger } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
@@ -26,18 +26,17 @@ import {
   testKeyringEntry,
 } from '../../__tests__/support/secrets.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
-import {
-  assertSecretKeysProducible,
-  SecretKeyCheckError,
-  SecretKeyIdMalformedError,
-  SecretKeyMaterialError,
-  SecretKeyMissingError,
-  secretKeyIdsInUse,
-} from '../boot.ts';
 import { createSecretsCipher } from '../cipher.ts';
 import { type KeyringApi, parseKeyring } from '../keyring.ts';
 import { RotationIncomplete, rotateSecrets } from '../rotate.ts';
 import { Keyring, type SecretsCipher, SecretsCipherLive } from '../services.ts';
+import {
+  SecretKeyIdMalformed,
+  SecretKeyMaterial,
+  SecretKeyMissing,
+  secretKeyIdsInUse,
+  verifyStoredKeys,
+} from '../verify.ts';
 
 const TEAM = 'team-rotation';
 const USER = 'user-rotation';
@@ -84,15 +83,9 @@ const underKeyring = <A, E, R>(
     SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring))),
   );
 
-/**
- * The boot check under one keyring, with the cipher derived from that same
- * keyring rather than passed beside it — the pairing the check's own signature
- * asks for, in one place so no case can get it wrong.
- */
+/** The boot check under one keyring, reading it the way the gate does. */
 const bootCheck = (keyring: KeyringApi) =>
-  MaintenanceScope.open(
-    assertSecretKeysProducible(keyring, createSecretsCipher(keyring)),
-  );
+  underKeyring(keyring, verifyStoredKeys);
 
 /**
  * What a refused run answered with. A typed failure (`RotationIncomplete`, the
@@ -442,26 +435,24 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             yield* reset();
             for (let index = 0; index < 3; index += 1) yield* newSubscription();
 
+            // The process being stopped between batches, which is the failure
+            // resumability is for: the progress line is written only once a
+            // batch has committed, and the run is interrupted from inside it.
             let batches = 0;
-            const failure = failureOf(
-              yield* Effect.exit(
-                underKeyring(
-                  AFTER,
-                  rotateSecrets({
-                    batchSize: 1,
-                    log: () => {
-                      batches += 1;
-                      // Stands in for the process being killed between batches,
-                      // which is the failure resumability is for: the run ends
-                      // after a commit, and a death is a defect rather than
-                      // something the rotation publishes.
-                      return Effect.die(new Error('interrupted'));
-                    },
-                  }),
-                ),
+            const stopAfterFirstCommit = Logger.make(({ fiber, message }) => {
+              if (!String(message).includes('re-sealed')) return;
+              batches += 1;
+              fiber.interruptUnsafe();
+            });
+            const run = yield* Effect.forkChild(
+              underKeyring(AFTER, rotateSecrets({ batchSize: 1 })).pipe(
+                Effect.provide(Logger.layer([stopAfterFirstCommit])),
               ),
             );
-            expect(messageOf(failure)).toMatch(/interrupted/);
+            const exit = yield* Fiber.await(run);
+            expect(
+              Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause),
+            ).toBe(true);
             expect(batches).toBe(1);
 
             const partial = yield* subscriptionRows();
@@ -572,12 +563,10 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               accessToken: { plaintext: 'studio-secret::whatever' },
             });
 
-            const failure = failureOf(yield* Effect.exit(bootCheck(AFTER)));
-            expect(failure).toBeInstanceOf(SecretKeyIdMalformedError);
-            // Every refusal from the boot check is one type to catch: that is
-            // what `verifySecretKeysOrExit` prints as a sentence rather than a
-            // stack.
-            expect(failure).toBeInstanceOf(SecretKeyCheckError);
+            // A typed refusal, not a defect: `flip` answers only for the
+            // former, and the gate prints the refusal's own sentence.
+            const failure = yield* Effect.flip(bootCheck(AFTER));
+            expect(failure).toBeInstanceOf(SecretKeyIdMalformed);
             const message = messageOf(failure);
             expect(message).toContain(
               '2 stored key ids in webhook_subscriptions are not keyring ids',
@@ -608,7 +597,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             yield* newAssetKey(afterCipher);
 
             const failure = failureOf(yield* Effect.exit(bootCheck(IMPOSTOR)));
-            expect(failure).toBeInstanceOf(SecretKeyMaterialError);
+            expect(failure).toBeInstanceOf(SecretKeyMaterial);
             expect(messageOf(failure)).toMatch(
               /Key id "test-1" in the keyring does not open the stored secrets sealed under it/,
             );
@@ -656,7 +645,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             const failure = failureOf(
               yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
             );
-            expect(failure).toBeInstanceOf(SecretKeyMissingError);
+            expect(failure).toBeInstanceOf(SecretKeyMissing);
             expect(messageOf(failure)).toMatch(
               new RegExp(`cannot produce: ${MISSING}`),
             );
