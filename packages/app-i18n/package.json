@@ -1,6 +1,6 @@
 {
   "name": "@codaco/app-i18n",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared application UI internationalisation for Network Canvas apps: ICU message catalogs, locale negotiation, and React bindings.",
   "license": "MIT",
   "repository": {
