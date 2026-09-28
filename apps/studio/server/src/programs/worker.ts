@@ -30,6 +30,7 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { KeyringVerified } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { reportingRefusals } from './command.ts';
 
 // The worker program: the same image as src/programs/serve.ts, started with a
 // different command (#1895). It executes the jobs the web process creates and
@@ -220,7 +221,7 @@ function workerWith(db: DbEnv) {
  * database down and cannot be undefined beside one: `resolve` refuses a
  * database without a signing secret or a public URL.
  */
-export const WorkerProgram = Layer.unwrap(
+const WorkerProgramLayer = Layer.unwrap(
   Effect.gen(function* () {
     const env = yield* Environment;
     const { db, auth } = env;
@@ -236,3 +237,10 @@ export const WorkerProgram = Layer.unwrap(
   Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('worker'))),
   Layer.provide(Environment.layerWithMail),
 );
+
+/**
+ * The process, launched: alive until interrupted, and a refusal to start is
+ * printed as the one sentence to act on, as the one-shot commands print theirs.
+ */
+export const WorkerProgram =
+  Layer.launch(WorkerProgramLayer).pipe(reportingRefusals);
