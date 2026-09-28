@@ -315,6 +315,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await screen.findByRole('switch', { name: 'Required answer' });
     collaboratorRules(harness, { minLength: 3 });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
@@ -338,6 +339,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await screen.findByRole('switch', { name: 'Required answer' });
     collaboratorRules(harness, { minLength: 3 });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
@@ -410,6 +412,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await screen.findByRole('switch', { name: 'Required answer' });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(
       screen.getByRole('switch', { name: 'Minimum text length' }),
@@ -438,6 +441,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await screen.findByRole('switch', { name: 'Required answer' });
     const before = changesTaken(harness);
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
@@ -505,6 +509,7 @@ describe('rules written while the codebook is moving', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await screen.findByRole('switch', { name: 'Required answer' });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
