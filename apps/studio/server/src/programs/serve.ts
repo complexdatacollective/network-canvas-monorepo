@@ -30,6 +30,7 @@ import { SecretsCipherAbsent, SecretsLive } from '../secrets/services.ts';
 import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { reportingRefusals } from './command.ts';
 
 // The web program, development and production both: one Node process serving
 // the public API, the internal RPC surface, /healthz and /readyz, and the app
@@ -252,7 +253,7 @@ function withoutDatabase(env: StudioEnv) {
  * interrupted; `Environment` is decoded once, at the root, and every layer
  * below reads the same value.
  */
-export const ServeProgram = Layer.unwrap(
+const ServeProgramLayer = Layer.unwrap(
   Effect.gen(function* () {
     const env = yield* Environment;
     return env.db ? withDatabase(env, env.db) : withoutDatabase(env);
@@ -261,3 +262,10 @@ export const ServeProgram = Layer.unwrap(
   Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('serve'))),
   Layer.provide(Environment.layer),
 );
+
+/**
+ * The process, launched: alive until interrupted, and a refusal to start is
+ * printed as the one sentence to act on, as the one-shot commands print theirs.
+ */
+export const ServeProgram =
+  Layer.launch(ServeProgramLayer).pipe(reportingRefusals);

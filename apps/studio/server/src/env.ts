@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect';
+import { Context, Effect, Layer, Schema } from 'effect';
 
 import { resolve, type StudioEnv } from './env/resolve.ts';
 import { decodeEnvironment, type VariableName } from './env/schema.ts';
@@ -74,6 +74,28 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
 }
 
 /**
+ * An environment this process refuses to start with. A failure rather than a
+ * defect, so a process reports it as the sentence `resolve` wrote rather than
+ * as a crash (src/programs/command.ts).
+ */
+export class EnvironmentInvalid extends Schema.TaggedError<EnvironmentInvalid>()(
+  'EnvironmentInvalid',
+  { cause: Schema.Defect() },
+) {
+  override get message(): string {
+    return this.cause instanceof Error
+      ? this.cause.message
+      : String(this.cause);
+  }
+}
+
+const readEnvironment = (options: ReadEnvOptions) =>
+  Effect.try({
+    try: () => readEnv(options),
+    catch: (cause) => new EnvironmentInvalid({ cause }),
+  });
+
+/**
  * The resolved environment as an Effect service, which is how Effect code asks
  * for it: `const env = yield* Environment`. The worker program provides it —
  * the job queue's layers are built over it — and it is the sanctioned way in
@@ -92,14 +114,11 @@ export class Environment extends Context.Service<Environment, StudioEnv>()(
   '@studio/Environment',
 ) {
   /** For a process that does not send mail: the web process, and every script. */
-  static readonly layer = Layer.effect(
-    Environment,
-    Effect.sync(() => readEnv()),
-  );
+  static readonly layer = Layer.effect(Environment, readEnvironment({}));
 
   /** For the worker, the one process that sends mail (#1895). */
   static readonly layerWithMail = Layer.effect(
     Environment,
-    Effect.sync(() => readEnv({ withMail: true })),
+    readEnvironment({ withMail: true }),
   );
 }

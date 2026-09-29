@@ -112,7 +112,7 @@ export async function reachableDeniedAuditStore(): Promise<boolean> {
 export const testDeniedAttempts: Layer.Layer<DeniedAttempts> =
   DeniedAttempts.layer.pipe(
     Layer.provide(RateLimitStore.layer),
-    Layer.provide(Environment.layer),
+    Layer.provide(Layer.orDie(Environment.layer)),
   );
 
 /**

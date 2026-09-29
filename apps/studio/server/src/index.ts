@@ -1,5 +1,4 @@
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime';
-import { Layer } from 'effect';
 
 import { ServeProgram } from './programs/serve.ts';
 
@@ -7,4 +6,7 @@ import { ServeProgram } from './programs/serve.ts';
 // the bundle entry stays a file of its own (src/__tests__/process-separation.test.ts
 // reads the graph from here) and everything the process is lives in
 // src/programs/serve.ts.
-Layer.launch(ServeProgram).pipe(NodeRuntime.runMain);
+// `disableErrorReporting`: the program prints a refusal to start itself, as the
+// one sentence an operator acts on (src/programs/command.ts); the runtime's own
+// report would bury it under a timestamp, a class name and a stack.
+NodeRuntime.runMain(ServeProgram, { disableErrorReporting: true });
