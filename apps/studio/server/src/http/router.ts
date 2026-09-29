@@ -36,7 +36,7 @@ import { WsBridge } from './ws-bridge.ts';
  * them.
  *
  * The routes follow in design §8's order: health, the better-auth mount, the
- * public API's limit, `/storage`, `/rpc`, the `/ws` upgrade, and last the Hono
+ * public API, `/storage`, `/rpc`, the `/ws` upgrade, and last the Hono
  * bridge — outermost, built last — because it is a catch-all: everything the
  * Effect shell owns has to be registered before the route that matches
  * everything else. Each route layer carries its own route middlewares (the
@@ -62,7 +62,7 @@ export const Routes = (studio: Studio, checks: HealthChecks) =>
       );
       const health = HealthRoutes(checks).pipe(Layer.provideMerge(middlewares));
       const auth = AuthMount.pipe(Layer.provideMerge(health));
-      const apiV1 = ApiV1Routes(studio.app).pipe(Layer.provideMerge(auth));
+      const apiV1 = ApiV1Routes(studio.rpc).pipe(Layer.provideMerge(auth));
       const storage = StorageRoutes.pipe(Layer.provideMerge(apiV1));
       const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(storage));
       const ws = WsBridge(studio.ws).pipe(Layer.provideMerge(rpc));

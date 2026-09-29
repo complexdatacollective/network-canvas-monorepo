@@ -5,6 +5,7 @@ import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 import { createStudio, type Studio } from '../app.ts';
 import { resolve } from '../env/resolve.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { composeStudio } from './support/serve.ts';
 
 // What is left of the deployment-mode gate after #1909: the mode itself.
 //
@@ -19,8 +20,8 @@ import { createRpcClient } from './support/rpc.ts';
 // is the whole input to that guard — so a server that reported the wrong mode,
 // or stopped reporting one, would disable the guard everywhere at once.
 //
-// No database: this drives `app.request()` against an env with no DATABASE_URL,
-// so it runs in every lane.
+// No database: this drives the app and the composed stack against an env with
+// no DATABASE_URL, so it runs in every lane.
 
 function studioFor(deploymentMode: DeploymentMode) {
   return createStudio(
@@ -65,9 +66,18 @@ describe('the deployment mode over RPC', () => {
   it('does not name the deployment on the public API', async () => {
     // The public surface's output schema is the serialization allowlist
     // (#1248): the SPA's deployment block must not leak into it.
-    const response = await appFor('managed').request('/api/v1/status');
-    expect(response.status).toBe(200);
-    expect(await response.json()).not.toHaveProperty('deployment');
+    const env = resolve({
+      NODE_ENV: 'test',
+      STUDIO_DEPLOYMENT_MODE: 'managed',
+    });
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const response = await stack.request('/api/v1/status');
+      expect(response.status).toBe(200);
+      expect(await response.json()).not.toHaveProperty('deployment');
+    } finally {
+      await stack.dispose();
+    }
   });
 });
 

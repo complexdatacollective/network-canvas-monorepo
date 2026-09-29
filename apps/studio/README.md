@@ -46,12 +46,12 @@ when its boundary moved.
 Three surfaces, one domain layer beneath them, none generated from another
 (per the 2026-08-11 decision on #1248):
 
-| Path       | Surface                  | Consumers                              | Stability                                             |
-| ---------- | ------------------------ | -------------------------------------- | ----------------------------------------------------- |
-| `/rpc`     | Internal RPC (oRPC v2)   | The SPA only                           | Unpublished, free-moving                              |
-| `/api/v1`  | Public data API (REST)   | Researchers, external tools            | OpenAPI 3.1 (`/api/v1/openapi.json`), RFC 9457 errors |
-| `/ws`      | Sync protocol            | The SPA's editor                       | Unpublished, protocol-versioned (#1247)               |
-| `/storage` | Asset bytes (plain HTTP) | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)     |
+| Path       | Surface                  | Consumers                              | Stability                                                                            |
+| ---------- | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/rpc`     | Internal RPC (oRPC v2)   | The SPA only                           | Unpublished, free-moving                                                             |
+| `/api/v1`  | Public data API (REST)   | Researchers, external tools            | OpenAPI 3.1.0 (`/api/v1/openapi.json`, browsable at `/api/v1/docs`), RFC 9457 errors |
+| `/ws`      | Sync protocol            | The SPA's editor                       | Unpublished, protocol-versioned (#1247)                                              |
+| `/storage` | Asset bytes (plain HTTP) | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)                                    |
 
 Asset bytes live in S3-compatible object storage (#1246): Cloudflare R2 in
 the managed topology, Garage (or any S3-compatible endpoint) self-hosted and
@@ -89,8 +89,9 @@ it is counted against: sign-in per client address and per email; invitation
 acceptance per token; participant redemption per address and per link, and
 participant sync writes per session (declared here, enforced when the
 participant routes land with #1899); RPC per user and per team; storage reads
-per address; the public API per token, or per address with none; and WebSocket
-upgrades per user.
+per address; the public API per address (an `Authorization` header is not a
+subject until a token is validated, #1899), and its reference page per address
+again; and WebSocket upgrades per user.
 
 Every limit is a constant in `server/src/rate-limit/scopes.ts` — the count, the
 window, and why that number — and none of them is configurable. They are

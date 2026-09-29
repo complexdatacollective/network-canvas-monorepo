@@ -209,6 +209,7 @@ seconds, minutes or hours:
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
 | `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
+| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier |
 | `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
 
 <!-- rate-limits end -->

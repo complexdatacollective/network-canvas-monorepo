@@ -83,6 +83,11 @@ export const RATE_LIMITS = {
   // Five calls a second suits an analysis script paging through results and
   // leaves the instance responsive to everyone else.
   public_api: { max: 300, windowMs: 1 * MINUTE },
+  // The API reference page is a few hundred kilobytes compressed and a person
+  // reads it, cached, a few times an hour; thirty a minute from one address is
+  // far past that, and keeps the page from being an amplifier at the public
+  // limit's rate. Charged on top of `public_api`.
+  api_docs: { max: 30, windowMs: 1 * MINUTE },
   // A tab opens one socket and reopens it when the network drops, so thirty a
   // minute absorbs a flapping connection while stopping a reconnect loop from
   // becoming a connection storm.

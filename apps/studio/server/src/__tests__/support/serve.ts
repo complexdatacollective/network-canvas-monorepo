@@ -86,6 +86,7 @@ export function composeStudio(
       Layer.provide(maintenance),
       Layer.provide(Layer.succeed(Environment, env)),
       Layer.provide(studioServices(studio)),
+      Layer.provide(HttpServer.layerServices),
     ),
     { disableLogger: true },
   );

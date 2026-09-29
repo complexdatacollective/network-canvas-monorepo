@@ -165,6 +165,20 @@ describe('the error union', () => {
 });
 
 describe('decoding a problem document', () => {
+  it.each([1.5, 'Infinity', '-Infinity', 'NaN'])(
+    'refuses %s as a status: a status is an integer',
+    (status) => {
+      expect(() =>
+        Schema.decodeUnknownSync(Schema.toCodecJson(NotFound))({
+          _tag: 'NotFound',
+          type: 'about:blank',
+          title: 'Not Found',
+          status,
+        }),
+      ).toThrow();
+    },
+  );
+
   it('refuses one missing `status`: constructor defaults never apply on decode', () => {
     expect(() =>
       Schema.decodeUnknownSync(Schema.toCodecJson(NotFound))({

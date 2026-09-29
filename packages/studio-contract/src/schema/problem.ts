@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect';
-import { HttpApiSchema } from 'effect/unstable/httpapi';
+import * as HttpApiSchema from 'effect/unstable/httpapi/HttpApiSchema';
 
 // One RFC 9457 "problem details" shape, shared by all three surfaces Studio
 // serves: the rpc plane, the participant plane, and the public `/api/v1`. A
@@ -25,7 +25,7 @@ export const problemFields = (title: string, status: number) => ({
   title: Schema.String.pipe(
     Schema.withConstructorDefault(Effect.succeed(title)),
   ),
-  status: Schema.Number.pipe(
+  status: Schema.Int.pipe(
     Schema.withConstructorDefault(Effect.succeed(status)),
   ),
   detail: Schema.optionalKey(Schema.String),

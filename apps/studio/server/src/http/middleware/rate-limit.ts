@@ -5,8 +5,8 @@ import { RateLimiter } from '../../rate-limit/limiter.ts';
 import type { RateLimitScope } from '../../rate-limit/scopes.ts';
 import { ClientAddress, UNKNOWN_ADDRESS } from './client-address.ts';
 
-// The limits an HTTP status answers (#1909): `public_api`, `storage_read` and
-// `ws_upgrade` here, and `sign_in_email` inside the auth mount, which has to
+// The limits an HTTP status answers (#1909): `public_api`, `api_docs`,
+// `storage_read` and `ws_upgrade` here, and `sign_in_email` inside the auth mount, which has to
 // read the body to know its subject. The rpc plane's scopes are charged by its
 // own middleware and answer the contract's `RateLimited` instead, because an
 // rpc response is HTTP 200 whatever it carries.

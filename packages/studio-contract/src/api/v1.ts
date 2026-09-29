@@ -2,31 +2,35 @@ import { HttpApi, HttpApiSecurity, OpenApi } from 'effect/unstable/httpapi';
 
 import { StatusApiGroup } from './groups/status.ts';
 
-// The public `/api/v1` surface: declared here, mounted at stage 7.
+// The public `/api/v1` surface.
 //
 // It is deliberately a different declaration from the rpc plane rather than a
 // projection of it. `/rpc` is Studio's own client talking to Studio's own
 // server and may change whenever both halves ship together; `/api/v1` is a
 // surface third parties build against, so only what an instance is willing to
 // promise indefinitely is added to a group here.
-//
-// The `/api/v1` prefix itself is not applied to the api. `HttpApi` does have a
-// `.prefix()` method, so stage 7 can move the prefix here if the published
-// OpenAPI paths should carry it; until the mount exists, applying it in both
-// places would serve `/api/v1/api/v1/status`.
 
+/** Where `StudioApi` is served. */
+export const API_V1_PATH = '/api/v1';
+
+/**
+ * The api's paths are relative to `API_V1_PATH` rather than prefixed with it,
+ * and the published document names the mount as its server, which is the
+ * shape `/api/v1/openapi.json` has always had: a client generated from it
+ * resolves `/status` against the server entry. The server mounts the api on a
+ * router prefixed with the same constant.
+ */
 export const StudioApi = HttpApi.make('studio-v1')
   .add(StatusApiGroup)
   .annotate(OpenApi.Title, 'Network Canvas Studio API')
-  .annotate(OpenApi.Version, 'v1');
+  .annotate(OpenApi.Version, 'v1')
+  .annotate(OpenApi.Servers, [{ url: API_V1_PATH }]);
 
 /**
  * The OpenAPI document for the public surface, built on demand.
  *
  * A function rather than a constant because `OpenApi.fromApi` walks every
- * endpoint schema, and nothing should pay for that at import time — the
- * document is wanted by the docs route and by tests, not by the server's hot
- * path.
+ * endpoint schema, and nothing should pay for that at import time.
  */
 export const openApiDocument = () => OpenApi.fromApi(StudioApi);
 
