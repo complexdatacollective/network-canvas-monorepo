@@ -40,8 +40,8 @@ const LOCAL_PRESENCE = {
 /**
  * A one-consumer queue an event source pushes into and a generator drains.
  *
- * The pinned oRPC has no publisher helper, so `watchProtocol` needs its own
- * bridge from this log's synchronous publish to an async iterator.
+ * `watchProtocol` needs a bridge from this log's synchronous publish to an
+ * async iterator.
  */
 class EventQueue {
   #buffer: LoggedEvent[] = [];

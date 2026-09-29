@@ -35,7 +35,7 @@ import {
   guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
-import { createArchitectClient } from '~/protocolBuilder/createArchitectRouter';
+import { createArchitectClient } from '~/protocolBuilder/client';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 const messages = defineMessages({
   stageNotFound: {
@@ -152,6 +152,12 @@ const StageEditorPage = () => {
   const client = useMemo(
     () => createArchitectClient(reduxStore, otherTabName),
     [otherTabName, reduxStore],
+  );
+  useEffect(
+    () => () => {
+      void client.runtime.dispose();
+    },
+    [client],
   );
 
   const target = useMemo<StageEditTarget | undefined>(() => {
@@ -351,7 +357,10 @@ const StageEditorPage = () => {
               own stage title lands on `h2` and every section one below that.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
-              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+              <ProtocolBuilder
+                adapter={client.adapter}
+                protocolId={activeProtocolId}
+              >
                 <StageEditor
                   target={target}
                   formId={STAGE_FORM_ID}
