@@ -28,11 +28,11 @@ import * as Socket from 'effect/unstable/socket/Socket';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { authServiceStub } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import { createStudio } from '../../app.ts';
-import { MAX_SOCKET_FRAME_BYTES } from '../../assets.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import { resolve } from '../../env/resolve.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';

@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 import {
   DraftId,
   ProtocolId,
@@ -29,7 +30,6 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { createStudio, type Studio } from '../app.ts';
-import { MAX_UPLOAD_BYTES } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   type TeamAccess,
@@ -38,10 +38,10 @@ import {
 } from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
 import { collectLogs } from '../platform/__tests__/support/logs.ts';
+import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import {
   IDLE_MS,
   Leases,
-  REAUTHORIZE_MS,
   RECONNECT_GRACE_MS,
   RENEW_INTERVAL_MS,
 } from '../protocol-builder/leases.ts';

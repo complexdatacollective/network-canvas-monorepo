@@ -5,13 +5,15 @@ import { Clock, Context, Effect, Exit, Layer, Scope } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/unstable/http';
 import * as NetAddress from 'effect/unstable/net/NetAddress';
 
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
+
 import type { Studio } from '../../app.ts';
-import { MAX_SOCKET_FRAME_BYTES } from '../../assets.ts';
 import { Environment, type StudioEnv } from '../../env.ts';
 import type { HealthChecks } from '../../http/health.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
+import { UnaryBodyLimit } from '../../protocol-builder/rpc.ts';
 import { studioServices } from './services.ts';
 
 // The composed stack, for the suites that need more than the Hono residue:
@@ -38,6 +40,8 @@ export async function startStudioServer(
   options: {
     /** The listener's WebSocket frame bound, for a case about exceeding it. */
     readonly wsMaxPayload?: number;
+    /** `/rpc/protocol-builder`'s body bound, for a case about exceeding it. */
+    readonly unaryBodyLimit?: number;
     /** The clock every route and service reads, for a case about time. */
     readonly clock?: Clock.Clock;
   } = {},
@@ -61,10 +65,16 @@ export async function startStudioServer(
     Layer.provide(EnvironmentLive),
     Layer.provide(studioServices(studio)),
   );
+  const bounded =
+    options.unaryBodyLimit === undefined
+      ? layer
+      : layer.pipe(
+          Layer.provide(Layer.succeed(UnaryBodyLimit)(options.unaryBodyLimit)),
+        );
   const clocked =
     options.clock === undefined
-      ? layer
-      : layer.pipe(Layer.provide(Layer.succeed(Clock.Clock)(options.clock)));
+      ? bounded
+      : bounded.pipe(Layer.provide(Layer.succeed(Clock.Clock)(options.clock)));
 
   const scope = Scope.makeUnsafe();
   const context = await Effect.runPromise(Layer.buildWithScope(clocked, scope));

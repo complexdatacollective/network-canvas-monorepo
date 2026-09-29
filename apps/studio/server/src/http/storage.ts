@@ -5,7 +5,8 @@ import {
   HttpServerResponse,
 } from 'effect/unstable/http';
 
-import { MAX_UPLOAD_BYTES } from '../assets.ts';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
+
 import { Environment } from '../env.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { contentTooLarge, readBodyCapped } from './body.ts';

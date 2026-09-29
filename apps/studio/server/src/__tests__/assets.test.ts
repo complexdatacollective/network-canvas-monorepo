@@ -5,8 +5,9 @@ import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { Effect, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
+
 import { createStudio } from '../app.ts';
-import { MAX_UPLOAD_BYTES } from '../assets.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { deliveryFor } from '../http/storage.ts';

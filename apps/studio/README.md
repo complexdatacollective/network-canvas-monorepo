@@ -22,7 +22,7 @@ when its boundary moved.
 
 - `client/` — `@codaco/studio-client`: Vite + React SPA (TanStack Router,
   TanStack Query, `@codaco/fresco-ui`). Builds to static assets; talks to the
-  server through typed oRPC procedures, importing the boundary contract
+  server through typed Effect rpc procedures, importing the boundary contract
   type-only.
 - `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
   (Node 24 baseline), one persistent process serving every surface below. It
@@ -33,8 +33,8 @@ when its boundary moved.
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
 - `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
-  (Zod schemas + typed oRPC contract). The only shared code between the
-  halves.
+  (Zod vocabulary the halves still share); the `/rpc` and `/ws` contracts
+  live in `packages/studio-contract`.
 - `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
   (#1247). Isomorphic: the client imports its apply engine, the server its
   lease and commit engine and the schema those run against. It also carries the
@@ -46,12 +46,12 @@ when its boundary moved.
 Three surfaces, one domain layer beneath them, none generated from another
 (per the 2026-08-11 decision on #1248):
 
-| Path       | Surface                  | Consumers                              | Stability                                                                            |
-| ---------- | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `/rpc`     | Internal RPC (oRPC v2)   | The SPA only                           | Unpublished, free-moving                                                             |
-| `/api/v1`  | Public data API (REST)   | Researchers, external tools            | OpenAPI 3.1.0 (`/api/v1/openapi.json`, browsable at `/api/v1/docs`), RFC 9457 errors |
-| `/ws`      | Sync protocol            | The SPA's editor                       | Unpublished, protocol-versioned (#1247)                                              |
-| `/storage` | Asset bytes (plain HTTP) | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)                                    |
+| Path       | Surface                   | Consumers                              | Stability                                                                            |
+| ---------- | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/rpc`     | Internal RPC (Effect rpc) | The SPA only                           | Unpublished, free-moving                                                             |
+| `/api/v1`  | Public data API (REST)    | Researchers, external tools            | OpenAPI 3.1.0 (`/api/v1/openapi.json`, browsable at `/api/v1/docs`), RFC 9457 errors |
+| `/ws`      | Sync protocol             | The SPA's editor                       | Unpublished, protocol-versioned (#1247)                                              |
+| `/storage` | Asset bytes (plain HTTP)  | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)                                    |
 
 Asset bytes live in S3-compatible object storage (#1246): Cloudflare R2 in
 the managed topology, Garage (or any S3-compatible endpoint) self-hosted and

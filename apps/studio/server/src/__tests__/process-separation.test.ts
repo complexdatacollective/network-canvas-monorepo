@@ -219,9 +219,6 @@ describe('the worker process', () => {
         '@orpc/server',
         'hono',
         // The WebSocket server is the web process's; nothing upgrades here.
-        // (`src/assets.ts` is not listed: it holds the upload bounds alone,
-        // which the shared listener module reads for the web process's frame
-        // bound.)
         'ws',
       ]),
     ).toEqual([]);
@@ -490,7 +487,7 @@ describe('the health routes', () => {
         'src/http/api-v1.ts',
         'src/api/status.ts',
         '@codaco/studio-contract/api/v1',
-        'src/assets.ts',
+        '@codaco/studio-contract/limits',
         '@orpc/server',
         'hono',
         'ws',

@@ -42,10 +42,10 @@ import {
   CLIENT_SESSION_HEADER,
   CLIENT_SESSION_PARAM,
 } from '@codaco/studio-contract/client-session';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { sectionId as makeSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createStudio } from '../app.ts';
-import { MAX_SOCKET_FRAME_BYTES } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
@@ -1202,6 +1202,51 @@ describe.skipIf(!testDb || !env.auth)(
       );
       expect(crossSite.status).toBe(403);
       expect(crossSite.exit).toBeUndefined();
+    });
+
+    it('stops reading a /rpc/protocol-builder body over the bound, before any principal', async () => {
+      // A small bound, as for the frame bound above; the in-process harness
+      // reads a body whole whatever the bound, so only a listener shows it.
+      // Mutation: mount the unary plane without its body bound → the
+      // oversized call is read and answered.
+      const bounded = await startStudioServer(
+        { ...env, deploymentMode: 'self-hosted' },
+        studio,
+        undefined,
+        undefined,
+        { unaryBodyLimit: 64 * 1024 },
+      );
+      const post = (headers: Record<string, string>, padding: number) =>
+        fetch(`${bounded.origin}${PROTOCOL_BUILDER_RPC_PATH}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/ndjson',
+            'sec-fetch-site': 'same-origin',
+            ...headers,
+          },
+          body: `${JSON.stringify({ _tag: 'Request', id: '1', tag: 'ListSections', payload: { protocolId }, headers: [], padding: 'x'.repeat(padding) })}\n`,
+        }).then(
+          async (response) => ({
+            status: response.status,
+            body: await response.text(),
+          }),
+          (error: unknown) => ({ refused: error }),
+        );
+      try {
+        // No cookie: the listener drops the connection mid-body, with no
+        // response at all.
+        const oversized = await post({}, 1024 * 1024);
+        expect(oversized).toHaveProperty('refused');
+
+        const normal = await post({ cookie: cookieOf(ADA) }, 0);
+        expect(normal).toMatchObject({ status: 200 });
+        expect(normal).toHaveProperty(
+          'body',
+          expect.stringContaining('"_tag":"Success"'),
+        );
+      } finally {
+        await bounded.dispose();
+      }
     });
 
     /** Which server a spelling of a path reaches, by the answer it gives. */

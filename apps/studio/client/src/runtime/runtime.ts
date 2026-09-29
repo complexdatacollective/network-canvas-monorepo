@@ -27,6 +27,7 @@ import {
   CLIENT_SESSION_HEADER,
   CLIENT_SESSION_PARAM,
 } from '@codaco/studio-contract/client-session';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import {
   Forbidden,
@@ -396,15 +397,6 @@ function hostSocketUrl(): string {
 }
 
 /**
- * The largest frame `/ws` carries: the server's `MAX_SOCKET_FRAME_BYTES`
- * (`MAX_UPLOAD_BYTES` plus 1 MiB of envelope), repeated because the client
- * cannot import the server. `layerSchemaBinary`'s 16 MiB default would refuse
- * an asset the server stores, and a refused frame poisons the connection
- * rather than closing it.
- */
-export const HOST_SOCKET_MAX_FRAME_BYTES = 101 * 1024 * 1024;
-
-/**
  * The protocol builder's host, over `/ws`.
  *
  * `retryTransientErrors` is off. With it on, a ping timeout — which the
@@ -426,9 +418,11 @@ export class HostClient extends Context.Service<
     ),
     Layer.provide(Socket.layerWebSocket(Effect.sync(hostSocketUrl))),
     Layer.provide(Socket.layerWebSocketConstructorGlobal),
+    // The default 16 MiB would refuse an asset the server stores, and a
+    // refused frame poisons the connection rather than closing it.
     Layer.provide(
       RpcSerialization.layerSchemaBinary({
-        maxFrameSize: HOST_SOCKET_MAX_FRAME_BYTES,
+        maxFrameSize: MAX_SOCKET_FRAME_BYTES,
       }),
     ),
   );

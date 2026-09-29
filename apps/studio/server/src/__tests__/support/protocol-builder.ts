@@ -80,7 +80,7 @@ export type ProtocolBuilderTestClient = {
 };
 
 /** Runs `effect` as `caller`: in their fiber, with their headers. */
-export const asCaller = <A, E, R>(
+const asCaller = <A, E, R>(
   caller: Caller,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> => {

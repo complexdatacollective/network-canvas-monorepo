@@ -40,9 +40,8 @@ const REPO_ROOT = resolve(
 /**
  * A value whose properties can be read: an object, an array or a callable,
  * never null. `Predicate.isObjectKeyword` is that check — better-auth's
- * endpoints are functions carrying `path` and `options`, and an oRPC
- * contract's nodes are plain objects, so both walks below need the callable
- * case. The refinement adds the index signature the callers read through.
+ * endpoints are functions carrying `path` and `options`, so the walk below
+ * needs the callable case. The refinement adds the index signature the callers read through.
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Predicate.isObjectKeyword(value);

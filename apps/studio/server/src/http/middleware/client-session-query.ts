@@ -14,14 +14,14 @@ import {
  * A browser cannot put a header on a WebSocket handshake — the `WebSocket`
  * constructor takes a URL and subprotocols and nothing else — so the tab names
  * itself on the query string. A fetch request to `/rpc` carries the header
- * directly. Rewriting here is what lets the bridge, and the rpc middleware that
- * will read it, know only about the header.
+ * directly. Rewriting here is what lets everything downstream know only about
+ * the header.
  *
  * The query is the only thing that can name a tab on this route: the header is
  * always rewritten from it, and removed outright when the query names none.
  * A handshake is not a browser fetch — any non-browser client can set the
  * header itself — and the id ends up in the `leases.owner` column, so a value
- * that never passed `readClientSessionId` must not reach the bridge. A client
+ * that never passed `readClientSessionId` must not reach the handlers. A client
  * that names nothing, or names an id the contract rejects (a parameter given
  * twice arrives as an array, which names no tab), leaves the route with no
  * header at all.

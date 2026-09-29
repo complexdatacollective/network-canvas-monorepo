@@ -210,7 +210,7 @@ const REFUSALS = [
 const BASE = ['ProtocolNotFound', 'SectionNotFound'];
 const REFACTOR = [...BASE, 'ReferencesRemain', 'SectionsLocked'];
 
-// Today's oRPC contract, procedure by procedure: `oc.errors(protocolErrors)`
+// The retired oRPC contract, procedure by procedure: `oc.errors(protocolErrors)`
 // on every one, and the `.errors(…)` each added.
 const DECLARED: Record<(typeof TAGS)[number], ReadonlyArray<string>> = {
   AcquireLock: BASE,

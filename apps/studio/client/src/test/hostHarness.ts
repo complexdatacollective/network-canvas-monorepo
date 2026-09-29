@@ -18,9 +18,10 @@ import {
 } from '@codaco/protocol-builder-core/contract/session';
 import type { HandlersLayer } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { setHostClientLayer } from '../runtime/hostSession.ts';
-import { HOST_SOCKET_MAX_FRAME_BYTES, HostClient } from '../runtime/runtime.ts';
+import { HostClient } from '../runtime/runtime.ts';
 
 // The protocol builder's host, for the editor's suites: in process, or over the
 // shipped `HostClient.layer` through a WebSocket stand-in whose far end is a
@@ -298,7 +299,7 @@ export async function installSocketHost(
       Layer.provide([
         socketServer,
         RpcSerialization.layerSchemaBinary({
-          maxFrameSize: HOST_SOCKET_MAX_FRAME_BYTES,
+          maxFrameSize: MAX_SOCKET_FRAME_BYTES,
         }),
       ]),
       Layer.provide([handlers, session]),

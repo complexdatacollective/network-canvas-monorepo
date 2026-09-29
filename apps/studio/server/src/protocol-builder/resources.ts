@@ -20,9 +20,9 @@ import {
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { MAX_UPLOAD_BYTES } from '../assets.ts';
 import type { ObjectStore } from '../storage/object-store.ts';
 
 type Descriptor = typeof ResourceDescriptorSchema.Type;

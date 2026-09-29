@@ -244,7 +244,7 @@ type UnauthorizedResponseHandler = () => Promise<void>;
 let unauthorizedResponseHandler: UnauthorizedResponseHandler | undefined;
 
 /**
- * The oRPC client is a module singleton created below the route tree, so it
+ * The rpc client is a module singleton created below the route tree, so it
  * cannot import the router back. The router registers what a 401 means as it
  * is built — `createAppRouter` is the only caller — and the router that owns
  * the page is the last one built.
@@ -255,7 +255,7 @@ export function setUnauthorizedResponseHandler(
   unauthorizedResponseHandler = handler;
 }
 
-/** Called by the oRPC client for every procedure that answers 401. */
+/** Called by the rpc client for every procedure that answers 401. */
 export async function reportUnauthorizedResponse(): Promise<void> {
   await unauthorizedResponseHandler?.();
 }

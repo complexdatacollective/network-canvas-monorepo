@@ -11,7 +11,16 @@
 // other.
 import { randomUUID } from 'node:crypto';
 
-import { Deferred, Duration, Effect, Layer, Option, Predicate } from 'effect';
+import {
+  ByteSize,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Layer,
+  Option,
+  Predicate,
+} from 'effect';
 import * as HttpRouter from 'effect/unstable/http/HttpRouter';
 import * as HttpServerRequest from 'effect/unstable/http/HttpServerRequest';
 import * as HttpServerResponse from 'effect/unstable/http/HttpServerResponse';
@@ -20,10 +29,13 @@ import * as RpcServer from 'effect/unstable/rpc/RpcServer';
 import * as Socket from 'effect/unstable/socket/Socket';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import {
+  MAX_SOCKET_FRAME_BYTES,
+  MAX_UNARY_BODY_BYTES,
+} from '@codaco/studio-contract/limits';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { WS_PATH } from '@codaco/studio-contract/rpc/studio';
 
-import { MAX_SOCKET_FRAME_BYTES } from '../assets.ts';
 import type { StudioEnv } from '../env.ts';
 import { ClientSessionQuery } from '../http/middleware/client-session-query.ts';
 import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
@@ -267,6 +279,30 @@ const ProtocolBuilderWs = (env: StudioEnv) =>
     Layer.provide(wsGuards(env)),
   );
 
+/** The unary plane's request-body bound; a reference so a suite can shrink it. */
+export const UnaryBodyLimit = Context.Reference<number>(
+  '@studio/protocol-builder/UnaryBodyLimit',
+  { defaultValue: () => MAX_UNARY_BODY_BYTES },
+);
+
+/**
+ * The rpc server reads the whole body before any middleware of its own runs,
+ * the principal's included, so the bound is set on the route. The Node
+ * listener's request stops reading and destroys the connection once a body
+ * crosses `MaxBodySize`.
+ */
+const boundedBody = HttpRouter.middleware(
+  Effect.map(
+    UnaryBodyLimit,
+    (maxBytes) => (httpEffect) =>
+      Effect.provideService(
+        httpEffect,
+        HttpServerRequest.MaxBodySize,
+        ByteSize.bytes(maxBytes),
+      ),
+  ),
+);
+
 /**
  * `POST /rpc/protocol-builder`: the same procedures, one request per call,
  * over ndjson — the framing that lets `WatchProtocol` stream down a response
@@ -280,7 +316,10 @@ const ProtocolBuilderHttp = (env: StudioEnv) => {
     protocol: 'http',
     ...SERVER_OPTIONS,
     streamBufferSize: 256,
-  }).pipe(Layer.provide(RpcSerialization.layerNdjson));
+  }).pipe(
+    Layer.provide(RpcSerialization.layerNdjson),
+    Layer.provide(boundedBody.layer),
+  );
   return env.auth === undefined
     ? served
     : served.pipe(Layer.provide(requireSameOrigin(env.auth.baseUrl).layer));

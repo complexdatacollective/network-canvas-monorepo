@@ -58,7 +58,7 @@ import {
   type ProtocolBuilderSession,
   type RefactorOutcome,
 } from './host.ts';
-import { Leases, REAUTHORIZE_MS } from './leases.ts';
+import { Leases, RENEW_INTERVAL_MS } from './leases.ts';
 import { Presence } from './presence.ts';
 import { ProtocolEvents } from './publisher.ts';
 import {
@@ -72,6 +72,17 @@ import {
 import { openSession, ownerPrefix, WsConnection } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
+
+/**
+ * How long a watcher's authorisation is trusted for.
+ *
+ * `WatchProtocol` resolves membership once and then runs for as long as the
+ * researcher keeps the protocol open, so a grant revoked in between would
+ * otherwise go on delivering research protocol changes to someone who no
+ * longer has any. Re-resolved no less often than the leases are renewed, so a
+ * revocation costs at most one renewal interval of access nobody has.
+ */
+export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
 
 /**
  * What a command's own failures mean to a caller.

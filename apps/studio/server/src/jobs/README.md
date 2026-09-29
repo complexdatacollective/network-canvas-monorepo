@@ -297,8 +297,8 @@ same `Jobs.enqueue` the worker uses. It composes `Database.layerFromEnvironment`
 (the application role — the role that may create a job and can do nothing else
 with it), `JobClock.layerApplication()`, `Jobs.layer({ schema: JOB_SCHEMA })`
 and `AuditSignal.layer`, captures the lot as one `Context`, and hands it to the
-promise-shaped consumers that cannot take layers: the protocol builder's oRPC
-router and the Hono residue (`rpc/deps.ts`). Every `/rpc` command takes them
+promise-shaped consumers that cannot take layers: the Hono residue
+(`rpc/deps.ts`). Every `/rpc` command takes them
 from its own environment, and so does better-auth's sign-in mail hook, which
 `AuthService.layer` builds over the services its own layer was given
 (`src/auth/service.ts`).

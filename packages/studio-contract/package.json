@@ -12,6 +12,7 @@
   "type": "module",
   "exports": {
     "./client-session": "./src/clientSession.ts",
+    "./limits": "./src/limits.ts",
     "./locales": "./src/locales.ts",
     "./surfaces": "./src/surfaces.ts",
     "./schema/ids": "./src/schema/ids.ts",

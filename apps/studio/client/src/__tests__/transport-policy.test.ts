@@ -12,7 +12,7 @@ import { sourceTokens } from './support/source-tokens.ts';
 // migration, and the invariants that keep the first from outliving the second
 // are structural rather than conventional: every call goes through the adapter
 // (so none can bypass the unauthorized report a 401 owes the router), and the
-// oRPC stack shrinks to the editor's socket and then to nothing.
+// oRPC stack is gone.
 
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,9 +48,8 @@ const isLiteral = (raw: string | undefined): boolean =>
  * expression produces; `import` is reserved, so a literal after it, or after its
  * opening parenthesis, is always a specifier.
  *
- * The `vi.mock` form is here because a suite that mocks `@orpc/client` is still
- * a suite the second stack has to exist for — the allowlist should catch it —
- * and because a mocked specifier is otherwise invisible to a walk that follows
+ * The `vi.mock` form is here because a suite that mocks `@orpc/client` still
+ * depends on it — the check below should catch it — and because a mocked specifier is otherwise invisible to a walk that follows
  * imports alone.
  */
 function moduleSpecifiers(source: string): string[] {
