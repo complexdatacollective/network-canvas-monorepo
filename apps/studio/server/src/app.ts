@@ -273,10 +273,10 @@ export function createStudio(
   // Unknown machine-surface paths must 404 as JSON (RFC 9457 problem shape,
   // per the API ADR #1248) — never fall through to the SPA fallback, which
   // would answer an API, RPC, or asset request with 200 and the app shell's
-  // HTML for a caller to cache. The Effect router owns `/api/auth`, `/rpc`
-  // and `/storage` now, so through it these answer only what it leaves
-  // unregistered — a method `/api/auth` does not take, an `/api` path that is
-  // neither — and the app on its own still answers all three.
+  // HTML for a caller to cache. The Effect router owns `/api/auth`,
+  // `/api/v1`, `/rpc` and `/storage` now, so through it these answer only what
+  // it leaves unregistered — a method `/api/auth` does not take, an `/api`
+  // path that is neither — and the app on its own still answers all three.
   const notFound = (c: Context) =>
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',

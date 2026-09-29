@@ -11,7 +11,7 @@ import type { RateLimitScope } from './scopes.ts';
 // response is HTTP 200, failures included, so a header is not a channel here.
 // The interval travels on the contract's `RateLimited` instead, where both
 // transports can read it. A limit enforced at the HTTP layer — the auth mount,
-// `public_api`, `storage_read`, `ws_upgrade` — still answers problem+json with
+// `public_api`, `api_docs`, `storage_read`, `ws_upgrade` — still answers problem+json with
 // the header, and builds that response itself.
 
 /** Succeeds when the scope admits the call; fails with the interval to wait when it does not. */

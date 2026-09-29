@@ -90,7 +90,8 @@ acceptance per token; participant redemption per address and per link, and
 participant sync writes per session (declared here, enforced when the
 participant routes land with #1899); RPC per user and per team; storage reads
 per address; the public API per address (an `Authorization` header is not a
-subject until a token is validated, #1899); and WebSocket upgrades per user.
+subject until a token is validated, #1899), and its reference page per address
+again; and WebSocket upgrades per user.
 
 Every limit is a constant in `server/src/rate-limit/scopes.ts` — the count, the
 window, and why that number — and none of them is configurable. They are

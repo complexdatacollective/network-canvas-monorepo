@@ -43,6 +43,7 @@ const INJECTED: RateLimitSettings = {
   storage_read: { max: 9, windowMs: 60_000 },
   public_api: { max: 10, windowMs: 60_000 },
   ws_upgrade: { max: 11, windowMs: 60_000 },
+  api_docs: { max: 12, windowMs: 60_000 },
 };
 
 /** Another limiter over whichever store the case runs on. */

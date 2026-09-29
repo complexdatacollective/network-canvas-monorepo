@@ -1,11 +1,12 @@
-import { assert, describe, it } from '@effect/vitest';
+import { assert, describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpServer } from 'effect/unstable/http';
-import { HttpApiTest } from 'effect/unstable/httpapi';
+import { HttpRouter, HttpServer } from 'effect/unstable/http';
+import { HttpApiBuilder, HttpApiTest } from 'effect/unstable/httpapi';
 
 import { StudioApi } from '@codaco/studio-contract/api/v1';
 
 import { getDeploymentStatus, type InstallationReader } from '../../domain.ts';
+import type { Installation } from '../../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../../version.ts';
 import { StatusApiHandlers } from '../status.ts';
 
@@ -54,4 +55,28 @@ describe('GET /api/v1/status', () => {
         });
       }).pipe(Effect.provide(handlersReading(async () => null))),
   );
+});
+
+describe('an answer the server cannot encode', () => {
+  it('is the server’s fault: 500, not the 400 a bad request gets', async () => {
+    // A row whose name is not a string, which the database's own column type
+    // rules out and only a defect could produce.
+    const corrupt: unknown = {
+      name: 42,
+      ownerUserId: null,
+      bootstrapTokenHash: null,
+    };
+    const { handler, dispose } = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(StudioApi).pipe(
+        Layer.provide(handlersReading(async () => corrupt as Installation)),
+      ),
+      { disableLogger: true },
+    );
+    try {
+      const response = await handler(new Request('http://studio.test/status'));
+      expect(response.status).toBe(500);
+    } finally {
+      await dispose();
+    }
+  });
 });

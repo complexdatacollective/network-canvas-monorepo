@@ -41,6 +41,7 @@ describe('the published OpenAPI document', () => {
     expect(Object.keys(document.paths)).toEqual(['/status']);
     expect(Object.keys(document.paths['/status'] ?? {})).toEqual(['get']);
     expect(document.paths['/status']?.get?.operationId).toBe('status');
+    expect(document.paths['/status']?.get?.summary).toBe('Instance status');
   });
 
   it('describes status as a name and a version, and no more', () => {
@@ -85,9 +86,9 @@ describe('the published OpenAPI document', () => {
       StatusApiGroup.middleware(Scoped),
     );
 
-    expect(
-      Object.keys(OpenApi.fromApi(secured).components.securitySchemes),
-    ).toEqual(['scopedToken']);
+    expect(OpenApi.fromApi(secured).components.securitySchemes).toEqual({
+      scopedToken: { type: 'http', scheme: 'Bearer' },
+    });
   });
 });
 

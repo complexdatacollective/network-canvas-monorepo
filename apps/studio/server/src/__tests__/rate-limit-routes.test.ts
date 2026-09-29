@@ -20,6 +20,7 @@ import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { RATE_LIMITS, type RateLimitSettings } from '../rate-limit/scopes.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { authServiceStub } from './support/auth.ts';
+import { rawRequest } from './support/raw-http.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -157,6 +158,8 @@ async function serverWith(
         ...init,
         headers: { ...peer(address), ...init.headers },
       }),
+    raw: (address: string, path: string, method = 'GET') =>
+      rawRequest(server.origin, path, { method, headers: peer(address) }),
     dispose: server.dispose,
   };
 }
@@ -528,20 +531,12 @@ describe.skipIf(!url)('the limited request paths', () => {
 
   it.each([
     ['the OpenAPI document', '203.0.113.33', '/api/v1/openapi.json', 200],
-    ['the reference page', '203.0.113.34', '/api/v1/docs', 200],
     ['a path that is no route', '203.0.113.35', '/api/v1/nope', 404],
-    [
-      'a method the route does not take',
-      '203.0.113.36',
-      '/api/v1/status',
-      404,
-      'DELETE',
-    ],
   ])(
     'charges %s against the public API limit',
-    async (_what, address, path, admitted, method = 'GET') => {
+    async (_what, address, path, admitted) => {
       const server = await serverWith({ public_api: perMinute(2) });
-      const call = () => server.request(address, path, { method });
+      const call = () => server.request(address, path);
       try {
         expect((await call()).status).toBe(admitted);
         expect((await call()).status).toBe(admitted);
@@ -551,6 +546,74 @@ describe.skipIf(!url)('the limited request paths', () => {
       }
     },
   );
+
+  it.each([
+    ['POST', '203.0.113.61'],
+    ['PUT', '203.0.113.62'],
+    ['PATCH', '203.0.113.63'],
+    ['DELETE', '203.0.113.64'],
+    ['OPTIONS', '203.0.113.65'],
+    ['HEAD', '203.0.113.66'],
+    ['PROPFIND', '203.0.113.67'],
+  ])(
+    'charges a %s the route does not take against the public API limit',
+    async (method, address) => {
+      const server = await serverWith({ public_api: perMinute(2) });
+      const call = () => server.raw(address, '/api/v1/status', method);
+      try {
+        expect((await call()).status).toBe(404);
+        expect((await call()).status).toBe(404);
+        expect((await call()).status).toBe(429);
+      } finally {
+        await server.dispose();
+      }
+    },
+  );
+
+  it('charges every alias of a route to the one bucket', async () => {
+    // The router matches case-insensitively and collapses slashes (the
+    // maintainer's ruling on #1999, I1), so an alias is the route: it answers
+    // and it is counted, and spelling a path differently buys nothing.
+    const server = await serverWith({ public_api: perMinute(3) });
+    const call = (path: string) => server.raw('203.0.113.37', path);
+    try {
+      expect((await call('/API/v1//status')).status).toBe(200);
+      expect((await call('//api/%76%31/status;x')).status).toBe(200);
+      expect((await call('/api/v1/DOCS/')).status).toBe(200);
+      expect((await call('/api/v1/status')).status).toBe(429);
+    } finally {
+      await server.dispose();
+    }
+  });
+
+  it('charges the reference page against a limit of its own as well', async () => {
+    const server = await serverWith({
+      public_api: perMinute(10),
+      api_docs: perMinute(2),
+    });
+    const call = (path: string) => server.request('203.0.113.38', path);
+    try {
+      expect((await call('/api/v1/docs')).status).toBe(200);
+      expect((await call('/api/v1/docs')).status).toBe(200);
+      await expectProblemJson429(await call('/api/v1/docs'));
+      // The rest of the API is still open to the same caller.
+      expect((await call('/api/v1/status')).status).toBe(200);
+    } finally {
+      await server.dispose();
+    }
+  });
+
+  it('charges the reference page against the public API limit', async () => {
+    const server = await serverWith({ public_api: perMinute(2) });
+    const call = (path: string) => server.request('203.0.113.39', path);
+    try {
+      expect((await call('/api/v1/docs')).status).toBe(200);
+      expect((await call('/api/v1/status')).status).toBe(200);
+      await expectProblemJson429(await call('/api/v1/docs'));
+    } finally {
+      await server.dispose();
+    }
+  });
 
   it('refuses a third WebSocket upgrade for one user, from any address', async () => {
     // Keyed by the user the principal gate resolved, not by the address: a

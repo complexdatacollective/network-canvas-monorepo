@@ -13,7 +13,8 @@
 // — so the program, the shell it composes and every service it wires are what
 // is inspected, the same way the bundler sees them (vite.config.ts names the
 // same five files as its entries).
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -295,6 +296,116 @@ describe('the worker process', () => {
     expect(reached(graph, ['src/jobs/team-access.ts'])).toEqual([
       'src/jobs/team-access.ts',
     ]);
+  });
+});
+
+/**
+ * The graph above stops at a package's name, which is enough to keep a
+ * process from reaching a package of its own accord and blind to what a
+ * package it may reach loads in turn. This one follows the packages that are
+ * Studio's own (`@codaco/*`, their source) and Effect's (its `dist`), through
+ * their runtime imports only — a type-only import loads nothing — so a module
+ * the process would actually evaluate is in it wherever it comes from.
+ */
+function loadedModules(entry: string): Set<string> {
+  const loaded = new Set<string>();
+  const pending = [realpathSync(resolve(SERVER_ROOT, entry))];
+  const followed = (specifier: string) =>
+    specifier === 'effect' ||
+    specifier.startsWith('effect/') ||
+    specifier.startsWith('@effect/') ||
+    specifier.startsWith('@codaco/');
+
+  while (pending.length > 0) {
+    const file = pending.pop();
+    if (file === undefined) break;
+    if (loaded.has(file)) continue;
+    loaded.add(file);
+    const source = readFileSync(file, 'utf8');
+    const specifiers = file.includes('/node_modules/')
+      ? distSpecifiers(source)
+      : runtimeSpecifiers(source);
+    for (const specifier of specifiers) {
+      if (specifier.startsWith('.')) {
+        pending.push(realpathSync(resolve(dirname(file), specifier)));
+      } else if (followed(specifier)) {
+        pending.push(realpathSync(createRequire(file).resolve(specifier)));
+      }
+    }
+  }
+  return loaded;
+}
+
+/** `moduleSpecifiers` without `import type` and `export type`. */
+function runtimeSpecifiers(source: string): string[] {
+  const tokens = sourceTokens(source);
+  const specifiers: string[] = [];
+  let typeOnly = false;
+  for (const [index, token] of tokens.entries()) {
+    if (token.raw === 'import' || token.raw === 'export') {
+      typeOnly =
+        tokens[index + 1]?.raw === 'type' &&
+        tokens[index + 2]?.raw !== 'from' &&
+        tokens[index + 2]?.raw !== '(';
+    }
+    if (token.raw !== 'from' && token.raw !== 'import') continue;
+    const next = tokens[index + 1];
+    const literal =
+      next?.raw.startsWith("'") || next?.raw.startsWith('"')
+        ? next.value
+        : token.raw === 'import' &&
+            next?.raw === '(' &&
+            (tokens[index + 2]?.raw.startsWith("'") ||
+              tokens[index + 2]?.raw.startsWith('"'))
+          ? tokens[index + 2]?.value
+          : undefined;
+    if (literal !== undefined && !(token.raw === 'from' && typeOnly)) {
+      specifiers.push(literal);
+    }
+  }
+  return specifiers;
+}
+
+/**
+ * A published package's compiled output has its static imports and
+ * re-exports one to a line at the top level, which is all this reads; the
+ * tokenizer is kept for source that a person wrote.
+ */
+function distSpecifiers(source: string): string[] {
+  return [
+    ...source.matchAll(
+      /^(?:(?:import|export)(?![ \t]+type\b)[^'"\n]*?\bfrom[ \t]*|import[ \t]*)["']([^"'\n]+)["']/gm,
+    ),
+  ].map((match) => match[1] ?? '');
+}
+
+const SCALAR =
+  /\/effect\/dist\/unstable\/httpapi\/(?:HttpApiScalar|internal\/httpApiScalar)\.js$/;
+
+describe('what each process loads through the packages it imports', () => {
+  const loadsScalar = (entry: string) =>
+    [...loadedModules(entry)].some((path) => SCALAR.test(path));
+
+  it('keeps the API reference page out of the worker', () => {
+    // The page inlines a 3 MB bundle, and the worker serves no page. The
+    // contract's shared problem schema used to reach it through
+    // `effect/unstable/httpapi`'s barrel, which every module that raises a
+    // contract error — the worker's included — loads.
+    //
+    // Mutation: import `HttpApiScalar` from the barrel in
+    // src/programs/worker.ts.
+    expect(loadsScalar('src/worker.ts')).toBe(false);
+  });
+
+  it('keeps it out of the health routes both processes mount', () => {
+    // Mutation: import `HttpApiScalar` from the barrel in src/http/health.ts.
+    expect(loadsScalar('src/http/health.ts')).toBe(false);
+  });
+
+  it('loads it in the web process, which serves the page', () => {
+    // The positive half, so that the two above cannot pass because the walk
+    // stopped short of Effect's own modules.
+    expect(loadsScalar('src/index.ts')).toBe(true);
   });
 });
 
