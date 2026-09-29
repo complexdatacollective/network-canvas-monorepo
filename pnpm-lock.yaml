@@ -3019,12 +3019,9 @@ importers:
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../studio-sync
-      '@orpc/contract':
+      effect:
         specifier: 'catalog:'
-        version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
-      zod:
-        specifier: ^4.5.4
-        version: 4.5.4
+        version: 4.0.0-rc.115
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:^
