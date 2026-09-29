@@ -144,10 +144,11 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 /** The command over its arguments, with the environment decoded once at its root. */
 export const MaintenanceProgram = (args: ReadonlyArray<string>) =>
   maintenance(args).pipe(
-    reportingRefusals,
     Effect.provide(
       Layer.mergeAll(LoggerLive, TracingLive('maintenance')).pipe(
         Layer.provideMerge(Environment.layer),
       ),
     ),
+    // Outside the environment, so a refusal to read it is printed too.
+    reportingRefusals,
   );

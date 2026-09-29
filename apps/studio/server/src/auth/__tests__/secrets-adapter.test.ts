@@ -402,4 +402,50 @@ describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
       ),
     ).toEqual([]);
   });
+
+  it('re-seals a row created in the same transaction when its identity moves inside it', async () => {
+    // The update path reads the row before it writes (a partial update
+    // carries neither the identity nor the untouched tokens). Inside a
+    // transaction that read has to go through the transaction's own adapter:
+    // the row below exists nowhere else yet, so a read on any other
+    // connection finds nothing and the update is silently dropped.
+    const ctx = await contextFor(testCipher());
+    const email = `${randomUUID()}@example.com`;
+    const accountId = randomUUID();
+    const movedTo = randomUUID();
+
+    await ctx.adapter.transaction(async (trx) => {
+      const user = await trx.create<{ id: string }>({
+        model: 'user',
+        data: { name: 'Researcher', email, emailVerified: true },
+      });
+      const account = await trx.create<{ id: string }>({
+        model: 'account',
+        data: {
+          ...GOOGLE,
+          accountId,
+          userId: user.id,
+          ...TOKENS,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      const updated = await trx.update({
+        model: 'account',
+        where: [{ field: 'id', value: account.id }],
+        update: { accountId: movedTo },
+      });
+      expect(updated).toMatchObject({ accountId: movedTo, ...TOKENS });
+    });
+
+    const stored = await storedTokens(movedTo);
+    for (const column of TOKEN_COLUMNS) {
+      expect(stored[column]).toMatch(/^studio-secret:/);
+    }
+    const moved = await ctx.internalAdapter.findAccountByKey({
+      providerId: GOOGLE.providerId,
+      accountId: movedTo,
+    });
+    expect(moved).toMatchObject(TOKENS);
+  });
 });

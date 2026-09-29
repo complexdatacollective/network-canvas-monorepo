@@ -1,19 +1,16 @@
-import { Cause, Context, Effect, Layer, Schema } from 'effect';
+import { Context, Effect, Layer, Schema } from 'effect';
 
-import { MaintenanceDatabase } from '../db/client.ts';
-import { MaintenanceScope } from '../db/tenant.ts';
-import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
-import { assertSecretKeysProducible, SecretKeyCheckError } from './boot.ts';
+import { Environment } from '../env.ts';
 import { createSecretsCipher, type SecretsCipherApi } from './cipher.ts';
 import type { KeyringApi } from './keyring.ts';
 
-// Studio's key custody as Effect services (#1927 §M2), pulled forward from
-// stage 6 because the migrate graph needs the gate and stage-3 commands take
-// the cipher from the environment rather than building one of their own.
+// Studio's key custody as Effect services (#1927 §M2), landed in stage 3
+// because stage-3 commands take the cipher from the environment rather than
+// building one of their own.
 //
-// Three things, in the order they depend on each other: the keyring the
-// deployment was started with, the cipher derived from it, and the boot check
-// that refuses a database this keyring cannot read.
+// Two things, in the order they depend on each other: the keyring the
+// deployment was started with and the cipher derived from it. The boot check
+// that refuses a database this keyring cannot read is src/secrets/verify.ts.
 
 /**
  * No keyring at all. A layer failure rather than a thrown error, so a process
@@ -43,7 +40,7 @@ export class Keyring extends Context.Service<Keyring, KeyringApi>()(
   '@studio/secrets/Keyring',
 ) {}
 
-export const KeyringLive: Layer.Layer<Keyring, KeyringMissing, Environment> =
+const KeyringLive: Layer.Layer<Keyring, KeyringMissing, Environment> =
   Layer.effect(
     Keyring,
     Effect.flatMap(Environment, (env) =>
@@ -91,124 +88,8 @@ export const SecretsCipherAbsent: Layer.Layer<SecretsCipher> = Layer.succeed(
 );
 
 /** The keyring and the cipher over it, which is how every consumer wants both. */
-const SecretsLive: Layer.Layer<
+export const SecretsLive: Layer.Layer<
   Keyring | SecretsCipher,
   KeyringMissing,
   Environment
 > = SecretsCipherLive.pipe(Layer.provideMerge(KeyringLive));
-
-/**
- * The stored key ids this keyring cannot read, as the one failure a boot has
- * to report. The message is the check's own — which names key ids that are
- * well formed and *counts* the ones that are not, because those come back out
- * of a database column and a boot refusal is the thing most likely to be
- * pasted into an issue.
- */
-export class StoredKeysUnreadable extends Schema.TaggedError<StoredKeysUnreadable>()(
-  'StoredKeysUnreadable',
-  { cause: Schema.Defect() },
-) {
-  override get message(): string {
-    const { cause } = this;
-    return cause instanceof SecretKeyCheckError
-      ? cause.message
-      : `Could not read the stored secret key ids: ${String(cause)}`;
-  }
-}
-
-/**
- * The check itself. The maintenance client is built and released inside this
- * effect's own scope rather than the surrounding layer's: it is the one
- * identity that sees every team's rows, and a cross-team client that outlived
- * a boot check would sit for the life of a process that serves requests as the
- * application role.
- *
- * One transaction for the whole check, which is what `MaintenanceScope.open`
- * around the whole of `assertSecretKeysProducible` buys: the ids it counts and
- * the rows it probes are one reading of the database.
- *
- * Everything the check can answer with becomes `StoredKeysUnreadable` — its
- * three refusals, a statement that failed, and a client that could not be
- * built — because a boot has exactly one thing to report and the message
- * getter already tells the two apart.
- */
-const verifyAgainst = (db: DbEnv) =>
-  Effect.gen(function* () {
-    const keyring = yield* Keyring;
-    const cipher = yield* SecretsCipher;
-    yield* MaintenanceScope.open(assertSecretKeysProducible(keyring, cipher));
-  }).pipe(
-    Effect.provide(
-      MaintenanceDatabase.layer({
-        url: db.url,
-        applicationName: 'studio-secrets-check',
-      }),
-    ),
-    Effect.catch((cause) => new StoredKeysUnreadable({ cause })),
-  );
-
-/**
- * Refuses a database whose stored secrets this keyring cannot read, in the
- * order the three faults have to be told apart: key ids nothing could open,
- * then ids this keyring does not carry, then ids it carries under the wrong
- * key material (src/secrets/boot.ts).
- *
- * Nothing to verify without a database, and the keyring is not required to
- * exist in that case — which is why the branch is taken before either secrets
- * layer is built.
- */
-export const verifyKeyring: Effect.Effect<
-  void,
-  KeyringMissing | StoredKeysUnreadable,
-  Environment
-> = Effect.flatMap(Environment, (env) =>
-  env.db === undefined
-    ? Effect.void
-    : verifyAgainst(env.db).pipe(Effect.provide(SecretsLive)),
-);
-
-/**
- * The same check as a gate: a layer that provides nothing and whose only
- * effect is to refuse. Anything given it with `Layer.provide` is built after
- * it, which is what makes "verified before it serves" a property of the graph
- * rather than of a call in the right place.
- */
-export const KeyringVerified: Layer.Layer<
-  never,
-  KeyringMissing | StoredKeysUnreadable,
-  Environment
-> = Layer.effectDiscard(verifyKeyring);
-
-/**
- * The same refusal for a process that has nothing above it to catch one: the
- * hand-run schema apply (scripts/apply-schema.ts), which stays on
- * node-postgres for the apply itself and borrows this for the check.
- *
- * Prints and exits rather than failing, because a stack trace would bury the
- * one sentence that says what to do. It runs `verifyKeyring` rather than the
- * check underneath it, so the script and the two entrypoints refuse on exactly
- * the same conditions in exactly the same order.
- *
- * Resolves only when there is no database to check, or when every stored key
- * id is well formed, is in the keyring, and opens a row that was sealed under
- * it.
- */
-export const verifySecretKeysOrExit = (env: StudioEnv): Promise<void> =>
-  Effect.runPromise(
-    verifyKeyring.pipe(
-      // A defect is caught too: a boot diagnostic that printed nothing and
-      // rejected would leave the operator with an unhandled rejection instead
-      // of the sentence.
-      Effect.catchCause((cause) => {
-        const failure: unknown = Cause.squash(cause);
-        return Effect.sync(() => {
-          // oxlint-disable-next-line no-console -- boot diagnostics
-          console.error(
-            failure instanceof Error ? failure.message : String(failure),
-          );
-          process.exit(1);
-        });
-      }),
-      Effect.provideService(Environment)(env),
-    ),
-  );

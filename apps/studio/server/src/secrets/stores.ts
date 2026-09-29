@@ -1,6 +1,6 @@
 import { and, eq, like, ne, sql, type SQL } from 'drizzle-orm';
 import { union, unionAll } from 'drizzle-orm/pg-core';
-import { Effect, Schema } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
@@ -13,6 +13,7 @@ import {
   sealedOAuthTokenPrefix,
   type SecretsCipherApi,
 } from './cipher.ts';
+import { SecretsCipher } from './services.ts';
 
 // Every place a secret is stored, as one entry each (#1900). The boot check
 // and the rotation command both walk this list rather than naming tables
@@ -56,17 +57,18 @@ export type SecretStore = {
    */
   keyIdsInUse: Effect.Effect<string[], SqlError.SqlError, Transaction>;
   /**
-   * One stored secret sealed under `keyId`, ready to open, or null when this
+   * One stored secret sealed under `keyId`, ready to open, or none when this
    * store has none. The boot check opens one per (store, key id) so that a
    * keyring naming the right ids under the WRONG material is refused before
    * the deployment serves anything.
    */
   probe(
     keyId: string,
-  ): Effect.Effect<SecretOpener | null, SqlError.SqlError, Transaction>;
+  ): Effect.Effect<Option.Option<SecretOpener>, SqlError.SqlError, Transaction>;
   /**
    * Re-seals up to `batchSize` rows that are not under the current key and
-   * returns how many were changed; zero means this store is finished. Runs
+   * returns how many were changed; zero means this store is finished. Seals
+   * with the process's own `SecretsCipher`, never one a caller hands in. Runs
    * inside the caller's transaction, and takes the rows it works with
    * `FOR UPDATE SKIP LOCKED` so a second runner (or a request writing the same
    * row) never waits on it.
@@ -77,9 +79,8 @@ export type SecretStore = {
    * standing until the transaction ended.
    */
   rotateBatch(
-    cipher: SecretsCipherApi,
     batchSize: number,
-  ): Effect.Effect<number, SqlError.SqlError, Transaction>;
+  ): Effect.Effect<number, SqlError.SqlError, SecretsCipher | Transaction>;
   /**
    * How many rows are still not under `currentKeyId`. The rotation's
    * postcondition: a batch returning zero means "nothing I could take", not
@@ -171,14 +172,15 @@ const webhookSubscriptionsStore: SecretStore = {
       .where(eq(webhookSubscriptions.secretKeyId, keyId))
       .limit(1);
     const row = rows[0];
-    if (row === undefined) return null;
+    if (row === undefined) return Option.none();
     // `bytea` decodes as a `Uint8Array` rather than as node's `Buffer`, which
     // is exactly the wider shape `StoredSecret` names.
-    return (cipher: SecretsCipherApi) =>
+    return Option.some((cipher: SecretsCipherApi) =>
       cipher.openWebhookSecret(
         { teamId: row.teamId, subscriptionId: row.id },
         { ciphertext: row.ciphertext, keyId },
-      );
+      ),
+    );
   }, sqlErrorsOnly),
 
   remaining: Effect.fn('secrets.stores.webhookSubscriptions.remaining')(
@@ -194,7 +196,8 @@ const webhookSubscriptionsStore: SecretStore = {
   ),
 
   rotateBatch: Effect.fn('secrets.stores.webhookSubscriptions.rotateBatch')(
-    function* (cipher: SecretsCipherApi, batchSize: number) {
+    function* (batchSize: number) {
+      const cipher = yield* SecretsCipher;
       const { tx } = yield* Transaction;
       const rows = yield* tx
         .select({
@@ -340,14 +343,15 @@ const accountStore: SecretStore = {
       accountProbeOf(tx, 'idToken', prefix),
     ).limit(1);
     const row = rows[0];
-    if (row === undefined || row.token === null) return null;
+    if (row === undefined || row.token === null) return Option.none();
     const column = decodeProbedColumn(row.columnName);
     const token = row.token;
-    return (cipher: SecretsCipherApi) =>
+    return Option.some((cipher: SecretsCipherApi) =>
       cipher.openOAuthToken(
         { providerId: row.providerId, accountId: row.accountId, column },
         token,
-      );
+      ),
+    );
   }, sqlErrorsOnly),
 
   remaining: Effect.fn('secrets.stores.account.remaining')(function* (
@@ -362,9 +366,9 @@ const accountStore: SecretStore = {
   }, sqlErrorsOnly),
 
   rotateBatch: Effect.fn('secrets.stores.account.rotateBatch')(function* (
-    cipher: SecretsCipherApi,
     batchSize: number,
   ) {
+    const cipher = yield* SecretsCipher;
     // A row is behind when ANY of its tokens is, and every token present is
     // then re-sealed — so a row always carries one key id across its three
     // columns, whatever order better-auth wrote them in.
@@ -454,8 +458,8 @@ const protocolAssetKeysStore: SecretStore = {
       .where(eq(protocolAssetKeys.keyId, keyId))
       .limit(1);
     const row = rows[0];
-    if (row === undefined) return null;
-    return (cipher: SecretsCipherApi) =>
+    if (row === undefined) return Option.none();
+    return Option.some((cipher: SecretsCipherApi) =>
       cipher.openAssetKey(
         {
           teamId: row.teamId,
@@ -463,7 +467,8 @@ const protocolAssetKeysStore: SecretStore = {
           assetId: row.assetId,
         },
         { ciphertext: row.ciphertext, keyId },
-      );
+      ),
+    );
   }, sqlErrorsOnly),
 
   remaining: Effect.fn('secrets.stores.protocolAssetKeys.remaining')(function* (
@@ -478,7 +483,8 @@ const protocolAssetKeysStore: SecretStore = {
   }, sqlErrorsOnly),
 
   rotateBatch: Effect.fn('secrets.stores.protocolAssetKeys.rotateBatch')(
-    function* (cipher: SecretsCipherApi, batchSize: number) {
+    function* (batchSize: number) {
+      const cipher = yield* SecretsCipher;
       const { tx } = yield* Transaction;
       const rows = yield* tx
         .select({
