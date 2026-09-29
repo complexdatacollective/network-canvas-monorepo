@@ -91,7 +91,9 @@ export async function createWebSocketHost(
       ),
   });
 
-  const server = RpcServer.layer(ProtocolBuilderGroup).pipe(
+  const server = RpcServer.layer(ProtocolBuilderGroup, {
+    disableFatalDefects: true,
+  }).pipe(
     Layer.provide(RpcServer.layerProtocolSocketServer),
     Layer.provide([socketServer, serialization]),
     Layer.provide([

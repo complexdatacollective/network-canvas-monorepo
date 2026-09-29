@@ -1,5 +1,7 @@
+import { Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -1251,33 +1253,36 @@ describe('the in-memory host', () => {
     });
   });
 
-  it('refuses a promotion that names no resource', async () => {
-    const subject = host();
-    const assets = sectionId({ kind: 'assets' });
-    const before = subject.store.read(assets).revision;
-
-    const held = await subject.adapter.rpcCall('AcquireLock', {
-      protocolId: subject.protocolId,
-      sectionId: INFORMATION,
-    });
-    const refused = await attempt(subject.adapter, 'Submit', {
-      protocolId: subject.protocolId,
+  // No host handles an empty promotion itself: the contract's payload decode,
+  // which every served procedure runs before its handler, refuses it.
+  it('never hands a host a promotion that names no resource', () => {
+    const payload = (resourceIds: readonly string[]) => ({
+      protocolId: 'protocol-1',
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: held.document,
-      revision: held.revision,
-      // The contract's type already refuses it; this is the host's answer to
-      // a caller that sends it anyway.
-      // @ts-expect-error — a promotion names at least one resource.
-      promote: { editId: EDIT, resourceIds: [] },
+      document: {},
+      revision: { sequence: 1n, contentHash: 'hash' },
+      promote: { editId: EDIT, resourceIds },
     });
+    const submit = ProtocolBuilderGroup.requests.get('Submit');
+    const create = ProtocolBuilderGroup.requests.get('Create');
+    if (submit === undefined || create === undefined) {
+      throw new Error('the contract has no Submit or Create');
+    }
+    const decodeSubmit = Schema.decodeUnknownExit(submit.payloadSchema);
+    const decodeCreate = Schema.decodeUnknownExit(create.payloadSchema);
 
-    // A promotion of nothing is not a promotion: it makes an ordinary save
-    // touch the asset manifest, so a collaborator holding that section is
-    // enough to refuse the save, and a save that is not refused publishes a
-    // manifest revision with nothing in it changed.
-    expect(refused.isSuccess).toBe(false);
-    expect(subject.store.read(assets).revision).toEqual(before);
+    expect(Exit.isSuccess(decodeSubmit(payload(['resource-1'])))).toBe(true);
+    expect(Exit.isFailure(decodeSubmit(payload([])))).toBe(true);
+    const created = (resourceIds: readonly string[]) => ({
+      protocolId: 'protocol-1',
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: {},
+      promote: { editId: EDIT, resourceIds },
+    });
+    expect(Exit.isSuccess(decodeCreate(created(['resource-1'])))).toBe(true);
+    expect(Exit.isFailure(decodeCreate(created([])))).toBe(true);
   });
 
   it('keeps a staged secret to the session that staged it', async () => {

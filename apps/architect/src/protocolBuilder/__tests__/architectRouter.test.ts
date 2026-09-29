@@ -47,6 +47,7 @@ import type { ArchitectStore } from '../architectStore.ts';
 import { createArchitectClient } from '../client.ts';
 import { ArchitectHandlers } from '../handlers.ts';
 import { makeInProcessClient } from '../inProcessClient.ts';
+import { ProtocolRevisions } from '../protocolRevisions.ts';
 import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
 import { ArchitectHostClient } from '../runtime.ts';
 import { ArchitectHostSession } from '../session.ts';
@@ -1746,6 +1747,49 @@ describe("Architect's in-process protocol-builder host", () => {
       expect(
         getProtocol(store.getState())?.codebook.node?.person,
       ).toBeDefined();
+    });
+
+    it('stops listening to the store once its runtime is disposed', async () => {
+      const { store, client } = openProtocol();
+      const subscribe = store.subscribe;
+      const released = vi.fn();
+      const subscribed = vi
+        .spyOn(store, 'subscribe')
+        .mockImplementation((listener) => {
+          const unsubscribe = subscribe(listener);
+          return () => {
+            released();
+            unsubscribe();
+          };
+        });
+
+      await client.call('ListSections', { protocolId: PROTOCOL_ID });
+      expect(subscribed).toHaveBeenCalled();
+      expect(released).not.toHaveBeenCalled();
+
+      await client.runtime.dispose();
+      expect(released).toHaveBeenCalledTimes(subscribed.mock.calls.length);
+    });
+
+    it('fails the stream when the protocol watch it reads from fails', async () => {
+      const watch = vi
+        .spyOn(ProtocolRevisions.prototype, 'watch')
+        // oxlint-disable-next-line require-yield
+        .mockImplementation(async function* () {
+          throw new Error('the watch failed');
+        });
+      const { client } = openProtocol();
+
+      const exit = await run(client, (host) =>
+        Stream.runDrain(
+          host('WatchProtocol', { protocolId: PROTOCOL_ID }),
+        ).pipe(Effect.timeoutOption('2 seconds')),
+      );
+      watch.mockRestore();
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      if (!Exit.isFailure(exit)) return;
+      expect(String(Cause.squash(exit.cause))).toContain('the watch failed');
     });
 
     it('keeps a defect on the call that raised it, leaving the stream open', async () => {

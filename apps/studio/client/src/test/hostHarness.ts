@@ -240,9 +240,8 @@ export type SocketHost = Readonly<{
  * Serves `handlers` behind `FakeWebSocket` for the length of the test, and
  * makes the shipped `HostClient.layer` the editor's client again.
  *
- * The session reads the account the socket's handshake carried, the way
- * Studio's `/ws` reads the upgrade's cookie once for the life of the socket,
- * and the tab id from its URL — which is also the lock owner, so a tab that
+ * The session reads the account the socket's handshake carried, as Studio's
+ * `/ws` reads the upgrade's cookie, and the tab id from its URL — which is also the lock owner, so a tab that
  * reconnects still holds what it held.
  */
 export async function installSocketHost(

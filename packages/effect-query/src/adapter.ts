@@ -50,8 +50,8 @@ type PagePayloadOf<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = Omit<
  * The flat client's return type is a conditional on the rpc's success schema, which
  * TypeScript leaves unresolved while `Tag` is generic. These two function types are the
  * resolved views of it — one for the rpcs that answer with an effect, one for the rpcs
- * that answer with a stream — and the two `as unknown as` they are used with are the
- * only casts in this package. The erasure through `unknown` is deliberate and written
+ * that answer with a stream — and the `as unknown as` casts to them are the only casts
+ * in this package. The erasure through `unknown` is deliberate and written
  * where it happens: the conditional type and these views do not overlap for the
  * compiler, so nothing here can check them against each other. What pins them is the
  * compile-time probe in `__tests__/adapter.test.tsx` (`_flatClientShapeProbe`), which

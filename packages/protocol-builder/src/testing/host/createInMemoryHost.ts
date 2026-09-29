@@ -9,7 +9,8 @@ import {
   Stream,
 } from 'effect';
 import type * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcTest from 'effect/unstable/rpc/RpcTest';
+import * as RpcClient from 'effect/unstable/rpc/RpcClient';
+import * as RpcServer from 'effect/unstable/rpc/RpcServer';
 import { v4 as uuid } from 'uuid';
 
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
@@ -141,6 +142,29 @@ const inMicrotasks = Layer.succeed(Scheduler.Scheduler)(
 );
 
 /**
+ * `RpcTest.makeClient`'s wiring, with a handler's defect kept on its own call
+ * as the Studio and Architect hosts keep it.
+ */
+const makeInProcessClient = Effect.fnUntraced(function* () {
+  // oxlint-disable-next-line prefer-const
+  let client!: Effect.Success<
+    ReturnType<
+      typeof RpcClient.makeNoSerialization<ProtocolBuilderRpcs, never, true>
+    >
+  >;
+  const server = yield* RpcServer.makeNoSerialization(ProtocolBuilderGroup, {
+    onFromServer: (response) => client.write(response),
+    disableFatalDefects: true,
+  });
+  client = yield* RpcClient.makeNoSerialization(ProtocolBuilderGroup, {
+    supportsAck: true,
+    flatten: true,
+    onFromClient: ({ message }) => server.write(0, message),
+  });
+  return client.client;
+});
+
+/**
  * An adapter over the handlers in process, as `principal`. No serialization:
  * what a handler answers is what the caller gets.
  */
@@ -148,9 +172,7 @@ export function inProcessAdapter(
   handlers: HandlersLayer,
   principal: HostPrincipal,
 ): ProtocolBuilderAdapter {
-  const client = Layer.effect(InMemoryHostClient)(
-    RpcTest.makeClient(ProtocolBuilderGroup, { flatten: true }),
-  ).pipe(
+  const client = Layer.effect(InMemoryHostClient)(makeInProcessClient()).pipe(
     Layer.provide([handlers, hostSessionFor(principal)]),
     Layer.provideMerge(inMicrotasks),
   );

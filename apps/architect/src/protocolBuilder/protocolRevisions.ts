@@ -101,6 +101,7 @@ export class ProtocolRevisions {
   #emitting = true;
   /** Writes run one at a time, so `create` mints against a settled store. */
   #writes: Promise<unknown> = Promise.resolve();
+  readonly #unsubscribe: () => void;
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -110,9 +111,13 @@ export class ProtocolRevisions {
       mode: 'viewing',
     };
     this.#seed();
-    store.subscribe(() => {
+    this.#unsubscribe = store.subscribe(() => {
       if (this.#emitting) this.#refresh();
     });
+  }
+
+  dispose(): void {
+    this.#unsubscribe();
   }
 
   sectionIds(): ProtocolSectionId[] {

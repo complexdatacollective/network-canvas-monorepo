@@ -120,3 +120,38 @@ describe('a connection that stops answering', () => {
     expect(served.filter(({ tag }) => tag === 'GetSection')).toHaveLength(1);
   });
 });
+
+describe('a frame above the default bound', () => {
+  it('reaches the editor whole, since the socket takes the upload bound', async () => {
+    const host = createInMemoryHost({
+      protocolId: PROTOCOL_ID,
+      sections: { stageOrder: { stages: [] } },
+    });
+    const large = 'x'.repeat(17 * 1024 * 1024);
+    await installSocketHost(
+      ProtocolBuilderGroup.toLayer({
+        ...host.handle,
+        GetSection: () =>
+          Effect.succeed({
+            document: { large },
+            revision: { sequence: 1n, contentHash: 'large' },
+          }),
+      }),
+    );
+    const runtime = ManagedRuntime.make(HostClient.layer);
+    onTestFinished(() => runtime.dispose());
+
+    const exit = await runtime.runPromiseExit(
+      Effect.flatMap(HostClient, (client) =>
+        client('GetSection', {
+          protocolId: PROTOCOL_ID,
+          sectionId: STAGE_ORDER,
+        }),
+      ).pipe(Effect.timeout('5 seconds')),
+    );
+
+    expect(exit._tag).toBe('Success');
+    if (exit._tag !== 'Success') return;
+    expect(exit.value.document.large).toHaveLength(large.length);
+  });
+});

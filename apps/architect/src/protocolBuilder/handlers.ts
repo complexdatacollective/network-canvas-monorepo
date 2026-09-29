@@ -83,8 +83,11 @@ export const ArchitectHandlers = (
   otherTabName: string,
 ) =>
   ProtocolBuilderGroup.toLayer(
-    Effect.sync(() => {
-      const revisions = new ProtocolRevisions(store);
+    Effect.gen(function* () {
+      const revisions = yield* Effect.acquireRelease(
+        Effect.sync(() => new ProtocolRevisions(store)),
+        (watching) => Effect.sync(() => watching.dispose()),
+      );
       const resources = new ResourceBridge(store);
       const ledger = new WriteLedger();
       const isOpen = (protocolId: string) =>
@@ -654,14 +657,12 @@ export const ArchitectHandlers = (
  */
 const watchProtocol = (revisions: ProtocolRevisions, since?: string) =>
   Stream.callback<ProtocolEvent>((queue) =>
-    Effect.forkScoped(
-      Effect.promise(async (signal) => {
-        for await (const entry of revisions.watch(since, signal)) {
-          Queue.offerUnsafe(queue, withCursor(entry));
-        }
-        Queue.endUnsafe(queue);
-      }),
-    ),
+    Effect.promise(async (signal) => {
+      for await (const entry of revisions.watch(since, signal)) {
+        Queue.offerUnsafe(queue, withCursor(entry));
+      }
+      Queue.endUnsafe(queue);
+    }).pipe(Effect.catchCause((cause) => Queue.failCause(queue, cause))),
   );
 
 function withCursor({ cursor, event }: LoggedEvent): ProtocolEvent {
