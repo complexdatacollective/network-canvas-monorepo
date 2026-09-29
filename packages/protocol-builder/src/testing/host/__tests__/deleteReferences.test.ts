@@ -1,4 +1,3 @@
-import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionReference } from '@codaco/protocol-builder-core/contract/schemas';
@@ -10,6 +9,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { attempt } from '../../../state/attempt.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -151,16 +151,16 @@ describe('deleting a stage other stages depend on', () => {
       const host = hostWith(subject.referring);
       const before = snapshot(host);
 
-      const { definedError, isSuccess } = await safe(
-        host.client.delete({
-          protocolId: host.protocolId,
-          sectionId: stage(subject.target),
-        }),
-      );
+      const { refusal, isSuccess } = await attempt(host.adapter, 'Delete', {
+        protocolId: host.protocolId,
+        sectionId: stage(subject.target),
+      });
 
       expect(isSuccess).toBe(false);
-      expect(definedError?.code).toBe('REFERENCES_REMAIN');
-      expect(definedError?.data).toEqual({ remaining: subject.remaining });
+      expect(refusal?._tag).toBe('ReferencesRemain');
+      expect(
+        refusal?._tag === 'ReferencesRemain' ? refusal.remaining : undefined,
+      ).toEqual(subject.remaining);
       // The site the case names is where the reference actually is, so a tag
       // that moves cannot leave this enumeration testing the old path.
       expect(subject.remaining.map(siteOf)).toEqual([subject.site]);
@@ -173,7 +173,7 @@ describe('deleting a stage other stages depend on', () => {
     it(`takes the same delete once nothing reaches it through ${subject.site}`, async () => {
       const host = hostWith(subject.dangling);
 
-      const deleted = await host.client.delete({
+      const deleted = await host.adapter.rpcCall('Delete', {
         protocolId: host.protocolId,
         sectionId: stage(subject.target),
       });

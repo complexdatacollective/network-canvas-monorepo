@@ -2,15 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { COLOR_SEQUENCE_HUE_NAMES } from '@codaco/fresco-ui/form/fields/ColorPicker';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../fields/EntityTypePickerField.tsx';
-import type {
-  InMemoryClient,
-  InMemoryHost,
-} from '../../../testing/host/createInMemoryHost.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { beforeCall } from '../../../testing/host/beforeCall.ts';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   TestPromptEditor,
@@ -644,12 +642,12 @@ describe('dismissing the create dialog while it is submitting', () => {
    *
    * Between the editor and the host rather than inside it: an in-memory host
    * answers in a microtask, so a request that is still in flight is something
-   * only the transport can be. The call goes on to the real router when the
+   * only the transport can be. The call goes on to the real host when the
    * release comes, and what the editor is finally told is the host's own
    * answer.
    */
   const gateTheCreate = (): Readonly<{
-    client: (host: InMemoryHost) => ProtocolBuilderClient;
+    adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
     release: () => void;
   }> => {
     let open: () => void = () => undefined;
@@ -657,16 +655,8 @@ describe('dismissing the create dialog while it is submitting', () => {
       open = resolve;
     });
     return {
-      client: ({ client }) =>
-        new Proxy(client, {
-          get: (target, property) =>
-            property === 'create'
-              ? async (...args: Parameters<InMemoryClient['create']>) => {
-                  await held;
-                  return client.create(...args);
-                }
-              : Reflect.get(target, property),
-        }),
+      adapter: ({ adapter }) =>
+        beforeCall(adapter, (tag) => (tag === 'Create' ? held : undefined)),
       release: () => {
         open();
       },
@@ -691,7 +681,7 @@ describe('dismissing the create dialog while it is submitting', () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
-      client: gate.client,
+      adapter: gate.adapter,
     });
     await startTheCreate(harness);
 

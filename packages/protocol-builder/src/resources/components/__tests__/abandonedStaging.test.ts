@@ -20,7 +20,7 @@ async function stageAnImage(
     name: 'skyline.png',
     source: 'skyline.png',
     contentType: 'image/png',
-    bytes: new TextEncoder().encode('png-bytes'),
+    bytes: new Uint8Array(new TextEncoder().encode('png-bytes')),
   });
   if (staged.status !== 'ok') throw new Error('the host refused to stage');
   return staged.data;
@@ -28,7 +28,7 @@ async function stageAnImage(
 
 it('drops staging nobody is waiting for, and reports nothing', async () => {
   const host = createResourceHost();
-  const resources = renderResourceClient(host.client, host.protocolId);
+  const resources = renderResourceClient(host.adapter, host.protocolId);
   const descriptor = await stageAnImage(resources());
 
   discardAbandonedStaging(resources(), descriptor);
@@ -36,7 +36,7 @@ it('drops staging nobody is waiting for, and reports nothing', async () => {
 
   // The host is not left holding a file no field will ever name.
   expect(
-    await stagedResources(host.client, host.protocolId, TEST_EDIT_ID),
+    await stagedResources(host.adapter, host.protocolId, TEST_EDIT_ID),
   ).toEqual([]);
 });
 
@@ -47,12 +47,12 @@ it('carries a host that throws no further than itself', async () => {
   // with it. Nothing is shown either way, because the choice this staging
   // belonged to has already been replaced.
   const host = createResourceHost();
-  const client = withResourceProcedures(host.client, {
+  const adapter = withResourceProcedures(host, {
     discard: () => {
       throw new Error('the host threw');
     },
   });
-  const resources = renderResourceClient(client, host.protocolId);
+  const resources = renderResourceClient(adapter, host.protocolId);
   const descriptor = await stageAnImage(resources());
 
   expect(() => discardAbandonedStaging(resources(), descriptor)).not.toThrow();

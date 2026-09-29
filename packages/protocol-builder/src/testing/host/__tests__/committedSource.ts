@@ -8,13 +8,8 @@ import { createHash } from 'node:crypto';
  * off the host — a host still keying committed bytes by the caller's filename
  * fails this instead of agreeing with itself.
  */
-export async function committedSource(
-  bytes: Blob,
-  source: string,
-): Promise<string> {
-  const digest = createHash('sha256')
-    .update(Buffer.from(await bytes.arrayBuffer()))
-    .digest('hex');
+export function committedSource(bytes: Uint8Array, source: string): string {
+  const digest = createHash('sha256').update(bytes).digest('hex');
   const dot = source.lastIndexOf('.');
   return `${digest}${dot > 0 ? source.slice(dot).toLowerCase() : ''}`;
 }

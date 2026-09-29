@@ -1,12 +1,12 @@
-import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { attempt } from '../../../state/attempt.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import {
   createInMemoryHost,
-  type InMemoryClient,
   type InMemoryHost,
 } from '../createInMemoryHost.ts';
 import type { HostPrincipal } from '../protocolStore.ts';
@@ -40,11 +40,11 @@ const PORTRAIT = () =>
     name: 'Portrait',
     source: 'portrait.png',
     contentType: 'image/png',
-    bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    bytes: new Uint8Array([1, 2, 3]),
   }) as const;
 
 /** Somebody making resource calls: a connection, and the edit they are in. */
-type Caller = Readonly<{ client: InMemoryClient; editId: string }>;
+type Caller = Readonly<{ adapter: ProtocolBuilderAdapter; editId: string }>;
 
 /**
  * One way of getting at a staged resource, asked once by the edit that staged
@@ -56,7 +56,7 @@ type Caller = Readonly<{ client: InMemoryClient; editId: string }>;
  * its own.
  */
 type Reach = Readonly<{
-  /** Dotted path of the contract procedure this goes through. */
+  /** Tag of the contract procedure this goes through. */
   procedure: string;
   name: string;
   reaches: (
@@ -77,7 +77,7 @@ async function stagedList(
   caller: Caller,
   host: InMemoryHost,
 ): Promise<string[]> {
-  const listed = await caller.client.resources.list({
+  const listed = await caller.adapter.rpcCall('ResourcesList', {
     protocolId: host.protocolId,
     editId: caller.editId,
     status: 'staged',
@@ -88,18 +88,18 @@ async function stagedList(
 
 const REACHES: readonly Reach[] = [
   {
-    procedure: 'resources.list',
+    procedure: 'ResourcesList',
     name: 'listing the staged resources',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) =>
       (await stagedList(caller, host)).includes(staged),
   },
   {
-    procedure: 'resources.stage',
+    procedure: 'ResourcesStage',
     name: 'staging again under the same request id',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const again = await caller.client.resources.stage({
+      const again = await caller.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         editId: caller.editId,
         requestId: REQUEST_ID,
@@ -109,7 +109,7 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'resources.stage',
+    procedure: 'ResourcesStage',
     name: 'staging a secret under that request id',
     // A content picker and a secret picker can carry the same request id: the
     // contract asks only that an id be stable across a retry. Answered with
@@ -117,7 +117,7 @@ const REACHES: readonly Reach[] = [
     // needs one cannot promote it.
     byOwner: false,
     reaches: async (caller, _owner, host, staged) => {
-      const secret = await caller.client.resources.stage({
+      const secret = await caller.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         editId: caller.editId,
         requestId: REQUEST_ID,
@@ -127,11 +127,11 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'resources.inspect',
+    procedure: 'ResourcesInspect',
     name: 'inspecting it',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const inspected = await caller.client.resources.inspect({
+      const inspected = await caller.adapter.rpcCall('ResourcesInspect', {
         protocolId: host.protocolId,
         editId: caller.editId,
         resourceId: staged,
@@ -140,11 +140,11 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'resources.preview',
+    procedure: 'ResourcesPreview',
     name: 'previewing its bytes',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const preview = await caller.client.resources.preview({
+      const preview = await caller.adapter.rpcCall('ResourcesPreview', {
         protocolId: host.protocolId,
         editId: caller.editId,
         resourceId: staged,
@@ -153,11 +153,11 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'resources.discard',
+    procedure: 'ResourcesDiscard',
     name: 'discarding it by id',
     byOwner: true,
     reaches: async (caller, owner, host, staged) => {
-      const discarded = await caller.client.resources.discard({
+      const discarded = await caller.adapter.rpcCall('ResourcesDiscard', {
         protocolId: host.protocolId,
         editId: caller.editId,
         resourceId: staged,
@@ -167,7 +167,7 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'resources.discard',
+    procedure: 'ResourcesDiscard',
     name: 'discarding the whole edit',
     // The cancel of one edit. Another edit's cancel taking away the file this
     // one is about to submit is the failure the scoping is for — and a
@@ -175,7 +175,7 @@ const REACHES: readonly Reach[] = [
     // edits in one session.
     byOwner: true,
     reaches: async (caller, owner, host, staged) => {
-      await caller.client.resources.discard({
+      await caller.adapter.rpcCall('ResourcesDiscard', {
         protocolId: host.protocolId,
         editId: caller.editId,
       });
@@ -183,46 +183,42 @@ const REACHES: readonly Reach[] = [
     },
   },
   {
-    procedure: 'submit',
+    procedure: 'Submit',
     name: 'promoting it with a submit',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const held = await caller.client.acquireLock({
+      const held = await caller.adapter.rpcCall('AcquireLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       });
       if (held.lock !== 'held') throw new Error('the lock was not granted');
-      const { isSuccess } = await safe(
-        caller.client.submit({
-          protocolId: host.protocolId,
-          requestId: 'write-1',
-          sectionId: INFORMATION,
-          document: held.document,
-          revision: held.revision,
-          promote: { editId: caller.editId, resourceIds: [staged] },
-        }),
-      );
+      const { isSuccess } = await attempt(caller.adapter, 'Submit', {
+        protocolId: host.protocolId,
+        requestId: 'write-1',
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        promote: { editId: caller.editId, resourceIds: [staged] },
+      });
       return isSuccess;
     },
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'promoting it with a create',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
-      const { isSuccess } = await safe(
-        caller.client.create({
-          protocolId: host.protocolId,
-          requestId: 'write-1',
-          kind: 'stage',
-          document: {
-            ...template,
-            items: [{ id: 'item-1', type: 'asset', content: staged }],
-          },
-          promote: { editId: caller.editId, resourceIds: [staged] },
-        }),
-      );
+      const { isSuccess } = await attempt(caller.adapter, 'Create', {
+        protocolId: host.protocolId,
+        requestId: 'write-1',
+        kind: 'stage',
+        document: {
+          ...template,
+          items: [{ id: 'item-1', type: 'asset', content: staged }],
+        },
+        promote: { editId: caller.editId, resourceIds: [staged] },
+      });
       return isSuccess;
     },
   },
@@ -236,8 +232,8 @@ async function hostWithAdasImport(): Promise<
     sections: sectionsFromProtocol(FIXTURE),
     principal: ADA,
   });
-  const owner: Caller = { client: host.client, editId: IMPORTING_EDIT };
-  const staged = await host.client.resources.stage({
+  const owner: Caller = { adapter: host.adapter, editId: IMPORTING_EDIT };
+  const staged = await host.adapter.rpcCall('ResourcesStage', {
     protocolId: host.protocolId,
     editId: IMPORTING_EDIT,
     requestId: REQUEST_ID,
@@ -261,12 +257,12 @@ const OTHERS: readonly Readonly<{
 }>[] = [
   {
     name: 'another edit in the same session',
-    caller: (host) => ({ client: host.client, editId: OTHER_EDIT }),
+    caller: (host) => ({ adapter: host.adapter, editId: OTHER_EDIT }),
   },
   {
     name: 'a collaborator naming the same edit',
     caller: (host) => ({
-      client: host.asCollaborator(GRACE),
+      adapter: host.asCollaborator(GRACE),
       editId: IMPORTING_EDIT,
     }),
   },
@@ -279,13 +275,13 @@ describe('a staged resource belongs to the edit that staged it', () => {
     expect(
       [...new Set(REACHES.map((reach) => reach.procedure))].toSorted(),
     ).toEqual([
-      'create',
-      'resources.discard',
-      'resources.inspect',
-      'resources.list',
-      'resources.preview',
-      'resources.stage',
-      'submit',
+      'Create',
+      'ResourcesDiscard',
+      'ResourcesInspect',
+      'ResourcesList',
+      'ResourcesPreview',
+      'ResourcesStage',
+      'Submit',
     ]);
   });
 

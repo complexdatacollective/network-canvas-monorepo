@@ -501,7 +501,7 @@ describe('the attributes a passphrase protects', () => {
     const harness = renderStageEditor({
       stageId: 'anonymisation-1',
       registry: anonymisationStageEditor,
-      client: held.client,
+      adapter: held.adapter,
     });
     await switchOnType(harness, 'person');
 
@@ -549,7 +549,7 @@ describe('the attributes a passphrase protects', () => {
       renderStageEditor({
         stageId: 'anonymisation-1',
         registry: anonymisationStageEditor,
-        client: alreadyProtecting('name'),
+        adapter: alreadyProtecting('name'),
       });
 
     /** The confirmation this loss is worth, answered. */
@@ -699,7 +699,7 @@ describe('the attributes a passphrase protects', () => {
       const stopWriting = { now: () => undefined as void };
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
-        client: alreadyProtecting('name'),
+        adapter: alreadyProtecting('name'),
         sections: (
           <UntilTheEditorIsReadOnly stop={stopWriting}>
             <EncryptedAttributesSection />
@@ -789,7 +789,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
         registry: anonymisationStageEditor,
-        client: alreadyProtecting('name'),
+        adapter: alreadyProtecting('name'),
       });
       await waitFor(() =>
         expect(attributeCheckbox('person', 'name')).toBeChecked(),
@@ -841,7 +841,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
         registry: anonymisationStageEditor,
-        client: alreadyProtecting('name'),
+        adapter: alreadyProtecting('name'),
       });
       await waitFor(() =>
         expect(attributeCheckbox('person', 'name')).toBeChecked(),
@@ -877,7 +877,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
         registry: anonymisationStageEditor,
-        client: held.client,
+        adapter: held.adapter,
       });
       await switchOnType(harness, 'person');
 
@@ -919,7 +919,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
         registry: anonymisationStageEditor,
-        client: held.client,
+        adapter: held.adapter,
       });
       await waitFor(() =>
         expect(
@@ -962,7 +962,7 @@ describe('the attributes a passphrase protects', () => {
       stageId: 'anonymisation-1',
       registry: anonymisationStageEditor,
       readOnly: true,
-      client: alreadyProtecting('name'),
+      adapter: alreadyProtecting('name'),
     });
 
     await waitFor(() =>

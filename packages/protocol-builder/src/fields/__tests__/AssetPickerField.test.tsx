@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { REQUIRED } from '../../form/requiredField.ts';
@@ -18,6 +17,7 @@ import {
   withResourceProcedures,
   type CommittedResource,
 } from '../../resources/components/__tests__/resourceHost.ts';
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import AssetPickerField from '../AssetPickerField.tsx';
 
@@ -134,23 +134,23 @@ function rosterField() {
  */
 function countedProcedures() {
   const counts = { list: 0, stage: 0, inspect: 0, preview: 0 };
-  const wrap = (host: InMemoryHost): ProtocolBuilderClient =>
-    withResourceProcedures(host.client, {
+  const wrap = (host: InMemoryHost): ProtocolBuilderAdapter =>
+    withResourceProcedures(host, {
       list: (input) => {
         counts.list += 1;
-        return host.client.resources.list(input);
+        return host.adapter.rpcCall('ResourcesList', input);
       },
       stage: (input) => {
         counts.stage += 1;
-        return host.client.resources.stage(input);
+        return host.adapter.rpcCall('ResourcesStage', input);
       },
       inspect: (input) => {
         counts.inspect += 1;
-        return host.client.resources.inspect(input);
+        return host.adapter.rpcCall('ResourcesInspect', input);
       },
       preview: (input) => {
         counts.preview += 1;
-        return host.client.resources.preview(input);
+        return host.adapter.rpcCall('ResourcesPreview', input);
       },
     });
   return { counts, wrap };
@@ -300,10 +300,10 @@ describe('AssetPickerField', () => {
       // honoured, but which resources a field may hold is the editor's own
       // rule: offering a backdrop image as an API key would put an id in the
       // field that the schema refuses and the interview cannot load.
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           list: ({ protocolId, status }) =>
-            host.client.resources.list({
+            host.adapter.rpcCall('ResourcesList', {
               protocolId,
               ...(status === undefined ? {} : { status }),
             }),
@@ -337,10 +337,10 @@ describe('AssetPickerField', () => {
     const { fieldValue } = renderResourceEditor({
       // An import route reaches the field with no list in between, so this is
       // where a wrong kind arrives when the host decides one for itself.
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           stage: async (input) => {
-            const staged = await host.client.resources.stage(input);
+            const staged = await host.adapter.rpcCall('ResourcesStage', input);
             if (staged.status !== 'ok') return staged;
             return {
               status: 'ok' as const,
@@ -379,10 +379,13 @@ describe('AssetPickerField', () => {
       // A host that reads what it was given, which is what `inspect` is for:
       // the counts and attribute names a researcher picks a roster on are the
       // host's to know, and this control shows whatever it is told.
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           inspect: async (input) => {
-            const inspected = await host.client.resources.inspect(input);
+            const inspected = await host.adapter.rpcCall(
+              'ResourcesInspect',
+              input,
+            );
             if (
               inspected.status !== 'ok' ||
               inspected.data.descriptor.kind !== 'network'
@@ -426,7 +429,7 @@ describe('AssetPickerField', () => {
     const counted = countedProcedures();
     const { fieldValue } = renderResourceEditor({
       resources: [networkSeed],
-      client: counted.wrap,
+      adapter: counted.wrap,
       children: (
         <Field
           component={AssetPickerField}
@@ -455,7 +458,7 @@ describe('AssetPickerField', () => {
     const user = userEvent.setup({ applyAccept: false });
     const counted = countedProcedures();
     const { fieldValue } = renderResourceEditor({
-      client: counted.wrap,
+      adapter: counted.wrap,
       children: (
         <Field
           component={AssetPickerField}
@@ -521,14 +524,14 @@ describe('AssetPickerField', () => {
     const user = userEvent.setup();
     let refuse = true;
     const { fieldValue } = renderResourceEditor({
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           stage: (input) => {
             if (refuse) {
               refuse = false;
               return Promise.resolve(REFUSAL);
             }
-            return host.client.resources.stage(input);
+            return host.adapter.rpcCall('ResourcesStage', input);
           },
         }),
       children: imageField(),
@@ -715,11 +718,11 @@ describe('AssetPickerField', () => {
     // uncertain failure a stable request id exists for.
     let uncertain = true;
     const { fieldValue, staged } = renderResourceEditor({
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           stage: async (input) => {
             requests.push(input.requestId);
-            const result = await host.client.resources.stage(input);
+            const result = await host.adapter.rpcCall('ResourcesStage', input);
             if (!uncertain) return result;
             uncertain = false;
             return REFUSAL;
@@ -793,7 +796,7 @@ describe('AssetPickerField', () => {
     const counted = countedProcedures();
     renderResourceEditor({
       resources: [imageSeed],
-      client: counted.wrap,
+      adapter: counted.wrap,
       children: imageField(),
     });
 
@@ -828,8 +831,8 @@ describe('a picker whose in-flight call is superseded', () => {
     const held = deferred<void>();
     const { fieldValue } = renderResourceEditor({
       resources: [imageSeed, secondImageSeed],
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           inspect: async (input) => {
             if (input.resourceId === 'image-1') {
               await held.promise;
@@ -842,7 +845,7 @@ describe('a picker whose in-flight call is superseded', () => {
                 },
               };
             }
-            return host.client.resources.inspect(input);
+            return host.adapter.rpcCall('ResourcesInspect', input);
           },
         }),
       fields: withBackgroundImage('image-1'),
@@ -880,11 +883,11 @@ describe('a picker whose in-flight call is superseded', () => {
       // preview are the same call now, so refusing every one of them would
       // put the second image's own preview failure where this row expects
       // silence.
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           preview: async (input) => {
             if (input.resourceId !== 'image-1') {
-              return host.client.resources.preview(input);
+              return host.adapter.rpcCall('ResourcesPreview', input);
             }
             await held.promise;
             return {
@@ -930,11 +933,11 @@ describe('a picker whose in-flight call is superseded', () => {
     const held = deferred<void>();
     renderResourceEditor({
       resources: [imageSeed, secondImageSeed],
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           inspect: async (input) => {
             if (input.resourceId === 'image-2') await held.promise;
-            return host.client.resources.inspect(input);
+            return host.adapter.rpcCall('ResourcesInspect', input);
           },
         }),
       fields: withBackgroundImage('image-1'),
@@ -1036,10 +1039,12 @@ describe('discarding a resource other fields may share', () => {
     );
   }
 
-  function renderItems(client?: (host: InMemoryHost) => ProtocolBuilderClient) {
+  function renderItems(
+    adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter,
+  ) {
     const { formValues, staged, resourceClient } = renderResourceEditor({
       fields: ASSET_ITEMS,
-      ...(client === undefined ? {} : { client }),
+      ...(adapter === undefined ? {} : { adapter }),
       children: (
         <>
           {itemIdentityFields(0)}
@@ -1185,10 +1190,10 @@ describe('discarding a resource other fields may share', () => {
     const user = userEvent.setup();
     const discard = deferred<void>();
     const contents = renderItems((host) =>
-      withResourceProcedures(host.client, {
+      withResourceProcedures(host, {
         discard: async (input) => {
           await discard.promise;
-          return host.client.resources.discard(input);
+          return host.adapter.rpcCall('ResourcesDiscard', input);
         },
       }),
     );
@@ -1349,8 +1354,8 @@ describe('a picker the researcher backs out of', () => {
     const held = deferred<void>();
     const { fieldValue } = renderResourceEditor({
       resources: [imageSeed],
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           preview: async () => {
             await held.promise;
             return {
@@ -1431,15 +1436,15 @@ describe('two files chosen before either has been read', () => {
     const staging = new Map<string, () => void>();
     const requests: string[] = [];
     const { fieldValue } = renderResourceEditor({
-      client: (host) =>
-        withResourceProcedures(host.client, {
+      adapter: (host) =>
+        withResourceProcedures(host, {
           stage: (input) => {
             const source =
               input.request.kind === 'content' ? input.request.source : '';
             requests.push(source);
             return new Promise((settle) => {
               staging.set(source, () => {
-                void host.client.resources.stage(input).then(settle);
+                void host.adapter.rpcCall('ResourcesStage', input).then(settle);
               });
             });
           },

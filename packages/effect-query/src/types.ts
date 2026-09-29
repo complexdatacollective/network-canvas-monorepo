@@ -98,6 +98,19 @@ export type RpcAdapter<Rpcs extends Rpc.Any> = {
     PayloadOf<Rpcs, Tag>
   >;
 
+  /**
+   * Runs a streaming rpc outside React, handing each chunk to `onChunk`. Resolves
+   * when the stream ends and rejects the way `rpcCall` does: with the typed failure
+   * instance, or with an abort once `signal` aborts (which interrupts the stream).
+   * For a caller that owns its own reconnection, which `useRpcStream` does not offer.
+   */
+  readonly rpcStream: <Tag extends Rpcs['_tag']>(
+    tag: Tag,
+    payload: PayloadOf<Rpcs, Tag>,
+    onChunk: (chunk: ChunkOf<Rpcs, Tag>) => void,
+    signal?: AbortSignal,
+  ) => Promise<void>;
+
   readonly useRpcStream: <Tag extends Rpcs['_tag']>(
     tag: Tag,
     payload: PayloadOf<Rpcs, Tag>,

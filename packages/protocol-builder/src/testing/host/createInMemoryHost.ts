@@ -1,23 +1,57 @@
 import {
-  createRouterClient,
-  implement,
-  withEventMeta,
-  type RouterClient,
-} from '@orpc/server';
+  Cause,
+  Context,
+  Effect,
+  Layer,
+  ManagedRuntime,
+  Queue,
+  Scheduler,
+  Stream,
+} from 'effect';
+import type * as Rpc from 'effect/unstable/rpc/Rpc';
+import * as RpcTest from 'effect/unstable/rpc/RpcTest';
 import { v4 as uuid } from 'uuid';
 
-import { contract } from '@codaco/protocol-builder-core/contract';
-import type { ResourceDescriptor } from '@codaco/protocol-builder-core/contract/schemas';
+import { makeRpcAdapter } from '@codaco/effect-query/adapter';
+import {
+  ProtocolBuilderGroup,
+  type ProtocolBuilderClient,
+  type ProtocolBuilderRpcs,
+} from '@codaco/protocol-builder-core/contract';
+import {
+  InvalidShape,
+  NotLockHolder,
+  PromotionFailed,
+  ProtocolNotFound,
+  ReferencesRemain,
+  SectionExists,
+  SectionNotFound,
+  SectionsLocked,
+} from '@codaco/protocol-builder-core/contract/errors';
+import type {
+  ProtocolEvent,
+  ResourceDescriptor,
+} from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  HostCaller,
+  HostSession,
+} from '@codaco/protocol-builder-core/contract/session';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { OperationLedger } from './operationLedger.ts';
-import { InMemoryProtocolStore, type HostPrincipal } from './protocolStore.ts';
+import {
+  InMemoryProtocolStore,
+  type HostPrincipal,
+  type LoggedEvent,
+  type RefactorOutcome,
+} from './protocolStore.ts';
 import { InMemoryResourceStore, type EditScope } from './resourceStore.ts';
-
-export type InMemoryHostContext = Readonly<{ principal: HostPrincipal }>;
-
-const os = implement(contract).$context<InMemoryHostContext>();
 
 const ASSETS = sectionId({ kind: 'assets' });
 
@@ -27,7 +61,7 @@ export type InMemoryHostSeed = Readonly<{
   /** Bytes for committed assets, keyed by the `source` the manifest names. */
   assetContent?: Readonly<Record<string, Blob>>;
   principal?: HostPrincipal;
-  /** Overrides the ids `create` and resource staging mint, for readable tests. */
+  /** Overrides the ids `Create` and resource staging mint, for readable tests. */
   nextId?: () => string;
 }>;
 
@@ -37,23 +71,104 @@ const DEFAULT_PRINCIPAL: HostPrincipal = {
   displayName: 'Ada',
 };
 
-export type InMemoryRouter = ReturnType<typeof buildRouter>;
-export type InMemoryClient = RouterClient<InMemoryRouter>;
+/** The in-process client a test host's adapter calls through. */
+export class InMemoryHostClient extends Context.Service<
+  InMemoryHostClient,
+  ProtocolBuilderClient
+>()('@codaco/protocol-builder/testing/InMemoryHostClient') {}
+
+/** The procedures a layer serves, for a transport or an in-process client. */
+export type HandlersLayer = Layer.Layer<Rpc.ToHandler<ProtocolBuilderRpcs>>;
+
+/**
+ * Stand-ins for some of the host's procedures. Each can call the host's own
+ * through `host.handle`, so a test can hold an answer, lose one, or count the
+ * calls without writing a host of its own.
+ */
+export type HandlerOverrides = {
+  readonly [
+    Current in ProtocolBuilderRpcs as Current['_tag']
+  ]?: Rpc.ToHandlerFn<Current, HostCaller>;
+};
 
 export type InMemoryHost = Readonly<{
   protocolId: string;
-  router: InMemoryRouter;
-  client: InMemoryClient;
-  /** A client for a second connection, which is a second lock owner. */
-  asCollaborator(principal: HostPrincipal): InMemoryClient;
+  adapter: ProtocolBuilderAdapter;
+  /** An adapter for a second connection, which is a second lock owner. */
+  asCollaborator(principal: HostPrincipal): ProtocolBuilderAdapter;
+  /**
+   * An adapter as this host's principal (or `principal`) whose procedures are
+   * `overrides` wherever they name one.
+   */
+  adapterWith(
+    overrides: HandlerOverrides,
+    principal?: HostPrincipal,
+  ): ProtocolBuilderAdapter;
+  /** The host's own procedures, for an override to call through to. */
+  handle: InMemoryHandlers;
+  /** The procedures over this host's stores, for a transport to serve. */
+  handlers: HandlersLayer;
   store: InMemoryProtocolStore;
 }>;
+
+export type InMemoryHandlers = ReturnType<typeof buildHandlers>;
+
+/**
+ * The session every call on one connection runs as. A test host has no
+ * credentials to check, so the caller is the principal it was built for.
+ */
+export function hostSessionFor(principal: HostPrincipal) {
+  const caller = HostCaller.of({
+    connectionId: principal.sessionId,
+    clientSessionId: principal.sessionId,
+    userId: principal.userId,
+    displayName: principal.displayName,
+  });
+  return Layer.succeed(HostSession)(
+    HostSession.of((effect) =>
+      Effect.provideService(effect, HostCaller, caller),
+    ),
+  );
+}
+
+/**
+ * Runs the host's fibers in microtasks, as a promise-returning host would
+ * answer, rather than yielding to the event loop between steps: a test that
+ * changes the protocol inside `act` sees the channel deliver it there.
+ */
+const inMicrotasks = Layer.succeed(Scheduler.Scheduler)(
+  new Scheduler.MixedScheduler('sync'),
+);
+
+/**
+ * An adapter over the handlers in process, as `principal`. No serialization:
+ * what a handler answers is what the caller gets.
+ */
+export function inProcessAdapter(
+  handlers: HandlersLayer,
+  principal: HostPrincipal,
+): ProtocolBuilderAdapter {
+  const client = Layer.effect(InMemoryHostClient)(
+    RpcTest.makeClient(ProtocolBuilderGroup, { flatten: true }),
+  ).pipe(
+    Layer.provide([handlers, hostSessionFor(principal)]),
+    Layer.provideMerge(inMicrotasks),
+  );
+  return makeRpcAdapter<
+    ProtocolBuilderRpcs,
+    InMemoryHostClient,
+    InMemoryHostClient
+  >({
+    runtime: ManagedRuntime.make(client),
+    client: InMemoryHostClient,
+  });
+}
 
 /**
  * The contract, served from memory.
  *
  * `asCollaborator` is the whole of the multi-editor story a test needs: a
- * second principal is a second lock owner, so a section one client holds is
+ * second principal is a second lock owner, so a section one adapter holds is
  * read-only to the other and its submits are refused.
  */
 export function createInMemoryHost(seed: InMemoryHostSeed): InMemoryHost {
@@ -61,24 +176,60 @@ export function createInMemoryHost(seed: InMemoryHostSeed): InMemoryHost {
   const nextId = seed.nextId ?? uuid;
   const store = new InMemoryProtocolStore(seed.sections, nextId);
   const resources = new InMemoryResourceStore(nextId, seed.assetContent ?? {});
-  const router = buildRouter(
+  const principal = seed.principal ?? DEFAULT_PRINCIPAL;
+  const handle = buildHandlers(
     protocolId,
     store,
     resources,
     new OperationLedger(),
   );
-  const clientFor = (principal: HostPrincipal): InMemoryClient =>
-    createRouterClient(router, { context: { principal } });
+  const handlers = ProtocolBuilderGroup.toLayer(handle);
   return {
     protocolId,
-    router,
-    client: clientFor(seed.principal ?? DEFAULT_PRINCIPAL),
-    asCollaborator: clientFor,
+    adapter: inProcessAdapter(handlers, principal),
+    asCollaborator: (collaborator) => inProcessAdapter(handlers, collaborator),
+    adapterWith: (overrides, as = principal) =>
+      inProcessAdapter(
+        ProtocolBuilderGroup.toLayer({ ...handle, ...overrides }),
+        as,
+      ),
+    handle,
+    handlers,
     store,
   };
 }
 
-function buildRouter(
+const callerPrincipal = Effect.gen(function* () {
+  const caller = yield* HostCaller;
+  const principal: HostPrincipal = {
+    sessionId: caller.connectionId,
+    userId: caller.userId,
+    displayName: caller.displayName,
+  };
+  return principal;
+});
+
+/** A replayable event carries the cursor it can be resumed from. */
+function eventOf(entry: LoggedEvent): ProtocolEvent {
+  return entry.event.type === 'presence'
+    ? entry.event
+    : { ...entry.event, cursor: entry.cursor };
+}
+
+function refactorAnswer(outcome: RefactorOutcome) {
+  if (outcome.status === 'blocked') {
+    return Effect.fail(new SectionsLocked({ blocked: outcome.blocked }));
+  }
+  if (outcome.status === 'notFound') {
+    return Effect.fail(new SectionNotFound({ sectionId: outcome.sectionId }));
+  }
+  if (outcome.status === 'referenced') {
+    return Effect.fail(new ReferencesRemain({ remaining: outcome.remaining }));
+  }
+  return Effect.succeed(outcome);
+}
+
+function buildHandlers(
   protocolId: string,
   store: InMemoryProtocolStore,
   resources: InMemoryResourceStore,
@@ -88,79 +239,83 @@ function buildRouter(
   // Resources are scoped by protocol like everything else here: this host's
   // staged files and its asset manifest belong to one protocol, so a caller
   // naming another one is asking a host that does not exist.
-  const elsewhere = (input: Readonly<{ protocolId: string }>): boolean =>
-    input.protocolId !== protocolId;
+  const inProtocol = (input: Readonly<{ protocolId: string }>) =>
+    input.protocolId === protocolId
+      ? Effect.void
+      : Effect.fail(new ProtocolNotFound({ protocolId: input.protocolId }));
+  const inSection = (id: ProtocolSectionId) =>
+    store.has(id)
+      ? Effect.void
+      : Effect.fail(new SectionNotFound({ sectionId: id }));
   // Staging belongs to an edit in a session: the edit says which of a
   // researcher's open editors imported the file, the session says whose.
-  const scopeOf = (
-    context: InMemoryHostContext,
-    editId: string,
-  ): EditScope => ({ sessionId: context.principal.sessionId, editId });
+  const scopeOf = (principal: HostPrincipal, editId: string): EditScope => ({
+    sessionId: principal.sessionId,
+    editId,
+  });
 
-  return {
-    acquireLock: os.acquireLock.handler(({ input, context, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      if (!store.has(input.sectionId)) {
-        throw errors.SECTION_NOT_FOUND({ data: input });
-      }
-      return store.acquire(input.sectionId, context.principal);
+  return ProtocolBuilderGroup.of({
+    AcquireLock: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      yield* inSection(input.sectionId);
+      return store.acquire(input.sectionId, yield* callerPrincipal);
     }),
 
-    releaseLock: os.releaseLock.handler(({ input, context, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      store.release(input.sectionId, context.principal);
+    ReleaseLock: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      store.release(input.sectionId, yield* callerPrincipal);
     }),
 
-    getSection: os.getSection.handler(({ input, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      if (!store.has(input.sectionId)) {
-        throw errors.SECTION_NOT_FOUND({ data: input });
-      }
+    GetSection: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      yield* inSection(input.sectionId);
       return store.read(input.sectionId);
     }),
 
-    listSections: os.listSections.handler(({ input, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
+    ListSections: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
       return { sectionIds: store.sectionIds() };
     }),
 
-    watchProtocol: os.watchProtocol.handler(async function* ({
-      input,
-      context,
-      errors,
-      lastEventId,
-      signal,
-    }) {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      // `lastEventId` is where this connection actually got to; `since` is
-      // where it asked to start. A transport resuming a dropped socket
-      // re-invokes with the same input, so starting from the input would hand
-      // the client everything it had already been given.
-      const since = laterCursor(input.since, lastEventId);
-      for await (const entry of store.watch(context.principal, since, signal)) {
-        yield withEventMeta(entry.event, { id: entry.cursor });
-      }
-    }),
+    // Subscribed to the store before its backlog is read, and filtered by
+    // cursor, inside `store.watch`: an event published between the two is
+    // delivered once, and a resume from `since` is given only what came after.
+    WatchProtocol: (input) =>
+      Stream.unwrap(
+        Effect.gen(function* () {
+          yield* inProtocol(input);
+          const principal = yield* callerPrincipal;
+          return Stream.callback<ProtocolEvent>((queue) =>
+            Effect.gen(function* () {
+              const controller = new AbortController();
+              yield* Effect.addFinalizer(() =>
+                Effect.sync(() => controller.abort()),
+              );
+              void (async () => {
+                try {
+                  for await (const entry of store.watch(
+                    principal,
+                    input.since,
+                    controller.signal,
+                  )) {
+                    Queue.offerUnsafe(queue, eventOf(entry));
+                  }
+                  Queue.endUnsafe(queue);
+                } catch (error: unknown) {
+                  Queue.failCauseUnsafe(queue, Cause.die(error));
+                }
+              })();
+            }),
+          );
+        }),
+      ),
 
-    submit: os.submit.handler(({ input, context, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      if (!store.has(input.sectionId)) {
-        throw errors.SECTION_NOT_FOUND({ data: input });
-      }
+    Submit: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      yield* inSection(input.sectionId);
+      const principal = yield* callerPrincipal;
       const key = {
-        sessionId: context.principal.sessionId,
+        sessionId: principal.sessionId,
         operation: 'submit',
         requestId: input.requestId,
       } as const;
@@ -183,15 +338,13 @@ function buildRouter(
       let promoted: ResourceDescriptor[] | undefined;
       if (promotion !== undefined) {
         const manifest = resources.manifestFor(
-          scopeOf(context, promotion.editId),
+          scopeOf(principal, promotion.editId),
           promotion.resourceIds,
         );
         if (manifest.status === 'failed') {
-          throw errors.PROMOTION_FAILED({
-            data: {
-              sectionId: input.sectionId,
-              failure: manifest.failure,
-            },
+          return yield* new PromotionFailed({
+            sectionId: input.sectionId,
+            failure: manifest.failure,
           });
         }
         entries = manifest.data.entries;
@@ -200,23 +353,22 @@ function buildRouter(
       const outcome = store.submit(
         input.sectionId,
         input.document,
-        context.principal,
+        principal,
         entries,
       );
       if (outcome.status === 'notLockHolder') {
-        throw errors.NOT_LOCK_HOLDER({
-          data: {
-            sectionId: input.sectionId,
-            ...(outcome.holder === undefined ? {} : { holder: outcome.holder }),
-          },
+        return yield* new NotLockHolder({
+          sectionId: input.sectionId,
+          ...(outcome.holder === undefined ? {} : { holder: outcome.holder }),
         });
       }
       if (outcome.status === 'blocked') {
-        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+        return yield* new SectionsLocked({ blocked: outcome.blocked });
       }
       if (outcome.status === 'invalidShape') {
-        throw errors.INVALID_SHAPE({
-          data: { sectionId: input.sectionId, issues: outcome.issues },
+        return yield* new InvalidShape({
+          sectionId: input.sectionId,
+          issues: outcome.issues,
         });
       }
       if (promotion !== undefined) {
@@ -232,12 +384,11 @@ function buildRouter(
       };
     }),
 
-    create: os.create.handler(({ input, context, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
+    Create: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      const principal = yield* callerPrincipal;
       const key = {
-        sessionId: context.principal.sessionId,
+        sessionId: principal.sessionId,
         operation: 'create',
         requestId: input.requestId,
       } as const;
@@ -264,13 +415,11 @@ function buildRouter(
       let promoted: ResourceDescriptor[] | undefined;
       if (promotion !== undefined) {
         const manifest = resources.manifestFor(
-          scopeOf(context, promotion.editId),
+          scopeOf(principal, promotion.editId),
           promotion.resourceIds,
         );
         if (manifest.status === 'failed') {
-          throw errors.PROMOTION_FAILED({
-            data: { failure: manifest.failure },
-          });
+          return yield* new PromotionFailed({ failure: manifest.failure });
         }
         entries = manifest.data.entries;
         promoted = manifest.data.promoted;
@@ -282,16 +431,15 @@ function buildRouter(
         entries,
       );
       if (outcome.status === 'exists') {
-        throw errors.SECTION_EXISTS({
-          data: { sectionId: outcome.sectionId },
-        });
+        return yield* new SectionExists({ sectionId: outcome.sectionId });
       }
       if (outcome.status === 'blocked') {
-        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+        return yield* new SectionsLocked({ blocked: outcome.blocked });
       }
       if (outcome.status === 'invalidShape') {
-        throw errors.INVALID_SHAPE({
-          data: { sectionId: outcome.sectionId, issues: outcome.issues },
+        return yield* new InvalidShape({
+          sectionId: outcome.sectionId,
+          issues: outcome.issues,
         });
       }
       if (promotion !== undefined) {
@@ -309,167 +457,118 @@ function buildRouter(
       };
     }),
 
-    delete: os.delete.handler(({ input, context, errors }) => {
-      if (input.protocolId !== protocolId) {
-        throw errors.PROTOCOL_NOT_FOUND({ data: input });
-      }
-      if (!store.has(input.sectionId)) {
-        throw errors.SECTION_NOT_FOUND({ data: input });
-      }
+    Delete: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      yield* inSection(input.sectionId);
       const ref = parseSectionId(input.sectionId);
       if (ref.kind !== 'stage') {
-        throw errors.SECTION_NOT_FOUND({ data: input });
+        return yield* new SectionNotFound({ sectionId: input.sectionId });
       }
-      const outcome = store.deleteStage(ref.stageId, context.principal);
-      if (outcome.status === 'blocked') {
-        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
-      }
-      if (outcome.status === 'notFound') {
-        throw errors.SECTION_NOT_FOUND({
-          data: { sectionId: outcome.sectionId },
-        });
-      }
-      if (outcome.status === 'referenced') {
-        throw errors.REFERENCES_REMAIN({
-          data: { remaining: outcome.remaining },
-        });
-      }
-      return outcome;
+      return yield* refactorAnswer(
+        store.deleteStage(ref.stageId, yield* callerPrincipal),
+      );
     }),
 
-    refactor: {
-      deleteVariable: os.refactor.deleteVariable.handler(
-        ({ input, context, errors }) => {
-          if (input.protocolId !== protocolId) {
-            throw errors.PROTOCOL_NOT_FOUND({ data: input });
-          }
-          const outcome = store.deleteVariable(
-            input.subject,
-            input.variableId,
-            context.principal,
-          );
-          if (outcome.status === 'blocked') {
-            throw errors.SECTIONS_LOCKED({
-              data: { blocked: outcome.blocked },
-            });
-          }
-          if (outcome.status === 'notFound') {
-            throw errors.SECTION_NOT_FOUND({
-              data: { sectionId: outcome.sectionId },
-            });
-          }
-          if (outcome.status === 'referenced') {
-            throw errors.REFERENCES_REMAIN({
-              data: { remaining: outcome.remaining },
-            });
-          }
-          return outcome;
-        },
-      ),
-      deleteEntityType: os.refactor.deleteEntityType.handler(
-        ({ input, context, errors }) => {
-          if (input.protocolId !== protocolId) {
-            throw errors.PROTOCOL_NOT_FOUND({ data: input });
-          }
-          const outcome = store.deleteEntityType(
-            input.entity,
-            input.typeId,
-            context.principal,
-          );
-          if (outcome.status === 'blocked') {
-            throw errors.SECTIONS_LOCKED({
-              data: { blocked: outcome.blocked },
-            });
-          }
-          if (outcome.status === 'notFound') {
-            throw errors.SECTION_NOT_FOUND({
-              data: { sectionId: outcome.sectionId },
-            });
-          }
-          if (outcome.status === 'referenced') {
-            throw errors.REFERENCES_REMAIN({
-              data: { remaining: outcome.remaining },
-            });
-          }
-          return outcome;
-        },
-      ),
-    },
+    RefactorDeleteVariable: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      return yield* refactorAnswer(
+        store.deleteVariable(
+          input.subject,
+          input.variableId,
+          yield* callerPrincipal,
+        ),
+      );
+    }),
 
-    resources: {
-      list: os.resources.list.handler(({ input, context, errors }) => {
-        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        // Committed resources are the protocol's; staged ones are this edit's,
-        // and another editor's imports are no more part of this protocol than
-        // the draft that will name them.
-        const all = [
-          ...resources.committedDescriptors(assets()),
-          ...(input.editId === undefined
-            ? []
-            : resources.stagedDescriptors(scopeOf(context, input.editId))),
-        ].filter(
-          (descriptor) =>
-            (input.kinds === undefined ||
-              input.kinds.includes(descriptor.kind)) &&
-            (input.status === undefined || descriptor.status === input.status),
-        );
-        return {
-          status: 'ok' as const,
-          data: { resources: all },
-        };
-      }),
+    RefactorDeleteEntityType: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      return yield* refactorAnswer(
+        store.deleteEntityType(
+          input.entity,
+          input.typeId,
+          yield* callerPrincipal,
+        ),
+      );
+    }),
 
-      stage: os.resources.stage.handler(({ input, context, errors }) => {
-        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.stage(
-          scopeOf(context, input.editId),
+    ResourcesList: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      const principal = yield* callerPrincipal;
+      // Committed resources are the protocol's; staged ones are this edit's,
+      // and another editor's imports are no more part of this protocol than
+      // the draft that will name them.
+      const all = [
+        ...resources.committedDescriptors(assets()),
+        ...(input.editId === undefined
+          ? []
+          : resources.stagedDescriptors(scopeOf(principal, input.editId))),
+      ].filter(
+        (descriptor) =>
+          (input.kinds === undefined ||
+            input.kinds.includes(descriptor.kind)) &&
+          (input.status === undefined || descriptor.status === input.status),
+      );
+      return { status: 'ok' as const, data: { resources: all } };
+    }),
+
+    ResourcesStage: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      const principal = yield* callerPrincipal;
+      const { request } = input;
+      // This host keeps imported content as a `Blob`, the way a browser
+      // holds a file; the contract carries it as bytes.
+      const held =
+        request.kind === 'content'
+          ? {
+              ...request,
+              bytes: new Blob([new Uint8Array(request.bytes)], {
+                type: request.contentType,
+              }),
+            }
+          : request;
+      return yield* Effect.promise(() =>
+        resources.stage(
+          scopeOf(principal, input.editId),
           input.requestId,
-          input.request,
-        );
-      }),
+          held,
+        ),
+      );
+    }),
 
-      discard: os.resources.discard.handler(({ input, context, errors }) => {
-        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.discard(
-          scopeOf(context, input.editId),
-          input.resourceId,
-        );
-      }),
+    ResourcesDiscard: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      return resources.discard(
+        scopeOf(yield* callerPrincipal, input.editId),
+        input.resourceId,
+      );
+    }),
 
-      inspect: os.resources.inspect.handler(({ input, context, errors }) => {
-        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.inspect(
+    ResourcesInspect: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      const principal = yield* callerPrincipal;
+      return yield* Effect.promise(() =>
+        resources.inspect(
           assets(),
           input.resourceId,
           input.editId === undefined
             ? undefined
-            : scopeOf(context, input.editId),
-        );
-      }),
+            : scopeOf(principal, input.editId),
+        ),
+      );
+    }),
 
-      preview: os.resources.preview.handler(({ input, context, errors }) => {
-        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.preview(
+    ResourcesPreview: Effect.fnUntraced(function* (input) {
+      yield* inProtocol(input);
+      const principal = yield* callerPrincipal;
+      return yield* Effect.promise(() =>
+        resources.preview(
           assets(),
           input.resourceId,
           input.editId === undefined
             ? undefined
-            : scopeOf(context, input.editId),
-        );
-      }),
-    },
-  };
-}
-
-/**
- * The later of two cursors, either of which may be absent. This host's cursors
- * are its own event counter, which is what makes them comparable.
- */
-function laterCursor(
-  since: string | undefined,
-  lastEventId: string | undefined,
-): string | undefined {
-  if (since === undefined) return lastEventId;
-  if (lastEventId === undefined) return since;
-  return Number(lastEventId) > Number(since) ? lastEventId : since;
+            : scopeOf(principal, input.editId),
+        ),
+      );
+    }),
+  });
 }

@@ -93,15 +93,12 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
    * than as the rpc's typed error, or a cancelled query would render a failure that
    * never happened.
    */
-  const call = async <Tag extends Rpcs['_tag']>(
-    tag: Tag,
-    payload: PayloadOf<Rpcs, Tag> | PagePayloadOf<Rpcs, Tag>,
+  const run = async <A, E>(
+    effect: Effect.Effect<A, E, R>,
     signal?: AbortSignal,
-  ): Promise<SuccessOf<Rpcs, Tag>> => {
+  ): Promise<A> => {
     const exit = await runtime.runPromiseExit(
-      Effect.flatMap(client, (c) =>
-        (c as unknown as CallAt<Rpcs, Tag>)(tag, payload),
-      ),
+      effect,
       signal === undefined ? undefined : { signal },
     );
     if (Exit.isSuccess(exit)) {
@@ -117,6 +114,18 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     }
     throw new Error(Cause.pretty(exit.cause));
   };
+
+  const call = <Tag extends Rpcs['_tag']>(
+    tag: Tag,
+    payload: PayloadOf<Rpcs, Tag> | PagePayloadOf<Rpcs, Tag>,
+    signal?: AbortSignal,
+  ): Promise<SuccessOf<Rpcs, Tag>> =>
+    run(
+      Effect.flatMap(client, (c) =>
+        (c as unknown as CallAt<Rpcs, Tag>)(tag, payload),
+      ),
+      signal,
+    );
 
   const rpcKey = <Tag extends Rpcs['_tag']>(
     tag: Tag,
@@ -198,6 +207,22 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
       mutationFn: (payload) => call(tag, payload),
     });
 
+  const rpcStream = <Tag extends Rpcs['_tag']>(
+    tag: Tag,
+    payload: PayloadOf<Rpcs, Tag>,
+    onChunk: (chunk: ChunkOf<Rpcs, Tag>) => void,
+    signal?: AbortSignal,
+  ): Promise<void> =>
+    run(
+      Effect.flatMap(client, (c) =>
+        Stream.runForEach(
+          (c as unknown as StreamAt<Rpcs, Tag>)(tag, payload),
+          (chunk) => Effect.sync(() => onChunk(chunk)),
+        ),
+      ),
+      signal,
+    );
+
   /**
    * A hook, so it obeys the rules of hooks: the adapter is built once per app and this
    * member is called from components as `adapter.useRpcStream(...)`.
@@ -271,6 +296,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     rpcQuery,
     rpcInfiniteQuery,
     rpcMutation,
+    rpcStream,
     useRpcStream,
   };
 };

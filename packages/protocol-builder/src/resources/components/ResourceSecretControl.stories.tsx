@@ -37,7 +37,7 @@ function SecretControlHost({ hostAcceptsKeys = true }: SecretControlHostProps) {
   const [added, setAdded] = useState('No key has been added yet.');
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <ResourceClientProvider>
         <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
           <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
