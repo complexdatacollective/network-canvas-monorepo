@@ -100,8 +100,12 @@ describe('ProtocolEvents', () => {
           .pipe(Scope.provide(first));
         yield* events.subscribe('draft').pipe(Scope.provide(second));
         yield* events.publish('draft', [event(1), event(2)]);
+        expect(yield* events.subscribers('draft')).toBe(2);
         yield* Scope.close(first, Exit.void);
         yield* Scope.close(second, Exit.void);
+        // Mutation: never take a subscriber out of the fan-out → the draft
+        // keeps both, and every later publish offers to their dead queues.
+        expect(yield* events.subscribers('draft')).toBe(0);
 
         const ended = yield* drain(stale);
         expect(ended.exit?._tag).toBe('Failure');

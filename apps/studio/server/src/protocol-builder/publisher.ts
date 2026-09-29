@@ -59,6 +59,8 @@ export class ProtocolEvents extends Context.Service<
       never,
       Scope.Scope
     >;
+    /** How many subscribers a draft has, which the tests read. */
+    readonly subscribers: (draftId: string) => Effect.Effect<number>;
   }
 >()('@studio/ProtocolEvents') {
   static readonly layer: Layer.Layer<ProtocolEvents> = Layer.effect(
@@ -115,7 +117,13 @@ export class ProtocolEvents extends Context.Service<
             }).pipe(Effect.andThen(Queue.shutdown(subscriber))),
         ).pipe(Effect.map(Stream.fromQueue));
 
-      return ProtocolEvents.of({ publish, subscribe });
+      const subscribers = (draftId: string) =>
+        Effect.map(
+          Ref.get(drafts),
+          (current) => current.get(draftId)?.size ?? 0,
+        );
+
+      return ProtocolEvents.of({ publish, subscribe, subscribers });
     }),
   );
 }

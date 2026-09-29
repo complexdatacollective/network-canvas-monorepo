@@ -214,15 +214,17 @@ equals 'the rpc plane serves a public procedure' Success "$RPC_VERDICT"
 
 # The protocol builder's unary plane: its own route beside `/rpc`, which both
 # ingresses reach through their `/rpc` prefix. A caller with no session is
-# refused by the group's `HostSession` middleware — a verdict only the
-# protocol-builder server gives, so this cannot pass by `/rpc` answering the
-# path, whose group has no such tag and no such error.
+# refused by the route before its body is read, as a 401 problem — `/rpc`
+# answers the same anonymous frame with a 200, so this cannot pass by `/rpc`
+# answering the path. The signed-in check below proves the handlers are behind
+# it.
 RPC_ROUTE=/rpc/protocol-builder
 rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}'
 RPC_ROUTE=
-equals 'POST /rpc/protocol-builder is served' 200 "$STATUS"
-equals 'the protocol-builder plane answers a verdict' Failure "$RPC_VERDICT"
-equals 'and refuses a caller with no session' HostUnauthorized "$RPC_ERROR"
+equals 'POST /rpc/protocol-builder refuses a caller with no session' 401 "$STATUS"
+equals 'as a problem document' 'application/problem+json' "$CONTENT_TYPE"
+contains 'naming the refusal' '"status":401' "$BODY"
+equals 'before any procedure answered' '' "$RPC_VERDICT"
 
 request "$URL/readyz"
 equals '/readyz is served' 200 "$STATUS"

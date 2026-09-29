@@ -7,6 +7,7 @@
 // `/rpc/protocol-builder`, is proved against the same server at the end.
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 import { NodeWS } from '@effect/platform-node/NodeSocket';
@@ -18,6 +19,7 @@ import {
   Fiber,
   Layer,
   ManagedRuntime,
+  MutableRef,
   Option,
   Predicate,
   Scope,
@@ -49,6 +51,9 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
+import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
+import { MaintenanceState } from '../platform/maintenance-state.ts';
+import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import { RECONNECT_GRACE_MS } from '../protocol-builder/leases.ts';
 import { PROTOCOL_BUILDER_RPC_PATH } from '../protocol-builder/rpc.ts';
 import { createProtocol } from '../protocol/store.ts';
@@ -1159,11 +1164,12 @@ describe.skipIf(!testDb || !env.auth)(
       );
       return {
         status: response.status,
+        contentType: response.headers.get('content-type'),
         exit: Predicate.hasProperty(exit, 'exit') ? exit.exit : undefined,
       };
     };
 
-    it('answers a refusal on /rpc/protocol-builder as a failure frame on a 200', async () => {
+    it('answers a refusal on /rpc/protocol-builder as a failure frame on a 200, and a stranger with a 401', async () => {
       const missing = await postFrame(
         { cookie: cookieOf(ADA) },
         {
@@ -1182,15 +1188,51 @@ describe.skipIf(!testDb || !env.auth)(
         cause: [{ _tag: 'Fail', error: { _tag: 'SectionNotFound' } }],
       });
 
+      // A caller with no session is refused by the route, before the rpc
+      // server reads the body.
       const stranger = await postFrame(
         {},
         { tag: 'ListSections', payload: { protocolId } },
       );
-      expect(stranger.status).toBe(200);
-      expect(stranger.exit).toMatchObject({
-        _tag: 'Failure',
-        cause: [{ _tag: 'Fail', error: { _tag: 'HostUnauthorized' } }],
+      expect(stranger.status).toBe(401);
+      expect(stranger.contentType).toBe('application/problem+json');
+      expect(stranger.exit).toBeUndefined();
+    });
+
+    it('refuses an anonymous /rpc/protocol-builder body without reading it', async () => {
+      // A body declared far past any bound, of which only the first kilobyte
+      // is ever sent: an answer can only come from a gate that did not wait
+      // for the rest. Mutation: mount the unary plane without
+      // `requirePrincipal` → the rpc server waits on the body and no response
+      // arrives.
+      const { hostname, port } = new URL(server.origin);
+      const status = await new Promise<number | string>((settle) => {
+        const pending = httpRequest(
+          {
+            hostname,
+            port,
+            path: PROTOCOL_BUILDER_RPC_PATH,
+            method: 'POST',
+            headers: {
+              'content-type': 'application/ndjson',
+              'sec-fetch-site': 'same-origin',
+              'content-length': String(2 ** 30),
+            },
+          },
+          (response) => {
+            settle(response.statusCode ?? 0);
+            response.resume();
+            pending.destroy();
+          },
+        );
+        pending.on('error', () => undefined);
+        setTimeout(() => {
+          settle('no response');
+          pending.destroy();
+        }, 2_000);
+        pending.write('x'.repeat(1024));
       });
+      expect(status).toBe(401);
     });
 
     it('refuses a cross-site call on /rpc/protocol-builder before any procedure runs', async () => {
@@ -1204,7 +1246,7 @@ describe.skipIf(!testDb || !env.auth)(
       expect(crossSite.exit).toBeUndefined();
     });
 
-    it('stops reading a /rpc/protocol-builder body over the bound, before any principal', async () => {
+    it('stops reading a /rpc/protocol-builder body over the bound', async () => {
       // A small bound, as for the frame bound above; the in-process harness
       // reads a body whole whatever the bound, so only a listener shows it.
       // Mutation: mount the unary plane without its body bound → the
@@ -1233,9 +1275,8 @@ describe.skipIf(!testDb || !env.auth)(
           (error: unknown) => ({ refused: error }),
         );
       try {
-        // No cookie: the listener drops the connection mid-body, with no
-        // response at all.
-        const oversized = await post({}, 1024 * 1024);
+        // The listener drops the connection mid-body, with no response.
+        const oversized = await post({ cookie: cookieOf(ADA) }, 1024 * 1024);
         expect(oversized).toHaveProperty('refused');
 
         const normal = await post({ cookie: cookieOf(ADA) }, 0);
@@ -1256,11 +1297,12 @@ describe.skipIf(!testDb || !env.auth)(
         headers: {
           'content-type': 'application/ndjson',
           'sec-fetch-site': 'same-origin',
+          'cookie': cookieOf(ADA),
         },
         body: `${JSON.stringify({ _tag: 'Request', id: '1', tag: 'ListSections', payload: { protocolId }, headers: [] })}\n`,
       });
       const body = await response.text();
-      if (body.includes('"HostUnauthorized"')) return 'protocol-builder';
+      if (body.includes('"sectionIds"')) return 'protocol-builder';
       if (body.includes('Unknown request tag')) return 'rpc';
       return String(response.status);
     };
@@ -1364,6 +1406,134 @@ describe.skipIf(!testDb || !env.auth)(
       if (refused.lock !== 'readOnly') throw new Error('unreachable');
       expect(refused.holder.userId).toBe(ADA.userId);
       await owner.run(owner.client('ReleaseLock', { protocolId, sectionId }));
+    });
+
+    /** The tag a call failed with, when it failed with one. */
+    const failureTag = (exit: Exit.Exit<unknown, unknown>) => {
+      if (Exit.isSuccess(exit)) return 'success';
+      const error = Cause.findErrorOption(exit.cause);
+      return Option.isSome(error) && Predicate.hasProperty(error.value, '_tag')
+        ? error.value._tag
+        : 'no declared error';
+    };
+
+    it('refuses the next call on an open socket once its session is revoked', async () => {
+      const tab = await connect({ as: GRACE });
+      expect(
+        failureTag(
+          await tab.runExit(tab.client('ListSections', { protocolId })),
+        ),
+      ).toBe('success');
+      // Signed out elsewhere, or revoked by an administrator, while the socket
+      // stays open.
+      COOKIES.delete(cookieOf(GRACE));
+      try {
+        // Mutation: take the principal the upgrade resolved instead of asking
+        // the upgrade's cookie again → the call is served.
+        expect(
+          failureTag(
+            await tab.runExit(tab.client('ListSections', { protocolId })),
+          ),
+        ).toBe('HostUnauthorized');
+      } finally {
+        COOKIES.set(cookieOf(GRACE), GRACE);
+      }
+    });
+
+    it('ends a watch over an open socket once its session is revoked', async () => {
+      const watcher = await connect({ as: GRACE });
+      const watch = watcher.watch(protocolId);
+      await until(
+        () => watch.events.some((event) => event.type === 'presence'),
+        'the watch to go live',
+      );
+      COOKIES.delete(cookieOf(GRACE));
+      try {
+        clock.advance(REAUTHORIZE_MS);
+        const writer = await connect();
+        const sectionId = await createStage(
+          writer,
+          'Written after a session was revoked',
+        );
+        // Mutation: re-read only the memberships when reauthorising → the
+        // watch goes on and delivers the write.
+        await until(() => watch.ended() !== undefined, 'the watch to end');
+        const ended = watch.ended();
+        expect(ended !== undefined && Exit.isFailure(ended)).toBe(true);
+        expect(
+          watch.events.some(
+            (event) =>
+              event.type === 'revision' && event.sectionId === sectionId,
+          ),
+        ).toBe(false);
+      } finally {
+        COOKIES.set(cookieOf(GRACE), GRACE);
+        await watch.stop();
+      }
+    });
+
+    it('ends a /rpc/protocol-builder watch when a maintenance window opens', async () => {
+      // The gate sees only the request, so a watch opened on the unary plane
+      // before the window must end as a socket does.
+      const flag = MutableRef.make(false);
+      const gated = await startStudioServer(
+        { ...env, deploymentMode: 'self-hosted' },
+        studio,
+        undefined,
+        MaintenanceTriggers.layerWith({
+          lockHeld: Effect.succeed(false),
+          schema: Effect.succeed({ kind: 'current' }),
+        }).pipe(Layer.provide(MaintenanceState.layerTest(flag))),
+      );
+      const response = await fetch(
+        `${gated.origin}${PROTOCOL_BUILDER_RPC_PATH}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/ndjson',
+            'sec-fetch-site': 'same-origin',
+            'cookie': cookieOf(ADA),
+          },
+          body: `${JSON.stringify({ _tag: 'Request', id: '1', tag: 'WatchProtocol', payload: { protocolId }, headers: [] })}\n`,
+        },
+      );
+      const reader = response.body?.getReader();
+      if (reader === undefined) throw new Error('the watch has no body');
+      const decoder = new TextDecoder();
+      let received = '';
+      /** Reads until `done` says so, or answers false once `ms` have passed. */
+      const readUntil = async (
+        done: (finished: boolean) => boolean,
+        ms: number,
+      ) => {
+        const deadline = Date.now() + ms;
+        while (Date.now() < deadline) {
+          const next = await Promise.race([
+            reader.read(),
+            new Promise<'late'>((settle) =>
+              setTimeout(() => settle('late'), deadline - Date.now()),
+            ),
+          ]);
+          if (next === 'late') return false;
+          if (next.value !== undefined) received += decoder.decode(next.value);
+          if (done(next.done)) return true;
+          if (next.done) return false;
+        }
+        return false;
+      };
+      try {
+        expect(response.status).toBe(200);
+        expect(
+          await readUntil(() => received.includes('"presence"'), 5_000),
+        ).toBe(true);
+        MutableRef.set(flag, true);
+        // Mutation: drop the unary route's watch cutoff → the stream stays
+        // open through the window.
+        expect(await readUntil((finished) => finished, 3_000)).toBe(true);
+      } finally {
+        await reader.cancel().catch(() => undefined);
+        await gated.dispose();
+      }
     });
   },
 );

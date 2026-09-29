@@ -164,6 +164,30 @@ describe('Leases', () => {
     }).pipe(Effect.provide(Leases.layer)),
   );
 
+  // Mutation: leave the running grace alone when the owner reconnects → the
+  // first disconnect's grace ends the owner five seconds after the second.
+  it.effect(
+    'times a second disconnect’s grace from that disconnect, not the first',
+    () =>
+      Effect.gen(function* () {
+        let ended = 0;
+        const end = Effect.sync(() => {
+          ended += 1;
+        });
+        const first = yield* open('tab', end);
+        yield* first;
+        yield* TestClock.adjust(10_000);
+        const second = yield* open('tab', end);
+        yield* TestClock.adjust(5_000);
+        yield* second;
+
+        yield* TestClock.adjust(RECONNECT_GRACE_MS - 1);
+        expect(ended).toBe(0);
+        yield* TestClock.adjust(1);
+        expect(ended).toBe(1);
+      }).pipe(Effect.provide(Leases.layer)),
+  );
+
   it.effect(
     'keeps an owner connected while any of its connections is open',
     () =>

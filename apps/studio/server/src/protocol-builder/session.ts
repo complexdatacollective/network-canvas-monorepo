@@ -1,11 +1,6 @@
-// Who is calling a protocol-builder procedure, and on which protocol.
-//
-// The contract's inputs name a protocol and nothing else, so every procedure
-// starts here: the principal and the calling tab come from `HostSession`, and
-// `openSession` turns a protocol id into the team, the draft and the lock
-// owner the host's commands run as — or into the one refusal a caller who
-// cannot reach the protocol gets, which is the same as for a protocol that
-// does not exist, so this is no more an existence oracle than `studies.get`.
+// Who is calling a protocol-builder procedure, and on which protocol. A caller
+// who cannot reach a protocol is refused exactly as for one that does not
+// exist, so this is no more an existence oracle than `studies.get`.
 import { Clock, Context, Effect, Layer, Option } from 'effect';
 import type * as Headers from 'effect/unstable/http/Headers';
 
@@ -37,14 +32,10 @@ import { StagedImports } from './resources.ts';
 import { resolveProtocolSession } from './tenancy.ts';
 
 /**
- * The socket a `/ws` call arrived on.
- *
- * Provided by the `/ws` route to the upgrade's own fiber (`rpc.ts`), which is
- * the fiber the rpc server runs that socket's middleware and handlers under —
- * so its presence is what tells a call over a connection from a unary one.
- * The id is minted per socket rather than taken from the rpc server's client
- * counter: that counter restarts with the process and is not unique across
- * processes, and a caller naming no tab owns its locks by this id.
+ * The socket a `/ws` call arrived on, provided by the route to the upgrade's
+ * fiber, which the rpc server runs that socket's handlers under. Minted per
+ * socket rather than taken from the rpc server's client counter, which
+ * restarts with the process: a caller naming no tab owns its locks by it.
  */
 export class WsConnection extends Context.Service<
   WsConnection,
@@ -52,13 +43,17 @@ export class WsConnection extends Context.Service<
 >()('@studio/protocol-builder/WsConnection') {}
 
 /**
- * The principal `HostSession` resolved for this call.
- *
- * `HostSessionLive` provides it beside `HostCaller` on every call it admits; a
- * handler cannot declare it, because a handler's requirements are built into
- * the handlers layer rather than per call. Absent means a handler ran without
- * the middleware, which is a wiring bug rather than a refusal.
+ * When a stream on this call's plane must end. The unary route provides it:
+ * the maintenance gate sees only the request, so a `WatchProtocol` opened
+ * there before an operator's window ends when the window opens, as `/ws`
+ * closes its socket.
  */
+export class WatchCutoff extends Context.Service<
+  WatchCutoff,
+  { readonly reached: Effect.Effect<void> }
+>()('@studio/protocol-builder/WatchCutoff') {}
+
+/** The principal `HostSessionLive` provided; absent is a wiring bug. */
 const callerPrincipal: Effect.Effect<Principal['Service']> = Effect.flatMap(
   Effect.serviceOption(Principal),
   Option.match({
@@ -69,14 +64,8 @@ const callerPrincipal: Effect.Effect<Principal['Service']> = Effect.flatMap(
 );
 
 /**
- * A spent window, as a failure the contract does not name.
- *
- * `RateLimited` is not declared on the protocol-builder group (#1927 §20 Q11):
- * a contract Architect implements too has no business carrying a Studio
- * limit. So a refusal leaves as a defect, which the client sees as a failed
- * call it cannot name — as it could not name oRPC's `TOO_MANY_REQUESTS`
- * either — and the servers run with fatal defects off (`rpc.ts`), so it fails
- * that call alone rather than the socket.
+ * A spent window, as a defect: `RateLimited` is not on the group (#1927 §20
+ * Q11), and with fatal defects off it fails that call alone.
  */
 const charge = (
   scope: RateLimitScope,
@@ -85,34 +74,11 @@ const charge = (
   Effect.orDie(enforceRateLimit(scope, subject));
 
 /**
- * The principal a set of transport headers resolves to.
- *
- * On `/ws` the upgrade's guards already resolved one for the socket and put it
- * in the upgrade's fiber, which is where this runs; it is taken from there
- * rather than asked of the auth provider on every frame. Anywhere else it is
- * asked of the request's own headers — never of the headers a message
- * attached, which a caller writes over the request's (`transportHeaders`).
- */
-const resolvePrincipal = (
-  headers: Headers.Headers,
-): Effect.Effect<Option.Option<Principal['Service']>, never, AuthService> =>
-  Effect.flatMap(Effect.serviceOption(Principal), (upgraded) =>
-    Option.isSome(upgraded)
-      ? Effect.succeed(upgraded)
-      : Effect.map(principalFromHeaders(headers), Option.map(principalOf)),
-  );
-
-/**
- * Studio's `HostSession`: the principal, and the connection and tab the call
- * belongs to.
- *
- * The connection is the presence identity. A `/ws` call names its socket; a
- * unary call has no connection to name and falls back to the cookie session.
- * The tab is what locks belong to, read from `CLIENT_SESSION_HEADER` on the
- * request itself — the `/ws` route rewrites its upgrade query onto that header
- * (`ClientSessionQuery`), a fetch request carries it directly — and a client
- * that names none is its own owner by its connection, so it still keeps its
- * lock across calls.
+ * Studio's `HostSession`. The connection is the presence identity: a `/ws`
+ * call's socket, or the cookie session for a unary call. The tab owns locks,
+ * read from `CLIENT_SESSION_HEADER` on the request itself (the `/ws` route
+ * moves its upgrade query there); a client naming none owns them by its
+ * connection.
  */
 export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
   Layer.effect(HostSession)(
@@ -120,9 +86,11 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
       const auth = yield* AuthService;
       return (effect, options) =>
         Effect.gen(function* () {
+          // On `/ws` these are the upgrade's headers, asked again on every
+          // call so that a session revoked while its socket is open is refused.
           const headers = yield* transportHeaders(options.headers);
           const principal = yield* Effect.provideService(
-            resolvePrincipal(headers),
+            Effect.map(principalFromHeaders(headers), Option.map(principalOf)),
             AuthService,
             auth,
           );
@@ -154,25 +122,33 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
     }),
   );
 
+/**
+ * Dies unless the session a stream was admitted on still resolves to its
+ * caller: `HostSession` runs once per call, and a watch is one call for as
+ * long as the protocol is open.
+ */
+export const stillSignedIn = Effect.fnUntraced(function* (
+  headers: Headers.Headers,
+) {
+  const principal = yield* principalFromHeaders(
+    yield* transportHeaders(headers),
+  );
+  const caller = yield* callerPrincipal;
+  if (Option.isNone(principal) || principal.value.userId !== caller.userId) {
+    return yield* Effect.die(new HostUnauthorized({}));
+  }
+});
+
 /** Everything one owner has staged in one draft, whichever edit staged it. */
 export const ownerPrefix = (session: ProtocolBuilderSession): string =>
   `${session.draftId}\u0000${sessionOwner(session)}\u0000`;
 
 /**
- * Resolves the protocol a call names to a session, in the order the rest of
- * the rpc plane takes the same steps:
- *
- * 1. the caller's own budget, before any query — the one a runaway client
- *    spends, and the protocol-builder surface must not be the one plane with
- *    no per-user limit;
- * 2. the caller's memberships;
- * 3. the protocol, found through them — unreachable and nothing open to edit
- *    are one `ProtocolNotFound`;
- * 4. the team's budget, once the team is known — charging it first would let
- *    a stranger spend a team's quota with calls that are all refused;
- * 5. this owner's sign of life: a call is the only one the unary plane gives,
- *    so it says both that this owner is still here with everything it has
- *    staged, and that whoever has made none for the idle bound is not.
+ * Resolves the protocol a call names to a session. The caller's budget is
+ * charged before any query; the team's only once the team is known, so a
+ * stranger cannot spend a team's quota with calls that are all refused. A call
+ * is the unary plane's only sign of life, so it also touches this owner and
+ * expires whoever has made none for the idle bound.
  */
 export const openSession = Effect.fn('protocolBuilder.openSession')(function* (
   protocolId: string,

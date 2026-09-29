@@ -5,6 +5,7 @@ import {
   Exit,
   Layer,
   ManagedRuntime,
+  Option,
   Scope,
 } from 'effect';
 import * as RpcClient from 'effect/unstable/rpc/RpcClient';
@@ -15,10 +16,9 @@ import {
   type ProtocolBuilderRpcs,
 } from '@codaco/protocol-builder-core/contract';
 import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
 import type { Studio } from '../../app.ts';
-import type { SessionPrincipal } from '../../auth/service.ts';
+import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -28,7 +28,6 @@ import {
   HostSessionLive,
   WsConnection,
 } from '../../protocol-builder/session.ts';
-import { principalOf } from '../../rpc/authenticated.ts';
 import { ObjectStore } from '../../storage/object-store.ts';
 import { studioServices } from './services.ts';
 
@@ -41,12 +40,11 @@ import { studioServices } from './services.ts';
 /**
  * Who a call is made as.
  *
- * `principal` stands where the `/ws` upgrade's guards put one — in the calling
- * fiber, which the server runs the middleware under — so `HostSessionLive`
- * takes it from there; a caller without one is resolved from `headers`, as a
- * unary request is. `connection` makes the call one made over a socket, which
- * is what presence is drawn from; `tab` is the client session its locks
- * belong to.
+ * `principal` is a signed-in session: the call carries a header the harness's
+ * auth service resolves to it, as a cookie is resolved on every call. A caller
+ * without one is resolved from `headers` by the Studio's own auth service.
+ * `connection` makes the call one made over a socket, which is what presence
+ * is drawn from; `tab` is the client session its locks belong to.
  */
 export type Caller = {
   readonly principal?: SessionPrincipal;
@@ -67,6 +65,7 @@ export type ProtocolBuilderTestClient = {
   readonly callExit: <A, E>(
     caller: Caller,
     effect: Effect.Effect<A, E>,
+    options?: Effect.RunOptions,
   ) => Promise<Exit.Exit<A, E>>;
   /** Runs anything over the harness's services, e.g. a read of `Leases`. */
   readonly run: <A, E>(
@@ -76,28 +75,62 @@ export type ProtocolBuilderTestClient = {
       Leases | Presence | ProtocolEvents | StagedImports
     >,
   ) => Promise<A>;
+  /** Ends `principal`'s session for good: every later call as them is refused. */
+  readonly revoke: (principal: SessionPrincipal) => void;
   readonly dispose: () => Promise<void>;
 };
 
+/** The header a harness caller's session travels in. */
+const SESSION_HEADER = 'x-harness-session';
+
+type Sessions = {
+  readonly live: Map<string, SessionPrincipal>;
+  readonly revoked: Set<string>;
+};
+
+/**
+ * The Studio's auth service, which also resolves the sessions the harness's
+ * callers carry, until a suite revokes one.
+ */
+const harnessAuth = (
+  auth: AuthService['Service'],
+  sessions: Sessions,
+): AuthService['Service'] =>
+  AuthService.of({
+    ...auth,
+    getSession: (headers) => {
+      const session = headers[SESSION_HEADER];
+      return session === undefined
+        ? auth.getSession(headers)
+        : Effect.succeed(Option.fromNullishOr(sessions.live.get(session)));
+    },
+  });
+
 /** Runs `effect` as `caller`: in their fiber, with their headers. */
 const asCaller = <A, E, R>(
+  sessions: Sessions,
   caller: Caller,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> => {
+  if (
+    caller.principal !== undefined &&
+    !sessions.revoked.has(caller.principal.sessionId)
+  ) {
+    sessions.live.set(caller.principal.sessionId, caller.principal);
+  }
   const headers = {
     ...caller.headers,
+    ...(caller.principal === undefined
+      ? {}
+      : { [SESSION_HEADER]: caller.principal.sessionId }),
     ...(caller.tab === undefined
       ? {}
       : { [CLIENT_SESSION_HEADER]: caller.tab }),
   };
-  const withPrincipal =
-    caller.principal === undefined
-      ? effect
-      : Effect.provideService(effect, Principal, principalOf(caller.principal));
   const withConnection =
     caller.connection === undefined
-      ? withPrincipal
-      : Effect.provideService(withPrincipal, WsConnection, {
+      ? effect
+      : Effect.provideService(effect, WsConnection, {
           connectionId: caller.connection,
         });
   return RpcClient.withHeaders(withConnection, headers);
@@ -195,8 +228,10 @@ export const makeShiftableClock = () => {
  * The handlers over one Studio's services, and a client to them.
  *
  * `clock` is the clock the handlers, the lease keeper and `run` read; `objectStore`
- * replaces the Studio's; `leases` replaces the keeper, for a suite that needs
- * one it can see into; `layer` is provided to the runtime, e.g. a logger.
+ * replaces the Studio's; `leases` and `events` replace the keeper and the
+ * fan-out, for a suite that needs one it can see into or hold; `layer` is
+ * provided to the runtime, e.g. a logger. `revoke` ends a caller's session:
+ * their next call resolves to nobody.
  */
 export async function createProtocolBuilderClient(
   studio: Studio,
@@ -204,22 +239,25 @@ export async function createProtocolBuilderClient(
     readonly clock?: Clock.Clock;
     readonly objectStore?: ObjectStore['Service'];
     readonly leases?: Layer.Layer<Leases>;
+    readonly events?: Layer.Layer<ProtocolEvents>;
     readonly layer?: Layer.Layer<never>;
   } = {},
 ): Promise<ProtocolBuilderTestClient> {
+  const sessions: Sessions = { live: new Map(), revoked: new Set() };
   const state = Layer.mergeAll(
     options.leases ?? Leases.layer,
     Presence.layer,
-    ProtocolEvents.layer,
+    options.events ?? ProtocolEvents.layer,
     StagedImports.layer,
+  );
+  const withAuth = Layer.merge(
+    studioServices(studio),
+    Layer.succeed(AuthService)(harnessAuth(studio.auth, sessions)),
   );
   const services =
     options.objectStore === undefined
-      ? studioServices(studio)
-      : Layer.merge(
-          studioServices(studio),
-          Layer.succeed(ObjectStore)(options.objectStore),
-        );
+      ? withAuth
+      : Layer.merge(withAuth, Layer.succeed(ObjectStore)(options.objectStore));
   const built = Layer.mergeAll(ProtocolBuilderHandlers, HostSessionLive).pipe(
     Layer.provideMerge(state),
     Layer.provide(services),
@@ -239,9 +277,14 @@ export async function createProtocolBuilderClient(
   );
   return {
     rpc,
-    call: (caller, effect) => runtime.runPromise(asCaller(caller, effect)),
-    callExit: (caller, effect) =>
-      runtime.runPromiseExit(asCaller(caller, effect)),
+    call: (caller, effect) =>
+      runtime.runPromise(asCaller(sessions, caller, effect)),
+    callExit: (caller, effect, runOptions) =>
+      runtime.runPromiseExit(asCaller(sessions, caller, effect), runOptions),
+    revoke: (principal) => {
+      sessions.live.delete(principal.sessionId);
+      sessions.revoked.add(principal.sessionId);
+    },
     run: (effect) => runtime.runPromise(effect),
     dispose: async () => {
       await runtime.runPromise(Scope.close(scope, Exit.void));

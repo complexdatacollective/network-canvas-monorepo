@@ -4,8 +4,10 @@ import * as RpcMiddleware from 'effect/unstable/rpc/RpcMiddleware';
 /**
  * Who is calling a protocol-builder procedure, as the host resolved it.
  *
- * `connectionId` is the connection, not the person: presence and leases are
- * keyed by it, so two tabs of one researcher are two callers.
+ * `connectionId` is the connection, which presence is keyed by.
+ * `clientSessionId` is the browser tab, which leases are keyed by together with
+ * `userId`: a tab keeps its locks across the connections it opens, and two tabs
+ * of one researcher are two lock owners.
  */
 export class HostCaller extends Context.Service<
   HostCaller,

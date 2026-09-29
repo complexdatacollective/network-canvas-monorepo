@@ -12,7 +12,16 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, Context, Deferred, Effect, Exit, Option, Stream } from 'effect';
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Stream,
+} from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -31,6 +40,7 @@ import {
 
 import { createStudio, type Studio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { Database } from '../db/client.ts';
 import {
   type TeamAccess,
   TenantScope,
@@ -38,6 +48,7 @@ import {
 } from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
 import { collectLogs } from '../platform/__tests__/support/logs.ts';
+import type { LoggedProtocolEvent } from '../protocol-builder/events.ts';
 import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import {
   IDLE_MS,
@@ -196,6 +207,88 @@ function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
     }
   }
   throw new Error('the sample protocol has no stage with one variable prompt');
+}
+
+/** A promise a case settles by hand. */
+function latch() {
+  let open: () => void = () => undefined;
+  const opened = new Promise<void>((settle) => {
+    open = settle;
+  });
+  return { opened, open };
+}
+
+/** A wait a hooked service makes once: `reached` when it starts, until `release`. */
+type Hold = {
+  readonly reached: Promise<void>;
+  readonly release: () => void;
+};
+
+/**
+ * A hook that makes the next matching call wait at its start until the case
+ * releases it — the window between a command's commit and what follows it.
+ */
+function holdOnce<A>() {
+  let pending:
+    | {
+        readonly matches: (input: A) => boolean;
+        readonly reached: () => void;
+        readonly released: Promise<void>;
+      }
+    | undefined;
+  return {
+    next: (matches: (input: A) => boolean = () => true): Hold => {
+      const reached = latch();
+      const released = latch();
+      pending = { matches, reached: reached.open, released: released.opened };
+      return { reached: reached.opened, release: released.open };
+    },
+    /** Waits, if `input` is the call being held, before `self` runs. */
+    around: <B>(input: A, self: Effect.Effect<B>): Effect.Effect<B> =>
+      Effect.suspend(() => {
+        const current = pending;
+        if (current === undefined || !current.matches(input)) return self;
+        pending = undefined;
+        current.reached();
+        return Effect.andThen(
+          Effect.promise(() => current.released),
+          self,
+        );
+      }),
+  };
+}
+
+/** The fan-out, with a publish a case can hold. */
+function holdingEvents() {
+  const hold = holdOnce<ReadonlyArray<LoggedProtocolEvent>>();
+  const layer = Layer.effect(
+    ProtocolEvents,
+    Effect.gen(function* () {
+      const real = yield* ProtocolEvents;
+      return ProtocolEvents.of({
+        ...real,
+        publish: (draft, entries) =>
+          hold.around(entries, real.publish(draft, entries)),
+      });
+    }),
+  ).pipe(Layer.provide(ProtocolEvents.layer));
+  return { layer, next: hold.next };
+}
+
+/** The lease keeper, with a `hold` a case can hold. */
+function holdingLeases() {
+  const hold = holdOnce<undefined>();
+  const layer = Layer.effect(
+    Leases,
+    Effect.gen(function* () {
+      const real = yield* Leases;
+      return Leases.of({
+        ...real,
+        hold: (lease) => hold.around(undefined, real.hold(lease)),
+      });
+    }),
+  ).pipe(Layer.provide(Leases.layer));
+  return { layer, next: hold.next };
 }
 
 /** Polls until `predicate` holds, for state a fiber settles after a call. */
@@ -452,12 +545,16 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * client going away: it interrupts the watch, which is what ends the
    * connection on the host. `ended` settles with how the watch finished.
    */
-  const watch = (who: Researcher | Caller, watched: string) => {
+  const watch = (
+    who: Researcher | Caller,
+    watched: string,
+    over: ProtocolBuilderTestClient = host,
+  ) => {
     const events: ProtocolEvent[] = [];
     const stop = Deferred.makeUnsafe<void>();
-    const ended = callExit(
-      who,
-      host.rpc('WatchProtocol', { protocolId: watched }).pipe(
+    const ended = over.callExit(
+      callerOf(who),
+      over.rpc('WatchProtocol', { protocolId: watched }).pipe(
         Stream.interruptWhen(Deferred.await(stop)),
         Stream.runForEach((event) =>
           Effect.sync(() => {
@@ -480,8 +577,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * A watch that has published this watcher's own arrival, so nothing after it
    * can land in the gap before the handler subscribed.
    */
-  const watching = async (who: Researcher | Caller, watched: string) => {
-    const channel = watch(who, watched);
+  const watching = async (
+    who: Researcher | Caller,
+    watched: string,
+    over: ProtocolBuilderTestClient = host,
+  ) => {
+    const channel = watch(who, watched, over);
     await until(
       () => channel.events.some((event) => event.type === 'presence'),
       'the watcher’s own arrival',
@@ -2765,5 +2866,345 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       async () => !(await heldSections(owner)).includes(stage.sectionId),
       'the stranded lease to be given back',
     );
+  });
+
+  /** A stage created over `over`, so a case on its own host has one. */
+  const createOn = (over: ProtocolBuilderTestClient, label: string) =>
+    over.call(
+      callerOf(ADA),
+      over.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: { type: 'Information', label, title: label, items: [] },
+      }),
+    );
+
+  const revisionsOf = (events: readonly ProtocolEvent[], sectionId: string) =>
+    events.filter(
+      (event): event is Extract<ProtocolEvent, { type: 'revision' }> =>
+        event.type === 'revision' && event.sectionId === sectionId,
+    );
+
+  const cursorOf = (event: ProtocolEvent) =>
+    event.type === 'presence' ? undefined : event.cursor;
+
+  it('drops a live event whose cursor is the last one it delivered', async () => {
+    const channel = await watching(GRACE, protocolId);
+    try {
+      const first = await createStage(ADA, 'Delivered last');
+      const sequence = first.revision.sequence;
+      // Everything the create published: its stage and the stage order, at
+      // one revision.
+      await until(
+        () =>
+          revisionsOf(channel.events, first.sectionId).length > 0 &&
+          revisionsOf(channel.events, STAGE_ORDER).some(
+            (revision) => revision.revision.sequence === sequence,
+          ),
+        'the create',
+      );
+      const newest = channel.events
+        .filter((event) => cursorOf(event) !== undefined)
+        .reduce((a, b) =>
+          BigInt(cursorOf(a) ?? 0) >= BigInt(cursorOf(b) ?? 0) ? a : b,
+        );
+      if (newest.type === 'presence' || newest.cursor === undefined) {
+        throw new Error('nothing with a cursor was delivered');
+      }
+      const { cursor, ...logged } = newest;
+      await host.run(
+        ProtocolEvents.use((events) =>
+          events.publish(draftId, [{ cursor, event: logged }]),
+        ),
+      );
+      const second = await createStage(ADA, 'Delivered after it');
+      await until(
+        () => revisionsOf(channel.events, second.sectionId).length > 0,
+        'the second create',
+      );
+      // Mutation: `cursor < last` in the overlap check → the event at exactly
+      // the last cursor is delivered again and this counts two.
+      expect(
+        channel.events.filter((event) => cursorOf(event) === cursor),
+      ).toHaveLength(1);
+    } finally {
+      await channel.stop();
+    }
+  });
+
+  it('delivers a write committed while a watch reads its backlog exactly once', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      // The watcher's own arrival is published after it subscribed and before
+      // it reads the backlog, so holding it holds the watch in that gap.
+      const gap = events.next((entries) =>
+        entries.some(
+          (entry) =>
+            entry.event.type === 'presence' &&
+            entry.event.present.some(
+              (who) => who.sessionId === GRACE.connectionId,
+            ),
+        ),
+      );
+      const channel = watch(GRACE, protocolId, other);
+      try {
+        await gap.reached;
+        // In the log the backlog is about to read, and in the queue.
+        const written = await createOn(other, 'Committed in the gap');
+        gap.release();
+        const after = await createOn(other, 'Committed after the gap');
+        await until(
+          () => revisionsOf(channel.events, after.sectionId).length > 0,
+          'the write after the gap',
+        );
+        expect(revisionsOf(channel.events, written.sectionId)).toHaveLength(1);
+        const cursors = channel.events.flatMap((event) => {
+          const cursor = cursorOf(event);
+          return cursor === undefined ? [] : [cursor];
+        });
+        // Mutation: drop the cursor check, or make it `<` → the gap's write
+        // arrives from the backlog and again from the queue.
+        expect(new Set(cursors).size).toBe(cursors.length);
+      } finally {
+        gap.release();
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('ends a watcher too far behind with a failure, for the replay path', async () => {
+    const stalled = latch();
+    let delivered = 0;
+    const ended = callExit(
+      GRACE,
+      host.rpc('WatchProtocol', { protocolId }).pipe(
+        Stream.runForEach(() =>
+          Effect.promise(async () => {
+            delivered += 1;
+            if (delivered === 1) await stalled.opened;
+          }),
+        ),
+      ),
+    );
+    await until(() => delivered === 1, 'the first event');
+    // Nothing is acknowledged while the consumer is stalled, so everything
+    // published now waits in the watcher's queue, past its bound.
+    await host.run(
+      ProtocolEvents.use((events) =>
+        events.publish(
+          draftId,
+          Array.from({ length: 1100 }, () => ({
+            event: { type: 'presence' as const, present: [] },
+          })),
+        ),
+      ),
+    );
+    stalled.open();
+    const exit = await ended;
+    // Mutation: end the overflowed stream quietly → it succeeds.
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isSuccess(exit)) return;
+    expect(Cause.hasDies(exit.cause)).toBe(true);
+    expect(Cause.hasInterruptsOnly(exit.cause)).toBe(false);
+  });
+
+  it('publishes a committed submit to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Submitted by a closing tab');
+      const sectionId = stage.sectionId;
+      const held = await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        const committed = events.next((entries) =>
+          entries.some(
+            (entry) =>
+              entry.event.type === 'revision' &&
+              entry.event.sectionId === sectionId,
+          ),
+        );
+        const leaving = new AbortController();
+        const submitting = other.callExit(
+          callerOf(ADA),
+          other.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: { ...held.document, label: 'Written as the tab closed' },
+            revision: held.revision,
+          }),
+          { signal: leaving.signal },
+        );
+        // Committed, not yet published: the tab closes here.
+        await committed.reached;
+        leaving.abort();
+        await new Promise((settle) => setTimeout(settle, 50));
+        committed.release();
+        // Mutation: let the handler be interrupted after its command → the
+        // publish never runs and the watcher never hears of the write.
+        await until(
+          () =>
+            revisionsOf(channel.events, sectionId).some(
+              (revision) => revision.revision.sequence > held.revision.sequence,
+            ),
+          'the committed submit to reach the watcher',
+        );
+        await submitting;
+      } finally {
+        await channel.stop();
+        await other.call(
+          callerOf(ADA),
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('keeps renewing a lock whose caller went away as it was taken', async () => {
+    const leases = holdingLeases();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      leases: leases.layer,
+    });
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    try {
+      const stage = await createOn(other, 'Taken by a closing tab');
+      const sectionId = stage.sectionId;
+      const taken = leases.next();
+      const leaving = new AbortController();
+      const acquiring = other.callExit(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId }),
+        { signal: leaving.signal },
+      );
+      await taken.reached;
+      leaving.abort();
+      await new Promise((settle) => setTimeout(settle, 50));
+      taken.release();
+      await acquiring;
+      // Mutation: let the handler be interrupted after its command → the
+      // lease is taken in the database and never handed to the keeper.
+      await until(
+        async () =>
+          (
+            await other.run(
+              Leases.use((keeper) => keeper.heldSections(draftId, owner)),
+            )
+          ).includes(sectionId),
+        'the keeper to hold the lease',
+      );
+      await other.call(
+        callerOf(ADA),
+        other.rpc('ReleaseLock', { protocolId, sectionId }),
+      );
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
+    const stranded = makeShiftableClock();
+    let databaseDown = false;
+    const real = Context.get(services, Database);
+    // The database the handlers were built over, whose next transaction
+    // resolves no table once `databaseDown` is set.
+    const faulty: Database['Service'] = {
+      identity: real.identity,
+      sql: real.sql,
+      db: real.db,
+      get searchPath() {
+        return databaseDown ? 'pb_unreachable' : real.searchPath;
+      },
+    };
+    let renewals = 0;
+    const counting = Layer.effect(
+      Leases,
+      Effect.gen(function* () {
+        const keeper = yield* Leases;
+        return Leases.of({
+          ...keeper,
+          hold: (lease) =>
+            keeper.hold({
+              ...lease,
+              renew: Effect.suspend(() => {
+                renewals += 1;
+                return lease.renew;
+              }),
+            }),
+        });
+      }),
+    ).pipe(Layer.provide(Leases.layer));
+    const other = await createProtocolBuilderClient(
+      createStudio(resolveEnv({ NODE_ENV: 'test' }), {
+        auth: authServiceStub({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        pool: database.appPool,
+        services: Context.add(services, Database, faulty),
+      }),
+      { clock: stranded.clock, objectStore, leases: counting },
+    );
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    const heldHere = () =>
+      other.run(Leases.use((keeper) => keeper.heldSections(draftId, owner)));
+    const tick = async () => {
+      await until(
+        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
+        'the lease keeper to be waiting',
+      );
+      stranded.advance(RENEW_INTERVAL_MS);
+    };
+    try {
+      const stage = await createOn(other, 'Held by a tab that never returns');
+      const channel = await watching(ADA, protocolId, other);
+      await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      expect(await heldHere()).toContain(stage.sectionId);
+      await channel.stop();
+      await until(
+        () => stranded.pending(RECONNECT_GRACE_MS) > 0,
+        'the reconnect grace to start',
+      );
+
+      databaseDown = true;
+      stranded.advance(RECONNECT_GRACE_MS);
+      // Mutation: release before dropping from the keeper → the release dies
+      // first, and the keeper goes on renewing the departed tab's lease.
+      await until(
+        async () => !(await heldHere()).includes(stage.sectionId),
+        'the stranded lease to leave the keeper',
+      );
+      const before = renewals;
+      await tick();
+      await tick();
+      await until(
+        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
+        'the lease keeper to finish its tick',
+      );
+      expect(renewals).toBe(before);
+    } finally {
+      databaseDown = false;
+      await other.dispose();
+    }
   });
 });

@@ -200,7 +200,7 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
 
   it('refuses a caller with no principal as HostUnauthorized', async () => {
     steps.length = 0;
-    // No principal in the calling fiber and no cookie a session resolves to.
+    // No cookie a session resolves to.
     // Mutation: let `HostSessionLive` call the handler without a principal →
     // the call dies in `openSession` instead of failing with this tag.
     await expectRpcFailure(
