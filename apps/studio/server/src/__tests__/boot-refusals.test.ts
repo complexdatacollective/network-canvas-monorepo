@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applySchema } from '../../scripts/apply.ts';
 import { StaleSchema } from '../platform/schema-gate.ts';
 import { reportingRefusals } from '../programs/command.ts';
-import { SecretKeyMissingError } from '../secrets/boot.ts';
+import { SecretKeyMissing } from '../secrets/verify.ts';
 import { freePort, startEntrypoint } from './support/entrypoint.ts';
 import {
   createScratchDatabase,
@@ -131,7 +131,9 @@ describe.skipIf(!db)('refusing a database', () => {
         STUDIO_SECRETS_KEY: testKeyringEntry('boot-1'),
       });
       expect(code).toBe(1);
-      expect(output.trim()).toBe(new SecretKeyMissingError(['gone']).message);
+      expect(output.trim()).toBe(
+        new SecretKeyMissing({ keyIds: ['gone'] }).message,
+      );
       expect(output).not.toMatch(STACK_FRAME);
     });
   });
