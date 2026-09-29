@@ -6,7 +6,7 @@
 // one editor owns a section while it holds it. Studio's lease is a wall-clock
 // expiry with a fencing epoch. The two are reconciled here and nowhere else:
 // acquire takes the lease and hands the section back, the keeper renews it
-// while the caller is alive (runtime.ts), and every write re-reads the lease
+// while the caller is alive (leases.ts), and every write re-reads the lease
 // row inside its own transaction — that read, not the epoch a client presents,
 // is what decides whether a write is admitted.
 //
@@ -25,6 +25,7 @@ import type {
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import type { Forbidden } from '@codaco/studio-contract/schema/errors';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import {
@@ -79,6 +80,7 @@ import {
   createProtocolSyncServer,
   SYNC_TRANSACTION_POLICIES,
 } from '../protocol/sync.ts';
+import { requireProtocol } from '../rpc/team-scope.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import {
   appendProtocolEvents,
@@ -539,7 +541,7 @@ export const acquireLock: (
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
   AcquireResult,
-  UnknownSectionError | DraftStructureError | SqlError.SqlError,
+  UnknownSectionError | DraftStructureError | Forbidden | SqlError.SqlError,
   Database
 > = Effect.fn('protocolBuilder.acquireLock')(function* (
   session: ProtocolBuilderSession,
@@ -551,6 +553,9 @@ export const acquireLock: (
     'protocolBuilder.acquireLock',
     session.access,
     Effect.gen(function* () {
+      // Taking a lease is a write, so it is decided on the role and grants
+      // locked in this transaction rather than the ones `openSession` read.
+      yield* requireProtocol(session.access, session.protocolId);
       yield* lockDraftHead(teamId, session.draftId);
       const state = yield* headSection(session, sectionId);
       if (state === undefined) return { outcome: undefined, events: [] };
@@ -600,7 +605,7 @@ export const acquireLock: (
         events,
         lease: { epoch: lease.epoch },
       };
-    }),
+    }).pipe(Effect.provideService(Principal)(session.principal)),
   );
 });
 
@@ -887,10 +892,11 @@ function committedEvent(
  * `audited`, with the two services this host resolves for itself.
  *
  * The rpc plane gets `Principal` from the `Authenticated` middleware and
- * `RequestId` from the HTTP router. The protocol builder is served over `/ws`
- * by oRPC, which runs neither, so the session — which resolved both when it
- * opened — provides them. One place, so every audited command this host runs
- * records the same actor and request as the session it belongs to.
+ * `RequestId` from the HTTP router. The protocol builder's procedures run
+ * behind `HostSession` instead, and a `/ws` frame has no request of its own,
+ * so the session — which resolved both when it opened — provides them. One
+ * place, so every audited command this host runs records the same actor and
+ * request as the session it belongs to.
  */
 const auditedCommand = <A, E, R>(
   name: string,
@@ -939,6 +945,9 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
+      // The role and grants `openSession` decided on were read before this
+      // transaction; the write is decided on the ones locked here.
+      yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,
@@ -1081,6 +1090,9 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
+      // The role and grants `openSession` decided on were read before this
+      // transaction; the write is decided on the ones locked here.
+      yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,
@@ -1229,6 +1241,9 @@ const refactor = Effect.fn('protocolBuilder.refactor')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
+      // The role and grants `openSession` decided on were read before this
+      // transaction; the write is decided on the ones locked here.
+      yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
         protocolId: session.protocolId,

@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
-import { createRouterClient } from '@orpc/server';
-import { Cause, Effect, Exit, Option } from 'effect';
+import { Cause, Effect, Exit, Option, Predicate, Result } from 'effect';
 import type pg from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -16,10 +14,9 @@ import { createStudio, type Studio } from '../app.ts';
 import type { AuthService } from '../auth/service.ts';
 import type { StudioEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
-import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
 import { RATE_LIMITS, type RateLimitSettings } from '../rate-limit/scopes.ts';
-import { createRpcRouter } from '../rpc.ts';
 import { authServiceStub } from './support/auth.ts';
+import { createProtocolBuilderClient } from './support/protocol-builder.ts';
 import { rawRequest } from './support/raw-http.ts';
 import {
   createRpcClient,
@@ -194,34 +191,6 @@ function rpcClientFor(studio: Studio): Promise<RpcTestClient> {
   return createRpcClient(studio);
 }
 
-/** The protocol-builder host, still an oRPC router served over `/ws`. */
-function builderClientFor(studio: Studio, userId: string) {
-  return createRouterClient(
-    createRpcRouter({
-      ...studio.rpc,
-      auth: studio.auth,
-      limiter: studio.limiter,
-      protocolBuilder: createProtocolBuilderRuntime(),
-    }),
-    {
-      context: {
-        principal: {
-          kind: 'user',
-          userId,
-          email: `${userId}@example.org`,
-          emailVerified: true,
-          name: 'Researcher',
-          locale: null,
-          sessionId: `session-${userId}`,
-        },
-        requestId: randomUUID(),
-        connectionId: `${userId}-connection`,
-        clientSessionId: `${userId}-tab`,
-      },
-    },
-  );
-}
-
 /**
  * A call the limiter admitted: there is no database behind these apps, so the
  * procedure behind the limit fails on the pool, and the call dies rather than
@@ -234,6 +203,29 @@ function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
   if (Exit.isFailure(exit)) {
     expect(Cause.hasDies(exit.cause)).toBe(true);
   }
+}
+
+/**
+ * A protocol-builder call the limiter refused. That host's contract does not
+ * declare `RateLimited`, so the refusal is a defect whose value is the
+ * `RateLimited` error, rather than a declared failure.
+ */
+function expectBuilderRateLimited(exit: Exit.Exit<unknown, unknown>): void {
+  expect(Exit.isFailure(exit)).toBe(true);
+  if (Exit.isSuccess(exit)) return;
+  const defect = Cause.findDefect(exit.cause);
+  if (Result.isFailure(defect)) {
+    expect.unreachable(
+      `expected a RateLimited defect, but the call did not die: ${Cause.pretty(exit.cause)}`,
+    );
+  }
+  expect(
+    Predicate.hasProperty(defect.success, '_tag') && defect.success._tag,
+  ).toBe('RateLimited');
+  expect(
+    Predicate.hasProperty(defect.success, 'retryAfterSeconds') &&
+      defect.success.retryAfterSeconds,
+  ).toBeGreaterThan(0);
 }
 
 /** The shape every refusal takes, whichever surface produced it. */
@@ -710,37 +702,52 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third protocol-builder call for one user', async () => {
-    // Every procedure on that router authenticates through `openSession`
-    // rather than `requireUser`, so without the limiter passed in it was the
+    // Every procedure on that host authenticates through `openSession` rather
+    // than `requireUser`, so without the limiter charged there it would be the
     // one part of the RPC plane with no per-user limit — including edits over
     // an open WebSocket.
     const userId = `user-${randomUUID()}`;
-    // In process rather than over `/rpc`: this router is the protocol-builder
-    // host, which is served over `/ws` alone until stage 8. That is also why
-    // there is no response status to assert here any more — a frame has none,
-    // and the refusal the caller reads is the error itself.
+    // In process rather than over a transport, so there is no response status
+    // to assert — a frame has none, and the refusal the caller reads is the
+    // defect itself.
     //
-    // `builderClientFor` hands the router a principal outright, so the user
-    // the limiter charges is the one this case names rather than one resolved
-    // from a session. Nothing here covers the auth path; what it covers is
-    // that the limit is charged at all.
-    const client = builderClientFor(
+    // The caller hands the host a principal outright, so the user the limiter
+    // charges is the one this case names rather than one resolved from a
+    // session. Nothing here covers the auth path; what it covers is that the
+    // limit is charged at all.
+    const client = await createProtocolBuilderClient(
       studioWith({ rpc_user: perMinute(2) }, userId),
-      userId,
     );
+    const caller = {
+      principal: {
+        kind: 'user',
+        userId,
+        email: `${userId}@example.org`,
+        emailVerified: true,
+        name: 'Researcher',
+        locale: null,
+        sessionId: `session-${userId}`,
+      },
+      connection: `${userId}-connection`,
+      tab: `${userId}-tab`,
+    } as const;
     const call = () =>
-      safe(
-        client.protocolBuilder.listSections({
+      client.callExit(
+        caller,
+        client.rpc('ListSections', {
           protocolId: ProtocolId.make(randomUUID()),
         }),
       );
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { error } = await call();
-      expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+    try {
+      // Admitted: the caller holds no membership, so the host answers from
+      // them — past the limiter — that there is no such protocol.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await expectRpcFailure(call(), 'ProtocolNotFound');
+      }
+      expectBuilderRateLimited(await call());
+    } finally {
+      await client.dispose();
     }
-    const { error } = await call();
-    expect(error).toMatchObject({ code: 'TOO_MANY_REQUESTS' });
   });
 
   it('refuses a third RPC call for one team, whoever makes it', async () => {

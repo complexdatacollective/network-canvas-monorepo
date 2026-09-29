@@ -21,7 +21,7 @@ import type { CheckVerdict, HealthCheck } from '../health.ts';
 // would have done. The client shell renders its maintenance state from that
 // 503, and readiness fails naming `maintenance`, so a deployment stops routing
 // here for the whole window. The gate sees requests, and a socket upgraded
-// before the window is no longer one: `http/ws-bridge.ts` watches the same
+// before the window is no longer one: `protocol-builder/rpc.ts` watches the same
 // reading and closes it.
 //
 // Three things close the instance, and only the first is a decision anybody

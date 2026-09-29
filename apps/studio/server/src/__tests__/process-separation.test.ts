@@ -211,15 +211,17 @@ describe('the worker process', () => {
         'src/app.ts',
         'src/http/router.ts',
         'src/http/hono-bridge.ts',
-        'src/http/ws-bridge.ts',
-        'src/rpc.ts',
+        'src/protocol-builder/rpc.ts',
+        'src/protocol-builder/handlers.ts',
         'src/http/api-v1.ts',
         'src/api/status.ts',
         '@codaco/studio-contract/api/v1',
-        'src/assets.ts',
         '@orpc/server',
         'hono',
         // The WebSocket server is the web process's; nothing upgrades here.
+        // (`src/assets.ts` is not listed: it holds the upload bounds alone,
+        // which the shared listener module reads for the web process's frame
+        // bound.)
         'ws',
       ]),
     ).toEqual([]);
@@ -409,6 +411,68 @@ describe('what each process loads through the packages it imports', () => {
   });
 });
 
+const byName = (left: string, right: string): number =>
+  left === right ? 0 : left < right ? -1 : 1;
+
+/** The protocol-builder host's modules: its mounts and its per-process state. */
+const PROTOCOL_BUILDER_HOST =
+  /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher)\.ts$/;
+
+/** Effect's `unstable/httpapi` barrel, which carries every HttpApi module. */
+const HTTPAPI_BARREL = /\/effect\/dist\/unstable\/httpapi\/index\.js$/;
+
+describe('the protocol-builder host', () => {
+  const hostModules = (entry: string) =>
+    [...loadedModules(entry)]
+      .filter((path) => PROTOCOL_BUILDER_HOST.test(path))
+      .map((path) => path.slice(path.indexOf('/src/') + 1))
+      .toSorted(byName);
+
+  it('is loaded by the web process alone', () => {
+    // Its lease keeper renews on a fiber of its own and its fan-out holds
+    // every open editor's queue, so a process that loaded it is one layer
+    // away from running either. The worker and the one-shot commands serve
+    // no editor.
+    //
+    // Mutation: import src/protocol-builder/leases.ts from
+    // src/programs/worker.ts.
+    for (const entry of [
+      'src/worker.ts',
+      'src/migrate.ts',
+      'src/maintenance.ts',
+      'src/rotate-secrets.ts',
+    ]) {
+      expect(hostModules(entry), entry).toEqual([]);
+    }
+    // The positive half, so that the walk cannot pass by stopping short.
+    expect(hostModules('src/index.ts')).toEqual(
+      [
+        'src/protocol-builder/handlers.ts',
+        'src/protocol-builder/leases.ts',
+        'src/protocol-builder/presence.ts',
+        'src/protocol-builder/publisher.ts',
+        'src/protocol-builder/rpc.ts',
+        'src/protocol-builder/session.ts',
+      ].toSorted(byName),
+    );
+  });
+
+  it('reaches Effect rpc by subpath, and no WebSocket library of its own', () => {
+    // The mounts import the rpc and socket modules they use, not the
+    // `unstable/*` barrels, and the socket server under `/ws` is Effect's
+    // Node platform's — nothing of Studio's imports `ws` itself.
+    //
+    // Mutation: import anything from 'effect/unstable/httpapi' in
+    // src/protocol-builder/rpc.ts.
+    expect(
+      [...loadedModules('src/protocol-builder/rpc.ts')].filter((path) =>
+        HTTPAPI_BARREL.test(path),
+      ),
+    ).toEqual([]);
+    expect(reached(moduleGraph('src/index.ts'), ['ws'])).toEqual([]);
+  });
+});
+
 describe('the health routes', () => {
   const graph = moduleGraph('src/http/health.ts');
 
@@ -422,7 +486,7 @@ describe('the health routes', () => {
       reached(graph, [
         'src/app.ts',
         'src/http/router.ts',
-        'src/rpc.ts',
+        'src/protocol-builder/rpc.ts',
         'src/http/api-v1.ts',
         'src/api/status.ts',
         '@codaco/studio-contract/api/v1',
@@ -459,7 +523,7 @@ describe('the migrate process', () => {
       reached(graph, [
         'src/app.ts',
         'src/http/router.ts',
-        'src/rpc.ts',
+        'src/protocol-builder/rpc.ts',
         'hono',
         '@effect/platform-node/NodeHttpServer',
       ]),
@@ -498,7 +562,7 @@ describe('the web process', () => {
       reached(graph, [
         'src/http/router.ts',
         'src/http/hono-bridge.ts',
-        'src/http/ws-bridge.ts',
+        'src/protocol-builder/rpc.ts',
         'src/http/api-v1.ts',
         'src/api/status.ts',
         'src/app.ts',
@@ -507,7 +571,7 @@ describe('the web process', () => {
     ).toEqual([
       'src/http/router.ts',
       'src/http/hono-bridge.ts',
-      'src/http/ws-bridge.ts',
+      'src/protocol-builder/rpc.ts',
       'src/http/api-v1.ts',
       'src/api/status.ts',
       'src/app.ts',
@@ -650,7 +714,7 @@ describe('the maintenance process', () => {
         'src/http/router.ts',
         'src/http/health.ts',
         'src/http/middleware/maintenance.ts',
-        'src/rpc.ts',
+        'src/protocol-builder/rpc.ts',
         'hono',
         '@orpc/server',
         '@effect/platform-node/NodeHttpServer',
@@ -735,7 +799,7 @@ describe('the rotation process', () => {
       reached(graph, [
         'src/app.ts',
         'src/http/router.ts',
-        'src/rpc.ts',
+        'src/protocol-builder/rpc.ts',
         'hono',
         '@effect/platform-node/NodeHttpServer',
         'ws',

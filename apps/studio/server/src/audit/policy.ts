@@ -5,9 +5,10 @@ export type AuditPolicy =
 
 /**
  * A procedure, named the way the rpc plane names it: an `RpcGroup`'s request
- * tag. The keys below were the oRPC contract's dotted paths and the tags are
- * the same strings, so the data is unchanged by the rekey — but the key space
- * is now the served surface itself rather than a parallel spelling of it.
+ * tag. `StudioRpcs`' tags are the oRPC contract's old dotted paths, so theirs
+ * are unchanged; the protocol-builder group's are its own flat PascalCase tags
+ * (`Submit`, `ResourcesStage`), because that group is the core's, shared with
+ * Architect, rather than Studio's.
  */
 export type RpcTag = string;
 
@@ -22,7 +23,7 @@ export type RpcTag = string;
  * noticing; kept together, the set equality the test asserts in both directions
  * is over one declaration.
  *
- * `protocolBuilder.watchProtocol` is a subscription rather than a write: it
+ * `WatchProtocol` is a subscription rather than a write: it
  * observes revisions, locks and presence, and changes nothing it observes.
  */
 export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
@@ -36,12 +37,12 @@ export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
   'audit.list',
   'audit.get',
   'audit.filterOptions',
-  'protocolBuilder.getSection',
-  'protocolBuilder.listSections',
-  'protocolBuilder.watchProtocol',
-  'protocolBuilder.resources.list',
-  'protocolBuilder.resources.inspect',
-  'protocolBuilder.resources.preview',
+  'GetSection',
+  'ListSections',
+  'WatchProtocol',
+  'ResourcesList',
+  'ResourcesInspect',
+  'ResourcesPreview',
 ]);
 
 // Every currently exposed meaningful domain mutation is required. Lease-only
@@ -76,25 +77,25 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   // design excludes. Staging and discarding an import commit nothing at all —
   // a staged file lives in the editing process until the submit that names it
   // promotes it, and that submit is the audited write.
-  'protocolBuilder.submit': { kind: 'required' },
-  'protocolBuilder.create': { kind: 'required' },
-  'protocolBuilder.delete': { kind: 'required' },
-  'protocolBuilder.refactor.deleteVariable': { kind: 'required' },
-  'protocolBuilder.refactor.deleteEntityType': { kind: 'required' },
-  'protocolBuilder.acquireLock': {
+  'Submit': { kind: 'required' },
+  'Create': { kind: 'required' },
+  'Delete': { kind: 'required' },
+  'RefactorDeleteVariable': { kind: 'required' },
+  'RefactorDeleteEntityType': { kind: 'required' },
+  'AcquireLock': {
     kind: 'none',
     reason: 'Lease acquisition is explicitly excluded from the team audit log.',
   },
-  'protocolBuilder.releaseLock': {
+  'ReleaseLock': {
     kind: 'none',
     reason: 'Lease release is explicitly excluded from the team audit log.',
   },
-  'protocolBuilder.resources.stage': {
+  'ResourcesStage': {
     kind: 'none',
     reason:
       'A staged import is held in the editing process and written by nothing; only the submit that promotes it reaches storage, and that is audited.',
   },
-  'protocolBuilder.resources.discard': {
+  'ResourcesDiscard': {
     kind: 'none',
     reason:
       'Discarding a staged import drops process-local state; no stored bytes, manifest entry or revision existed to remove.',

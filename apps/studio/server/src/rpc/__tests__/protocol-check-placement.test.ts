@@ -62,6 +62,9 @@ const OPENERS: Record<string, number> = {
   'OwnerScope.open': 0,
   'savepoint': 0,
   'audited': 2,
+  // The protocol-builder host's `audited`, with the session's principal and
+  // request id provided (`protocol-builder/host.ts`).
+  'auditedCommand': 2,
   'noAuditTransaction': 2,
   'noAuditMaintenanceTransaction': 2,
 };
@@ -221,9 +224,16 @@ describe('the protocol reachability check', () => {
     // check answers about a snapshot the write does not share — the TOCTOU §10
     // closes. The last two (`protocols.addInformationStage` and
     // `protocols.moveStage`) converted in stage 3: `protocol/commands.ts` now
-    // calls `requireProtocol` inside the command's own `audited` body.
+    // calls `requireProtocol` inside the command's own `audited` body. The
+    // protocol-builder host's four joined them at stage 8: its session gate
+    // read the role before the write's transaction opened, so the lease and
+    // the three audited writes re-decide it on the rows they lock.
     const uses = checkUses();
     expect(uses.map((use) => use.site)).toEqual([
+      'protocol-builder/host.ts › protocolBuilder.acquireLock',
+      'protocol-builder/host.ts › protocolBuilder.submit',
+      'protocol-builder/host.ts › protocolBuilder.create',
+      'protocol-builder/host.ts › protocolBuilder.refactor',
       'protocol/commands.ts › protocol.addInformationStage',
       'protocol/commands.ts › protocol.moveStage',
       'rpc/handlers/protocols.ts',
@@ -237,7 +247,8 @@ describe('the protocol reachability check', () => {
 // an import) sits lexically inside the body argument of a transaction opener —
 // `TenantScope.open`, `UntenantedScope.open`, `MaintenanceScope.open` /
 // `.openTenant`, `OwnerScope.open`, `savepoint`, `audited`,
-// `noAuditTransaction` or `noAuditMaintenanceTransaction` — and that body calls
+// `auditedCommand`, `noAuditTransaction` or `noAuditMaintenanceTransaction` —
+// and that body calls
 // something other than the check and the `Effect.gen` / `Effect.fn` wrapping
 // it. The route the compiler also allows — the check inside an `Effect.fn`
 // that requires `Transaction` and is only ever called inside one — is not

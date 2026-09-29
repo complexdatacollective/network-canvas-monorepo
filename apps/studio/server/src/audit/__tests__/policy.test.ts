@@ -60,17 +60,6 @@ function byName(left: string, right: string): number {
   return left < right ? -1 : 1;
 }
 
-function contractLeaves(value: Record<string, unknown>, prefix = ''): string[] {
-  const leaves: string[] = [];
-  for (const [key, child] of Object.entries(value)) {
-    if (!isRecord(child)) throw new Error(`invalid contract node ${key}`);
-    const path = prefix ? `${prefix}.${key}` : key;
-    if ('~orpc' in child) leaves.push(path);
-    else leaves.push(...contractLeaves(child, path));
-  }
-  return leaves;
-}
-
 function typescriptFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(root, entry.name);
@@ -287,18 +276,15 @@ function classificationProblems(
 
 describe('audit mutation policy', () => {
   /**
-   * Every procedure the two planes serve, as the rpc plane names them.
-   *
-   * The SPA's are the Effect rpc group's request tags; the protocol-builder
-   * surface is still an oRPC contract until stage 8, so its leaves are walked
-   * the oRPC way — through the contract's own `StudioStreams` re-export, which
-   * is the one name that surface keeps. When stage 8 moves it onto the rpc
-   * plane this second half becomes `StudioStreams.requests.keys()` and
-   * `contractLeaves` goes with it.
+   * Every procedure the two planes serve, as the rpc plane names them: the
+   * SPA's group and the protocol-builder group behind `/ws` and
+   * `/rpc/protocol-builder`, through the contract's own `StudioStreams`
+   * re-export. A tag added to either group without a classification fails
+   * here, not at runtime.
    */
   const servedTags = (): string[] => [
     ...StudioRpcs.requests.keys(),
-    ...contractLeaves(StudioStreams, 'protocolBuilder'),
+    ...StudioStreams.requests.keys(),
   ];
 
   it('gives every served tag exactly one classification', () => {
@@ -345,11 +331,11 @@ describe('audit mutation policy', () => {
       'studies.create',
       'protocols.addInformationStage',
       'protocols.moveStage',
-      'protocolBuilder.submit',
-      'protocolBuilder.create',
-      'protocolBuilder.delete',
-      'protocolBuilder.refactor.deleteVariable',
-      'protocolBuilder.refactor.deleteEntityType',
+      'Submit',
+      'Create',
+      'Delete',
+      'RefactorDeleteVariable',
+      'RefactorDeleteEntityType',
     ] as const) {
       expect(RPC_MUTATION_AUDIT_POLICIES[tag], tag).toEqual({
         kind: 'required',

@@ -22,8 +22,8 @@
 // its `RateLimitScope` — the HTTP route middleware
 // (src/http/middleware/rate-limit.ts), the auth mount's per-email sign-in
 // check (src/http/auth-mount.ts), the rpc plane
-// (src/rate-limit/enforce.ts) and the protocol-builder router
-// (src/protocol-builder/router.ts); and better-auth's own sign-in limit takes
+// (src/rate-limit/enforce.ts), which the protocol-builder host charges too
+// (src/protocol-builder/session.ts); and better-auth's own sign-in limit takes
 // its numbers from `sign_in_address` (src/auth/better-auth.ts). None of those
 // may import each other.
 

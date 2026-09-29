@@ -9,7 +9,7 @@
 // `TenantScope.open` takes the branded token rather than a team id, so a tenant
 // transaction cannot be opened without a membership check having happened —
 // which only holds while the constructors are few and each one has just proved
-// something. `openSession` is the editor host's: it proves the caller can reach
+// something. `resolveProtocolSession` is the editor host's: it proves the caller can reach
 // the protocol, and mints the access every transaction the session goes on to
 // open is opened on.
 //
@@ -53,10 +53,12 @@ export type OpenSessionInput = {
  * that this caller may act in that team, and the probe is what then decides
  * which of those teams the protocol is in.
  */
-export const openSession: (
+export const resolveProtocolSession: (
   input: OpenSessionInput,
 ) => Effect.Effect<ProtocolBuilderSession | null, SqlError.SqlError, Database> =
-  Effect.fn('protocolBuilder.openSession')(function* (input: OpenSessionInput) {
+  Effect.fn('protocolBuilder.resolveProtocolSession')(function* (
+    input: OpenSessionInput,
+  ) {
     // Branded once, here, so the principal a command is audited under cannot
     // differ between the two transports.
     const principal = principalOf(input.principal);

@@ -85,10 +85,11 @@ const MINTS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the membership of the team that owns the study, resolved from the study id',
   },
-  [`${SERVER}/src/protocol-builder/tenancy.ts › protocolBuilder.openSession`]: {
-    count: 1,
-    why: 'the editor host’s gate: the membership of the team that owns the protocol it names',
-  },
+  [`${SERVER}/src/protocol-builder/tenancy.ts › protocolBuilder.resolveProtocolSession`]:
+    {
+      count: 1,
+      why: 'the editor host’s gate: the membership of the team that owns the protocol it names',
+    },
   [`${SERVER}/src/team/commands.ts › team.acceptInvitation`]: {
     count: 1,
     why: 'an invitee who is not yet a member; minted before the scope opens, and the locked invitation re-read inside it is the proof',

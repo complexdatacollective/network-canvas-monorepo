@@ -289,7 +289,7 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'probing each membership’s team for the study, read-only',
     },
-  [`${SERVER}/src/protocol-builder/tenancy.ts › protocolBuilder.openSession › TenantScope.open`]:
+  [`${SERVER}/src/protocol-builder/tenancy.ts › protocolBuilder.resolveProtocolSession › TenantScope.open`]:
     {
       count: 1,
       why: 'probing each membership’s team for the protocol and its draft, read-only',
@@ -304,10 +304,25 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'the editor listing a draft’s sections, read-only',
     },
-  [`${SERVER}/src/protocol-builder/router.ts › TenantScope.open`]: {
-    count: 4,
-    why: 'the event backlog, two write-receipt lookups for a retried submit/create, and opening a committed asset key — all reads',
+  [`${SERVER}/src/protocol-builder/handlers.ts › TenantScope.open`]: {
+    count: 1,
+    why: 'the event backlog a watch replays, read-only',
   },
+  [`${SERVER}/src/protocol-builder/handlers.ts › protocolBuilder.Submit › TenantScope.open`]:
+    {
+      count: 1,
+      why: 'the write receipt that answers a retried submit, read-only',
+    },
+  [`${SERVER}/src/protocol-builder/handlers.ts › protocolBuilder.Create › TenantScope.open`]:
+    {
+      count: 1,
+      why: 'the write receipt that answers a retried create, read-only',
+    },
+  [`${SERVER}/src/protocol-builder/handlers.ts › withCommittedAssetKey › TenantScope.open`]:
+    {
+      count: 1,
+      why: 'opening a committed asset key for the editor’s preview, read-only',
+    },
   [`${SERVER}/scripts/apply-schema.ts › OwnerScope.open`]: {
     count: 1,
     why: 'the development schema script issuing the bootstrap token as the owner',
