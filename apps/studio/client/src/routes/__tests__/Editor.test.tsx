@@ -8,10 +8,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect, Predicate } from 'effect';
+import { Effect, Layer, Predicate } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import {
+  HostSession,
+  HostUnauthorized,
+} from '@codaco/protocol-builder-core/contract/session';
 import {
   createInMemoryHost,
   hostSessionFor,
@@ -786,6 +790,28 @@ describe('Studio editor shell', () => {
         name: 'Discard unsaved screen changes?',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('follows the expired-session flow when the host refuses the session', async () => {
+    const { router } = renderEditor();
+    await findStageNameField();
+
+    // `/ws` rechecks the session on every call, so an ended session is first
+    // heard of as the host's refusal, not as a 401 from `/rpc`.
+    vi.mocked(authClient.getSession).mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    await installInProcessHost(
+      servedBy(host.handle),
+      Layer.succeed(HostSession)(
+        HostSession.of(() => Effect.fail(new HostUnauthorized({}))),
+      ),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
   });
 
   it('keeps a dirty editor mounted when the session cannot be re-read', async () => {

@@ -54,7 +54,11 @@ import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
-import { rpcCall, rpcQuery } from '../runtime/rpc.ts';
+import {
+  reportUnauthorizedFailure,
+  rpcCall,
+  rpcQuery,
+} from '../runtime/rpc.ts';
 import { HostClient } from '../runtime/runtime.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
@@ -73,6 +77,7 @@ const route = getRouteApi('/app/study/$studyId/editor/');
 const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
   runtime: hostRuntime,
   client: HostClient,
+  onFailure: reportUnauthorizedFailure,
 });
 
 /** What `protocols.draft` and every editing procedure are addressed by. */

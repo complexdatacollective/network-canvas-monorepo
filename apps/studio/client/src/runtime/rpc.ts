@@ -25,9 +25,15 @@ import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
  *
  * Fire and forget: the report is what the router reacts to, and making every
  * failing call wait for a session re-ask would serialise the refusal behind it.
+ *
+ * The editor's host adapter reports through this too: `/ws` rechecks the
+ * session on every call and refuses an ended one as `HostUnauthorized`.
  */
-const reportUnauthorizedFailure = (error: unknown): void => {
-  if (isTaggedError(error, 'Unauthorized')) {
+export const reportUnauthorizedFailure = (error: unknown): void => {
+  if (
+    isTaggedError(error, 'Unauthorized') ||
+    isTaggedError(error, 'HostUnauthorized')
+  ) {
     void reportUnauthorizedResponse();
   }
 };
