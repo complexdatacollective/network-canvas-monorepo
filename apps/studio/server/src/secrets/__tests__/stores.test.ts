@@ -13,7 +13,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
@@ -26,7 +26,8 @@ import { AUTH_TABLES } from '../../db/auth-schema.ts';
 import { sqlErrorsOnly } from '../../db/errors.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { WEBHOOK_TABLES } from '../../webhook/schema.ts';
-import { createSecretsCipher } from '../cipher.ts';
+import { createSecretsCipher, type SecretsCipherApi } from '../cipher.ts';
+import { SecretsCipher } from '../services.ts';
 import {
   notUnderCurrentKeySql,
   SECRET_STORES,
@@ -50,6 +51,17 @@ const storeNamed = (name: string): SecretStore => {
   if (!store) throw new Error(`no secret store named ${name}`);
   return store;
 };
+
+/** A batch sealed by `cipher`, as the process's own `SecretsCipher`. */
+const rotateBatchWith = (
+  cipher: SecretsCipherApi,
+  store: SecretStore,
+  batchSize: number,
+) => Effect.provideService(store.rotateBatch(batchSize), SecretsCipher, cipher);
+
+/** The probe's answer, with "none" read as null. */
+const probeOf = (store: SecretStore, keyId: string) =>
+  Effect.map(store.probe(keyId), Option.getOrNull);
 
 const webhookStore = storeNamed('webhook_subscriptions');
 const accountStore = storeNamed('account');
@@ -208,7 +220,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
             // caller can do anything with (src/secrets/cipher.ts), so it
             // escapes `Effect.result` and has to be caught as an exit.
             const exit = yield* Effect.exit(
-              MaintenanceScope.open(accountStore.rotateBatch(AFTER, 10)),
+              MaintenanceScope.open(rotateBatchWith(AFTER, accountStore, 10)),
             );
             expect(Exit.isFailure(exit)).toBe(true);
             expect(
@@ -307,7 +319,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             ),
           ).toBe(0);
           expect(
-            yield* MaintenanceScope.open(accountStore.rotateBatch(AFTER, 10)),
+            yield* MaintenanceScope.open(
+              rotateBatchWith(AFTER, accountStore, 10),
+            ),
           ).toBe(0);
         }).pipe(Effect.orDie),
       );
@@ -324,7 +338,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           );
 
           expect(
-            yield* MaintenanceScope.open(webhookStore.rotateBatch(AFTER, 10)),
+            yield* MaintenanceScope.open(
+              rotateBatchWith(AFTER, webhookStore, 10),
+            ),
           ).toBe(1);
           // The store's own postcondition, counted rather than inferred from
           // the batch returning a number.
@@ -354,7 +370,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
           // The plaintext survived the re-seal: the row now opens under the
           // new keyring and says the same thing.
           const opener = yield* MaintenanceScope.open(
-            webhookStore.probe('test-1'),
+            probeOf(webhookStore, 'test-1'),
           );
           expect(opener).not.toBeNull();
           expect(opener?.(AFTER)).toBe(subscription.secret);
@@ -377,7 +393,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
               yield* harness.owner.sql`select id from webhook_subscriptions
                                        where id = ${held.id} for update`;
               return yield* MaintenanceScope.open(
-                webhookStore.rotateBatch(AFTER, 10),
+                rotateBatchWith(AFTER, webhookStore, 10),
               );
             }),
           );
@@ -434,7 +450,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
           yield* reset();
           const key = yield* newAssetKey();
           const opener = yield* MaintenanceScope.open(
-            assetKeyStore.probe('test-2'),
+            probeOf(assetKeyStore, 'test-2'),
           );
           expect(opener).not.toBeNull();
           expect(opener?.(BEFORE)).toBe(key.value);
@@ -450,7 +466,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
                      and asset_id = ${key.assetId}`,
           );
           const moved = yield* MaintenanceScope.open(
-            assetKeyStore.probe('test-2'),
+            probeOf(assetKeyStore, 'test-2'),
           );
           expect(moved).not.toBeNull();
           expect(() => moved?.(BEFORE)).toThrow();
@@ -473,7 +489,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
               [column]: `only.${column}`,
             });
             const opener = yield* MaintenanceScope.open(
-              accountStore.probe('test-2'),
+              probeOf(accountStore, 'test-2'),
             );
             expect(opener, column).not.toBeNull();
             expect(opener?.(BEFORE), column).toBe(`only.${column}`);
@@ -498,9 +514,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           yield* reset();
           const answers = yield* MaintenanceScope.open(
             Effect.all({
-              webhook: webhookStore.probe('test-1'),
-              account: accountStore.probe('test-1'),
-              assetKeys: assetKeyStore.probe('test-1'),
+              webhook: probeOf(webhookStore, 'test-1'),
+              account: probeOf(accountStore, 'test-1'),
+              assetKeys: probeOf(assetKeyStore, 'test-1'),
             }),
           );
           expect(answers).toEqual({
@@ -527,7 +543,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           const before = yield* readRow;
 
           expect(
-            yield* MaintenanceScope.open(assetKeyStore.rotateBatch(AFTER, 10)),
+            yield* MaintenanceScope.open(
+              rotateBatchWith(AFTER, assetKeyStore, 10),
+            ),
           ).toBe(1);
           expect(
             yield* MaintenanceScope.open(
@@ -547,10 +565,47 @@ describe.skipIf(!testDb)('the secret stores', () => {
           expect(after[0]?.updated_at).toBe(before[0]?.updated_at);
 
           const opener = yield* MaintenanceScope.open(
-            assetKeyStore.probe('test-1'),
+            probeOf(assetKeyStore, 'test-1'),
           );
           expect(opener?.(AFTER)).toBe(key.value);
         }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        'keeps each asset key of a protocol under its own asset when re-sealing',
+        () =>
+          Effect.gen(function* () {
+            // Two keys on one protocol line: a re-seal whose predicate stopped
+            // naming the asset would write the first key's ciphertext over the
+            // second, which then opens as the wrong key or not at all.
+            yield* reset();
+            const first = yield* newAssetKey();
+            const second = yield* newAssetKey();
+
+            expect(
+              yield* MaintenanceScope.open(
+                rotateBatchWith(AFTER, assetKeyStore, 10),
+              ),
+            ).toBe(2);
+
+            const harness = yield* TestDatabase;
+            const rows = yield* harness.onOwner(
+              harness.owner.sql<{
+                asset_id: string;
+                ciphertext: Uint8Array;
+                key_id: string;
+              }>`select asset_id, ciphertext, key_id from protocol_asset_keys`,
+            );
+            for (const key of [first, second]) {
+              const row = rows.find((r) => r.asset_id === key.assetId);
+              expect(
+                AFTER.openAssetKey(
+                  { teamId: TEAM, protocolId: PROTOCOL, assetId: key.assetId },
+                  { ciphertext: row!.ciphertext, keyId: row!.key_id },
+                ),
+              ).toBe(key.value);
+            }
+          }).pipe(Effect.orDie),
       );
 
       it.effect('takes no more than the batch size, and resumes', () =>
@@ -559,7 +614,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           for (let index = 0; index < 3; index += 1) yield* newSubscription();
 
           expect(
-            yield* MaintenanceScope.open(webhookStore.rotateBatch(AFTER, 1)),
+            yield* MaintenanceScope.open(
+              rotateBatchWith(AFTER, webhookStore, 1),
+            ),
           ).toBe(1);
           expect(
             yield* MaintenanceScope.open(
@@ -567,7 +624,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             ),
           ).toBe(2);
           expect(
-            yield* MaintenanceScope.open(webhookStore.rotateBatch(AFTER, 10)),
+            yield* MaintenanceScope.open(
+              rotateBatchWith(AFTER, webhookStore, 10),
+            ),
           ).toBe(2);
           expect(
             yield* MaintenanceScope.open(
@@ -584,7 +643,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             yield* reset();
             const row = yield* newAccount(BEFORE, { accessToken: 'ya29.only' });
             expect(
-              yield* MaintenanceScope.open(accountStore.rotateBatch(AFTER, 10)),
+              yield* MaintenanceScope.open(
+                rotateBatchWith(AFTER, accountStore, 10),
+              ),
             ).toBe(1);
 
             const harness = yield* TestDatabase;

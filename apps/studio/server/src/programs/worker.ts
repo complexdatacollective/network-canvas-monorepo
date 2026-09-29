@@ -28,7 +28,8 @@ import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
-import { KeyringVerified } from '../secrets/services.ts';
+import { SecretsLive } from '../secrets/services.ts';
+import { KeyringVerified } from '../secrets/verify.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -146,8 +147,11 @@ function workerWith(db: DbEnv) {
       const SchemaCurrent = Layer.effectDiscard(
         Effect.flatMap(SchemaStatus, (status) => status.current),
       );
+      // The worker seals nothing itself, so the keyring and the cipher are
+      // built for the gate alone.
       const SecretsVerified = KeyringVerified.pipe(
         Layer.provide(SchemaCurrent),
+        Layer.provide(SecretsLive),
       );
 
       // The maintenance client the queue runs on, and the only client the

@@ -5,7 +5,7 @@ import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
-import { Keyring, SecretsCipherLive } from '../secrets/services.ts';
+import { Keyring, SecretsLive } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -48,19 +48,11 @@ class RotateFailed extends Schema.TaggedError<RotateFailed>()('RotateFailed', {
 }
 
 const rotateSecrets = Effect.gen(function* () {
-  const { db, secrets } = yield* Environment;
+  const { db } = yield* Environment;
   if (!db) {
     return yield* new RotateRefused({
       reason:
         'DATABASE_URL is not set; there are no stored secrets to re-encrypt.',
-    });
-  }
-  if (!secrets) {
-    // `resolve` refuses a database with no keyring, so this cannot be reached
-    // by a configuration; it keeps the narrowing honest.
-    return yield* new RotateRefused({
-      reason:
-        'No secrets keyring is configured; set STUDIO_SECRETS_KEY_FILE or STUDIO_SECRETS_KEY.',
     });
   }
 
@@ -74,35 +66,40 @@ const rotateSecrets = Effect.gen(function* () {
     url: db.url,
     applicationName: 'studio-rotate-secrets',
   });
-  // The keyring the environment was started with, and the one cipher over it:
-  // every seal and every open in the rotation goes through the service rather
-  // than through a cipher the rotation built for itself.
-  const Secrets = SecretsCipherLive.pipe(
-    Layer.provideMerge(Layer.succeed(Keyring, secrets)),
-  );
 
-  const counts = yield* rotate({ log: Console.log }).pipe(
-    Effect.provide(Layer.mergeAll(Maintenance, Secrets)),
+  // The keyring the environment was started with and the one cipher over it
+  // (`KeyringMissing` is this layer's failure): every seal and every open in
+  // the rotation goes through the service rather than through a cipher the
+  // rotation built for itself.
+  const { counts, currentKeyId } = yield* Effect.gen(function* () {
+    const keyring = yield* Keyring;
+    return {
+      counts: yield* rotate(),
+      currentKeyId: keyring.currentId,
+    };
+  }).pipe(
+    Effect.provide(Layer.mergeAll(Maintenance, SecretsLive)),
     // Every way the rotation can end badly is one sentence for whoever typed
-    // the command: an incomplete keyring, a rotation that could not prove
-    // itself finished, or a statement that failed.
+    // the command: no keyring, an incomplete one, a rotation that could not
+    // prove itself finished, or a statement that failed.
     Effect.catch((cause) => new RotateFailed({ cause })),
   );
   for (const [store, rotated] of Object.entries(counts)) {
     yield* Console.log(`${store}: ${rotated} re-sealed`);
   }
   yield* Console.log(
-    `Every stored secret is now under key id "${secrets.currentId}". ` +
+    `Every stored secret is now under key id "${currentKeyId}". ` +
       'The older entries can be removed from the keyring once its backup is updated.',
   );
 });
 
 /** The command, with the environment decoded once at its root. */
 export const RotateSecretsProgram = rotateSecrets.pipe(
-  reportingRefusals,
   Effect.provide(
     Layer.mergeAll(LoggerLive, TracingLive('rotate-secrets')).pipe(
       Layer.provideMerge(Environment.layer),
     ),
   ),
+  // Outside the environment, so a refusal to read it is printed too.
+  reportingRefusals,
 );

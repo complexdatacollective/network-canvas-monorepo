@@ -26,12 +26,8 @@ import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
-import {
-  KeyringLive,
-  SecretsCipherAbsent,
-  SecretsCipherLive,
-  verifyKeyring,
-} from '../secrets/services.ts';
+import { SecretsCipherAbsent, SecretsLive } from '../secrets/services.ts';
+import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -89,6 +85,48 @@ function Serve(studio: Studio, checks: HealthChecks) {
 }
 
 /**
+ * What runs once the schema is current. Beside the fingerprint check and for
+ * the same reason (#1900): a keyring that cannot produce a key id already in
+ * the database would serve every surface that touches no secret and fail the
+ * rest one request at a time.
+ *
+ * In a deployment the schema is current at boot — the gate would have refused
+ * the build otherwise — so this is the keyring gate itself, provided beneath
+ * the listener: the listener is not built until it passes, and a refusal never
+ * reaches a request. In the development lane `current` completes later, from
+ * the gate's retry, and the listener must not wait for it: `pnpm dev` finishes
+ * its reset while this process is already running.
+ */
+function BootChecks(env: StudioEnv) {
+  if (!env.devDefaults) {
+    return KeyringVerified.pipe(
+      Layer.provide(
+        Layer.effectDiscard(SchemaStatus.use((status) => status.current)),
+      ),
+    );
+  }
+  // A forked refusal has nothing above it to fail, and a development process
+  // that went on serving with a keyring that cannot read its own database
+  // would be the one lane where the check does not stop anything. So it is
+  // reported and the process ends.
+  return Layer.effectDiscard(
+    Effect.forkScoped(
+      Effect.tapCause(
+        SchemaStatus.use((status) =>
+          Effect.andThen(status.current, verifyKeyring),
+        ),
+        (cause) =>
+          Cause.hasInterruptsOnly(cause)
+            ? Effect.void
+            : Effect.logError(cause).pipe(
+                Effect.andThen(Effect.sync(() => process.exit(1))),
+              ),
+      ),
+    ),
+  );
+}
+
+/**
  * The shape of the process with a database: the application-role pool, the
  * enqueue-only job client, the schema gate, and the boot checks that run once
  * the schema is current.
@@ -117,39 +155,6 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       // process booted.
       const services = yield* Effect.context<StudioServices>();
 
-      // What runs once the schema is current. Beside the fingerprint check and
-      // for the same reason (#1900): a keyring that cannot produce a key id
-      // already in the database would serve every surface that touches no
-      // secret and fail the rest one request at a time.
-      const bootChecks = Effect.gen(function* () {
-        yield* status.current;
-        yield* verifyKeyring;
-      });
-      // In a deployment the schema is current at boot — the gate would have
-      // refused the build otherwise — so the checks settle before the listener
-      // binds and a refusal never reaches a request. In the development lane
-      // `current` completes later, from the gate's retry, and the listener must
-      // not wait for it: `pnpm dev` finishes its reset while this process is
-      // already running.
-      if (env.devDefaults) {
-        // A forked refusal has nothing above it to fail, and a development
-        // process that went on serving with a keyring that cannot read its own
-        // database would be the one lane where the check does not stop
-        // anything. So it is reported and the process ends, exactly as the
-        // print-and-exit this check used to be did from inside the promise.
-        yield* Effect.forkScoped(
-          Effect.tapCause(bootChecks, (cause) =>
-            Cause.hasInterruptsOnly(cause)
-              ? Effect.void
-              : Effect.logError(cause).pipe(
-                  Effect.andThen(Effect.sync(() => process.exit(1))),
-                ),
-          ),
-        );
-      } else {
-        yield* bootChecks;
-      }
-
       const studio = createStudio(env, {
         services,
         pool,
@@ -171,6 +176,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       });
     }),
   ).pipe(
+    Layer.provide(BootChecks(env)),
     // Built once and provided to both the gate and the readiness check, so
     // they share one cached reading of each trigger.
     Layer.provide(MaintenanceTriggers.layer),
@@ -197,8 +203,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     // once, at boot, rather than per enqueue — the correction the
     // node-postgres enqueue this replaced got for free by writing `now()` into
     // the statement.
-    Layer.provide(SecretsCipherLive),
-    Layer.provide(KeyringLive),
+    Layer.provide(SecretsLive),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(JobClock.layerApplication()),
     Layer.provide(AuditSignal.layer),

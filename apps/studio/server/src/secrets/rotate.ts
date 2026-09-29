@@ -3,12 +3,9 @@ import type { SqlError } from 'effect/unstable/sql';
 
 import type { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope } from '../db/tenant.ts';
-import {
-  assertSecretKeysProducible,
-  type SecretKeyCheckError,
-} from './boot.ts';
-import { Keyring, SecretsCipher } from './services.ts';
+import { type Keyring, SecretsCipher } from './services.ts';
 import { SECRET_STORES } from './stores.ts';
+import { type SecretKeyCheckError, verifyStoredKeys } from './verify.ts';
 
 // `studio-api rotate-secrets` (#1900): re-encrypt every stored secret under
 // the keyring's current entry. A rotation is a deploy of a longer keyring
@@ -63,8 +60,6 @@ export class RotationIncomplete extends Schema.TaggedError<RotationIncomplete>()
 export type RotateSecretsOptions = {
   /** Rows per transaction. Small enough that no batch holds locks for long. */
   readonly batchSize?: number | undefined;
-  /** Progress, once a batch is committed; the CLI prints it. */
-  readonly log?: ((message: string) => Effect.Effect<void>) | undefined;
 };
 
 /**
@@ -97,32 +92,27 @@ export const rotateSecrets: (
     );
   }
 
-  const keyring = yield* Keyring;
   const cipher = yield* SecretsCipher;
 
   // Before anything is written: a keyring missing a key that rows are stored
   // under can re-seal some rows and not others, and a partial rotation is the
   // state this command exists to get a deployment out of, not into. Its own
   // transaction, so nothing it read is held open across the batches.
-  yield* MaintenanceScope.open(assertSecretKeysProducible(keyring, cipher));
+  yield* verifyStoredKeys;
 
   const counts: RotationCounts = {};
 
   for (const store of SECRET_STORES) {
     let rotated = 0;
     for (;;) {
-      const batch = yield* MaintenanceScope.open(
-        store.rotateBatch(cipher, batchSize),
-      );
+      const batch = yield* MaintenanceScope.open(store.rotateBatch(batchSize));
       if (batch === 0) break;
       rotated += batch;
-      // After the commit, never before: a log that dies (or a process killed
-      // between batches) must not be able to lose work that is already durable.
-      if (options.log !== undefined) {
-        yield* options.log(
-          `${store.name}: ${rotated} re-sealed under ${cipher.currentKeyId}`,
-        );
-      }
+      // After the commit, never before: a process killed between batches must
+      // not be able to lose work that is already durable.
+      yield* Effect.logInfo(
+        `${store.name}: ${rotated} re-sealed under ${cipher.currentKeyId}`,
+      );
     }
     counts[store.name] = rotated;
   }

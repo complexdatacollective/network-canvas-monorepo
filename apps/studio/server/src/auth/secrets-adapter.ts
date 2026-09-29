@@ -1,4 +1,5 @@
 import type { DBAdapter, DBTransactionAdapter } from 'better-auth/types';
+import { Predicate } from 'effect';
 
 import {
   type OAuthTokenColumn,
@@ -36,9 +37,7 @@ const TOKEN_COLUMNS: readonly OAuthTokenColumn[] = [
 
 type Row = Record<string, unknown>;
 
-function isRow(value: unknown): value is Row {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const isRow: (value: unknown) => value is Row = Predicate.isObject;
 
 /**
  * The identity a token is sealed under. Read from the row rather than passed
