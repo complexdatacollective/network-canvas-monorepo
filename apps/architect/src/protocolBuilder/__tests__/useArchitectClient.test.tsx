@@ -61,4 +61,53 @@ describe('useArchitectClient', () => {
       adapter.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
     ).rejects.toThrow('ManagedRuntime disposed');
   });
+
+  it('builds a new client for a new store or tab name, and disposes the old one', async () => {
+    const first = openStore();
+    const second = openStore();
+    const { result, rerender, unmount } = renderHook(
+      ({ store, name }: { store: ArchitectStore; name: string }) =>
+        useArchitectClient(store, name),
+      { initialProps: { store: first, name: 'Another tab' } },
+    );
+    const initial = result.current.adapter;
+    await initial.rpcCall('ListSections', { protocolId: PROTOCOL_ID });
+
+    // Mutation: keep the client when the store changes → the adapter is the
+    // one over the first store, and the write below lands there.
+    rerender({ store: second, name: 'Another tab' });
+    const overSecond = result.current.adapter;
+    expect(overSecond).not.toBe(initial);
+    await Promise.resolve();
+    await expect(
+      initial.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
+    ).rejects.toThrow('ManagedRuntime disposed');
+    const held = await overSecond.rpcCall('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await overSecond.rpcCall('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: 'write-2',
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Written to the second store' },
+      revision: held.revision,
+    });
+    expect(stageLabel(second)).toBe('Written to the second store');
+    expect(stageLabel(first)).not.toBe('Written to the second store');
+
+    // Mutation: keep the client when the tab name changes → the same adapter.
+    rerender({ store: second, name: 'Ein anderer Tab' });
+    const renamed = result.current.adapter;
+    expect(renamed).not.toBe(overSecond);
+    await Promise.resolve();
+    await expect(
+      overSecond.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
+    ).rejects.toThrow('ManagedRuntime disposed');
+    await expect(
+      renamed.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
+    ).resolves.toBeDefined();
+
+    unmount();
+  });
 });

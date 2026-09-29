@@ -75,22 +75,17 @@ export type ProtocolBuilderTestClient = {
       Leases | Presence | ProtocolEvents | StagedImports
     >,
   ) => Promise<A>;
-  /** Ends `principal`'s session for good: every later call as them is refused. */
-  readonly revoke: (principal: SessionPrincipal) => void;
   readonly dispose: () => Promise<void>;
 };
 
 /** The header a harness caller's session travels in. */
 const SESSION_HEADER = 'x-harness-session';
 
-type Sessions = {
-  readonly live: Map<string, SessionPrincipal>;
-  readonly revoked: Set<string>;
-};
+type Sessions = Map<string, SessionPrincipal>;
 
 /**
  * The Studio's auth service, which also resolves the sessions the harness's
- * callers carry, until a suite revokes one.
+ * callers carry.
  */
 const harnessAuth = (
   auth: AuthService['Service'],
@@ -102,7 +97,7 @@ const harnessAuth = (
       const session = headers[SESSION_HEADER];
       return session === undefined
         ? auth.getSession(headers)
-        : Effect.succeed(Option.fromNullishOr(sessions.live.get(session)));
+        : Effect.succeed(Option.fromNullishOr(sessions.get(session)));
     },
   });
 
@@ -112,11 +107,8 @@ const asCaller = <A, E, R>(
   caller: Caller,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> => {
-  if (
-    caller.principal !== undefined &&
-    !sessions.revoked.has(caller.principal.sessionId)
-  ) {
-    sessions.live.set(caller.principal.sessionId, caller.principal);
+  if (caller.principal !== undefined) {
+    sessions.set(caller.principal.sessionId, caller.principal);
   }
   const headers = {
     ...caller.headers,
@@ -230,8 +222,7 @@ export const makeShiftableClock = () => {
  * `clock` is the clock the handlers, the lease keeper and `run` read; `objectStore`
  * replaces the Studio's; `leases` and `events` replace the keeper and the
  * fan-out, for a suite that needs one it can see into or hold; `layer` is
- * provided to the runtime, e.g. a logger. `revoke` ends a caller's session:
- * their next call resolves to nobody.
+ * provided to the runtime, e.g. a logger.
  */
 export async function createProtocolBuilderClient(
   studio: Studio,
@@ -243,7 +234,7 @@ export async function createProtocolBuilderClient(
     readonly layer?: Layer.Layer<never>;
   } = {},
 ): Promise<ProtocolBuilderTestClient> {
-  const sessions: Sessions = { live: new Map(), revoked: new Set() };
+  const sessions: Sessions = new Map();
   const state = Layer.mergeAll(
     options.leases ?? Leases.layer,
     Presence.layer,
@@ -281,10 +272,6 @@ export async function createProtocolBuilderClient(
       runtime.runPromise(asCaller(sessions, caller, effect)),
     callExit: (caller, effect, runOptions) =>
       runtime.runPromiseExit(asCaller(sessions, caller, effect), runOptions),
-    revoke: (principal) => {
-      sessions.live.delete(principal.sessionId);
-      sessions.revoked.add(principal.sessionId);
-    },
     run: (effect) => runtime.runPromise(effect),
     dispose: async () => {
       await runtime.runPromise(Scope.close(scope, Exit.void));

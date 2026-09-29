@@ -100,6 +100,8 @@ const GRACE = researcher('grace');
 const COOKIES = new Map([
   ['session=ada', ADA],
   ['session=grace', GRACE],
+  // Grace signed in on a second browser too.
+  ['session=grace-elsewhere', GRACE],
 ]);
 
 const cookieOf = (who: SessionPrincipal) =>
@@ -125,7 +127,12 @@ type Connected = {
   readonly runExit: <A, E>(
     effect: Effect.Effect<A, E>,
   ) => Promise<Exit.Exit<A, E>>;
-  readonly watch: (protocolId: string, since?: string) => Watch;
+  readonly watch: (
+    protocolId: string,
+    since?: string,
+    /** Headers the watch's own frame carries. */
+    headers?: Readonly<Record<string, string>>,
+  ) => Watch;
   /** The underlying socket the client opened most recently. */
   readonly socket: () => NodeWS.WebSocket;
   /** Closes the client, which closes its socket cleanly. */
@@ -265,16 +272,19 @@ describe.skipIf(!testDb || !env.auth)(
         client,
         run: (effect) => runtime.runPromise(effect),
         runExit: (effect) => runtime.runPromiseExit(effect),
-        watch: (watched, since) => {
+        watch: (watched, since, headers = {}) => {
           const events: ProtocolEvent[] = [];
           let ended: Exit.Exit<void, unknown> | undefined;
           const fiber = runtime.runFork(
-            Stream.runForEach(
-              client('WatchProtocol', {
-                protocolId: watched,
-                ...(since === undefined ? {} : { since }),
-              }),
-              (event) => Effect.sync(() => events.push(event)),
+            RpcClient.withHeaders(
+              Stream.runForEach(
+                client('WatchProtocol', {
+                  protocolId: watched,
+                  ...(since === undefined ? {} : { since }),
+                }),
+                (event) => Effect.sync(() => events.push(event)),
+              ),
+              headers,
             ),
           );
           fiber.addObserver((exit) => {
@@ -1442,7 +1452,11 @@ describe.skipIf(!testDb || !env.auth)(
 
     it('ends a watch over an open socket once its session is revoked', async () => {
       const watcher = await connect({ as: GRACE });
-      const watch = watcher.watch(protocolId);
+      // The frame names another of Grace's live sessions, which the websocket
+      // protocol merges over the upgrade's cookie.
+      const watch = watcher.watch(protocolId, undefined, {
+        cookie: 'session=grace-elsewhere',
+      });
       await until(
         () => watch.events.some((event) => event.type === 'presence'),
         'the watch to go live',
@@ -1455,8 +1469,9 @@ describe.skipIf(!testDb || !env.auth)(
           writer,
           'Written after a session was revoked',
         );
-        // Mutation: re-read only the memberships when reauthorising → the
-        // watch goes on and delivers the write.
+        // Mutation: re-read only the memberships when reauthorising, or read
+        // the session from the frame's merged headers → the watch goes on and
+        // delivers the write.
         await until(() => watch.ended() !== undefined, 'the watch to end');
         const ended = watch.ended();
         expect(ended !== undefined && Exit.isFailure(ended)).toBe(true);
@@ -1533,6 +1548,53 @@ describe.skipIf(!testDb || !env.auth)(
       } finally {
         await reader.cancel().catch(() => undefined);
         await gated.dispose();
+      }
+    });
+
+    it('ends a /rpc/protocol-builder watch as soon as the server stops', async () => {
+      const stopping = await startStudioServer(
+        { ...env, deploymentMode: 'self-hosted' },
+        studio,
+      );
+      const response = await fetch(
+        `${stopping.origin}${PROTOCOL_BUILDER_RPC_PATH}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/ndjson',
+            'sec-fetch-site': 'same-origin',
+            'cookie': cookieOf(ADA),
+          },
+          body: `${JSON.stringify({ _tag: 'Request', id: '1', tag: 'WatchProtocol', payload: { protocolId }, headers: [] })}\n`,
+        },
+      );
+      const reader = response.body?.getReader();
+      if (reader === undefined) throw new Error('the watch has no body');
+      const decoder = new TextDecoder();
+      let received = '';
+      let finished = false;
+      const reading = (async () => {
+        for (;;) {
+          const next = await reader.read();
+          if (next.value !== undefined) received += decoder.decode(next.value);
+          if (next.done) break;
+        }
+        finished = true;
+      })().catch(() => undefined);
+      try {
+        expect(response.status).toBe(200);
+        await until(
+          () => received.includes('"presence"'),
+          'the watch to go live',
+        );
+        const stopped = stopping.dispose();
+        // Mutation: end the unary watch on the operator's window alone → the
+        // response stays open until the 10 s graceful window runs out.
+        await until(() => finished, 'the watch to end with the stop', 2_000);
+        await stopped;
+      } finally {
+        await reader.cancel().catch(() => undefined);
+        await reading;
       }
     });
   },

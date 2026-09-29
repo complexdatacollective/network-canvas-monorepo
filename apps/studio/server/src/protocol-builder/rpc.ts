@@ -258,20 +258,24 @@ export const boundedBody = HttpRouter.middleware(
 );
 
 /**
- * Ends a unary `WatchProtocol` when the operator's window opens. Made per mount:
- * built once at module scope, a second server in the same process (the
- * suites) was handed the first one's triggers.
+ * Ends a unary `WatchProtocol` when the operator's window opens, or when the
+ * server stops: an open response holds `server.close()` for its whole graceful
+ * window. Made per mount: built once at module scope, a second server in the
+ * same process (the suites) was handed the first one's triggers.
  */
 const unaryWatchCutoff = () =>
   HttpRouter.middleware(
     Effect.map(
-      MaintenanceTriggers,
-      (triggers) => (httpEffect) =>
-        Effect.provideService(
-          httpEffect,
-          WatchCutoff,
-          WatchCutoff.of({ reached: windowOpened(triggers) }),
-        ),
+      Effect.all([MaintenanceTriggers, WebSocketDrain]),
+      ([triggers, drain]) =>
+        (httpEffect) =>
+          Effect.provideService(
+            httpEffect,
+            WatchCutoff,
+            WatchCutoff.of({
+              reached: Effect.raceFirst(windowOpened(triggers), drain.closing),
+            }),
+          ),
     ),
   );
 

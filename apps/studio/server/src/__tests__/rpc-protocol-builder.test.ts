@@ -407,6 +407,16 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const present = () =>
     host.run(Presence.use((presence) => presence.list(draftId)));
 
+  /** What one of Ada's edits still has staged. */
+  const stagedIds = async (editId: string) => {
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    return listed.data.resources.map((resource) => resource.id);
+  };
+
   /**
    * One renewal tick of the lease keeper: waits for it to be sleeping, moves
    * the clock `millis` on, and waits for it to be sleeping again — which it is
@@ -995,6 +1005,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // One sequence across both sections is what "atomic" means to a watcher
     // reading the stream in order.
     expect(assets.revision.sequence).toBe(written.revision.sequence);
+    // Mutation: skip Submit's `completePromotion` → the edit still lists
+    // the promoted resource as staged.
+    expect(await stagedIds(EDIT)).not.toContain(staged.data.descriptor.id);
     await call(
       ADA,
       host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
@@ -1632,6 +1645,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // is what a watcher reading the stream in order sees.
     expect(assets.revision.sequence).toBe(created.revision.sequence);
     expect(order.revision.sequence).toBe(created.revision.sequence);
+    // Mutation: skip Create's `completePromotion` → the edit still lists the
+    // promoted resource as staged.
+    expect(await stagedIds(EDIT)).not.toContain(staged.data.descriptor.id);
   });
 
   it('creates no stage when the promotion it carries cannot be committed', async () => {
@@ -3119,6 +3135,224 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     }
   });
 
+  /**
+   * Runs `effect` as Ada on `over` and goes away once its command has
+   * committed, while the publish of an entry `matches` names is held.
+   */
+  const leavingAfterCommit = async <A, E>(
+    over: ProtocolBuilderTestClient,
+    events: ReturnType<typeof holdingEvents>,
+    matches: (entry: LoggedProtocolEvent) => boolean,
+    effect: Effect.Effect<A, E>,
+  ) => {
+    const committed = events.next((entries) => entries.some(matches));
+    const leaving = new AbortController();
+    const running = over.callExit(callerOf(ADA), effect, {
+      signal: leaving.signal,
+    });
+    await committed.reached;
+    leaving.abort();
+    await new Promise((settle) => setTimeout(settle, 50));
+    committed.release();
+    return running;
+  };
+
+  it('publishes a committed create to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const order = await other.call(
+        callerOf(ADA),
+        other.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+      );
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === STAGE_ORDER,
+          other.rpc('Create', {
+            protocolId,
+            requestId: randomUUID(),
+            kind: 'stage',
+            document: {
+              type: 'Information',
+              label: 'Created as the tab closed',
+              title: 'Created as the tab closed',
+              items: [],
+            },
+          }),
+        );
+        // Mutation: let Create's handler be interrupted after its command →
+        // the watcher never hears of the new stage.
+        await until(
+          () =>
+            revisionsOf(channel.events, STAGE_ORDER).some(
+              (revision) =>
+                revision.revision.sequence > order.revision.sequence,
+            ),
+          'the committed create to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed delete to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Deleted by a closing tab');
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === stage.sectionId,
+          other.rpc('Delete', { protocolId, sectionId: stage.sectionId }),
+        );
+        // Mutation: let Delete's handler be interrupted after its command →
+        // the watcher never hears the stage is gone.
+        await until(
+          () =>
+            revisionsOf(channel.events, stage.sectionId).some(
+              (revision) =>
+                revision.revision.sequence > stage.revision.sequence &&
+                revision.document === undefined,
+            ),
+          'the committed delete to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed release to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Given back by a closing tab');
+      const sectionId = stage.sectionId;
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        const held = await other.call(
+          callerOf(ADA),
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        if (held.lock !== 'held') throw new Error('the section was taken');
+        const isLock = (event: ProtocolEvent) =>
+          event.type === 'lock' && event.sectionId === sectionId;
+        await until(
+          () => channel.events.some(isLock),
+          'the lock to reach the watcher',
+        );
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) => isLock(entry.event),
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+        // Mutation: let ReleaseLock's handler be interrupted after its
+        // command → the watcher is never told the section is free.
+        await until(() => {
+          const last = channel.events.findLast(isLock);
+          return (
+            last !== undefined && last.type === 'lock' && !('holder' in last)
+          );
+        }, 'the committed release to reach the watcher');
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed refactor to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    const codebookSection = sid(`codebook:node:${reference.typeId}`);
+    const variableId = `interrupted_${randomUUID().replaceAll('-', '')}`;
+    try {
+      const held = await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId: codebookSection }),
+      );
+      if (held.lock !== 'held') throw new Error('the codebook was taken');
+      const added = await other.call(
+        callerOf(ADA),
+        other.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: codebookSection,
+          document: {
+            ...held.document,
+            variables: {
+              ...(held.document.variables as Record<string, unknown>),
+              [variableId]: { name: variableId, type: 'text' },
+            },
+          },
+          revision: held.revision,
+        }),
+      );
+      await other.call(
+        callerOf(ADA),
+        other.rpc('ReleaseLock', { protocolId, sectionId: codebookSection }),
+      );
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === codebookSection,
+          other.rpc('RefactorDeleteVariable', {
+            protocolId,
+            subject: { entity: 'node', type: reference.typeId },
+            variableId,
+          }),
+        );
+        // Mutation: let the refactor's handler be interrupted after its
+        // command → the watcher never hears the variable is gone.
+        await until(
+          () =>
+            revisionsOf(channel.events, codebookSection).some(
+              (revision) =>
+                revision.revision.sequence > added.revision.sequence,
+            ),
+          'the committed refactor to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
   it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
     const stranded = makeShiftableClock();
     let databaseDown = false;
@@ -3180,6 +3414,29 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         other.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
       );
       expect(await heldHere()).toContain(stage.sectionId);
+      const staged = await other.call(
+        callerOf(ADA),
+        other.rpc('ResourcesStage', {
+          protocolId,
+          editId: EDIT,
+          requestId: randomUUID(),
+          request: { kind: 'secret', name: 'Stranded token', value: 'pk.gone' },
+        }),
+      );
+      if (staged.status !== 'ok') throw new Error('staging failed');
+      const stagedHere = async () => {
+        const listed = await other.call(
+          callerOf(ADA),
+          other.rpc('ResourcesList', {
+            protocolId,
+            editId: EDIT,
+            status: 'staged',
+          }),
+        );
+        if (listed.status !== 'ok') throw new Error('listing failed');
+        return listed.data.resources.map((resource) => resource.id);
+      };
+      expect(await stagedHere()).toContain(staged.data.descriptor.id);
       await channel.stop();
       await until(
         () => stranded.pending(RECONNECT_GRACE_MS) > 0,
@@ -3202,6 +3459,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         'the lease keeper to finish its tick',
       );
       expect(renewals).toBe(before);
+      databaseDown = false;
+      // Mutation: keep the owner's staged imports in `endOwner` → the edit
+      // still lists what the departed tab staged.
+      expect(await stagedHere()).not.toContain(staged.data.descriptor.id);
     } finally {
       databaseDown = false;
       await other.dispose();
