@@ -1,11 +1,16 @@
-import { ManagedRuntime, Predicate } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { Effect, ManagedRuntime, Predicate } from 'effect';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
+import {
+  CLIENT_SESSION_HEADER,
+  CLIENT_SESSION_PARAM,
+} from '@codaco/studio-contract/client-session';
 import { TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { clientSessionId } from '../../lib/clientSession.ts';
 import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import { FakeWebSocket } from '../../test/hostHarness.ts';
+import { endHostSession, hostRuntime } from '../hostSession.ts';
 import {
   rpcCall,
   rpcInfiniteQuery,
@@ -14,7 +19,7 @@ import {
   rpcQuery,
   useRpcStream,
 } from '../rpc.ts';
-import { getWebRuntime, WebLayer } from '../runtime.ts';
+import { getWebRuntime, HostClient, WebLayer } from '../runtime.ts';
 
 // The transport, through a stubbed `fetch`. What is being proved is what every
 // `/rpc` request carries rather than what any procedure answers, so the stub's
@@ -158,5 +163,79 @@ describe('the adapter bound to that runtime', () => {
         useRpcStream,
       ].map((member) => typeof member),
     ).toEqual(Array.from({ length: 6 }, () => 'function'));
+  });
+});
+
+describe('the protocol builder host’s socket', () => {
+  /** A host call nothing answers: what is being proved is what it opens. */
+  const callTheHost = (): void => {
+    void hostRuntime
+      .runPromise(
+        Effect.flatMap(HostClient, (client) =>
+          client('ListSections', { protocolId: 'protocol-under-test' }),
+        ),
+      )
+      .catch(() => undefined);
+  };
+
+  const firstSocket = async (): Promise<FakeWebSocket> => {
+    await vi.waitFor(() => expect(FakeWebSocket.opened).toHaveLength(1));
+    const socket = FakeWebSocket.opened[0];
+    if (socket === undefined) throw new Error('no socket was opened');
+    return socket;
+  };
+
+  beforeEach(() => {
+    FakeWebSocket.opened = [];
+    FakeWebSocket.openImmediately = true;
+    vi.stubGlobal('WebSocket', FakeWebSocket);
+  });
+
+  afterEach(async () => {
+    await endHostSession();
+    vi.unstubAllGlobals();
+  });
+
+  it('is not opened until the first host call, whatever else the tab asks', async () => {
+    // A signed-out visitor's page still asks Studio things — its status, the
+    // session — and none of that may dial the editor's socket. Mutation: merge
+    // `HostClient.layer` into `WebLayer`, and the Studio call below opens one.
+    answerEmptyOk();
+    await callStatus();
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+
+    const idle = ManagedRuntime.make(HostClient.layer);
+    expect(idle.cachedContext).toBeUndefined();
+    await idle.dispose();
+    // A built layer dials from a fiber it forks, so give one the time to.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(FakeWebSocket.opened).toEqual([]);
+
+    callTheHost();
+    await firstSocket();
+  });
+
+  it('names this tab on the upgrade URL', async () => {
+    // The id this tab presents everywhere else, not one minted for the socket:
+    // a second id would be a second lock owner, and the section this tab is
+    // holding would be somebody else's the moment it reconnected.
+    callTheHost();
+    const url = new URL((await firstSocket()).url);
+
+    expect(url.pathname).toBe('/ws');
+    expect(url.searchParams.get(CLIENT_SESSION_PARAM)).toBe(clientSessionId());
+    expect(clientSessionId()).not.toBe('');
+  });
+
+  it('frames its calls in binary, as `/ws` expects', async () => {
+    // The server's `/ws` reads `layerSchemaBinary` frames, so a client on
+    // `layerJson` would put text frames on a socket that cannot read them.
+    callTheHost();
+    const socket = await firstSocket();
+
+    await vi.waitFor(() => expect(socket.sent.length).toBeGreaterThan(0));
+    for (const frame of socket.sent) {
+      expect(frame).toBeInstanceOf(Uint8Array);
+    }
   });
 });

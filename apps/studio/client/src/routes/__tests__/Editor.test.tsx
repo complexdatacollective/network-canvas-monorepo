@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import type { ClientLink } from '@orpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
@@ -9,10 +8,16 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Predicate } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
+import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import {
+  createInMemoryHost,
+  hostSessionFor,
+  type HandlersLayer,
+  type InMemoryHandlers,
+} from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { Me } from '@codaco/studio-contract/schema/account';
 import { Forbidden } from '@codaco/studio-contract/schema/errors';
 import {
@@ -30,9 +35,19 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { closeStudioEditorSessions } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
 import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import { hostRuntime } from '../../runtime/hostSession.ts';
+import { HostClient } from '../../runtime/runtime.ts';
+import {
+  FakeWebSocket,
+  installInProcessHost,
+  installSocketHost,
+  type HostAccount,
+  type ServedCall,
+} from '../../test/hostHarness.ts';
 import {
   installRpcHarness,
   type StudioHandlers,
@@ -173,13 +188,11 @@ const STATUS: InstanceStatus = {
   setup: { required: false },
 };
 
-const protocolBuilderHost = vi.hoisted((): { client: unknown } => ({
-  client: undefined,
-}));
-
 /** The host these tests seed, kept so a second caller can be made from it. */
 let host: ReturnType<typeof createInMemoryHost>;
-type HostClient = ReturnType<typeof createInMemoryHost>['client'];
+
+/** Who this tab's editor is to the host. */
+const EDITOR = { sessionId: 'session-1', userId: 'user-1', displayName: 'Ada' };
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
@@ -215,72 +228,61 @@ function answerWithheldSections(): void {
   for (const release of withheldReads.splice(0)) release();
 }
 
-/**
- * The seeded host with some of its procedures answered differently.
- *
- * A proxy rather than a copy: the contract client is itself a proxy, so
- * spreading it yields an object with none of the procedures on it.
- */
-function overriding(
-  client: HostClient,
-  overrides: Partial<HostClient>,
-): HostClient {
-  return new Proxy(client, {
-    get: (target, key, receiver) =>
-      Object.hasOwn(overrides, key)
-        ? overrides[key as keyof HostClient]
-        : Reflect.get(target, key, receiver),
-  });
-}
-
-/** A host that has not answered for every section it listed. */
-function hostRefusingSomeSections(client: HostClient): HostClient {
-  return overriding(client, {
-    getSection: async (...args: Parameters<HostClient['getSection']>) => {
-      const refusal = unreadableSections.get(
-        sectionId(parseSectionId(args[0].sectionId)),
-      );
-      if (refusal === 'rejected') throw new Error('the section is unreadable');
-      if (refusal === 'withheld') {
-        await new Promise<void>((resolve) => withheldReads.push(resolve));
-      }
-      return client.getSection(...args);
-    },
-  });
-}
-
 function commandWriteFor(id: string): SectionDoc | undefined {
   return commandWrote.get(sectionId(parseSectionId(id)));
 }
 
-/** A host Studio's own commands have written to, with no event to say so. */
-function hostAnsweringCommandWrites(client: HostClient): HostClient {
-  const overrides: Partial<HostClient> = {
-    getSection: async (...args: Parameters<HostClient['getSection']>) => {
-      const written = commandWriteFor(args[0].sectionId);
-      if (written === undefined) return client.getSection(...args);
-      return { document: written, revision: COMMAND_REVISION };
+/**
+ * The seeded host's procedures, with the reads answered the way a host that
+ * Studio's own commands have written to — and that has not answered for every
+ * section it listed — answers them.
+ */
+function servedBy(handle: InMemoryHandlers): HandlersLayer {
+  return ProtocolBuilderGroup.toLayer({
+    ...handle,
+    GetSection: (input) =>
+      Effect.gen(function* () {
+        const refusal = unreadableSections.get(
+          sectionId(parseSectionId(input.sectionId)),
+        );
+        if (refusal === 'rejected') {
+          return yield* Effect.die(new Error('the section is unreadable'));
+        }
+        if (refusal === 'withheld') {
+          yield* Effect.promise(
+            () => new Promise<void>((resolve) => withheldReads.push(resolve)),
+          );
+        }
+        const written = commandWriteFor(input.sectionId);
+        if (written !== undefined) {
+          return { document: written, revision: COMMAND_REVISION };
+        }
+        return yield* handle.GetSection(input);
+      }),
+    AcquireLock: (input) => {
+      const written = commandWriteFor(input.sectionId);
+      return written === undefined
+        ? handle.AcquireLock(input)
+        : Effect.succeed({
+            lock: 'held' as const,
+            document: written,
+            revision: COMMAND_REVISION,
+          });
     },
-    acquireLock: async (...args: Parameters<HostClient['acquireLock']>) => {
-      const written = commandWriteFor(args[0].sectionId);
-      if (written === undefined) return client.acquireLock(...args);
-      return {
-        lock: 'held' as const,
-        document: written,
-        revision: COMMAND_REVISION,
-      };
-    },
-    listSections: async (...args: Parameters<HostClient['listSections']>) => {
-      const { sectionIds } = await client.listSections(...args);
-      return {
+    ListSections: (input) =>
+      Effect.map(handle.ListSections(input), ({ sectionIds }) => ({
         sectionIds: [
           ...sectionIds,
           ...[...commandWrote.keys()].filter((id) => !sectionIds.includes(id)),
         ],
-      };
-    },
-  };
-  return overriding(client, overrides);
+      })),
+  });
+}
+
+/** Seeds the host the editor is served by, in process, as this tab's editor. */
+async function seedHost(sections: Readonly<Record<string, SectionDoc>>) {
+  host = createInMemoryHost({ protocolId: DRAFT.protocol.id, sections });
+  await installInProcessHost(servedBy(host.handle), hostSessionFor(EDITOR));
 }
 
 let writes = 0;
@@ -299,9 +301,9 @@ function collaborator() {
   });
 }
 
-/** A screen a collaborator adds, through the contract's own `create`. */
+/** A screen a collaborator adds, through the contract's own `Create`. */
 async function collaboratorAddsScreen(label: string): Promise<void> {
-  await collaborator().create({
+  await collaborator().rpcCall('Create', {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     kind: 'stage',
@@ -309,25 +311,25 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
   });
 }
 
-/** A screen a collaborator renames, through the contract's own `submit`. */
+/** A screen a collaborator renames, through the contract's own `Submit`. */
 async function collaboratorRenamesScreen(
   stageId: string,
   label: string,
 ): Promise<void> {
   const client = collaborator();
   const target = sectionId({ kind: 'stage', stageId });
-  const held = await client.acquireLock({
+  const held = await client.rpcCall('AcquireLock', {
     protocolId: DRAFT.protocol.id,
     sectionId: target,
   });
-  await client.submit({
+  await client.rpcCall('Submit', {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: target,
     document: { ...held.document, label },
     revision: held.revision,
   });
-  await client.releaseLock({
+  await client.rpcCall('ReleaseLock', {
     protocolId: DRAFT.protocol.id,
     sectionId: target,
   });
@@ -336,44 +338,30 @@ async function collaboratorRenamesScreen(
 /** The stage order, put back as it should be, by a collaborator's submit. */
 async function collaboratorRepairsStageOrder(): Promise<void> {
   const client = collaborator();
-  const order = sectionId({ kind: 'stageOrder' });
-  const held = await client.acquireLock({
+  const held = await client.rpcCall('AcquireLock', {
     protocolId: DRAFT.protocol.id,
-    sectionId: order,
+    sectionId: STAGE_ORDER,
   });
-  await client.submit({
+  await client.rpcCall('Submit', {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
-    sectionId: order,
+    sectionId: STAGE_ORDER,
     document: { stages: [STAGE_A, STAGE_B] },
     revision: held.revision,
   });
-  await client.releaseLock({ protocolId: DRAFT.protocol.id, sectionId: order });
+  await client.rpcCall('ReleaseLock', {
+    protocolId: DRAFT.protocol.id,
+    sectionId: STAGE_ORDER,
+  });
 }
 
-/** A screen a collaborator removes, through the contract's own `delete`. */
+/** A screen a collaborator removes, through the contract's own `Delete`. */
 async function collaboratorDeletesScreen(stageId: string): Promise<void> {
-  await collaborator().delete({
+  await collaborator().rpcCall('Delete', {
     protocolId: DRAFT.protocol.id,
     sectionId: sectionId({ kind: 'stage', stageId }),
   });
 }
-
-vi.mock('@orpc/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@orpc/client')>();
-  return {
-    ...actual,
-    // The route builds its host client over `/ws`, which nothing serves yet.
-    // The package's in-memory host serves the same contract in process. A
-    // getter rather than a value, because the route builds its client while
-    // this module is being evaluated — long before a test has seeded a host.
-    createORPCClient: () => ({
-      get protocolBuilder() {
-        return protocolBuilderHost.client;
-      },
-    }),
-  };
-});
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -410,7 +398,7 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-beforeEach(() => {
+beforeEach(async () => {
   tenancy.teams = [TEAM_A, TEAM_B];
   tenancy.activeTeam = TEAM_A;
   tenancy.owner = TEAM_A.id;
@@ -418,13 +406,7 @@ beforeEach(() => {
   commandWrote.clear();
   unreadableSections.clear();
   withheldReads.length = 0;
-  host = createInMemoryHost({
-    protocolId: DRAFT.protocol.id,
-    sections: HOST_SECTIONS,
-  });
-  protocolBuilderHost.client = hostRefusingSomeSections(
-    hostAnsweringCommandWrites(host.client),
-  );
+  await seedHost(HOST_SECTIONS);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -462,11 +444,6 @@ beforeEach(() => {
     'protocols.addInformationStage': (payload) => addInformationStage(payload),
     'protocols.moveStage': (payload) => moveStage(payload),
   });
-  // Nothing in jsdom serves `/ws`, and the socket tests below are about which
-  // sockets the transport opens rather than about what a host answers.
-  FakeSocket.opened = [];
-  FakeSocket.openImmediately = true;
-  vi.stubGlobal('WebSocket', FakeSocket);
 });
 
 function renderEditor() {
@@ -1012,25 +989,22 @@ describe('Studio editor shell', () => {
  */
 describe('a protocol that is not all here', () => {
   /** The three-screen protocol these tests need, with one screen unanswered. */
-  function seedThreeScreens(missing: string, how: 'withheld' | 'rejected') {
-    host = createInMemoryHost({
-      protocolId: DRAFT.protocol.id,
-      sections: {
-        ...HOST_SECTIONS,
-        stageOrder: { stages: [STAGE_A, STAGE_B, STAGE_C] },
-        [`stage:${STAGE_C}`]: {
-          id: STAGE_C,
-          type: 'Information',
-          label: 'Closing',
-          title: 'Closing',
-          items: [],
-        },
+  async function seedThreeScreens(
+    missing: string,
+    how: 'withheld' | 'rejected',
+  ) {
+    await seedHost({
+      ...HOST_SECTIONS,
+      stageOrder: { stages: [STAGE_A, STAGE_B, STAGE_C] },
+      [`stage:${STAGE_C}`]: {
+        id: STAGE_C,
+        type: 'Information',
+        label: 'Closing',
+        title: 'Closing',
+        items: [],
       },
     });
     unreadableSections.set(sectionId({ kind: 'stage', stageId: missing }), how);
-    protocolBuilderHost.client = hostRefusingSomeSections(
-      hostAnsweringCommandWrites(host.client),
-    );
   }
 
   it('draws no outline, and offers no move, until all of it is here', async () => {
@@ -1038,7 +1012,7 @@ describe('a protocol that is not all here', () => {
     // has arrived would show Follow-up and Closing at positions 0 and 1 —
     // "move Closing up" would ask for index 0, the front of the interview,
     // when Closing's own place is 2 and one step up from it is 1.
-    seedThreeScreens(STAGE_A, 'withheld');
+    await seedThreeScreens(STAGE_A, 'withheld');
     renderEditor();
 
     expect(
@@ -1072,7 +1046,7 @@ describe('a protocol that is not all here', () => {
   }, 20_000);
 
   it('says a section could not be read, rather than checking for ever', async () => {
-    seedThreeScreens(STAGE_B, 'rejected');
+    await seedThreeScreens(STAGE_B, 'rejected');
     renderEditor();
 
     // Past the query's own retries. Nothing asks again after them — the
@@ -1201,16 +1175,10 @@ describe('what a collaborator changes', () => {
     // wrong with any one section of it, which is what the panel is there to
     // catch — and Studio's draft query answers with a consistent protocol, so
     // a panel drawn from that one reports nothing here at all.
-    host = createInMemoryHost({
-      protocolId: DRAFT.protocol.id,
-      sections: {
-        ...HOST_SECTIONS,
-        stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
-      },
+    await seedHost({
+      ...HOST_SECTIONS,
+      stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
     });
-    protocolBuilderHost.client = hostRefusingSomeSections(
-      hostAnsweringCommandWrites(host.client),
-    );
     renderEditor();
     await screen.findByRole('button', { name: 'Follow-upInformation' });
 
@@ -1234,61 +1202,166 @@ describe('what a collaborator changes', () => {
   });
 });
 
+/**
+ * The editor over the socket it really opens: the shipped `HostClient.layer`,
+ * through a WebSocket stand-in whose far end is an rpc server on `/ws`'s own
+ * serialization. The server authenticates a socket once, at its handshake, as
+ * whoever the browser's cookie says — which is the whole reason a socket must
+ * never outlive the session that opened it.
+ */
 describe('the socket the editor opens', () => {
-  // The session is module state, as a tab's is. Each of these tests is a fresh
-  // tab, so whatever the one before it left open is ended first.
+  const RESEARCHER: HostAccount = { userId: 'user-1', displayName: 'Ada' };
+  const NEXT_ACCOUNT: HostAccount = { userId: 'user-9', displayName: 'Cy' };
+
+  let served: ReadonlyArray<ServedCall>;
+
   beforeEach(async () => {
-    const { closeStudioEditorSessions } =
-      await import('../../editor/sessionLifecycle.ts');
-    await closeStudioEditorSessions();
-    FakeSocket.opened = [];
+    FakeWebSocket.opened = [];
+    FakeWebSocket.openImmediately = true;
+    FakeWebSocket.account = RESEARCHER;
+    ({ served } = await installSocketHost(servedBy(host.handle)));
   });
 
-  it('names this tab on the upgrade URL, so its locks survive a reconnect', async () => {
-    const { hostSocketUrl } = await import('../Editor.tsx');
-    const { clientSessionId } = await import('../../lib/clientSession.ts');
+  /** What the server ran, and as whom. */
+  const servedAs = () =>
+    served.map(({ tag, userId, socket }) => ({ tag, userId, socket }));
 
-    const url = new URL(hostSocketUrl());
+  const watchesOn = (socket: number) =>
+    served.filter(
+      (call) => call.tag === 'WatchProtocol' && call.socket === socket,
+    );
 
-    expect(url.pathname).toBe('/ws');
-    // The id this tab presents everywhere else, not one minted for the socket:
-    // a second id would be a second lock owner, and the section this tab is
-    // holding would be somebody else's the moment it reconnected.
-    expect(url.searchParams.get('clientSession')).toBe(clientSessionId());
-    expect(clientSessionId()).not.toBe('');
-  });
+  const readsOf = (stageId: string) =>
+    served.filter(
+      (call) =>
+        call.tag === 'GetSection' &&
+        Predicate.hasProperty(call.payload, 'sectionId') &&
+        call.payload.sectionId === sectionId({ kind: 'stage', stageId }),
+    );
 
-  /**
-   * A socket that has dropped is opened again, rather than answered from.
-   *
-   * `@orpc/client` does not reconnect unless it is told to: without it the
-   * transport hands every later call the peer of the closed socket, so one
-   * blip leaves the researcher unable to lock, save or watch anything until
-   * they reload — and the host's grace for a tab that comes back, which is
-   * what keeps the section they are editing theirs across a drop, is never
-   * reached.
-   */
-  /**
-   * A socket that has dropped is opened again, rather than answered from.
-   *
-   * `@orpc/client` does not reconnect unless it is told to: without it the
-   * transport hands every later call the peer of the closed socket, so one
-   * blip leaves the researcher unable to lock, save or watch anything until
-   * they reload — and the host's grace for a tab that comes back, which is
-   * what keeps the section they are editing theirs across a drop, is never
-   * reached.
-   */
   it('opens a new one after a drop, rather than answering from the closed one', async () => {
-    const { currentHostSession } = await import('../Editor.tsx');
-    const session = currentHostSession();
-
-    ask(session, 'lockTheStage');
+    askTheHost('ListSections');
     const dropped = await socketNumber(1);
-    dropped.close();
+    await waitFor(() =>
+      expect(servedAs()).toEqual([
+        { tag: 'ListSections', userId: RESEARCHER.userId, socket: 1 },
+      ]),
+    );
 
-    ask(session, 'lockTheStage');
+    dropped.drop(1006);
     await socketNumber(2);
+
+    await waitFor(async () => {
+      await callTheHost('ListSections');
+      expect(servedAs().at(-1)).toEqual({
+        tag: 'ListSections',
+        userId: RESEARCHER.userId,
+        socket: 2,
+      });
+    });
   });
+
+  /**
+   * No close code is a signal. A deploy closes the socket with no status code
+   * (1005) and a killed container or a dropped network with none at all
+   * (1006); both are a blip the researcher must not notice, and neither is the
+   * end of their session — only `closeStudioEditorSessions()` is.
+   */
+  it.each([1005, 1006] as const)(
+    'keeps editing across a %i close, and hears what changed during it',
+    async (code) => {
+      renderEditor();
+      expect(await findStageNameField()).toHaveValue('Welcome, from the host');
+      await waitFor(() => expect(watchesOn(1)).toHaveLength(1));
+
+      FakeWebSocket.opened[0]?.drop(code);
+
+      // The channel resumes on the socket that replaced it, as the same
+      // researcher: the session did not end.
+      await waitFor(() => expect(watchesOn(2)).toHaveLength(1), {
+        timeout: 10_000,
+      });
+      expect(watchesOn(2)[0]?.userId).toBe(RESEARCHER.userId);
+
+      await act(async () => {
+        await collaboratorRenamesScreen(STAGE_B, 'Follow-up, renamed');
+      });
+      expect(
+        await screen.findByRole('button', {
+          name: 'Follow-up, renamedInformation',
+        }),
+      ).toBeInTheDocument();
+      expect(stageNameField()).toHaveValue('Welcome, from the host');
+    },
+    20_000,
+  );
+
+  /**
+   * A server killed mid-call fails everything that was in flight on it. The
+   * stream is resumed by the package's channel from the last cursor it saw,
+   * and a section read — a query — is asked again by the query's own retry, on
+   * the socket that replaced the dead one. Nothing is replayed by the
+   * transport: the read the dead server was holding is not the one that
+   * answers.
+   */
+  it('resumes the stream and asks again for the read a killed server had in flight', async () => {
+    renderEditor();
+    await screen.findByRole('button', { name: 'Follow-upInformation' });
+    // An event with a cursor, so the resumed stream has a place to resume from.
+    await act(async () => {
+      await collaboratorRenamesScreen(STAGE_B, 'Follow-up, renamed');
+    });
+    await screen.findByRole('button', {
+      name: 'Follow-up, renamedInformation',
+    });
+
+    // A reorder reads the protocol back, and the server sits on one screen of
+    // that read — so the read is in flight, beside the open stream, when the
+    // server dies.
+    unreadableSections.set(
+      sectionId({ kind: 'stage', stageId: STAGE_B }),
+      'withheld',
+    );
+    const readsBefore = readsOf(STAGE_B).length;
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move Follow-up, renamed up' }),
+    );
+    await waitFor(() =>
+      expect(readsOf(STAGE_B).length).toBeGreaterThan(readsBefore),
+    );
+
+    FakeWebSocket.opened[0]?.drop(1006);
+
+    // The stream resumes on the socket that replaced the dead one, from the
+    // last cursor it was given …
+    await waitFor(() => expect(watchesOn(2).length).toBeGreaterThan(0), {
+      timeout: 10_000,
+    });
+    expect(watchesOn(2)[0]?.payload).toHaveProperty('since');
+    // … and the read is asked again there, by the query's own retry.
+    await waitFor(
+      () =>
+        expect(
+          readsOf(STAGE_B).filter(({ socket }) => socket === 2),
+        ).not.toEqual([]),
+      { timeout: 10_000 },
+    );
+
+    await act(async () => {
+      answerWithheldSections();
+    });
+    await act(async () => {
+      await collaboratorAddsScreen('Consent');
+    });
+    expect(
+      await screen.findByRole('button', { name: 'ConsentInformation' }),
+    ).toBeInTheDocument();
+    // The re-read answered, so the reorder is confirmed rather than left in
+    // doubt.
+    expect(
+      screen.queryByText(/could not confirm the new screen order/i),
+    ).toBeNull();
+  }, 30_000);
 
   /**
    * And it is closed when the session ends.
@@ -1299,173 +1372,154 @@ describe('the socket the editor opens', () => {
    * through, under the previous researcher's name.
    */
   it('is closed when the editor sessions end, so the next account opens its own', async () => {
-    const { currentHostSession } = await import('../Editor.tsx');
-    const { closeStudioEditorSessions } =
-      await import('../../editor/sessionLifecycle.ts');
-
-    ask(currentHostSession(), 'lockTheStage');
+    askTheHost('ListSections');
     const signedIn = await socketNumber(1);
+    await waitFor(() => expect(served).toHaveLength(1));
 
     await closeStudioEditorSessions();
+    expect(signedIn.readyState).toBe(FakeWebSocket.CLOSED);
 
-    expect(signedIn.readyState).toBe(FakeSocket.CLOSED);
     // The next account's first call opens a socket of its own, whose
     // handshake carries whatever cookie the browser holds by then.
-    ask(currentHostSession(), 'lockTheStage');
+    FakeWebSocket.account = NEXT_ACCOUNT;
+    askTheHost('ListSections');
     await socketNumber(2);
+    await waitFor(() =>
+      expect(servedAs()).toEqual([
+        { tag: 'ListSections', userId: RESEARCHER.userId, socket: 1 },
+        { tag: 'ListSections', userId: NEXT_ACCOUNT.userId, socket: 2 },
+      ]),
+    );
   });
 
   /**
    * And the reconnection stops with it, not just the socket.
    *
-   * A call in flight when the researcher signs out is parked inside the
-   * transport's own reconnect loop — on a socket that is still connecting, or
-   * on the delay before the next attempt — and it wakes up after the closer
-   * has finished and before `authClient.signOut()` has cleared the cookie,
-   * because `shell/useSignOut.ts` releases the editor's lease while the
-   * session is still valid. The socket that attempt opens is upgraded as the
-   * researcher who just left, and there is no closer left to close it.
+   * A call in flight when the researcher signs out is waiting inside the
+   * transport — on a socket that is still connecting, or on the delay before
+   * the next attempt — and `shell/useSignOut.ts` ends the editor's sessions
+   * while the cookie is still valid, so the socket such an attempt opened
+   * would be upgraded as the researcher who just left.
    */
   it('opens nothing more once the sessions have ended, with the cookie still valid', async () => {
-    const { currentHostSession } = await import('../Editor.tsx');
-    const { closeStudioEditorSessions } =
-      await import('../../editor/sessionLifecycle.ts');
-
-    // A real socket is CONNECTING for a round trip, and a call made in that
-    // window is parked inside the transport waiting on it.
-    FakeSocket.openImmediately = false;
-    ask(currentHostSession(), 'lockTheStage');
+    FakeWebSocket.openImmediately = false;
+    askTheHost('AcquireLock');
     const opening = await socketNumber(1);
-    expect(opening.readyState).toBe(FakeSocket.CONNECTING);
+    expect(opening.readyState).toBe(FakeWebSocket.CONNECTING);
 
     await closeStudioEditorSessions();
 
     await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
-    expect(opening.readyState).toBe(FakeSocket.CLOSED);
-    expect(FakeSocket.opened).toHaveLength(1);
+    expect(opening.readyState).toBe(FakeWebSocket.CLOSED);
+    expect(FakeWebSocket.opened).toHaveLength(1);
+    expect(served).toEqual([]);
   });
 
   /**
-   * And a call the ended session parked is never carried on the next one.
-   *
-   * Refusing to open a socket does not settle that call: an `RPCLink` with
-   * reconnection enabled swallows what `connect` throws and tries again. On
-   * one transport shared across sessions it would wake into the socket the
-   * next account had just opened and send the previous researcher's lock or
-   * save through it — authorised and audited as the account that is signed in
-   * now. Each session has a transport of its own for that reason: the parked
-   * call has no way to reach the next one.
+   * And a call the ended session was holding is never carried on the next
+   * one. Each session is a runtime of its own, and ending it interrupts every
+   * call that ran on it, so the parked call has nothing left to wake up in —
+   * least of all the socket the next account has just opened.
    */
   it('never carries a call the ended session parked onto the next account’s socket', async () => {
-    const { currentHostSession } = await import('../Editor.tsx');
-    const { closeStudioEditorSessions } =
-      await import('../../editor/sessionLifecycle.ts');
-
-    FakeSocket.openImmediately = false;
-    ask(currentHostSession(), PARKED_CALL);
-    await socketNumber(1);
+    FakeWebSocket.openImmediately = false;
+    askTheHost('AcquireLock');
+    const parked = await socketNumber(1);
 
     await closeStudioEditorSessions();
 
-    // The next account opens the editor inside the delay the parked call is
-    // waiting out, which is exactly what it would wake up into.
-    FakeSocket.openImmediately = true;
-    ask(currentHostSession(), NEXT_ACCOUNTS_CALL);
+    // The next account opens the editor inside the delay the parked call
+    // would be waiting out, which is exactly what it would wake up into.
+    FakeWebSocket.openImmediately = true;
+    FakeWebSocket.account = NEXT_ACCOUNT;
+    askTheHost('ListSections');
+    await socketNumber(2);
+    // And the ended session's handshake completing late changes nothing.
+    parked.open();
 
     await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
-    const onTheWire = FakeSocket.opened
-      .flatMap((socket) => socket.sent)
-      .join(' ');
-    expect(onTheWire).toContain(NEXT_ACCOUNTS_CALL);
-    expect(onTheWire).not.toContain(PARKED_CALL);
+    expect(servedAs()).toEqual([
+      { tag: 'ListSections', userId: NEXT_ACCOUNT.userId, socket: 2 },
+    ]);
+  });
+
+  /**
+   * One host for the life of the tab. `ProtocolBuilder` keys its channel and
+   * every lock on the adapter's identity, so an adapter minted per render
+   * would reopen the channel and take the locks again each time the route
+   * re-rendered.
+   */
+  it('keeps one channel open while the screen around it re-renders', async () => {
+    const { queryClient } = renderEditor();
+    await findStageNameField();
+    await waitFor(() => expect(watchesOn(1)).toHaveLength(1));
+    const locksTaken = served.filter(({ tag }) => tag === 'AcquireLock').length;
+
+    // A fresh reading of Studio's own draft re-renders the route that holds
+    // the protocol builder.
+    act(() => {
+      queryClient.setQueriesData<typeof DRAFT>(
+        { queryKey: ['rpc', 'protocols.draft'] },
+        (current) =>
+          current === undefined
+            ? current
+            : {
+                ...current,
+                protocol: { ...current.protocol, name: 'Renamed' },
+              },
+      );
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(served.filter(({ tag }) => tag === 'WatchProtocol')).toHaveLength(1);
+    expect(served.filter(({ tag }) => tag === 'AcquireLock')).toHaveLength(
+      locksTaken,
+    );
   });
 });
 
-/** The two procedures these tests tell one session's calls apart by. */
-const PARKED_CALL = 'aCallTheEndedSessionParked';
-const NEXT_ACCOUNTS_CALL = 'aCallTheNextAccountMade';
+/**
+ * Long enough for the transport's next reconnection attempts to have happened.
+ *
+ * After a failure the socket protocol retries 500 ms later, then 750 ms after
+ * that (`RpcClient`'s default retry policy), so a shorter wait would answer
+ * "nothing reconnected" before anything could have.
+ */
+const PAST_RECONNECT_DELAY = 1_500;
+
+/** A host call through the editor's own runtime, whatever the session in force. */
+function callTheHost(tag: 'AcquireLock' | 'ListSections'): Promise<unknown> {
+  const protocolId = DRAFT.protocol.id;
+  if (tag === 'AcquireLock') {
+    return hostRuntime.runPromise(
+      Effect.flatMap(HostClient, (client) =>
+        client('AcquireLock', {
+          protocolId,
+          sectionId: sectionId({ kind: 'stage', stageId: STAGE_A }),
+        }),
+      ),
+    );
+  }
+  return hostRuntime.runPromise(
+    Effect.flatMap(HostClient, (client) =>
+      client('ListSections', { protocolId }),
+    ),
+  );
+}
 
 /**
- * Long enough for the transport's next reconnection attempt to have happened.
- *
- * `@orpc/client` waits two seconds before every attempt after the first, so a
- * shorter wait would answer "nothing reconnected" before anything could have.
+ * A call that opens the session's socket. Its answer is not the subject, and
+ * it is abandoned rather than awaited: a session ended under it rejects it,
+ * which is swallowed here so it is not reported as unhandled.
  */
-const PAST_RECONNECT_DELAY = 2500;
-
-/**
- * A call over one host session, which is what opens its socket.
- *
- * Nothing answers it — there is no host on the other end of a stubbed
- * socket — so the promise is abandoned rather than awaited, and its rejection
- * when the socket closes is swallowed here so it is not reported as an
- * unhandled one. The procedure name travels in the encoded message, so a
- * socket can be asked whose call it carried.
- */
-function ask(
-  session: Readonly<{ link: ClientLink<Record<never, never>> }>,
-  procedure: string,
-): void {
-  void session.link
-    .call([procedure], undefined, { context: {} })
-    .catch(() => undefined);
+function askTheHost(tag: 'AcquireLock' | 'ListSections'): void {
+  void callTheHost(tag).catch(() => undefined);
 }
 
 /** The nth socket the transport has opened, once it has opened it. */
-async function socketNumber(count: number): Promise<FakeSocket> {
-  await waitFor(() => expect(FakeSocket.opened).toHaveLength(count));
-  const socket = FakeSocket.opened.at(-1);
+async function socketNumber(count: number): Promise<FakeWebSocket> {
+  await waitFor(() => expect(FakeWebSocket.opened).toHaveLength(count));
+  const socket = FakeWebSocket.opened.at(-1);
   if (socket === undefined) throw new Error('no socket was opened');
   return socket;
-}
-
-/**
- * A WebSocket that connects to nothing, so the transport's own behaviour is
- * what these tests watch: which sockets it opens, and when.
- */
-class FakeSocket {
-  static readonly CONNECTING = 0;
-  static readonly OPEN = 1;
-  static readonly CLOSED = 3;
-  /**
-   * Whether a socket is open the moment it is constructed.
-   *
-   * A real one is not — it is CONNECTING for a round trip, which is the window
-   * the transport parks a call inside.
-   */
-  static openImmediately = true;
-  static opened: FakeSocket[] = [];
-  readyState = FakeSocket.openImmediately
-    ? FakeSocket.OPEN
-    : FakeSocket.CONNECTING;
-  readonly #listeners = new Map<string, Set<(event: unknown) => void>>();
-
-  constructor() {
-    FakeSocket.opened.push(this);
-  }
-
-  addEventListener(type: string, listener: (event: unknown) => void): void {
-    const listeners = this.#listeners.get(type) ?? new Set();
-    listeners.add(listener);
-    this.#listeners.set(type, listeners);
-  }
-
-  removeEventListener(type: string, listener: (event: unknown) => void): void {
-    this.#listeners.get(type)?.delete(listener);
-  }
-
-  readonly sent: string[] = [];
-
-  send(message: unknown): void {
-    // The host is what would answer, and there is none; what was put on the
-    // wire is still what a test about which socket a call travels on needs.
-    this.sent.push(String(message));
-  }
-
-  close(): void {
-    this.readyState = FakeSocket.CLOSED;
-    for (const listener of this.#listeners.get('close') ?? []) {
-      listener({ code: 1000, reason: 'the socket dropped' });
-    }
-  }
 }
