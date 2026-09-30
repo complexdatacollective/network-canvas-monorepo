@@ -181,7 +181,7 @@ catalog:
   # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
   # to resolve at least that: below it the OpenAPI conversion Studio publishes
   # runs on a combination the adapter does not support.
-  zod: ^4.5.4
+  zod: ^4.6.5
   zustand: ^5.0.14
 overrides:
   # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the
