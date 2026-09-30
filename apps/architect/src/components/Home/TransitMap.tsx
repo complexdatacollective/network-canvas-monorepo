@@ -3,8 +3,9 @@ import { useEffect, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import {
-  stageTypeColorStyle,
+  STAGE_TYPE_COLORS,
   stageTypeIcon,
 } from '@codaco/fresco-ui/stages/stageTypes';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
@@ -50,18 +51,12 @@ const ICON_STROKE = 2.75;
 
 // Information's platinum-dark is illegible against Architect's platinum page bg
 // Override it with charcoal throughout the timeline.
-const INFORMATION_TIMELINE_COLOR = 'var(--color-charcoal)';
-
-function timelineColor(type: StageType) {
-  return type === 'Information'
-    ? INFORMATION_TIMELINE_COLOR
-    : stageTypeColorStyle(type).color;
+function timelinePaletteColor(type: StageType): BadgeColor {
+  return type === 'Information' ? 'charcoal' : STAGE_TYPE_COLORS[type];
 }
 
-// Most stage colours fall below AA as caption text on the page, so the caption
-// keeps the hue but caps its lightness.
-function captionColor(color: string) {
-  return `oklch(from ${color} min(l, 0.45) c h)`;
+function timelineColor(type: StageType) {
+  return `var(--color-${timelinePaletteColor(type)})`;
 }
 
 type TransitMapProps = {
@@ -339,18 +334,14 @@ function Station({
               >
                 {label}
               </div>
-              <div
-                className={headingVariants({
-                  level: 'label',
-                  variant: 'all-caps',
-                  margin: 'none',
-                  className:
-                    'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
-                })}
-                style={{ color: captionColor(color) }}
+              <Badge
+                color={timelinePaletteColor(type)}
+                size="md"
+                uppercase
+                className="mt-1 max-w-full"
               >
-                {sub}
-              </div>
+                <span className="truncate">{sub}</span>
+              </Badge>
             </div>
           </div>
         </foreignObject>
